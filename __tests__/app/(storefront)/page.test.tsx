@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { cookies } from 'next/headers';
 
 // Mock the data fetching
 jest.mock('@/lib/data', () => ({
@@ -14,10 +15,34 @@ jest.mock('@/components/storefront/featured-products', () => ({
   FeaturedProducts: () => <div data-testid="featured-products" />,
 }));
 
+// Mock next/headers cookies for server component testing
+jest.mock('next/headers', () => ({
+  cookies: jest.fn(),
+}));
+
+// Mock settings that use cookies
+jest.mock('@/lib/settings', () => ({
+  getHomepageSettings: jest.fn().mockResolvedValue({
+    heroSlides: null,
+    heroSlideInterval: 5000,
+  }),
+}));
+
 // Import after mocking
 import HomePage from '@/app/(storefront)/page';
 
 describe('Home Page', () => {
+  beforeEach(() => {
+    // Setup mock cookies function
+    const cookieStore = {
+      get: jest.fn(),
+      getAll: jest.fn(),
+      set: jest.fn(),
+      delete: jest.fn(),
+    };
+    (cookies as jest.Mock).mockReturnValue(cookieStore);
+  });
+
   it('renders the homepage with hero section', async () => {
     const page = await HomePage();
     render(page);
