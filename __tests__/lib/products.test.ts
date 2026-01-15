@@ -43,7 +43,7 @@ describe('Products Data Functions', () => {
   });
 
   describe('getProductBySlug', () => {
-    it('queries products_published view with slug filter', async () => {
+    it('queries products table with slug filter and brand join', async () => {
       await getProductBySlug('test-product');
 
       expect(mockFrom).toHaveBeenCalledWith('products');
@@ -83,7 +83,7 @@ describe('Products Data Functions', () => {
   });
 
   describe('getFilteredProducts', () => {
-    it('queries products_published view with filters', async () => {
+    it('queries products table with filters and brand join', async () => {
       await getFilteredProducts({
         stockStatus: 'in_stock',
         minPrice: 10,

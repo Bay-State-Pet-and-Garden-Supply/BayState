@@ -265,7 +265,7 @@ export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
 
 /**
  * Fetches all products (for sitemaps, etc.)
- * Uses products_published view.
+ * Uses products table with embedded brand join.
  */
 export async function getAllProducts(): Promise<Product[]> {
   const supabase = await createClient();

@@ -58,7 +58,7 @@ describe('Data Fetching Functions', () => {
   });
 
   describe('getFeaturedProducts', () => {
-    it('queries products_published view with featured and stock filters', async () => {
+    it('queries products table with featured and stock filters using embedded join', async () => {
       // getFeaturedProducts now delegates to getFilteredProducts which uses range()
       await getFeaturedProducts();
 
@@ -123,7 +123,7 @@ describe('Data Fetching Functions', () => {
   });
 
   describe('getProducts', () => {
-    it('queries products_published view with optional filters', async () => {
+    it('queries products table with optional filters and brand join', async () => {
       await getProducts({ brandId: 'test-id', stockStatus: 'in_stock', limit: 10, offset: 0 });
 
       expect(mockFrom).toHaveBeenCalledWith('products');
