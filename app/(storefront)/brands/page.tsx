@@ -14,7 +14,8 @@ export default async function BrandsPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-primary mb-2">Our Brands</h1>
-        <p className="text-muted-foreground">
+        <h2 className="text-xl font-semibold text-zinc-700 mb-2">Browse Brands</h2>
+        <p className="text-zinc-700">
           Browse our extensive collection of premium pet and garden brands.
         </p>
       </div>

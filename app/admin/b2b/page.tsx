@@ -58,7 +58,7 @@ export default async function B2BPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">B2B Data Feeds</h1>
-          <p className="text-sm text-gray-500">Monitor and manage distributor product data streams</p>
+          <p className="text-sm text-gray-600">Monitor and manage distributor product data streams</p>
         </div>
       </div>
 

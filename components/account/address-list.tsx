@@ -50,11 +50,11 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
                                 </div>
                             )}
                             <div className="font-semibold pr-20 text-lg">{addr.full_name}</div>
-                            <div className="text-base text-zinc-500 mt-2 space-y-0.5">
+                            <div className="text-base text-zinc-600 mt-2 space-y-0.5">
                                 <div>{addr.address_line1}</div>
                                 {addr.address_line2 && <div>{addr.address_line2}</div>}
                                 <div>{addr.city}, {addr.state} {addr.zip_code}</div>
-                                {addr.phone && <div className="mt-2 text-zinc-400">{addr.phone}</div>}
+                                {addr.phone && <div className="mt-2 text-zinc-500">{addr.phone}</div>}
                             </div>
 
                             <div className="flex gap-2 mt-4 pt-4 border-t border-zinc-100">
@@ -75,10 +75,10 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
                 {initialAddresses.length === 0 && !isAdding && (
                     <div className="col-span-full py-12 text-center border-2 border-dashed border-zinc-200 rounded-lg">
                         <div className="bg-zinc-50 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <MapPin className="h-8 w-8 text-zinc-400" />
+                            <MapPin className="h-8 w-8 text-zinc-500" />
                         </div>
                         <h3 className="text-lg font-medium text-zinc-900">No addresses</h3>
-                        <p className="text-base text-zinc-500 mb-6">Add an address for faster checkout.</p>
+                        <p className="text-base text-zinc-600 mb-6">Add an address for faster checkout.</p>
                         <Button onClick={() => setIsAdding(true)} variant="outline" className="h-11 text-base">
                             Add Address
                         </Button>

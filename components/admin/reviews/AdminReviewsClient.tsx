@@ -195,14 +195,14 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
         variant="ghost" 
         size="icon" 
         onClick={() => setSelectedReview(review)}
-        title="View Details"
+        aria-label="View review details"
       >
         <Eye className="h-4 w-4" />
       </Button>
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" aria-label="Open actions menu">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>

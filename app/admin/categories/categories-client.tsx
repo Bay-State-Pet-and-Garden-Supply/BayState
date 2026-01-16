@@ -154,7 +154,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
                 className="h-10 w-10 object-cover"
               />
             ) : (
-              <span className="text-lg font-bold text-gray-400">
+              <span className="text-lg font-bold text-gray-600">
                 {node.name.charAt(0).toUpperCase()}
               </span>
             )}
@@ -173,7 +173,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500">/{node.slug}</p>
+            <p className="text-sm text-gray-600">/{node.slug}</p>
           </div>
 
           {/* Order */}
@@ -219,7 +219,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-16">
         <p className="text-lg font-medium text-gray-600">No categories yet</p>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-600">
           Create your first category to organize products
         </p>
         <Button asChild className="mt-4">

@@ -91,7 +91,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
               className="h-10 w-10 object-contain"
             />
           ) : (
-            <span className="text-lg font-bold text-gray-400">
+            <span className="text-lg font-bold text-gray-600">
               {row.name.charAt(0).toUpperCase()}
             </span>
           )}
@@ -107,7 +107,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
         <div>
           <p className="font-medium text-gray-900">{row.name}</p>
           {row.description && (
-            <p className="text-xs text-gray-500 line-clamp-1">{row.description}</p>
+            <p className="text-xs text-gray-600 line-clamp-1">{row.description}</p>
           )}
         </div>
       ),
@@ -126,7 +126,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       header: 'Created',
       sortable: true,
       render: (value) => (
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-600">
           {new Date(String(value)).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',

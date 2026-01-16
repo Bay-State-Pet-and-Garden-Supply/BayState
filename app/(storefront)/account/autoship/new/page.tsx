@@ -138,7 +138,7 @@ export default function NewAutoshipPage() {
           Back to Autoship
         </Link>
         <h1 className="text-2xl font-bold text-zinc-900">Create Autoship</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-600">
           Set up a recurring order with your pet&apos;s favorite products
         </p>
       </div>
@@ -186,10 +186,10 @@ export default function NewAutoshipPage() {
           <CardContent>
             {isLoadingSuggestions ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
               </div>
             ) : suggestedProducts.length === 0 ? (
-              <p className="py-4 text-center text-sm text-zinc-500">
+              <p className="py-4 text-center text-sm text-zinc-600">
                 Add pets to your profile to get personalized suggestions!
               </p>
             ) : (
@@ -270,7 +270,7 @@ export default function NewAutoshipPage() {
                         <p className="font-medium text-zinc-900">
                           {item.product.name}
                         </p>
-                        <p className="text-sm text-zinc-500">
+                        <p className="text-sm text-zinc-600">
                           {formatCurrency(item.product.price)} each
                         </p>
                       </div>

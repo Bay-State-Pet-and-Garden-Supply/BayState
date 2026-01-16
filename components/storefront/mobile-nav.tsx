@@ -43,7 +43,7 @@ export function MobileNav() {
                 onClick={openSearch}
                 className={cn(
                   'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors',
-                  'text-zinc-400 hover:text-zinc-600'
+                  'text-zinc-700 hover:text-zinc-700'
                 )}
                 aria-label={item.label}
               >
@@ -61,7 +61,7 @@ export function MobileNav() {
                 'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors',
                 isActive
                   ? 'text-zinc-900'
-                  : 'text-zinc-400 hover:text-zinc-600'
+                  : 'text-zinc-700 hover:text-zinc-700'
               )}
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}

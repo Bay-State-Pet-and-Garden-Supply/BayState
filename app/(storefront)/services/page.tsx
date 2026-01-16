@@ -15,12 +15,12 @@ export default async function ServicesPage() {
       {/* Hero Section */}
       <section className="mb-12 text-center">
         <div className="mb-4 inline-flex items-center justify-center rounded-full bg-blue-100 p-4">
-          <Wrench className="h-8 w-8 text-blue-600" />
+          <Wrench className="h-8 w-8 text-blue-700" />
         </div>
         <h1 className="mb-4 text-4xl font-bold tracking-tight text-zinc-900">
           Local Services
         </h1>
-        <p className="mx-auto max-w-2xl text-lg text-zinc-600">
+        <p className="mx-auto max-w-2xl text-lg text-zinc-700">
           From propane refills to equipment rentals, we offer a range of services
           to help you get the job done. Stop by or reserve online.
         </p>
@@ -51,11 +51,11 @@ export default async function ServicesPage() {
                       </div>
 
                       {/* Service Info */}
-                      <h2 className="mb-2 text-xl font-semibold text-zinc-900 group-hover:text-blue-600">
+                      <h2 className="mb-2 text-xl font-semibold text-zinc-900 group-hover:text-blue-700">
                         {service.name}
                       </h2>
                       {service.description && (
-                        <p className="mb-4 flex-1 text-sm text-zinc-600 line-clamp-3">
+                        <p className="mb-4 flex-1 text-sm text-zinc-700 line-clamp-3">
                           {service.description}
                         </p>
                       )}
@@ -65,16 +65,16 @@ export default async function ServicesPage() {
                         <div className="flex items-center gap-1 text-lg font-semibold text-zinc-900">
                           {formattedPrice ? (
                             <>
-                              <DollarSign className="h-4 w-4 text-zinc-400" />
+                              <DollarSign className="h-4 w-4 text-zinc-700" />
                               {formattedPrice}
                               {service.unit && (
-                                <span className="text-sm font-normal text-zinc-500">
+                                <span className="text-sm font-normal text-zinc-700">
                                   /{service.unit}
                                 </span>
                               )}
                             </>
                           ) : (
-                            <span className="text-base text-zinc-500">
+                            <span className="text-base text-zinc-700">
                               Contact for pricing
                             </span>
                           )}
@@ -97,8 +97,8 @@ export default async function ServicesPage() {
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Wrench className="mb-4 h-16 w-16 text-zinc-300" />
-            <p className="text-lg text-zinc-600">No services available</p>
-            <p className="mt-2 text-sm text-zinc-500">
+            <p className="text-lg text-zinc-700">No services available</p>
+            <p className="mt-2 text-sm text-zinc-700">
               Check back soon for our service offerings
             </p>
           </div>
@@ -108,7 +108,7 @@ export default async function ServicesPage() {
       {/* Contact CTA */}
       <section className="mt-12 rounded-xl bg-blue-600 p-8 text-center text-white">
         <h2 className="mb-4 text-2xl font-semibold">Need Something Custom?</h2>
-        <p className="mx-auto mb-6 max-w-xl text-blue-100">
+        <p className="mx-auto mb-6 max-w-xl text-white">
           Don&apos;t see what you&apos;re looking for? Give us a call and we&apos;ll see how
           we can help.
         </p>

@@ -41,7 +41,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   className="object-cover transition-transform group-hover:scale-105"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                <div className="flex h-full w-full items-center justify-center text-zinc-700">
                   No image
                 </div>
               )}
@@ -50,7 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
             {/* Product Info */}
             <div className="flex flex-1 flex-col">
               {product.brand && (
-                <p className="mb-1 text-xs text-zinc-500">{product.brand.name}</p>
+                <p className="mb-1 text-xs text-zinc-700">{product.brand.name}</p>
               )}
               <h3 className="mb-2 line-clamp-2 text-sm font-medium text-zinc-900 group-hover:text-zinc-700">
                 {product.name}

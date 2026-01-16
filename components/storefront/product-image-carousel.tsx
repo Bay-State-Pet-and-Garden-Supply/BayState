@@ -51,7 +51,7 @@ export function ProductImageCarousel({
 
     if (cleanImages.length === 0) {
         return (
-            <div className="aspect-square flex items-center justify-center rounded-xl bg-zinc-100 text-zinc-400">
+            <div className="aspect-square flex items-center justify-center rounded-xl bg-zinc-100 text-zinc-600">
                 No image available
             </div>
         );

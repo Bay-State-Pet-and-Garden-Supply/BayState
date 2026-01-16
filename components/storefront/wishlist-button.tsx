@@ -39,10 +39,10 @@ export function WishlistButton({ productId, initialState = false }: { productId:
         <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-full bg-white/90 shadow-sm hover:bg-white hover:scale-110 transition-all"
+            className="h-9 w-9 rounded-full bg-white shadow-sm hover:bg-zinc-100 hover:scale-110 transition-all"
             onClick={onClick}
         >
-            <Heart className={cn("h-5 w-5 transition-colors", active ? "fill-red-500 text-red-500" : "text-zinc-600")} />
+            <Heart className={cn("h-5 w-5 transition-colors", active ? "fill-red-500 text-red-500" : "text-zinc-700")} />
             <span className="sr-only">Wishlist</span>
         </Button>
     )

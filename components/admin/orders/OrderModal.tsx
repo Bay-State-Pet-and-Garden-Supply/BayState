@@ -145,11 +145,11 @@ export function OrderModal({
                                             <li key={item.id} className="flex items-center justify-between py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-100">
-                                                        <Package className="h-6 w-6 text-zinc-400" />
+                                                        <Package className="h-6 w-6 text-zinc-500" />
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-zinc-900">{item.item_name}</p>
-                                                        <p className="text-sm text-zinc-500">
+                                                        <p className="text-sm text-zinc-600">
                                                             {item.item_type === 'service' ? 'Service' : 'Product'} •{' '}
                                                             {formatCurrency(item.unit_price)} × {item.quantity}
                                                         </p>
@@ -189,11 +189,11 @@ export function OrderModal({
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="flex items-center gap-3">
-                                        <User className="h-5 w-5 text-zinc-400" />
+                                        <User className="h-5 w-5 text-zinc-500" />
                                         <span className="font-medium">{order.customer_name}</span>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <Mail className="h-5 w-5 text-zinc-400" />
+                                        <Mail className="h-5 w-5 text-zinc-500" />
                                         <a
                                             href={`mailto:${order.customer_email}`}
                                             className="text-blue-600 hover:underline break-all"
@@ -203,7 +203,7 @@ export function OrderModal({
                                     </div>
                                     {order.customer_phone && (
                                         <div className="flex items-center gap-3">
-                                            <Phone className="h-5 w-5 text-zinc-400" />
+                                            <Phone className="h-5 w-5 text-zinc-500" />
                                             <a
                                                 href={`tel:${order.customer_phone}`}
                                                 className="text-blue-600 hover:underline"
@@ -226,7 +226,7 @@ export function OrderModal({
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex items-start gap-3">
-                                            <FileText className="mt-0.5 h-5 w-5 text-zinc-400" />
+                                            <FileText className="mt-0.5 h-5 w-5 text-zinc-500" />
                                             <p className="text-zinc-600">{order.notes}</p>
                                         </div>
                                     </CardContent>

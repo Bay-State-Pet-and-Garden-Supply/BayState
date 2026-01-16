@@ -8,7 +8,7 @@ import { useCartStore } from '@/lib/cart-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { PromoCodeInput } from '@/components/storefront/promo-code-input';
 
 export default function CheckoutPage() {
@@ -97,7 +97,7 @@ export default function CheckoutPage() {
       <div className="flex flex-col items-center justify-center py-16 text-center px-4">
         <ShoppingBag className="mb-4 h-20 w-20 text-secondary" />
         <h1 className="mb-2 text-2xl font-bold text-zinc-900">Cart is Empty</h1>
-        <p className="mb-6 text-zinc-500">Add some items before checking out</p>
+        <p className="mb-6 text-zinc-700">Add some items before checking out</p>
         <Button size="lg" asChild>
           <Link href="/products">Browse Products</Link>
         </Button>
@@ -109,7 +109,7 @@ export default function CheckoutPage() {
     <div className="w-full px-4 py-8">
       <Link
         href="/cart"
-        className="mb-6 inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
+        className="mb-6 inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Cart
@@ -121,7 +121,7 @@ export default function CheckoutPage() {
         <div>
           <Card>
             <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
+              <h2 className="text-xl font-semibold">Contact Information</h2>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -162,7 +162,7 @@ export default function CheckoutPage() {
                     id="notes"
                     name="notes"
                     placeholder="Any special instructions..."
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   />
                 </div>
 
@@ -188,7 +188,7 @@ export default function CheckoutPage() {
                   )}
                 </Button>
 
-                <p className="text-center text-xs text-zinc-500">
+                <p className="text-center text-xs text-zinc-700">
                   By placing this order, you agree to our terms of service.
                   This is a reservation—payment will be collected at pickup.
                 </p>
@@ -198,9 +198,9 @@ export default function CheckoutPage() {
         </div>
 
         <div>
-          <Card className="sticky top-24">
+            <Card className="sticky top-24">
             <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
+              <h2 className="text-xl font-semibold">Order Summary</h2>
             </CardHeader>
             <CardContent>
               <ul className="divide-y">
@@ -208,7 +208,7 @@ export default function CheckoutPage() {
                   <li key={item.id} className="flex justify-between py-3">
                     <div>
                       <p className="font-medium text-zinc-900">{item.name}</p>
-                      <p className="text-sm text-zinc-500">Qty: {item.quantity}</p>
+                      <p className="text-sm text-zinc-700">Qty: {item.quantity}</p>
                     </div>
                     <p className="font-medium text-zinc-900">
                       {formatCurrency(item.price * item.quantity)}
@@ -231,7 +231,7 @@ export default function CheckoutPage() {
 
               <div className="space-y-2 border-t pt-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-600">Subtotal</span>
+                  <span className="text-zinc-700">Subtotal</span>
                   <span className="font-medium">{formatCurrency(subtotal)}</span>
                 </div>
                 {discount > 0 && (
@@ -241,7 +241,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-600">Shipping</span>
+                  <span className="text-zinc-700">Shipping</span>
                   <span className="font-medium">
                     {hasFreeShipping ? (
                       <span className="text-green-600">FREE</span>
@@ -251,7 +251,7 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-600">Tax (6.25%)</span>
+                  <span className="text-zinc-700">Tax (6.25%)</span>
                   <span className="font-medium">{formatCurrency(tax)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2 text-lg font-semibold">
@@ -262,7 +262,7 @@ export default function CheckoutPage() {
 
               <div className="mt-6 rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
                 <p className="font-medium">Pickup Only</p>
-                <p className="mt-1 text-blue-600">
+                <p className="mt-1 text-blue-700">
                   Orders are available for pickup at our store.
                   We&apos;ll email you when your order is ready.
                 </p>

@@ -9,6 +9,7 @@ import { getCampaignBanner } from '@/lib/settings';
 
 import { createClient } from '@/lib/supabase/server';
 import { getUserRole } from '@/lib/auth/roles';
+import { SkipLink } from '@/components/ui/skip-link';
 
 /**
  * StorefrontLayout - Layout wrapper for all customer-facing pages.
@@ -79,6 +80,7 @@ export default async function StorefrontLayout({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="flex min-h-screen flex-col w-full">
+        <SkipLink />
         {campaignBanner.enabled && campaignBanner.messages.length > 0 && (
           <CampaignBanner
             messages={campaignBanner.messages}
@@ -93,7 +95,7 @@ export default async function StorefrontLayout({
           petTypes={petTypes}
           brands={brands}
         />
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main id="main-content" className="flex-1 pb-20 md:pb-0">{children}</main>
         <StorefrontFooter />
         <StickyCart />
         <MobileNav />

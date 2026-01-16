@@ -33,7 +33,7 @@ export default async function HomePage() {
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
             Bay State Pet & Garden
           </h1>
-          <p className="mx-auto mb-8 max-w-2xl text-lg text-zinc-600">
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-zinc-700">
             Your local source for pet supplies, garden tools, and farm products.
             Quality brands, expert advice, and neighborly service since 1985.
           </p>
@@ -60,13 +60,13 @@ export default async function HomePage() {
           <Card className="group cursor-pointer transition-shadow hover:shadow-lg lg:col-span-1 lg:row-span-2">
             <CardContent className="flex h-full min-h-[280px] flex-col items-center justify-between p-6">
               <div className="mb-4 rounded-full bg-amber-100 p-4 flex items-center justify-center w-16 h-16 flex-none">
-                <Dog className="h-10 w-10 text-amber-600" />
+                <Dog className="h-10 w-10 text-amber-700" />
               </div>
               <div className="text-center">
                 <h3 className="mb-2 text-xl font-semibold text-zinc-900">
                   Pet Supplies
                 </h3>
-                <p className="mb-4 text-sm text-zinc-600">
+                <p className="mb-4 text-sm text-zinc-700">
                   Dog, Cat, Small Pet, Bird, Reptile & Fish
                 </p>
               </div>
@@ -87,7 +87,7 @@ export default async function HomePage() {
               <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Farm & Livestock
               </h3>
-              <p className="text-center text-sm text-zinc-600">
+              <p className="text-center text-sm text-zinc-700">
                 Horse, Poultry, Feed & Supplies
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
@@ -102,12 +102,12 @@ export default async function HomePage() {
           <Card className="group cursor-pointer transition-shadow hover:shadow-lg">
             <CardContent className="flex h-full min-h-[200px] flex-col items-center justify-between p-6">
               <div className="mb-3 rounded-full bg-green-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
-                <Leaf className="h-8 w-8 text-green-600" />
+                <Leaf className="h-8 w-8 text-green-700" />
               </div>
               <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Lawn & Garden
               </h3>
-              <p className="text-center text-sm text-zinc-600">
+              <p className="text-center text-sm text-zinc-700">
                 Plants, Tools, Mulch & Pest Control
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
@@ -122,12 +122,12 @@ export default async function HomePage() {
           <Card className="group cursor-pointer transition-shadow hover:shadow-lg">
             <CardContent className="flex h-full min-h-[200px] flex-col items-center justify-between p-6">
               <div className="mb-3 rounded-full bg-blue-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
-                <Flame className="h-8 w-8 text-blue-600" />
+                <Flame className="h-8 w-8 text-blue-700" />
               </div>
               <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Home & Fuel
               </h3>
-              <p className="text-center text-sm text-zinc-600">
+              <p className="text-center text-sm text-zinc-700">
                 Wood Pellets, Coal, Propane & Heating
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
@@ -142,12 +142,12 @@ export default async function HomePage() {
           <Card className="group cursor-pointer transition-shadow hover:shadow-lg">
             <CardContent className="flex h-full min-h-[200px] flex-col items-center justify-between p-6">
               <div className="mb-3 rounded-full bg-orange-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
-                <Leaf className="h-8 w-8 text-orange-600" />
+                <Leaf className="h-8 w-8 text-orange-700" />
               </div>
               <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Seasonal
               </h3>
-              <p className="text-center text-sm text-zinc-600">
+              <p className="text-center text-sm text-zinc-700">
                 Holiday Shoppe & Seasonal Products
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
@@ -170,7 +170,7 @@ export default async function HomePage() {
       {/* Services Callout */}
       <section className="rounded-xl bg-zinc-900 p-8 text-center text-white">
         <h2 className="mb-4 text-2xl font-semibold">Local Services</h2>
-        <p className="mx-auto mb-6 max-w-xl text-zinc-300">
+        <p className="mx-auto mb-6 max-w-xl text-zinc-100">
           Propane refills, equipment rentals, and more.
           Stop by or reserve online.
         </p>

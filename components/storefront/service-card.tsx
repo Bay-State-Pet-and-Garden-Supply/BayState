@@ -37,7 +37,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
               {service.name}
             </h3>
             {service.description && (
-              <p className="mb-3 line-clamp-2 text-xs text-zinc-500">
+              <p className="mb-3 line-clamp-2 text-xs text-zinc-700">
                 {service.description}
               </p>
             )}
@@ -45,7 +45,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
               <span className="text-lg font-semibold text-zinc-900">
                 {formattedPrice}
                 {service.unit && (
-                  <span className="text-sm font-normal text-zinc-500">
+                  <span className="text-sm font-normal text-zinc-700">
                     /{service.unit}
                   </span>
                 )}

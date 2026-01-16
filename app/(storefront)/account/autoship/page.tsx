@@ -44,7 +44,7 @@ export default async function AutoshipPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Autoship</h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-600">
             Set up recurring deliveries and never run out of pet essentials
           </p>
         </div>
@@ -63,7 +63,7 @@ export default async function AutoshipPage() {
             <h2 className="mb-2 text-xl font-semibold text-zinc-900">
               No Autoship Subscriptions
             </h2>
-            <p className="mb-6 max-w-md text-zinc-500">
+            <p className="mb-6 max-w-md text-zinc-600">
               Save time and money with automatic recurring orders. We&apos;ll suggest
               products based on your pets!
             </p>
@@ -83,7 +83,7 @@ export default async function AutoshipPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg">{sub.name}</CardTitle>
-                    <p className="text-sm text-zinc-500">
+<p className="text-sm text-zinc-600">
                       {FREQUENCY_LABELS[sub.frequency]}
                     </p>
                   </div>
@@ -115,7 +115,7 @@ export default async function AutoshipPage() {
                       </span>
                     ))}
                     {sub.items.length > 4 && (
-                      <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-500">
+                      <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-600">
                         +{sub.items.length - 4} more
                       </span>
                     )}

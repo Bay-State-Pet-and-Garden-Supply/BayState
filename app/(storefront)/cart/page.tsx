@@ -54,13 +54,13 @@ export default function CartPage() {
       <div className="mb-8">
         <Link
           href="/products"
-          className="mb-4 inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
+          className="mb-4 inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Continue Shopping
         </Link>
         <h1 className="text-3xl font-bold text-zinc-900">Shopping Cart</h1>
-        <p className="mt-2 text-zinc-600">
+        <p className="mt-2 text-zinc-700">
           {itemCount} {itemCount === 1 ? 'item' : 'items'} in your cart
         </p>
       </div>
@@ -88,7 +88,7 @@ export default function CartPage() {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                          <div className="flex h-full w-full items-center justify-center text-zinc-700">
                             <ShoppingBag className="h-8 w-8" />
                           </div>
                         )}
@@ -103,13 +103,13 @@ export default function CartPage() {
                             >
                               {item.name}
                             </Link>
-                            <p className="mt-1 text-sm text-zinc-500">
+                            <p className="mt-1 text-sm text-zinc-700">
                               {formattedPrice} each
                             </p>
                           </div>
                           <button
                             onClick={() => removeItem(item.id)}
-                            className="text-zinc-400 hover:text-red-600"
+                            className="text-zinc-700 hover:text-red-600"
                             aria-label="Remove item"
                           >
                             <X className="h-5 w-5" />
@@ -178,7 +178,7 @@ export default function CartPage() {
 
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-zinc-600">Subtotal</dt>
+                  <dt className="text-zinc-700">Subtotal</dt>
                   <dd className="font-medium text-zinc-900">{formatCurrency(subtotal)}</dd>
                 </div>
                 {discount > 0 && (
@@ -188,7 +188,7 @@ export default function CartPage() {
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <dt className="text-zinc-600">Shipping</dt>
+                  <dt className="text-zinc-700">Shipping</dt>
                   <dd className="font-medium text-zinc-900">
                     {hasFreeShipping ? (
                       <span className="text-green-600">FREE</span>
@@ -198,7 +198,7 @@ export default function CartPage() {
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-zinc-600">Tax</dt>
+                  <dt className="text-zinc-700">Tax</dt>
                   <dd className="font-medium text-zinc-900">Calculated at checkout</dd>
                 </div>
               </dl>
@@ -216,7 +216,7 @@ export default function CartPage() {
                 <Link href="/checkout">Proceed to Checkout</Link>
               </Button>
 
-              <p className="mt-4 text-center text-xs text-zinc-500">
+              <p className="mt-4 text-center text-xs text-zinc-700">
                 Tax calculated at checkout
               </p>
             </div>
@@ -228,7 +228,7 @@ export default function CartPage() {
           <h2 className="mb-2 text-xl font-semibold text-zinc-900">
             Your cart is empty
           </h2>
-          <p className="mb-6 text-zinc-500">
+          <p className="mb-6 text-zinc-700">
             Start shopping to add items to your cart
           </p>
           <Button size="lg" asChild>

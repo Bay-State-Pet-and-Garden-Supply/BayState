@@ -43,7 +43,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 py-4">
             <h2 className="text-lg font-semibold">Shopping Cart</h2>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close cart">
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -67,7 +67,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               {/* Footer */}
               <div className="border-t p-4">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="text-zinc-600">Subtotal</span>
+                  <span className="text-zinc-700">Subtotal</span>
                   <span className="text-xl font-semibold">{formattedSubtotal}</span>
                 </div>
                 <Button className="w-full" size="lg" asChild>
@@ -91,7 +91,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <h3 className="mb-2 text-lg font-medium text-zinc-900">
                 Your cart is empty
               </h3>
-              <p className="mb-6 text-sm text-zinc-500">
+              <p className="mb-6 text-sm text-zinc-700">
                 Start shopping to add items to your cart
               </p>
               <Button asChild onClick={onClose}>
@@ -128,7 +128,7 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-zinc-400">
+            <div className="flex h-full w-full items-center justify-center text-zinc-700">
             <ShoppingBag className="h-8 w-8" />
           </div>
         )}
@@ -145,7 +145,7 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
           </Link>
           <button
             onClick={onRemove}
-            className="text-zinc-400 hover:text-red-600"
+            className="text-zinc-700 hover:text-red-600"
             aria-label="Remove item"
           >
             <X className="h-4 w-4" />

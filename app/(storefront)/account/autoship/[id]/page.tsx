@@ -86,7 +86,7 @@ export default async function AutoshipDetailPage({
             <h1 className="text-2xl font-bold text-zinc-900">
               {subscription.name}
             </h1>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-600">
               {FREQUENCY_LABELS[subscription.frequency]}
             </p>
           </div>
@@ -128,7 +128,7 @@ export default async function AutoshipDetailPage({
                           >
                             {item.product?.name}
                           </Link>
-                          <p className="text-sm text-zinc-500">
+                          <p className="text-sm text-zinc-600">
                             Qty: {item.quantity} ×{' '}
                             {formatCurrency(item.product?.price || 0)}
                           </p>
@@ -148,7 +148,7 @@ export default async function AutoshipDetailPage({
                   ))}
                 </ul>
               ) : (
-                <p className="py-8 text-center text-zinc-500">
+                <p className="py-8 text-center text-zinc-600">
                   No items in this autoship yet.
                 </p>
               )}
@@ -205,9 +205,9 @@ export default async function AutoshipDetailPage({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-zinc-400" />
+                <Calendar className="h-5 w-5 text-zinc-600" />
                 <div>
-                  <p className="text-sm text-zinc-500">Next Order</p>
+                  <p className="text-sm text-zinc-600">Next Order</p>
                   <p className="font-medium text-zinc-900">
                     {formatDate(subscription.next_order_date)}
                   </p>
@@ -215,9 +215,9 @@ export default async function AutoshipDetailPage({
               </div>
               {subscription.last_order_date && (
                 <div className="flex items-center gap-3">
-                  <Package className="h-5 w-5 text-zinc-400" />
+                  <Package className="h-5 w-5 text-zinc-600" />
                   <div>
-                    <p className="text-sm text-zinc-500">Last Order</p>
+                    <p className="text-sm text-zinc-600">Last Order</p>
                     <p className="font-medium text-zinc-900">
                       {formatDate(subscription.last_order_date)}
                     </p>
@@ -233,13 +233,13 @@ export default async function AutoshipDetailPage({
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">
+                <span className="text-zinc-600">
                   {subscription.items?.length || 0} items
                 </span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Est. Tax</span>
+                <span className="text-zinc-600">Est. Tax</span>
                 <span>{formatCurrency(subtotal * 0.0625)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-lg font-semibold">

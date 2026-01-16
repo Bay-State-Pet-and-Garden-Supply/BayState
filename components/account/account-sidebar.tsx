@@ -29,7 +29,7 @@ export function AccountSidebar() {
                         href={item.href}
                         className={cn(
                             "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors flex-shrink-0",
-                            isActive ? "bg-zinc-100 text-zinc-900" : "text-zinc-500 hover:text-zinc-900",
+                            isActive ? "bg-zinc-100 text-zinc-900" : "text-zinc-600 hover:text-zinc-900",
                             // Mobile specific adjustments for touch targets
                             "min-h-[44px]"
                         )}

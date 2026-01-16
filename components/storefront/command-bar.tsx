@@ -131,17 +131,18 @@ export function CommandBar({ searchIndex, isOpen, onClose }: CommandBarProps) {
       <div className="relative w-full max-w-xl mx-4 rounded-xl bg-white shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
         {/* Search Input */}
         <div className="flex items-center border-b px-4">
-          <Search className="h-5 w-5 text-zinc-400" />
+          <Search className="h-5 w-5 text-zinc-700" />
           <Input
             ref={inputRef}
             type="text"
             placeholder="Search products, services..."
+            aria-label="Search products, services, and brands"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             className="flex-1 border-0 bg-transparent px-4 py-4 text-lg focus-visible:ring-0"
           />
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -164,19 +165,19 @@ export function CommandBar({ searchIndex, isOpen, onClose }: CommandBarProps) {
                     onMouseEnter={() => setSelectedIndex(index)}
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100">
-                      <Icon className="h-5 w-5 text-zinc-500" />
+                      <Icon className="h-5 w-5 text-zinc-700" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-zinc-900 truncate">
                           {result.name}
                         </span>
-                        <span className="text-xs text-zinc-400 border border-zinc-200 px-1 rounded bg-zinc-50 uppercase tracking-wider scale-90 origin-left">
+                        <span className="text-xs text-zinc-700 border border-zinc-200 px-1 rounded bg-zinc-50 uppercase tracking-wider scale-90 origin-left">
                           {typeLabels[result.type]}
                         </span>
                       </div>
                       {result.description && (
-                        <p className="text-sm text-zinc-500 truncate">
+                        <p className="text-sm text-zinc-700 truncate">
                           {result.description}
                         </p>
                       )}
@@ -186,7 +187,7 @@ export function CommandBar({ searchIndex, isOpen, onClose }: CommandBarProps) {
                         ${result.price.toFixed(2)}
                       </span>
                     )}
-                    <ArrowRight className="h-4 w-4 text-zinc-400" />
+                      <ArrowRight className="h-4 w-4 text-zinc-700" />
                   </button>
                 </li>
               );
@@ -197,15 +198,15 @@ export function CommandBar({ searchIndex, isOpen, onClose }: CommandBarProps) {
         {/* Empty state */}
         {query.length >= 2 && results.length === 0 && (
           <div className="p-8 text-center">
-            <p className="text-zinc-500">No results found for &quot;{query}&quot;</p>
-            <p className="mt-2 text-sm text-zinc-400">
+            <p className="text-zinc-700">No results found for &quot;{query}&quot;</p>
+            <p className="mt-2 text-sm text-zinc-700">
               Try a different search term
             </p>
           </div>
         )}
 
         {/* Keyboard hints */}
-        <div className="flex items-center justify-center gap-4 border-t px-4 py-2 text-xs text-zinc-400">
+        <div className="flex items-center justify-center gap-4 border-t px-4 py-2 text-xs text-zinc-700">
           <span>
             <kbd className="rounded bg-zinc-100 px-1.5 py-0.5">Enter</kbd> Select
           </span>

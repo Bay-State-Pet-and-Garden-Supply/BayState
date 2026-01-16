@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MapPin, Clock, Users, Heart } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -15,15 +15,16 @@ export default async function AboutPage() {
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
             <h1 className="text-4xl font-bold tracking-tight mb-8 text-center">About Us</h1>
+            <h2 className="text-2xl font-semibold mb-6">Our Story</h2>
 
             <div className="space-y-8">
                 {/* History Section */}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
                             <Clock className="h-5 w-5" />
                             Our History
-                        </CardTitle>
+                        </h3>
                     </CardHeader>
                     <CardContent className="prose prose-gray dark:prose-invert">
                         <p>
@@ -47,10 +48,10 @@ export default async function AboutPage() {
                 {/* Family/Team Section */}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
                             <Users className="h-5 w-5" />
                             Family Owned & Operated
-                        </CardTitle>
+                        </h3>
                     </CardHeader>
                     <CardContent className="prose prose-gray dark:prose-invert">
                         <p>
@@ -69,13 +70,13 @@ export default async function AboutPage() {
                 {/* Location Section */}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
                             <MapPin className="h-5 w-5" />
                             Visit Us
-                        </CardTitle>
+                        </h3>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-muted-foreground">
+                        <p className="text-zinc-700">
                             Stop by our store to see our full selection in person. Our friendly staff
                             is always happy to help you find what you need.
                         </p>
@@ -85,10 +86,10 @@ export default async function AboutPage() {
                 {/* Mission Section */}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
                             <Heart className="h-5 w-5" />
                             Our Mission
-                        </CardTitle>
+                        </h3>
                     </CardHeader>
                     <CardContent className="prose prose-gray dark:prose-invert">
                         <p>

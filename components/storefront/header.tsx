@@ -51,7 +51,7 @@ export function StorefrontHeader({
 
   return (
     <>
-      <header className="max-md:hidden sticky top-0 z-50 w-full border-b border-white/10 bg-primary text-white backdrop-blur supports-[backdrop-filter]:bg-primary/95 shadow-sm">
+      <header className="max-md:hidden sticky top-0 z-50 w-full border-b border-white/10 bg-[#006640] text-white shadow-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
@@ -66,10 +66,10 @@ export function StorefrontHeader({
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold leading-tight tracking-tight text-white">
+              <span className="text-xl font-bold leading-tight tracking-tight text-white">
                 Bay State
               </span>
-              <span className="hidden text-xs text-white/90 sm:inline leading-none">
+              <span className="hidden sm:text-lg font-bold sm:inline leading-none text-white">
                 Pet & Garden Supply
               </span>
             </div>
@@ -85,7 +85,7 @@ export function StorefrontHeader({
                 <NavigationMenuContent>
                   <div className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
                     <div>
-                      <h4 className="mb-2 text-sm font-semibold text-muted-foreground">Shop by Pet</h4>
+                      <h4 className="mb-2 text-sm font-semibold text-zinc-700">Shop by Pet</h4>
                       <ul className="space-y-1">
                         {petTypes.map((pet) => {
                           const IconComponent = petTypeIcons[pet.name] || Dog;
@@ -108,7 +108,7 @@ export function StorefrontHeader({
                       </ul>
                     </div>
                     <div>
-                      <h4 className="mb-2 text-sm font-semibold text-muted-foreground">Categories</h4>
+                      <h4 className="mb-2 text-sm font-semibold text-zinc-700">Categories</h4>
                       <ul className="space-y-1">
                         {categories.slice(0, 8).map((cat) => (
                           <li key={cat.id}>
@@ -141,7 +141,7 @@ export function StorefrontHeader({
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="w-[400px] p-4">
-                    <h4 className="mb-3 text-sm font-semibold text-muted-foreground">Popular Brands</h4>
+                    <h4 className="mb-3 text-sm font-semibold text-zinc-700">Popular Brands</h4>
                     <ul className="grid grid-cols-2 gap-2">
                       {brands.slice(0, 8).map((brand) => (
                         <li key={brand.id}>

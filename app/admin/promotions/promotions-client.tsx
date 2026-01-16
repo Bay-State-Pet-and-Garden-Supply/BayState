@@ -116,7 +116,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-600">
           {promoCodes.length} promo code{promoCodes.length !== 1 ? 's' : ''}
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -133,7 +133,9 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
             <form action={handleCreate} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="code">Code *</Label>
+                  <Label htmlFor="code">
+                    Code <span className="text-destructive" aria-hidden="true">*</span>
+                  </Label>
                   <Input
                     id="code"
                     name="code"
@@ -143,9 +145,11 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="discountType">Discount Type *</Label>
+                  <Label htmlFor="discountType">
+                    Discount Type <span className="text-destructive" aria-hidden="true">*</span>
+                  </Label>
                   <Select name="discountType" defaultValue="percentage">
-                    <SelectTrigger>
+                    <SelectTrigger id="discountType">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -168,7 +172,9 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="discountValue">Discount Value *</Label>
+                  <Label htmlFor="discountValue">
+                    Discount Value <span className="text-destructive" aria-hidden="true">*</span>
+                  </Label>
                   <Input
                     id="discountValue"
                     name="discountValue"
@@ -224,11 +230,21 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
 
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" name="firstOrderOnly" className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    id="firstOrderOnly" 
+                    name="firstOrderOnly" 
+                    className="rounded" 
+                  />
                   <span className="text-sm">First order only</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" name="requiresAccount" className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    id="requiresAccount" 
+                    name="requiresAccount" 
+                    className="rounded" 
+                  />
                   <span className="text-sm">Requires account</span>
                 </label>
               </div>
@@ -260,7 +276,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
           <TableBody>
             {promoCodes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-8 text-gray-600">
                   No promo codes yet. Create your first one!
                 </TableCell>
               </TableRow>
@@ -274,7 +290,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                       </code>
                       <button
                         onClick={() => copyCode(promo.code)}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-600 hover:text-gray-600"
                       >
                         {copiedCode === promo.code ? (
                           <Check className="h-4 w-4 text-green-500" />
@@ -284,7 +300,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                       </button>
                     </div>
                     {promo.description && (
-                      <p className="mt-1 text-xs text-gray-500">{promo.description}</p>
+                      <p className="mt-1 text-xs text-gray-600">{promo.description}</p>
                     )}
                   </TableCell>
                   <TableCell>{getDiscountDisplay(promo)}</TableCell>
@@ -303,7 +319,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleToggleActive(promo.id, promo.is_active)}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-600 hover:text-gray-600"
                         title={promo.is_active ? 'Deactivate' : 'Activate'}
                       >
                         {promo.is_active ? (
@@ -314,7 +330,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                       </button>
                       <button
                         onClick={() => handleDelete(promo.id)}
-                        className="text-gray-400 hover:text-red-600"
+                        className="text-gray-600 hover:text-red-600"
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />

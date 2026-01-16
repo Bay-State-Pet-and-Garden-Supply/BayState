@@ -95,7 +95,7 @@ export function ReviewSubmissionForm({
     return (
       <Card className="w-full">
         <CardContent className="pt-6 text-center">
-          <p className="text-muted-foreground mb-4">
+          <p className="text-zinc-700 mb-4">
             Please sign in to share your experience with this product.
           </p>
           <Button asChild variant="outline">
@@ -116,7 +116,7 @@ export function ReviewSubmissionForm({
             <Star className="h-8 w-8 text-accent fill-accent" />
           </div>
           <h3 className="font-semibold text-lg mb-1">Thanks for your feedback!</h3>
-          <p className="text-muted-foreground">
+          <p className="text-zinc-700">
             You have already reviewed this product.
           </p>
         </CardContent>
@@ -132,7 +132,7 @@ export function ReviewSubmissionForm({
             <Star className="h-6 w-6 fill-primary" />
           </div>
           <h3 className="text-xl font-semibold mb-2 text-primary">Thank You!</h3>
-          <p className="text-muted-foreground max-w-xs mx-auto">
+          <p className="text-zinc-700 max-w-xs mx-auto">
             Your review is pending approval. We appreciate your feedback!
           </p>
         </CardContent>
@@ -169,13 +169,13 @@ export function ReviewSubmissionForm({
                     "h-8 w-8 transition-colors",
                     (hoverRating || rating) >= star
                       ? "fill-accent text-accent"
-                      : "text-muted-foreground/30 fill-transparent"
+                        : "text-zinc-700 fill-transparent"
                   )}
                 />
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground h-4">
+          <p className="text-xs text-zinc-700 h-4">
             {hoverRating ? (
               ['Terrible', 'Poor', 'Average', 'Good', 'Excellent'][hoverRating - 1]
             ) : rating ? (
@@ -211,7 +211,7 @@ export function ReviewSubmissionForm({
             className="min-h-[120px]"
             maxLength={1000}
           />
-          <div className="text-xs text-right text-muted-foreground">
+          <div className="text-xs text-right text-zinc-700">
             {content.length}/1000
           </div>
         </div>

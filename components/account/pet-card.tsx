@@ -106,7 +106,7 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="-mr-2">
+                            <Button variant="ghost" size="icon" className="-mr-2" aria-label="Open pet menu">
                                 <MoreVertical className="h-4 w-4" />
                                 <span className="sr-only">Open menu</span>
                             </Button>

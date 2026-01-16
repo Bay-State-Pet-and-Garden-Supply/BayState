@@ -81,7 +81,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                 "w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-zinc-100 hover:text-primary",
                 activeLetter === letter 
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
-                  : "text-muted-foreground"
+                  : "text-zinc-700"
               )}
             >
               {letter}
@@ -95,7 +95,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
           <div key={letter} id={`brand-section-${letter}`} className="scroll-mt-24">
             <div className="flex items-center gap-4 mb-6 border-b pb-2">
               <h2 className="text-2xl font-bold text-primary">{letter}</h2>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-zinc-700">
                 {groupedBrands[letter].length} {groupedBrands[letter].length === 1 ? 'Brand' : 'Brands'}
               </span>
             </div>
@@ -138,7 +138,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
         ))}
 
         {brands.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-zinc-700">
             No brands found.
           </div>
         )}

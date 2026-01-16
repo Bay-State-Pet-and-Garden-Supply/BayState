@@ -16,7 +16,7 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
             <div className="rounded-lg border-2 border-dashed border-zinc-200 p-8 text-center">
                 <Package className="mx-auto h-10 w-10 text-zinc-300 mb-3" />
                 <h3 className="font-medium text-zinc-900">No recurring purchases yet</h3>
-                <p className="text-sm text-zinc-500 mt-1 max-w-sm mx-auto">
+                <p className="text-sm text-zinc-600 mt-1 max-w-sm mx-auto">
                     Products you order multiple times will appear here for quick reordering.
                 </p>
             </div>
@@ -65,7 +65,7 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
                                     >
                                         {product.name}
                                     </Link>
-                                    <p className="text-xs text-zinc-500 mt-1">
+                                    <p className="text-xs text-zinc-600 mt-1">
                                         Ordered {product.order_count} times
                                     </p>
                                 </div>

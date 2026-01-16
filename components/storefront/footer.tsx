@@ -11,24 +11,24 @@ export function StorefrontFooter() {
             <h3 className="mb-4 text-lg font-semibold text-zinc-900">
               Bay State Pet & Garden
             </h3>
-            <p className="text-sm text-zinc-600 mb-6">
+            <p className="text-sm text-zinc-700 mb-6">
               From big to small, we feed them all!
             </p>
             <div className="flex space-x-4">
-              <a
-                href="https://www.facebook.com/baystatepet"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-zinc-400 hover:text-zinc-600"
-                aria-label="Facebook"
-              >
-                <Facebook className="h-5 w-5" />
-              </a>
+                <a
+                  href="https://www.facebook.com/baystatepet"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-700 hover:text-zinc-700"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="h-5 w-5" />
+                </a>
               <a
                 href="https://twitter.com/BayStatePet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-zinc-400 hover:text-zinc-600"
+                className="text-zinc-700 hover:text-zinc-700"
                 aria-label="Twitter"
               >
                 <Twitter className="h-5 w-5" />
@@ -37,7 +37,7 @@ export function StorefrontFooter() {
                 href="https://www.instagram.com/baystatepet/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-zinc-400 hover:text-zinc-600"
+                className="text-zinc-700 hover:text-zinc-700"
                 aria-label="Instagram"
               >
                 <Instagram className="h-5 w-5" />
@@ -45,15 +45,15 @@ export function StorefrontFooter() {
             </div>
           </div>
 
-          <div>
-            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-              Shop
+            <div>
+<h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-700">
+                Shop
             </h4>
             <ul className="space-y-3">
               <li>
                 <Link
                   href="/products"
-                  className="text-sm text-zinc-600 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900"
                 >
                   All Products
                 </Link>
@@ -61,7 +61,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/services"
-                  className="text-sm text-zinc-600 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900"
                 >
                   Services
                 </Link>
@@ -69,7 +69,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/brands"
-                  className="text-sm text-zinc-600 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900"
                 >
                   Brands
                 </Link>
@@ -78,14 +78,14 @@ export function StorefrontFooter() {
           </div>
 
           <div>
-            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-700">
               Services
             </h4>
             <ul className="space-y-3">
               <li>
                 <Link
                   href="/services/propane"
-                  className="text-sm text-zinc-600 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900"
                 >
                   Propane Refill
                 </Link>
@@ -93,7 +93,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/services/rentals"
-                  className="text-sm text-zinc-600 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900"
                 >
                   Equipment Rentals
                 </Link>
@@ -102,10 +102,10 @@ export function StorefrontFooter() {
           </div>
 
           <div>
-            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-700">
               Contact
             </h4>
-            <ul className="space-y-3 text-sm text-zinc-600">
+            <ul className="space-y-3 text-sm text-zinc-700">
               <li>429 Winthrop Street</li>
               <li>Taunton, MA 02780</li>
               <li>
@@ -133,12 +133,12 @@ export function StorefrontFooter() {
             
             <div className="flex flex-col items-center justify-center lg:items-end">
               <div className="mb-4 flex flex-wrap justify-center gap-4 lg:justify-end">
-                <Link href="/shipping" className="text-sm text-zinc-500 hover:text-zinc-900">Shipping</Link>
-                <Link href="/returns" className="text-sm text-zinc-500 hover:text-zinc-900">Returns</Link>
-                <Link href="/privacy" className="text-sm text-zinc-500 hover:text-zinc-900">Privacy / Security</Link>
-                <Link href="/careers" className="text-sm text-zinc-500 hover:text-zinc-900">Career Opportunities</Link>
+                <Link href="/shipping" className="text-sm text-zinc-700 hover:text-zinc-900">Shipping</Link>
+                <Link href="/returns" className="text-sm text-zinc-700 hover:text-zinc-900">Returns</Link>
+                <Link href="/privacy" className="text-sm text-zinc-700 hover:text-zinc-900">Privacy / Security</Link>
+                <Link href="/careers" className="text-sm text-zinc-700 hover:text-zinc-900">Career Opportunities</Link>
               </div>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-700">
                 © {new Date().getFullYear()} Bay State Pet & Garden Supply. All
                 rights reserved.
               </p>

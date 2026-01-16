@@ -52,7 +52,11 @@ export function LoginForm() {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 {error && (
-                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+                    <div 
+                        role="alert" 
+                        aria-live="polite" 
+                        className="p-3 text-sm text-destructive bg-destructive/10 rounded-md"
+                    >
                         {error}
                     </div>
                 )}
@@ -61,11 +65,20 @@ export function LoginForm() {
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel>
+                              Email <span className="text-destructive" aria-hidden="true">*</span>
+                            </FormLabel>
                             <FormControl>
-                                <Input placeholder="name@example.com" {...field} />
+                                <Input 
+                                    placeholder="name@example.com" 
+                                    {...field} 
+                                    autoComplete="email"
+                                    required
+                                    aria-invalid={!!form.formState.errors.email}
+                                    aria-describedby={form.formState.errors.email ? "email-error" : undefined}
+                                />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage id="email-error" />
                         </FormItem>
                     )}
                 />
@@ -74,11 +87,20 @@ export function LoginForm() {
                     name="password"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Password</FormLabel>
+                            <FormLabel>
+                              Password <span className="text-destructive" aria-hidden="true">*</span>
+                            </FormLabel>
                             <FormControl>
-                                <Input type="password" {...field} />
+                                <Input 
+                                    type="password" 
+                                    {...field} 
+                                    autoComplete="current-password"
+                                    required
+                                    aria-invalid={!!form.formState.errors.password}
+                                    aria-describedby={form.formState.errors.password ? "password-error" : undefined}
+                                />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage id="password-error" />
                         </FormItem>
                     )}
                 />

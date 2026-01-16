@@ -73,11 +73,11 @@ export function SyncClient() {
                                     className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 border-gray-300"
                                 >
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <Upload className="w-8 h-8 mb-3 text-gray-400" />
-                                        <p className="mb-2 text-sm text-gray-500">
+                                        <Upload className="w-8 h-8 mb-3 text-gray-600" />
+                                        <p className="mb-2 text-sm text-gray-600">
                                             <span className="font-semibold">Click to upload</span> or drag and drop
                                         </p>
-                                        <p className="text-xs text-gray-400">Excel files (.xlsx, .xls)</p>
+                                        <p className="text-xs text-gray-600">Excel files (.xlsx, .xls)</p>
                                         {file && (
                                             <p className="mt-2 text-sm text-blue-600 font-medium">{file.name}</p>
                                         )}
@@ -172,9 +172,9 @@ export function SyncClient() {
                                     <table className="w-full text-sm">
                                         <thead className="bg-gray-50 sticky top-0">
                                             <tr>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">SKU</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Name</th>
-                                                <th className="px-4 py-2 text-right font-medium text-gray-500">Price</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-600">SKU</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-600">Name</th>
+                                                <th className="px-4 py-2 text-right font-medium text-gray-600">Price</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -187,7 +187,7 @@ export function SyncClient() {
                                             ))}
                                             {analysis.newProducts.length > 100 && (
                                                 <tr>
-                                                    <td colSpan={3} className="px-4 py-4 text-center text-gray-500 italic">
+                                                    <td colSpan={3} className="px-4 py-4 text-center text-gray-600 italic">
                                                         Showing first 100 of {analysis.newProducts.length} new products...
                                                     </td>
                                                 </tr>

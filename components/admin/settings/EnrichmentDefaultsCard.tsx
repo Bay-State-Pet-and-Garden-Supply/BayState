@@ -144,7 +144,7 @@ export function EnrichmentDefaultsCard() {
               </CardDescription>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={fetchData} disabled={loading}>
+          <Button variant="ghost" size="icon" onClick={fetchData} disabled={loading} aria-label="Refresh">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

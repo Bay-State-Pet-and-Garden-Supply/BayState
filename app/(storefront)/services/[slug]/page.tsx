@@ -33,7 +33,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
       <nav className="mb-6">
         <Link
           href="/services"
-          className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
+          className="inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Services
@@ -66,17 +66,17 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                   {formattedPrice}
                 </span>
                 {service.unit && (
-                  <span className="text-lg text-zinc-500">/{service.unit}</span>
+                  <span className="text-lg text-zinc-700">/{service.unit}</span>
                 )}
               </>
             ) : (
-              <span className="text-xl text-zinc-600">Contact for pricing</span>
+              <span className="text-xl text-zinc-700">Contact for pricing</span>
             )}
           </div>
 
           {/* Description */}
           {service.description && (
-            <p className="text-lg text-zinc-600">{service.description}</p>
+            <p className="text-lg text-zinc-700">{service.description}</p>
           )}
 
           {/* Reserve Button */}
@@ -87,7 +87,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
           {/* Service Details */}
           <div className="border-t pt-6">
             <h2 className="mb-4 font-semibold text-zinc-900">How It Works</h2>
-            <ul className="space-y-3 text-sm text-zinc-600">
+            <ul className="space-y-3 text-sm text-zinc-700">
               <li className="flex items-start gap-3">
                 <Calendar className="mt-0.5 h-5 w-5 text-blue-500" />
                 <span>Reserve online or walk in during business hours</span>

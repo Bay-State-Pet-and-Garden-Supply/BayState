@@ -97,14 +97,14 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
                   <X className="h-4 w-4" />
                 </Button>
               )}
-              <Button type="submit" variant="ghost" size="icon" className="h-7 w-7">
+              <Button type="submit" variant="ghost" size="icon" className="h-7 w-7" aria-label="Search">
                 <Search className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </form>
         {currentSearch && (
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-700">
             Showing results for &quot;{currentSearch}&quot;
           </p>
         )}
@@ -112,8 +112,9 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
 
       {/* Brand Filter */}
       <div>
-        <Label className="text-sm font-medium">Brand</Label>
+        <Label htmlFor="brand-filter" className="text-sm font-medium">Brand</Label>
         <select
+          id="brand-filter"
           value={currentBrand}
           onChange={(e) => updateFilter('brand', e.target.value)}
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -129,8 +130,9 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
 
       {/* Pet Type Filter */}
       <div>
-        <Label className="text-sm font-medium">Pet Type</Label>
+        <Label htmlFor="pet-type-filter" className="text-sm font-medium">Pet Type</Label>
         <select
+          id="pet-type-filter"
           value={currentPetType}
           onChange={(e) => updateFilter('petType', e.target.value)}
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -146,8 +148,9 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
 
       {/* Stock Status Filter */}
       <div>
-        <Label className="text-sm font-medium">Availability</Label>
+        <Label htmlFor="stock-filter" className="text-sm font-medium">Availability</Label>
         <select
+          id="stock-filter"
           value={currentStock}
           onChange={(e) => updateFilter('stock', e.target.value)}
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

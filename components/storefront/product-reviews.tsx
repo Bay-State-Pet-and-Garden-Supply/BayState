@@ -22,10 +22,10 @@ export function ProductReviews({ reviews, stats }: ProductReviewsProps) {
       <Card className="bg-muted/30 border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <div className="bg-background p-4 rounded-full mb-4 shadow-sm">
-            <Star className="h-8 w-8 text-muted-foreground/50" />
+            <Star className="h-8 w-8 text-zinc-700" />
           </div>
           <h3 className="text-lg font-semibold text-foreground">No reviews yet</h3>
-          <p className="text-muted-foreground max-w-sm mt-1">
+          <p className="text-zinc-700 max-w-sm mt-1">
             Be the first to share your experience with this product. Your feedback helps others make better choices.
           </p>
         </CardContent>
@@ -50,7 +50,7 @@ export function ProductReviews({ reviews, stats }: ProductReviewsProps) {
                 </span>
                 <div className="flex flex-col">
                   <StarRating rating={stats.avgRating} size="md" />
-                  <span className="text-sm text-muted-foreground mt-1 font-medium">
+                  <span className="text-sm text-zinc-700 mt-1 font-medium">
                     Based on {stats.totalReviews} reviews
                   </span>
                 </div>
@@ -60,9 +60,9 @@ export function ProductReviews({ reviews, stats }: ProductReviewsProps) {
               <div className="space-y-3">
                 {stats.distribution.map((item) => (
                   <div key={item.rating} className="flex items-center gap-3 text-sm group">
-                    <div className="flex items-center gap-1 w-12 shrink-0 font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                    <div className="flex items-center gap-1 w-12 shrink-0 font-medium text-zinc-700 group-hover:text-foreground transition-colors">
                       <span>{item.rating}</span>
-                      <Star className="h-3 w-3 fill-current text-muted-foreground/40" />
+                      <Star className="h-3 w-3 fill-current text-zinc-700" />
                     </div>
                     <div className="flex-1 h-2 bg-secondary/50 rounded-full overflow-hidden">
                       <div
@@ -72,7 +72,7 @@ export function ProductReviews({ reviews, stats }: ProductReviewsProps) {
                         }}
                       />
                     </div>
-                    <span className="w-8 text-right text-muted-foreground tabular-nums text-xs">
+                    <span className="w-8 text-right text-zinc-700 tabular-nums text-xs">
                       {item.count}
                     </span>
                   </div>
@@ -109,7 +109,7 @@ function StarRating({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md
             className={cn(
               iconSize,
               "transition-colors",
-              isFull ? "fill-[#FCD048] text-[#FCD048]" : "fill-muted/20 text-muted-foreground/20"
+              isFull ? "fill-[#FCD048] text-[#FCD048]" : "fill-muted/20 text-zinc-700"
             )}
           />
         );
@@ -141,7 +141,7 @@ function ReviewCard({ review }: { review: ReviewWithUser }) {
               <span className="text-sm font-semibold truncate max-w-[150px]">
                 {review.user?.full_name || 'Anonymous'}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-zinc-700">
                 {new Intl.DateTimeFormat('en-US', {
                   month: 'short',
                   day: 'numeric',
@@ -170,7 +170,7 @@ function ReviewCard({ review }: { review: ReviewWithUser }) {
               <h4 className="font-bold text-base leading-tight">{review.title}</h4>
             )}
 
-            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            <div className="text-sm text-zinc-700 leading-relaxed whitespace-pre-line">
               {review.content}
             </div>
 
@@ -184,7 +184,7 @@ function ReviewCard({ review }: { review: ReviewWithUser }) {
                     </span>
                     <ul className="space-y-1">
                       {review.pros!.map((pro, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                        <li key={i} className="text-xs text-zinc-700 flex items-start gap-2">
                           <span className="block mt-1.5 h-1 w-1 rounded-full bg-green-500/50 shrink-0" />
                           {pro}
                         </li>
@@ -199,7 +199,7 @@ function ReviewCard({ review }: { review: ReviewWithUser }) {
                     </span>
                     <ul className="space-y-1">
                       {review.cons!.map((con, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                        <li key={i} className="text-xs text-zinc-700 flex items-start gap-2">
                           <span className="block mt-1.5 h-1 w-1 rounded-full bg-red-500/50 shrink-0" />
                           {con}
                         </li>
@@ -212,7 +212,7 @@ function ReviewCard({ review }: { review: ReviewWithUser }) {
 
             {/* Helpful Count */}
             {review.helpful_count > 0 && (
-              <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="pt-2 flex items-center gap-2 text-xs text-zinc-700">
                 <ThumbsUp className="h-3.5 w-3.5" />
                 <span>{review.helpful_count} found this helpful</span>
               </div>

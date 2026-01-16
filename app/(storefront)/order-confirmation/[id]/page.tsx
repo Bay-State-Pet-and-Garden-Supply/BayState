@@ -48,7 +48,7 @@ export default async function OrderConfirmationPage({
         <h1 className="mb-2 text-3xl font-bold text-zinc-900">
           Order Confirmed!
         </h1>
-        <p className="mb-2 text-lg text-zinc-600">
+        <p className="mb-2 text-lg text-zinc-700">
           Thank you for your order, {order.customer_name.split(' ')[0]}!
         </p>
         <p className="mb-8 text-2xl font-semibold text-zinc-900">
@@ -68,7 +68,7 @@ export default async function OrderConfirmationPage({
                 <li key={item.id} className="flex justify-between py-3">
                   <div>
                     <p className="font-medium text-zinc-900">{item.item_name}</p>
-                    <p className="text-sm text-zinc-500">
+                    <p className="text-sm text-zinc-700">
                       Qty: {item.quantity} × {formatCurrency(item.unit_price)}
                     </p>
                   </div>
@@ -82,11 +82,11 @@ export default async function OrderConfirmationPage({
             {/* Totals */}
             <div className="mt-4 space-y-2 border-t pt-4">
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-600">Subtotal</span>
+                <span className="text-zinc-700">Subtotal</span>
                 <span>{formatCurrency(order.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-600">Tax</span>
+                <span className="text-zinc-700">Tax</span>
                 <span>{formatCurrency(order.tax)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-lg font-semibold">
@@ -108,7 +108,7 @@ export default async function OrderConfirmationPage({
                 <Mail className="mt-0.5 h-5 w-5 text-blue-500" />
                 <div>
                   <p className="font-medium text-zinc-900">Confirmation Email</p>
-                  <p className="text-sm text-zinc-600">
+                  <p className="text-sm text-zinc-700">
                     We&apos;ve sent a confirmation to {order.customer_email}
                   </p>
                 </div>
@@ -117,7 +117,7 @@ export default async function OrderConfirmationPage({
                 <Clock className="mt-0.5 h-5 w-5 text-blue-500" />
                 <div>
                   <p className="font-medium text-zinc-900">Order Processing</p>
-                  <p className="text-sm text-zinc-600">
+                  <p className="text-sm text-zinc-700">
                     We&apos;ll prepare your order and email you when it&apos;s ready
                   </p>
                 </div>
@@ -126,7 +126,7 @@ export default async function OrderConfirmationPage({
                 <MapPin className="mt-0.5 h-5 w-5 text-blue-500" />
                 <div>
                   <p className="font-medium text-zinc-900">Pickup Location</p>
-                  <p className="text-sm text-zinc-600">
+                  <p className="text-sm text-zinc-700">
                     429 Winthrop Street, Taunton, MA 02780
                   </p>
                 </div>

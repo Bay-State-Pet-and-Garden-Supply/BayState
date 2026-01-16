@@ -20,7 +20,7 @@ export function WishlistGrid({ items }: { items: ProductSummary[] }) {
             <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-zinc-200 rounded-lg">
                 <HeartOff className="h-10 w-10 text-zinc-300 mb-4" />
                 <h3 className="text-lg font-medium text-zinc-900">Your wishlist is empty</h3>
-                <p className="text-zinc-500 mb-6 max-w-sm">
+                <p className="text-zinc-600 mb-6 max-w-sm">
                     Save items you want to buy later. Heart icon on products adds them here.
                 </p>
                 <Button asChild>

@@ -52,7 +52,7 @@ export function ProductQA({ productId, productSlug, questions, isLoggedIn }: Pro
   return (
     <div className="w-full space-y-8" id="questions">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <MessageCircle className="h-5 w-5 text-muted-foreground" />
+        <MessageCircle className="h-5 w-5 text-zinc-700" />
         <h2 className="text-2xl font-semibold tracking-tight">Questions & Answers</h2>
         <Badge variant="secondary" className="ml-auto">
           {questions.length} {questions.length === 1 ? 'Question' : 'Questions'}
@@ -63,9 +63,9 @@ export function ProductQA({ productId, productSlug, questions, isLoggedIn }: Pro
         {questions.length === 0 ? (
           <Card className="bg-muted/30 border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <HelpCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <HelpCircle className="h-12 w-12 text-zinc-700 mb-4" />
               <p className="text-lg font-medium text-foreground">No questions yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-zinc-700 mt-1">
                 Be the first to ask about this product!
               </p>
             </CardContent>
@@ -98,7 +98,7 @@ export function ProductQA({ productId, productSlug, questions, isLoggedIn }: Pro
                 className="min-h-[100px] resize-none focus-visible:ring-[#348C41]"
                 maxLength={500}
               />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-zinc-700">
                 <span>Min 10 characters</span>
                 <span>{questionText.length}/500</span>
               </div>
@@ -120,10 +120,10 @@ export function ProductQA({ productId, productSlug, questions, isLoggedIn }: Pro
             </form>
           ) : (
             <div className="bg-muted/50 rounded-lg p-6 text-center space-y-4">
-              <p className="text-muted-foreground">
+              <p className="text-zinc-700">
                 You must be signed in to post a question.
               </p>
-              <Button asChild variant="outline" className="border-[#348C41] text-[#348C41] hover:bg-[#348C41]/10">
+              <Button asChild variant="outline" className="border-[#2a7034] text-[#2a7034] hover:bg-[#2a7034]/10">
                 <Link href={`/login?redirect=/products/${productSlug}`}>
                   Sign in to Ask
                 </Link>
@@ -145,7 +145,7 @@ function QuestionItem({ question }: { question: QuestionWithAnswers }) {
         {/* Question Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5 flex-1">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-zinc-700">
               <span className="font-medium text-foreground">
                 {question.user?.full_name || 'Anonymous'}
               </span>
@@ -161,7 +161,7 @@ function QuestionItem({ question }: { question: QuestionWithAnswers }) {
           <Button
             variant="ghost"
             size="sm"
-            className="shrink-0 h-8 w-8 p-0 text-muted-foreground"
+            className="shrink-0 h-8 w-8 p-0 text-zinc-700"
             onClick={() => setIsOpen(!isOpen)}
           >
             {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -185,7 +185,7 @@ function QuestionItem({ question }: { question: QuestionWithAnswers }) {
                           {answer.user?.full_name || 'Community Member'}
                         </span>
                       )}
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-zinc-700">
                          • {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(answer.created_at))}
                       </span>
                     </div>
@@ -197,7 +197,7 @@ function QuestionItem({ question }: { question: QuestionWithAnswers }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic pl-4 border-l-2 border-muted">
+              <p className="text-sm text-zinc-700 italic pl-4 border-l-2 border-muted">
                 No answers yet.
               </p>
             )}

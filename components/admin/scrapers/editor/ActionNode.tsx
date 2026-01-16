@@ -241,7 +241,7 @@ function ActionNodeComponent({ data, selected }: NodeProps<Node<ActionNodeData>>
 
               <div className="flex items-center gap-0.5">
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Toggle expand">
                     {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </Button>
                 </CollapsibleTrigger>

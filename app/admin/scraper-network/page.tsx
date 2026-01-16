@@ -21,7 +21,7 @@ export default function ScraperNetworkPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Scraper Network</h1>
-                    <p className="text-sm text-gray-500">Manage self-hosted runners and monitor scraping jobs</p>
+                    <p className="text-sm text-gray-600">Manage self-hosted runners and monitor scraping jobs</p>
                 </div>
             </div>
 

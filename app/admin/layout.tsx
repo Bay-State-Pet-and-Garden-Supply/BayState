@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/auth/roles'
 import { redirect } from 'next/navigation'
 import { Toaster } from 'sonner'
+import { SkipLink } from '@/components/ui/skip-link'
 
 export default async function AdminLayout({
   children,
@@ -25,8 +26,9 @@ export default async function AdminLayout({
 
   return (
     <div className="flex h-screen bg-muted">
+      <SkipLink />
       <AdminSidebar userRole={role as 'admin' | 'staff'} />
-      <main className="flex-1 overflow-y-auto p-8">
+      <main id="main-content" className="flex-1 overflow-y-auto p-8">
         {children}
       </main>
       <Toaster position="top-right" richColors closeButton />

@@ -136,20 +136,21 @@ export function InlineSearch() {
       >
         {isOpen ? (
             <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-                <Input
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-700 pointer-events-none" />
+<Input
                     ref={inputRef}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Search..."
+                    aria-label="Search products, services, and brands"
                     className="pl-10 pr-10 h-10 bg-white text-zinc-900 border-none shadow-sm focus-visible:ring-2 focus-visible:ring-white/20"
                     autoFocus
-                />
+                  />
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-700 hover:text-zinc-700 hover:bg-zinc-100"
                     onClick={() => { 
                         setQuery(''); 
                         closeSearch(); 
@@ -164,6 +165,7 @@ export function InlineSearch() {
                 size="icon"
                 className="h-11 w-11 text-white hover:bg-white/20"
                 onClick={openSearch}
+                aria-label="Search"
             >
                 <Search className="h-5 w-5" />
             </Button>
@@ -189,19 +191,19 @@ export function InlineSearch() {
                     onMouseEnter={() => setSelectedIndex(index)}
                   >
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-zinc-100">
-                      <Icon className="h-4 w-4 text-zinc-500" />
+                      <Icon className="h-4 w-4 text-zinc-700" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm text-zinc-900 truncate">
                           {result.name}
                         </span>
-                        <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 bg-zinc-50 px-1.5 py-0.5 rounded border border-zinc-100">
+                        <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-700 bg-zinc-50 px-1.5 py-0.5 rounded border border-zinc-100">
                           {typeLabels[result.type]}
                         </span>
                       </div>
                       {result.description && (
-                        <p className="text-xs text-zinc-500 truncate mt-0.5">
+                        <p className="text-xs text-zinc-700 truncate mt-0.5">
                           {result.description}
                         </p>
                       )}
@@ -211,13 +213,13 @@ export function InlineSearch() {
                         ${result.price.toFixed(2)}
                       </span>
                     )}
-                    <ArrowRight className="h-3 w-3 text-zinc-300 ml-2" />
+                      <ArrowRight className="h-3 w-3 text-zinc-700 ml-2" />
                   </button>
                 </li>
               );
             })}
           </ul>
-          <div className="border-t border-zinc-100 px-3 py-1.5 bg-zinc-50 text-[10px] text-zinc-400 flex justify-between items-center rounded-b-lg">
+          <div className="border-t border-zinc-100 px-3 py-1.5 bg-zinc-50 text-[10px] text-zinc-700 flex justify-between items-center rounded-b-lg">
              <span>Press <kbd className="font-sans border border-zinc-200 rounded px-1 bg-white">↵</kbd> to select</span>
              <span><kbd className="font-sans border border-zinc-200 rounded px-1 bg-white">esc</kbd> to close</span>
           </div>
@@ -227,7 +229,7 @@ export function InlineSearch() {
        {/* Empty state */}
        {isOpen && query.length >= 2 && results.length === 0 && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-zinc-200 p-6 text-center z-[100]">
-            <p className="text-sm text-zinc-500">No results found for &quot;{query}&quot;</p>
+            <p className="text-sm text-zinc-700">No results found for &quot;{query}&quot;</p>
           </div>
         )}
     </div>

@@ -65,7 +65,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </aside>
 
         {/* Product Grid */}
-        <main className="flex-1">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold text-zinc-900 mb-6">Products</h1>
+          <h2 className="text-2xl font-semibold text-zinc-900 mb-6 sr-only">Product Listing</h2>
           {products.length > 0 ? (
             <>
               <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -85,7 +87,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                       Previous
                     </Link>
                   )}
-                  <span className="text-sm text-zinc-600">
+                  <span className="text-sm text-zinc-700">
                     Page {page} of {totalPages}
                   </span>
                   {page < totalPages && (
@@ -101,13 +103,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             </>
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-lg text-zinc-600">No products found</p>
-              <p className="mt-2 text-sm text-zinc-500">
+              <p className="text-lg text-zinc-700">No products found</p>
+              <p className="mt-2 text-sm text-zinc-700">
                 Try adjusting your filters or search terms
               </p>
             </div>
           )}
-        </main>
+        </div>
       </div>
     </div>
   );

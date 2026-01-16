@@ -64,7 +64,7 @@ export function NewsletterSignup({
     return (
       <form onSubmit={handleSubmit} className={`flex gap-2 ${className}`}>
         <div className="relative flex-1">
-          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
           <Input
             type="email"
             placeholder="Enter your email"
@@ -87,16 +87,16 @@ export function NewsletterSignup({
 
   return (
     <div className={className}>
-      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-700">
         Stay Updated
       </h4>
-      <p className="mb-3 text-sm text-zinc-600">
+      <p className="mb-3 text-sm text-zinc-700">
         Get exclusive deals and pet care tips delivered to your inbox.
       </p>
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
             <Input
               type="email"
               placeholder="Enter your email"

@@ -133,7 +133,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       <nav className="mb-6">
         <Link
           href="/products"
-          className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
+          className="inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Products
@@ -152,7 +152,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           {product.brand && (
             <Link
               href={`/products?brand=${product.brand.slug}`}
-              className="text-sm text-zinc-500 hover:text-zinc-900"
+              className="text-sm text-zinc-700 hover:text-zinc-900"
             >
               {product.brand.name}
             </Link>
@@ -173,7 +173,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </div>
 
           {product.description && (
-            <p className="text-zinc-600">{product.description}</p>
+            <p className="text-zinc-700">{product.description}</p>
           )}
 
           {/* Add to Cart */}
@@ -186,17 +186,17 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <h2 className="mb-4 font-semibold text-zinc-900">Product Details</h2>
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-zinc-500">SKU</dt>
+                <dt className="text-zinc-700">SKU</dt>
                 <dd className="font-medium text-zinc-900">{product.slug}</dd>
               </div>
               {product.brand && (
                 <div className="flex justify-between">
-                  <dt className="text-zinc-500">Brand</dt>
+                  <dt className="text-zinc-700">Brand</dt>
                   <dd className="font-medium text-zinc-900">{product.brand.name}</dd>
                 </div>
               )}
               <div className="flex justify-between">
-                <dt className="text-zinc-500">Availability</dt>
+                <dt className="text-zinc-700">Availability</dt>
                 <dd className="font-medium text-zinc-900">{stockStatusLabel}</dd>
               </div>
             </dl>

@@ -96,7 +96,7 @@ export function SelectorsEditor() {
                 </div>
 
                 <div className="col-span-1 pt-6 flex justify-end">
-                  <Button variant="ghost" size="icon" onClick={() => removeSelector(idx)} className="text-destructive hover:text-destructive">
+                  <Button variant="ghost" size="icon" onClick={() => removeSelector(idx)} aria-label="Delete selector" className="text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

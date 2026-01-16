@@ -78,7 +78,7 @@ export function OrdersDataTable({ orders }: OrdersDataTableProps) {
       render: (_, row) => (
         <div>
           <p className="font-medium text-gray-900">{row.customer_name}</p>
-          <p className="text-xs text-gray-500">{row.customer_email}</p>
+          <p className="text-xs text-gray-600">{row.customer_email}</p>
         </div>
       ),
     },
@@ -114,7 +114,7 @@ export function OrdersDataTable({ orders }: OrdersDataTableProps) {
       render: (value) => (
         <div className="text-sm">
           <p className="text-gray-900">{formatDate(String(value))}</p>
-          <p className="text-xs text-gray-500">{formatTime(String(value))}</p>
+          <p className="text-xs text-gray-600">{formatTime(String(value))}</p>
         </div>
       ),
     },
