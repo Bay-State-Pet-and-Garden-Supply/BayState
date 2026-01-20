@@ -18,9 +18,9 @@ export interface GitHubRunner {
     id: number;
     name: string;
     os: string;
-    status: 'online' | 'offline';
+    status: string;
     busy: boolean;
-    labels: Array<{ id: number; name: string; type: string }>;
+    labels: Array<{ id?: number; name: string; type?: string }>;
 }
 
 export interface GitHubRunnersResponse {
@@ -31,8 +31,8 @@ export interface GitHubRunnersResponse {
 export interface WorkflowRun {
     id: number;
     name: string;
-    status: 'queued' | 'in_progress' | 'completed';
-    conclusion: 'success' | 'failure' | 'cancelled' | 'skipped' | null;
+    status: string | null;
+    conclusion: string | null;
     html_url: string;
     created_at: string;
     updated_at: string;
@@ -133,16 +133,16 @@ class GitHubAppClient {
 
             return {
                 total_count: response.data.total_count,
-                runners: response.data.runners.map((runner: GitHubRunner) => ({
+                runners: response.data.runners.map((runner) => ({
                     id: runner.id,
                     name: runner.name,
                     os: runner.os,
-                    status: runner.status as 'online' | 'offline',
+                    status: runner.status,
                     busy: runner.busy,
                     labels: runner.labels.map((label) => ({
-                        id: label.id ?? 0,
-                        name: label.name ?? '',
-                        type: label.type ?? '',
+                        id: label.id,
+                        name: label.name,
+                        type: label.type,
                     })),
                 })),
             };
@@ -240,11 +240,11 @@ class GitHubAppClient {
 
         return {
             total_count: response.data.total_count,
-            workflow_runs: response.data.workflow_runs.map((run: WorkflowRun) => ({
+            workflow_runs: response.data.workflow_runs.map((run) => ({
                 id: run.id,
                 name: run.name || '',
-                status: run.status as WorkflowRun['status'],
-                conclusion: run.conclusion as WorkflowRun['conclusion'],
+                status: run.status,
+                conclusion: run.conclusion,
                 html_url: run.html_url,
                 created_at: run.created_at,
                 updated_at: run.updated_at,
