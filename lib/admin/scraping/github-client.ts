@@ -133,7 +133,7 @@ class GitHubAppClient {
 
             return {
                 total_count: response.data.total_count,
-                runners: response.data.runners.map((runner) => ({
+                runners: response.data.runners.map((runner: GitHubRunner) => ({
                     id: runner.id,
                     name: runner.name,
                     os: runner.os,
@@ -240,7 +240,7 @@ class GitHubAppClient {
 
         return {
             total_count: response.data.total_count,
-            workflow_runs: response.data.workflow_runs.map((run) => ({
+            workflow_runs: response.data.workflow_runs.map((run: WorkflowRun) => ({
                 id: run.id,
                 name: run.name || '',
                 status: run.status as WorkflowRun['status'],

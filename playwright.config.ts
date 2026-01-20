@@ -4,9 +4,6 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration for all available options.
  */
 export default defineConfig({
-  // Base URL to use in actions like `await page.goto('/')`.
-  baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
-
   // Fail the build on CI if you accidentally left test.only in the source code.
   forbidOnly: !!process.env.CI,
 

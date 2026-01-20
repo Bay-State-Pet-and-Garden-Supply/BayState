@@ -25,10 +25,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
       toastOptions={{
-        ariaProps: {
-          role: "status",
-          "aria-live": "polite",
-        },
+        unstyled: false,
       }}
       style={
         {
