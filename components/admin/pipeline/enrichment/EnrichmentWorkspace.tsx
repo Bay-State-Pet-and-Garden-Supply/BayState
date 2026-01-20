@@ -38,7 +38,7 @@ interface EnrichmentWorkspaceProps {
   skus?: string[];
   onClose: () => void;
   onSave?: () => void;
-  onRunBatch?: (jobId: string) => void;
+  onRunBatch?: (jobIds: string[]) => void;
 }
 
 export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: EnrichmentWorkspaceProps) {
@@ -187,10 +187,10 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
           scrapers: selectedSources,
         });
 
-        if (result.success && result.jobId) {
-          setEnhancementJobId(result.jobId);
-          // Trigger run batch callback with job ID
-          onRunBatch?.(result.jobId);
+        if (result.success && result.jobIds && result.jobIds.length > 0) {
+          setEnhancementJobId(result.jobIds[0]);
+          // Trigger run batch callback with job IDs
+          onRunBatch?.(result.jobIds);
           // Close and trigger save callback
           onSave?.();
           onClose();

@@ -94,18 +94,13 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Get SKUs (from job or default to staging products)
-        let skus: string[] = job.skus || [];
+        const skus: string[] = job.skus || [];
         if (skus.length === 0) {
-            const { data: stagingProducts } = await supabase
-                .from('products')
-                .select('sku')
-                .eq('pipeline_status', 'staging')
-                .limit(500);
-
-            if (stagingProducts) {
-                skus = stagingProducts.map(p => p.sku);
-            }
+            console.error(`[Scraper API] Job ${jobId} has no SKUs - this should not happen`);
+            return NextResponse.json(
+                { error: 'Job has no SKUs configured' },
+                { status: 400 }
+            );
         }
 
         const response: JobConfigResponse = {

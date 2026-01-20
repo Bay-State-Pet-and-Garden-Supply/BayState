@@ -5,6 +5,7 @@ export interface RunnerAuthResult {
     runnerName: string;
     keyId?: string;
     authMethod: 'api_key';
+    allowedScrapers: string[] | null;
 }
 
 function getSupabaseAdmin() {
@@ -56,6 +57,7 @@ export async function validateAPIKey(
             runnerName: result.runner_name,
             keyId: result.key_id,
             authMethod: 'api_key',
+            allowedScrapers: result.allowed_scrapers ?? null,
         };
     } catch (error) {
         console.error('[Runner Auth] Validation error:', error);

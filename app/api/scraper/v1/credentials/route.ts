@@ -42,6 +42,16 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        if (runner.allowedScrapers !== null && runner.allowedScrapers !== undefined) {
+            if (!runner.allowedScrapers.includes(scraperName)) {
+                console.warn(`[Credentials] Runner ${runner.runnerName} not allowed to access ${scraperName}`);
+                return NextResponse.json(
+                    { error: `Runner not authorized for scraper: ${scraperName}` },
+                    { status: 403 }
+                );
+            }
+        }
+
         const credentialMapping = CREDENTIAL_KEYS[scraperName];
         if (!credentialMapping) {
             return NextResponse.json(

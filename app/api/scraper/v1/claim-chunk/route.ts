@@ -30,10 +30,15 @@ interface ClaimChunkResponse {
 }
 
 /**
+ * DEPRECATED: Chunking removed in favor of split-job (Option A).
+ * This route is kept for reference only and will be removed in a future update.
+ * DO NOT USE - Runners should use direct job processing instead.
+ *
+ * Original function:
  * POST /api/scraper/v1/claim-chunk
- * 
- * Atomically claims the next pending chunk for a runner.
- * Uses PostgreSQL's FOR UPDATE SKIP LOCKED to prevent race conditions.
+ *
+ * Atomically claimed the next pending chunk for a runner.
+ * Used PostgreSQL's FOR UPDATE SKIP LOCKED to prevent race conditions.
  */
 export async function POST(request: NextRequest) {
     try {

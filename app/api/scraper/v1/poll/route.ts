@@ -74,19 +74,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(response);
         }
 
-        const job = claimedJobs[0];
+    const job = claimedJobs[0];
 
-        await supabase
-            .from('scrape_jobs')
-            .update({
-                status: 'claimed',
-                runner_name: runnerName,
-                started_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', job.job_id);
-
-        let scraperQuery = supabase
+    let scraperQuery = supabase
             .from('scrapers')
             .select('*')
             .eq('disabled', false);
@@ -97,20 +87,16 @@ export async function POST(request: NextRequest) {
 
         const { data: scrapers } = await scraperQuery;
 
-        let skus: string[] = job.skus || [];
+        const skus: string[] = job.skus || [];
         if (skus.length === 0) {
-            const { data: stagingProducts } = await supabase
-                .from('products')
-                .select('sku')
-                .eq('pipeline_status', 'staging')
-                .limit(500);
-
-            if (stagingProducts) {
-                skus = stagingProducts.map(p => p.sku);
-            }
+            console.error(`[Poll] Job ${job.job_id} has no SKUs - this should not happen`);
+            return NextResponse.json(
+                { error: 'Job has no SKUs configured' },
+                { status: 400 }
+            );
         }
 
-        console.log(`[Poll] Runner ${runnerName} claimed job ${job.job_id}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
+        console.log(`[Poll] Runner ${runnerName} assigned job ${job.job_id}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
 
         const response: PollResponse = {
             job: {

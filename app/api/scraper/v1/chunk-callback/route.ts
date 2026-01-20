@@ -25,10 +25,15 @@ interface ChunkCallbackRequest {
 }
 
 /**
+ * DEPRECATED: Chunking removed in favor of split-job (Option A).
+ * This route is kept for reference only and will be removed in a future update.
+ * DO NOT USE - Runners should use direct job callbacks instead.
+ *
+ * Original function:
  * POST /api/scraper/v1/chunk-callback
- * 
- * Receives results from a completed chunk and updates the database.
- * Also checks if all chunks for a job are complete to update job status.
+ *
+ * Received results from a completed chunk and updated the database.
+ * Also checked if all chunks for a job were complete to update job status.
  */
 export async function POST(request: NextRequest) {
     try {

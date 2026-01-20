@@ -39,7 +39,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     // Scraping state
     const [isScraping, setIsScraping] = useState(false);
     const [runnersAvailable, setRunnersAvailable] = useState(false);
-    const [scrapeJobId, setScrapeJobId] = useState<string | null>(null);
+    const [scrapeJobIds, setScrapeJobIds] = useState<string[]>([]);
 
     const [isConsolidating, setIsConsolidating] = useState(false);
     const [consolidationBatchId, setConsolidationBatchId] = useState<string | null>(null);
@@ -192,8 +192,8 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             scrapers: scrapers,
         });
 
-        if (result.success && result.jobId) {
-            setScrapeJobId(result.jobId);
+        if (result.success && result.jobIds && result.jobIds.length > 0) {
+            setScrapeJobIds(result.jobIds);
             // Clear selection after starting scrape
             setSelectedSkus(new Set());
         } else {
@@ -284,14 +284,14 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             )}
 
             {/* Scraping Job Banner */}
-            {scrapeJobId && (
+            {scrapeJobIds.length > 0 && (
                 <div className="flex items-center gap-3 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
                     <Bot className="h-5 w-5 text-purple-600 animate-pulse" />
                     <span className="text-sm text-purple-800">
-                        Data enhancement in progress. Products will move to &quot;Enhanced&quot; when complete.
+                        Enhancement running: {scrapeJobIds.length} job{scrapeJobIds.length !== 1 ? 's' : ''}. Products will move to &quot;Enhanced&quot; when complete.
                     </span>
                     <button
-                        onClick={() => setScrapeJobId(null)}
+                        onClick={() => setScrapeJobIds([])}
                         className="ml-auto text-sm text-purple-600 hover:text-purple-800"
                     >
                         Dismiss
@@ -435,7 +435,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
                 <EnrichmentWorkspace
                     skus={Array.from(selectedSkus)}
                     onClose={() => setShowBatchEnhanceWorkspace(false)}
-                    onRunBatch={(jobId) => setScrapeJobId(jobId)}
+                    onRunBatch={(jobIds) => setScrapeJobIds(jobIds)}
                     onSave={() => {
                         setSelectedSkus(new Set());
                         handleRefresh();
