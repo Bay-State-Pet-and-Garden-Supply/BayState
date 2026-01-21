@@ -46,12 +46,9 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
   if (!definition) {
     return (
       <div className="w-80 border-l bg-white p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-red-600">Unknown Action</h3>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 hover:bg-gray-100" aria-label="Close">
+          <X className="h-5 w-5" />
+        </Button>
         <p className="text-sm text-gray-600">
           Action type &quot;{step.action}&quot; is not recognized.
         </p>
@@ -248,9 +245,9 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
           <h3 className="font-semibold text-sm">{definition.label}</h3>
           <p className="text-xs text-gray-600">{definition.description}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8" aria-label="Close">
-          <X className="h-4 w-4" />
-        </Button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 hover:bg-gray-100" aria-label="Close">
+            <X className="h-5 w-5" />
+          </Button>
       </div>
 
       {/* Metadata badges */}

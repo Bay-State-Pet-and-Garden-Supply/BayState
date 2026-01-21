@@ -1,26 +1,28 @@
 'use client';
 
 import { useEffect, useCallback, useState } from 'react';
-import { X, Package, Clock, CheckCircle, XCircle, User, Mail, Phone, FileText, CreditCard, DollarSign, Truck, MapPin } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, User, Mail, Phone, FileText, CreditCard, DollarSign, Truck, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type Order } from '@/lib/orders';
 import { updateOrderStatusAction } from '@/app/admin/orders/actions';
 import { toast } from 'sonner';
+import { StatusBadge } from "@/components/ui/status-badge"
+import { formatCurrency } from '@/lib/utils';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
 
 interface OrderModalProps {
     order: Order;
     onClose: () => void;
     onUpdate: () => void;
 }
-
-const statusConfig = {
-    pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-    processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Package },
-    completed: { label: 'Completed', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-    cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
-};
 
 const paymentStatusConfig = {
     pending: { label: 'Pending', color: 'bg-zinc-100 text-zinc-800' },
@@ -50,15 +52,6 @@ export function OrderModal({
     onUpdate
 }: OrderModalProps) {
     const [updating, setUpdating] = useState(false);
-
-    const status = statusConfig[order.status];
-    const StatusIcon = status.icon;
-
-    const formatCurrency = (amount: number) =>
-        new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(amount);
 
     const formatDate = (dateString: string) =>
         new Date(dateString).toLocaleDateString('en-US', {
@@ -106,32 +99,21 @@ export function OrderModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl flex flex-col">
-                {/* Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
                     <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-bold tracking-tight">{order.order_number}</h2>
-                        <Badge className={status.color}>
-                            <StatusIcon className="mr-1 h-3 w-3" />
-                            {status.label}
-                        </Badge>
+                        <DialogTitle className="text-xl font-bold tracking-tight">{order.order_number}</DialogTitle>
+                        <StatusBadge status={order.status} />
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="rounded-full p-2 hover:bg-gray-100"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
+                </DialogHeader>
 
                 {/* Content */}
-                <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+                <div className="flex-1 py-4 space-y-6 overflow-y-auto">
                     {/* Status Actions */}
                     {nextStatuses[order.status].length > 0 && (
                         <div className="flex gap-2 justify-end">
                             {nextStatuses[order.status].map((nextStatus) => {
-                                const config = statusConfig[nextStatus as keyof typeof statusConfig];
                                 return (
                                     <Button
                                         key={nextStatus}
@@ -139,8 +121,9 @@ export function OrderModal({
                                         variant={nextStatus === 'cancelled' ? 'destructive' : 'default'}
                                         size="sm"
                                         disabled={updating}
+                                        className="capitalize"
                                     >
-                                        Mark as {config.label}
+                                        Mark as {nextStatus}
                                     </Button>
                                 );
                             })}
@@ -371,13 +354,12 @@ export function OrderModal({
                     </div>
                 </div>
 
-                {/* Footer Actions */}
-                <div className="sticky bottom-0 flex items-center justify-end border-t bg-gray-50 px-6 py-4">
+                <DialogFooter>
                     <Button variant="outline" onClick={onClose}>
                         Close
                     </Button>
-                </div>
-            </div>
-        </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

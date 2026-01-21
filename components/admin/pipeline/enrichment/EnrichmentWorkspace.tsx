@@ -7,6 +7,7 @@ import { EnrichmentDataPreview } from './EnrichmentDataPreview';
 import { ConflictResolutionCard } from './ConflictResolutionCard';
 import { useEnrichmentRealtime } from '@/lib/enrichment/useEnrichmentRealtime';
 import { scrapeProducts } from '@/lib/pipeline-scraping';
+import { formatCurrency } from '@/lib/utils';
 
 interface EnrichmentSource {
   id: string;
@@ -430,7 +431,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                         </div>
                         <div>
                           <span className="text-gray-600">Price:</span>
-                          <span className="ml-2 font-semibold text-green-600">${originalPrice.toFixed(2)}</span>
+                          <span className="ml-2 font-semibold text-green-600">{formatCurrency(originalPrice)}</span>
                           <span className="ml-1 text-xs text-gray-600">(protected)</span>
                         </div>
                         {originalName && originalName !== effectiveSku && (

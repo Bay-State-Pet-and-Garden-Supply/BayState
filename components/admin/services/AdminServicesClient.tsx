@@ -9,6 +9,7 @@ import { DataTable, type Column } from '@/components/admin/data-table';
 import { toast } from 'sonner';
 import { deleteService, toggleServiceStatus } from '@/app/admin/services/actions';
 import { ServiceModal, Service } from './ServiceModal';
+import { formatCurrency } from '@/lib/utils';
 
 interface AdminServicesClientProps {
     initialServices: Service[];
@@ -105,10 +106,7 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
 
     const formatPrice = (price: number | null, unit: string | null) => {
         if (price === null) return 'Contact';
-        const formatted = new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(price);
+        const formatted = formatCurrency(price);
         return unit ? `${formatted}/${unit}` : formatted;
     };
 

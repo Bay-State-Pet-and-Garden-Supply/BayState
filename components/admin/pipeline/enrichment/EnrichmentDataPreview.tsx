@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, Database } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface ResolvedField {
   field: string;
@@ -34,13 +35,6 @@ export function EnrichmentDataPreview({
     if (value === null || value === undefined) return '—';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
   };
 
   return (

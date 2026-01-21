@@ -123,7 +123,7 @@ export function ImageUpload({
         className={`relative overflow-hidden rounded-lg border-2 border-dashed transition-colors ${
           dragOver
             ? 'border-purple-500 bg-purple-50'
-            : 'border-gray-300 hover:border-gray-400'
+            : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
         } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${
           aspectClasses[aspectRatio]
         }`}

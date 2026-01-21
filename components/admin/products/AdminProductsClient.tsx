@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { Plus, Package, ExternalLink, Pencil, RefreshCw, Search } from 'lucide-react';
 import { ProductEditModal, PublishedProduct } from './ProductEditModal';
 import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/lib/utils';
 
 interface AdminProductsClientProps {
     initialProducts: PublishedProduct[];
@@ -159,7 +160,7 @@ export function AdminProductsClient({ initialProducts, totalCount }: AdminProduc
                                 <CardContent className="space-y-3 mt-auto">
                                     <div className="flex items-center justify-between">
                                         <span className="text-xl font-bold text-green-600">
-                                            ${Number(product.price).toFixed(2)}
+                                            {formatCurrency(Number(product.price))}
                                         </span>
                                         <Badge className={stockColor + " border-none"}>
                                             {product.stock_status === 'in_stock' ? 'In Stock' :

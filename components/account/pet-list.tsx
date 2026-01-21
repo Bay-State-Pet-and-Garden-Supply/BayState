@@ -6,7 +6,8 @@ import { PetCard } from './pet-card'
 import { PetForm } from './pet-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus } from 'lucide-react'
+import { Plus, PawPrint } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
     Dialog,
     DialogContent,
@@ -23,6 +24,35 @@ interface PetListProps {
 
 export function PetList({ pets, petTypes }: PetListProps) {
     const [open, setOpen] = useState(false)
+
+    if (pets.length === 0) {
+        return (
+            <>
+                <EmptyState
+                    icon={PawPrint}
+                    title="No pets added"
+                    description="Tell us about your pets to get personalized recommendations and care tips."
+                    actionLabel="Add a Pet"
+                    onAction={() => setOpen(true)}
+                    className="border-dashed"
+                />
+                <Dialog open={open} onOpenChange={setOpen}>
+                    <DialogContent className="max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Add a Pet</DialogTitle>
+                            <DialogDescription>
+                                Tell us about your pet to get personalized recommendations.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <PetForm
+                            petTypes={petTypes}
+                            onSuccess={() => setOpen(false)}
+                        />
+                    </DialogContent>
+                </Dialog>
+            </>
+        )
+    }
 
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

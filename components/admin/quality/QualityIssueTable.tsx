@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { titleCaseProductName, bulkTitleCaseNames } from '@/app/admin/quality/actions';
 
@@ -135,9 +136,9 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
             <h2 className="text-lg font-semibold">Products with Issues</h2>
-            <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-sm font-medium text-yellow-700">
+            <Badge variant="warning" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none">
               {filteredProducts.length}
-            </span>
+            </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 sm:w-64 sm:flex-none">
@@ -192,45 +193,59 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
                   <span className="font-mono text-sm text-muted-foreground">
                     {product.sku}
                   </span>
-                  <span className={`rounded px-1.5 py-0.5 text-xs font-medium capitalize ${
-                    product.pipeline_status === 'published' 
-                      ? 'bg-purple-100 text-purple-700'
-                      : product.pipeline_status === 'approved'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {product.pipeline_status}
-                  </span>
+                  {product.pipeline_status === 'published' ? (
+                    <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none capitalize">
+                      {product.pipeline_status}
+                    </Badge>
+                  ) : product.pipeline_status === 'approved' ? (
+                    <Badge variant="success" className="bg-green-100 text-green-700 hover:bg-green-200 border-none capitalize">
+                      {product.pipeline_status}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-none capitalize">
+                      {product.pipeline_status}
+                    </Badge>
+                  )}
                 </div>
                 <p className="mt-1 truncate font-medium">
                   {product.name || <span className="italic text-muted-foreground">No name</span>}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {product.issues.slice(0, 3).map((issue) => (
-                    <span
+                    <Badge
                       key={issue.field}
-                      className={`rounded px-2 py-0.5 text-xs ${
-                        issue.severity === 'required'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
+                      variant={issue.severity === 'required' ? 'destructive' : 'warning'}
+                      className={`
+                        ${issue.severity === 'required' 
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200 border-none' 
+                          : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none'
+                        }
+                      `}
                     >
                       {issue.message}
-                    </span>
+                    </Badge>
                   ))}
                   {product.issues.length > 3 && (
-                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200">
                       +{product.issues.length - 3} more
-                    </span>
+                    </Badge>
                   )}
                 </div>
               </div>
 
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <span className={`rounded-full px-2 py-1 text-sm font-medium ${getCompletenessColor(product.completeness)}`}>
+                  <Badge 
+                    className={`
+                      ${product.completeness >= 100 ? 'text-green-600 bg-green-100 hover:bg-green-200' : 
+                        product.completeness >= 75 ? 'text-blue-600 bg-blue-100 hover:bg-blue-200' :
+                        product.completeness >= 50 ? 'text-yellow-600 bg-yellow-100 hover:bg-yellow-200' :
+                        'text-red-600 bg-red-100 hover:bg-red-200'
+                      } border-none
+                    `}
+                  >
                     {product.completeness}%
-                  </span>
+                  </Badge>
                 </div>
 
                 <div className="flex gap-1">

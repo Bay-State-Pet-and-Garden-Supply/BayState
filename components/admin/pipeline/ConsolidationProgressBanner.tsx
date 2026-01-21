@@ -2,6 +2,8 @@
 
 import { Sparkles, X, ChevronRight, Loader2 } from 'lucide-react';
 
+import { Badge } from "@/components/ui/badge"
+
 interface ConsolidationProgressBannerProps {
     batchId: string;
     progress: number; // 0-100
@@ -38,9 +40,9 @@ export function ConsolidationProgressBanner({
                         <h3 className="text-sm font-semibold text-gray-900">
                             AI Consolidation in Progress
                         </h3>
-                        <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                             Batch #{batchId.slice(0, 8)}
-                        </span>
+                        </Badge>
                     </div>
                     
                     <div className="flex items-center gap-4 text-xs text-gray-600">

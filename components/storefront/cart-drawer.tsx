@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { useCartStore, type CartItem } from '@/lib/cart-store';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -20,10 +21,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const clearCart = useCartStore((state) => state.clearCart);
   const subtotal = useCartStore((state) => state.getSubtotal());
 
-  const formattedSubtotal = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(subtotal);
+  const formattedSubtotal = formatCurrency(subtotal);
 
   if (!isOpen) {
     return null;
@@ -112,10 +110,7 @@ interface CartItemRowProps {
 }
 
 function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
-  const formattedPrice = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(item.price * item.quantity);
+  const formattedPrice = formatCurrency(item.price * item.quantity);
 
   return (
     <li className="flex gap-4">
@@ -139,7 +134,7 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
         <div className="flex justify-between">
           <Link
             href={`/products/${item.slug}`}
-            className="font-medium text-zinc-900 hover:text-zinc-700"
+            className="font-medium text-zinc-900 hover:text-zinc-700 hover:underline underline-offset-4"
           >
             {item.name}
           </Link>

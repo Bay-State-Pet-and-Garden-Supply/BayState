@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { useCartStore } from '@/lib/cart-store';
+import { formatCurrency } from '@/lib/utils';
 
 /**
  * StickyCart - Floating cart button for mobile devices.
@@ -16,15 +17,12 @@ export function StickyCart() {
     return null;
   }
 
-  const formattedSubtotal = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(subtotal);
+  const formattedSubtotal = formatCurrency(subtotal);
 
   return (
     <Link
       href="/cart"
-      className="fixed bottom-20 left-4 right-4 z-40 flex items-center justify-between rounded-xl bg-zinc-900 px-4 py-3 text-white shadow-lg transition-transform hover:scale-[1.02] md:hidden"
+      className="fixed bottom-20 left-4 right-4 z-40 flex items-center justify-between rounded-xl bg-zinc-900 px-4 py-3 text-white shadow-lg transition-transform hover:scale-[1.02] md:hidden hover:underline underline-offset-4"
     >
       <div className="flex items-center gap-3">
         <div className="relative">

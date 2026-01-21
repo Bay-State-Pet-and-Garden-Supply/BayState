@@ -1,5 +1,16 @@
 'use client';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -58,6 +69,7 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedReview, setSelectedReview] = useState<ReviewWithProduct | null>(null);
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   // Filter reviews based on active tab
@@ -88,8 +100,6 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
   };
 
   const handleDelete = async (reviewId: string) => {
-    if (!confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
-    
     setIsProcessing(reviewId);
     try {
       const res = await deleteReview(reviewId);
@@ -106,6 +116,7 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
       toast.error('Failed to delete review');
     } finally {
       setIsProcessing(null);
+      setReviewToDelete(null);
     }
   };
 
@@ -173,11 +184,18 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
       render: (value) => {
         const config = statusConfig[value as keyof typeof statusConfig];
         if (!config) return <Badge variant="outline">{String(value)}</Badge>;
+        
+        let badgeVariant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" = "outline";
+        
+        if (value === 'approved') badgeVariant = "success";
+        else if (value === 'rejected') badgeVariant = "destructive";
+        else if (value === 'pending') badgeVariant = "warning";
+        
         return (
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${config.color}`}>
+          <Badge variant={badgeVariant} className="gap-1">
             <config.icon className="h-3 w-3" />
             {config.label}
-          </span>
+          </Badge>
         );
       },
     },
@@ -222,7 +240,10 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleDelete(review.id)} className="text-red-600">
+          <DropdownMenuItem 
+            onClick={() => setReviewToDelete(review.id)} 
+            className="text-red-600 focus:text-red-600"
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete
           </DropdownMenuItem>
@@ -441,6 +462,26 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!reviewToDelete} onOpenChange={(open) => !open && setReviewToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Review</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this review? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reviewToDelete && handleDelete(reviewToDelete)}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

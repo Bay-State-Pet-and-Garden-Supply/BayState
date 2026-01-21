@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Key, Trash2, Loader2, Plus, RefreshCw, ShieldCheck, ShieldX } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RunnerAccountModal } from './runner-account-modal';
 
@@ -168,16 +169,19 @@ export function RunnerAccounts() {
                                         </div>
                                     </td>
                                     <td className="whitespace-nowrap px-4 py-3">
-                                        <span
-                                            className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${['online', 'idle', 'polling'].includes(runner.status)
-                                                ? 'bg-green-100 text-green-800'
-                                                : ['busy', 'running'].includes(runner.status)
-                                                    ? 'bg-yellow-100 text-yellow-800'
-                                                    : 'bg-gray-100 text-gray-800'
-                                                }`}
+                                        <Badge
+                                            variant={['online', 'idle', 'polling'].includes(runner.status) ? "success" : ['busy', 'running'].includes(runner.status) ? "warning" : "secondary"}
+                                            className={`
+                                                ${['online', 'idle', 'polling'].includes(runner.status)
+                                                    ? 'bg-green-100 text-green-800 hover:bg-green-200 border-none'
+                                                    : ['busy', 'running'].includes(runner.status)
+                                                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-none'
+                                                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-none'
+                                                }
+                                            `}
                                         >
                                             {runner.status}
-                                        </span>
+                                        </Badge>
                                     </td>
                                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                                         {formatDate(runner.last_auth_at)}

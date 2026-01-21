@@ -2,6 +2,7 @@
 
 import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline';
 import { ChevronRight, Package, Settings2, Sparkles } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface PipelineProductCardProps {
     product: PipelineProduct;
@@ -59,7 +60,7 @@ export function PipelineProductCard({
                         </div>
 
                         <div className="mt-3 flex items-center justify-between gap-4">
-                            <span className="font-semibold text-green-600 shrink-0">${price.toFixed(2)}</span>
+                            <span className="font-semibold text-green-600 shrink-0">{formatCurrency(price)}</span>
                             {onEnrich && (
                                 <button
                                     onClick={() => onEnrich(product.sku)}
@@ -114,7 +115,7 @@ export function PipelineProductCard({
                     </div>
 
                     <div className="mt-2 flex items-center justify-between">
-                        <span className="font-semibold text-green-600">${price.toFixed(2)}</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(price)}</span>
                         <div className="flex items-center gap-2">
                             {showEnrichButton && onEnrich && (
                                 <button

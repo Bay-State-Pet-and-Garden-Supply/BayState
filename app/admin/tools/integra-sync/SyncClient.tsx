@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, FileDown, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 import { analyzeIntegraAction, processOnboardingAction } from './actions';
-import { SyncAnalysis, IntegraProduct } from '@/lib/admin/integra-sync';
+import { SyncAnalysis } from '@/lib/admin/integra-sync';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { FileUpload } from '@/components/ui/file-upload';
+import { formatCurrency } from '@/lib/utils';
 
 export function SyncClient() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -14,11 +16,9 @@ export function SyncClient() {
     const [analysis, setAnalysis] = useState<SyncAnalysis | null>(null);
     const [file, setFile] = useState<File | null>(null);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
-            setAnalysis(null);
-        }
+    const handleFileChange = (selectedFile: File | null) => {
+        setFile(selectedFile);
+        setAnalysis(null);
     };
 
     const handleAnalyze = async () => {
@@ -68,28 +68,21 @@ export function SyncClient() {
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-4">
                             <div className="flex-1">
-                                <label
-                                    htmlFor="integra-file"
-                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 border-gray-300"
-                                >
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <Upload className="w-8 h-8 mb-3 text-gray-600" />
-                                        <p className="mb-2 text-sm text-gray-600">
-                                            <span className="font-semibold">Click to upload</span> or drag and drop
-                                        </p>
-                                        <p className="text-xs text-gray-600">Excel files (.xlsx, .xls)</p>
-                                        {file && (
-                                            <p className="mt-2 text-sm text-blue-600 font-medium">{file.name}</p>
-                                        )}
-                                    </div>
-                                    <input
-                                        id="integra-file"
-                                        type="file"
-                                        className="hidden"
-                                        accept=".xlsx, .xls"
-                                        onChange={handleFileChange}
-                                    />
-                                </label>
+                                <FileUpload
+                                    onFileSelect={handleFileChange}
+                                    accept=".xlsx, .xls"
+                                    maxSize={20}
+                                    loading={isAnalyzing}
+                                    selectedFile={file}
+                                    label={
+                                        <>
+                                            <span className="font-semibold text-purple-600">Click to upload</span> or drag and drop
+                                            <div className="text-xs text-gray-500 font-normal mt-1">
+                                                Excel files (.xlsx, .xls)
+                                            </div>
+                                        </>
+                                    }
+                                />
                             </div>
                             <Button
                                 onClick={handleAnalyze}
@@ -182,7 +175,7 @@ export function SyncClient() {
                                                 <tr key={product.sku}>
                                                     <td className="px-4 py-2 font-mono">{product.sku}</td>
                                                     <td className="px-4 py-2">{product.name}</td>
-                                                    <td className="px-4 py-2 text-right">${product.price.toFixed(2)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(product.price)}</td>
                                                 </tr>
                                             ))}
                                             {analysis.newProducts.length > 100 && (

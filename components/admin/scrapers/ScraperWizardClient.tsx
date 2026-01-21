@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 import { createScraper } from '@/app/admin/scrapers/actions';
@@ -245,18 +246,20 @@ export function ScraperWizardClient() {
               {testSkus.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {testSkus.map((sku) => (
-                    <span
+                    <Badge
                       key={sku}
-                      className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm"
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 gap-1"
                     >
                       {sku}
                       <button
                         onClick={() => removeTestSku(sku)}
-                        className="ml-1 text-gray-600 hover:text-gray-600"
+                        className="ml-1 text-gray-500 hover:text-gray-700 focus:outline-none"
                       >
-                        x
+                        <span className="sr-only">Remove</span>
+                        ×
                       </button>
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}

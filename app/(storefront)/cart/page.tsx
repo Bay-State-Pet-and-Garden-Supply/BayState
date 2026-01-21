@@ -5,9 +5,11 @@ import Image from 'next/image';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useCartStore } from '@/lib/cart-store';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { FreeShippingBar } from '@/components/storefront/free-shipping-bar';
 import { PromoCodeInput } from '@/components/storefront/promo-code-input';
 import { CartPreorderSummary } from '@/components/storefront/cart-preorder-summary';
+import { formatCurrency } from '@/lib/utils';
 
 export default function CartPage() {
   const items = useCartStore((state) => state.items);
@@ -22,12 +24,6 @@ export default function CartPage() {
   const discount = useCartStore((state) => state.getDiscount());
   const total = useCartStore((state) => state.getTotal());
   const hasFreeShipping = useCartStore((state) => state.hasFreeShipping());
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   const handleApplyPromo = async (code: string) => {
     try {
@@ -228,18 +224,13 @@ export default function CartPage() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <ShoppingBag className="mb-4 h-20 w-20 text-secondary" />
-          <h2 className="mb-2 text-xl font-semibold text-zinc-900">
-            Your cart is empty
-          </h2>
-          <p className="mb-6 text-zinc-700">
-            Start shopping to add items to your cart
-          </p>
-          <Button size="lg" asChild>
-            <Link href="/products">Browse Products</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={ShoppingBag}
+          title="Your cart is empty"
+          description="Looks like you haven't added anything to your cart yet. Browse our products to find something you'll love."
+          actionLabel="Browse Products"
+          actionHref="/products"
+        />
       )}
     </div>
   );

@@ -1,36 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { Eye, Clock, Package, CheckCircle, XCircle, Download } from 'lucide-react';
+import { Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { type Order } from '@/lib/orders';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 interface OrdersDataTableProps {
   orders: Order[];
 }
 
-const statusConfig = {
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Package },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
-};
+import { formatDate, formatCurrency } from '@/lib/utils';
 
 export function OrdersDataTable({ orders }: OrdersDataTableProps) {
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-
   const formatTime = (dateString: string) =>
     new Date(dateString).toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -86,16 +69,9 @@ export function OrdersDataTable({ orders }: OrdersDataTableProps) {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (value) => {
-        const status = statusConfig[value as keyof typeof statusConfig];
-        if (!status) return String(value);
-        return (
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
-            <status.icon className="h-3 w-3" />
-            {status.label}
-          </span>
-        );
-      },
+      render: (value) => (
+        <StatusBadge status={String(value)} className="font-normal" />
+      ),
     },
     {
       key: 'total',

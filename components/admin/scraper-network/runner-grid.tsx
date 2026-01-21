@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Server, Wifi, WifiOff, Loader2 } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
+
 interface Runner {
     id: string | number;
     name: string;
@@ -122,27 +124,31 @@ export function RunnerGrid({ initialRunners = [] }: RunnerGridProps) {
                                         <p className="text-sm text-gray-600">{runner.os}</p>
                                     </div>
                                 </div>
-                                <span
-                                    className={`rounded-full px-2 py-1 text-xs font-medium ${online
-                                        ? busy
-                                            ? 'bg-yellow-100 text-yellow-800'
-                                            : 'bg-green-100 text-green-800'
-                                        : 'bg-gray-100 text-gray-800'
-                                        }`}
+                                <Badge
+                                    variant={online ? (busy ? "warning" : "success") : "secondary"}
+                                    className={`
+                                        ${online 
+                                            ? busy 
+                                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-none' 
+                                                : 'bg-green-100 text-green-800 hover:bg-green-200 border-none'
+                                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-none'
+                                        }
+                                    `}
                                 >
                                     {busy ? 'Busy' : online ? 'Ready' : 'Offline'}
-                                </span>
+                                </Badge>
                             </div>
 
                             {runner.labels.length > 0 && (
                                 <div className="mt-3 flex flex-wrap gap-1">
                                     {runner.labels.slice(0, 4).map((label) => (
-                                        <span
+                                        <Badge
                                             key={label.name}
-                                            className="rounded bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600"
+                                            variant="secondary"
+                                            className="bg-gray-200 text-gray-600 hover:bg-gray-300 border-none text-xs"
                                         >
                                             {label.name}
-                                        </span>
+                                        </Badge>
                                     ))}
                                 </div>
                             )}

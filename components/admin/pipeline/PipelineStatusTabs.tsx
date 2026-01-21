@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import type { PipelineStatus, StatusCount } from '@/lib/pipeline';
 
 interface PipelineStatusTabsProps {
@@ -38,12 +39,13 @@ export function PipelineStatusTabs({ counts, activeStatus, onStatusChange }: Pip
                     >
                         <span className={`h-2 w-2 rounded-full ${config.color}`} />
                         <span>{config.label}</span>
-                        <span
-                            className={`rounded-full px-2 py-0.5 text-xs ${isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                        <Badge
+                            variant="secondary"
+                            className={`px-2 py-0.5 text-xs ${isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
                                 }`}
                         >
                             {count}
-                        </span>
+                        </Badge>
                     </button>
                 );
             })}

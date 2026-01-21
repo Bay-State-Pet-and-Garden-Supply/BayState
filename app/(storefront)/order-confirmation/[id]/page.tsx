@@ -5,6 +5,7 @@ import { getOrderById } from '@/lib/orders';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/utils';
 
 interface OrderConfirmationPageProps {
   params: Promise<{ id: string }>;
@@ -30,12 +31,6 @@ export default async function OrderConfirmationPage({
     // Order belongs to a different user
     notFound();
   }
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   const isDelivery = order.fulfillment_method === 'delivery';
   const hasPreorderItems = order.items?.some((item) => item.preorder_batch_id);

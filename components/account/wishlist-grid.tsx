@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Trash2, ShoppingCart, HeartOff } from 'lucide-react'
 import { toggleWishlistAction } from '@/lib/account/actions'
+import { formatCurrency } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function WishlistGrid({ items }: { items: ProductSummary[] }) {
 
@@ -17,16 +19,14 @@ export function WishlistGrid({ items }: { items: ProductSummary[] }) {
 
     if (!items || items.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-zinc-200 rounded-lg">
-                <HeartOff className="h-10 w-10 text-zinc-300 mb-4" />
-                <h3 className="text-lg font-medium text-zinc-900">Your wishlist is empty</h3>
-                <p className="text-zinc-600 mb-6 max-w-sm">
-                    Save items you want to buy later. Heart icon on products adds them here.
-                </p>
-                <Button asChild>
-                    <Link href="/products">Browse Products</Link>
-                </Button>
-            </div>
+            <EmptyState
+                icon={HeartOff}
+                title="Your wishlist is empty"
+                description="Save items you want to buy later. Heart icon on products adds them here."
+                actionLabel="Browse Products"
+                actionHref="/products"
+                className="bg-transparent border-dashed"
+            />
         )
     }
 
@@ -54,7 +54,7 @@ export function WishlistGrid({ items }: { items: ProductSummary[] }) {
                             </Link>
                         </h3>
                         <div className="text-zinc-600 mb-4 text-sm font-medium">
-                            ${product.price ? Number(product.price).toFixed(2) : '0.00'}
+                            {product.price ? formatCurrency(Number(product.price)) : formatCurrency(0)}
                         </div>
 
                         <div className="flex gap-2">

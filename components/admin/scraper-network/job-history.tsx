@@ -140,10 +140,10 @@ export function JobHistory() {
                                         {formatDuration(job.created_at, job.completed_at)}
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                            <Terminal className="h-4 w-4 text-gray-600" />
-                                            <span className="sr-only">View Logs</span>
-                                        </Button>
+                                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-gray-100">
+                                        <Terminal className="h-5 w-5 text-gray-600" />
+                                        <span className="sr-only">View Logs</span>
+                                    </Button>
                                     </td>
                                 </tr>
                             ))}

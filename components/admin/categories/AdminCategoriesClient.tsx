@@ -12,6 +12,7 @@ import {
     Plus,
     FolderTree
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -181,18 +182,18 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                             )}
                             {hasChildren && (
-                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs py-0.5">
                                     {node.children.length} subcategories
-                                </span>
+                                </Badge>
                             )}
                         </div>
                         <p className="text-sm text-gray-600">/{node.slug}</p>
                     </div>
 
                     {/* Order */}
-                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                    <Badge variant="outline" className="bg-gray-100 text-gray-600 border-transparent text-xs py-0.5">
                         Order: {node.display_order}
-                    </span>
+                    </Badge>
 
                     {/* Actions */}
                     <div className="flex items-center gap-1">

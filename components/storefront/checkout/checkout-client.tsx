@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, ShoppingBag, Loader2, CreditCard, Package } from 'lucide-react';
 import { useCartStore } from '@/lib/cart-store';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { PromoCodeInput } from '@/components/storefront/promo-code-input';
 import { PaymentForm } from '@/components/storefront/payments/payment-form';
 import { DELIVERY_SERVICE_OPTIONS, type DeliveryServiceType } from '@/lib/types';
 import { getDeliveryQuote, type DeliveryFeeBreakdown } from '@/lib/storefront/delivery';
+import { formatCurrency } from '@/lib/utils';
 
 export interface CheckoutUserData {
   fullName: string;
@@ -100,12 +102,6 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
   const totalDeliveryFee = deliveryFee + servicesFee;
 
   const total = discountedSubtotal + tax + (fulfillmentMethod === 'delivery' ? totalDeliveryFee : 0);
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   // Calculate delivery quote when address changes
   const calculateDeliveryQuote = useCallback(async () => {
@@ -312,14 +308,14 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-        <ShoppingBag className="mb-4 h-20 w-20 text-secondary" />
-        <h1 className="mb-2 text-2xl font-bold text-zinc-900">Cart is Empty</h1>
-        <p className="mb-6 text-zinc-700">Add some items before checking out</p>
-        <Button size="lg" asChild>
-          <Link href="/products">Browse Products</Link>
-        </Button>
-      </div>
+      <EmptyState
+        icon={ShoppingBag}
+        title="Cart is Empty"
+        description="Add some items before checking out"
+        actionLabel="Browse Products"
+        actionHref="/products"
+        className="mt-8"
+      />
     );
   }
 
@@ -491,16 +487,20 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="street">Street Address *</Label>
-                  <Input
-                    id="street"
-                    placeholder="123 Main St"
-                    value={deliveryAddress.street}
-                    onChange={(e) => handleAddressChange('street', e.target.value)}
-                    className="h-12"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="street">Street Address *</Label>
+                    <Input
+                      id="street"
+                      placeholder="123 Main St"
+                      value={deliveryAddress.street}
+                      onChange={(e) => handleAddressChange('street', e.target.value)}
+                      className="h-12"
+                      aria-describedby="street-help"
+                    />
+                    <p id="street-help" className="text-sm text-muted-foreground">
+                      Full street address including apartment/unit number.
+                    </p>
+                  </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2 sm:col-span-1">
                     <Label htmlFor="city">City *</Label>
@@ -579,16 +579,20 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="delivery_notes">Delivery Notes</Label>
-                  <textarea
-                    id="delivery_notes"
-                    value={deliveryNotes}
-                    onChange={(e) => setDeliveryNotes(e.target.value)}
-                    placeholder="Gate code, leave at door, etc."
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="delivery_notes">Delivery Notes</Label>
+                    <textarea
+                      id="delivery_notes"
+                      value={deliveryNotes}
+                      onChange={(e) => setDeliveryNotes(e.target.value)}
+                      placeholder="Gate code, leave at door, etc."
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      aria-describedby="delivery-notes-help"
+                    />
+                    <p id="delivery-notes-help" className="text-sm text-muted-foreground">
+                      Optional instructions for the driver (e.g., gate code, drop-off location).
+                    </p>
+                  </div>
               </CardContent>
             </Card>
           )}
@@ -642,7 +646,11 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                     name="notes"
                     placeholder="Any special instructions..."
                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-describedby="order-notes-help"
                   />
+                  <p id="order-notes-help" className="text-sm text-muted-foreground">
+                    Additional details about your order.
+                  </p>
                 </div>
 
                 {error && (

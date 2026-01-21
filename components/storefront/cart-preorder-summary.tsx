@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCartStore, type CartItem } from '@/lib/cart-store'
 import { formatValidationErrors } from '@/lib/storefront/fulfillment'
 import type { PreorderBatch, PreorderGroup } from '@/lib/types'
+import { formatCurrency } from '@/lib/utils'
 
 interface PreorderData {
   groups: Map<string, PreorderGroup>
@@ -119,7 +120,7 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
           Fulfillment Details
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-col gap-4">
         {/* Pickup Only Warning */}
         {hasPickupOnlyItems && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -171,14 +172,14 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
             </div>
 
             {/* Items in this batch */}
-            <ul className="mt-3 space-y-2 border-t border-green-200/50 pt-3">
+            <ul className="mt-3 flex flex-col gap-3 border-t border-green-200/50 pt-3">
               {batchItems.map((item) => (
-                <li key={item.id} className="flex justify-between text-sm">
+                <li key={item.id} className="flex justify-between text-sm py-1">
                   <span className="text-zinc-700">
                     {item.name} × {item.quantity}
                   </span>
                   <span className="text-zinc-900 font-medium">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    {formatCurrency(item.price * item.quantity)}
                   </span>
                 </li>
               ))}

@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { BuyAgainSection } from '@/components/account/buy-again-section'
 import { ProductCard } from '@/components/storefront/product-card'
 import Link from 'next/link'
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Package, User, MapPin, Dog, Heart, ArrowRight } from 'lucide-react'
 import { getUserPets } from '@/lib/account/pets'
+import { formatCurrency } from '@/lib/utils'
 
 export default async function AccountPage() {
     const supabase = await createClient()
@@ -42,7 +44,7 @@ export default async function AccountPage() {
                             <h2 className="text-xl font-semibold">Recommended for Your Pets</h2>
                         </div>
                         <Button variant="ghost" size="sm" asChild>
-                            <Link href="/products">
+                            <Link href="/products" className="hover:underline underline-offset-4">
                                 View More
                                 <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
@@ -73,7 +75,7 @@ export default async function AccountPage() {
                             <span className="truncate">{user.email}</span>
                         </div>
                         <Button asChild variant="outline" size="sm">
-                            <Link href="/account/profile">Edit Profile</Link>
+                            <Link href="/account/profile" className="hover:underline underline-offset-4">Edit Profile</Link>
                         </Button>
                     </CardContent>
                 </Card>
@@ -100,7 +102,7 @@ export default async function AccountPage() {
                             )}
                         </div>
                         <Button asChild variant="outline" size="sm">
-                            <Link href="/account/pets">{pets.length > 0 ? 'Manage Pets' : 'Add a Pet'}</Link>
+                            <Link href="/account/pets" className="hover:underline underline-offset-4">{pets.length > 0 ? 'Manage Pets' : 'Add a Pet'}</Link>
                         </Button>
                     </CardContent>
                 </Card>
@@ -116,22 +118,22 @@ export default async function AccountPage() {
                             <div className="space-y-3">
                                 {recentOrders.slice(0, 3).map((order) => (
                                     <div key={order.id} className="flex items-center justify-between text-sm">
-                                        <div>
+                                        <div className="flex items-center gap-2">
                                             <span className="font-medium">#{order.order_number}</span>
-                                            <span className="text-muted-foreground ml-2">{order.status}</span>
+                                            <StatusBadge status={order.status} showIcon={false} className="h-5 text-[10px]" />
                                         </div>
-                                        <span>${Number(order.total).toFixed(2)}</span>
+                                        <span>{formatCurrency(Number(order.total))}</span>
                                     </div>
                                 ))}
                                 <Button asChild variant="link" className="px-0">
-                                    <Link href="/account/orders">View All Orders</Link>
+                                    <Link href="/account/orders" className="hover:underline underline-offset-4">View All Orders</Link>
                                 </Button>
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
                                 <p>No orders yet</p>
                                 <Button asChild variant="link" className="mt-2 text-primary">
-                                    <Link href="/products">Start Shopping</Link>
+                                    <Link href="/products" className="hover:underline underline-offset-4">Start Shopping</Link>
                                 </Button>
                             </div>
                         )}
@@ -147,7 +149,7 @@ export default async function AccountPage() {
                     <CardContent className="pt-4">
                         <p className="text-sm text-muted-foreground mb-4">Manage your shipping and billing addresses.</p>
                         <Button asChild variant="outline" size="sm">
-                            <Link href="/account/addresses">Manage Addresses</Link>
+                            <Link href="/account/addresses" className="hover:underline underline-offset-4">Manage Addresses</Link>
                         </Button>
                     </CardContent>
                 </Card>

@@ -20,6 +20,7 @@ import { getApprovedReviews, getProductReviewStats, hasUserReviewedProduct } fro
 import { getProductQuestions } from '@/lib/storefront/questions';
 import { getRecentlyViewedProducts } from '@/lib/storefront/recently-viewed';
 import { getProductPreorderData } from '@/lib/storefront/preorder';
+import { formatCurrency } from '@/lib/utils';
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -94,10 +95,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   // Check if user is admin or staff
   const canEditProducts = userRole === 'admin' || userRole === 'staff';
 
-  const formattedPrice = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(product.price);
+  const formattedPrice = formatCurrency(product.price);
 
   const stockStatusLabel = {
     in_stock: 'In Stock',

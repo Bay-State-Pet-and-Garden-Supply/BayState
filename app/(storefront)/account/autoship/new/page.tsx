@@ -8,6 +8,7 @@ import { ArrowLeft, Plus, Minus, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -115,12 +116,6 @@ export default function NewAutoshipPage() {
       setIsLoading(false);
     }
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   const subtotal = selectedItems.reduce(
     (sum, i) => sum + i.product.price * i.quantity,

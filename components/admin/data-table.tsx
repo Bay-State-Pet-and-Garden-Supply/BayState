@@ -244,11 +244,21 @@ export function DataTable<T extends { id: string | number }>({
               {columns.map((column) => (
                 <TableHead
                   key={column.key}
-                  className={`${column.sortable ? 'cursor-pointer select-none hover:bg-muted' : ''} ${column.className || ''}`}
-                  onClick={() => column.sortable && handleSort(column.key)}
+                  className={column.className || ''}
                 >
-                  {column.header}
-                  {renderSortIcon(column)}
+                  {column.sortable ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-8 data-[state=open]:bg-accent"
+                      onClick={() => handleSort(column.key)}
+                    >
+                      <span>{column.header}</span>
+                      {renderSortIcon(column)}
+                    </Button>
+                  ) : (
+                    column.header
+                  )}
                 </TableHead>
               ))}
               {actions && <TableHead className="w-24">Actions</TableHead>}

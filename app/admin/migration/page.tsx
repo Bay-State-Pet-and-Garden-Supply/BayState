@@ -126,7 +126,7 @@ export default async function AdminMigrationPage() {
                 ) : (
                     <Card className="h-full border-dashed flex items-center justify-center p-6 text-center text-muted-foreground">
                         <div className="space-y-2">
-                            <Database className="h-8 w-8 mx-auto opacity-50" />
+                            <Database className="h-8 w-8 mx-auto text-muted-foreground" />
                             <p>Configure connection to enable sync</p>
                         </div>
                     </Card>

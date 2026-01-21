@@ -1,6 +1,7 @@
 'use client';
 
 import { Truck } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface FreeShippingBarProps {
   subtotal: number;
@@ -18,12 +19,6 @@ export function FreeShippingBar({
   const remaining = threshold - subtotal;
   const progress = Math.min((subtotal / threshold) * 100, 100);
   const qualified = remaining <= 0;
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   if (qualified) {
     return (

@@ -51,3 +51,8 @@ GEMINI.md
 task.md
 implementation_plan.md
 walkthrough.md
+
+# opencode sessions
+*.session.json
+sessions/
+session_*.json

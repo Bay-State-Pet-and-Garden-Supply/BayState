@@ -5,6 +5,17 @@ import { Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type Column } from '@/components/admin/data-table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -55,10 +66,6 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
   };
 
   const handleDelete = async (service: Service) => {
-    if (!confirm(`Are you sure you want to delete "${service.name}"?`)) {
-      return;
-    }
-
     setUpdating(service.id);
     try {
       const response = await fetch(`/api/admin/services/${service.id}`, {
@@ -190,15 +197,35 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
           <Pencil className="h-4 w-4" />
         </Link>
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => handleDelete(service)}
-        disabled={updating === service.id}
-        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={updating === service.id}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Service</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{service.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDelete(service)}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 

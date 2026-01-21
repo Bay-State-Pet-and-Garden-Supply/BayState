@@ -1,11 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Package } from 'lucide-react';
+import { Save, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
 import {
     Select,
     SelectContent,
@@ -185,45 +192,30 @@ export function ProductEditModal({
         }
     };
 
-    if (loading) {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="rounded-lg bg-white p-8">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                </div>
-            </div>
-        );
-    }
+    if (loading) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
-                {/* Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
                     <div className="flex items-center gap-3">
                         <Package className="h-6 w-6 text-gray-600" />
                         <div>
-                            <h2 className="text-lg font-semibold">Edit Product</h2>
+                            <DialogTitle>Edit Product</DialogTitle>
                             <p className="text-sm text-gray-600 font-mono">{product.sku}</p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="rounded-full p-2 hover:bg-gray-100"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
+                </DialogHeader>
 
                 {/* Error Banner */}
                 {error && (
-                    <div className="mx-6 mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
                         {error}
                     </div>
                 )}
 
                 {/* Form Content */}
-                <div className="p-6 space-y-6">
+                <div className="space-y-6">
                     <div className="grid gap-6 md:grid-cols-2">
                         {/* Left Column */}
                         <div className="space-y-4">
@@ -244,7 +236,11 @@ export function ProductEditModal({
                                     value={slug}
                                     onChange={(e) => setSlug(e.target.value)}
                                     placeholder="product-slug"
+                                    aria-describedby="slug-help"
                                 />
+                                <p id="slug-help" className="text-sm text-muted-foreground">
+                                    URL-friendly version of the name.
+                                </p>
                             </div>
 
                             <div className="space-y-2">
@@ -352,19 +348,18 @@ export function ProductEditModal({
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground">Image management coming soon</p>
+                                    <p className="text-sm text-muted-foreground">Image management coming soon</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Footer Actions */}
-                <div className="sticky bottom-0 flex items-center justify-between border-t bg-gray-50 px-6 py-4">
-                    <p className="text-xs text-gray-600">
-                        Press <kbd className="rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
-                        <kbd className="rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
-                    </p>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                    <div className="flex-1 text-xs text-gray-600 flex items-center">
+                        Press <kbd className="mx-1 rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
+                        <kbd className="mx-1 rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
+                    </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={onClose} disabled={saving}>
                             Cancel
@@ -377,8 +372,8 @@ export function ProductEditModal({
                             {saving ? 'Saving...' : 'Save Product'}
                         </Button>
                     </div>
-                </div>
-            </div>
-        </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

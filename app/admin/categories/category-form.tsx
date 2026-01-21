@@ -184,8 +184,9 @@ export function CategoryForm({
               onChange={(e) => setSlug(e.target.value)}
               placeholder="e.g., dog-food"
               required
+              aria-describedby="slug-help"
             />
-            <p className="text-xs text-muted-foreground">
+            <p id="slug-help" className="text-sm text-muted-foreground">
               URL-friendly identifier. Auto-generated from name.
             </p>
           </div>
@@ -225,8 +226,9 @@ export function CategoryForm({
               value={displayOrder}
               onChange={(e) => setDisplayOrder(parseInt(e.target.value) || 0)}
               min={0}
+              aria-describedby="display-order-help"
             />
-            <p className="text-xs text-muted-foreground">
+            <p id="display-order-help" className="text-sm text-muted-foreground">
               Lower numbers appear first.
             </p>
           </div>

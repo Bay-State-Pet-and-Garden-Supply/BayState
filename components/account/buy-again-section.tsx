@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, RotateCcw, Package } from 'lucide-react'
 import Link from 'next/link'
+import { formatCurrency } from '@/lib/utils'
 
 interface BuyAgainSectionProps {
     products: FrequentProduct[]
@@ -69,10 +70,10 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
                                         Ordered {product.order_count} times
                                     </p>
                                 </div>
-
+                
                                 <div className="flex items-center justify-between mt-2">
                                     <span className="font-semibold text-sm">
-                                        ${Number(product.price).toFixed(2)}
+                                        {formatCurrency(Number(product.price))}
                                     </span>
                                     <Button
                                         size="sm"

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CreditCard, Shield } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder'
@@ -60,12 +61,6 @@ function PaymentFormContent({
 
     setIsProcessing(false);
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -154,11 +149,11 @@ export function PaymentMethodSelector({
           type="button"
           onClick={() => onSelect('credit_card')}
           disabled={disabled}
-          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors ${
+          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             selected === 'credit_card'
               ? 'border-primary bg-primary/5'
               : 'border-zinc-200 hover:border-zinc-300'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          }`}
         >
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full ${
@@ -180,11 +175,11 @@ export function PaymentMethodSelector({
           type="button"
           onClick={() => onSelect('paypal')}
           disabled={disabled}
-          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors ${
+          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             selected === 'paypal'
               ? 'border-primary bg-primary/5'
               : 'border-zinc-200 hover:border-zinc-300'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          }`}
         >
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full ${
@@ -208,11 +203,11 @@ export function PaymentMethodSelector({
           type="button"
           onClick={() => onSelect('pickup')}
           disabled={disabled}
-          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors ${
+          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             selected === 'pickup'
               ? 'border-primary bg-primary/5'
               : 'border-zinc-200 hover:border-zinc-300'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          }`}
         >
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full ${

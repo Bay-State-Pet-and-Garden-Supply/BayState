@@ -1,9 +1,18 @@
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import Link from 'next/link';
 import { getFilteredProducts } from '@/lib/products';
 import { getBrands } from '@/lib/data';
 import { getPetTypes } from '@/lib/recommendations';
 import { ProductCard } from '@/components/storefront/product-card';
 import { ProductFilters } from '@/components/storefront/product-filters';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Search } from 'lucide-react';
 
 interface ProductsPageProps {
   searchParams: Promise<{
@@ -78,36 +87,56 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-center gap-2">
-                  {page > 1 && (
-                    <Link
-                      href={buildPageUrl(page - 1)}
-                      className="rounded-lg border px-4 py-2 text-sm hover:bg-zinc-50"
-                    >
-                      Previous
-                    </Link>
-                  )}
-                  <span className="text-sm text-zinc-700">
-                    Page {page} of {totalPages}
-                  </span>
-                  {page < totalPages && (
-                    <Link
-                      href={buildPageUrl(page + 1)}
-                      className="rounded-lg border px-4 py-2 text-sm hover:bg-zinc-50"
-                    >
-                      Next
-                    </Link>
-                  )}
+                <div className="mt-8">
+                  <Pagination>
+                    <PaginationContent>
+                      {page > 1 ? (
+                        <PaginationItem>
+                          <PaginationPrevious href={buildPageUrl(page - 1)} />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#" 
+                            className="pointer-events-none opacity-50" 
+                            aria-disabled="true"
+                          />
+                        </PaginationItem>
+                      )}
+                      
+                      <PaginationItem>
+                        <span className="flex h-9 min-w-9 items-center justify-center text-sm font-medium">
+                          Page {page} of {totalPages}
+                        </span>
+                      </PaginationItem>
+
+                      {page < totalPages ? (
+                        <PaginationItem>
+                          <PaginationNext href={buildPageUrl(page + 1)} />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem>
+                          <PaginationNext 
+                            href="#" 
+                            className="pointer-events-none opacity-50" 
+                            aria-disabled="true"
+                          />
+                        </PaginationItem>
+                      )}
+                    </PaginationContent>
+                  </Pagination>
                 </div>
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-lg text-zinc-700">No products found</p>
-              <p className="mt-2 text-sm text-zinc-700">
-                Try adjusting your filters or search terms
-              </p>
-            </div>
+            <EmptyState
+              icon={Search}
+              title="No products found"
+              description="We couldn't find any products matching your filters. Try clearing some filters or searching for something else."
+              actionLabel="Clear Filters"
+              actionHref="/products"
+              className="mt-8 border-none bg-transparent"
+            />
           )}
         </div>
       </div>

@@ -115,9 +115,12 @@ export function SignupForm() {
                                     autoComplete="new-password"
                                     required
                                     aria-invalid={!!form.formState.errors.password}
-                                    aria-describedby={form.formState.errors.password ? "password-error" : undefined}
+                                    aria-describedby="password-help password-error"
                                 />
                             </FormControl>
+                            <p id="password-help" className="text-sm text-muted-foreground">
+                                Must be at least 8 characters long.
+                            </p>
                             <FormMessage id="password-error" />
                         </FormItem>
                     )}

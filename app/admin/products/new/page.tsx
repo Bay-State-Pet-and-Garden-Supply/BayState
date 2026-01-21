@@ -21,7 +21,16 @@ export default function AddProductPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">Slug</Label>
-              <Input id="slug" name="slug" placeholder="e.g. chicken-feed" required />
+              <Input 
+                id="slug" 
+                name="slug" 
+                placeholder="e.g. chicken-feed" 
+                required 
+                aria-describedby="slug-help"
+              />
+              <p id="slug-help" className="text-sm text-muted-foreground">
+                URL-friendly version of the name.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Price</Label>

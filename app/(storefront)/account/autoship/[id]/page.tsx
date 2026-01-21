@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/lib/utils';
 
 interface AutoshipDetailPageProps {
   params: Promise<{ id: string }>;
@@ -45,12 +46,6 @@ export default async function AutoshipDetailPage({
       year: 'numeric',
     });
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   const getStatusColor = (status: string) => {
     switch (status) {

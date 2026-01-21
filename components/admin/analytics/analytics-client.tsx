@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type AnalyticsData } from '@/app/api/admin/analytics/route';
+import { formatCurrency } from '@/lib/utils';
 
 type DateRange = 'today' | '7days' | '30days' | 'all' | 'custom';
 
@@ -74,13 +75,6 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
     a.download = `analytics-${range}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
   };
 
   return (

@@ -39,13 +39,13 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Button size="lg" className="h-12 px-8" asChild>
-              <Link href="/products">
+              <Link href="/products" className="hover:underline underline-offset-4">
                 Shop Now
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="h-12 px-8" asChild>
-              <Link href="/services">Our Services</Link>
+              <Link href="/services" className="hover:underline underline-offset-4">Our Services</Link>
             </Button>
           </div>
         </section>
@@ -71,7 +71,7 @@ export default async function HomePage() {
                 </p>
               </div>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
-                <Link href="/products?category=pet-supplies">
+                <Link href="/products?category=pet-supplies" className="hover:underline underline-offset-4">
                   Browse Pets
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -91,7 +91,7 @@ export default async function HomePage() {
                 Horse, Poultry, Feed & Supplies
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
-                <Link href="/products?category=farm">
+                <Link href="/products?category=farm" className="hover:underline underline-offset-4">
                   Browse Farm
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -111,7 +111,7 @@ export default async function HomePage() {
                 Plants, Tools, Mulch & Pest Control
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
-                <Link href="/products?category=lawn-garden">
+                <Link href="/products?category=lawn-garden" className="hover:underline underline-offset-4">
                   Browse Garden
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -131,7 +131,7 @@ export default async function HomePage() {
                 Wood Pellets, Coal, Propane & Heating
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
-                <Link href="/products?category=home">
+                <Link href="/products?category=home" className="hover:underline underline-offset-4">
                   Browse Home
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -151,7 +151,7 @@ export default async function HomePage() {
                 Holiday Shoppe & Seasonal Products
               </p>
               <Button variant="ghost" className="group-hover:bg-zinc-100" asChild>
-                <Link href="/products?category=seasonal">
+                <Link href="/products?category=seasonal" className="hover:underline underline-offset-4">
                   Browse Seasonal
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -180,7 +180,7 @@ export default async function HomePage() {
           className="h-12 px-8"
           asChild
         >
-          <Link href="/services">View All Services</Link>
+          <Link href="/services" className="hover:underline underline-offset-4">View All Services</Link>
         </Button>
       </section>
     </div>

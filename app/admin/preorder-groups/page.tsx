@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 import { deletePreorderGroup } from '@/lib/admin/preorder-actions'
 
@@ -61,14 +62,14 @@ export default async function PreorderGroupsPage() {
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-semibold">{group.name}</h2>
                       {group.pickup_only && (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                        <Badge variant="warning" className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-none">
                           Pickup Only
-                        </span>
+                        </Badge>
                       )}
                       {!group.is_active && (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                        <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200">
                           Inactive
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">

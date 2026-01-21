@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, Clock, Package, CheckCircle, XCircle, Download, ShoppingBag, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { type Order } from '@/lib/orders';
 import { OrderModal } from './OrderModal';
 import { toast } from 'sonner';
 import { deleteOrder } from '@/app/admin/orders/actions';
+import { formatCurrency } from '@/lib/utils';
 
 interface AdminOrdersClientProps {
     initialOrders: Order[];
@@ -55,12 +57,6 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
             setDeleting(null);
         }
     }
-
-    const formatCurrency = (amount: number) =>
-        new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(amount);
 
     const formatDate = (dateString: string) =>
         new Date(dateString).toLocaleDateString('en-US', {
@@ -128,11 +124,19 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
             render: (value) => {
                 const status = statusConfig[value as keyof typeof statusConfig];
                 if (!status) return String(value);
+                
+                let badgeVariant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" = "outline";
+        
+        if (value === 'completed') badgeVariant = "success";
+        else if (value === 'cancelled') badgeVariant = "destructive";
+        else if (value === 'processing') badgeVariant = "default";
+        else if (value === 'pending') badgeVariant = "warning";
+
                 return (
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
+                    <Badge variant={badgeVariant} className={`gap-1 ${value === 'processing' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-none' : ''}`}>
                         <status.icon className="h-3 w-3" />
                         {status.label}
-                    </span>
+                    </Badge>
                 );
             },
         },

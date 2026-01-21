@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { createClient } from '@/lib/supabase/server'
+import { formatCurrency } from '@/lib/utils'
 
 interface Props {
     params: Promise<{
@@ -50,12 +51,7 @@ export default async function OrderDetailsPage({ params }: Props) {
                     </p>
                 </div>
                 <div className="ml-auto">
-                    <Badge variant={
-                        order.status === 'completed' ? 'default' :
-                        order.status === 'cancelled' ? 'destructive' : 'secondary'
-                    }>
-                        {order.status}
-                    </Badge>
+                    <StatusBadge status={order.status} />
                 </div>
             </div>
 
@@ -73,7 +69,7 @@ export default async function OrderDetailsPage({ params }: Props) {
                                             <p className="font-medium">{item.item_name}</p>
                                             <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                                         </div>
-                                        <p className="font-medium">${Number(item.total_price).toFixed(2)}</p>
+                                        <p className="font-medium">{formatCurrency(Number(item.total_price))}</p>
                                     </div>
                                 ))}
                             </div>
@@ -89,15 +85,15 @@ export default async function OrderDetailsPage({ params }: Props) {
                         <CardContent className="space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Subtotal</span>
-                                <span>${Number(order.subtotal).toFixed(2)}</span>
+                                <span>{formatCurrency(Number(order.subtotal))}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Tax</span>
-                                <span>${Number(order.tax).toFixed(2)}</span>
+                                <span>{formatCurrency(Number(order.tax))}</span>
                             </div>
                             <div className="border-t pt-2 mt-2 flex justify-between font-medium">
                                 <span>Total</span>
-                                <span>${Number(order.total).toFixed(2)}</span>
+                                <span>{formatCurrency(Number(order.total))}</span>
                             </div>
                         </CardContent>
                     </Card>

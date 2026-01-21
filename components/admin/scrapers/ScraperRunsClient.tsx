@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -231,10 +232,10 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <a href="/admin/scraper-network">
+            <Link href="/admin/scraper-network">
               <Play className="mr-2 h-4 w-4" />
               Runner Network
-            </a>
+            </Link>
           </Button>
           <Button variant="outline" onClick={() => router.refresh()} disabled={isPending}>
             <RotateCcw className={`mr-2 h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
