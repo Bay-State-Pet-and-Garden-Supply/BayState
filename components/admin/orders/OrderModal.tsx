@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useState } from 'react';
-import { X, Package, Clock, CheckCircle, XCircle, User, Mail, Phone, FileText, CreditCard, DollarSign } from 'lucide-react';
+import { X, Package, Clock, CheckCircle, XCircle, User, Mail, Phone, FileText, CreditCard, DollarSign, Truck, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -281,6 +281,76 @@ export function OrderModal({
                                         <p className="text-sm text-muted-foreground">Placed on</p>
                                         <p className="text-sm font-medium">{formatDate(order.created_at)}</p>
                                     </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Fulfillment Info */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        {order.fulfillment_method === 'delivery' ? (
+                                            <Truck className="h-5 w-5" />
+                                        ) : (
+                                            <MapPin className="h-5 w-5" />
+                                        )}
+                                        {order.fulfillment_method === 'delivery' ? 'Delivery' : 'Pickup'}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {order.fulfillment_method === 'delivery' ? (
+                                        <>
+                                            {order.delivery_distance_miles !== null && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm text-zinc-600">Distance</span>
+                                                    <span className="font-medium">
+                                                        {order.delivery_distance_miles.toFixed(1)} miles
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {order.delivery_fee > 0 && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm text-zinc-600">Delivery Fee</span>
+                                                    <span className="font-medium">{formatCurrency(order.delivery_fee)}</span>
+                                                </div>
+                                            )}
+                                            {order.delivery_services && order.delivery_services.length > 0 && (
+                                                <div className="pt-4 border-t">
+                                                    <p className="text-sm text-zinc-600 mb-2">Delivery Services</p>
+                                                    {order.delivery_services.map((service) => (
+                                                        <div key={service.service} className="flex items-center justify-between text-sm">
+                                                            <span className="capitalize">
+                                                                {service.service.replace(/_/g, ' ')}
+                                                            </span>
+                                                            <span className="font-medium">
+                                                                {formatCurrency(service.fee)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {order.delivery_notes && (
+                                                <div className="pt-4 border-t">
+                                                    <p className="text-sm text-zinc-600 mb-1">Delivery Notes</p>
+                                                    <p className="text-sm">{order.delivery_notes}</p>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center gap-3">
+                                                <MapPin className="h-5 w-5 text-zinc-500" />
+                                                <div>
+                                                    <p className="font-medium">Store Pickup</p>
+                                                    <p className="text-sm text-zinc-600">
+                                                        429 Winthrop Street, Taunton, MA 02780
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-zinc-600 mt-2">
+                                                Customer will pick up at the store
+                                            </p>
+                                        </>
+                                    )}
                                 </CardContent>
                             </Card>
 

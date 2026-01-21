@@ -19,6 +19,7 @@ import { getRelatedProductsByPetType } from '@/lib/recommendations';
 import { getApprovedReviews, getProductReviewStats, hasUserReviewedProduct } from '@/lib/storefront/reviews';
 import { getProductQuestions } from '@/lib/storefront/questions';
 import { getRecentlyViewedProducts } from '@/lib/storefront/recently-viewed';
+import { getProductPreorderData } from '@/lib/storefront/preorder';
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -77,7 +78,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   }
 
   // Fetch additional data in parallel
-  const [userRole, relatedByPetType, reviews, reviewStats, questions, recentlyViewed, hasReviewed] = await Promise.all([
+  const [userRole, relatedByPetType, reviews, reviewStats, questions, recentlyViewed, hasReviewed, preorderData] = await Promise.all([
     user ? getUserRole(user.id) : null,
     getRelatedProductsByPetType(product.id, 4),
     getApprovedReviews(product.id),
@@ -85,6 +86,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     getProductQuestions(product.id),
     getRecentlyViewedProducts(product.id, 6),
     hasUserReviewedProduct(product.id),
+    getProductPreorderData(product.id),
   ]);
 
   const isLoggedIn = !!user;
@@ -178,7 +180,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           {/* Add to Cart */}
           <div className="flex flex-col gap-4 sm:flex-row">
-            <AddToCartButton product={product} />
+            <AddToCartButton
+              product={product}
+              preorderGroup={preorderData.preorderGroup}
+              preorderBatches={preorderData.preorderBatches}
+              isPickupOnly={preorderData.isPickupOnly}
+            />
           </div>
 
           {/* Product Details */}

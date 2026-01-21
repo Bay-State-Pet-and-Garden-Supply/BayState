@@ -81,10 +81,15 @@ export interface CreateOrderInput {
   stripePaymentIntentId?: string;
   stripeCustomerId?: string;
   fulfillmentMethod?: FulfillmentMethod;
-  deliveryAddressId?: string | null;
+  deliveryAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  } | null;
   deliveryDistanceMiles?: number | null;
-  deliveryFee?: number;
-  deliveryServices?: Array<{ service: string; fee: number }>;
+  deliveryFee?: number | null;
+  deliveryServices?: string[];
   deliveryNotes?: string | null;
 }
 
@@ -120,10 +125,13 @@ export async function createOrder(input: CreateOrderInput): Promise<Order | null
       refunded_amount: 0,
       paid_at: null,
       fulfillment_method: input.fulfillmentMethod || 'pickup',
-      delivery_address_id: input.deliveryAddressId || null,
+      delivery_address_id: null, // Create via separate table if needed
       delivery_distance_miles: input.deliveryDistanceMiles || null,
       delivery_fee: input.deliveryFee || 0,
-      delivery_services: input.deliveryServices || [],
+      delivery_services: (input.deliveryServices || []).map((service) => ({
+        service,
+        fee: 0,
+      })),
       delivery_notes: input.deliveryNotes || null,
     })
     .select()
