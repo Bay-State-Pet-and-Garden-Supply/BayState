@@ -135,7 +135,7 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="space-y-4">
+                <div className="space-y-2">
                     <h3 className="text-sm font-medium text-muted-foreground">Basic Info</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <FormField
@@ -251,7 +251,7 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                     </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                     <h3 className="text-sm font-medium text-muted-foreground">Details</h3>
                     
                     <div className="grid grid-cols-2 gap-4">
@@ -445,10 +445,12 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                     )}
                 />
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {pet ? 'Save Changes' : 'Add Pet'}
-                </Button>
+                <div className="flex gap-4 pt-2">
+                    <Button type="submit" className="flex-1" disabled={loading}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {pet ? 'Save Changes' : 'Add Pet'}
+                    </Button>
+                </div>
             </form>
         </Form>
     )

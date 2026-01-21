@@ -36,7 +36,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <CardTitle>Edit Product</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updateProductWithId} className="space-y-4">
+          <form action={updateProductWithId} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name">Product Name</Label>
               <Input id="name" name="name" defaultValue={product.name} required />
@@ -62,7 +62,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
                 <option value="pre_order">Pre-Order</option>
               </select>
             </div>
-            <Button type="submit">Update Product</Button>
+            <div className="flex gap-4 pt-2">
+              <Button type="submit">Update Product</Button>
+            </div>
           </form>
         </CardContent>
       </Card>
@@ -85,7 +87,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
           <div className="space-y-2">
             <Label>Pre-Order Group</Label>
-            <form action={assignGroup} className="space-y-3">
+              <form action={assignGroup} className="space-y-2">
               <input type="hidden" name="product_id" value={id} />
               <select
                 name="preorder_group_id"
