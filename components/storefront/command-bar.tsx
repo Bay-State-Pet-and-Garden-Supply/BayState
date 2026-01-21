@@ -6,7 +6,7 @@ import { Search, X, ArrowRight, Package, Wrench, Tag } from 'lucide-react';
 import Fuse from 'fuse.js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface SearchResult {
   type: 'product' | 'service' | 'brand';
@@ -184,7 +184,7 @@ export function CommandBar({ searchIndex, isOpen, onClose }: CommandBarProps) {
                     </div>
                     {result.price && (
                       <span className="text-sm font-medium text-zinc-900">
-                        ${result.price.toFixed(2)}
+                        {formatCurrency(result.price)}
                       </span>
                     )}
                       <ArrowRight className="h-4 w-4 text-zinc-700" />

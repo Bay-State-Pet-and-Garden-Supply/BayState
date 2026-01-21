@@ -10,7 +10,7 @@ export function UserMenu({ user }: { user: User | null }) {
     if (!user) {
         return (
             <Button asChild variant="ghost" size="sm">
-                <Link href="/login">
+                <Link href="/login" className="hover:underline underline-offset-4">
                     Sign In
                 </Link>
             </Button>
@@ -20,7 +20,7 @@ export function UserMenu({ user }: { user: User | null }) {
     return (
         <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-                <Link href="/account">Account</Link>
+                <Link href="/account" className="hover:underline underline-offset-4">Account</Link>
             </Button>
             <Button asChild variant="ghost" size="icon" className="sm:hidden" aria-label="Account">
                 <Link href="/account"><UserIcon className="h-5 w-5" /></Link>

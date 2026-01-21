@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type AnalyticsData } from '@/app/api/admin/analytics/route';
+import { formatCurrency } from '@/lib/utils';
 
 type DateRange = 'today' | '7days' | '30days' | 'all' | 'custom';
 
@@ -76,13 +77,6 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
     URL.revokeObjectURL(url);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
-  };
-
   return (
     <div className="space-y-6">
       {/* Header with Date Range Picker */}
@@ -120,7 +114,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
           </div>
 
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-500" />
+            <Calendar className="h-4 w-4 text-gray-600" />
             <input
               type="date"
               value={customStart}
@@ -130,7 +124,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
               }}
               className="rounded-md border px-2 py-1.5 text-sm"
             />
-            <span className="text-gray-500">to</span>
+            <span className="text-gray-600">to</span>
             <input
               type="date"
               value={customEnd}
@@ -226,7 +220,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
                   : '$0.00'}
               </p>
               {data.topProducts[0] && (
-                <p className="mt-1 truncate text-xs text-gray-500">
+                <p className="mt-1 truncate text-xs text-gray-600">
                   {data.topProducts[0].name}
                 </p>
               )}
@@ -245,7 +239,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
             <div className="rounded-lg border bg-white p-6">
               <h2 className="mb-4 text-lg font-semibold">Orders by Status</h2>
               {data.ordersByStatus.length === 0 ? (
-                <p className="text-gray-500">No orders in this period.</p>
+                <p className="text-gray-600">No orders in this period.</p>
               ) : (
                 <div className="space-y-3">
                   {data.ordersByStatus.map(({ status, count }) => {
@@ -278,7 +272,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
             <div className="rounded-lg border bg-white p-6">
               <h2 className="mb-4 text-lg font-semibold">Top Products</h2>
               {data.topProducts.length === 0 ? (
-                <p className="text-gray-500">No product sales in this period.</p>
+                <p className="text-gray-600">No product sales in this period.</p>
               ) : (
                 <div className="space-y-3">
                   {data.topProducts.slice(0, 5).map((product, idx) => (
@@ -294,7 +288,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
                           <p className="font-medium text-gray-900 line-clamp-1">
                             {product.name}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-600">
                             {product.quantity} sold
                           </p>
                         </div>
@@ -335,7 +329,7 @@ interface RevenueChartProps {
 
 function RevenueChart({ data }: RevenueChartProps) {
   if (data.length === 0) {
-    return <p className="text-gray-500">No data available.</p>;
+    return <p className="text-gray-600">No data available.</p>;
   }
 
   const maxRevenue = Math.max(...data.map((d) => d.revenue), 1);
@@ -359,7 +353,7 @@ function RevenueChart({ data }: RevenueChartProps) {
             <div className="pointer-events-none absolute bottom-full mb-2 hidden rounded bg-gray-900 px-2 py-1 text-xs text-white group-hover:block">
               <p className="font-medium">${day.revenue.toFixed(2)}</p>
               <p className="text-gray-300">{day.orders} orders</p>
-              <p className="text-gray-400">
+              <p className="text-gray-600">
                 {new Date(day.date).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
@@ -378,7 +372,7 @@ function RevenueChart({ data }: RevenueChartProps) {
 
             {/* Date label */}
             {showLabel && (
-              <span className="mt-2 text-xs text-gray-500">
+              <span className="mt-2 text-xs text-gray-600">
                 {new Date(day.date).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',

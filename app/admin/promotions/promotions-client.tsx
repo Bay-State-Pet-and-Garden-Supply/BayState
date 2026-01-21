@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/table';
 import { createPromoCodeAction, updatePromoCodeAction, deletePromoCodeAction } from './actions';
 import type { PromoCode } from '@/lib/promo-codes';
+import { formatCurrency } from '@/lib/utils';
 
 interface PromotionsClientProps {
   initialPromoCodes: PromoCode[];
@@ -39,12 +41,6 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
   const [promoCodes, setPromoCodes] = useState(initialPromoCodes);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-US', {
@@ -249,12 +245,12 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              <DialogFooter className="pt-4">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Create Code</Button>
-              </div>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>

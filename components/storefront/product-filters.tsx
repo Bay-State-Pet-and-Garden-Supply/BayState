@@ -85,22 +85,22 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pr-16"
             />
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
-              {searchQuery && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={clearSearch}
-                >
-                  <X className="h-4 w-4" />
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
+                {searchQuery && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-zinc-500 hover:text-zinc-900"
+                    onClick={clearSearch}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900" aria-label="Search">
+                  <Search className="h-4 w-4" />
                 </Button>
-              )}
-              <Button type="submit" variant="ghost" size="icon" className="h-7 w-7" aria-label="Search">
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+              </div>
           </div>
         </form>
         {currentSearch && (

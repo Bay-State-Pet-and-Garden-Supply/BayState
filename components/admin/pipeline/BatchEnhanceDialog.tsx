@@ -71,14 +71,14 @@ export function BatchEnhanceDialog({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">Batch Enhance</h2>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-600">
                             {selectedCount} product{selectedCount > 1 ? 's' : ''} selected
                         </p>
                     </div>
                     <button
                         onClick={onCancel}
                         disabled={isEnhancing}
-                        className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                        className="p-2 text-gray-600 hover:text-gray-600 disabled:opacity-50"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -88,10 +88,10 @@ export function BatchEnhanceDialog({
                 <div className="p-6">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-600" />
                         </div>
                     ) : sources.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-8 text-gray-600">
                             <p>No enrichment sources configured.</p>
                             <p className="text-sm mt-1">Products will be queued for default processing.</p>
                         </div>

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, RefreshCcw, Home } from 'lucide-react'
+import { PackageX, RefreshCw, Home, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
 interface ErrorProps {
@@ -12,35 +12,41 @@ interface ErrorProps {
 
 export default function ProductsError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    // Log the error to an error reporting service
     console.error('Products page error:', error)
   }, [error])
 
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center px-4 py-16 text-center">
-      <div className="mb-4 rounded-full bg-red-100 p-3">
-        <AlertCircle className="h-8 w-8 text-red-600" />
+    <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="mb-6 rounded-full bg-red-50 p-4 ring-1 ring-red-100">
+        <AlertCircle className="h-10 w-10 text-red-600" />
       </div>
-      <h2 className="mb-2 text-2xl font-bold text-zinc-900">
-        Something went wrong
+      
+      <h2 className="mb-3 text-2xl font-bold tracking-tight text-foreground">
+        Product Loading Error
       </h2>
-      <p className="mb-6 max-w-md text-zinc-600">
-        We had trouble loading the products. This might be a temporary issue.
+      
+      <p className="mb-8 max-w-[450px] text-muted-foreground leading-relaxed">
+        We had trouble displaying the catalog. Please check your connection or try reloading.
       </p>
-      <div className="flex gap-4">
-        <Button onClick={reset} variant="default">
-          <RefreshCcw className="mr-2 h-4 w-4" />
-          Try Again
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Button onClick={reset} size="lg" className="gap-2 font-medium">
+          <RefreshCw className="h-4 w-4" />
+          Reload Catalog
         </Button>
-        <Button variant="outline" asChild>
+        
+        <Button variant="outline" size="lg" asChild className="gap-2">
           <Link href="/">
-            <Home className="mr-2 h-4 w-4" />
+            <Home className="h-4 w-4" />
             Go Home
           </Link>
         </Button>
       </div>
+      
       {error.digest && (
-        <p className="mt-4 text-xs text-zinc-600">Error ID: {error.digest}</p>
+        <p className="mt-12 font-mono text-xs text-muted-foreground/40">
+          Ref: {error.digest}
+        </p>
       )}
     </div>
   )

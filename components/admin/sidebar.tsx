@@ -101,11 +101,11 @@ export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
     .filter(section => section.items.length > 0);
 
   return (
-    <div className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
+    <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border">
         <h1 className="text-xl font-bold">Manager Portal</h1>
       </div>
-      <nav className="flex-1 space-y-6 overflow-y-auto p-4">
+      <nav className="flex-1 space-y-6 overflow-y-auto p-4" aria-label="Admin">
         {visibleSections.map((section, idx) => (
           <div key={idx}>
             {section.title && (
@@ -148,6 +148,6 @@ export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }

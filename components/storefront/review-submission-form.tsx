@@ -99,7 +99,7 @@ export function ReviewSubmissionForm({
             Please sign in to share your experience with this product.
           </p>
           <Button asChild variant="outline">
-            <Link href={`/login?redirect=/products/${productSlug}`}>
+            <Link href={`/login?redirect=/products/${productSlug}`} className="hover:underline underline-offset-4">
               Sign In to Review
             </Link>
           </Button>
@@ -151,7 +151,7 @@ export function ReviewSubmissionForm({
       <CardContent className="space-y-6">
         {/* Rating Selector */}
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:text-muted-foreground">
             Rating <span className="text-destructive">*</span>
           </label>
           <div className="flex gap-1">
@@ -159,10 +159,11 @@ export function ReviewSubmissionForm({
               <button
                 key={star}
                 type="button"
-                className="focus:outline-none transition-transform hover:scale-110"
+                className="focus:outline-none transition-transform hover:scale-110 p-2 -m-2 rounded-full hover:bg-accent/5"
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(0)}
                 onClick={() => setRating(star)}
+                aria-label={`Rate ${star} stars`}
               >
                 <Star
                   className={cn(
@@ -175,7 +176,7 @@ export function ReviewSubmissionForm({
               </button>
             ))}
           </div>
-          <p className="text-xs text-zinc-700 h-4">
+          <p className="text-sm text-muted-foreground h-4" aria-live="polite">
             {hoverRating ? (
               ['Terrible', 'Poor', 'Average', 'Good', 'Excellent'][hoverRating - 1]
             ) : rating ? (
@@ -211,7 +212,7 @@ export function ReviewSubmissionForm({
             className="min-h-[120px]"
             maxLength={1000}
           />
-          <div className="text-xs text-right text-zinc-700">
+          <div className="text-sm text-muted-foreground text-right">
             {content.length}/1000
           </div>
         </div>
@@ -238,6 +239,7 @@ export function ReviewSubmissionForm({
                 size="icon" 
                 variant="outline" 
                 onClick={addPro}
+                aria-label="Add pro"
                 disabled={!currentPro.trim()}
               >
                 <Plus className="h-4 w-4" />
@@ -283,6 +285,7 @@ export function ReviewSubmissionForm({
                 size="icon" 
                 variant="outline" 
                 onClick={addCon}
+                aria-label="Add con"
                 disabled={!currentCon.trim()}
               >
                 <Plus className="h-4 w-4" />

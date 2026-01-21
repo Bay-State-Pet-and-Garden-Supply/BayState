@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 import { createScraper } from '@/app/admin/scrapers/actions';
@@ -123,7 +124,7 @@ export function ScraperWizardClient() {
                   ? 'bg-blue-100 text-blue-700'
                   : index < currentIndex
                   ? 'text-green-600 hover:bg-green-50'
-                  : 'text-gray-400'
+                  : 'text-gray-600'
               )}
             >
               {index < currentIndex ? (
@@ -164,7 +165,7 @@ export function ScraperWizardClient() {
                   value={name}
                   onChange={(e) => setName(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-600">
                   Used in code and API. Lowercase, underscores allowed.
                 </p>
               </div>
@@ -188,7 +189,7 @@ export function ScraperWizardClient() {
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-600">
                   The main website URL for this scraper
                 </p>
               </div>
@@ -215,7 +216,7 @@ export function ScraperWizardClient() {
                 </div>
               </div>
 
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-600">
                 More configuration options are available in the YAML editor after creation.
               </p>
             </div>
@@ -245,23 +246,25 @@ export function ScraperWizardClient() {
               {testSkus.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {testSkus.map((sku) => (
-                    <span
+                    <Badge
                       key={sku}
-                      className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm"
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 gap-1"
                     >
                       {sku}
                       <button
                         onClick={() => removeTestSku(sku)}
-                        className="ml-1 text-gray-400 hover:text-gray-600"
+                        className="ml-1 text-gray-500 hover:text-gray-700 focus:outline-none"
                       >
-                        x
+                        <span className="sr-only">Remove</span>
+                        ×
                       </button>
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}
 
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-600">
                 You can add more test SKUs later in the testing page.
               </p>
             </div>
@@ -278,24 +281,24 @@ export function ScraperWizardClient() {
 
               <div className="rounded-lg border p-4 space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Name</span>
+                  <span className="text-gray-600">Name</span>
                   <span className="font-medium">{name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Display Name</span>
+                  <span className="text-gray-600">Display Name</span>
                   <span className="font-medium">{displayName || name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Base URL</span>
+                  <span className="text-gray-600">Base URL</span>
                   <span className="font-medium truncate max-w-xs">{baseUrl}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Test SKUs</span>
+                  <span className="text-gray-600">Test SKUs</span>
                   <span className="font-medium">{testSkus.length}</span>
                 </div>
               </div>
 
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-600">
                 After creation, you will be redirected to the YAML editor to configure workflow steps.
               </p>
             </div>

@@ -128,6 +128,76 @@
   }
 }
 
+@media print {
+  /* Hide UI elements */
+  nav,
+  header,
+  footer,
+  aside,
+  button,
+  [role="dialog"],
+  [role="alert"],
+  .no-print,
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Reset layout constraints */
+  body,
+  main,
+  #root,
+  #__next {
+    background-color: white !important;
+    color: black !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Typography optimization */
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Link handling */
+  a {
+    text-decoration: underline;
+    color: black !important;
+  }
+  
+  /* Show URL after links (except internal or hash links) */
+  a[href^="http"]:not([href*="baystatepetgarden.com"])::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    word-break: break-all;
+  }
+
+  /* Page breaks */
+  h1, h2, h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  img, table, figure, pre, code {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Border handling */
+  * {
+    border-color: #000 !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

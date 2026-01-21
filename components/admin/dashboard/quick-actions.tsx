@@ -24,7 +24,7 @@ export function QuickActions({ actions }: QuickActionsProps) {
             variant={action.variant || 'outline'}
             asChild
           >
-            <Link href={action.href} className="flex items-center gap-2">
+            <Link href={action.href} className="flex items-center gap-2 hover:underline underline-offset-4">
               <action.icon className="h-4 w-4" />
               {action.label}
             </Link>

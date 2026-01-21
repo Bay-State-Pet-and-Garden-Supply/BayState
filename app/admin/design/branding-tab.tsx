@@ -314,6 +314,7 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
                                     size="icon"
                                     onClick={() => removeSocialLink(index)}
                                     className="h-8 w-8"
+                                    aria-label="Remove social link"
                                 >
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>

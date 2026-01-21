@@ -15,20 +15,20 @@ export function StorefrontFooter() {
               From big to small, we feed them all!
             </p>
             <div className="flex space-x-4">
-                <a
-                  href="https://www.facebook.com/baystatepet"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-zinc-700 hover:text-zinc-700"
-                  aria-label="Facebook"
-                >
-                  <Facebook className="h-5 w-5" />
-                </a>
+              <a
+                href="https://www.facebook.com/baystatepet"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
+                aria-label="Facebook"
+              >
+                <Facebook className="h-5 w-5" />
+              </a>
               <a
                 href="https://twitter.com/BayStatePet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-zinc-700 hover:text-zinc-700"
+                className="text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
                 aria-label="Twitter"
               >
                 <Twitter className="h-5 w-5" />
@@ -37,7 +37,7 @@ export function StorefrontFooter() {
                 href="https://www.instagram.com/baystatepet/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-zinc-700 hover:text-zinc-700"
+                className="text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
                 aria-label="Instagram"
               >
                 <Instagram className="h-5 w-5" />
@@ -53,7 +53,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/products"
-                  className="text-sm text-zinc-700 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
                 >
                   All Products
                 </Link>
@@ -61,7 +61,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/services"
-                  className="text-sm text-zinc-700 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
                 >
                   Services
                 </Link>
@@ -69,7 +69,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/brands"
-                  className="text-sm text-zinc-700 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
                 >
                   Brands
                 </Link>
@@ -85,7 +85,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/services/propane"
-                  className="text-sm text-zinc-700 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
                 >
                   Propane Refill
                 </Link>
@@ -93,7 +93,7 @@ export function StorefrontFooter() {
               <li>
                 <Link
                   href="/services/rentals"
-                  className="text-sm text-zinc-700 hover:text-zinc-900"
+                  className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4"
                 >
                   Equipment Rentals
                 </Link>
@@ -109,17 +109,17 @@ export function StorefrontFooter() {
               <li>429 Winthrop Street</li>
               <li>Taunton, MA 02780</li>
               <li>
-                <a href="mailto:sales@baystatepet.com" className="hover:text-zinc-900">
+                <a href="mailto:sales@baystatepet.com" className="hover:text-zinc-900 hover:underline underline-offset-4">
                   sales@baystatepet.com
                 </a>
               </li>
               <li>
-                <a href="tel:+15088213704" className="hover:text-zinc-900">
+                <a href="tel:+15088213704" className="hover:text-zinc-900 hover:underline underline-offset-4">
                   (508) 821-3704
                 </a>
               </li>
               <li>
-                <a href="tel:+17742269845" className="hover:text-zinc-900">
+                <a href="tel:+17742269845" className="hover:text-zinc-900 hover:underline underline-offset-4">
                   (774) 226-9845
                 </a>
               </li>
@@ -133,10 +133,10 @@ export function StorefrontFooter() {
             
             <div className="flex flex-col items-center justify-center lg:items-end">
               <div className="mb-4 flex flex-wrap justify-center gap-4 lg:justify-end">
-                <Link href="/shipping" className="text-sm text-zinc-700 hover:text-zinc-900">Shipping</Link>
-                <Link href="/returns" className="text-sm text-zinc-700 hover:text-zinc-900">Returns</Link>
-                <Link href="/privacy" className="text-sm text-zinc-700 hover:text-zinc-900">Privacy / Security</Link>
-                <Link href="/careers" className="text-sm text-zinc-700 hover:text-zinc-900">Career Opportunities</Link>
+                <Link href="/shipping" className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4">Shipping</Link>
+                <Link href="/returns" className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4">Returns</Link>
+                <Link href="/privacy" className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4">Privacy / Security</Link>
+                <Link href="/careers" className="text-sm text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-4">Career Opportunities</Link>
               </div>
               <p className="text-sm text-zinc-700">
                 © {new Date().getFullYear()} Bay State Pet & Garden Supply. All

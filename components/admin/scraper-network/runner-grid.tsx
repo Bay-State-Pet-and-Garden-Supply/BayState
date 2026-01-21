@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Server, Wifi, WifiOff, Loader2 } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
+
 interface Runner {
     id: string | number;
     name: string;
@@ -47,7 +49,7 @@ export function RunnerGrid({ initialRunners = [] }: RunnerGridProps) {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
             </div>
         );
     }
@@ -63,9 +65,9 @@ export function RunnerGrid({ initialRunners = [] }: RunnerGridProps) {
     if (runners.length === 0) {
         return (
             <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                <Server className="mx-auto h-12 w-12 text-gray-400" />
+                <Server className="mx-auto h-12 w-12 text-gray-600" />
                 <h3 className="mt-4 text-lg font-medium text-gray-900">No Runners Connected</h3>
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-600">
                     Set up a self-hosted runner to start scraping. See the setup guide below.
                 </p>
             </div>
@@ -115,34 +117,38 @@ export function RunnerGrid({ initialRunners = [] }: RunnerGridProps) {
                                     {online ? (
                                         <Wifi className={`h-5 w-5 ${busy ? 'text-yellow-600' : 'text-green-600'}`} />
                                     ) : (
-                                        <WifiOff className="h-5 w-5 text-gray-400" />
+                                        <WifiOff className="h-5 w-5 text-gray-600" />
                                     )}
                                     <div>
                                         <h4 className="font-medium text-gray-900">{runner.name}</h4>
-                                        <p className="text-sm text-gray-500">{runner.os}</p>
+                                        <p className="text-sm text-gray-600">{runner.os}</p>
                                     </div>
                                 </div>
-                                <span
-                                    className={`rounded-full px-2 py-1 text-xs font-medium ${online
-                                        ? busy
-                                            ? 'bg-yellow-100 text-yellow-800'
-                                            : 'bg-green-100 text-green-800'
-                                        : 'bg-gray-100 text-gray-800'
-                                        }`}
+                                <Badge
+                                    variant={online ? (busy ? "warning" : "success") : "secondary"}
+                                    className={`
+                                        ${online 
+                                            ? busy 
+                                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-none' 
+                                                : 'bg-green-100 text-green-800 hover:bg-green-200 border-none'
+                                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-none'
+                                        }
+                                    `}
                                 >
                                     {busy ? 'Busy' : online ? 'Ready' : 'Offline'}
-                                </span>
+                                </Badge>
                             </div>
 
                             {runner.labels.length > 0 && (
                                 <div className="mt-3 flex flex-wrap gap-1">
                                     {runner.labels.slice(0, 4).map((label) => (
-                                        <span
+                                        <Badge
                                             key={label.name}
-                                            className="rounded bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600"
+                                            variant="secondary"
+                                            className="bg-gray-200 text-gray-600 hover:bg-gray-300 border-none text-xs"
                                         >
                                             {label.name}
-                                        </span>
+                                        </Badge>
                                     ))}
                                 </div>
                             )}

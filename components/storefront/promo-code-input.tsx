@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Tag, X, CheckCircle } from 'lucide-react';
+import { Loader2, Tag, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatCurrency } from '@/lib/utils';
 
 interface PromoCodeInputProps {
   subtotal: number;
@@ -27,12 +28,6 @@ export function PromoCodeInput({
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,10 +69,10 @@ export function PromoCodeInput({
           </div>
           <button
             onClick={onRemove}
-            className="rounded-full p-1 text-green-600 hover:bg-green-100"
+            className="rounded-full p-2 text-green-600 hover:bg-green-100 touch-manipulation"
             aria-label="Remove promo code"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -114,7 +109,10 @@ export function PromoCodeInput({
         </Button>
       </form>
       {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+          <AlertCircle className="h-4 w-4" />
+          <span>{error}</span>
+        </div>
       )}
     </div>
   );

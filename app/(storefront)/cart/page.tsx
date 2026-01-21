@@ -5,8 +5,11 @@ import Image from 'next/image';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useCartStore } from '@/lib/cart-store';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { FreeShippingBar } from '@/components/storefront/free-shipping-bar';
 import { PromoCodeInput } from '@/components/storefront/promo-code-input';
+import { CartPreorderSummary } from '@/components/storefront/cart-preorder-summary';
+import { formatCurrency } from '@/lib/utils';
 
 export default function CartPage() {
   const items = useCartStore((state) => state.items);
@@ -21,12 +24,6 @@ export default function CartPage() {
   const discount = useCartStore((state) => state.getDiscount());
   const total = useCartStore((state) => state.getTotal());
   const hasFreeShipping = useCartStore((state) => state.hasFreeShipping());
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
 
   const handleApplyPromo = async (code: string) => {
     try {
@@ -161,80 +158,79 @@ export default function CartPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="sticky top-24 rounded-lg border bg-white p-6">
-              <h2 className="mb-4 text-lg font-semibold text-zinc-900">
-                Order Summary
-              </h2>
+            <div className="sticky top-24 space-y-6">
+              <CartPreorderSummary />
 
-              <PromoCodeInput
-                subtotal={subtotal}
-                appliedCode={promo.code}
-                discount={discount}
-                discountType={promo.discountType}
-                onApply={handleApplyPromo}
-                onRemove={clearPromoCode}
-                className="mb-4"
-              />
+              <div className="rounded-lg border bg-white p-6">
+                <h2 className="mb-4 text-lg font-semibold text-zinc-900">
+                  Order Summary
+                </h2>
 
-              <dl className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-zinc-700">Subtotal</dt>
-                  <dd className="font-medium text-zinc-900">{formatCurrency(subtotal)}</dd>
-                </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <dt>Discount</dt>
-                    <dd className="font-medium">-{formatCurrency(discount)}</dd>
+                <PromoCodeInput
+                  subtotal={subtotal}
+                  appliedCode={promo.code}
+                  discount={discount}
+                  discountType={promo.discountType}
+                  onApply={handleApplyPromo}
+                  onRemove={clearPromoCode}
+                  className="mb-4"
+                />
+
+                <dl className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-700">Subtotal</dt>
+                    <dd className="font-medium text-zinc-900">{formatCurrency(subtotal)}</dd>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <dt className="text-zinc-700">Shipping</dt>
-                  <dd className="font-medium text-zinc-900">
-                    {hasFreeShipping ? (
-                      <span className="text-green-600">FREE</span>
-                    ) : (
-                      'Calculated at checkout'
-                    )}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-zinc-700">Tax</dt>
-                  <dd className="font-medium text-zinc-900">Calculated at checkout</dd>
-                </div>
-              </dl>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <dt>Discount</dt>
+                      <dd className="font-medium">-{formatCurrency(discount)}</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-700">Shipping</dt>
+                    <dd className="font-medium text-zinc-900">
+                      {hasFreeShipping ? (
+                        <span className="text-green-600">FREE</span>
+                      ) : (
+                        'Calculated at checkout'
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-700">Tax</dt>
+                    <dd className="font-medium text-zinc-900">Calculated at checkout</dd>
+                  </div>
+                </dl>
 
-              <div className="mt-4 border-t pt-4">
-                <div className="flex justify-between">
-                  <span className="text-lg font-semibold text-zinc-900">Estimated Total</span>
-                  <span className="text-lg font-semibold text-zinc-900">
-                    {formatCurrency(total)}
-                  </span>
+                <div className="mt-4 border-t pt-4">
+                  <div className="flex justify-between">
+                    <span className="text-lg font-semibold text-zinc-900">Estimated Total</span>
+                    <span className="text-lg font-semibold text-zinc-900">
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
                 </div>
+
+                <Button className="mt-6 w-full" size="lg" asChild>
+                  <Link href="/checkout">Proceed to Checkout</Link>
+                </Button>
+
+                <p className="mt-4 text-center text-xs text-zinc-700">
+                  Tax calculated at checkout
+                </p>
               </div>
-
-              <Button className="mt-6 w-full" size="lg" asChild>
-                <Link href="/checkout">Proceed to Checkout</Link>
-              </Button>
-
-              <p className="mt-4 text-center text-xs text-zinc-700">
-                Tax calculated at checkout
-              </p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <ShoppingBag className="mb-4 h-20 w-20 text-secondary" />
-          <h2 className="mb-2 text-xl font-semibold text-zinc-900">
-            Your cart is empty
-          </h2>
-          <p className="mb-6 text-zinc-700">
-            Start shopping to add items to your cart
-          </p>
-          <Button size="lg" asChild>
-            <Link href="/products">Browse Products</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={ShoppingBag}
+          title="Your cart is empty"
+          description="Looks like you haven't added anything to your cart yet. Browse our products to find something you'll love."
+          actionLabel="Browse Products"
+          actionHref="/products"
+        />
       )}
     </div>
   );

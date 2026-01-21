@@ -3,6 +3,13 @@ import { createOrder, getOrderById } from '@/lib/orders';
 import { sendOrderConfirmationEmail } from '@/lib/email/resend';
 import * as z from 'zod';
 
+const deliveryAddressSchema = z.object({
+  street: z.string(),
+  city: z.string(),
+  state: z.string(),
+  zip: z.string(),
+});
+
 const orderSchema = z.object({
   customerName: z.string().min(1),
   customerEmail: z.string().email(),
@@ -16,11 +23,19 @@ const orderSchema = z.object({
       price: z.number(),
       quantity: z.number(),
       imageUrl: z.string().nullable().optional(),
+      preorderBatchId: z.string().nullable().optional(),
+      pickupOnly: z.boolean().nullable().optional(),
     })
   ),
   promoCode: z.string().nullable().optional(),
   promoCodeId: z.string().nullable().optional(),
   discountAmount: z.number().optional(),
+  fulfillmentMethod: z.enum(['pickup', 'delivery']).default('pickup'),
+  deliveryAddress: deliveryAddressSchema.nullable().optional(),
+  deliveryDistanceMiles: z.number().nullable().optional(),
+  deliveryFee: z.number().nullable().optional(),
+  deliveryServices: z.array(z.string()).optional(),
+  deliveryNotes: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -44,6 +59,12 @@ export async function POST(request: Request) {
       promoCode: validatedData.promoCode,
       promoCodeId: validatedData.promoCodeId,
       discountAmount: validatedData.discountAmount,
+      fulfillmentMethod: validatedData.fulfillmentMethod,
+      deliveryAddress: validatedData.deliveryAddress,
+      deliveryDistanceMiles: validatedData.deliveryDistanceMiles,
+      deliveryFee: validatedData.deliveryFee,
+      deliveryServices: validatedData.deliveryServices,
+      deliveryNotes: validatedData.deliveryNotes,
     });
 
     if (!order) {

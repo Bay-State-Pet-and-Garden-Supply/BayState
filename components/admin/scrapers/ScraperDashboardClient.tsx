@@ -79,7 +79,7 @@ export function ScraperDashboardClient({
       case 'broken':
         return <XCircle className="h-5 w-5 text-red-500" />;
       default:
-        return <HelpCircle className="h-5 w-5 text-gray-400" />;
+        return <HelpCircle className="h-5 w-5 text-gray-600" />;
     }
   };
 
@@ -107,7 +107,7 @@ export function ScraperDashboardClient({
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Scraper Dashboard</h1>
-            <p className="text-sm text-gray-500">Overview of all scrapers and test results</p>
+            <p className="text-sm text-gray-600">Overview of all scrapers and test results</p>
           </div>
         </div>
         <Button asChild>
@@ -118,11 +118,11 @@ export function ScraperDashboardClient({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500">Total Scrapers</CardTitle>
+            <CardTitle className="text-sm text-gray-600">Total Scrapers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{totalScrapers}</div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               {statusCounts.active} active, {statusCounts.draft} draft
             </p>
           </CardContent>
@@ -130,7 +130,7 @@ export function ScraperDashboardClient({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500">Avg Health Score</CardTitle>
+            <CardTitle className="text-sm text-gray-600">Avg Health Score</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{avgHealthScore}%</div>
@@ -143,7 +143,7 @@ export function ScraperDashboardClient({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500">Healthy Scrapers</CardTitle>
+            <CardTitle className="text-sm text-gray-600">Healthy Scrapers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ export function ScraperDashboardClient({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500">Needs Attention</CardTitle>
+            <CardTitle className="text-sm text-gray-600">Needs Attention</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export function ScraperDashboardClient({
                     <span className="font-medium">{scraper.display_name || scraper.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">{scraper.health_score}%</span>
+                    <span className="text-sm text-gray-600">{scraper.health_score}%</span>
                     <Badge variant="outline" className="text-xs">
                       {scraper.status}
                     </Badge>
@@ -227,7 +227,7 @@ export function ScraperDashboardClient({
                       </Badge>
                     </TableCell>
                     <TableCell>{getStatusBadge(test.status)}</TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-gray-600">
                       {test.duration_ms ? `${(test.duration_ms / 1000).toFixed(1)}s` : '-'}
                     </TableCell>
                   </TableRow>

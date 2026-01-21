@@ -21,7 +21,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-900">Featured Products</h2>
         <Button variant="ghost" asChild>
-          <Link href="/products">
+          <Link href="/products" className="hover:underline underline-offset-4">
             View All
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

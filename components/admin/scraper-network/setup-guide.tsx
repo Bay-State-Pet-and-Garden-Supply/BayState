@@ -15,7 +15,7 @@ function CodeBlock({ code, id, copied, onCopy }: CodeBlockProps) {
         <div className="relative mt-2 rounded-lg bg-gray-900 p-3">
             <button
                 onClick={() => onCopy(code, id)}
-                className="absolute right-2 top-2 rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+                className="absolute right-2 top-2 rounded p-1 text-gray-600 hover:bg-gray-800 hover:text-white"
             >
                 {copied === id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </button>
@@ -43,13 +43,13 @@ export function SetupGuide() {
                 className="flex w-full items-center justify-between px-4 py-3 text-left"
             >
                 <div className="flex items-center gap-2">
-                    <Terminal className="h-5 w-5 text-gray-400" />
+                    <Terminal className="h-5 w-5 text-gray-600" />
                     <span className="font-medium text-gray-900">Runner Setup Guide</span>
                 </div>
                 {isOpen ? (
-                    <ChevronUp className="h-5 w-5 text-gray-400" />
+                    <ChevronUp className="h-5 w-5 text-gray-600" />
                 ) : (
-                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                    <ChevronDown className="h-5 w-5 text-gray-600" />
                 )}
             </button>
 
@@ -89,7 +89,7 @@ export function SetupGuide() {
                                 copied={copied}
                                 onCopy={copyToClipboard}
                             />
-                            <p className="mt-2 text-gray-500">The interactive wizard will ask for your Runner Name and API Key.</p>
+                            <p className="mt-2 text-gray-600">The interactive wizard will ask for your Runner Name and API Key.</p>
                         </section>
 
                         <section>

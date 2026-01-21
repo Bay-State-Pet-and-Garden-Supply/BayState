@@ -23,6 +23,7 @@ export interface Product {
   images: string[];
   is_featured: boolean;
   is_special_order: boolean;
+  pickup_only?: boolean;
   weight: number | null;
   search_keywords: string | null;
   category_id: string | null;
@@ -328,3 +329,42 @@ export interface Page {
   updated_at: string;
 }
 
+export interface PreorderGroup {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  minimum_quantity: number;
+  pickup_only: boolean;
+  display_copy: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PreorderBatch {
+  id: string;
+  preorder_group_id: string;
+  arrival_date: string;
+  ordering_deadline: string | null;
+  capacity: number | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DeliveryServiceType = 'pallet_jack' | 'lift_gate' | 'forklift' | 'garage_placement';
+
+export interface DeliveryServiceOption {
+  service: DeliveryServiceType;
+  fee: number;
+  label: string;
+}
+
+export const DELIVERY_SERVICE_OPTIONS: DeliveryServiceOption[] = [
+  { service: 'pallet_jack', fee: 25, label: 'Pallet Jack (+$25)' },
+  { service: 'lift_gate', fee: 50, label: 'Lift Gate (+$50)' },
+  { service: 'forklift', fee: 75, label: 'Forklift Delivery (+$75)' },
+  { service: 'garage_placement', fee: 25, label: 'Garage Placement (+$25)' },
+];

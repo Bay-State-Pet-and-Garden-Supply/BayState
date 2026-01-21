@@ -55,7 +55,7 @@ export default function RootLayout({
         className={`${outfit.variable} antialiased font-sans`}
       >
         {children}
-        <Toaster />
+        <Toaster duration={5000} closeButton />
       </body>
     </html>
   );

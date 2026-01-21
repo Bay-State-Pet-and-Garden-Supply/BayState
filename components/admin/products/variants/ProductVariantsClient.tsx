@@ -1,5 +1,16 @@
 'use client';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, X, Package, Palette, Edit2 } from 'lucide-react';
@@ -34,6 +45,7 @@ import {
   updateProductVariant,
   deleteProductVariant,
 } from '@/lib/admin/variants';
+import { formatCurrency } from '@/lib/utils';
 
 interface ProductVariantsClientProps {
   productId: string;
@@ -94,7 +106,6 @@ export function ProductVariantsClient({
   };
 
   const handleDeleteOption = async (optionId: string) => {
-    if (!confirm('Delete this option and all its values?')) return;
     setDeletingId(optionId);
     
     const result = await deleteProductOption(optionId);
@@ -235,7 +246,6 @@ export function ProductVariantsClient({
   };
 
   const handleDeleteVariant = async (variantId: string) => {
-    if (!confirm('Delete this variant?')) return;
     setDeletingId(variantId);
     
     const result = await deleteProductVariant(variantId);
@@ -248,9 +258,6 @@ export function ProductVariantsClient({
     }
     setDeletingId(null);
   };
-
-  const formatCurrency = (amount: number) => 
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
   return (
     <div className="space-y-6">
@@ -277,16 +284,36 @@ export function ProductVariantsClient({
             <div className="space-y-4">
               {options.map(option => (
                 <div key={option.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium">{option.name}</h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteOption(option.id)}
-                      disabled={deletingId === option.id}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deletingId === option.id}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Option</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete the option &quot;{option.name}&quot; and all its values? This cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteOption(option.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {(option.values || []).map(val => (
@@ -298,13 +325,33 @@ export function ProductVariantsClient({
                           />
                         )}
                         {val.value}
-                        <button
-                          onClick={() => handleDeleteValue(option.id, val.id)}
-                          disabled={deletingId === val.id}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              disabled={deletingId === val.id}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Value</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete &quot;{val.value}&quot;?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteValue(option.id, val.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </Badge>
                     ))}
                     {showValueInput === option.id ? (
@@ -411,14 +458,34 @@ export function ProductVariantsClient({
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteVariant(variant.id)}
-                          disabled={deletingId === variant.id}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={deletingId === variant.id}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Variant</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this variant ({variant.title})? This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteVariant(variant.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Trash2, CheckCircle, MapPin } from 'lucide-react'
 import { deleteAddressAction, setDefaultAddressAction } from '@/lib/account/actions'
 import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function AddressList({ initialAddresses }: { initialAddresses: Address[] }) {
     const [isAdding, setIsAdding] = useState(false)
@@ -73,16 +74,14 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
                 ))}
 
                 {initialAddresses.length === 0 && !isAdding && (
-                    <div className="col-span-full py-12 text-center border-2 border-dashed border-zinc-200 rounded-lg">
-                        <div className="bg-zinc-50 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <MapPin className="h-8 w-8 text-zinc-500" />
-                        </div>
-                        <h3 className="text-lg font-medium text-zinc-900">No addresses</h3>
-                        <p className="text-base text-zinc-600 mb-6">Add an address for faster checkout.</p>
-                        <Button onClick={() => setIsAdding(true)} variant="outline" className="h-11 text-base">
-                            Add Address
-                        </Button>
-                    </div>
+                    <EmptyState
+                        icon={MapPin}
+                        title="No addresses saved"
+                        description="Add an address for faster checkout."
+                        actionLabel="Add Address"
+                        onAction={() => setIsAdding(true)}
+                        className="col-span-full border-dashed"
+                    />
                 )}
             </div>
         </div>

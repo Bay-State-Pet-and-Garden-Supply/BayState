@@ -2,6 +2,7 @@
 
 import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline';
 import { ChevronRight, Package, Settings2, Sparkles } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface PipelineProductCardProps {
     product: PipelineProduct;
@@ -42,13 +43,14 @@ export function PipelineProductCard({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => onSelect(product.sku)}
+                            aria-label={`Select product ${product.sku}`}
                             className="mt-1 h-4 w-4 rounded border-gray-300"
                         />
                     )}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <Package className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <span className="text-xs font-mono text-gray-500 truncate">{product.sku}</span>
+                            <Package className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                            <span className="text-xs font-mono text-gray-600 truncate">{product.sku}</span>
                         </div>
 
                         <div className="space-y-1">
@@ -58,7 +60,7 @@ export function PipelineProductCard({
                         </div>
 
                         <div className="mt-3 flex items-center justify-between gap-4">
-                            <span className="font-semibold text-green-600 shrink-0">${price.toFixed(2)}</span>
+                            <span className="font-semibold text-green-600 shrink-0">{formatCurrency(price)}</span>
                             {onEnrich && (
                                 <button
                                     onClick={() => onEnrich(product.sku)}
@@ -86,13 +88,14 @@ export function PipelineProductCard({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onSelect(product.sku)}
+                    aria-label={`Select product ${product.sku}`}
                     className="mt-1 h-4 w-4 rounded border-gray-300"
                 />
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <Package className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <span className="text-xs font-mono text-gray-500 truncate">{product.sku}</span>
+                        <Package className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                        <span className="text-xs font-mono text-gray-600 truncate">{product.sku}</span>
                         {hasScrapedData && (
                             <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">
                                 Scraped
@@ -105,14 +108,14 @@ export function PipelineProductCard({
                             {cleanName || registerName}
                         </p>
                         {cleanName && registerName !== cleanName && (
-                            <p className="text-xs text-gray-500 truncate" title={registerName}>
+                            <p className="text-xs text-gray-600 truncate" title={registerName}>
                                 Register: {registerName}
                             </p>
                         )}
                     </div>
 
                     <div className="mt-2 flex items-center justify-between">
-                        <span className="font-semibold text-green-600">${price.toFixed(2)}</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(price)}</span>
                         <div className="flex items-center gap-2">
                             {showEnrichButton && onEnrich && (
                                 <button

@@ -206,7 +206,7 @@ describe('RevenueChart', () => {
     expect(bars).toHaveLength(2);
 
     // Check that date labels exist (span elements with date text)
-    const labels = document.querySelectorAll('.text-gray-500');
+    const labels = document.querySelectorAll('.text-gray-600');
     expect(labels.length).toBeGreaterThan(0);
   });
 

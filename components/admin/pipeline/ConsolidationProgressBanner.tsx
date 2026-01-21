@@ -2,6 +2,8 @@
 
 import { Sparkles, X, ChevronRight, Loader2 } from 'lucide-react';
 
+import { Badge } from "@/components/ui/badge"
+
 interface ConsolidationProgressBannerProps {
     batchId: string;
     progress: number; // 0-100
@@ -38,12 +40,12 @@ export function ConsolidationProgressBanner({
                         <h3 className="text-sm font-semibold text-gray-900">
                             AI Consolidation in Progress
                         </h3>
-                        <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                             Batch #{batchId.slice(0, 8)}
-                        </span>
+                        </Badge>
                     </div>
                     
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 text-xs text-gray-600">
                         <div className="flex items-center gap-1.5">
                             <div className="h-1.5 w-24 overflow-hidden rounded-full bg-purple-100">
                                 <div 
@@ -66,11 +68,11 @@ export function ConsolidationProgressBanner({
                         className="group flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 hover:text-purple-600 transition-colors"
                     >
                         View Details
-                        <ChevronRight className="h-3 w-3 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                        <ChevronRight className="h-3 w-3 text-gray-600 group-hover:text-purple-500 transition-colors" />
                     </button>
                     <button
                         onClick={onDismiss}
-                        className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 transition-colors"
+                        className="rounded-full p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                     >
                         <X className="h-4 w-4" />
                         <span className="sr-only">Dismiss</span>

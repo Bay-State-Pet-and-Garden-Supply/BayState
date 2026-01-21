@@ -7,6 +7,17 @@ import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useState } from 'react';
 
 interface Brand {
@@ -28,10 +39,6 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const handleDelete = async (brand: Brand) => {
-    if (!confirm(`Are you sure you want to delete "${brand.name}"?`)) {
-      return;
-    }
-
     setDeleting(brand.id);
     try {
       const response = await fetch(`/api/admin/brands/${brand.id}`, {
@@ -54,10 +61,6 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
 
   const handleBulkDelete = async () => {
     if (selected.length === 0) return;
-
-    if (!confirm(`Delete ${selected.length} brand(s)? This cannot be undone.`)) {
-      return;
-    }
 
     let successCount = 0;
     for (const brand of selected) {
@@ -149,15 +152,35 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
           <ExternalLink className="h-4 w-4" />
         </Link>
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => handleDelete(brand)}
-        disabled={deleting === brand.id}
-        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={deleting === brand.id}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Brand</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{brand.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDelete(brand)}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 
@@ -168,14 +191,34 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
           <span className="text-sm text-purple-700">
             {selected.length} brand(s) selected
           </span>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleBulkDelete}
-          >
-            <Trash2 className="mr-1 h-4 w-4" />
-            Delete Selected
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                Delete Selected
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Selected Brands</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete {selected.length} brand(s)? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleBulkDelete}
+                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                >
+                  Delete All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
       <DataTable

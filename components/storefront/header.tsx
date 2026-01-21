@@ -54,7 +54,7 @@ export function StorefrontHeader({
       <header className="max-md:hidden sticky top-0 z-50 w-full border-b border-white/10 bg-[#006640] text-white shadow-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 group">
             <div className="h-14 w-14 relative">
               <Image
                 src="/logo.png"
@@ -65,7 +65,7 @@ export function StorefrontHeader({
                 priority
               />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col group-hover:underline underline-offset-4">
               <span className="text-xl font-bold leading-tight tracking-tight text-white">
                 Bay State
               </span>
@@ -76,7 +76,7 @@ export function StorefrontHeader({
           </Link>
 
           {/* Desktop Navigation */}
-          <NavigationMenu className="hidden md:flex">
+          <NavigationMenu className="hidden md:flex" aria-label="Main">
             <NavigationMenuList className="gap-2">
               <NavigationMenuItem>
                 <NavigationMenuTrigger className="bg-transparent text-white/90 hover:bg-white/20 hover:text-white data-[state=open]:bg-white/20">
@@ -94,7 +94,7 @@ export function StorefrontHeader({
                               <NavigationMenuLink asChild>
                                 <Link
                                   href={`/products?pet=${pet.name.toLowerCase()}`}
-                                  className="block select-none rounded-md p-2 text-sm leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                  className="block select-none rounded-md p-2 text-sm leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground hover:underline underline-offset-4"
                                 >
                                   <span className="flex items-center gap-2">
                                     <IconComponent className="h-4 w-4" />
@@ -115,7 +115,7 @@ export function StorefrontHeader({
                             <NavigationMenuLink asChild>
                               <Link
                                 href={`/products?category=${cat.slug || cat.name.toLowerCase()}`}
-                                className="block select-none rounded-md p-2 text-sm leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                className="block select-none rounded-md p-2 text-sm leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground hover:underline underline-offset-4"
                               >
                                 {cat.name}
                               </Link>
@@ -125,9 +125,9 @@ export function StorefrontHeader({
                       </ul>
                     </div>
                   </div>
-                  <div className="border-t p-3">
+                    <div className="border-t p-3">
                     <NavigationMenuLink asChild>
-                      <Link href="/products" className="block text-center text-sm font-medium text-primary hover:underline">
+                      <Link href="/products" className="block text-center text-sm font-medium text-primary hover:underline underline-offset-4">
                         View All Products
                       </Link>
                     </NavigationMenuLink>
@@ -148,7 +148,7 @@ export function StorefrontHeader({
                           <NavigationMenuLink asChild>
                             <Link
                               href={`/products?brand=${brand.slug}`}
-                              className="flex items-center gap-2 rounded-md p-2 text-sm leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                              className="flex items-center gap-2 rounded-md p-2 text-sm leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground hover:underline underline-offset-4"
                             >
                               {brand.logo_url && (
                                 <Image src={brand.logo_url} alt={brand.name} width={20} height={20} className="rounded" />
@@ -161,7 +161,7 @@ export function StorefrontHeader({
                     </ul>
                     <div className="mt-3 border-t pt-3">
                       <NavigationMenuLink asChild>
-                        <Link href="/brands" className="block text-center text-sm font-medium text-primary hover:underline">
+                        <Link href="/brands" className="block text-center text-sm font-medium text-primary hover:underline underline-offset-4">
                           View All Brands
                         </Link>
                       </NavigationMenuLink>
@@ -172,7 +172,7 @@ export function StorefrontHeader({
 
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/services" className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white focus:bg-white/20 focus:text-white focus:outline-none">
+                  <Link href="/services" className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white focus:bg-white/20 focus:text-white focus:outline-none hover:underline underline-offset-4">
                     Services
                   </Link>
                 </NavigationMenuLink>
@@ -180,7 +180,7 @@ export function StorefrontHeader({
 
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/about" className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white focus:bg-white/20 focus:text-white focus:outline-none">
+                  <Link href="/about" className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white focus:bg-white/20 focus:text-white focus:outline-none hover:underline underline-offset-4">
                     About
                   </Link>
                 </NavigationMenuLink>
@@ -189,7 +189,7 @@ export function StorefrontHeader({
               {(userRole === 'admin' || userRole === 'staff') && (
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild>
-                    <Link href="/admin" className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium text-red-200 transition-colors hover:bg-white/20 hover:text-white focus:bg-white/20 focus:text-white focus:outline-none">
+                    <Link href="/admin" className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium text-red-200 transition-colors hover:bg-white/20 hover:text-white focus:bg-white/20 focus:text-white focus:outline-none hover:underline underline-offset-4">
                       Admin
                     </Link>
                   </NavigationMenuLink>

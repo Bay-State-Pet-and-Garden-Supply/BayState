@@ -212,21 +212,21 @@ export function ActionCard({ step, index, id }: ActionCardProps) {
               )}
             </div>
 
-            <div className="flex items-center gap-1">
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Toggle expand">
-                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              <div className="flex items-center gap-1">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Toggle expand">
+                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeWorkflowStep(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
-              </CollapsibleTrigger>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => removeWorkflowStep(index)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+              </div>
           </CardHeader>
 
           <CollapsibleContent>

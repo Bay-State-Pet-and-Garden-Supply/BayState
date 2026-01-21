@@ -73,7 +73,7 @@ export default function PageForm({ page }: { page?: Page }) {
             defaultChecked={page?.is_published}
             className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
           />
-          <label htmlFor="is_published" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          <label htmlFor="is_published" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:text-muted-foreground">
             Publish Page
           </label>
         </div>

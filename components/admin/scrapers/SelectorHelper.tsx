@@ -159,7 +159,7 @@ export function SelectorHelper({
 
         {selectors.length > 0 && (
           <div className="space-y-2">
-            <Label className="text-xs text-gray-500">Defined Selectors ({selectors.length})</Label>
+            <Label className="text-xs text-gray-600">Defined Selectors ({selectors.length})</Label>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {selectors.map((entry) => (
                 <div
@@ -182,39 +182,39 @@ export function SelectorHelper({
                       {entry.selector}
                     </code>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleTest(entry.selector, entry.type)}
-                      title="Test selector"
-                    >
-                      <TestTube2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleCopy(entry.selector, entry.id)}
-                      title="Copy selector"
-                    >
-                      {copiedId === entry.id ? (
-                        <Check className="h-3.5 w-3.5 text-green-500" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-red-500 hover:text-red-700"
-                      onClick={() => handleRemove(entry.id)}
-                      title="Remove selector"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleTest(entry.selector, entry.type)}
+                        aria-label="Test selector"
+                      >
+                        <TestTube2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleCopy(entry.selector, entry.id)}
+                        aria-label="Copy selector"
+                      >
+                        {copiedId === entry.id ? (
+                          <Check className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-red-500 hover:text-red-700"
+                        onClick={() => handleRemove(entry.id)}
+                        aria-label="Remove selector"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                 </div>
               ))}
             </div>
@@ -222,7 +222,7 @@ export function SelectorHelper({
         )}
 
         {selectors.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
+          <p className="text-sm text-gray-600 text-center py-4">
             No selectors defined. Add your first selector above.
           </p>
         )}

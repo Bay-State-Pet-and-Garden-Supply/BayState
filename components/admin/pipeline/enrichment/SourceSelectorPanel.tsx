@@ -28,7 +28,7 @@ const STATUS_COLORS = {
   healthy: 'text-green-500',
   degraded: 'text-yellow-500',
   offline: 'text-red-500',
-  unknown: 'text-gray-400',
+  unknown: 'text-gray-600',
 };
 
 /**
@@ -80,7 +80,7 @@ export function SourceSelectorPanel({
                 {source.displayName}
               </span>
               {source.requiresAuth && (
-                <Lock className="h-3 w-3 text-gray-400 shrink-0" aria-label="Requires authentication" />
+                <Lock className="h-3 w-3 text-gray-600 shrink-0" aria-label="Requires authentication" />
               )}
             </div>
           </div>
@@ -98,7 +98,7 @@ export function SourceSelectorPanel({
             <button
               onClick={() => onRefreshSource(source.id)}
               disabled={isLoading}
-              className="p-1 text-gray-400 hover:text-[#008850] opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none"
+              className="p-1 text-gray-600 hover:text-[#008850] opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none"
               title="Refresh status"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -113,14 +113,14 @@ export function SourceSelectorPanel({
     <div className="w-full max-w-[280px] bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="p-4 border-b border-gray-100 bg-gray-50/50">
         <h3 className="font-semibold text-gray-900">Data Sources</h3>
-        <p className="text-xs text-gray-500 mt-1">Select sources to enrich product data</p>
+        <p className="text-xs text-gray-600 mt-1">Select sources to enrich product data</p>
       </div>
 
       <div className="p-2 space-y-4">
         {/* Scrapers Section */}
         {scrapers.length > 0 && (
           <div>
-            <h4 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <h4 className="px-3 py-1 text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Scrapers
             </h4>
             <div className="mt-1 space-y-0.5">
@@ -132,7 +132,7 @@ export function SourceSelectorPanel({
         {/* B2B Section */}
         {b2b.length > 0 && (
           <div>
-            <h4 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <h4 className="px-3 py-1 text-xs font-semibold text-gray-600 uppercase tracking-wider">
               B2B Integrations
             </h4>
             <div className="mt-1 space-y-0.5">
@@ -142,7 +142,7 @@ export function SourceSelectorPanel({
         )}
 
         {sources.length === 0 && (
-          <div className="p-4 text-center text-sm text-gray-500 italic">
+          <div className="p-4 text-center text-sm text-gray-600 italic">
             No sources available
           </div>
         )}

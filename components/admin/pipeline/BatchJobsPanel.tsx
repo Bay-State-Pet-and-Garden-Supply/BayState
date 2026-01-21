@@ -13,6 +13,7 @@ import {
     AlertCircle,
     Play
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 
 export interface BatchJob {
@@ -113,14 +114,14 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="flex w-full items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-                <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    <h3 className="text-sm font-semibold text-gray-900">Consolidation History</h3>
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                        {jobs.length}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-400">
+                    <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-purple-600" />
+                        <h3 className="text-sm font-semibold text-gray-900">Consolidation History</h3>
+                        <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs py-0.5">
+                            {jobs.length}
+                        </Badge>
+                    </div>
+                <div className="flex items-center gap-2 text-gray-600">
                     {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </div>
@@ -158,7 +159,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                                                     {status.label}
                                                 </span>
                                             </div>
-                                            <div className="text-xs text-gray-500 mt-0.5">
+                                            <div className="text-xs text-gray-600 mt-0.5">
                                                 {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                                                 {' • '}
                                                 {job.total_products} products

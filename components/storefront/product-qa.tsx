@@ -123,8 +123,8 @@ export function ProductQA({ productId, productSlug, questions, isLoggedIn }: Pro
               <p className="text-zinc-700">
                 You must be signed in to post a question.
               </p>
-              <Button asChild variant="outline" className="border-[#2a7034] text-[#2a7034] hover:bg-[#2a7034]/10">
-                <Link href={`/login?redirect=/products/${productSlug}`}>
+              <Button asChild variant="outline" className="border-[#348C41] text-[#348C41] hover:bg-[#348C41]/10">
+                <Link href={`/login?redirect=/products/${productSlug}`} className="hover:underline underline-offset-4">
                   Sign in to Ask
                 </Link>
               </Button>
@@ -161,10 +161,10 @@ function QuestionItem({ question }: { question: QuestionWithAnswers }) {
           <Button
             variant="ghost"
             size="sm"
-            className="shrink-0 h-8 w-8 p-0 text-zinc-700"
+            className="shrink-0 h-10 w-10 p-0 text-zinc-700 hover:bg-zinc-100"
             onClick={() => setIsOpen(!isOpen)}
           >
-            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </Button>
         </div>
 

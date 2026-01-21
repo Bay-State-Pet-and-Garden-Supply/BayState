@@ -67,7 +67,7 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
                 )}
                 {currentSlide.linkUrl && (
                     <Button size="lg" asChild className="h-12 px-8 text-base">
-                        <Link href={currentSlide.linkUrl}>
+                        <Link href={currentSlide.linkUrl} className="hover:underline underline-offset-4">
                             {currentSlide.linkText || 'Shop Now'}
                         </Link>
                     </Button>

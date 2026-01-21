@@ -30,7 +30,7 @@ export function MobileNav() {
   const { openSearch } = useSearch();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white md:hidden" aria-label="Mobile">
       <div className="flex h-16 items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -58,7 +58,7 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors',
+                'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors hover:underline underline-offset-4',
                 isActive
                   ? 'text-zinc-900'
                   : 'text-zinc-700 hover:text-zinc-700'

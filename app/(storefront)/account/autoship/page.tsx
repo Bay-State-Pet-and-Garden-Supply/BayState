@@ -5,6 +5,7 @@ import { getUserSubscriptions, FREQUENCY_LABELS } from '@/lib/subscriptions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default async function AutoshipPage() {
   const supabase = await createClient();
@@ -57,24 +58,14 @@ export default async function AutoshipPage() {
       </div>
 
       {subscriptions.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <RefreshCw className="mb-4 h-16 w-16 text-zinc-300" />
-            <h2 className="mb-2 text-xl font-semibold text-zinc-900">
-              No Autoship Subscriptions
-            </h2>
-            <p className="mb-6 max-w-md text-zinc-600">
-              Save time and money with automatic recurring orders. We&apos;ll suggest
-              products based on your pets!
-            </p>
-            <Button asChild size="lg">
-              <Link href="/account/autoship/new">
-                <Plus className="mr-2 h-5 w-5" />
-                Create Your First Autoship
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={RefreshCw}
+          title="No Autoship Subscriptions"
+          description="Save time and money with automatic recurring orders. We'll suggest products based on your pets!"
+          actionLabel="Create Your First Autoship"
+          actionHref="/account/autoship/new"
+          className="bg-white"
+        />
       ) : (
         <div className="grid gap-4">
           {subscriptions.map((sub) => (
@@ -107,17 +98,18 @@ export default async function AutoshipPage() {
                 {sub.items && sub.items.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {sub.items.slice(0, 4).map((item) => (
-                      <span
+                      <Badge
                         key={item.id}
-                        className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-700"
+                        variant="secondary"
+                        className="bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
                       >
                         {item.product?.name || 'Product'} × {item.quantity}
-                      </span>
+                      </Badge>
                     ))}
                     {sub.items.length > 4 && (
-                      <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-600">
+                      <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 hover:bg-zinc-200">
                         +{sub.items.length - 4} more
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 )}

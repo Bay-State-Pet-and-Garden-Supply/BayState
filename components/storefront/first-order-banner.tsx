@@ -28,7 +28,7 @@ export function FirstOrderBanner({
         </div>
         <Link
           href="/products"
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-primary hover:bg-white/90 transition-colors"
+          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-primary hover:bg-white/90 transition-colors hover:underline underline-offset-4"
         >
           Shop Now
         </Link>

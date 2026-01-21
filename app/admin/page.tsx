@@ -12,6 +12,7 @@ import { StatCard } from '@/components/admin/dashboard/stat-card';
 import { RecentActivity } from '@/components/admin/dashboard/recent-activity';
 import { QuickActions } from '@/components/admin/dashboard/quick-actions';
 import { PipelineStatus } from '@/components/admin/dashboard/pipeline-status';
+import { formatCurrency } from '@/lib/utils';
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
@@ -94,7 +95,7 @@ export default async function AdminDashboard() {
     id: order.id,
     type: 'order' as const,
     title: `Order #${order.order_number || order.id.slice(0, 8)}`,
-    description: `${order.customer_name || 'Customer'} - $${(order.total || 0).toFixed(2)}`,
+    description: `${order.customer_name || 'Customer'} - ${formatCurrency(order.total || 0)}`,
     timestamp: order.created_at,
     status:
       order.status === 'completed'
@@ -155,7 +156,7 @@ export default async function AdminDashboard() {
 
         <StatCard
           title="Today's Revenue"
-          value={`$${todaysRevenue.toFixed(2)}`}
+          value={formatCurrency(todaysRevenue)}
           icon={DollarSign}
           variant="success"
           subtitle={`${todaysOrders.length} order${todaysOrders.length !== 1 ? 's' : ''} today`}

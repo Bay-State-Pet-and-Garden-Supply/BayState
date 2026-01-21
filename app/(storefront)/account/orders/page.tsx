@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Package, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { formatDate, formatCurrency } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export const metadata = {
     title: 'Order History | Bay State Pet & Garden',
@@ -21,14 +23,13 @@ export default async function OrdersPage() {
             </div>
 
             {orders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center">
-                    <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h2 className="text-lg font-medium mb-2">No orders yet</h2>
-                    <p className="text-muted-foreground mb-6">You haven&apos;t placed any orders yet.</p>
-                    <Button asChild>
-                        <Link href="/products">Start Shopping</Link>
-                    </Button>
-                </div>
+                <EmptyState
+                    icon={Package}
+                    title="No orders yet"
+                    description="You haven't placed any orders yet. Start shopping to find great products for your pets and garden."
+                    actionLabel="Start Shopping"
+                    actionHref="/products"
+                />
             ) : (
                 <div className="grid gap-4">
                     {orders.map((order) => (
@@ -37,17 +38,12 @@ export default async function OrdersPage() {
                                 <div className="space-y-1">
                                     <CardTitle className="text-base">Order #{order.order_number}</CardTitle>
                                     <CardDescription>
-                                        Placed on {new Date(order.created_at).toLocaleDateString()}
+                                        Placed on {formatDate(order.created_at)}
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    <span className="font-semibold">${Number(order.total).toFixed(2)}</span>
-                                    <Badge variant={
-                                        order.status === 'completed' ? 'default' :
-                                        order.status === 'cancelled' ? 'destructive' : 'secondary'
-                                    }>
-                                        {order.status}
-                                    </Badge>
+                                    <span className="font-semibold">{formatCurrency(Number(order.total))}</span>
+                                    <StatusBadge status={order.status} />
                                 </div>
                             </CardHeader>
                             <CardContent className="p-4 flex items-center justify-between">

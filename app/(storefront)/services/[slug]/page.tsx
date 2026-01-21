@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getServiceBySlug } from '@/lib/services';
 import { Badge } from '@/components/ui/badge';
 import { AddServiceToCartButton } from '@/components/storefront/add-service-to-cart-button';
+import { formatCurrency } from '@/lib/utils';
 
 interface ServiceDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -21,10 +22,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
   }
 
   const formattedPrice = service.price
-    ? new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(service.price)
+    ? formatCurrency(service.price)
     : null;
 
   return (

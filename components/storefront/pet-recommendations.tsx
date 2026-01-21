@@ -34,7 +34,7 @@ export async function PetRecommendations() {
           </h2>
         </div>
         <Button variant="ghost" asChild>
-          <Link href="/account/pets">
+          <Link href="/account/pets" className="hover:underline underline-offset-4">
             Manage Pets
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

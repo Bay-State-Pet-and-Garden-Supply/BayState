@@ -12,11 +12,13 @@ export interface OrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  preorder_batch_id: string | null;
   created_at: string;
 }
 
 export type PaymentMethod = 'pickup' | 'credit_card' | 'paypal';
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
+export type FulfillmentMethod = 'pickup' | 'delivery';
 
 export interface Order {
   id: string;
@@ -39,6 +41,12 @@ export interface Order {
   paid_at: string | null;
   refunded_amount: number;
   notes: string | null;
+  fulfillment_method: FulfillmentMethod;
+  delivery_address_id: string | null;
+  delivery_distance_miles: number | null;
+  delivery_fee: number;
+  delivery_services: Array<{ service: string; fee: number }>;
+  delivery_notes: string | null;
   created_at: string;
   updated_at: string;
   items?: OrderItem[];
@@ -72,6 +80,17 @@ export interface CreateOrderInput {
   paymentStatus?: PaymentStatus;
   stripePaymentIntentId?: string;
   stripeCustomerId?: string;
+  fulfillmentMethod?: FulfillmentMethod;
+  deliveryAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  } | null;
+  deliveryDistanceMiles?: number | null;
+  deliveryFee?: number | null;
+  deliveryServices?: string[];
+  deliveryNotes?: string | null;
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Order | null> {
@@ -105,6 +124,15 @@ export async function createOrder(input: CreateOrderInput): Promise<Order | null
       stripe_customer_id: input.stripeCustomerId || null,
       refunded_amount: 0,
       paid_at: null,
+      fulfillment_method: input.fulfillmentMethod || 'pickup',
+      delivery_address_id: null, // Create via separate table if needed
+      delivery_distance_miles: input.deliveryDistanceMiles || null,
+      delivery_fee: input.deliveryFee || 0,
+      delivery_services: (input.deliveryServices || []).map((service) => ({
+        service,
+        fee: 0,
+      })),
+      delivery_notes: input.deliveryNotes || null,
     })
     .select()
     .single();
@@ -123,6 +151,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order | null
     quantity: item.quantity,
     unit_price: item.price,
     total_price: item.price * item.quantity,
+    preorder_batch_id: item.preorderBatchId || null,
   }));
 
   const { error: itemsError } = await supabase

@@ -12,6 +12,7 @@ import {
     Plus,
     FolderTree
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -137,7 +138,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                     style={{ marginLeft: depth > 0 ? `${depth * 24}px` : 0 }}
                 >
                     {/* Drag handle */}
-                    <GripVertical className="h-4 w-4 cursor-grab text-gray-400" />
+                    <GripVertical className="h-4 w-4 cursor-grab text-gray-600" />
 
                     {/* Expand/collapse */}
                     <button
@@ -167,7 +168,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                                 className="h-10 w-10 object-cover"
                             />
                         ) : (
-                            <span className="text-lg font-bold text-gray-400">
+                            <span className="text-lg font-bold text-gray-600">
                                 {node.name.charAt(0).toUpperCase()}
                             </span>
                         )}
@@ -181,18 +182,18 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                             )}
                             {hasChildren && (
-                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs py-0.5">
                                     {node.children.length} subcategories
-                                </span>
+                                </Badge>
                             )}
                         </div>
-                        <p className="text-sm text-gray-500">/{node.slug}</p>
+                        <p className="text-sm text-gray-600">/{node.slug}</p>
                     </div>
 
                     {/* Order */}
-                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                    <Badge variant="outline" className="bg-gray-100 text-gray-600 border-transparent text-xs py-0.5">
                         Order: {node.display_order}
-                    </span>
+                    </Badge>
 
                     {/* Actions */}
                     <div className="flex items-center gap-1">
@@ -242,7 +243,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
             {initialCategories.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-16">
                     <p className="text-lg font-medium text-gray-600">No categories yet</p>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-gray-600">
                         Create your first category to organize products
                     </p>
                     <Button className="mt-4" onClick={() => handleCreate(null)}>

@@ -6,7 +6,7 @@ import { Search, X, ArrowRight, Package, Wrench, Tag } from 'lucide-react';
 import Fuse from 'fuse.js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useSearch } from '@/components/storefront/search-provider';
 
 interface SearchResult {
@@ -150,6 +150,7 @@ export function InlineSearch() {
                 <Button 
                     variant="ghost" 
                     size="icon" 
+                    aria-label="Clear search"
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-700 hover:text-zinc-700 hover:bg-zinc-100"
                     onClick={() => { 
                         setQuery(''); 
@@ -210,7 +211,7 @@ export function InlineSearch() {
                     </div>
                     {result.price && (
                       <span className="text-sm font-medium text-zinc-900 whitespace-nowrap">
-                        ${result.price.toFixed(2)}
+                        {formatCurrency(result.price)}
                       </span>
                     )}
                       <ArrowRight className="h-3 w-3 text-zinc-700 ml-2" />

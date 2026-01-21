@@ -55,7 +55,7 @@ export function JobHistory() {
             case 'running':
                 return <Loader2 className="h-4 w-4 animate-spin text-blue-600" />;
             default:
-                return <Clock className="h-4 w-4 text-gray-400" />;
+                return <Clock className="h-4 w-4 text-gray-600" />;
         }
     };
 
@@ -85,7 +85,7 @@ export function JobHistory() {
                 <button
                     onClick={fetchJobs}
                     disabled={loading}
-                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700 disabled:opacity-50"
                 >
                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
@@ -94,10 +94,10 @@ export function JobHistory() {
 
             {loading && jobs.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-600" />
                 </div>
             ) : jobs.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-gray-600">
                     No scraping jobs yet. Select products in the Pipeline and click &quot;Enhance Data&quot;.
                 </div>
             ) : (
@@ -133,17 +133,17 @@ export function JobHistory() {
                                             {(job.skus || []).length} SKU{(job.skus || []).length !== 1 ? 's' : ''}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-gray-500">
+                                    <td className="px-4 py-3 text-gray-600">
                                         {formatTime(job.created_at)}
                                     </td>
-                                    <td className="px-4 py-3 text-gray-500">
+                                    <td className="px-4 py-3 text-gray-600">
                                         {formatDuration(job.created_at, job.completed_at)}
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                            <Terminal className="h-4 w-4 text-gray-500" />
-                                            <span className="sr-only">View Logs</span>
-                                        </Button>
+                                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-gray-100">
+                                        <Terminal className="h-5 w-5 text-gray-600" />
+                                        <span className="sr-only">View Logs</span>
+                                    </Button>
                                     </td>
                                 </tr>
                             ))}

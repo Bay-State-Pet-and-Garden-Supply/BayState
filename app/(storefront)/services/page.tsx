@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { ArrowRight, Wrench, DollarSign } from 'lucide-react';
 import { getAllActiveServices } from '@/lib/services';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
 
 /**
  * Services listing page for customers.
@@ -32,10 +34,7 @@ export default async function ServicesPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => {
               const formattedPrice = service.price
-                ? new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: 'USD',
-                }).format(service.price)
+                ? formatCurrency(service.price)
                 : null;
 
               return (
@@ -44,10 +43,10 @@ export default async function ServicesPage() {
                     <CardContent className="flex h-full min-h-[240px] flex-col p-6">
                       {/* Service Badge */}
                       <div className="mb-4">
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-none">
                           <Wrench className="mr-1.5 h-3.5 w-3.5" />
                           Service
-                        </span>
+                        </Badge>
                       </div>
 
                       {/* Service Info */}

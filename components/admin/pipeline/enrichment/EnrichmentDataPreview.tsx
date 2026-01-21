@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, Database } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface ResolvedField {
   field: string;
@@ -36,13 +37,6 @@ export function EnrichmentDataPreview({
     return String(value);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
-  };
-
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden w-full">
       {/* Header Section */}
@@ -58,7 +52,7 @@ export function EnrichmentDataPreview({
         
         <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-md border border-gray-200 shadow-sm">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Original Price</span>
+            <span className="text-[10px] uppercase font-bold text-gray-600 tracking-wider">Original Price</span>
             <span className="text-lg font-bold text-[#66161D]">{formatCurrency(originalPrice)}</span>
           </div>
           <span className="bg-gray-100 text-gray-600 text-[10px] font-medium px-2 py-1 rounded-full whitespace-nowrap border border-gray-200">
@@ -89,7 +83,7 @@ export function EnrichmentDataPreview({
           >
             <div className="flex-1 min-w-0 pr-4">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   {item.field}
                 </span>
                 {item.hasConflict && (
@@ -122,7 +116,7 @@ export function EnrichmentDataPreview({
         ))}
 
         {resolvedData.length === 0 && (
-          <div className="p-8 text-center text-gray-500 italic">
+          <div className="p-8 text-center text-gray-600 italic">
             No enriched data available yet. Select sources to begin enrichment.
           </div>
         )}

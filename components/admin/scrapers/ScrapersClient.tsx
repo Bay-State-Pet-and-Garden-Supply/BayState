@@ -137,7 +137,7 @@ export function ScrapersClient({ initialScrapers, totalCount }: ScrapersClientPr
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Scraper Configs</h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600">
               {totalCount} scraper configuration{totalCount !== 1 ? 's' : ''}
             </p>
           </div>
@@ -161,7 +161,7 @@ export function ScrapersClient({ initialScrapers, totalCount }: ScrapersClientPr
       {/* Search & Filters */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
           <input
             type="text"
             placeholder="Search scrapers..."
@@ -180,11 +180,11 @@ export function ScrapersClient({ initialScrapers, totalCount }: ScrapersClientPr
       {filteredScrapers.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <FileCode2 className="h-12 w-12 text-gray-400" />
+            <FileCode2 className="h-12 w-12 text-gray-600" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">
               {search ? 'No scrapers match your search' : 'No scrapers yet'}
             </h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-600">
               {search
                 ? 'Try adjusting your search terms'
                 : 'Create your first scraper configuration to get started'}
@@ -217,7 +217,7 @@ export function ScrapersClient({ initialScrapers, totalCount }: ScrapersClientPr
                       score={scraper.health_score}
                     />
                   </div>
-                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
                     <span className="truncate max-w-xs">{scraper.base_url}</span>
                     <span>{getWorkflowCount(scraper)} steps</span>
                     <span>{getSelectorCount(scraper)} selectors</span>
@@ -301,7 +301,7 @@ export function ScrapersClient({ initialScrapers, totalCount }: ScrapersClientPr
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-600">
                 Used in code and API. Lowercase, no spaces.
               </p>
             </div>

@@ -49,7 +49,7 @@ export function CustomersClient({ customers, count }: CustomersClientProps) {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-[250px]"
                     />
-                    <Button type="submit" size="icon" variant="secondary">
+                    <Button type="submit" size="icon" variant="secondary" aria-label="Search customers">
                         <Search className="h-4 w-4" />
                     </Button>
                     {initialSearch && (

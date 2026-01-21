@@ -170,7 +170,7 @@ export function ScraperTestClient({ scraper, recentTests }: ScraperTestClientPro
       case 'error':
         return <XCircle className="h-4 w-4 text-red-500" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
+        return <Clock className="h-4 w-4 text-gray-600" />;
     }
   };
 
@@ -207,7 +207,7 @@ export function ScraperTestClient({ scraper, recentTests }: ScraperTestClientPro
               <h1 className="text-lg font-semibold">
                 Test: {scraper.display_name || scraper.name}
               </h1>
-              <p className="text-xs text-gray-500">{scraper.base_url}</p>
+              <p className="text-xs text-gray-600">{scraper.base_url}</p>
             </div>
           </div>
           <ScraperStatusBadge status={scraper.status} />
@@ -252,7 +252,7 @@ export function ScraperTestClient({ scraper, recentTests }: ScraperTestClientPro
             </div>
             
             {testSkus.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-gray-600 text-center py-4">
                 No test SKUs configured
               </p>
             ) : (
@@ -310,7 +310,7 @@ export function ScraperTestClient({ scraper, recentTests }: ScraperTestClientPro
             </div>
             
             {fakeSkus.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-gray-600 text-center py-4">
                 No fake SKUs configured
               </p>
             ) : (
@@ -354,7 +354,7 @@ export function ScraperTestClient({ scraper, recentTests }: ScraperTestClientPro
         </CardHeader>
         <CardContent>
           {recentTests.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-8">
+            <p className="text-sm text-gray-600 text-center py-8">
               No test runs yet. Run your first test above.
             </p>
           ) : (
@@ -379,7 +379,7 @@ export function ScraperTestClient({ scraper, recentTests }: ScraperTestClientPro
                     </TableCell>
                     <TableCell>{run.skus_tested?.length || 0}</TableCell>
                     <TableCell>{getTestRunStatusBadge(run.status)}</TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-gray-600">
                       {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '-'}
                     </TableCell>
                   </TableRow>

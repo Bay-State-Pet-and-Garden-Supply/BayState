@@ -302,7 +302,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             {/* Search and Actions Bar */}
             <div className="flex items-center gap-4">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
                     <input
                         type="text"
                         placeholder="Search by SKU or name..."
@@ -362,7 +362,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             {/* Product Grid */}
             {isPending ? (
                 <div className="flex h-64 items-center justify-center">
-                    <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                    <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
                 </div>
             ) : products.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
@@ -389,7 +389,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             {/* Load More and Count Info */}
             {!isPending && products.length > 0 && (
                 <div className="flex flex-col items-center gap-4 pt-4">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-600">
                         Showing {products.length} of {counts.find(c => c.status === activeStatus)?.count || 0} products
                     </p>
                     {products.length < (counts.find(c => c.status === activeStatus)?.count || 0) && (

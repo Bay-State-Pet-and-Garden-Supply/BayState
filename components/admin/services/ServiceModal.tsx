@@ -1,13 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Wrench } from 'lucide-react';
+import { Save, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createService, updateService } from '@/app/admin/services/actions';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
 
 export interface Service {
     id: string;
@@ -105,34 +112,27 @@ export function ServiceModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white shadow-xl">
-                {/* Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
                     <div className="flex items-center gap-3">
                         <Wrench className="h-6 w-6 text-blue-600" />
                         <div>
-                            <h2 className="text-lg font-semibold">{isEditing ? 'Edit Service' : 'New Service'}</h2>
-                            {isEditing && <p className="text-sm text-gray-500 font-mono">{service?.slug}</p>}
+                            <DialogTitle>{isEditing ? 'Edit Service' : 'New Service'}</DialogTitle>
+                            {isEditing && <p className="text-sm text-gray-600 font-mono">{service?.slug}</p>}
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="rounded-full p-2 hover:bg-gray-100"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
+                </DialogHeader>
 
                 {/* Error Banner */}
                 {error && (
-                    <div className="mx-6 mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
                         {error}
                     </div>
                 )}
 
                 {/* Form Content */}
-                <div className="p-6 space-y-4">
+                <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Service Name *</Label>
                         <Input
@@ -202,12 +202,11 @@ export function ServiceModal({
                     </div>
                 </div>
 
-                {/* Footer Actions */}
-                <div className="sticky bottom-0 flex items-center justify-between border-t bg-gray-50 px-6 py-4">
-                    <p className="text-xs text-gray-500">
-                        Press <kbd className="rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
-                        <kbd className="rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
-                    </p>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                    <div className="flex-1 text-xs text-gray-600 flex items-center">
+                        Press <kbd className="mx-1 rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
+                        <kbd className="mx-1 rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
+                    </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={onClose} disabled={saving}>
                             Cancel
@@ -220,8 +219,8 @@ export function ServiceModal({
                             {saving ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Service')}
                         </Button>
                     </div>
-                </div>
-            </div>
-        </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
