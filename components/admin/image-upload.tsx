@@ -170,17 +170,17 @@ export function ImageUpload({
         ) : uploading ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
             <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-            <p className="text-sm text-gray-500">Uploading...</p>
+            <p className="text-sm text-gray-600">Uploading...</p>
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
             {dragOver ? (
               <Upload className="h-8 w-8 text-purple-600" />
             ) : (
-              <ImageIcon className="h-8 w-8 text-gray-400" />
+              <ImageIcon className="h-8 w-8 text-gray-600" />
             )}
-            <p className="text-sm text-gray-500">{placeholder}</p>
-            <p className="text-xs text-gray-400">
+            <p className="text-sm text-gray-600">{placeholder}</p>
+            <p className="text-xs text-gray-600">
               Max size: {maxSizeMB}MB
             </p>
           </div>
@@ -280,7 +280,7 @@ export function ImageGallery({
       </div>
 
       {images.length > 0 && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-600">
           {images.length} of {maxImages} images. Drag to reorder.
         </p>
       )}

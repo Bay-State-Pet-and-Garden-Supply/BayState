@@ -47,7 +47,7 @@ export function RunnerGrid({ initialRunners = [] }: RunnerGridProps) {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
             </div>
         );
     }
@@ -63,9 +63,9 @@ export function RunnerGrid({ initialRunners = [] }: RunnerGridProps) {
     if (runners.length === 0) {
         return (
             <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                <Server className="mx-auto h-12 w-12 text-gray-400" />
+                <Server className="mx-auto h-12 w-12 text-gray-600" />
                 <h3 className="mt-4 text-lg font-medium text-gray-900">No Runners Connected</h3>
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-600">
                     Set up a self-hosted runner to start scraping. See the setup guide below.
                 </p>
             </div>
@@ -115,11 +115,11 @@ export function RunnerGrid({ initialRunners = [] }: RunnerGridProps) {
                                     {online ? (
                                         <Wifi className={`h-5 w-5 ${busy ? 'text-yellow-600' : 'text-green-600'}`} />
                                     ) : (
-                                        <WifiOff className="h-5 w-5 text-gray-400" />
+                                        <WifiOff className="h-5 w-5 text-gray-600" />
                                     )}
                                     <div>
                                         <h4 className="font-medium text-gray-900">{runner.name}</h4>
-                                        <p className="text-sm text-gray-500">{runner.os}</p>
+                                        <p className="text-sm text-gray-600">{runner.os}</p>
                                     </div>
                                 </div>
                                 <span

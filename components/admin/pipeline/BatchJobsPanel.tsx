@@ -120,7 +120,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                         {jobs.length}
                     </span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-400">
+                <div className="flex items-center gap-2 text-gray-600">
                     {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </div>
@@ -158,7 +158,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                                                     {status.label}
                                                 </span>
                                             </div>
-                                            <div className="text-xs text-gray-500 mt-0.5">
+                                            <div className="text-xs text-gray-600 mt-0.5">
                                                 {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                                                 {' • '}
                                                 {job.total_products} products

@@ -124,7 +124,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
           style={{ marginLeft: depth > 0 ? `${depth * 24}px` : 0 }}
         >
           {/* Drag handle */}
-          <GripVertical className="h-4 w-4 cursor-grab text-gray-400" />
+          <GripVertical className="h-4 w-4 cursor-grab text-gray-600" />
 
           {/* Expand/collapse */}
           <button

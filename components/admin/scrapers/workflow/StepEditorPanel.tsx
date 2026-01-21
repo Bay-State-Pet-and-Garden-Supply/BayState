@@ -52,7 +52,7 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-600">
           Action type &quot;{step.action}&quot; is not recognized.
         </p>
       </div>
@@ -246,7 +246,7 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
       <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
         <div>
           <h3 className="font-semibold text-sm">{definition.label}</h3>
-          <p className="text-xs text-gray-500">{definition.description}</p>
+          <p className="text-xs text-gray-600">{definition.description}</p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8" aria-label="Close">
           <X className="h-4 w-4" />
@@ -270,7 +270,7 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           {paramEntries.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
               <AlertCircle className="h-4 w-4" />
               <span>This action has no configurable parameters.</span>
             </div>
@@ -298,7 +298,7 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
 
       {/* Footer */}
       <div className="border-t px-4 py-3 bg-gray-50">
-        <p className="text-[10px] text-gray-400">
+        <p className="text-[10px] text-gray-600">
           Node: {nodeId} | Action: {step.action}
         </p>
       </div>
@@ -311,7 +311,7 @@ function ParamTooltip({ description }: { description: string }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+          <Info className="h-3.5 w-3.5 text-gray-600 cursor-help" />
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-[200px]">
           <p className="text-xs">{description}</p>

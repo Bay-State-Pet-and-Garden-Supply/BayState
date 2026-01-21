@@ -150,6 +150,7 @@ export function InlineSearch() {
                 <Button 
                     variant="ghost" 
                     size="icon" 
+                    aria-label="Clear search"
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-700 hover:text-zinc-700 hover:bg-zinc-100"
                     onClick={() => { 
                         setQuery(''); 

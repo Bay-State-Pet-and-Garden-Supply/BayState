@@ -73,7 +73,7 @@ export function YamlDiffViewer({ original, modified, className }: YamlDiffViewer
 
   if (!stats.hasChanges) {
     return (
-      <div className={cn('text-sm text-gray-500 text-center py-8', className)}>
+      <div className={cn('text-sm text-gray-600 text-center py-8', className)}>
         No changes detected
       </div>
     );
@@ -105,7 +105,7 @@ export function YamlDiffViewer({ original, modified, className }: YamlDiffViewer
             ? 'text-green-600' 
             : line.type === 'removed' 
               ? 'text-red-600' 
-              : 'text-gray-400';
+              : 'text-gray-600';
 
           return (
             <div key={index} className={cn('flex', bgColor)}>

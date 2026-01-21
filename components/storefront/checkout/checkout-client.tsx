@@ -629,6 +629,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                     id="phone"
                     name="phone"
                     type="tel"
+                    autoComplete="tel"
                     placeholder="(555) 123-4567"
                     className="h-12"
                     defaultValue={userData?.phone || ''}

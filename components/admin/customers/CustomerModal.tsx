@@ -41,7 +41,7 @@ export function CustomerModal({
                         </div>
                         <div>
                             <h2 className="text-lg font-semibold">{customer.full_name || 'Customer Profile'}</h2>
-                            <p className="text-sm text-gray-500 font-mono">{customer.id}</p>
+                            <p className="text-sm text-gray-600 font-mono">{customer.id}</p>
                         </div>
                     </div>
                     <button
@@ -61,21 +61,21 @@ export function CustomerModal({
                         </h3>
                         <div className="rounded-lg border bg-gray-50 p-4 space-y-3">
                             <div>
-                                <span className="text-xs font-medium text-gray-500 uppercase">Email</span>
+                                <span className="text-xs font-medium text-gray-600 uppercase">Email</span>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <Mail className="h-4 w-4 text-gray-400" />
+                                    <Mail className="h-4 w-4 text-gray-600" />
                                     <span className="text-sm">{customer.email}</span>
                                 </div>
                             </div>
                             <div>
-                                <span className="text-xs font-medium text-gray-500 uppercase">Joined</span>
+                                <span className="text-xs font-medium text-gray-600 uppercase">Joined</span>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <Calendar className="h-4 w-4 text-gray-400" />
+                                    <Calendar className="h-4 w-4 text-gray-600" />
                                     <span className="text-sm">{new Date(customer.created_at).toLocaleDateString()}</span>
                                 </div>
                             </div>
                             <div>
-                                <span className="text-xs font-medium text-gray-500 uppercase">Account Type</span>
+                                <span className="text-xs font-medium text-gray-600 uppercase">Account Type</span>
                                 <div className="mt-1">
                                     <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                                         Customer

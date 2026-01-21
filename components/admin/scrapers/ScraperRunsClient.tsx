@@ -224,7 +224,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Scraper Runs</h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600">
               {totalCount} scrape job{totalCount !== 1 ? 's' : ''} execution history
             </p>
           </div>
@@ -246,7 +246,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
       {/* Stats Summary */}
       <div className="flex gap-4 overflow-x-auto pb-1">
         <div className="flex-shrink-0 rounded-lg bg-gray-50 p-4 w-28">
-          <p className="text-sm text-gray-500">Total Jobs</p>
+          <p className="text-sm text-gray-600">Total Jobs</p>
           <p className="text-2xl font-bold">{totalCount}</p>
         </div>
         <div className="flex-shrink-0 rounded-lg bg-yellow-50 p-4 w-28">

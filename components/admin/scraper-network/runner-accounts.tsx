@@ -86,7 +86,7 @@ export function RunnerAccounts() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
             </div>
         );
     }
@@ -117,9 +117,9 @@ export function RunnerAccounts() {
 
             {runners.length === 0 ? (
                 <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                    <Key className="mx-auto h-12 w-12 text-gray-400" />
+                    <Key className="mx-auto h-12 w-12 text-gray-600" />
                     <h4 className="mt-4 text-lg font-medium text-gray-900">No Runner Accounts</h4>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-gray-600">
                         Create API keys to allow runners to authenticate.
                     </p>
                     <Button className="mt-4" onClick={() => setShowModal(true)}>
@@ -132,19 +132,19 @@ export function RunnerAccounts() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-600">
                                     Runner
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-600">
                                     Status
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-600">
                                     Last Auth
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-600">
                                     Last Seen
                                 </th>
-                                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-600">
                                     Actions
                                 </th>
                             </tr>
@@ -157,11 +157,11 @@ export function RunnerAccounts() {
                                             {runner.has_credentials ? (
                                                 <ShieldCheck className="h-5 w-5 text-green-600" />
                                             ) : (
-                                                <ShieldX className="h-5 w-5 text-gray-400" />
+                                                <ShieldX className="h-5 w-5 text-gray-600" />
                                             )}
                                             <div>
                                                 <div className="font-medium text-gray-900">{runner.name}</div>
-                                                <div className="text-xs text-gray-500 font-mono">
+                                                <div className="text-xs text-gray-600 font-mono">
                                                     {runner.has_credentials ? 'API key configured' : 'No API key'}
                                                 </div>
                                             </div>
@@ -179,10 +179,10 @@ export function RunnerAccounts() {
                                             {runner.status}
                                         </span>
                                     </td>
-                                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                                         {formatDate(runner.last_auth_at)}
                                     </td>
-                                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                                         {formatDate(runner.last_seen_at)}
                                     </td>
                                     <td className="whitespace-nowrap px-4 py-3 text-right">

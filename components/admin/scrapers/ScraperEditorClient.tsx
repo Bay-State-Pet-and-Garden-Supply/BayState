@@ -190,7 +190,7 @@ export function ScraperEditorClient({ scraper }: ScraperEditorClientProps) {
             <FileCode className="h-5 w-5 text-blue-600" />
             <div>
               <h1 className="text-lg font-semibold">{scraper.display_name || scraper.name}</h1>
-              <p className="text-xs text-gray-500">{scraper.base_url}</p>
+              <p className="text-xs text-gray-600">{scraper.base_url}</p>
             </div>
           </div>
           <ScraperStatusBadge status={status} />
@@ -298,19 +298,19 @@ export function ScraperEditorClient({ scraper }: ScraperEditorClientProps) {
               </CardHeader>
               <CardContent className="text-sm space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Workflow Steps</span>
+                  <span className="text-gray-600">Workflow Steps</span>
                   <span className="font-medium">{scraper.config?.workflows?.length || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Selectors</span>
+                  <span className="text-gray-600">Selectors</span>
                   <span className="font-medium">{scraper.config?.selectors?.length || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Test SKUs</span>
+                  <span className="text-gray-600">Test SKUs</span>
                   <span className="font-medium">{scraper.config?.test_skus?.length || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Fake SKUs</span>
+                  <span className="text-gray-600">Fake SKUs</span>
                   <span className="font-medium">{scraper.config?.fake_skus?.length || 0}</span>
                 </div>
               </CardContent>
@@ -365,7 +365,7 @@ export function ScraperEditorClient({ scraper }: ScraperEditorClientProps) {
                   <CardTitle className="text-sm">Last Test</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm">
-                  <p className="text-gray-500">
+                  <p className="text-gray-600">
                     {new Date(scraper.last_test_at).toLocaleString()}
                   </p>
                 </CardContent>

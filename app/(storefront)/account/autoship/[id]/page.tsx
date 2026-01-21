@@ -140,7 +140,7 @@ export default async function AutoshipDetailPage({
                             (item.product?.price || 0) * item.quantity
                           )}
                         </span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Remove item from autoship">
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>

@@ -82,7 +82,7 @@ export default async function ScraperRunDetailPage({ params }: PageProps) {
               <h1 className="text-lg font-bold text-gray-900 capitalize leading-tight">
                 {run.scraper_name || 'Unknown Scraper'}
               </h1>
-              <p className="text-xs text-gray-500 font-mono">{run.id.slice(0, 8)}...{run.id.slice(-4)}</p>
+              <p className="text-xs text-gray-600 font-mono">{run.id.slice(0, 8)}...{run.id.slice(-4)}</p>
             </div>
           </div>
           <div className="h-6 w-px bg-gray-200" />
@@ -91,15 +91,15 @@ export default async function ScraperRunDetailPage({ params }: PageProps) {
 
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-1">
-            <span className="text-gray-500">SKUs:</span>
+            <span className="text-gray-600">SKUs:</span>
             <span className="font-medium">{run.total_skus.toLocaleString()}</span>
             {run.failed_skus > 0 && <span className="text-red-600">({run.failed_skus} failed)</span>}
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-gray-500">Duration:</span>
+            <span className="text-gray-600">Duration:</span>
             <span className="font-medium">{formatDuration(run.created_at, run.completed_at)}</span>
           </div>
-          <div className="flex items-center gap-1 text-gray-500">
+          <div className="flex items-center gap-1 text-gray-600">
             <span>Created:</span>
             <span className="font-medium">
               {run.created_at ? format(new Date(run.created_at), 'MMM d, h:mm a') : '-'}

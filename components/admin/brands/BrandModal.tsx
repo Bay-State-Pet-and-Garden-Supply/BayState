@@ -106,7 +106,7 @@ export function BrandModal({
                         <Tag className="h-6 w-6 text-purple-600" />
                         <div>
                             <h2 className="text-lg font-semibold">{isEditing ? 'Edit Brand' : 'New Brand'}</h2>
-                            {isEditing && <p className="text-sm text-gray-500 font-mono">{brand.slug}</p>}
+                            {isEditing && <p className="text-sm text-gray-600 font-mono">{brand.slug}</p>}
                         </div>
                     </div>
                     <button
@@ -172,7 +172,7 @@ export function BrandModal({
 
                 {/* Footer Actions */}
                 <div className="sticky bottom-0 flex items-center justify-between border-t bg-gray-50 px-6 py-4">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-600">
                         Press <kbd className="rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
                         <kbd className="rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
                     </p>

@@ -67,13 +67,17 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
                             <Badge variant={enabled ? 'default' : 'secondary'}>
                                 {enabled ? 'Active' : 'Inactive'}
                             </Badge>
-                            <input
-                                type="checkbox"
-                                name="enabled"
-                                checked={enabled}
-                                onChange={(e) => setEnabled(e.target.checked)}
-                                className="h-5 w-5 rounded border-gray-300"
-                            />
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    id="enabled"
+                                    name="enabled"
+                                    checked={enabled}
+                                    onChange={(e) => setEnabled(e.target.checked)}
+                                    className="h-5 w-5 rounded border-gray-300"
+                                />
+                                <span className="sr-only">Enable banner</span>
+                            </label>
                         </div>
                     </div>
 

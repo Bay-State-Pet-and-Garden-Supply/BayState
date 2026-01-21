@@ -281,6 +281,7 @@ export default function NewAutoshipPage() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label="Decrease quantity"
                         onClick={() => updateQuantity(item.productId, -1)}
                       >
                         <Minus className="h-4 w-4" />
@@ -291,6 +292,7 @@ export default function NewAutoshipPage() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label="Increase quantity"
                         onClick={() => updateQuantity(item.productId, 1)}
                       >
                         <Plus className="h-4 w-4" />

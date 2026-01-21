@@ -204,7 +204,7 @@ export function ProductEditModal({
                         <Package className="h-6 w-6 text-gray-600" />
                         <div>
                             <h2 className="text-lg font-semibold">Edit Product</h2>
-                            <p className="text-sm text-gray-500 font-mono">{product.sku}</p>
+                            <p className="text-sm text-gray-600 font-mono">{product.sku}</p>
                         </div>
                     </div>
                     <button
@@ -347,7 +347,7 @@ export function ProductEditModal({
                                                 </div>
                                             ))}
                                         {images.length > 4 && (
-                                            <div className="flex h-16 w-16 items-center justify-center rounded border bg-gray-50 text-sm text-gray-500">
+                                            <div className="flex h-16 w-16 items-center justify-center rounded border bg-gray-50 text-sm text-gray-600">
                                                 +{images.length - 4}
                                             </div>
                                         )}
@@ -361,7 +361,7 @@ export function ProductEditModal({
 
                 {/* Footer Actions */}
                 <div className="sticky bottom-0 flex items-center justify-between border-t bg-gray-50 px-6 py-4">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-600">
                         Press <kbd className="rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
                         <kbd className="rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
                     </p>

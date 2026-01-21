@@ -93,7 +93,7 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                             <Key className="h-6 w-6 text-green-600" />
                             <div>
                                 <h2 className="text-lg font-semibold">API Key Created</h2>
-                                <p className="text-sm text-gray-500">{credentials.runner_name}</p>
+                                <p className="text-sm text-gray-600">{credentials.runner_name}</p>
                             </div>
                         </div>
                     </div>
@@ -111,11 +111,12 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                                     variant="outline"
                                     size="icon"
                                     onClick={() => copyToClipboard(credentials.api_key, 'key')}
+                                    aria-label="Copy API key"
                                 >
                                     {copied === 'key' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                                 </Button>
                             </div>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-600">
                                 Keys start with <code className="bg-gray-100 px-1 rounded">bsr_</code> for easy identification.
                             </p>
                         </div>
@@ -186,9 +187,9 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                             placeholder="e.g. home-server-1"
                             autoFocus={!initialRunnerName}
                             readOnly={!!initialRunnerName}
-                            className={initialRunnerName ? 'bg-gray-100 text-gray-500' : ''}
+                            className={initialRunnerName ? 'bg-gray-100 text-gray-600' : ''}
                         />
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-600">
                             {initialRunnerName 
                                 ? 'Runner name cannot be changed. Create a new runner for a different name.'
                                 : 'Lowercase letters, numbers, and hyphens only. 3-50 characters.'}

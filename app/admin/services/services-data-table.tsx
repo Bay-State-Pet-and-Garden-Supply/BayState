@@ -182,7 +182,7 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
         {service.is_active ? (
           <ToggleRight className="h-4 w-4 text-green-600" />
         ) : (
-          <ToggleLeft className="h-4 w-4 text-gray-400" />
+          <ToggleLeft className="h-4 w-4 text-gray-600" />
         )}
       </Button>
       <Button variant="ghost" size="sm" asChild>

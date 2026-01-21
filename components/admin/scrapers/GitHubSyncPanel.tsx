@@ -185,20 +185,20 @@ export function GitHubSyncPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Status</span>
+            <span className="text-sm text-gray-600">Status</span>
             {getStatusBadge()}
           </div>
 
           {lastSyncAt && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Last Sync</span>
+              <span className="text-gray-600">Last Sync</span>
               <span>{new Date(lastSyncAt).toLocaleString()}</span>
             </div>
           )}
 
           {lastCommitUrl && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Last Commit</span>
+              <span className="text-gray-600">Last Commit</span>
               <a 
                 href={lastCommitUrl} 
                 target="_blank" 

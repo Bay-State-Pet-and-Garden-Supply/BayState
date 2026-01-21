@@ -32,7 +32,7 @@ const statusConfig: Record<ScraperStatus, { label: string; className: string }> 
   },
   archived: {
     label: 'Archived',
-    className: 'bg-gray-100 text-gray-500 border-gray-200',
+    className: 'bg-gray-100 text-gray-600 border-gray-200',
   },
 };
 
@@ -54,7 +54,7 @@ const healthConfig: Record<HealthStatus, { label: string; className: string; emo
   },
   unknown: {
     label: 'Unknown',
-    className: 'bg-gray-100 text-gray-500 border-gray-300',
+    className: 'bg-gray-100 text-gray-600 border-gray-300',
     emoji: '',
   },
 };

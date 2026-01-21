@@ -122,7 +122,7 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
                 <div>
                     <p className="font-medium text-gray-900">{row.name}</p>
                     {row.description && (
-                        <p className="text-xs text-gray-500 line-clamp-1">{row.description}</p>
+                        <p className="text-xs text-gray-600 line-clamp-1">{row.description}</p>
                     )}
                 </div>
             ),
@@ -161,7 +161,7 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
             header: 'Created',
             sortable: true,
             render: (value) => (
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-600">
                     {new Date(String(value)).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -185,7 +185,7 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
                 {service.is_active ? (
                     <ToggleRight className="h-4 w-4 text-green-600" />
                 ) : (
-                    <ToggleLeft className="h-4 w-4 text-gray-400" />
+                    <ToggleLeft className="h-4 w-4 text-gray-600" />
                 )}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => handleEdit(service)}>

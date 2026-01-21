@@ -81,7 +81,7 @@ export function AdminProductsClient({ initialProducts, totalCount }: AdminProduc
             {/* Search Bar */}
             <div className="flex items-center gap-4">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
                     <input
                         type="text"
                         placeholder="Search loaded products..."
@@ -97,9 +97,9 @@ export function AdminProductsClient({ initialProducts, totalCount }: AdminProduc
 
             {(!products || products.length === 0) ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-16">
-                    <Package className="h-12 w-12 text-gray-400" />
+                    <Package className="h-12 w-12 text-gray-600" />
                     <p className="mt-4 text-lg font-medium text-gray-600">No published products yet</p>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-gray-600">
                         Products flow through the pipeline before being published
                     </p>
                     <Button asChild className="mt-4">
@@ -133,7 +133,7 @@ export function AdminProductsClient({ initialProducts, totalCount }: AdminProduc
                                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                                         />
                                     ) : (
-                                        <div className="flex h-full items-center justify-center text-gray-400">
+                                        <div className="flex h-full items-center justify-center text-gray-600">
                                             <Package className="h-12 w-12" />
                                         </div>
                                     )}
@@ -153,7 +153,7 @@ export function AdminProductsClient({ initialProducts, totalCount }: AdminProduc
                                     {product.brand_name && (
                                         <p className="text-xs text-muted-foreground">{product.brand_name}</p>
                                     )}
-                                    <p className="text-xs text-gray-400 font-mono">{product.sku}</p>
+                                    <p className="text-xs text-gray-600 font-mono">{product.sku}</p>
                                 </CardHeader>
 
                                 <CardContent className="space-y-3 mt-auto">
@@ -186,7 +186,7 @@ export function AdminProductsClient({ initialProducts, totalCount }: AdminProduc
 
             {products && products.length >= 50 && (
                 <div className="text-center">
-                    <p className="text-sm text-gray-500 mb-2">Only showing the most recent 50 products. Use Data Explorer to see all.</p>
+                    <p className="text-sm text-gray-600 mb-2">Only showing the most recent 50 products. Use Data Explorer to see all.</p>
                     <Button variant="outline" asChild>
                         <Link href="/admin/data/products">View All Products in Data Explorer</Link>
                     </Button>

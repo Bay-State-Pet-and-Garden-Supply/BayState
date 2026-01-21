@@ -238,6 +238,7 @@ export function ReviewSubmissionForm({
                 size="icon" 
                 variant="outline" 
                 onClick={addPro}
+                aria-label="Add pro"
                 disabled={!currentPro.trim()}
               >
                 <Plus className="h-4 w-4" />
@@ -283,6 +284,7 @@ export function ReviewSubmissionForm({
                 size="icon" 
                 variant="outline" 
                 onClick={addCon}
+                aria-label="Add con"
                 disabled={!currentCon.trim()}
               >
                 <Plus className="h-4 w-4" />

@@ -57,13 +57,13 @@ export function ConflictResolutionCard({
             <AlertTriangle className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Resolve Conflict</h3>
+            <h3 className="text-sm font-medium text-gray-600">Resolve Conflict</h3>
             <p className="text-lg font-bold text-gray-900 leading-tight">{field}</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1 rounded-full transition-colors"
+          className="text-gray-600 hover:text-gray-600 hover:bg-gray-100 p-1 rounded-full transition-colors"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
@@ -88,7 +88,7 @@ export function ConflictResolutionCard({
             `}
           >
             <div className="flex-1 min-w-0 pr-4">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-0.5">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-0.5">
                 {option.sourceName}
               </span>
               <span className="text-base font-medium text-gray-900 break-words">

@@ -86,6 +86,7 @@ function LinkList({ title, description, links, onUpdate }: LinkListProps) {
                             size="icon"
                             onClick={() => removeLink(index)}
                             className="h-8 w-8"
+                            aria-label="Remove navigation link"
                         >
                             <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
