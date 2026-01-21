@@ -8,6 +8,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   imageUrl?: string | null;
+  preorderBatchId?: string | null;
 }
 
 export type DiscountType = 'percentage' | 'fixed_amount' | 'free_shipping';
