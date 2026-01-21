@@ -353,3 +353,18 @@ export interface PreorderBatch {
   created_at: string;
   updated_at: string;
 }
+
+export type DeliveryServiceType = 'pallet_jack' | 'lift_gate' | 'forklift' | 'garage_placement';
+
+export interface DeliveryServiceOption {
+  service: DeliveryServiceType;
+  fee: number;
+  label: string;
+}
+
+export const DELIVERY_SERVICE_OPTIONS: DeliveryServiceOption[] = [
+  { service: 'pallet_jack', fee: 25, label: 'Pallet Jack (+$25)' },
+  { service: 'lift_gate', fee: 50, label: 'Lift Gate (+$50)' },
+  { service: 'forklift', fee: 75, label: 'Forklift Delivery (+$75)' },
+  { service: 'garage_placement', fee: 25, label: 'Garage Placement (+$25)' },
+];
