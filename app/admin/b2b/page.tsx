@@ -5,6 +5,8 @@ import { FeedGrid, FeedGridSkeleton } from '@/components/admin/b2b/feed-grid';
 import { SyncHistory, SyncHistorySkeleton } from '@/components/admin/b2b/sync-history';
 import { B2BFeed, B2BSyncJob } from '@/lib/b2b/types';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'B2B Data Feeds | Admin',
   description: 'Manage B2B distributor data feeds and sync status',

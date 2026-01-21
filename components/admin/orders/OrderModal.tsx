@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useState } from 'react';
-import { X, Package, Clock, CheckCircle, XCircle, User, Mail, Phone, FileText } from 'lucide-react';
+import { X, Package, Clock, CheckCircle, XCircle, User, Mail, Phone, FileText, CreditCard, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,21 @@ const statusConfig = {
     processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Package },
     completed: { label: 'Completed', color: 'bg-green-100 text-green-800', icon: CheckCircle },
     cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
+};
+
+const paymentStatusConfig = {
+    pending: { label: 'Pending', color: 'bg-zinc-100 text-zinc-800' },
+    processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800' },
+    completed: { label: 'Paid', color: 'bg-green-100 text-green-800' },
+    failed: { label: 'Failed', color: 'bg-red-100 text-red-800' },
+    refunded: { label: 'Refunded', color: 'bg-purple-100 text-purple-800' },
+    partially_refunded: { label: 'Partially Refunded', color: 'bg-orange-100 text-orange-800' },
+};
+
+const paymentMethodLabels: Record<string, string> = {
+    pickup: 'Pay at Pickup',
+    credit_card: 'Credit Card',
+    paypal: 'PayPal',
 };
 
 const nextStatuses = {
@@ -181,8 +196,58 @@ export function OrderModal({
                             </Card>
                         </div>
 
-                        {/* Customer Info */}
+                        {/* Payment Info */}
                         <div className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <CreditCard className="h-5 w-5" />
+                                        Payment
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-zinc-600">Method</span>
+                                        <span className="font-medium">
+                                            {paymentMethodLabels[order.payment_method] || order.payment_method}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-zinc-600">Status</span>
+                                        <Badge className={paymentStatusConfig[order.payment_status as keyof typeof paymentStatusConfig]?.color}>
+                                            {paymentStatusConfig[order.payment_status as keyof typeof paymentStatusConfig]?.label || order.payment_status}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-zinc-600">Total</span>
+                                        <span className="font-medium">{formatCurrency(order.total)}</span>
+                                    </div>
+                                    {order.refunded_amount && order.refunded_amount > 0 && (
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-zinc-600">Refunded</span>
+                                            <span className="font-medium text-red-600">
+                                                -{formatCurrency(order.refunded_amount)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {order.paid_at && (
+                                        <div className="pt-4 border-t">
+                                            <p className="text-sm text-muted-foreground">Paid on</p>
+                                            <p className="text-sm font-medium">{formatDate(order.paid_at)}</p>
+                                        </div>
+                                    )}
+                                    {order.stripe_payment_intent_id && (
+                                        <div className="pt-4 border-t">
+                                            <p className="text-xs text-muted-foreground">Stripe ID</p>
+                                            <p className="text-xs font-mono text-zinc-500 truncate">
+                                                {order.stripe_payment_intent_id}
+                                            </p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Customer Info */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Customer</CardTitle>

@@ -15,6 +15,9 @@ export interface OrderItem {
   created_at: string;
 }
 
+export type PaymentMethod = 'pickup' | 'credit_card' | 'paypal';
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
+
 export interface Order {
   id: string;
   order_number: string;
@@ -23,16 +26,37 @@ export interface Order {
   customer_email: string;
   customer_phone: string | null;
   status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
   subtotal: number;
   discount_amount: number;
   promo_code: string | null;
   promo_code_id: string | null;
   tax: number;
   total: number;
+  stripe_payment_intent_id: string | null;
+  stripe_customer_id: string | null;
+  paid_at: string | null;
+  refunded_amount: number;
   notes: string | null;
   created_at: string;
   updated_at: string;
   items?: OrderItem[];
+}
+
+export interface OrderPayment {
+  id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  payment_method: 'credit_card' | 'paypal';
+  stripe_payment_intent_id: string | null;
+  stripe_charge_id: string | null;
+  status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'refunded';
+  error_message: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateOrderInput {
@@ -44,6 +68,10 @@ export interface CreateOrderInput {
   promoCode?: string | null;
   promoCodeId?: string | null;
   discountAmount?: number;
+  paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  stripePaymentIntentId?: string;
+  stripeCustomerId?: string;
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Order | null> {
@@ -71,6 +99,12 @@ export async function createOrder(input: CreateOrderInput): Promise<Order | null
       promo_code_id: input.promoCodeId || null,
       tax,
       total,
+      payment_method: input.paymentMethod || 'pickup',
+      payment_status: input.paymentStatus || 'pending',
+      stripe_payment_intent_id: input.stripePaymentIntentId || null,
+      stripe_customer_id: input.stripeCustomerId || null,
+      refunded_amount: 0,
+      paid_at: null,
     })
     .select()
     .single();
