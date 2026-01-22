@@ -1,11 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { CheckoutClient } from '@/components/storefront/checkout/checkout-client';
-
-export interface CheckoutUserData {
-  fullName: string;
-  email: string;
-  phone: string;
-}
+import type { CheckoutUserData } from '@/lib/types';
 
 async function getUserData(): Promise<CheckoutUserData | null> {
   const supabase = await createClient();

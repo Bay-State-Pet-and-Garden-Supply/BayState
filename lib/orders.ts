@@ -68,6 +68,7 @@ export interface OrderPayment {
 }
 
 export interface CreateOrderInput {
+  userId?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
@@ -108,6 +109,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order | null
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .insert({
+      user_id: input.userId || null,
       customer_name: input.customerName,
       customer_email: input.customerEmail,
       customer_phone: input.customerPhone || null,

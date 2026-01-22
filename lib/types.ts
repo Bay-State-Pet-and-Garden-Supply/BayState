@@ -368,3 +368,16 @@ export const DELIVERY_SERVICE_OPTIONS: DeliveryServiceOption[] = [
   { service: 'forklift', fee: 75, label: 'Forklift Delivery (+$75)' },
   { service: 'garage_placement', fee: 25, label: 'Garage Placement (+$25)' },
 ];
+
+// ============================================================================
+// Checkout Types
+// ============================================================================
+
+export interface CheckoutUserData {
+  fullName: string;
+  email: string;
+  phone: string;
+}
+
+// Tax rate constant
+export const TAX_RATE = 0.0625; // 6.25%

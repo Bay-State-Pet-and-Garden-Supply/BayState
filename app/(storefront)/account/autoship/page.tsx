@@ -143,7 +143,7 @@ export default async function AutoshipPage() {
                 Autoship Benefits
               </h3>
               <ul className="mt-1 text-sm text-green-700">
-                <li>• Never run out of your pet&apos;s essentials</li>
+                <li>• Never run out of your pet's essentials</li>
                 <li>• Personalized suggestions based on your pets</li>
                 <li>• Easy to pause, skip, or modify anytime</li>
               </ul>

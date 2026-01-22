@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createOrder, getOrderById } from '@/lib/orders';
 import { sendOrderConfirmationEmail } from '@/lib/email/resend';
 import * as z from 'zod';
@@ -30,6 +31,7 @@ const orderSchema = z.object({
   promoCode: z.string().nullable().optional(),
   promoCodeId: z.string().nullable().optional(),
   discountAmount: z.number().optional(),
+  paymentMethod: z.enum(['pickup', 'credit_card', 'paypal']).default('pickup'),
   fulfillmentMethod: z.enum(['pickup', 'delivery']).default('pickup'),
   deliveryAddress: deliveryAddressSchema.nullable().optional(),
   deliveryDistanceMiles: z.number().nullable().optional(),
@@ -40,6 +42,9 @@ const orderSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const body = await request.json();
     const validatedData = orderSchema.parse(body);
 
@@ -51,6 +56,7 @@ export async function POST(request: Request) {
     }
 
     const order = await createOrder({
+      userId: user?.id || null,
       customerName: validatedData.customerName,
       customerEmail: validatedData.customerEmail,
       customerPhone: validatedData.customerPhone,
@@ -59,6 +65,7 @@ export async function POST(request: Request) {
       promoCode: validatedData.promoCode,
       promoCodeId: validatedData.promoCodeId,
       discountAmount: validatedData.discountAmount,
+      paymentMethod: validatedData.paymentMethod,
       fulfillmentMethod: validatedData.fulfillmentMethod,
       deliveryAddress: validatedData.deliveryAddress,
       deliveryDistanceMiles: validatedData.deliveryDistanceMiles,

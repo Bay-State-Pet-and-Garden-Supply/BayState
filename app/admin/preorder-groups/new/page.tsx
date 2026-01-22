@@ -104,7 +104,7 @@ export default function NewPreorderGroupPage() {
               <Checkbox id="is_active" name="is_active" defaultChecked />
               <Label htmlFor="is_active">Active</Label>
               <p className="text-xs text-muted-foreground ml-2">
-                Inactive groups won&apos;t show on the storefront
+                Inactive groups won't show on the storefront
               </p>
             </div>
 

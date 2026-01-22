@@ -113,10 +113,10 @@ export function PaymentForm({
   const appearance = {
     theme: 'stripe' as const,
     variables: {
-      colorPrimary: '#008850',
-      colorBackground: '#ffffff',
-      colorText: '#1f2937',
-      colorDanger: '#dc2626',
+      colorPrimary: 'hsl(var(--primary))',
+      colorBackground: 'hsl(var(--card))',
+      colorText: 'hsl(var(--foreground))',
+      colorDanger: 'hsl(var(--destructive))',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       spacingUnit: '4px',
       borderRadius: '8px',

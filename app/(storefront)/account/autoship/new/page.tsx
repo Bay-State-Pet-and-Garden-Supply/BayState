@@ -134,7 +134,7 @@ export default function NewAutoshipPage() {
         </Link>
         <h1 className="text-2xl font-bold text-zinc-900">Create Autoship</h1>
         <p className="text-sm text-zinc-600">
-          Set up a recurring order with your pet&apos;s favorite products
+          Set up a recurring order with your pet's favorite products
         </p>
       </div>
 

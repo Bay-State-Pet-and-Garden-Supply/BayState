@@ -197,7 +197,7 @@ export function SyncClient() {
                             <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
                                 <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
                                 <h3 className="text-xl font-semibold text-green-900">All products are up to date!</h3>
-                                <p className="text-gray-600 mt-2">No new products were found in the export that aren&apos;t already on the website.</p>
+                                <p className="text-gray-600 mt-2">No new products were found in the export that aren't already on the website.</p>
                             </CardContent>
                         </Card>
                     )}

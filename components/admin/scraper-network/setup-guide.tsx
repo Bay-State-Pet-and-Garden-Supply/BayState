@@ -98,7 +98,7 @@ export function SetupGuide() {
                             <div className="mt-2 rounded-lg bg-gray-50 p-3 font-mono text-xs">
                                 <div className="grid grid-cols-[1fr,2fr] gap-2">
                                     <div className="font-semibold text-gray-700">SCRAPER_API_URL</div>
-                                    <div className="text-gray-600">This app&apos;s URL (e.g. https://app.baystatepet.com)</div>
+                                    <div className="text-gray-600">This app's URL (e.g. https://app.baystatepet.com)</div>
 
                                     <div className="font-semibold text-gray-700">SCRAPER_API_KEY</div>
                                     <div className="text-gray-600">Your bsr_... key</div>
@@ -115,7 +115,7 @@ export function SetupGuide() {
                                 To run the scraper with a visual interface for debugging:
                             </p>
                             <p>
-                                Ensure the runner&apos;s API key matches what you see in the Runner Accounts table.
+                                Ensure the runner's API key matches what you see in the Runner Accounts table.
                             </p>
                             <p>
                                 If using Docker: &quot;runner_id&quot; in <code>docker-compose.yml</code> must verify against the ID in Runner Accounts.
