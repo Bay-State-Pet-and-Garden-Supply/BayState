@@ -55,8 +55,14 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Check role from JWT app_metadata (no DB call needed)
-    const role = (user?.app_metadata?.role as string) || 'customer'
+    // Check role from profiles table (source of truth)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const role = (profile?.role as string) || 'customer'
 
     // 1. Non-admin/staff should not access any admin route
     if (role !== 'admin' && role !== 'staff') {
