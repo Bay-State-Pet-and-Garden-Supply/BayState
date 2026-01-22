@@ -127,7 +127,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   };
 
   return (
-    <div className="w-full px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <ProductViewTracker productId={product.id} />
       {/* Breadcrumb */}
       <nav className="mb-6">

@@ -51,7 +51,7 @@ export function StorefrontHeader({
 
   return (
     <>
-      <header className="max-md:hidden sticky top-0 z-50 w-full border-b border-white/10 bg-[#006640] text-white shadow-sm">
+      <header className="max-md:hidden sticky top-0 z-50 w-full border-b border-white/10 bg-primary text-white shadow-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">

@@ -36,7 +36,7 @@ export default async function OrderConfirmationPage({
   const hasPreorderItems = order.items?.some((item) => item.preorder_batch_id);
 
   return (
-    <div className="w-full px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="mx-auto max-w-2xl text-center">
         {/* Success Icon */}
         <div className="mb-6 inline-flex items-center justify-center rounded-full bg-green-100 p-4">
@@ -176,7 +176,7 @@ export default async function OrderConfirmationPage({
                   </div>
                 </div>
                 <p className="text-sm text-zinc-700">
-                  We&apos;ll email you when your order is ready for pickup.
+                  We'll email you when your order is ready for pickup.
                 </p>
               </div>
             )}
@@ -187,7 +187,7 @@ export default async function OrderConfirmationPage({
         <Card className="mb-8 text-left">
           <CardContent className="p-6">
             <h2 className="mb-4 text-lg font-semibold text-zinc-900">
-              What&apos;s Next?
+              What's Next?
             </h2>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
@@ -195,7 +195,7 @@ export default async function OrderConfirmationPage({
                 <div>
                   <p className="font-medium text-zinc-900">Confirmation Email</p>
                   <p className="text-sm text-zinc-700">
-                    We&apos;ve sent a confirmation to {order.customer_email}
+                    We've sent a confirmation to {order.customer_email}
                   </p>
                 </div>
               </li>
@@ -205,8 +205,8 @@ export default async function OrderConfirmationPage({
                   <p className="font-medium text-zinc-900">Order Processing</p>
                   <p className="text-sm text-zinc-700">
                     {hasPreorderItems
-                      ? 'This is a pre-order. We&apos;ll prepare your order and email you with updates on when it will be ready.'
-                      : 'We&apos;ll prepare your order and email you when it\'s ready'}
+                      ? "This is a pre-order. We'll prepare your order and email you with updates on when it will be ready."
+                      : "We'll prepare your order and email you when it's ready"}
                   </p>
                 </div>
               </li>

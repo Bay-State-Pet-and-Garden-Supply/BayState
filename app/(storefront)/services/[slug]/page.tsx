@@ -26,7 +26,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
     : null;
 
   return (
-    <div className="w-full px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       {/* Breadcrumb */}
       <nav className="mb-6">
         <Link
