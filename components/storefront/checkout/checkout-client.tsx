@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PromoCodeInput } from '@/components/storefront/promo-code-input';
-import { PaymentForm } from '@/components/storefront/payments/payment-form';
+import { PaymentForm, PaymentMethodSelector } from '@/components/storefront/payments/payment-form';
 import { DELIVERY_SERVICE_OPTIONS, type DeliveryServiceType } from '@/lib/types';
 import { getDeliveryQuote, type DeliveryFeeBreakdown } from '@/lib/storefront/delivery';
 import { formatCurrency } from '@/lib/utils';
@@ -86,6 +86,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
   const [step, setStep] = useState<CheckoutStep>('info');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'pickup' | 'credit_card'>('pickup');
 
   // Calculate totals
   const discountedSubtotal = Math.max(0, subtotal - discount);
@@ -240,11 +241,17 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
     };
 
     try {
-      if (fulfillmentMethod === 'pickup') {
+      // Only skip Stripe payment if paying at pickup
+      // Credit card and PayPal always require Stripe payment flow
+      if (paymentMethod === 'pickup') {
         const response = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(customerData),
+          body: JSON.stringify({
+            ...customerData,
+            paymentMethod: 'pickup',
+            paymentStatus: 'pending',
+          }),
         });
 
         if (!response.ok) {
@@ -262,6 +269,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...customerData,
+          paymentMethod,
           paymentStatus: 'processing',
         }),
       });
@@ -653,18 +661,27 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                   </p>
                 </div>
 
-                {error && (
-                  <div className="rounded-md bg-red-50 p-4 text-sm text-red-600">
-                    {error}
-                  </div>
-                )}
+                  {error && (
+                    <div className="rounded-md bg-red-50 p-4 text-sm text-red-600">
+                      {error}
+                    </div>
+                  )}
 
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full h-14 text-lg"
-                  disabled={isSubmitting || (fulfillmentMethod === 'delivery' && !deliveryQuote?.available)}
-                >
+                  {/* Payment Method Selection */}
+                  <div className="mt-4">
+                    <PaymentMethodSelector
+                      selected={paymentMethod}
+                      onSelect={(method) => setPaymentMethod(method)}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full h-14 text-lg"
+                    disabled={isSubmitting || (fulfillmentMethod === 'delivery' && !deliveryQuote?.available)}
+                  >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -679,7 +696,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                 </Button>
 
                 <p className="text-center text-xs text-zinc-700">
-                  {fulfillmentMethod === 'pickup'
+                  {paymentMethod === 'pickup'
                     ? 'By placing this order, you agree to our terms of service. Payment will be collected at pickup.'
                     : 'Your payment is secured by Stripe. You will be charged after reviewing your order.'}
                 </p>
