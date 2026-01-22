@@ -78,10 +78,10 @@ export function BrandsClient({ brands }: BrandsClientProps) {
               key={letter}
               onClick={() => scrollToSection(letter)}
               className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-zinc-100 hover:text-primary",
+                "w-8 h-8 flex items-center justify-center rounded-md text-sm font-[--font-weight-medium] transition-colors hover:bg-zinc-100 hover:text-primary",
                 activeLetter === letter 
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
-                  : "text-zinc-700"
+                  : "text-muted-foreground"
               )}
             >
               {letter}
@@ -94,8 +94,8 @@ export function BrandsClient({ brands }: BrandsClientProps) {
         {letters.map((letter) => (
           <div key={letter} id={`brand-section-${letter}`} className="scroll-mt-24">
             <div className="flex items-center gap-4 mb-6 border-b pb-2">
-              <h2 className="text-2xl font-bold text-primary">{letter}</h2>
-              <span className="text-sm text-zinc-700">
+              <h2 className="text-2xl font-[--font-weight-bold] text-primary">{letter}</h2>
+              <span className="text-sm text-muted-foreground">
                 {groupedBrands[letter].length} {groupedBrands[letter].length === 1 ? 'Brand' : 'Brands'}
               </span>
             </div>
@@ -107,7 +107,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                   key={brand.id} 
                   className="group block h-full"
                 >
-                  <Card className="h-full hover:shadow-lg transition-all duration-200 border-zinc-200 overflow-hidden group-hover:border-primary/50">
+                  <Card className="h-full hover:shadow-lg transition-all duration-[--animate-duration-slow] border-zinc-200 overflow-hidden group-hover:border-primary/50">
                     <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-3">
                       <div className="relative w-24 h-24 flex items-center justify-center">
                         {brand.logo_url ? (
@@ -115,17 +115,17 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                             src={brand.logo_url}
                             alt={brand.name}
                             fill
-                            className="object-contain transition-transform group-hover:scale-105"
+                            className="object-contain transition-transform duration-[--animate-duration-slower] group-hover:scale-105"
                             sizes="(max-width: 768px) 50vw, 25vw"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border-2 border-primary/10">
+                          <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-[--font-weight-bold] text-xl border-2 border-primary/10">
                             {brand.name.charAt(0)}
                           </div>
                         )}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2">
+                        <h3 className="font-[--font-weight-semibold] text-sm group-hover:text-primary transition-colors line-clamp-2">
                           {brand.name}
                         </h3>
                       </div>
@@ -138,7 +138,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
         ))}
 
         {brands.length === 0 && (
-          <div className="text-center py-12 text-zinc-700">
+          <div className="text-center py-12 text-muted-foreground">
             No brands found.
           </div>
         )}

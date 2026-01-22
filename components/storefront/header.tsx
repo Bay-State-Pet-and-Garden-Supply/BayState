@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu, Search, ShoppingCart, Dog, Cat, Bird, Fish, Rabbit, Bug } from 'lucide-react';
+import { ShoppingCart, Dog, Cat, Bird, Fish, Rabbit, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineSearch } from '@/components/storefront/inline-search';
 import { useCartStore } from '@/lib/cart-store';
 import { CartDrawer } from '@/components/storefront/cart-drawer';
+import { MobileNavDrawer } from '@/components/storefront/mobile-nav-drawer';
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -93,7 +94,7 @@ export function StorefrontHeader({
                             <li key={pet.id}>
                               <NavigationMenuLink asChild>
                                 <Link
-                                  href={`/products?pet=${pet.name.toLowerCase()}`}
+                                  href={`/products?petTypeId=${pet.id}`}
                                   className="block select-none rounded-md p-2 text-sm leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground hover:underline underline-offset-4"
                                 >
                                   <span className="flex items-center gap-2">
@@ -217,14 +218,13 @@ export function StorefrontHeader({
             {/* User Menu */}
             <UserMenu user={user} />
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11 text-white hover:bg-white/20 hover:text-white md:hidden"
-              aria-label="Menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
+            {/* Mobile Navigation Drawer */}
+            <MobileNavDrawer
+              categories={categories}
+              petTypes={petTypes}
+              brands={brands}
+              userRole={userRole}
+            />
           </div>
         </div>
       </header>

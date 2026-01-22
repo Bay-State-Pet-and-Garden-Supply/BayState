@@ -44,7 +44,15 @@ export async function getBrands(): Promise<Brand[]> {
 /**
  * Fetches top-level categories for navigation.
  */
-export async function getNavCategories() {
+export async function getNavCategories(): Promise<Array<{
+  id: string;
+  name: string;
+  slug: string | null;
+  parent_id: string | null;
+  display_order: number | null;
+  image_url: string | null;
+  is_featured: boolean | null;
+}>> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('categories')

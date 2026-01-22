@@ -13,21 +13,29 @@ interface PetType {
   name: string;
 }
 
+interface CategorySummary {
+  id: string;
+  name: string;
+  slug: string | null;
+}
+
 interface ProductFiltersProps {
   brands: Brand[];
   petTypes: PetType[];
+  categories?: CategorySummary[];
 }
 
 /**
  * ProductFilters - Sidebar filters for product listing.
  */
-export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
+export function ProductFilters({ brands, petTypes, categories = [] }: ProductFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const currentSearch = searchParams.get('search') || '';
   const currentBrand = searchParams.get('brand') || '';
-  const currentPetType = searchParams.get('petType') || '';
+  const currentPetTypeId = searchParams.get('petTypeId') || '';
+  const currentCategory = searchParams.get('category') || '';
   const currentStock = searchParams.get('stock') || '';
   const currentMinPrice = searchParams.get('minPrice') || '';
   const currentMaxPrice = searchParams.get('maxPrice') || '';
@@ -60,7 +68,7 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
     router.push('/products');
   };
 
-  const hasFilters = currentSearch || currentBrand || currentPetType || currentStock || currentMinPrice || currentMaxPrice;
+  const hasFilters = currentSearch || currentBrand || currentPetTypeId || currentCategory || currentStock || currentMinPrice || currentMaxPrice;
 
   return (
     <div className="space-y-6 rounded-lg border bg-white p-4">
@@ -133,8 +141,8 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
         <Label htmlFor="pet-type-filter" className="text-sm font-medium">Pet Type</Label>
         <select
           id="pet-type-filter"
-          value={currentPetType}
-          onChange={(e) => updateFilter('petType', e.target.value)}
+          value={currentPetTypeId}
+          onChange={(e) => updateFilter('petTypeId', e.target.value)}
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           <option value="">All Pets</option>
@@ -145,6 +153,26 @@ export function ProductFilters({ brands, petTypes }: ProductFiltersProps) {
           ))}
         </select>
       </div>
+
+      {/* Category Filter */}
+      {categories.length > 0 && (
+        <div>
+          <Label htmlFor="category-filter" className="text-sm font-medium">Category</Label>
+          <select
+            id="category-filter"
+            value={currentCategory}
+            onChange={(e) => updateFilter('category', e.target.value)}
+            className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">All Categories</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.slug || category.name.toLowerCase()}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Stock Status Filter */}
       <div>

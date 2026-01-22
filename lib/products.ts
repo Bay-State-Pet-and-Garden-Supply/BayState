@@ -161,6 +161,7 @@ export async function getFilteredProducts(options?: {
   brandSlug?: string;
   brandId?: string;
   categoryId?: string;
+  categorySlug?: string;
   petTypeId?: string;
   stockStatus?: string;
   minPrice?: number;
@@ -175,6 +176,24 @@ export async function getFilteredProducts(options?: {
     .from('products')
     .select('*, brand:brands(id, name, slug, logo_url)', { count: 'exact' });
 
+  // Filter by category slug - resolve to ID first
+  if (options?.categorySlug) {
+    const { data: category } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('slug', options.categorySlug)
+      .single();
+
+    if (category) {
+      query = query.eq('category_id', category.id);
+    } else {
+      return { products: [], count: 0 };
+    }
+  }
+  // Filter by category ID
+  if (options?.categoryId) {
+    query = query.eq('category_id', options.categoryId);
+  }
   // Filter by brand slug - resolve to ID first for performance/simplicity
   if (options?.brandSlug) {
     const { data: brand } = await supabase
@@ -192,10 +211,6 @@ export async function getFilteredProducts(options?: {
   // Filter by brand ID
   if (options?.brandId) {
     query = query.eq('brand_id', options.brandId);
-  }
-  // Filter by category
-  if (options?.categoryId) {
-    query = query.eq('category_id', options.categoryId);
   }
   // Filter by pet type - join with product_pet_types table
   if (options?.petTypeId) {

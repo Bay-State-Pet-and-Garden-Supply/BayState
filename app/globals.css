@@ -5,6 +5,55 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* ========== DESIGN SYSTEM TOKENS ========== */
+
+  /* Button Heights (consistent touch targets) */
+  --size-btn-height-sm: 2rem;         /* 32px - small actions, table buttons */
+  --size-btn-height-default: 2.25rem; /* 36px - standard buttons */
+  --size-btn-height-lg: 2.5rem;       /* 40px - prominent CTAs */
+  --size-btn-height-icon-sm: 2.5rem;  /* 40px - icon-only small */
+  --size-btn-height-icon: 2.75rem;    /* 44px - icon-only default */
+  --size-btn-height-icon-lg: 3rem;    /* 48px - icon-only large */
+
+  /* Icon Sizes (standardized for consistency) */
+  --icon-size-xs: 0.75rem;    /* 12px - very small indicators, badges */
+  --icon-size-sm: 1rem;       /* 16px - inline with text, form icons */
+  --icon-size-md: 1.25rem;    /* 20px - default action buttons */
+  --icon-size-lg: 1.5rem;     /* 24px - navigation, menu items */
+  --icon-size-xl: 2rem;       /* 32px - cards, sections */
+  --icon-size-2xl: 2.5rem;    /* 40px - product cards, prominent icons */
+  --icon-size-3xl: 4rem;      /* 64px - empty states, hero icons */
+
+  /* Font Weights (consistent typography hierarchy) */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Animation Durations (consistent motion design) */
+  --animate-duration-fast: 150ms;     /* Quick state changes, focus */
+  --animate-duration-default: 200ms;  /* Standard transitions */
+  --animate-duration-slow: 300ms;     /* Hover effects, cards */
+  --animate-duration-slower: 500ms;   /* Image zooms, complex animations */
+  --animate-duration-slowest: 700ms;  /* Page transitions, modals */
+
+  /* Card Hover Effects */
+  --card-hover-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Semantic Color Tokens (for badges and status indicators) */
+  /* Out of Stock - Red/Rose tones */
+  --color-stock-out-bg: #f43f5e;
+  --color-stock-out-bg-hover: #e11d48;
+  --color-stock-out-text: #ffffff;
+
+  /* Pre-Order - Amber/Yellow tones */
+  --color-stock-preorder-bg: #fef3c7;
+  --color-stock-preorder-bg-hover: #fde68a;
+  --color-stock-preorder-text: #92400e;
+  --color-stock-preorder-border: #fde68a;
+
+  /* ========== SHADCN/UI TOKENS ========== */
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-outfit);

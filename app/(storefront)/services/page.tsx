@@ -4,7 +4,16 @@ import { getAllActiveServices } from '@/lib/services';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency } from '@/lib/utils';
+import { Home } from 'lucide-react';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 /**
  * Services listing page for customers.
@@ -13,7 +22,21 @@ export default async function ServicesPage() {
   const services = await getAllActiveServices();
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pt-4 pb-8">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb className="mb-6">
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/">
+            <Home className="h-4 w-4" />
+            <span className="sr-only">Home</span>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage className="font-medium">Services</BreadcrumbPage>
+        </BreadcrumbItem>
+      </Breadcrumb>
+
       {/* Hero Section */}
       <section className="mb-12 text-center">
         <div className="mb-4 inline-flex items-center justify-center rounded-full bg-blue-100 p-4">
@@ -94,13 +117,13 @@ export default async function ServicesPage() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Wrench className="mb-4 h-16 w-16 text-zinc-300" />
-            <p className="text-lg text-zinc-700">No services available</p>
-            <p className="mt-2 text-sm text-zinc-700">
-              Check back soon for our service offerings
-            </p>
-          </div>
+          <EmptyState
+            icon={Wrench}
+            title="No services available"
+            description="Check back soon for our service offerings"
+            actionLabel="Contact Us"
+            actionHref="/contact"
+          />
         )}
       </section>
 

@@ -6,7 +6,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { getFilteredProducts } from '@/lib/products';
-import { getBrands } from '@/lib/data';
+import { getBrands, getNavCategories } from '@/lib/data';
 import { getPetTypes } from '@/lib/recommendations';
 import { ProductCard } from '@/components/storefront/product-card';
 import { ProductFilters } from '@/components/storefront/product-filters';
@@ -16,7 +16,8 @@ import { Search } from 'lucide-react';
 interface ProductsPageProps {
   searchParams: Promise<{
     brand?: string;
-    petType?: string;
+    petTypeId?: string;
+    category?: string;
     stock?: string;
     minPrice?: string;
     maxPrice?: string;
@@ -34,10 +35,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const limit = 12;
   const offset = (page - 1) * limit;
 
-  const [{ products, count }, brands, petTypes] = await Promise.all([
+  const [{ products, count }, brands, petTypes, categories] = await Promise.all([
     getFilteredProducts({
       brandSlug: params.brand,
-      petTypeId: params.petType,
+      petTypeId: params.petTypeId,
+      categorySlug: params.category,
       stockStatus: params.stock,
       minPrice: params.minPrice ? parseFloat(params.minPrice) : undefined,
       maxPrice: params.maxPrice ? parseFloat(params.maxPrice) : undefined,
@@ -47,6 +49,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     }),
     getBrands(),
     getPetTypes(),
+    getNavCategories(),
   ]);
 
   const totalPages = Math.ceil(count / limit);
@@ -55,7 +58,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const buildPageUrl = (pageNum: number) => {
     const searchParamsObj = new URLSearchParams();
     if (params.brand) searchParamsObj.set('brand', params.brand);
-    if (params.petType) searchParamsObj.set('petType', params.petType);
+    if (params.petTypeId) searchParamsObj.set('petTypeId', params.petTypeId);
+    if (params.category) searchParamsObj.set('category', params.category);
     if (params.stock) searchParamsObj.set('stock', params.stock);
     if (params.minPrice) searchParamsObj.set('minPrice', params.minPrice);
     if (params.maxPrice) searchParamsObj.set('maxPrice', params.maxPrice);
@@ -65,11 +69,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   };
 
   return (
-    <div className="w-full px-4 py-8">
+    <div className="w-full px-4 pt-4 pb-8">
       <div className="flex flex-col gap-8 lg:flex-row">
         {/* Filters Sidebar */}
         <aside className="w-full lg:w-64 flex-shrink-0 lg:sticky lg:top-20 lg:h-fit">
-          <ProductFilters brands={brands} petTypes={petTypes} />
+          <ProductFilters brands={brands} petTypes={petTypes} categories={categories} />
         </aside>
 
         {/* Product Grid */}

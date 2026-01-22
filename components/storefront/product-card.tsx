@@ -23,11 +23,11 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div className="group relative h-full">
-      <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-[--animate-duration-slow]">
         <WishlistButton productId={product.id} />
       </div>
       <Link href={`/products/${product.slug}`} className="block h-full">
-        <Card className="h-full cursor-pointer overflow-hidden border-zinc-200 bg-white transition-all duration-300 hover:shadow-lg hover:border-zinc-300">
+        <Card className="h-full cursor-pointer overflow-hidden border-zinc-200 bg-white transition-all duration-[--animate-duration-slow] hover:shadow-lg hover:border-zinc-300">
           <CardContent className="flex h-full flex-col p-0">
             {/* Product Image */}
             <div className="relative aspect-square w-full overflow-hidden bg-zinc-50">
@@ -37,23 +37,23 @@ export function ProductCard({ product }: ProductCardProps) {
                   alt={product.name}
                   fill
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover transition-transform duration-[--animate-duration-slower] group-hover:scale-105"
                 />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-zinc-300">
-                  <ImageIcon className="h-10 w-10" />
-                  <span className="text-xs font-medium text-zinc-400">No Image</span>
+                  <ImageIcon className="size-[--icon-size-2xl]" />
+                  <span className="text-xs font-[--font-weight-medium] text-zinc-400">No Image</span>
                 </div>
               )}
               
               <div className="absolute left-3 top-3 flex flex-col gap-1.5">
                 {product.stock_status === 'out_of_stock' && (
-                  <Badge variant="destructive" className="bg-rose-500 hover:bg-rose-600 shadow-sm">
+                  <Badge variant="destructive" className="bg-[--color-stock-out-bg] hover:bg-[--color-stock-out-bg-hover] text-[--color-stock-out-text] shadow-sm">
                     Out of Stock
                   </Badge>
                 )}
                 {product.stock_status === 'pre_order' && (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200 shadow-sm">
+                  <Badge variant="secondary" className="bg-[--color-stock-preorder-bg] text-[--color-stock-preorder-text] hover:bg-[--color-stock-preorder-bg-hover] border-[--color-stock-preorder-border] shadow-sm">
                     Pre-Order
                   </Badge>
                 )}
@@ -63,17 +63,17 @@ export function ProductCard({ product }: ProductCardProps) {
             {/* Product Info */}
             <div className="flex flex-1 flex-col p-4">
               {product.brand && (
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <p className="mb-1 text-xs font-[--font-weight-medium] uppercase tracking-wider text-zinc-500">
                   {product.brand.name}
                 </p>
               )}
               
-              <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-zinc-900 group-hover:text-primary transition-colors">
+              <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-[--font-weight-semibold] leading-tight text-zinc-900 group-hover:text-primary transition-colors">
                 {product.name}
               </h3>
               
               <div className="mt-auto flex items-end justify-between pt-2">
-                <span className="text-lg font-bold tracking-tight text-zinc-900">
+                <span className="text-lg font-[--font-weight-bold] tracking-tight text-zinc-900">
                   {formattedPrice}
                 </span>
               </div>

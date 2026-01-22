@@ -1,9 +1,16 @@
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { Home } from 'lucide-react';
 import Link from 'next/link';
 import { type Metadata } from 'next';
 import { getProductBySlug } from '@/lib/products';
 import { Badge } from '@/components/ui/badge';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import { AddToCartButton } from '@/components/storefront/add-to-cart-button';
 import { ProductImageCarousel } from '@/components/storefront/product-image-carousel';
 import { ProductAdminEdit } from '@/components/storefront/product-admin-edit';
@@ -127,18 +134,26 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pt-4 pb-8">
       <ProductViewTracker productId={product.id} />
-      {/* Breadcrumb */}
-      <nav className="mb-6">
-        <Link
-          href="/products"
-          className="inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Products
-        </Link>
-      </nav>
+
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb className="mb-6">
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/">
+            <Home className="h-4 w-4" />
+            <span className="sr-only">Home</span>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/products">Products</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage className="font-medium">{product.name}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </Breadcrumb>
 
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Product Images */}

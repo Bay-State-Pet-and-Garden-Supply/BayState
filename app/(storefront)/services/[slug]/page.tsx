@@ -1,8 +1,14 @@
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Clock, MapPin, Phone, Calendar } from 'lucide-react';
-import Link from 'next/link';
+import { Clock, MapPin, Phone, Calendar, Home } from 'lucide-react';
 import { getServiceBySlug } from '@/lib/services';
 import { Badge } from '@/components/ui/badge';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import { AddServiceToCartButton } from '@/components/storefront/add-service-to-cart-button';
 import { formatCurrency } from '@/lib/utils';
 
@@ -26,17 +32,22 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
     : null;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="mb-6">
-        <Link
-          href="/services"
-          className="inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Services
-        </Link>
-      </nav>
+    <div className="container mx-auto px-4 pt-4 pb-8">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb className="mb-6">
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/">
+            <Home className="h-4 w-4" />
+            <span className="sr-only">Home</span>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/services">Services</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbPage className="font-medium">{service.name}</BreadcrumbPage>
+      </Breadcrumb>
 
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Service Image/Icon Placeholder */}

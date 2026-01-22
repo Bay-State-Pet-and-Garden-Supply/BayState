@@ -21,7 +21,7 @@ export default async function HomePage() {
   const { heroSlides, heroSlideInterval } = homepageSettings;
 
   return (
-    <div className="w-full max-w-none px-4 py-8">
+    <div className="w-full max-w-none px-4 pt-4 pb-8">
       {/* Promotional Hero Carousel */}
       {heroSlides && heroSlides.length > 0 && (
         <HeroCarousel slides={heroSlides} interval={heroSlideInterval} />
@@ -38,13 +38,13 @@ export default async function HomePage() {
             Quality brands, expert advice, and neighborly service since 1985.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Button size="lg" className="h-12 px-8" asChild>
+            <Button size="lg" asChild>
               <Link href="/products" className="hover:underline underline-offset-4">
                 Shop Now
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-12 px-8" asChild>
+            <Button size="lg" variant="outline" asChild>
               <Link href="/services" className="hover:underline underline-offset-4">Our Services</Link>
             </Button>
           </div>
@@ -57,13 +57,13 @@ export default async function HomePage() {
           Shop by Category
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="group cursor-pointer transition-shadow hover:shadow-lg lg:col-span-1 lg:row-span-2">
+          <Card className="group cursor-pointer transition-all duration-[--animate-duration-slow] hover:shadow-lg lg:col-span-1 lg:row-span-2">
             <CardContent className="flex h-full min-h-[280px] flex-col items-center justify-between p-6">
               <div className="mb-4 rounded-full bg-amber-100 p-4 flex items-center justify-center w-16 h-16 flex-none">
                 <Dog className="h-10 w-10 text-amber-700" />
               </div>
               <div className="text-center">
-                <h3 className="mb-2 text-xl font-semibold text-zinc-900">
+                <h3 className="mb-2 text-xl font-[--font-weight-semibold] text-zinc-900">
                   Pet Supplies
                 </h3>
                 <p className="mb-4 text-sm text-zinc-700">
@@ -79,12 +79,12 @@ export default async function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="group cursor-pointer transition-shadow hover:shadow-lg">
+          <Card className="group cursor-pointer transition-all duration-[--animate-duration-slow] hover:shadow-lg">
             <CardContent className="flex h-full min-h-[200px] flex-col items-center justify-between p-6">
               <div className="mb-3 rounded-full bg-red-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Leaf className="h-8 w-8 text-red-700" />
               </div>
-              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
+              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
                 Farm & Livestock
               </h3>
               <p className="text-center text-sm text-zinc-700">
@@ -99,12 +99,12 @@ export default async function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="group cursor-pointer transition-shadow hover:shadow-lg">
+          <Card className="group cursor-pointer transition-all duration-[--animate-duration-slow] hover:shadow-lg">
             <CardContent className="flex h-full min-h-[200px] flex-col items-center justify-between p-6">
               <div className="mb-3 rounded-full bg-green-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Leaf className="h-8 w-8 text-green-700" />
               </div>
-              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
+              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
                 Lawn & Garden
               </h3>
               <p className="text-center text-sm text-zinc-700">
@@ -119,12 +119,12 @@ export default async function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="group cursor-pointer transition-shadow hover:shadow-lg">
+          <Card className="group cursor-pointer transition-all duration-[--animate-duration-slow] hover:shadow-lg">
             <CardContent className="flex h-full min-h-[200px] flex-col items-center justify-between p-6">
               <div className="mb-3 rounded-full bg-blue-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Flame className="h-8 w-8 text-blue-700" />
               </div>
-              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
+              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
                 Home & Fuel
               </h3>
               <p className="text-center text-sm text-zinc-700">
@@ -139,12 +139,12 @@ export default async function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="group cursor-pointer transition-shadow hover:shadow-lg">
+          <Card className="group cursor-pointer transition-all duration-[--animate-duration-slow] hover:shadow-lg">
             <CardContent className="flex h-full min-h-[200px] flex-col items-center justify-between p-6">
               <div className="mb-3 rounded-full bg-orange-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Leaf className="h-8 w-8 text-orange-700" />
               </div>
-              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
+              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
                 Seasonal
               </h3>
               <p className="text-center text-sm text-zinc-700">
@@ -177,7 +177,6 @@ export default async function HomePage() {
         <Button
           size="lg"
           variant="secondary"
-          className="h-12 px-8"
           asChild
         >
           <Link href="/services" className="hover:underline underline-offset-4">View All Services</Link>

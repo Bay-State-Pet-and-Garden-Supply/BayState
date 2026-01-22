@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Plus, Package, ExternalLink, Pencil, RefreshCw, Search } from 'lucide-react';
@@ -97,19 +98,13 @@ export function AdminProductsClient({ initialProducts, totalCount }: AdminProduc
             </div>
 
             {(!products || products.length === 0) ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-16">
-                    <Package className="h-12 w-12 text-gray-600" />
-                    <p className="mt-4 text-lg font-medium text-gray-600">No published products yet</p>
-                    <p className="mt-1 text-sm text-gray-600">
-                        Products flow through the pipeline before being published
-                    </p>
-                    <Button asChild className="mt-4">
-                        <Link href="/admin/pipeline">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Go to Pipeline
-                        </Link>
-                    </Button>
-                </div>
+                <EmptyState
+                    icon={Package}
+                    title="No published products yet"
+                    description="Products flow through the pipeline before being published"
+                    actionLabel="Go to Pipeline"
+                    actionHref="/admin/pipeline"
+                />
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {filteredProducts.map((product) => {
