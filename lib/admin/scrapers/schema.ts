@@ -1,8 +1,11 @@
-/**
- * Zod schemas for scraper configuration validation.
- * These schemas mirror the Python Pydantic models in BayStateScraper.
- */
+// Known schema versions - must be kept in sync with Python Pydantic model
 import { z } from 'zod';
+
+const KNOWN_SCHEMA_VERSIONS = ["1.0"] as const;
+
+export type SchemaVersion = (typeof KNOWN_SCHEMA_VERSIONS)[number];
+
+export const schemaVersionSchema = z.enum(KNOWN_SCHEMA_VERSIONS);
 
 // Transform types supported by the extract_and_transform action
 export const transformTypeSchema = z.enum([
@@ -169,6 +172,7 @@ export const normalizationRuleSchema = z.object({
 
 // Full scraper config schema
 export const scraperConfigSchema = z.object({
+  schema_version: schemaVersionSchema,
   name: z.string().min(1, 'Scraper name is required'),
   display_name: z.string().optional(),
   base_url: z.string().url('Must be a valid URL'),

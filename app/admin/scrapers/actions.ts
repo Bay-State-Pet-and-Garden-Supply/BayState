@@ -20,6 +20,7 @@ export async function createScraper(
 
   // Create minimal valid config
   const config: ScraperConfig = {
+    schema_version: "1.0",
     name,
     display_name: displayName || name,
     base_url: baseUrl,

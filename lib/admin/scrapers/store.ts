@@ -31,6 +31,7 @@ interface ScraperEditorState {
 }
 
 const initialConfig: ScraperConfig = {
+  schema_version: '1.0',
   name: '',
   base_url: '',
   selectors: [],
