@@ -34,37 +34,4 @@ export function getPublicUrl(storagePath: string): string {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`;
 }
 
-export function getTransformedUrl(
-  storagePath: string,
-  options: { width?: number; height?: number; quality?: number; resize?: 'cover' | 'contain' | 'fill' } = {}
-): string {
-  if (!storagePath) {
-    return '/images/placeholder-product.png';
-  }
-
-  if (storagePath.startsWith('http')) {
-    return storagePath;
-  }
-
-  const { width = 800, height, quality = 75, resize = 'cover' } = options;
-  
-  let url = `${SUPABASE_URL}/storage/v1/render/image/public/product-images/${storagePath}?width=${width}&quality=${quality}&resize=${resize}`;
-  
-  if (height) {
-    url += `&height=${height}`;
-  }
-
-  return url;
-}
-
-export function generateSrcSet(storagePath: string, widths: number[] = [320, 640, 960, 1280]): string {
-  if (!storagePath || storagePath.startsWith('http')) {
-    return '';
-  }
-
-  return widths
-    .map((w) => `${getTransformedUrl(storagePath, { width: w })} ${w}w`)
-    .join(', ');
-}
-
 export default supabaseImageLoader;

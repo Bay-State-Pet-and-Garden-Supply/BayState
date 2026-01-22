@@ -4,7 +4,7 @@ import { getSafeRedirectUrl } from '@/lib/auth/redirect-validation'
 import { getURL } from '@/lib/auth/url-utils'
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url)
+    const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
     // SECURITY: Validate the next parameter to prevent open redirect attacks
     const next = getSafeRedirectUrl(searchParams.get('next'))

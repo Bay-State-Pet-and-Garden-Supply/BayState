@@ -11,7 +11,7 @@ import { BatchEnhanceToolbar } from './BatchEnhanceToolbar';
 import { BatchJobsPanel } from './BatchJobsPanel';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
-import { Search, RefreshCw, Bot, Settings2 } from 'lucide-react';
+import { Search, RefreshCw, Bot } from 'lucide-react';
 
 const statusLabels: Record<PipelineStatus, string> = {
     staging: 'Imported',

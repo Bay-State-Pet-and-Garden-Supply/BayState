@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Lock, RefreshCw, AlertTriangle, Circle } from 'lucide-react';
+import { Check, Lock, RefreshCw, Circle } from 'lucide-react';
 
 interface Source {
   id: string;

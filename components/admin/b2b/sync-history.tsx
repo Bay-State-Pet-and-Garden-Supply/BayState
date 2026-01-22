@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { B2BSyncJob, B2BFeed } from "@/lib/b2b/types";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
 
 interface SyncHistoryProps {

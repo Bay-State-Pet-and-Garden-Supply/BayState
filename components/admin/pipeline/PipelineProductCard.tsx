@@ -1,6 +1,6 @@
 'use client';
 
-import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct } from '@/lib/pipeline';
 import { ChevronRight, Package, Settings2, Sparkles } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Home, Image, Star, Clock, Save, Plus, Trash2, GripVertical, Megaphone } from 'lucide-react';
+import { Image, Star, Clock, Save, Plus, Trash2, GripVertical, Megaphone } from 'lucide-react';
 import { updateHomepageSettingsAction } from './actions';
 import type { HomepageSettings, HeroSlide } from '@/lib/settings';
 import { toast } from 'sonner';

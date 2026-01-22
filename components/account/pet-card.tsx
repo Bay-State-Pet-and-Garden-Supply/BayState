@@ -9,10 +9,10 @@ import {
     PET_SPECIAL_NEEDS,
     PET_ACTIVITY_LEVELS
 } from '@/lib/types'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
     Dog,
     Cat,
@@ -75,7 +75,7 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
             toast.success("Pet removed", {
                 description: "Pet profile has been deleted.",
             })
-        } catch (error) {
+        } catch {
             toast.error("Error", {
                 description: "Failed to delete pet.",
             })

@@ -3,7 +3,6 @@
 import { createPage, updatePage } from '../actions'
 import { Page } from '@/lib/types'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function PageForm({ page }: { page?: Page }) {
   const isEditing = !!page

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useState } from 'react';
-import { Package, Clock, CheckCircle, XCircle, User, Mail, Phone, FileText, CreditCard, DollarSign, Truck, MapPin } from 'lucide-react';
+import { Package, User, Mail, Phone, FileText, CreditCard, Truck, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -91,7 +91,7 @@ export function OrderModal({
             // We can keep the modal open to show the new status, but props need to update. 
             // Since parent refreshes, this component should re-render with new order object if parent passes it.
             // However, simpler to just close or rely on parent re-render.
-        } catch (err) {
+        } catch {
             toast.error('Failed to update status');
         } finally {
             setUpdating(false);

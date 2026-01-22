@@ -31,7 +31,7 @@ const petTypeIcons: Record<string, React.ElementType> = {
   'Reptile': Bug,
 };
 
-export function PetTypeSelector({ productId, selectedPetTypes, onChange }: PetTypeSelectorProps) {
+export function PetTypeSelector({ selectedPetTypes, onChange }: PetTypeSelectorProps) {
   const [petTypes, setPetTypes] = useState<PetType[]>([]);
   const [loading, setLoading] = useState(true);
 

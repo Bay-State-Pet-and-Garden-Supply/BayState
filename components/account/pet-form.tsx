@@ -123,7 +123,7 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                 })
             }
             onSuccess?.()
-        } catch (error) {
+        } catch {
             toast.error('Error', {
                 description: 'Something went wrong. Please try again.',
             })

@@ -5,7 +5,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import Link from 'next/link';
 import { getFilteredProducts } from '@/lib/products';
 import { getBrands } from '@/lib/data';
 import { getPetTypes } from '@/lib/recommendations';

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAllSources } from '@/lib/enrichment/sources';
 
@@ -8,7 +8,7 @@ import { getAllSources } from '@/lib/enrichment/sources';
  * Fetches all available enrichment sources (scrapers + B2B feeds).
  * Used by batch enhancement to show source selection without a specific SKU.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
     const supabase = await createClient();
 
     // Verify user is admin/staff

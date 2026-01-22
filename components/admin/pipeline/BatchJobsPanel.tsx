@@ -9,9 +9,7 @@ import {
     XCircle, 
     Clock, 
     Sparkles, 
-    ArrowRight,
-    AlertCircle,
-    Play
+    AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';

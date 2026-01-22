@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAllSources } from '@/lib/enrichment/sources';
 import { getProductEnrichmentSummary } from '@/lib/enrichment/config';
-import type { EnrichmentConfig, EnrichableField } from '@/lib/enrichment/types';
+import type { EnrichableField } from '@/lib/enrichment/types';
 
 /**
  * GET /api/admin/enrichment/[sku]

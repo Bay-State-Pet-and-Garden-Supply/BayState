@@ -2,14 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server';
 
-interface GitHubConfig {
-  repoOwner: string;
-  repoName: string;
-  branch: string;
-  filePath: string;
-  token: string;
-}
-
 interface GitHubFileResponse {
   content: string;
   sha: string;

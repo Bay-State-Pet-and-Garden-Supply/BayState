@@ -11,7 +11,6 @@ import { SyncResult, MigrationError, ShopSiteProduct, ShopSiteCustomer, ShopSite
 import { startMigrationLog, completeMigrationLog, updateMigrationProgress } from '@/lib/admin/migration/history';
 
 const MIGRATION_SETTINGS_KEY = 'shopsite_migration';
-const TEST_LIMIT = 1000;
 
 interface MigrationCredentials {
     storeUrl: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Sparkles, X, ChevronRight, Loader2 } from 'lucide-react';
+import { Sparkles, X, ChevronRight } from 'lucide-react';
 
 import { Badge } from "@/components/ui/badge"
 

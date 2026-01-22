@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { constructWebhookEvent, retrievePaymentIntent } from '@/lib/payments/stripe';
+import { constructWebhookEvent } from '@/lib/payments/stripe';
 import { createClient } from '@/lib/supabase/server';
 import type Stripe from 'stripe';
 

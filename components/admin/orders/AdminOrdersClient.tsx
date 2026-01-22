@@ -51,7 +51,7 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
             if (!res.success) throw new Error(res.error);
             toast.success('Order deleted');
             router.refresh();
-        } catch (err) {
+        } catch {
             toast.error('Failed to delete order');
         } finally {
             setDeleting(null);

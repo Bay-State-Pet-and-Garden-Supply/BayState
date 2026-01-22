@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
 import { addAddressAction } from '@/lib/account/actions'
-import { Address } from '@/lib/account/types'
 
 // Replicate schema from server for client validation
 const formSchema = z.object({

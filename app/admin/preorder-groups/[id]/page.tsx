@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ArrowLeft, Plus, Trash2, Edit } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { updatePreorderGroup, createPreorderBatch, deletePreorderBatch } from '@/lib/admin/preorder-actions'
 
 export default async function PreorderGroupDetailPage({

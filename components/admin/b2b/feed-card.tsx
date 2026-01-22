@@ -29,7 +29,7 @@ export function FeedCard({ feed }: FeedCardProps) {
       if (!res.ok) throw new Error('Failed to start sync');
       
       toast.success('Sync started successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to start sync');
     } finally {
       setIsSyncing(false);
@@ -53,7 +53,7 @@ export function FeedCard({ feed }: FeedCardProps) {
       } else {
          toast.error(data.message || 'Connection test failed');
       }
-    } catch (error) {
+    } catch {
       toast.error('Connection test failed');
     } finally {
       setIsTesting(false);
