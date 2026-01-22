@@ -75,7 +75,7 @@ export function ConfigurationTab() {
                       max={100}
                       step={5}
                       value={[field.value || 50]}
-                      onValueChange={(vals) => field.onChange(vals[0])}
+                      onValueChange={(vals: number[]) => field.onChange(vals[0])}
                       className="flex-1"
                     />
                     <span className="w-12 text-sm text-right">{field.value}%</span>
