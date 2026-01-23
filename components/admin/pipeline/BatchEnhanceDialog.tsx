@@ -41,8 +41,8 @@ export function BatchEnhanceDialog({
                 const data = await res.json();
                 const sourcesData: Source[] = data.sources || [];
                 setSources(sourcesData);
-                // Enable all sources by default
-                setEnabledSourceIds(sourcesData.map((s: Source) => s.id));
+                // Start with no sources selected by default
+                setEnabledSourceIds([]);
             }
         } catch (error) {
             console.error('Failed to fetch sources:', error);

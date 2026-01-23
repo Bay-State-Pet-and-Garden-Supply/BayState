@@ -96,7 +96,8 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
         if (res.ok) {
           const data = await res.json();
           setSources(data.sources || []);
-          setEnabledSourceIds((data.sources || []).map((s: EnrichmentSource) => s.id));
+          // Default to no sources selected - user must explicitly choose
+          setEnabledSourceIds([]);
         }
       } else {
         const res = await fetch(`/api/admin/enrichment/${effectiveSku}`);

@@ -152,8 +152,8 @@ export function JobHistory() {
                 </div>
             )}
 
-            <Dialog open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
-                <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
+<Dialog open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
+                <DialogContent className="h-[80vh] max-w-4xl flex flex-col p-0 gap-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b">
                         <DialogTitle>Job Execution Logs</DialogTitle>
                         <DialogDescription className="font-mono text-xs flex gap-4 mt-1">
