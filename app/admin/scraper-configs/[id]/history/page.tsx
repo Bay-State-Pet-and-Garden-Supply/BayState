@@ -197,7 +197,7 @@ export default async function VersionHistoryPage({ params }: VersionHistoryPageP
                       </span>
                       {validationResult.validated_at && (
                         <span className="text-muted-foreground text-sm">
-                          at {formatDate(validationResult.validated_at)}
+                          at {formatDate(validationResult.validated_at as string)}
                         </span>
                       )}
                     </div>
