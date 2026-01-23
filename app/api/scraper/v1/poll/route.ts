@@ -75,6 +75,8 @@ export async function POST(request: NextRequest) {
 
     const job = claimedJobs[0];
 
+        // Query scraper configs with their current published version
+        // Using a direct join via current_version_id instead of nested select
         let scraperQuery = supabase
             .from('scraper_configs')
             .select(`
@@ -83,20 +85,31 @@ export async function POST(request: NextRequest) {
                 display_name,
                 domain,
                 current_version_id,
-                versions:scraper_config_versions!fk_current_version(
+                scraper_config_versions!scraper_configs_current_version_id_fkey(
                     id,
                     config,
                     status,
                     version_number
                 )
             `)
-            .eq('versions.status', 'published');
+            .not('current_version_id', 'is', null);
 
         if (job.scrapers && job.scrapers.length > 0) {
             scraperQuery = scraperQuery.in('slug', job.scrapers);
         }
 
-        const { data: scrapers } = await scraperQuery;
+        const { data: scrapers, error: scraperError } = await scraperQuery;
+        
+        if (scraperError) {
+            console.error('[Poll] Scraper query error:', scraperError);
+        }
+
+        // Debug: Log what we got from the database
+        console.log('[Poll] Scrapers from DB:', JSON.stringify(scrapers?.map(s => ({
+            slug: s.slug,
+            hasVersion: !!s.scraper_config_versions,
+            versionKeys: s.scraper_config_versions ? Object.keys(s.scraper_config_versions) : [],
+        })), null, 2));
 
         const skus: string[] = job.skus || [];
         if (skus.length === 0) {
@@ -115,9 +128,14 @@ export async function POST(request: NextRequest) {
                 job_id: job.job_id,
                 skus,
                 scrapers: (scrapers || []).map(config => {
-                    const version = config.versions?.[0];
+                    // scraper_config_versions is a single object (not array) when using FK relation
+                    const version = config.scraper_config_versions;
                     const configJson = version?.config || {};
-                    const workflowOptions = configJson.workflows || configJson.options ? { 
+                    
+                    // Debug log for this specific scraper
+                    console.log(`[Poll] Scraper ${config.slug}: hasConfig=${!!configJson}, workflowCount=${configJson.workflows?.length || 0}`);
+                    
+                    const workflowOptions = configJson.workflows ? { 
                         workflows: configJson.workflows,
                         timeout: configJson.timeout,
                         retries: configJson.retries
