@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { type Product } from '@/lib/types';
+import type { Product, ProductGroup, ProductGroupMember } from '@/lib/types';
 
 /**
  * Transforms a row from products table to Product interface.
@@ -125,8 +125,11 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     .eq('slug', slug)
     .single();
 
+  // PGRST116 means "result contains 0 rows" - product doesn't exist
   if (error || !data) {
-    console.error('Error fetching product by slug:', error);
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching product by slug:', error);
+    }
     return null;
   }
 
@@ -145,8 +148,11 @@ export async function getProductById(id: string): Promise<Product | null> {
     .eq('id', id)
     .single();
 
+  // PGRST116 means "result contains 0 rows" - product doesn't exist
   if (error || !data) {
-    console.error('Error fetching product by id:', error);
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching product by id:', error);
+    }
     return null;
   }
 
@@ -314,4 +320,417 @@ export async function searchProducts(
 ): Promise<Product[]> {
   const { products } = await getFilteredProducts({ search: query, limit });
   return products;
+}
+
+// ============================================================================
+// Product Group Functions (Amazon-style size grouping)
+// ============================================================================
+
+/**
+ * Fetch a product group by slug with all member products.
+ * Returns null if group doesn't exist or is inactive.
+ * Uses query-based approach instead of database function.
+ */
+export async function getProductGroupBySlug(
+  slug: string
+): Promise<{
+  group: ProductGroup | null;
+  members: Array<{ member: ProductGroupMember; product: Product }>;
+  defaultMember: ProductGroupMember | null;
+}> {
+  const supabase = await createClient();
+
+  // First, fetch the group
+  const { data: groupData, error: groupError } = await supabase
+    .from('product_groups')
+    .select('*')
+    .eq('slug', slug)
+    .is('is_active', true)
+    .single();
+
+  // PGRST116 means "result contains 0 rows" - group doesn't exist
+  if (groupError || !groupData) {
+    if (groupError && groupError.code !== 'PGRST116') {
+      console.error('Error fetching product group by slug:', groupError);
+    }
+    return { group: null, members: [], defaultMember: null };
+  }
+
+  const group = groupData as ProductGroup;
+
+  // Then, fetch the members with product data
+  const { data: membersData, error: membersError } = await supabase
+    .from('product_group_products')
+    .select(`
+      *,
+      product:products(
+        id, name, slug, price, stock_status, images,
+        brand_id, description, is_featured
+      )
+    `)
+    .eq('group_id', group.id)
+    .order('sort_order', { ascending: true });
+
+  if (membersError) {
+    console.error('Error fetching group members:', membersError);
+    return { group, members: [], defaultMember: null };
+  }
+
+  // Build members array
+  const members: Array<{ member: ProductGroupMember; product: Product }> = [];
+  let defaultMember: ProductGroupMember | null = null;
+
+  for (const row of membersData || []) {
+    const product = row.product as Record<string, unknown> | undefined;
+    if (!product) continue;
+
+    const member: ProductGroupMember = {
+      group_id: row.group_id,
+      product_id: row.product_id,
+      sort_order: Number(row.sort_order),
+      is_default: Boolean(row.is_default),
+      display_label: row.display_label as string | null,
+      metadata: row.metadata as Record<string, unknown> | null,
+      created_at: row.created_at,
+    };
+
+    const productData: Product = {
+      id: product.id as string,
+      brand_id: product.brand_id as string | null,
+      name: product.name as string,
+      slug: product.slug as string,
+      description: product.description as string | null,
+      price: Number(product.price),
+      sale_price: null,
+      stock_status: (product.stock_status as Product['stock_status']) || 'in_stock',
+      images: parseImages(product.images),
+      is_featured: Boolean(product.is_featured),
+      is_special_order: false,
+      weight: null,
+      search_keywords: null,
+      category_id: null,
+      created_at: '',
+      compare_at_price: null,
+      cost_price: null,
+      quantity: 0,
+      low_stock_threshold: 5,
+      is_taxable: true,
+      tax_code: null,
+      barcode: null,
+      meta_title: null,
+      meta_description: null,
+      dimensions: null,
+      origin_country: null,
+      vendor: null,
+      published_at: null,
+      avg_rating: null,
+      review_count: 0,
+    };
+
+    members.push({ member, product: productData });
+
+    if (member.is_default) {
+      defaultMember = member;
+    }
+  }
+
+  return { group, members, defaultMember };
+}
+
+/**
+ * Fetch a product group by ID.
+ */
+export async function getProductGroupById(
+  id: string
+): Promise<ProductGroup | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('product_groups')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) {
+    console.error('Error fetching product group by id:', error);
+    return null;
+  }
+
+  return data as ProductGroup;
+}
+
+/**
+ * Get all products in a group (lightweight version without full product data).
+ */
+export async function getGroupProductIds(
+  groupId: string
+): Promise<Array<{ productId: string; sortOrder: number; isDefault: boolean; displayLabel: string | null }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('product_group_products')
+    .select('product_id, sort_order, is_default, display_label')
+    .eq('group_id', groupId)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching group product IDs:', error);
+    return [];
+  }
+
+  return (data || []).map((row) => ({
+    productId: row.product_id,
+    sortOrder: row.sort_order,
+    isDefault: row.is_default,
+    displayLabel: row.display_label,
+  }));
+}
+
+/**
+ * Create a new product group.
+ */
+export async function createProductGroup(options: {
+  slug: string;
+  name: string;
+  description?: string;
+  heroImageUrl?: string;
+  brandId?: string;
+}): Promise<ProductGroup | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('product_groups')
+    .insert({
+      slug: options.slug,
+      name: options.name,
+      description: options.description,
+      hero_image_url: options.heroImageUrl,
+      brand_id: options.brandId,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating product group:', error);
+    return null;
+  }
+
+  return data as ProductGroup;
+}
+
+/**
+ * Update a product group.
+ */
+export async function updateProductGroup(
+  id: string,
+  updates: Partial<Pick<ProductGroup, 'name' | 'slug' | 'description' | 'hero_image_url' | 'default_product_id' | 'brand_id' | 'is_active'>>
+): Promise<ProductGroup | null> {
+  const supabase = await createClient();
+
+  const updateData: Record<string, unknown> = {};
+  if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.slug !== undefined) updateData.slug = updates.slug;
+  if (updates.description !== undefined) updateData.description = updates.description;
+  if (updates.hero_image_url !== undefined) updateData.hero_image_url = updates.hero_image_url;
+  if (updates.default_product_id !== undefined) updateData.default_product_id = updates.default_product_id;
+  if (updates.brand_id !== undefined) updateData.brand_id = updates.brand_id;
+  if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
+
+  const { data, error } = await supabase
+    .from('product_groups')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating product group:', error);
+    return null;
+  }
+
+  return data as ProductGroup;
+}
+
+/**
+ * Delete a product group (and cascade to junction table).
+ */
+export async function deleteProductGroup(id: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('product_groups').delete().eq('id', id);
+
+  if (error) {
+    console.error('Error deleting product group:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Add a product to a group.
+ */
+export async function addProductToGroup(
+  groupId: string,
+  productId: string,
+  options?: {
+    sortOrder?: number;
+    isDefault?: boolean;
+    displayLabel?: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<boolean> {
+  const supabase = await createClient();
+
+  // Get current max sort_order if not provided
+  let sortOrder = options?.sortOrder;
+  if (sortOrder === undefined) {
+    const { data } = await supabase
+      .from('product_group_products')
+      .select('sort_order')
+      .eq('group_id', groupId)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .single();
+    sortOrder = (data?.sort_order ?? 0) + 1;
+  }
+
+  const { error } = await supabase.from('product_group_products').insert({
+    group_id: groupId,
+    product_id: productId,
+    sort_order: sortOrder,
+    is_default: options?.isDefault ?? false,
+    display_label: options?.displayLabel,
+    metadata: options?.metadata,
+  });
+
+  if (error) {
+    console.error('Error adding product to group:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Remove a product from a group.
+ */
+export async function removeProductFromGroup(
+  groupId: string,
+  productId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('product_group_products')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('product_id', productId);
+
+  if (error) {
+    console.error('Error removing product from group:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Update a product's position in a group.
+ */
+export async function updateProductGroupPosition(
+  groupId: string,
+  productId: string,
+  sortOrder: number
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('product_group_products')
+    .update({ sort_order: sortOrder })
+    .eq('group_id', groupId)
+    .eq('product_id', productId);
+
+  if (error) {
+    console.error('Error updating product group position:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Set a product as the default for a group.
+ * Clears default flag from other products in the group.
+ */
+export async function setGroupDefaultProduct(
+  groupId: string,
+  productId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+
+  // First clear all defaults in the group
+  await supabase
+    .from('product_group_products')
+    .update({ is_default: false })
+    .eq('group_id', groupId);
+
+  // Then set the new default
+  const { error } = await supabase
+    .from('product_group_products')
+    .update({ is_default: true })
+    .eq('group_id', groupId)
+    .eq('product_id', productId);
+
+  if (error) {
+    console.error('Error setting group default product:', error);
+    return false;
+  }
+
+  // Also update the group's default_product_id
+  await supabase
+    .from('product_groups')
+    .update({ default_product_id: productId })
+    .eq('id', groupId);
+
+  return true;
+}
+
+/**
+ * Get all product groups (for admin).
+ */
+export async function getAllProductGroups(): Promise<ProductGroup[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('product_groups')
+    .select('*')
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching all product groups:', error);
+    return [];
+  }
+
+  return (data || []) as ProductGroup[];
+}
+
+/**
+ * Check if a product belongs to any groups.
+ */
+export async function getProductGroups(
+  productId: string
+): Promise<Array<{ groupId: string; groupName: string; groupSlug: string }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('product_group_products')
+    .select('group_id, product_groups!inner(name, slug)')
+    .eq('product_id', productId);
+
+  if (error) {
+    console.error('Error fetching product groups:', error);
+    return [];
+  }
+
+  return (data || []).map((row) => {
+    const pg = row.product_groups as { name?: string; slug?: string } | undefined;
+    return {
+      groupId: row.group_id,
+      groupName: pg?.name || '',
+      groupSlug: pg?.slug || '',
+    };
+  });
 }

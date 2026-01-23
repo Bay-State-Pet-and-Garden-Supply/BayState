@@ -9,6 +9,7 @@ export { BrandCardSkeleton } from './skeletons/brand-card-skeleton';
 export { BrandListSkeleton } from './skeletons/brand-list-skeleton';
 export { FeaturedProducts } from './featured-products';
 export { ProductFilters } from './product-filters';
+export { ProductSizeSelector } from './product-size-selector';
 export { ServiceCard } from './service-card';
 export { InlineSearch } from './inline-search';
 export { SearchProvider, useSearch } from './search-provider';

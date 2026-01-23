@@ -2,12 +2,13 @@ import { notFound } from 'next/navigation';
 import { Home } from 'lucide-react';
 import Link from 'next/link';
 import { type Metadata } from 'next';
-import { getProductBySlug } from '@/lib/products';
+import { getProductBySlug, getProductGroupBySlug } from '@/lib/products';
 import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
@@ -20,6 +21,7 @@ import { ReviewSubmissionForm } from '@/components/storefront/review-submission-
 import { ProductQA } from '@/components/storefront/product-qa';
 import { RecentlyViewedSection } from '@/components/storefront/recently-viewed-section';
 import { ProductViewTracker } from '@/components/storefront/product-view-tracker';
+import { ProductSizeSelector } from '@/components/storefront/product-size-selector';
 import { createClient } from '@/lib/supabase/server';
 import { getUserRole } from '@/lib/auth/roles';
 import { getRelatedProductsByPetType } from '@/lib/recommendations';
@@ -28,9 +30,11 @@ import { getProductQuestions } from '@/lib/storefront/questions';
 import { getRecentlyViewedProducts } from '@/lib/storefront/recently-viewed';
 import { getProductPreorderData } from '@/lib/storefront/preorder';
 import { formatCurrency } from '@/lib/utils';
+import type { Product } from '@/lib/types';
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ sku?: string }>;
 }
 
 /**
@@ -38,6 +42,42 @@ interface ProductDetailPageProps {
  */
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const { group, members, defaultMember } = await getProductGroupBySlug(slug);
+
+  if (group) {
+    // Group page - use group name and default product's data
+    const defaultProduct = members.find(m => m.member.product_id === defaultMember?.product_id)?.product 
+      || members[0]?.product;
+
+    if (!defaultProduct) {
+      return {
+        title: 'Product Group | Bay State Pet & Garden',
+      };
+    }
+
+    const description = defaultProduct.description
+      ? defaultProduct.description.slice(0, 160)
+      : `Shop ${group.name} at Bay State Pet & Garden Supply.`;
+
+    return {
+      title: `${group.name} | Bay State Pet & Garden`,
+      description,
+      openGraph: {
+        title: group.name,
+        description,
+        images: defaultProduct.images?.[0] ? [{ url: defaultProduct.images[0] }] : undefined,
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: group.name,
+        description,
+        images: defaultProduct.images?.[0] ? [defaultProduct.images[0]] : undefined,
+      },
+    };
+  }
+
+  // Fallback to single product (backwards compatibility)
   const product = await getProductBySlug(slug);
 
   if (!product) {
@@ -70,22 +110,56 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
 
 /**
  * Product detail page showing full product information.
+ * Supports Amazon-style product grouping with ?sku= selection.
  */
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+export default async function ProductDetailPage({ params, searchParams }: ProductDetailPageProps) {
   const { slug } = await params;
+  const { sku } = await searchParams;
 
-  // Fetch product and user data in parallel
-  const supabase = await createClient();
-  const [product, { data: { user } }] = await Promise.all([
-    getProductBySlug(slug),
-    supabase.auth.getUser(),
-  ]);
+  // Fetch product group first
+  const { group, members, defaultMember } = await getProductGroupBySlug(slug);
+
+  let product: Product | null = null;
+  let isGroupPage = false;
+
+  if (group && members.length > 0) {
+    // This is a group page
+    isGroupPage = true;
+
+    // Determine which product to show based on ?sku= param
+    if (sku) {
+      const selectedMember = members.find(m => m.member.product_id === sku);
+      if (selectedMember) {
+        product = selectedMember.product;
+      } else {
+        // Invalid SKU param, fall back to default
+        product = defaultMember 
+          ? members.find(m => m.member.product_id === defaultMember.product_id)?.product || null
+          : members[0]?.product || null;
+      }
+    } else {
+      // No SKU param, use default or first member
+      product = defaultMember 
+        ? members.find(m => m.member.product_id === defaultMember.product_id)?.product || null
+        : members[0]?.product || null;
+    }
+
+    if (!product) {
+      notFound();
+    }
+  } else {
+    // Not a group page, use single product (backwards compatibility)
+    product = await getProductBySlug(slug);
+  }
 
   if (!product) {
     notFound();
   }
 
   // Fetch additional data in parallel
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const [userRole, relatedByPetType, reviews, reviewStats, questions, recentlyViewed, hasReviewed, preorderData] = await Promise.all([
     user ? getUserRole(user.id) : null,
     getRelatedProductsByPetType(product.id, 4),
@@ -139,20 +213,24 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
       {/* Breadcrumb Navigation */}
       <Breadcrumb className="mb-6">
-        <BreadcrumbItem>
-          <BreadcrumbLink href="/">
-            <Home className="h-4 w-4" />
-            <span className="sr-only">Home</span>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbLink href="/products">Products</BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage className="font-medium">{product.name}</BreadcrumbPage>
-        </BreadcrumbItem>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/">
+              <Home className="h-4 w-4" />
+              <span className="sr-only">Home</span>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/products">Products</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="font-medium">
+              {isGroupPage ? group?.name : product.name}
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
       </Breadcrumb>
 
       <div className="grid gap-8 lg:grid-cols-2">
@@ -174,11 +252,23 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           )}
 
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-3xl font-bold text-zinc-900">{product.name}</h1>
+            <h1 className="text-3xl font-bold text-zinc-900">
+              {isGroupPage ? group?.name : product.name}
+            </h1>
             {canEditProducts && (
               <ProductAdminEdit product={editableProduct} />
             )}
           </div>
+
+          {/* Product Group Size Selector */}
+          {isGroupPage && group && members.length > 1 && (
+            <ProductSizeSelector
+              group={group}
+              members={members}
+              selectedProductId={product.id}
+              basePath={`/products/${slug}`}
+            />
+          )}
 
           <div className="flex items-center gap-4">
             <span className="text-3xl font-bold text-zinc-900">
@@ -219,6 +309,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 <dt className="text-zinc-700">Availability</dt>
                 <dd className="font-medium text-zinc-900">{stockStatusLabel}</dd>
               </div>
+              {isGroupPage && (
+                <div className="flex justify-between">
+                  <dt className="text-zinc-700">Options</dt>
+                  <dd className="font-medium text-zinc-900">
+                    {members.length} size{members.length !== 1 ? 's' : ''} available
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
         </div>

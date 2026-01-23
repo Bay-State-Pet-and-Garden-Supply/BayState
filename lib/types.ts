@@ -249,6 +249,58 @@ export interface ProductVariant {
 }
 
 // ============================================================================
+// Product Groups (Amazon-style size grouping)
+// ============================================================================
+
+/**
+ * A group of related products sharing a single product page.
+ * Example: Blue Buffalo Dog Food in 5lb, 15lb, 30lb sizes.
+ */
+export interface ProductGroup {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  hero_image_url: string | null;
+  default_product_id: string | null;
+  brand_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Relations populated when fetching
+  members?: ProductGroupMember[];
+  brand?: Brand;
+}
+
+/**
+ * A product member of a group.
+ */
+export interface ProductGroupMember {
+  group_id: string;
+  product_id: string;
+  sort_order: number;
+  is_default: boolean;
+  display_label: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  // Relation populated when fetching
+  product?: Product;
+}
+
+/**
+ * Response when fetching a group by slug.
+ * Includes the group info and all member products.
+ */
+export interface ProductGroupWithMembers {
+  group: ProductGroup;
+  members: Array<{
+    member: ProductGroupMember;
+    product: Product;
+  }>;
+  defaultMember: ProductGroupMember | null;
+}
+
+// ============================================================================
 // Product Images
 // ============================================================================
 
