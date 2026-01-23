@@ -128,26 +128,27 @@ export async function POST(request: NextRequest) {
                 job_id: job.job_id,
                 skus,
                 scrapers: (scrapers || []).map(config => {
-                    // scraper_config_versions is a single object (not array) when using FK relation
-                    const version = config.scraper_config_versions;
-                    const configJson = version?.config || {};
+                    // scraper_config_versions is an array from FK relation - get first element
+                    const versions = config.scraper_config_versions as Array<{ id: string; config: Record<string, unknown>; status: string; version_number: number }> | null;
+                    const version = versions?.[0];
+                    const configJson = (version?.config || {}) as Record<string, unknown>;
                     
                     // Debug log for this specific scraper
-                    console.log(`[Poll] Scraper ${config.slug}: hasConfig=${!!configJson}, workflowCount=${configJson.workflows?.length || 0}`);
+                    console.log(`[Poll] Scraper ${config.slug}: hasConfig=${!!configJson}, workflowCount=${(configJson.workflows as unknown[])?.length || 0}`);
                     
                     const workflowOptions = configJson.workflows ? { 
-                        workflows: configJson.workflows,
-                        timeout: configJson.timeout,
-                        retries: configJson.retries
+                        workflows: configJson.workflows as unknown[],
+                        timeout: configJson.timeout as number | undefined,
+                        retries: configJson.retries as number | undefined
                     } : undefined;
                     return {
                         name: config.slug,
                         disabled: false,
-                        base_url: configJson.base_url || `https://${config.domain}`,
-                        search_url_template: configJson.search_url_template || undefined,
-                        selectors: configJson.selectors || undefined,
+                        base_url: (configJson.base_url as string) || `https://${config.domain}`,
+                        search_url_template: configJson.search_url_template as string | undefined,
+                        selectors: configJson.selectors as Record<string, unknown> | undefined,
                         options: workflowOptions,
-                        test_skus: configJson.test_skus || undefined,
+                        test_skus: configJson.test_skus as string[] | undefined,
                     };
                 }),
                 test_mode: job.test_mode || false,
