@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/sonner";
 
 const outfit = Outfit({
   subsets: ["latin"],
+  display: "swap",
   variable: "--font-outfit",
+  fallback: ["system-ui", "sans-serif"],
 });
 
 export const metadata: Metadata = {
