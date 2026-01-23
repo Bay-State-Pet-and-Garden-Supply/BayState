@@ -35,7 +35,17 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser()
+
+  // Handle auth errors (e.g., expired refresh token, session invalidated)
+  if (authError) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('error', 'session_expired')
+    url.searchParams.set('message', 'Your session has expired. Please log in again.')
+    return NextResponse.redirect(url)
+  }
 
   // Protect /account routes
   if (request.nextUrl.pathname.startsWith('/account')) {

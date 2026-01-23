@@ -1,14 +1,9 @@
 import Link from 'next/link';
-import { Plus, FileCode, MoreHorizontal, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Plus, FileCode, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ConfigQuickActions } from '@/components/admin/scraper-configs/ConfigQuickActions';
 
 async function getConfigs() {
   const supabase = await createClient();
@@ -132,25 +127,12 @@ export default async function ScraperConfigsPage() {
                 <div className="text-sm text-muted-foreground">
                   Updated {new Date(config.updated_at as string).toLocaleDateString()}
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href={`/admin/scraper-configs/${config.id}/edit`}>
-                        Edit Configuration
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/admin/scraper-configs/${config.id}`}>
-                        View Details
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ConfigQuickActions
+                  configId={config.id as string}
+                  configSlug={config.slug as string}
+                  currentStatus={config.current_status as string}
+                  latestPublishedVersion={config.latest_published_version as number | null}
+                />
               </div>
             </div>
           ))}
