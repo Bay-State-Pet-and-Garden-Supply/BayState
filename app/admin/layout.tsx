@@ -28,7 +28,7 @@ export default async function AdminLayout({
     <div className="flex h-screen overflow-hidden bg-muted">
       <SkipLink />
       <AdminSidebar userRole={role as 'admin' | 'staff'} />
-      <main id="main-content" className="flex-1 overflow-y-auto p-8">
+      <main id="main-content" className="flex-1 h-full overflow-y-auto overflow-x-hidden p-8">
         {children}
       </main>
       <Toaster position="top-right" richColors closeButton />

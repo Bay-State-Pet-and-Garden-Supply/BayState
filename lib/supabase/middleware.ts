@@ -38,7 +38,17 @@ export async function updateSession(request: NextRequest) {
     error: authError,
   } = await supabase.auth.getUser()
 
+  // Skip auth redirect for API routes that use their own authentication (API keys)
+  const isScraperApi = request.nextUrl.pathname.startsWith('/api/scraper/')
+  const isCronApi = request.nextUrl.pathname.startsWith('/api/cron/')
+  
+  if (isScraperApi || isCronApi) {
+    // Let these routes handle their own auth via API keys
+    return response
+  }
+
   // Handle auth errors (e.g., expired refresh token, session invalidated)
+  if (authError) {
   if (authError) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
