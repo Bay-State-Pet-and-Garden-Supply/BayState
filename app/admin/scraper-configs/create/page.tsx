@@ -18,8 +18,8 @@ export default async function CreateScraperConfigPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex-1">
         <ConfigEditorClient mode="create" />
       </div>
     </div>

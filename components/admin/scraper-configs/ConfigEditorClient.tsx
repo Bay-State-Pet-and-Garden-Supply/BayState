@@ -30,8 +30,8 @@ import { Form } from '@/components/ui/form';
 import { configFormSchema, ConfigFormValues, defaultConfigValues } from '@/lib/admin/scraper-configs/form-schema';
 import { createScraperConfig, updateDraft, validateDraft, publishConfig } from '@/lib/admin/scraper-configs/actions';
 import { MetadataTab } from './tabs/MetadataTab';
-import { SelectorsTab } from './tabs/SelectorsTab';
 import { WorkflowTab } from './tabs/WorkflowTab';
+import { LoginTab } from './tabs/LoginTab';
 import { AdvancedTab } from './tabs/AdvancedTab';
 import { JsonPreview } from './JsonPreview';
 
@@ -250,19 +250,19 @@ export function ConfigEditorClient({ configId, initialData, mode }: ConfigEditor
 
       {/* Main Content */}
       <Form {...form}>
-        <div className="flex flex-1 overflow-hidden">
-          <div className={`flex-1 overflow-hidden ${showJsonPreview ? 'mr-80' : ''}`}>
+        <div className="flex flex-1 overflow-y-auto">
+          <div className={`flex-1 ${showJsonPreview ? 'mr-80' : ''}`}>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-              <div className="px-6 border-b bg-muted/40">
+              <div className="px-6 border-b bg-muted/40 shrink-0">
                 <TabsList className="h-12 bg-transparent">
                   <TabsTrigger value="metadata" className="data-[state=active]:bg-background">
                     Metadata
                   </TabsTrigger>
-                  <TabsTrigger value="selectors" className="data-[state=active]:bg-background">
-                    Selectors
-                  </TabsTrigger>
                   <TabsTrigger value="workflow" className="data-[state=active]:bg-background">
                     Workflow
+                  </TabsTrigger>
+                  <TabsTrigger value="login" className="data-[state=active]:bg-background">
+                    Login
                   </TabsTrigger>
                   <TabsTrigger value="advanced" className="data-[state=active]:bg-background">
                     Advanced
@@ -270,25 +270,23 @@ export function ConfigEditorClient({ configId, initialData, mode }: ConfigEditor
                 </TabsList>
               </div>
 
-              <ScrollArea className="flex-1">
-                <div className="p-6 space-y-6">
-                  <TabsContent value="metadata" className="m-0">
-                    <MetadataTab />
-                  </TabsContent>
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <TabsContent value="metadata" className="m-0">
+                  <MetadataTab />
+                </TabsContent>
 
-                  <TabsContent value="selectors" className="m-0">
-                    <SelectorsTab />
-                  </TabsContent>
+                <TabsContent value="workflow" className="m-0">
+                  <WorkflowTab />
+                </TabsContent>
 
-                  <TabsContent value="workflow" className="m-0">
-                    <WorkflowTab />
-                  </TabsContent>
+                <TabsContent value="login" className="m-0">
+                  <LoginTab />
+                </TabsContent>
 
-                  <TabsContent value="advanced" className="m-0">
-                    <AdvancedTab />
-                  </TabsContent>
-                </div>
-              </ScrollArea>
+                <TabsContent value="advanced" className="m-0">
+                  <AdvancedTab />
+                </TabsContent>
+              </div>
             </Tabs>
           </div>
 

@@ -58,7 +58,7 @@ export function ConfigEditorClient({ scraper, currentVersion }: ConfigEditorClie
   };
 
   const form = useForm<ConfigFormValues>({
-    resolver: zodResolver(configFormSchema),
+    resolver: zodResolver(configFormSchema) as any,
     defaultValues: initialValues,
     mode: 'onChange',
   });

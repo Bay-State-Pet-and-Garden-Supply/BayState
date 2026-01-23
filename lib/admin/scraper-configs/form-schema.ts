@@ -10,14 +10,6 @@ export const configFormSchema = z.object({
   name: z.string().min(1, 'Scraper name is required'),
   display_name: z.string().optional(),
   base_url: z.string().url('Must be a valid URL'),
-  selectors: z.array(z.object({
-    id: z.string().optional(),
-    name: z.string().min(1, 'Selector name is required'),
-    selector: z.string().min(1, 'Selector is required'),
-    attribute: z.enum(['text', 'src', 'href', 'value', 'innerHTML', 'innerText', 'alt', 'title']).default('text'),
-    multiple: z.boolean().default(false),
-    required: z.boolean().default(true),
-  })).default([]),
   workflows: z.array(z.object({
     action: z.string().min(1, 'Action is required'),
     name: z.string().optional(),
@@ -75,7 +67,6 @@ export const defaultConfigValues: ConfigFormValues = {
   name: '',
   display_name: undefined,
   base_url: '',
-  selectors: [],
   workflows: [],
   normalization: [],
   login: undefined,
@@ -109,18 +100,6 @@ export const defaultConfigValues: ConfigFormValues = {
 };
 
 /**
- * Selector form default values
- */
-export const defaultSelectorValues = {
-  id: '',
-  name: '',
-  selector: '',
-  attribute: 'text' as const,
-  multiple: false,
-  required: true,
-};
-
-/**
  * Workflow step form default values
  */
 export const defaultWorkflowStepValues = {
@@ -128,3 +107,116 @@ export const defaultWorkflowStepValues = {
   name: '',
   params: {},
 };
+
+/**
+ * Selector definition (for migration from old format)
+ */
+interface LegacySelector {
+  id?: string;
+  name: string;
+  selector: string;
+  attribute?: 'text' | 'src' | 'href' | 'value' | 'innerHTML' | 'innerText' | 'alt' | 'title';
+  multiple?: boolean;
+  required?: boolean;
+}
+
+/**
+ * Migrate legacy config format (with global selectors) to new format (inline extract_and_transform)
+ * 
+ * OLD FORMAT:
+ * {
+ *   "selectors": [
+ *     {"name": "Name", "selector": "#title", "attribute": "text"},
+ *     {"name": "Price", "selector": ".price", "attribute": "innerText"}
+ *   ],
+ *   "workflows": [
+ *     {"action": "extract", "params": {"fields": ["Name", "Price"]}}
+ *   ]
+ * }
+ * 
+ * NEW FORMAT:
+ * {
+ *   "workflows": [
+ *     {"action": "extract_and_transform", "params": {"fields": [
+ *       {"name": "Name", "selector": "#title", "attribute": "text"},
+ *       {"name": "Price", "selector": ".price", "attribute": "innerText"}
+ *     ]}}
+ *   ]
+ * }
+ */
+export function migrateLegacyConfig(config: Record<string, unknown>): Record<string, unknown> {
+  // Skip if already migrated (no selectors array)
+  if (!Array.isArray((config as Record<string, unknown>).selectors)) {
+    return config;
+  }
+
+  const selectors = ((config as Record<string, unknown>).selectors || []) as LegacySelector[];
+  const workflows = ((config as Record<string, unknown>).workflows || []) as Array<{
+    action: string;
+    name?: string;
+    params: Record<string, unknown>;
+  }>;
+
+  // Build selector lookup by name
+  const selectorByName = new Map<string, LegacySelector>();
+  selectors.forEach((s) => {
+    if (s.name) {
+      selectorByName.set(s.name, s);
+    }
+  });
+
+  // Migrate workflows
+  const migratedWorkflows = workflows.map((step) => {
+    // Only migrate 'extract' actions that reference selectors
+    if (step.action !== 'extract') {
+      return step;
+    }
+
+    const fields = step.params.fields as string[] | undefined;
+    const selectorIds = step.params.selector_ids as string[] | undefined;
+
+    if (!fields && !selectorIds) {
+      return step;
+    }
+
+    // Combine field names and selector_ids
+    const fieldNames = [...(fields || []), ...(selectorIds || [])];
+
+    // Build inline field configs
+    const inlineFields = fieldNames
+      .map((name) => {
+        const selector = selectorByName.get(name);
+        if (!selector) {
+          // Selector not found, return basic field config
+          return { name, selector: '', attribute: 'text' as const };
+        }
+        return {
+          name: selector.name,
+          selector: selector.selector,
+          attribute: selector.attribute || 'text',
+          multiple: selector.multiple,
+          required: selector.required,
+        };
+      })
+      .filter((f) => f.name && f.selector);
+
+    if (inlineFields.length === 0) {
+      return step;
+    }
+
+    // Return extract_and_transform action with inline fields
+    return {
+      action: 'extract_and_transform',
+      name: step.name || 'Extract data',
+      params: { fields: inlineFields },
+    };
+  });
+
+  // Return new config without selectors
+  return {
+    ...config,
+    workflows: migratedWorkflows,
+    // Remove selectors from config
+    selectors: undefined,
+  };
+}

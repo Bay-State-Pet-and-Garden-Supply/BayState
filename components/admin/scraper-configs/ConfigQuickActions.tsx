@@ -9,7 +9,8 @@ import {
   MoreHorizontal,
   Check,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Edit
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -99,6 +100,11 @@ export function ConfigQuickActions({
     window.location.href = `/admin/scraper-configs/${configId}/history`;
   };
 
+  const handleEdit = () => {
+    // Navigate to edit page
+    window.location.href = `/admin/scraper-configs/${configId}`;
+  };
+
   const canValidate = currentStatus === 'draft';
   const canPublish = currentStatus === 'validated';
   const canRollback = latestPublishedVersion !== null && 
@@ -118,6 +124,13 @@ export function ConfigQuickActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleEdit}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
           {canValidate && (
             <DropdownMenuItem onClick={handleValidate} disabled={isPending}>
               <CheckCircle className="mr-2 h-4 w-4" />

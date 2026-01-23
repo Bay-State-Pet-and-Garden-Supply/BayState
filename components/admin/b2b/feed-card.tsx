@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { RefreshCw, Activity, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { RefreshCw, Activity, CheckCircle, AlertTriangle, XCircle, Settings, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { B2BFeed } from '@/lib/b2b/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -101,16 +102,29 @@ export function FeedCard({ feed }: FeedCardProps) {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between gap-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full" 
-          onClick={handleTest}
-          disabled={isTesting}
-        >
-          {isTesting ? 'Testing...' : 'Test'}
-        </Button>
+      <CardFooter className="flex flex-col gap-2">
+        <div className="flex w-full gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1" 
+            asChild
+          >
+            <Link href={`/admin/b2b/${feed.distributor_code.toLowerCase()}`}>
+              <Settings className="mr-2 h-3 w-3" />
+              Configure
+            </Link>
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1" 
+            onClick={handleTest}
+            disabled={isTesting}
+          >
+            {isTesting ? 'Testing...' : 'Test'}
+          </Button>
+        </div>
         <Button 
           size="sm" 
           className="w-full bg-[#008850] hover:bg-[#00663c]" 

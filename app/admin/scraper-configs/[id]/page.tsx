@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ConfigEditorClient } from '@/components/admin/scraper-configs/ConfigEditorClient';
+import { migrateLegacyConfig } from '@/lib/admin/scraper-configs/form-schema';
 import { validate as uuidValidate } from 'uuid';
 
 interface PageProps {
@@ -32,25 +33,50 @@ export default async function ScraperConfigPage({ params }: PageProps) {
 
   // Fetch initial data
   const supabase = await createClient();
-  const { data: config } = await supabase
-    .from('scraper_config_versions')
-    .select('*, scraper_configs(*)')
-    .eq('config_id', id)
-    .order('version_number', { ascending: false })
-    .limit(1)
+  
+  // Fetch config first
+  const { data: configRow, error: configError } = await supabase
+    .from('scraper_configs')
+    .select('*')
+    .eq('id', id)
     .single();
 
-  if (!config) {
+  if (configError || !configRow) {
     notFound();
   }
 
+  // Fetch version separately to avoid RLS issues with embedded joins
+  const { data: version, error: versionError } = await supabase
+    .from('scraper_config_versions')
+    .select('*')
+    .eq('id', configRow.current_version_id)
+    .single();
+
+  if (versionError || !version) {
+    notFound();
+  }
+
+  // Construct the config object in the format the client expects
+  const config = {
+    ...version,
+    scraper_configs: configRow
+  };
+
+  // Apply migration to convert legacy selectors to inline extract_and_transform
+  const migratedConfig = migrateLegacyConfig((config.config as Record<string, unknown>) || {});
+
+  // Ensure required arrays have defaults to match schema expectations
+  if (!migratedConfig.workflows) migratedConfig.workflows = [];
+  if (!migratedConfig.test_skus) migratedConfig.test_skus = [];
+  if (!migratedConfig.fake_skus) migratedConfig.fake_skus = [];
+
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex-1">
         <ConfigEditorClient 
           configId={id} 
           mode="edit"
-          initialData={config.config as Record<string, unknown>} 
+          initialData={migratedConfig as Record<string, unknown>} 
         />
       </div>
     </div>

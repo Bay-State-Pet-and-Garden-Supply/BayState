@@ -12,11 +12,13 @@ async function getConfigs() {
     .from('scraper_configs')
     .select(`
       *,
-      versions:scraper_config_versions(
+      versions:scraper_config_versions!fk_config_id(
+        id,
         status,
         version_number,
         published_at,
-        validation_result
+        validation_result,
+        config
       )
     `)
     .order('created_at', { ascending: false });

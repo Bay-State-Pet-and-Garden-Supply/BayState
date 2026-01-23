@@ -73,8 +73,8 @@ export default async function ScraperDetailPage({ params }: PageProps) {
   } as ScraperConfig;
 
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex-1">
         <EditScraperClient initialConfig={config} />
       </div>
     </div>

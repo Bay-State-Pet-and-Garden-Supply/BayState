@@ -78,6 +78,8 @@ export function GlobalSettings() {
               <Input 
                 id="timeout" 
                 type="number"
+                min={1}
+                max={300}
                 value={config.timeout}
                 onChange={(e) => updateConfig({ timeout: parseInt(e.target.value) || 30 })}
               />
@@ -88,6 +90,8 @@ export function GlobalSettings() {
               <Input 
                 id="retries" 
                 type="number"
+                min={0}
+                max={10}
                 value={config.retries}
                 onChange={(e) => updateConfig({ retries: parseInt(e.target.value) || 3 })}
               />
@@ -98,6 +102,8 @@ export function GlobalSettings() {
               <Input 
                 id="image_quality" 
                 type="number"
+                min={0}
+                max={100}
                 value={config.image_quality}
                 onChange={(e) => updateConfig({ image_quality: parseInt(e.target.value) || 50 })}
               />
@@ -118,6 +124,7 @@ export function GlobalSettings() {
               <p className="text-xs text-muted-foreground">Add random delays and mouse movements.</p>
             </div>
             <Switch 
+              aria-label="Enable human simulation"
               checked={config.anti_detection?.enable_human_simulation || false}
               onCheckedChange={(checked) => updateConfig({ 
                 anti_detection: { ...DEFAULT_ANTI_DETECTION, ...config.anti_detection, enable_human_simulation: checked } 
@@ -132,6 +139,7 @@ export function GlobalSettings() {
               <p className="text-xs text-muted-foreground">Rotate browser sessions periodically.</p>
             </div>
             <Switch 
+              aria-label="Enable session rotation"
               checked={config.anti_detection?.enable_session_rotation || false}
               onCheckedChange={(checked) => updateConfig({ 
                 anti_detection: { ...DEFAULT_ANTI_DETECTION, ...config.anti_detection, enable_session_rotation: checked } 
@@ -145,8 +153,9 @@ export function GlobalSettings() {
               <p className="text-xs text-muted-foreground">Enforce minimum delays between requests.</p>
             </div>
             <Switch 
+              aria-label="Enable rate limiting"
               checked={config.anti_detection?.enable_rate_limiting || false}
-              onCheckedChange={(checked) => updateConfig({ 
+              onCheckedChange={(checked) => updateConfig({
                 anti_detection: { ...DEFAULT_ANTI_DETECTION, ...config.anti_detection, enable_rate_limiting: checked } 
               })}
             />

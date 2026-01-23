@@ -75,13 +75,25 @@ export async function POST(request: NextRequest) {
 
     const job = claimedJobs[0];
 
-    let scraperQuery = supabase
-            .from('scrapers')
-            .select('*')
-            .eq('disabled', false);
+        let scraperQuery = supabase
+            .from('scraper_configs')
+            .select(`
+                id,
+                slug,
+                display_name,
+                domain,
+                current_version_id,
+                versions:scraper_config_versions!fk_current_version(
+                    id,
+                    config,
+                    status,
+                    version_number
+                )
+            `)
+            .eq('versions.status', 'published');
 
         if (job.scrapers && job.scrapers.length > 0) {
-            scraperQuery = scraperQuery.in('name', job.scrapers);
+            scraperQuery = scraperQuery.in('slug', job.scrapers);
         }
 
         const { data: scrapers } = await scraperQuery;
@@ -97,19 +109,29 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Poll] Runner ${runnerName} assigned job ${job.job_id}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
 
+        // Transform new versioned configs to old format for runner compatibility
         const response: PollResponse = {
             job: {
                 job_id: job.job_id,
                 skus,
-                scrapers: (scrapers || []).map(s => ({
-                    name: s.name,
-                    disabled: s.disabled || false,
-                    base_url: s.base_url,
-                    search_url_template: s.search_url_template,
-                    selectors: s.selectors,
-                    options: s.options,
-                    test_skus: s.test_skus,
-                })),
+                scrapers: (scrapers || []).map(config => {
+                    const version = config.versions?.[0];
+                    const configJson = version?.config || {};
+                    const workflowOptions = configJson.workflows || configJson.options ? { 
+                        workflows: configJson.workflows,
+                        timeout: configJson.timeout,
+                        retries: configJson.retries
+                    } : undefined;
+                    return {
+                        name: config.slug,
+                        disabled: false,
+                        base_url: configJson.base_url || `https://${config.domain}`,
+                        search_url_template: configJson.search_url_template || undefined,
+                        selectors: configJson.selectors || undefined,
+                        options: workflowOptions,
+                        test_skus: configJson.test_skus || undefined,
+                    };
+                }),
                 test_mode: job.test_mode || false,
                 max_workers: job.max_workers || 3,
             },

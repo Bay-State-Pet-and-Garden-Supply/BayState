@@ -190,7 +190,7 @@ function ActionNodeComponent({ data, selected }: NodeProps<Node<ActionNodeData>>
       />
 
       <Card 
-        className={`min-w-[220px] max-w-[280px] shadow-lg transition-all duration-200 ${config.bgColor} ${
+        className={`min-w-[240px] max-w-xl shadow-lg transition-all duration-200 ${config.bgColor} ${
           selected ? 'ring-2 ring-primary ring-offset-2' : ''
         }`}
       >

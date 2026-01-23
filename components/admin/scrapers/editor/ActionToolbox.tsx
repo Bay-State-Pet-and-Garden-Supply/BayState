@@ -86,7 +86,7 @@ function DraggableActionItem({ actionType, label, description, icon, color }: Ac
 export function ActionToolbox() {
   return (
     <div className="w-72 border-r h-full flex flex-col bg-background shrink-0">
-      <div className="p-4 border-b bg-muted/20">
+      <div className="p-4 border-b bg-muted/20 shrink-0">
         <h3 className="font-semibold mb-1">Action Toolbox</h3>
         <p className="text-xs text-muted-foreground">Drag actions onto the canvas</p>
       </div>

@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useScraperEditorStore } from '@/lib/admin/scrapers/store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Save, Play, Download } from 'lucide-react';
+import { Save, Play, Download, Loader2 } from 'lucide-react';
 import { GlobalSettings } from './GlobalSettings';
 import { WorkflowBuilder } from './WorkflowBuilder';
 import { YamlPreview } from './YamlPreview';
@@ -19,8 +19,10 @@ import YAML from 'yaml';
 export function ScraperEditor() {
   const { activeTab, setActiveTab, config } = useScraperEditorStore();
   const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const response = await fetch('/api/admin/scrapers', {
         method: 'POST',
@@ -39,6 +41,8 @@ export function ScraperEditor() {
       router.push('/admin/scrapers');
     } catch (e) {
       toast.error('Failed to save scraper: ' + (e as Error).message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -67,28 +71,37 @@ export function ScraperEditor() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          <YamlImportDialog />
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" /> Export YAML
-          </Button>
-          <Button variant="secondary" size="sm">
-            <Play className="mr-2 h-4 w-4" /> Test Run
-          </Button>
-          <Button size="sm" onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" /> Save Scraper
-          </Button>
-        </div>
+          <div className="flex items-center gap-2">
+            <YamlImportDialog />
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" /> Export YAML
+            </Button>
+            <Button variant="secondary" size="sm">
+              <Play className="mr-2 h-4 w-4" /> Test Run
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" /> Save Scraper
+                </>
+              )}
+            </Button>
+          </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as 'selectors' | 'settings' | 'workflow' | 'yaml')}
           className="h-full flex flex-col"
         >
-          <div className="px-4 border-b bg-muted/40">
+          <div className="px-4 border-b bg-muted/40 shrink-0">
             <TabsList className="h-12 bg-transparent">
               <TabsTrigger value="settings" className="data-[state=active]:bg-background">
                 Settings
@@ -105,20 +118,20 @@ export function ScraperEditor() {
             </TabsList>
           </div>
 
-          <div className="flex-1 overflow-auto p-6 bg-muted/10">
-            <TabsContent value="settings" className="m-0 h-full max-w-4xl mx-auto">
+          <div className="p-6 bg-muted/10">
+            <TabsContent value="settings" className="m-0 max-w-4xl mx-auto">
               <GlobalSettings />
             </TabsContent>
 
-            <TabsContent value="selectors" className="m-0 h-full max-w-5xl mx-auto">
+            <TabsContent value="selectors" className="m-0 max-w-5xl mx-auto">
               <SelectorsEditor />
             </TabsContent>
 
-            <TabsContent value="workflow" className="m-0 h-full">
+            <TabsContent value="workflow" className="m-0">
               <WorkflowBuilder />
             </TabsContent>
 
-            <TabsContent value="yaml" className="m-0 h-full">
+            <TabsContent value="yaml" className="m-0">
               <YamlPreview />
             </TabsContent>
           </div>

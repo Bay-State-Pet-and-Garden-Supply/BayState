@@ -2,10 +2,10 @@
 import { z } from 'zod';
 import { scraperConfigSchema } from '@/lib/admin/scrapers/schema';
 
-// Extend base schema for form-specific needs if required
+// Use input type for form values (matches what zodResolver expects)
 export const configFormSchema = scraperConfigSchema;
 
-export type ConfigFormValues = z.infer<typeof configFormSchema>;
+export type ConfigFormValues = z.input<typeof configFormSchema>;
 
 export const defaultConfigValues: ConfigFormValues = {
   schema_version: '1.0',

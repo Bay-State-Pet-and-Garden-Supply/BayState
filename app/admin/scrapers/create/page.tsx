@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function CreateScraperPage() {
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex-1">
         <ScraperEditor />
       </div>
     </div>

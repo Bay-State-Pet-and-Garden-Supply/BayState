@@ -3,16 +3,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useForm, UseFormReturn, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, CheckCircle2, AlertTriangle, Upload } from 'lucide-react';
 
 import { scraperConfigSchema } from '@/lib/admin/scrapers/schema';
-import { ScraperConfig } from '@/lib/admin/scrapers/types';
 import { updateDraft, validateDraft, publishConfig, ActionState } from '@/lib/admin/scraper-configs/actions';
 
 // Tabs
@@ -25,12 +25,19 @@ import { TestingTab } from './tabs/TestingTab';
 import { PreviewTab } from './tabs/PreviewTab';
 import { ValidationSummary } from './validation/ValidationSummary';
 
+// Use the schema's input type for the form
+type ScraperConfigFormValues = z.input<typeof scraperConfigSchema>;
+
 interface ConfigEditorClientProps {
   configId: string;
-  initialConfig: ScraperConfig;
+  initialConfig: ScraperConfigFormValues;
   initialStatus: string;
   initialVersion: number;
-  initialValidationResult?: any;
+  initialValidationResult?: {
+    valid: boolean;
+    validated_at?: string;
+    errors?: string[];
+  } | null;
 }
 
 export function ConfigEditorClient({
@@ -44,13 +51,13 @@ export function ConfigEditorClient({
   const [activeTab, setActiveTab] = useState('metadata');
   const [status, setStatus] = useState(initialStatus);
   const [version, setVersion] = useState(initialVersion);
-  const [validationResult, setValidationResult] = useState(initialValidationResult);
+  const [validationResult, setValidationResult] = useState<ConfigEditorClientProps['initialValidationResult']>(initialValidationResult);
   const [isSaving, setIsSaving] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  const form = useForm<ScraperConfig>({
-    resolver: zodResolver(scraperConfigSchema),
+  const form = useForm<ScraperConfigFormValues>({
+    resolver: zodResolver(scraperConfigSchema) as any,
     defaultValues: initialConfig,
     mode: 'onChange',
   });
@@ -99,8 +106,9 @@ export function ConfigEditorClient({
       const result = await validateDraft(configId);
 
       if (result.success) {
-        setValidationResult(result.data);
-        if (result.data?.valid) {
+        const validationData = result.data as { valid: boolean; validated_at?: string; errors?: string[] } | null | undefined;
+        setValidationResult(validationData ?? null);
+        if (validationData?.valid) {
           toast.success('Configuration is valid');
           setStatus('validated');
         } else {
@@ -199,7 +207,7 @@ export function ConfigEditorClient({
           {/* Validation Errors Summary */}
           {validationResult && !validationResult.valid && (
             <div className="px-4 pb-4">
-               <ValidationSummary errors={validationResult.errors} />
+               <ValidationSummary errors={validationResult.errors || []} />
             </div>
           )}
         </Card>

@@ -21,10 +21,10 @@ interface ScraperEditorState {
   removeWorkflowStep: (index: number) => void;
   moveWorkflowStep: (fromIndex: number, toIndex: number) => void;
   
-  // Selector Actions
+  // Selector Actions - now use ID-based operations
   addSelector: (selector: SelectorConfig) => void;
-  updateSelector: (index: number, updates: Partial<SelectorConfig>) => void;
-  removeSelector: (index: number) => void;
+  updateSelector: (id: string, updates: Partial<SelectorConfig>) => void;
+  removeSelector: (id: string) => void;
   
   setActiveTab: (tab: 'workflow' | 'selectors' | 'settings' | 'yaml') => void;
   reset: () => void;
@@ -97,23 +97,41 @@ export const useScraperEditorStore = create<ScraperEditorState>((set) => ({
     return { config: { ...state.config, workflows: newWorkflows } };
   }),
 
-  addSelector: (selector) => set((state) => ({
-    config: { 
-      ...state.config, 
-      selectors: [...state.config.selectors, selector] 
-    }
-  })),
+  addSelector: (selector) => set((state) => {
+    // Ensure selector has a stable ID for React keys
+    const selectorWithId = selector.id ? selector : { ...selector, id: uuidv4() };
+    return {
+      config: {
+        ...state.config,
+        selectors: [...state.config.selectors, selectorWithId]
+      }
+    };
+  }),
 
-  updateSelector: (index, updates) => set((state) => {
-    const newSelectors = [...state.config.selectors];
-    if (newSelectors[index]) {
-      newSelectors[index] = { ...newSelectors[index], ...updates };
-    }
+  updateSelector: (id, updates) => set((state) => {
+    // Handle both UUID-based IDs and index-based fallback (selector-N format)
+    const newSelectors = state.config.selectors.map((sel, index) => {
+      // Check if ID matches actual ID or matches the fallback format
+      const isMatch = sel.id === id || `selector-${index}` === id;
+      if (isMatch) {
+        // If this is an old selector without an ID, assign one now
+        if (!sel.id) {
+          return { ...sel, ...updates, id: uuidv4() };
+        }
+        return { ...sel, ...updates };
+      }
+      return sel;
+    });
     return { config: { ...state.config, selectors: newSelectors } };
   }),
 
-  removeSelector: (index) => set((state) => {
-    const newSelectors = state.config.selectors.filter((_, i) => i !== index);
+  removeSelector: (id) => set((state) => {
+    // Handle both UUID-based IDs and index-based fallback (selector-N format)
+    const newSelectors = state.config.selectors.filter((sel, index) => {
+      // Keep if ID doesn't match
+      const isMatch = sel.id === id || `selector-${index}` === id;
+      return !isMatch;
+    });
     return { config: { ...state.config, selectors: newSelectors } };
   }),
 

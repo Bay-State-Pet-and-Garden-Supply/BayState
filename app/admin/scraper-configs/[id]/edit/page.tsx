@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ConfigEditorClient } from '@/components/admin/scraper-configs/ConfigEditorClient';
+import { migrateLegacyConfig } from '@/lib/admin/scraper-configs/form-schema';
 
 interface EditScraperConfigPageProps {
   params: Promise<{ id: string }>;
@@ -10,23 +11,25 @@ export default async function EditScraperConfigPage({ params }: EditScraperConfi
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: config, error } = await supabase
+  // Fetch config first
+  const { data: config, error: configError } = await supabase
     .from('scraper_configs')
-    .select(`
-      *,
-      current_version:scraper_config_versions!current_version_id(*)
-    `)
+    .select('*')
     .eq('id', id)
     .single();
 
-  if (error || !config) {
+  if (configError || !config) {
     notFound();
   }
 
-  const currentVersion = config.current_version as Record<string, unknown> | null;
-  const initialData = currentVersion?.config as Record<string, unknown> | undefined;
+  // Fetch version separately to avoid RLS issues with embedded joins
+  const { data: version, error: versionError } = await supabase
+    .from('scraper_config_versions')
+    .select('*')
+    .eq('id', config.current_version_id)
+    .single();
 
-  if (!initialData) {
+  if (versionError || !version) {
     return (
       <div className="p-8 text-center">
         <h1 className="text-2xl font-bold mb-4">No Config Version Found</h1>
@@ -36,6 +39,13 @@ export default async function EditScraperConfigPage({ params }: EditScraperConfi
       </div>
     );
   }
+
+  const initialData = migrateLegacyConfig(version.config as Record<string, unknown>);
+
+  // Ensure required arrays have defaults to match schema expectations
+  if (!initialData.workflows) initialData.workflows = [];
+  if (!initialData.test_skus) initialData.test_skus = [];
+  if (!initialData.fake_skus) initialData.fake_skus = [];
 
   return (
     <ConfigEditorClient

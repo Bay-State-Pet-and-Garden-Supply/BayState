@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at,
         created_by,
-        scraper_config_versions!current_version_id (
+        scraper_config_versions!fk_current_version (
           id,
           version_number,
           status,

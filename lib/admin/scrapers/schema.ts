@@ -36,7 +36,7 @@ export const selectorConfigSchema = z.object({
   attribute: z.enum(['text', 'src', 'href', 'value', 'innerHTML', 'innerText', 'alt', 'title']).default('text'),
   multiple: z.boolean().default(false),
   required: z.boolean().default(true),
-});
+}).strict();
 
 // Workflow step parameter schemas for different action types
 export const navigateParamsSchema = z.object({

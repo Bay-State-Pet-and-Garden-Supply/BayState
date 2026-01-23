@@ -4,6 +4,7 @@ import { Database } from 'lucide-react';
 import { FeedGrid, FeedGridSkeleton } from '@/components/admin/b2b/feed-grid';
 import { SyncHistory, SyncHistorySkeleton } from '@/components/admin/b2b/sync-history';
 import { B2BFeed, B2BSyncJob } from '@/lib/b2b/types';
+import { getB2BFeeds, getSyncJobs } from '@/lib/b2b/sync-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,34 +15,22 @@ export const metadata: Metadata = {
 
 async function getFeeds(): Promise<B2BFeed[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/admin/b2b/feeds`, {
-       cache: 'no-store',
-       next: { tags: ['b2b-feeds'] }
-    });
-    if (!res.ok) {
-        return MOCK_FEEDS;
-    }
-    const data = await res.json();
-    return data.feeds || [];
+    return await getB2BFeeds();
   } catch (e) {
-    console.error('Failed to fetch feeds', e);
+    console.error('Failed to fetch feeds from database:', e);
+    // Return mock data on error so the UI still works
     return MOCK_FEEDS;
   }
 }
 
 async function getJobs(): Promise<B2BSyncJob[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/admin/b2b/jobs?limit=10`, {
-       cache: 'no-store',
-       next: { tags: ['b2b-jobs'] }
-    });
-    if (!res.ok) {
-        return MOCK_JOBS;
-    }
-    const data = await res.json();
-    return data.jobs || [];
+    const feeds = await getB2BFeeds();
+    const feedId = feeds[0]?.id;
+    return await getSyncJobs(feedId, 10);
   } catch (e) {
-    console.error('Failed to fetch jobs', e);
+    console.error('Failed to fetch jobs from database:', e);
+    // Return mock data on error so the UI still works
     return MOCK_JOBS;
   }
 }

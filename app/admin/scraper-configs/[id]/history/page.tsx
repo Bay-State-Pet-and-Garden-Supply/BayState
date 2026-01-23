@@ -114,7 +114,11 @@ export default async function VersionHistoryPage({ params }: VersionHistoryPageP
       <div className="space-y-4">
         {versions.map((version, index) => {
           const isCurrent = version.id === currentVersionId;
-          const validationResult = version.validation_result as Record<string, unknown> | null;
+          const validationResult = version.validation_result as {
+            valid: boolean;
+            validated_at?: string;
+            errors?: string[];
+          } | null;
           
           return (
             <Card key={version.id} className={isCurrent ? 'border-primary' : ''}>
@@ -193,7 +197,7 @@ export default async function VersionHistoryPage({ params }: VersionHistoryPageP
                       </span>
                       {validationResult.validated_at && (
                         <span className="text-muted-foreground text-sm">
-                          at {formatDate(validationResult.validated_at as string)}
+                          at {formatDate(validationResult.validated_at)}
                         </span>
                       )}
                     </div>
