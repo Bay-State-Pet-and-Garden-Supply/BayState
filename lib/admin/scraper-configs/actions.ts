@@ -510,3 +510,238 @@ export async function rollbackConfig(
     return { success: false, error: 'Internal server error' };
   }
 }
+
+// ============================================================================
+// Test Running
+// ============================================================================
+
+const testRequestSchema = z.object({
+  configId: z.string().uuid(),
+  skus: z.array(z.string()).optional(),
+  headless: z.boolean().default(true),
+});
+
+export type TestResultSku = {
+  sku: string;
+  sku_type: string;
+  status: string;
+  is_passing: boolean;
+  outcome: string;
+  selectors: Record<string, { status: string; value: string | null }>;
+  data?: Record<string, string>;
+  error?: string;
+};
+
+export type TestResultSelector = {
+  name: string;
+  status: string;
+  success_count: number;
+  fail_count: number;
+  last_value: string | null;
+};
+
+export type TestResult = {
+  status: string;
+  scraper_name: string;
+  success: boolean;
+  summary: {
+    total: number;
+    success: number;
+    no_results: number;
+    failed: number;
+  };
+  skus: TestResultSku[];
+  selectors: Record<string, TestResultSelector>;
+  execution_time_seconds: number;
+  timestamp: string;
+  errors: string[];
+};
+
+export async function runTest(
+  formData: FormData
+): Promise<ActionState & { testResult?: TestResult }> {
+  try {
+    const rawData = {
+      configId: formData.get('configId'),
+      skus: formData.get('skus') ? JSON.parse(formData.get('skus') as string) : undefined,
+      headless: formData.get('headless') === 'true' || formData.get('headless') === '1',
+    };
+
+    const { configId, skus, headless } = testRequestSchema.parse(rawData);
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    // Fetch the scraper config to get the slug
+    const { data: config, error: configError } = await supabase
+      .from('scraper_configs')
+      .select('slug, display_name, current_version_id')
+      .eq('id', configId)
+      .single();
+
+    if (configError || !config) {
+      return { success: false, error: 'Config not found' };
+    }
+
+    const scraperName = config.slug;
+    if (!scraperName) {
+      return { success: false, error: 'Config has no slug' };
+    }
+
+    // Get the scraper API URL
+    const scraperApiUrl = process.env.SCRAPER_API_URL || 'http://localhost:8000';
+
+    // Call the scraper test API
+    let testResult: TestResult;
+
+    try {
+      const response = await fetch(`${scraperApiUrl}/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config_id: configId,
+          scraper_name: scraperName,
+          skus: skus,
+          headless: headless,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Test API error: ${response.status} - ${errorText}`);
+      }
+
+      testResult = await response.json() as TestResult;
+    } catch (fetchError) {
+      console.error('Failed to call scraper test API:', fetchError);
+
+      // Fallback: Run test directly in-process (for local development)
+      if (scraperApiUrl.includes('localhost') || scraperApiUrl.includes('127.0.0.1')) {
+        try {
+          const { ScraperTestingClient, TestingMode } = await import(
+            '@/lib/scraper-testing-client'
+          );
+
+          const client = new ScraperTestingClient(TestingMode.LOCAL, headless);
+          const result = await client.run_scraper(scraperName, skus || []);
+
+          // Transform the result to match our expected format
+          testResult = {
+            status: result.success ? 'completed' : 'failed',
+            scraper_name: scraperName,
+            success: result.success,
+            summary: {
+              total: result.products?.length || 0,
+              success: result.success ? (result.products?.length || 0) : 0,
+              no_results: 0,
+              failed: result.success ? 0 : (result.products?.length || 0),
+            },
+            skus: (result.products || []).map((p: Record<string, unknown>) => ({
+              sku: p.SKU as string || 'unknown',
+              sku_type: 'test',
+              status: result.success ? 'success' : 'failed',
+              is_passing: result.success,
+              outcome: result.success ? 'success' : 'failed',
+              selectors: {},
+              data: p,
+            })),
+            selectors: {},
+            execution_time_seconds: result.execution_time || 0,
+            timestamp: new Date().toISOString(),
+            errors: result.errors || [],
+          };
+        } catch (importError) {
+          console.error('Failed to import local test client:', importError);
+          throw new Error(
+            `Failed to run test: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}. ` +
+            'Ensure the scraper API is running at ' + scraperApiUrl
+          );
+        }
+      } else {
+        throw fetchError;
+      }
+    }
+
+    // Store test result in Supabase for history
+    try {
+      await supabase.from('scraper_test_runs').insert({
+        scraper_id: configId,
+        scraper_slug: scraperName,
+        status: testResult.success ? 'passed' : 'failed',
+        execution_time_seconds: testResult.execution_time_seconds,
+        result_data: testResult,
+        created_by: user.id,
+      });
+
+      // Update health status based on test result
+      const newHealthStatus = testResult.success ? 'healthy' : 'broken';
+      await supabase.rpc('update_scraper_health_from_test', {
+        p_scraper_id: configId,
+        p_status: testResult.success ? 'passed' : 'failed',
+        p_result_data: testResult,
+      });
+    } catch (dbError) {
+      console.error('Failed to store test result:', dbError);
+      // Don't fail the test, just log the error
+    }
+
+    revalidatePath('/admin/scraper-configs');
+
+    return { success: true, testResult };
+  } catch (error) {
+    console.error('Test error:', error);
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Validation failed', details: error.issues };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to run test',
+    };
+  }
+}
+
+export async function getTestResults(
+  configId: string
+): Promise<ActionState & { testResult?: TestResult }> {
+  try {
+    const supabase = await createClient();
+
+    // Get the scraper config to find the slug
+    const { data: config, error: configError } = await supabase
+      .from('scraper_configs')
+      .select('slug, display_name')
+      .eq('id', configId)
+      .single();
+
+    if (configError || !config) {
+      return { success: false, error: 'Config not found' };
+    }
+
+    // Get the most recent test result
+    const { data: testResult, error: testError } = await supabase
+      .from('scraper_test_runs')
+      .select('*')
+      .eq('scraper_id', configId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (testError || !testResult) {
+      return { success: true, testResult: undefined };
+    }
+
+    return {
+      success: true,
+      testResult: testResult.result_data as TestResult,
+    };
+  } catch (error) {
+    console.error('Get test results error:', error);
+    return { success: false, error: 'Failed to get test results' };
+  }
+}

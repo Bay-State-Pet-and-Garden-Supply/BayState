@@ -49,7 +49,6 @@ export async function updateSession(request: NextRequest) {
 
   // Handle auth errors (e.g., expired refresh token, session invalidated)
   if (authError) {
-  if (authError) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('error', 'session_expired')

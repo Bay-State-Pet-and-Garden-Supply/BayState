@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { 
-  CheckCircle, 
-  Upload, 
-  Copy, 
-  History, 
+import {
+  CheckCircle,
+  Upload,
+  Copy,
+  History,
   MoreHorizontal,
   Check,
   Loader2,
   AlertCircle,
-  Edit
+  Edit,
+  Play,
+  Terminal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { validateDraft, publishConfig } from '@/lib/admin/scraper-configs/actions';
+import { TestResultsDialog } from './TestResultsDialog';
 
 interface ConfigQuickActionsProps {
   configId: string;
@@ -49,6 +52,7 @@ export function ConfigQuickActions({
   const [isPending, startTransition] = useTransition();
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
+  const [showTestDialog, setShowTestDialog] = useState(false);
   const [duplicateSlug, setDuplicateSlug] = useState('');
   const [rollbackReason, setRollbackReason] = useState('');
 
@@ -155,6 +159,13 @@ export function ConfigQuickActions({
             Version History
           </DropdownMenuItem>
 
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem onClick={() => setShowTestDialog(true)}>
+            <Play className="mr-2 h-4 w-4" />
+            Run Test
+          </DropdownMenuItem>
+
           {canRollback && (
             <>
               <DropdownMenuSeparator />
@@ -250,6 +261,13 @@ export function ConfigQuickActions({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TestResultsDialog
+        open={showTestDialog}
+        onOpenChange={setShowTestDialog}
+        configId={configId}
+        configSlug={configSlug}
+      />
     </>
   );
 }
