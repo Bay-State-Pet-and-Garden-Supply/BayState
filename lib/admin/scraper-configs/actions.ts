@@ -620,52 +620,10 @@ export async function runTest(
       testResult = await response.json() as TestResult;
     } catch (fetchError) {
       console.error('Failed to call scraper test API:', fetchError);
-
-      // Fallback: Run test directly in-process (for local development)
-      if (scraperApiUrl.includes('localhost') || scraperApiUrl.includes('127.0.0.1')) {
-        try {
-          const { ScraperTestingClient, TestingMode } = await import(
-            '@/lib/scraper-testing-client'
-          );
-
-          const client = new ScraperTestingClient(TestingMode.LOCAL, headless);
-          const result = await client.run_scraper(scraperName, skus || []);
-
-          // Transform the result to match our expected format
-          testResult = {
-            status: result.success ? 'completed' : 'failed',
-            scraper_name: scraperName,
-            success: result.success,
-            summary: {
-              total: result.products?.length || 0,
-              success: result.success ? (result.products?.length || 0) : 0,
-              no_results: 0,
-              failed: result.success ? 0 : (result.products?.length || 0),
-            },
-            skus: (result.products || []).map((p: Record<string, unknown>) => ({
-              sku: p.SKU as string || 'unknown',
-              sku_type: 'test',
-              status: result.success ? 'success' : 'failed',
-              is_passing: result.success,
-              outcome: result.success ? 'success' : 'failed',
-              selectors: {},
-              data: p,
-            })),
-            selectors: {},
-            execution_time_seconds: result.execution_time || 0,
-            timestamp: new Date().toISOString(),
-            errors: result.errors || [],
-          };
-        } catch (importError) {
-          console.error('Failed to import local test client:', importError);
-          throw new Error(
-            `Failed to run test: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}. ` +
-            'Ensure the scraper API is running at ' + scraperApiUrl
-          );
-        }
-      } else {
-        throw fetchError;
-      }
+      throw new Error(
+        `Failed to run test: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}. ` +
+        'Ensure the scraper API is running at ' + scraperApiUrl
+      );
     }
 
     // Store test result in Supabase for history
