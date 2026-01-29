@@ -42,8 +42,9 @@ export async function updateSession(request: NextRequest) {
   const isScraperApi = request.nextUrl.pathname.startsWith('/api/scraper/')
   const isCronApi = request.nextUrl.pathname.startsWith('/api/cron/')
   const isAdminScraperApi = request.nextUrl.pathname.startsWith('/api/admin/scraper-network/')
+  const isAdminScraperConfigsApi = request.nextUrl.pathname.startsWith('/api/admin/scraper-configs/')
   
-  if (isScraperApi || isCronApi || isAdminScraperApi) {
+  if (isScraperApi || isCronApi || isAdminScraperApi || isAdminScraperConfigsApi) {
     // Let these routes handle their own auth via API keys
     return response
   }
