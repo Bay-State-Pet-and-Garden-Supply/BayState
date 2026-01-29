@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+function getSupabaseAdmin(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Missing Supabase configuration');
+  }
+  return createClient(url, key);
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +26,7 @@ interface TestRequest {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = getSupabaseAdmin();
     const body: TestRequest = await request.json();
 
     const { scraper_id, skus, test_mode = true } = body;
