@@ -75,27 +75,14 @@ export async function POST(request: NextRequest) {
 
     const job = claimedJobs[0];
 
-        // Query scraper configs with their current published version
-        // Using a direct join via current_version_id instead of nested select
+        // Query scrapers directly (same as /api/scraper/v1/job endpoint)
         let scraperQuery = supabase
-            .from('scraper_configs')
-            .select(`
-                id,
-                slug,
-                display_name,
-                domain,
-                current_version_id,
-                scraper_config_versions!scraper_configs_current_version_id_fkey(
-                    id,
-                    config,
-                    status,
-                    version_number
-                )
-            `)
-            .not('current_version_id', 'is', null);
+            .from('scrapers')
+            .select('*')
+            .eq('disabled', false);
 
         if (job.scrapers && job.scrapers.length > 0) {
-            scraperQuery = scraperQuery.in('slug', job.scrapers);
+            scraperQuery = scraperQuery.in('name', job.scrapers);
         }
 
         const { data: scrapers, error: scraperError } = await scraperQuery;
@@ -104,14 +91,39 @@ export async function POST(request: NextRequest) {
             console.error('[Poll] Scraper query error:', scraperError);
         }
 
-        // Debug: Log what we got from the database
-        console.log('[Poll] Scrapers from DB:', JSON.stringify(scrapers?.map(s => ({
-            slug: s.slug,
-            hasVersion: !!s.scraper_config_versions,
-            versionKeys: s.scraper_config_versions ? Object.keys(s.scraper_config_versions) : [],
-        })), null, 2));
+        console.log('[Poll] Scrapers from DB:', scrapers?.length || 0);
 
         const skus: string[] = job.skus || [];
+        if (skus.length === 0) {
+            console.error(`[Poll] Job ${job.job_id} has no SKUs - this should not happen`);
+            return NextResponse.json(
+                { error: 'Job has no SKUs configured' },
+                { status: 400 }
+            );
+        }
+
+        console.log(`[Poll] Runner ${runnerName} assigned job ${job.job_id}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
+
+        // Transform scrapers to response format
+        const response: PollResponse = {
+            job: {
+                job_id: job.job_id,
+                skus,
+                scrapers: (scrapers || []).map(s => ({
+                    name: s.name,
+                    disabled: s.disabled || false,
+                    base_url: s.base_url,
+                    search_url_template: s.search_url_template,
+                    selectors: s.selectors,
+                    options: s.options,
+                    test_skus: s.test_skus,
+                })),
+                test_mode: job.test_mode || false,
+                max_workers: job.max_workers || 3,
+            },
+        };
+
+        return NextResponse.json(response);
         if (skus.length === 0) {
             console.error(`[Poll] Job ${job.job_id} has no SKUs - this should not happen`);
             return NextResponse.json(
