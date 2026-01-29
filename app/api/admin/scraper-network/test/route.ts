@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const testRunId = searchParams.get('id');
     const jobId = searchParams.get('job_id');

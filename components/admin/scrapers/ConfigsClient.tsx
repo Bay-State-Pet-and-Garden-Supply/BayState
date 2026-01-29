@@ -228,11 +228,6 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                       )}
                       <span>Updated {format(new Date(config.updated_at), 'MMM d, yyyy')}</span>
                     </div>
-                    {config.description && (
-                      <p className="mt-1 text-sm text-gray-500 truncate">
-                        {config.description}
-                      </p>
-                    )}
                   </div>
 
                   {/* Right: Actions */}

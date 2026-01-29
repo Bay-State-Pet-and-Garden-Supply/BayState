@@ -37,7 +37,7 @@ export default async function ScraperNetworkPage() {
             id: r.name,
             name: r.name,
             os: 'Linux/Mac',
-            status: status === 'busy' ? 'online' : status,
+            status: (status === 'busy' ? 'online' : status) as 'offline' | 'online',
             busy: status === 'busy',
             labels: []
         };

@@ -27,7 +27,7 @@ export default async function ScraperDashboardPage() {
     .order('created_at', { ascending: false })
     .limit(20);
 
-  const { data: runnerCount } = await supabase
+  const { count } = await supabase
     .from('scraper_runners')
     .select('*', { count: 'exact', head: true });
 
@@ -51,7 +51,7 @@ export default async function ScraperDashboardPage() {
       recentJobs={recentJobs || []}
       healthCounts={healthCounts}
       statusCounts={statusCounts}
-      runnerCount={runnerCount?.count || 0}
+      runnerCount={count || 0}
     />
   );
 }

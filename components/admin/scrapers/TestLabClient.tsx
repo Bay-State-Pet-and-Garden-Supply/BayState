@@ -114,6 +114,8 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
 
   const initializeTestSkus = (scraper: Scraper) => {
     const config = getScraperConfig(scraper);
+    if (!config) return;
+    
     const skus: TestSku[] = [];
 
     (config.test_skus || []).forEach(sku => {
