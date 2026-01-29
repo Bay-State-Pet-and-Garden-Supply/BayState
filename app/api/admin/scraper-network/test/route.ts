@@ -13,7 +13,8 @@ function getSupabaseAdmin(): SupabaseClient {
 export const dynamic = 'force-dynamic';
 
 interface TestRequest {
-  scraper_id: string;
+  scraper_id?: string;
+  slug?: string;
   skus: string[];
   test_mode?: boolean;
 }
@@ -23,29 +24,49 @@ interface TestRequest {
  * 
  * Creates a test scrape job in the database. Daemon runners will
  * poll for pending jobs and process them automatically.
+ * 
+ * Accepts either scraper_id (UUID) or slug (e.g., "amazon")
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseAdmin();
     const body: TestRequest = await request.json();
 
-    const { scraper_id, skus, test_mode = true } = body;
+    const { scraper_id, slug, skus, test_mode = true } = body;
 
-    if (!scraper_id || !skus || skus.length === 0) {
+    if (!skus || skus.length === 0) {
       return NextResponse.json(
-        { error: 'scraper_id and skus array are required' },
+        { error: 'skus array is required' },
         { status: 400 }
       );
     }
 
-    // Get scraper config to find the scraper name
-    const { data: scraperConfig, error: configError } = await supabase
-      .from('scraper_configs')
-      .select('slug')
-      .eq('id', scraper_id)
-      .single();
+    let scraperConfig;
+    
+    // Try to find scraper config by ID or slug
+    if (scraper_id) {
+      const { data, error } = await supabase
+        .from('scraper_configs')
+        .select('slug')
+        .eq('id', scraper_id)
+        .single();
+      
+      if (!error && data) {
+        scraperConfig = data;
+      }
+    } else if (slug) {
+      const { data, error } = await supabase
+        .from('scraper_configs')
+        .select('slug')
+        .eq('slug', slug)
+        .single();
+      
+      if (!error && data) {
+        scraperConfig = data;
+      }
+    }
 
-    if (configError || !scraperConfig) {
+    if (!scraperConfig) {
       return NextResponse.json(
         { error: 'Scraper config not found' },
         { status: 404 }
