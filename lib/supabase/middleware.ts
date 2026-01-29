@@ -41,8 +41,9 @@ export async function updateSession(request: NextRequest) {
   // Skip auth redirect for API routes that use their own authentication (API keys)
   const isScraperApi = request.nextUrl.pathname.startsWith('/api/scraper/')
   const isCronApi = request.nextUrl.pathname.startsWith('/api/cron/')
+  const isAdminScraperApi = request.nextUrl.pathname.startsWith('/api/admin/scraper-network/')
   
-  if (isScraperApi || isCronApi) {
+  if (isScraperApi || isCronApi || isAdminScraperApi) {
     // Let these routes handle their own auth via API keys
     return response
   }
