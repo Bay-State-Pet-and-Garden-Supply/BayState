@@ -18,6 +18,12 @@ import {
   Network,
   FileCode2,
   Star,
+  Beaker,
+  Play,
+  History,
+  Server,
+  Settings2,
+  Layers,
 } from 'lucide-react';
 
 interface NavItem {
@@ -71,12 +77,21 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    title: 'Scraper',
+    adminOnly: true,
+    items: [
+      { href: '/admin/scrapers', label: 'Dashboard', icon: <BarChart3 className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/configs', label: 'Configs', icon: <Layers className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/test-lab', label: 'Test Lab', icon: <Beaker className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/runs', label: 'Runs', icon: <History className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/network', label: 'Network', icon: <Network className="h-5 w-5" />, adminOnly: true },
+    ],
+  },
+  {
     title: 'System',
-    adminOnly: true, // Only admins can see this section
+    adminOnly: true,
     items: [
       { href: '/admin/users', label: 'Users', icon: <Users className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/scraper-configs', label: 'Scraper Configs', icon: <FileCode2 className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/scraper-network', label: 'Scraper Network', icon: <Network className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/migration', label: 'Data Migration', icon: <RefreshCw className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/tools/integra-sync', label: 'Integra Sync', icon: <RefreshCw className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/settings', label: 'Settings', icon: <Settings className="h-5 w-5" />, adminOnly: true },

@@ -116,12 +116,12 @@ New documentation files have been added to the repository to guide future develo
 
 | Category | File | Description |
 |----------|------|-------------|
-| **Design System** | `DESIGN_SYSTEM.md` | Single source of truth for spacing, icons, formatting, and component usage. |
-| **UX Patterns** | `PRINT_STYLES.md` | Guide to print-specific CSS and utility classes. |
-| **UX Patterns** | `KEYBOARD_SHORTCUTS.md` | List of implemented keyboard shortcuts for users and developers. |
-| **UX Patterns** | `FILE_UPLOAD_STANDARD.md` | Documentation for the new `FileUpload` component vs `ImageUpload`. |
-| **UX Patterns** | `CONFIRMATION_UX.md` | Standards for implementing destructive action confirmations. |
-| **UX Patterns** | `ERROR_UX.md` | Standards for error page layout and recovery flows. |
-| **UX Patterns** | `TABLE_UX.md` | Guide to the improved Data Table sorting and interaction patterns. |
-| **Accessibility** | `A11Y_LANDMARKS.md` | Documentation of semantic HTML structure and ARIA labeling rules. |
-| **Accessibility** | `A11Y_AUDIT.md` | Comprehensive log of accessibility checks and fixes. |
+| **Design System** | [`design-system/DESIGN_SYSTEM.md`](./design-system/DESIGN_SYSTEM.md) | Single source of truth for spacing, icons, formatting, and component usage. |
+| **UX Patterns** | [`ux-patterns/PRINT_STYLES.md`](./ux-patterns/PRINT_STYLES.md) | Guide to print-specific CSS and utility classes. |
+| **UX Patterns** | [`ux-patterns/KEYBOARD_SHORTCUTS.md`](./ux-patterns/KEYBOARD_SHORTCUTS.md) | List of implemented keyboard shortcuts for users and developers. |
+| **UX Patterns** | [`ux-patterns/FILE_UPLOAD_STANDARD.md`](./ux-patterns/FILE_UPLOAD_STANDARD.md) | Documentation for the new `FileUpload` component vs `ImageUpload`. |
+| **UX Patterns** | [`ux-patterns/CONFIRMATION_UX.md`](./ux-patterns/CONFIRMATION_UX.md) | Standards for implementing destructive action confirmations. |
+| **UX Patterns** | [`ux-patterns/ERROR_UX.md`](./ux-patterns/ERROR_UX.md) | Standards for error page layout and recovery flows. |
+| **UX Patterns** | [`ux-patterns/TABLE_UX.md`](./ux-patterns/TABLE_UX.md) | Guide to the improved Data Table sorting and interaction patterns. |
+| **Accessibility** | [`accessibility/A11Y_LANDMARKS.md`](./accessibility/A11Y_LANDMARKS.md) | Documentation of semantic HTML structure and ARIA labeling rules. |
+| **Accessibility** | [`accessibility/A11Y_AUDIT.md`](./accessibility/A11Y_AUDIT.md) | Comprehensive log of accessibility checks and fixes. |

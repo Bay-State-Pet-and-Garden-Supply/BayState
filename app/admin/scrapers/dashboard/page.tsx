@@ -12,7 +12,7 @@ export default async function ScraperDashboardPage() {
 
   const { data: scrapers } = await supabase
     .from('scrapers')
-    .select('id, name, display_name, status, health_status, health_score, last_test_at')
+    .select('id, name, display_name, status, health_status, health_score, last_test_at, config')
     .order('name');
 
   const { data: recentTests } = await supabase
@@ -21,11 +21,21 @@ export default async function ScraperDashboardPage() {
     .order('created_at', { ascending: false })
     .limit(50);
 
+  const { data: recentJobs } = await supabase
+    .from('scrape_jobs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const { data: runnerCount } = await supabase
+    .from('scraper_runners')
+    .select('*', { count: 'exact', head: true });
+
   const healthCounts = {
     healthy: scrapers?.filter((s) => s.health_status === 'healthy').length || 0,
     degraded: scrapers?.filter((s) => s.health_status === 'degraded').length || 0,
     broken: scrapers?.filter((s) => s.health_status === 'broken').length || 0,
-    unknown: scrapers?.filter((s) => s.health_status === 'unknown').length || 0,
+    unknown: scrapers?.filter((s) => !s.health_status || s.health_status === 'unknown').length || 0,
   };
 
   const statusCounts = {
@@ -38,8 +48,10 @@ export default async function ScraperDashboardPage() {
     <ScraperDashboardClient
       scrapers={scrapers || []}
       recentTests={recentTests || []}
+      recentJobs={recentJobs || []}
       healthCounts={healthCounts}
       statusCounts={statusCounts}
+      runnerCount={runnerCount?.count || 0}
     />
   );
 }
