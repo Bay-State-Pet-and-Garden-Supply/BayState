@@ -78,12 +78,14 @@ interface TestRun {
 
 interface Scraper {
   id: string;
-  name: string;
+  slug: string;
   display_name: string | null;
-  base_url: string;
-  config?: {
+  domain: string;
+  config: {
     test_skus?: string[];
     fake_skus?: string[];
+    edge_case_skus?: string[];
+    base_url?: string;
   };
 }
 
@@ -107,7 +109,7 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
 
   const getScraperConfig = (scraper: Scraper | null) => {
     if (!scraper) return null;
-    return scraper.config || {};
+    return scraper.config || { test_skus: [], fake_skus: [], edge_case_skus: [] };
   };
 
   const initializeTestSkus = (scraper: Scraper) => {
@@ -120,6 +122,10 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
 
     (config.fake_skus || []).forEach(sku => {
       skus.push({ sku, type: 'fake' });
+    });
+
+    (config.edge_case_skus || []).forEach(sku => {
+      skus.push({ sku, type: 'edge' });
     });
 
     setTestSkus(skus);
@@ -165,8 +171,8 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           scraper_id: selectedScraper.id,
-          sku,
-          sku_type: type,
+          skus: [sku],
+          test_mode: true,
         }),
       });
 
@@ -180,20 +186,12 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
           ...prev[sku],
           sku,
           type: type as TestSku['type'],
-          status: data.status === 'success' ? 'success' : data.status === 'no_results' ? 'no_results' : 'error',
+          status: data.status === 'pending' ? 'pending' : data.status === 'success' ? 'success' : data.status === 'no_results' ? 'no_results' : 'error',
           result: data.result,
           error: data.error,
           duration_ms: data.duration_ms,
         }
       }));
-
-      if (data.status === 'success') {
-        toast.success(`Test passed for ${sku}`);
-      } else if (data.status === 'no_results' && type === 'fake') {
-        toast.success(`Correctly detected no results for fake SKU ${sku}`);
-      } else {
-        toast.error(`Test failed for ${sku}: ${data.error || 'Unknown error'}`);
-      }
     } catch (error) {
       setTestResults(prev => ({
         ...prev,
@@ -205,7 +203,6 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
           error: error instanceof Error ? error.message : 'Unknown error',
         }
       }));
-      toast.error(`Failed to run test for ${sku}`);
     }
   };
 
@@ -215,27 +212,48 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
     setIsRunning(true);
     setTestResults({});
 
-    const goldenSkus = testSkus.filter(s => s.type === 'golden');
-    const fakeSkus = testSkus.filter(s => s.type === 'fake');
-    const edgeSkus = testSkus.filter(s => s.type === 'edge');
-
-    for (const sku of goldenSkus) {
-      await runTest(sku.sku, 'golden');
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Mark all as running
+    const runningSkus: Record<string, TestSku> = {};
+    for (const sku of testSkus) {
+      runningSkus[sku.sku] = { ...sku, status: 'running' };
     }
+    setTestResults(runningSkus);
 
-    for (const sku of fakeSkus) {
-      await runTest(sku.sku, 'fake');
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Submit all SKUs as a single batch job
+    const skus = testSkus.map(s => s.sku);
+    try {
+      const response = await fetch('/api/admin/scraper-network/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scraper_id: selectedScraper.id,
+          skus,
+          test_mode: true,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Test request failed');
+
+      const data = await response.json();
+
+      // Update all SKUs to pending
+      const pendingSkus: Record<string, TestSku> = {};
+      for (const sku of testSkus) {
+        pendingSkus[sku.sku] = {
+          ...sku,
+          status: 'pending',
+        };
+      }
+      setTestResults(pendingSkus);
+
+      toast.success(`Test job submitted with ${skus.length} SKUs. Results will appear when runners complete.`);
+    } catch (error) {
+      toast.error(`Failed to submit test job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setTestResults({});
+    } finally {
+      setIsRunning(false);
+      router.refresh();
     }
-
-    for (const sku of edgeSkus) {
-      await runTest(sku.sku, 'edge');
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    setIsRunning(false);
-    router.refresh();
   };
 
   const getStatusIcon = (status?: string) => {
@@ -306,14 +324,14 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Select onValueChange={handleSelectScraper} value={selectedScraper?.id || ''}>
+          <Select onValueChange={handleSelectScraper} value={selectedScraper?.id}>
             <SelectTrigger className="w-full max-w-md">
               <SelectValue placeholder="Select a scraper..." />
             </SelectTrigger>
             <SelectContent>
               {scrapers.map((scraper) => (
                 <SelectItem key={scraper.id} value={scraper.id}>
-                  {scraper.display_name || scraper.name} ({scraper.base_url})
+                  {scraper.display_name || scraper.slug} ({scraper.config.base_url || `https://${scraper.domain}`})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -498,7 +516,7 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
                               setSelectedTest({
                                 id: 'manual',
                                 scraper_id: selectedScraper.id,
-                                scraper_name: selectedScraper.name,
+                                scraper_name: selectedScraper.display_name || selectedScraper.slug,
                                 test_type: 'manual',
                                 status: result.status || 'pending',
                                 created_at: new Date().toISOString(),

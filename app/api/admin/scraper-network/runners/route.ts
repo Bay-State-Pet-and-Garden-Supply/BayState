@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 interface RunnerData {
     name: string;
     last_seen_at: string;
-    status: 'online' | 'offline' | 'busy';
+    status: 'online' | 'offline' | 'busy' | 'idle' | 'polling';
     current_job_id: string | null;
     metadata: Record<string, unknown>;
 }
@@ -36,7 +36,8 @@ export async function GET() {
                 id: r.name, // Use name as ID
                 name: r.name,
                 os: 'Linux/Mac', // Placeholder
-                status: status === 'busy' ? 'online' : status, // Frontend expects online/offline
+                // Convert all active states (online, idle, polling, busy) to 'online' for UI
+                status: status === 'offline' ? 'offline' : 'online',
                 busy: status === 'busy',
                 labels: []
             };

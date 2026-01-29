@@ -406,6 +406,12 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                   <TableBody>
                     {accounts.map((account) => {
                       const accountKey = account.name || `account-${Math.random()}`;
+                      
+                      // Compute status label
+                      const isOnline = ['online', 'idle', 'polling'].includes(account.status);
+                      const isBusy = ['busy', 'running'].includes(account.status);
+                      const statusLabel = isBusy ? 'Running' : isOnline ? 'Ready' : 'Offline';
+                      
                       return (
                         <TableRow key={accountKey}>
                           <TableCell>
@@ -428,14 +434,12 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                           <TableCell>
                             <Badge
                               variant={
-                                ['online', 'idle', 'polling'].includes(account.status)
-                                  ? 'success'
-                                  : ['busy', 'running'].includes(account.status)
-                                  ? 'warning'
+                                isOnline 
+                                  ? isBusy ? 'warning' : 'success'
                                   : 'secondary'
                               }
                             >
-                              {account.status || 'unknown'}
+                              {statusLabel}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-gray-600">

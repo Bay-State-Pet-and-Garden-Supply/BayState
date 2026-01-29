@@ -14,7 +14,7 @@ export default async function ConfigsPage() {
 
   const { data: configs, count, error } = await supabase
     .from('scraper_configs')
-    .select('*, versions:scraper_config_versions(count)', { count: 'exact' })
+    .select('id, slug, display_name, domain, schema_version, current_version_id, created_at, updated_at, *, versions:scraper_config_versions!fk_config_id(count)', { count: 'exact' })
     .order('created_at', { ascending: false });
 
   if (error) {

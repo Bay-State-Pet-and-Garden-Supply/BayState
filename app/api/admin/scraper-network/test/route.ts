@@ -29,11 +29,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get scraper details
+    // Get scraper config to find the scraper name
+    const { data: scraperConfig, error: configError } = await supabase
+      .from('scraper_configs')
+      .select('slug')
+      .eq('id', scraper_id)
+      .single();
+
+    if (configError || !scraperConfig) {
+      return NextResponse.json(
+        { error: 'Scraper config not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get scraper details using the slug
     const { data: scraper, error: scraperError } = await supabase
       .from('scrapers')
       .select('*')
-      .eq('id', scraper_id)
+      .eq('name', scraperConfig.slug)
       .single();
 
     if (scraperError || !scraper) {

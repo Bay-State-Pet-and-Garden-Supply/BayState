@@ -21,7 +21,7 @@ async function getStats() {
     .from('scraper_configs')
     .select(`
       *,
-      versions:scraper_config_versions(
+      versions:scraper_config_versions!fk_config_id(
         status,
         version_number,
         published_at,

@@ -55,10 +55,9 @@ interface ConfigVersion {
 
 interface ScraperConfig {
   id: string;
-  name: string;
-  display_name: string | null;
   slug: string;
-  description: string | null;
+  display_name: string | null;
+  domain: string | null;
   created_at: string;
   updated_at: string;
   current_version_id: string | null;
@@ -79,9 +78,9 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
   const [deleteTarget, setDeleteTarget] = useState<ScraperConfig | null>(null);
 
   const filteredConfigs = configs.filter((config) =>
-    config.name.toLowerCase().includes(search.toLowerCase()) ||
+    config.slug.toLowerCase().includes(search.toLowerCase()) ||
     (config.display_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-    config.slug.toLowerCase().includes(search.toLowerCase())
+    (config.domain?.toLowerCase() || '').includes(search.toLowerCase())
   );
 
   const getVersionCount = (config: ScraperConfig) => {
@@ -217,7 +216,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                         href={`/admin/scrapers/configs/${config.id}`}
                         className="text-lg font-medium text-gray-900 hover:text-blue-600 truncate"
                       >
-                        {config.display_name || config.name}
+                        {config.display_name || config.slug}
                       </Link>
                       {getStatusBadge(latestVersion?.status)}
                     </div>
@@ -299,7 +298,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
           <DialogHeader>
             <DialogTitle>Delete Configuration</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deleteTarget?.display_name || deleteTarget?.name}"?
+              Are you sure you want to delete "{deleteTarget?.display_name || deleteTarget?.slug}"?
               This action cannot be undone and will delete all versions.
             </DialogDescription>
           </DialogHeader>
