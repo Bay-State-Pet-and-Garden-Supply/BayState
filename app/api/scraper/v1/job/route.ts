@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         let scraperQuery = supabase
             .from('scrapers')
             .select('*')
-            .eq('disabled', false);
+            .eq('status', 'active');  // Use status='active' not disabled=false
 
         if (job.scrapers && job.scrapers.length > 0) {
             scraperQuery = scraperQuery.in('name', job.scrapers);
@@ -103,18 +103,30 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        // Transform scrapers - build options with workflows (runner expects options.workflows)
         const response: JobConfigResponse = {
             job_id: job.id,
             skus,
-            scrapers: (scrapers || []).map(s => ({
-                name: s.name,
-                disabled: s.disabled || false,
-                base_url: s.base_url,
-                search_url_template: s.search_url_template,
-                selectors: s.selectors,
-                options: s.options,
-                test_skus: s.test_skus,
-            })),
+            scrapers: (scrapers || []).map(s => {
+                const workflows = s.workflows as unknown[] | undefined;
+                const options: Record<string, unknown> = {};
+                if (workflows && workflows.length > 0) {
+                    options["workflows"] = workflows;
+                }
+                if (s.timeout) {
+                    options["timeout"] = s.timeout;
+                }
+                
+                return {
+                    name: s.name,
+                    disabled: s.status === 'disabled',
+                    base_url: s.base_url,
+                    search_url_template: s.url_template || undefined,
+                    selectors: s.selectors,
+                    options: options,
+                    test_skus: s.test_skus,
+                };
+            }),
             test_mode: job.test_mode || false,
             max_workers: job.max_workers || 3,
         };

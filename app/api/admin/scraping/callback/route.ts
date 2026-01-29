@@ -175,6 +175,59 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Callback] Job ${payload.job_id} updated to ${payload.status} by ${runnerName}`);
 
+        // Update scraper_test_runs if this is a test job with a test_run_id
+        if (payload.status === 'completed' || payload.status === 'failed') {
+          const { data: jobData } = await supabase
+            .from('scrape_jobs')
+            .select('metadata')
+            .eq('id', payload.job_id)
+            .single();
+
+          const metadata = jobData?.metadata as Record<string, unknown> | undefined;
+          const testRunId = metadata?.test_run_id as string | undefined;
+
+          if (testRunId) {
+            console.log(`[Callback] Updating test run ${testRunId} for job ${payload.job_id}`);
+
+            // Calculate test results from the scrape results
+            let testStatus: 'passed' | 'failed' | 'partial' = 'failed';
+            let results: Array<{
+              sku: string;
+              status: 'success' | 'no_results' | 'error' | 'timeout';
+              data?: Record<string, unknown>;
+              error_message?: string;
+              duration_ms?: number;
+            }> = [];
+
+            if (payload.results?.data) {
+              const skus = Object.keys(payload.results.data);
+              results = skus.map(sku => {
+                const scraperData = payload.results?.data?.[sku];
+                const hasData = scraperData && Object.keys(scraperData).some(k => k !== 'scraped_at');
+                return {
+                  sku,
+                  status: hasData ? 'success' : 'no_results',
+                  data: scraperData,
+                };
+              });
+
+              const allSuccess = results.every(r => r.status === 'success' || r.status === 'no_results');
+              testStatus = allSuccess ? 'passed' : 'partial';
+            }
+
+            await supabase
+              .from('scraper_test_runs')
+              .update({
+                status: testStatus,
+                results,
+                completed_at: new Date().toISOString(),
+              })
+              .eq('id', testRunId);
+
+            console.log(`[Callback] Updated test run ${testRunId} with status: ${testStatus}`);
+          }
+        }
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('[Callback] Error processing request:', error);

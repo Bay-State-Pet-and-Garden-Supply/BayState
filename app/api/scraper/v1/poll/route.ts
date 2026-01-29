@@ -75,24 +75,25 @@ export async function POST(request: NextRequest) {
 
     const job = claimedJobs[0];
 
-        // Query scrapers directly (same as /api/scraper/v1/job endpoint)
+        // Query scrapers directly (scrapers table stores config in a JSONB column)
         let scraperQuery = supabase
             .from('scrapers')
             .select('*')
-            .eq('disabled', false);
+            .eq('status', 'active');  // Use status='active' not disabled=false
 
         if (job.scrapers && job.scrapers.length > 0) {
             scraperQuery = scraperQuery.in('name', job.scrapers);
         }
 
         const { data: scrapers, error: scraperError } = await scraperQuery;
-        
+
         if (scraperError) {
             console.error('[Poll] Scraper query error:', scraperError);
         }
 
         console.log('[Poll] Scrapers from DB:', scrapers?.length || 0);
 
+        // Extract config from JSONB column
         const skus: string[] = job.skus || [];
         if (skus.length === 0) {
             console.error(`[Poll] Job ${job.job_id} has no SKUs - this should not happen`);
@@ -104,20 +105,36 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Poll] Runner ${runnerName} assigned job ${job.job_id}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
 
-        // Transform scrapers to response format
+        // Transform scrapers to response format - use actual column names from scrapers table
+        // The table has workflows, selectors, timeout as separate columns
+        // Runner expects options to contain workflows
         const response: PollResponse = {
             job: {
                 job_id: job.job_id,
                 skus,
-                scrapers: (scrapers || []).map(s => ({
-                    name: s.name,
-                    disabled: s.disabled || false,
-                    base_url: s.base_url,
-                    search_url_template: s.search_url_template,
-                    selectors: s.selectors,
-                    options: s.options,
-                    test_skus: s.test_skus,
-                })),
+                scrapers: (scrapers || []).map(s => {
+                    // Get workflows from the workflows column
+                    const workflows = s.workflows as unknown[] | undefined;
+                    
+                    // Build options with workflows (runner looks for options.workflows)
+                    const options: Record<string, unknown> = {};
+                    if (workflows && workflows.length > 0) {
+                        options["workflows"] = workflows;
+                    }
+                    if (s.timeout) {
+                        options["timeout"] = s.timeout;
+                    }
+                    
+                    return {
+                        name: s.name,
+                        disabled: s.status === 'disabled',
+                        base_url: s.base_url,
+                        search_url_template: s.url_template || undefined,
+                        selectors: s.selectors as Record<string, unknown> | undefined,
+                        options: options,
+                        test_skus: s.test_skus || undefined,
+                    };
+                }),
                 test_mode: job.test_mode || false,
                 max_workers: job.max_workers || 3,
             },

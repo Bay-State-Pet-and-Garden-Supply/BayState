@@ -58,6 +58,8 @@
     "react-hook-form": "^7.69.0",
     "react-markdown": "^10.1.0",
     "resend": "^6.6.0",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "sonner": "^2.0.7",
     "ssh2-sftp-client": "^12.0.1",
     "stripe": "^20.2.0",
