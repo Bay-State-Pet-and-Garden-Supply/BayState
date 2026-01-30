@@ -103,6 +103,49 @@ export function PipelineProductDetail({
     fetchData();
   }, [sku]);
 
+  // Focus trap
+  useEffect(() => {
+    if (loading || !product) return;
+
+    const modalElement = document.getElementById('product-detail-modal');
+    if (!modalElement) return;
+
+    // Find all focusable elements
+    const focusableElements = modalElement.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0] as HTMLElement;
+    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+    // Focus the first element (usually close button or header action)
+    // We use a small timeout to ensure rendering is complete
+    setTimeout(() => {
+        firstElement.focus();
+    }, 50);
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleTabKey);
+    return () => document.removeEventListener('keydown', handleTabKey);
+  }, [loading, product]);
+
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -185,20 +228,27 @@ export function PipelineProductDetail({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div 
+        id="product-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
           <div className="flex items-center gap-3">
             <Package className="h-6 w-6 text-gray-600" />
             <div>
-              <h2 className="text-lg font-semibold">Edit Product</h2>
+              <h2 id="modal-title" className="text-lg font-semibold">Edit Product</h2>
               <p className="text-sm text-gray-600 font-mono">{sku}</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="rounded-full p-2 hover:bg-gray-100"
+            aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
@@ -217,7 +267,7 @@ export function PipelineProductDetail({
           <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50">
             <Label className="w-32">Product Stage</Label>
             <Select value={pipelineStatus} onValueChange={(v) => setPipelineStatus(v as PipelineStatus)}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48" aria-label="Product Stage">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -260,7 +310,7 @@ export function PipelineProductDetail({
               <div className="space-y-2">
                 <Label htmlFor="brand">Brand</Label>
                 <Select value={brandId} onValueChange={setBrandId}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Brand">
                     <SelectValue placeholder="Select a brand" />
                   </SelectTrigger>
                   <SelectContent>
@@ -277,7 +327,7 @@ export function PipelineProductDetail({
               <div className="space-y-2">
                 <Label htmlFor="stockStatus">Stock Status</Label>
                 <Select value={stockStatus} onValueChange={setStockStatus}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Stock Status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -78,7 +78,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
               key={letter}
               onClick={() => scrollToSection(letter)}
               className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-md text-sm font-[--font-weight-medium] transition-colors hover:bg-zinc-100 hover:text-primary",
+                "w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-zinc-100 hover:text-primary",
                 activeLetter === letter 
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
                   : "text-muted-foreground"
@@ -94,7 +94,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
         {letters.map((letter) => (
           <div key={letter} id={`brand-section-${letter}`} className="scroll-mt-24">
             <div className="flex items-center gap-4 mb-6 border-b pb-2">
-              <h2 className="text-2xl font-[--font-weight-bold] text-primary">{letter}</h2>
+              <h2 className="text-2xl font-bold text-primary">{letter}</h2>
               <span className="text-sm text-muted-foreground">
                 {groupedBrands[letter].length} {groupedBrands[letter].length === 1 ? 'Brand' : 'Brands'}
               </span>
@@ -119,13 +119,13 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                             sizes="(max-width: 768px) 50vw, 25vw"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-[--font-weight-bold] text-xl border-2 border-primary/10">
+                          <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border-2 border-primary/10">
                             {brand.name.charAt(0)}
                           </div>
                         )}
                       </div>
                       <div>
-                        <h3 className="font-[--font-weight-semibold] text-sm group-hover:text-primary transition-colors line-clamp-2">
+                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2">
                           {brand.name}
                         </h3>
                       </div>

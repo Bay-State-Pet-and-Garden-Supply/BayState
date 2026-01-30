@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
 import { scrapeProducts, checkRunnersAvailable } from '@/lib/pipeline-scraping';
 import { PipelineStatusTabs } from './PipelineStatusTabs';
@@ -11,8 +12,14 @@ import { BatchEnhanceToolbar } from './BatchEnhanceToolbar';
 import { BatchJobsPanel } from './BatchJobsPanel';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
+import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
+import { PipelineFlowVisualization } from './PipelineFlowVisualization';
 import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
 import { Search, RefreshCw, Bot } from 'lucide-react';
+import { toast } from 'sonner';
+import { UndoToast } from './UndoToast';
+import { undoQueue } from '@/lib/pipeline/undo';
+import { SkipLink } from '@/components/ui/skip-link';
 
 const statusLabels: Record<PipelineStatus, string> = {
     staging: 'Imported',
@@ -20,6 +27,7 @@ const statusLabels: Record<PipelineStatus, string> = {
     consolidated: 'Ready for Review',
     approved: 'Verified',
     published: 'Live',
+    failed: 'Failed',
 };
 
 interface PipelineClientProps {
@@ -29,13 +37,25 @@ interface PipelineClientProps {
 }
 
 export function PipelineClient({ initialProducts, initialCounts, initialStatus }: PipelineClientProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
     const [activeStatus, setActiveStatus] = useState<PipelineStatus>(initialStatus);
     const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
     const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
     const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(searchParams.get('search') || '');
     const [isPending, startTransition] = useTransition();
     const [viewingSku, setViewingSku] = useState<string | null>(null);
+
+    const [filters, setFilters] = useState<PipelineFiltersState>({
+        startDate: searchParams.get('startDate') ? new Date(searchParams.get('startDate')!) : undefined,
+        endDate: searchParams.get('endDate') ? new Date(searchParams.get('endDate')!) : undefined,
+        source: searchParams.get('source') || undefined,
+        minConfidence: searchParams.get('minConfidence') ? parseFloat(searchParams.get('minConfidence')!) : undefined,
+        maxConfidence: searchParams.get('maxConfidence') ? parseFloat(searchParams.get('maxConfidence')!) : undefined,
+    });
 
     // Scraping state
     const [isScraping, setIsScraping] = useState(false);
@@ -55,10 +75,28 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     // WebSocket for real-time consolidation updates
     const ws = useConsolidationWebSocket();
 
+    const buildQueryParams = (status: PipelineStatus, searchQuery: string, currentFilters: PipelineFiltersState) => {
+        const params = new URLSearchParams();
+        params.set('status', status);
+        if (searchQuery) params.set('search', searchQuery);
+        if (currentFilters.startDate) params.set('startDate', currentFilters.startDate.toISOString());
+        if (currentFilters.endDate) params.set('endDate', currentFilters.endDate.toISOString());
+        if (currentFilters.source) params.set('source', currentFilters.source);
+        if (currentFilters.minConfidence !== undefined) params.set('minConfidence', currentFilters.minConfidence.toString());
+        if (currentFilters.maxConfidence !== undefined) params.set('maxConfidence', currentFilters.maxConfidence.toString());
+        return params.toString();
+    };
+
+    const updateUrl = (status: PipelineStatus, searchQuery: string, currentFilters: PipelineFiltersState) => {
+        const query = buildQueryParams(status, searchQuery, currentFilters);
+        router.push(`${pathname}?${query}`);
+    };
+
     const handleRefresh = () => {
         startTransition(async () => {
+            const query = buildQueryParams(activeStatus, search, filters);
             const [productsRes, countsRes] = await Promise.all([
-                fetch(`/api/admin/pipeline?status=${activeStatus}&search=${encodeURIComponent(search)}`),
+                fetch(`/api/admin/pipeline?${query}`),
                 fetch('/api/admin/pipeline/counts'),
             ]);
 
@@ -115,9 +153,11 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     const handleStatusChange = async (status: PipelineStatus) => {
         setActiveStatus(status);
         setSelectedSkus(new Set());
+        updateUrl(status, search, filters);
 
         startTransition(async () => {
-            const res = await fetch(`/api/admin/pipeline?status=${status}&search=${encodeURIComponent(search)}`);
+            const query = buildQueryParams(status, search, filters);
+            const res = await fetch(`/api/admin/pipeline?${query}`);
             if (res.ok) {
                 const data = await res.json();
                 setProducts(data.products);
@@ -126,8 +166,24 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     };
 
     const handleSearch = async () => {
+        updateUrl(activeStatus, search, filters);
         startTransition(async () => {
-            const res = await fetch(`/api/admin/pipeline?status=${activeStatus}&search=${encodeURIComponent(search)}`);
+            const query = buildQueryParams(activeStatus, search, filters);
+            const res = await fetch(`/api/admin/pipeline?${query}`);
+            if (res.ok) {
+                const data = await res.json();
+                setProducts(data.products);
+            }
+        });
+    };
+
+    const handleFilterChange = async (newFilters: PipelineFiltersState) => {
+        setFilters(newFilters);
+        updateUrl(activeStatus, search, newFilters);
+        
+        startTransition(async () => {
+            const query = buildQueryParams(activeStatus, search, newFilters);
+            const res = await fetch(`/api/admin/pipeline?${query}`);
             if (res.ok) {
                 const data = await res.json();
                 setProducts(data.products);
@@ -153,21 +209,28 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
         }
     };
 
-    const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate') => {
+    const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
+        if (action === 'delete') {
+            // Delete is handled separately via DeleteConfirmationDialog
+            return;
+        }
+
         const statusMap: Record<string, Record<PipelineStatus, PipelineStatus>> = {
-            approve: { consolidated: 'approved', staging: 'staging', scraped: 'scraped', approved: 'approved', published: 'published' },
-            publish: { approved: 'published', staging: 'staging', scraped: 'scraped', consolidated: 'consolidated', published: 'published' },
-            reject: { consolidated: 'staging', approved: 'consolidated', staging: 'staging', scraped: 'staging', published: 'approved' },
-            consolidate: { staging: 'consolidated', scraped: 'consolidated', consolidated: 'consolidated', approved: 'approved', published: 'published' },
+            approve: { consolidated: 'approved', staging: 'staging', scraped: 'scraped', approved: 'approved', published: 'published', failed: 'failed' },
+            publish: { approved: 'published', staging: 'staging', scraped: 'scraped', consolidated: 'consolidated', published: 'published', failed: 'failed' },
+            reject: { consolidated: 'staging', approved: 'consolidated', staging: 'staging', scraped: 'staging', published: 'approved', failed: 'failed' },
+            consolidate: { staging: 'consolidated', scraped: 'consolidated', consolidated: 'consolidated', approved: 'approved', published: 'published', failed: 'failed' },
         };
 
         const newStatus = statusMap[action][activeStatus];
+        const skusToUpdate = Array.from(selectedSkus);
+        const previousStatus = activeStatus;
 
         startTransition(async () => {
             const res = await fetch('/api/admin/pipeline/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ skus: Array.from(selectedSkus), newStatus }),
+                body: JSON.stringify({ skus: skusToUpdate, newStatus }),
             });
 
             if (res.ok) {
@@ -186,6 +249,38 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
                     setCounts(data.counts);
                 }
                 setSelectedSkus(new Set());
+
+                // Undo Logic
+                const revert = async () => {
+                    const revertRes = await fetch('/api/admin/pipeline/bulk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ skus: skusToUpdate, newStatus: previousStatus }),
+                    });
+
+                    if (revertRes.ok) {
+                        handleRefresh();
+                    } else {
+                        throw new Error('Revert failed');
+                    }
+                };
+
+                undoQueue.add({
+                    type: 'status_change',
+                    skus: skusToUpdate,
+                    fromStatus: previousStatus,
+                    toStatus: newStatus,
+                    revert
+                });
+
+                toast.custom((t) => (
+                    <UndoToast
+                        id={t}
+                        count={skusToUpdate.length}
+                        toStatus={statusLabels[newStatus]}
+                        onUndo={revert}
+                    />
+                ), { duration: 30000 });
             }
         });
     };
@@ -269,6 +364,17 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
 
     return (
         <div className="space-y-6">
+            <SkipLink />
+            <div className="sr-only" role="status" aria-live="polite">
+                {isPending ? 'Loading products...' : `Showing ${products.length} products in ${statusLabels[activeStatus]} stage`}
+            </div>
+
+            {/* ETL Pipeline Flow Visualization */}
+            <PipelineFlowVisualization 
+                currentStage={activeStatus}
+                counts={counts}
+            />
+
             {/* Status Tabs */}
             <PipelineStatusTabs
                 counts={counts}
@@ -314,12 +420,18 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
                     <input
                         type="text"
                         placeholder="Search by SKU or name..."
+                        aria-label="Search products by SKU or name"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none"
                     />
                 </div>
+
+                <PipelineFilters
+                    filters={filters}
+                    onFilterChange={handleFilterChange}
+                />
 
                 <button
                     onClick={handleRefresh}
@@ -357,6 +469,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
                 <BulkActionsToolbar
                     selectedCount={selectedSkus.size}
                     currentStatus={activeStatus}
+                    searchQuery={search}
                     onAction={handleBulkAction}
                     onScrape={handleScrape}
                     isScraping={isScraping}
@@ -368,6 +481,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             )}
 
             {/* Product Grid */}
+            <div id="main-content" tabIndex={-1} className="scroll-mt-16 outline-none">
             {isPending ? (
                 <div className="flex h-64 items-center justify-center">
                     <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
@@ -389,10 +503,12 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
                             showEnrichButton={activeStatus === 'scraped'}
                             readOnly={activeStatus === 'staging'}
                             showBatchSelect={activeStatus === 'staging'}
+                            currentStage={activeStatus}
                         />
                     ))}
                 </div>
             )}
+            </div>
 
             {/* Load More and Count Info */}
             {!isPending && products.length > 0 && (

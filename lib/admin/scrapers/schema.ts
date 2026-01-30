@@ -153,12 +153,12 @@ export const httpStatusConfigSchema = z.object({
   warning_status_codes: z.array(z.number()).default([301, 302, 307, 308]),
 });
 
-// Login config
+// Login config - all fields optional since not all scrapers need login
 export const loginConfigSchema = z.object({
-  url: z.string(),
-  username_field: z.string(),
-  password_field: z.string(),
-  submit_button: z.string(),
+  url: z.string().optional(),
+  username_field: z.string().optional(),
+  password_field: z.string().optional(),
+  submit_button: z.string().optional(),
   success_indicator: z.string().optional(),
   failure_indicators: z.record(z.string(), z.unknown()).optional(),
 });

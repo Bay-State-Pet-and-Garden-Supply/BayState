@@ -33,7 +33,7 @@ export function EmptyState({
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-6">
         <Icon className="size-[--icon-size-2xl] text-muted-foreground" />
       </div>
-      <h2 className="mb-2 text-xl font-[--font-weight-bold] tracking-tight text-foreground">
+      <h2 className="mb-2 text-xl font-bold tracking-tight text-foreground">
         {title}
       </h2>
       <p className="mb-8 max-w-sm text-muted-foreground">

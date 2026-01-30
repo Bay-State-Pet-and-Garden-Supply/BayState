@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const updateDraftSchema = z.object({
-  config: scraperConfigSchema.optional(),
-  change_summary: z.string().optional(),
+  config: scraperConfigSchema.partial().optional(),
+  change_summary: z.string().nullable().optional(),
 });
 
 export async function PUT(

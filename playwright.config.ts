@@ -86,7 +86,7 @@ export default defineConfig({
   testDir: './__tests__',
 
   // Configure test file patterns.
-  testMatch: '**/a11y/**/*.spec.ts',
+  testMatch: ['**/a11y/**/*.spec.ts', '**/e2e/**/*.spec.ts'],
 
   // Configure paths to ignore.
   ignoreSnapshots: true,

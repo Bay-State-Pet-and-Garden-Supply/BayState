@@ -11,11 +11,22 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const limit = parseInt(searchParams.get('limit') || '200', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
+    
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
+    const source = searchParams.get('source') || undefined;
+    const minConfidence = searchParams.get('minConfidence') ? parseFloat(searchParams.get('minConfidence')!) : undefined;
+    const maxConfidence = searchParams.get('maxConfidence') ? parseFloat(searchParams.get('maxConfidence')!) : undefined;
 
     const { products, count } = await getProductsByStatus(status, {
         limit,
         offset,
         search: search || undefined,
+        startDate,
+        endDate,
+        source,
+        minConfidence,
+        maxConfidence,
     });
 
     return NextResponse.json({ products, count });

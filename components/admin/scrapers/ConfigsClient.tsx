@@ -152,7 +152,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/admin/scrapers/configs/new">
+                <Link href="/admin/scraper-configs/new">
               <Plus className="mr-2 h-4 w-4" />
               New Config
             </Link>
@@ -192,7 +192,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
             </p>
             {!search && (
               <Button className="mt-4" asChild>
-                <Link href="/admin/scrapers/configs/new">
+            <Link href="/admin/scraper-configs/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Config
                 </Link>
@@ -213,7 +213,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3">
                       <Link
-                        href={`/admin/scrapers/configs/${config.id}`}
+                        href={`/admin/scraper-configs/${config.id}`}
                         className="text-lg font-medium text-gray-900 hover:text-blue-600 truncate"
                       >
                         {config.display_name || config.slug}
@@ -233,13 +233,13 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                   {/* Right: Actions */}
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/scrapers/configs/${config.id}`}>
+                      <Link href={`/admin/scraper-configs/${config.id}`}>
                         <Eye className="mr-1 h-3 w-3" />
                         View
                       </Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/scrapers/configs/${config.id}/edit`}>
+                      <Link href={`/admin/scraper-configs/${config.id}/edit`}>
                         <Edit className="mr-1 h-3 w-3" />
                         Edit
                       </Link>
@@ -252,13 +252,13 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/admin/scrapers/configs/${config.id}`}>
+                          <Link href={`/admin/scraper-configs/${config.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/admin/scrapers/configs/${config.id}/edit`}>
+                          <Link href={`/admin/scraper-configs/${config.id}/edit`}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Configuration
                           </Link>

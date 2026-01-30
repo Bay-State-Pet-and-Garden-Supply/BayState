@@ -42,7 +42,7 @@ export function ProductCard({ product }: ProductCardProps) {
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-zinc-300">
                   <ImageIcon className="size-[--icon-size-2xl]" />
-                  <span className="text-xs font-[--font-weight-medium] text-zinc-400">No Image</span>
+                  <span className="text-xs font-medium text-zinc-400">No Image</span>
                 </div>
               )}
               
@@ -63,17 +63,17 @@ export function ProductCard({ product }: ProductCardProps) {
             {/* Product Info */}
             <div className="flex flex-1 flex-col p-4">
               {product.brand && (
-                <p className="mb-1 text-xs font-[--font-weight-medium] uppercase tracking-wider text-zinc-500">
+                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
                   {product.brand.name}
                 </p>
               )}
               
-              <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-[--font-weight-semibold] leading-tight text-zinc-900 group-hover:text-primary transition-colors">
+              <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-zinc-900 group-hover:text-primary transition-colors">
                 {product.name}
               </h3>
               
               <div className="mt-auto flex items-end justify-between pt-2">
-                <span className="text-lg font-[--font-weight-bold] tracking-tight text-zinc-900">
+                <span className="text-lg font-bold tracking-tight text-zinc-900">
                   {formattedPrice}
                 </span>
               </div>

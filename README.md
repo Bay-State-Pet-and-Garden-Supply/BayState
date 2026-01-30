@@ -16,6 +16,10 @@ A high-performance, mobile-first PWA e-commerce platform for a local pet and gar
 - **Service Management** - Manage propane refills, knife sharpening, etc.
 - **Order Management** - Track and fulfill customer orders
 - **Campaign Controls** - Toggle seasonal banners and promotions
+- **ETL Pipeline** - Multi-stage product ingestion with web scraping and B2B enrichment
+- **Enrichment Workspace** - Resolve data conflicts and manage "Golden Records"
+- **Audit Trail** - Full history of pipeline status changes and deletions
+
 
 ### Technical Highlights
 - **SEO Optimized** - Meta tags, Open Graph, sitemap, robots.txt

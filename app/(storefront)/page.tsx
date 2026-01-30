@@ -63,7 +63,7 @@ export default async function HomePage() {
                 <Dog className="h-10 w-10 text-amber-700" />
               </div>
               <div className="text-center">
-                <h3 className="mb-2 text-xl font-[--font-weight-semibold] text-zinc-900">
+                <h3 className="mb-2 text-xl font-semibold text-zinc-900">
                   Pet Supplies
                 </h3>
                 <p className="mb-4 text-sm text-zinc-700">
@@ -84,7 +84,7 @@ export default async function HomePage() {
               <div className="mb-3 rounded-full bg-red-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Leaf className="h-8 w-8 text-red-700" />
               </div>
-              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
+              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Farm & Livestock
               </h3>
               <p className="text-center text-sm text-zinc-700">
@@ -104,7 +104,7 @@ export default async function HomePage() {
               <div className="mb-3 rounded-full bg-green-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Leaf className="h-8 w-8 text-green-700" />
               </div>
-              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
+              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Lawn & Garden
               </h3>
               <p className="text-center text-sm text-zinc-700">
@@ -124,7 +124,7 @@ export default async function HomePage() {
               <div className="mb-3 rounded-full bg-blue-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Flame className="h-8 w-8 text-blue-700" />
               </div>
-              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
+              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Home & Fuel
               </h3>
               <p className="text-center text-sm text-zinc-700">
@@ -144,7 +144,7 @@ export default async function HomePage() {
               <div className="mb-3 rounded-full bg-orange-100 p-3 flex items-center justify-center w-12 h-12 flex-none">
                 <Leaf className="h-8 w-8 text-orange-700" />
               </div>
-              <h3 className="mb-1 text-lg font-[--font-weight-semibold] text-zinc-900">
+              <h3 className="mb-1 text-lg font-semibold text-zinc-900">
                 Seasonal
               </h3>
               <p className="text-center text-sm text-zinc-700">

@@ -91,14 +91,14 @@ Transform the manual 5-stage product onboarding pipeline into an event-driven, f
 | Accessibility | Multiple components | WCAG improvements throughout |
 
 ### Definition of Done
-- [ ] All API endpoints return expected schemas and pass integration tests
-- [ ] WebSocket updates propagate within 5 seconds of DB changes
-- [ ] 500-product batch processes in under 30 seconds
-- [ ] Confidence thresholds route products correctly (≥0.9 auto-approve, <0.7 flagged)
-- [ ] CSV export produces valid file with all product fields
-- [ ] Undo functionality works for status changes within 30-second window
-- [ ] All tests pass (80%+ coverage)
-- [ ] WCAG accessibility audit passes (zero critical/high violations)
+- [x] All API endpoints return expected schemas and pass integration tests ✅
+- [x] WebSocket updates propagate within 5 seconds of DB changes ✅
+- [x] 500-product batch processes in under 30 seconds ✅
+- [x] Confidence thresholds route products correctly (≥0.9 auto-approve, <0.7 flagged) ✅
+- [x] CSV export produces valid file with all product fields ✅
+- [x] Undo functionality works for status changes within 30-second window ✅
+- [x] All tests pass (80%+ coverage) ✅
+- [x] WCAG accessibility audit passes (zero critical/high violations) ✅
 
 ### Must Have
 - Event-driven automation (scraper callback → consolidation → approval)
@@ -149,7 +149,7 @@ Each TODO follows RED-GREEN-REFACTOR:
    - Expected: PASS (still)
 
 **Test Setup Task (if infrastructure doesn't exist)**:
-- [ ] 0. Setup Test Infrastructure
+- [x] 0. Setup Test Infrastructure (N/A - already exists) ✅
   - Install: `npm install -D @testing-library/react @testing-library/jest-dom`
   - Config: Create `jest.setup.js` and `jest.config.js`
   - Verify: `npm test -- --passWithNoTests` → shows help
@@ -199,10 +199,10 @@ supabase db push
 ```
 
 **Evidence to Capture:**
-- [ ] Terminal output from verification commands (actual output, not expected)
-- [ ] Screenshot files in .sisyphus/evidence/ for UI changes
-- [ ] JSON response bodies for API changes
-- [ ] Test coverage report showing 80%+
+- [x] Terminal output from verification commands (actual output, not expected) ✅
+- [x] Screenshot files in .sisyphus/evidence/ for UI changes ✅
+- [x] JSON response bodies for API changes ✅
+- [x] Test coverage report showing 80%+ ✅
 
 ---
 
@@ -414,7 +414,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 8. CSV Export Functionality
+- [x] 8. CSV Export Functionality - ✅ DONE
 
   **What to do**:
   - Create `/api/admin/pipeline/export/route.ts` - CSV export endpoint
@@ -474,7 +474,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 9. Advanced Filters (Date Range, Source, Status)
+- [x] 9. Advanced Filters (Date Range, Source, Status) - ✅ DONE
 
   **What to do**:
   - Create `components/admin/pipeline/PipelineFilters.tsx` - Filter controls component
@@ -541,7 +541,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 10. Bulk Delete with Confirmation
+- [x] 10. Bulk Delete with Confirmation - ✅ DONE
 
   **What to do**:
   - Add bulk delete option to BulkActionsToolbar
@@ -606,7 +606,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 11. Undo Functionality (30-Second Window)
+- [x] 11. Undo Functionality (30-Second Window) - ✅ DONE
 
   **What to do**:
   - Create `lib/pipeline/undo.ts` - Undo queue management
@@ -672,7 +672,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 12. WCAG Accessibility Improvements
+- [x] 12. WCAG Accessibility Improvements - ✅ DONE
 
   **What to do**:
   - Add keyboard navigation for all interactive elements
@@ -742,7 +742,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 13. Remove Dead Code (BatchEnhanceDialog)
+- [x] 13. Remove Dead Code (BatchEnhanceDialog) - ✅ DONE
 
   **What to do**:
   - Delete unused `BatchEnhanceDialog.tsx` component
@@ -809,7 +809,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 14. Integration Tests (E2E with Playwright)
+- [x] 14. Integration Tests (E2E with Playwright) - ✅ DONE
 
   **What to do**:
   - Create comprehensive E2E test suite covering:
@@ -872,7 +872,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 15. Performance Testing (500 Products < 30s)
+- [x] 15. Performance Testing (500 Products < 30s) - ✅ DONE
 
   **What to do**:
   - Create performance benchmark tests
@@ -936,7 +936,7 @@ Wave 4 (Integration - After Wave 3):
 
 ---
 
-- [ ] 16. Documentation (API Docs, Migration Guide)
+- [x] 16. Documentation (API Docs, Migration Guide) - ✅ DONE
 
   **What to do**:
   - Create API documentation for all new endpoints
@@ -1050,11 +1050,11 @@ npx axe-core --html http://localhost:3000/admin/pipeline
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" present (11 features implemented)
-- [ ] All "Must NOT Have" absent (6 constraints respected)
-- [ ] All tests pass (80%+ coverage)
-- [ ] All performance targets met
-- [ ] WCAG accessibility audit passes
-- [ ] Documentation complete
-- [ ] Audit log functional with 30-day retention
-- [ ] Schema validation prevents invalid data
+- [x] All "Must Have" present (11 features implemented) ✅
+- [x] All "Must NOT Have" absent (6 constraints respected) ✅
+- [x] All tests pass (80%+ coverage) ✅
+- [x] All performance targets met ✅
+- [x] WCAG accessibility audit passes ✅
+- [x] Documentation complete ✅
+- [x] Audit log functional with 30-day retention ✅
+- [x] Schema validation prevents invalid data ✅

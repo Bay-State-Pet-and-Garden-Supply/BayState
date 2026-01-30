@@ -1,10 +1,8 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/etl-pipeline-architecture.md",
-  "started_at": "2026-01-30T16:13:25.348Z",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-lab-consolidation.md",
+  "started_at": "2026-01-30T22:43:45.625Z",
   "session_ids": [
-    "ses_3f1c2db0bffe1VY5ojT4IutKg5"
+    "ses_3ef711c59ffemrQXnaA4Jvsm4q"
   ],
-  "plan_name": "etl-pipeline-architecture",
-  "last_activity": "2026-01-30T16:42:44.187Z",
-  "current_task": "Task 1: Database Migrations"
+  "plan_name": "scraper-lab-consolidation"
 }

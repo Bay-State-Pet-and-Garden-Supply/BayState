@@ -50,7 +50,8 @@ async function onScraperComplete(jobId: string, skus: string[]): Promise<void> {
         if (result.success && result.batch_id) {
             console.log(`[Callback] Consolidation batch ${result.batch_id} created for job ${jobId}`);
         } else {
-            console.error(`[Callback] Consolidation failed for job ${jobId}:`, result.error);
+            const errorResponse = result as { success: false; error: string };
+            console.error(`[Callback] Consolidation failed for job ${jobId}:`, errorResponse.error);
         }
     } catch (error) {
         console.error(`[Callback] onScraperComplete error for job ${jobId}:`, error);
@@ -167,44 +168,60 @@ export async function POST(request: NextRequest) {
             })
             .eq('name', runnerName);
 
-        // Process scraped data if job completed successfully
-        if (payload.status === 'completed' && payload.results?.data) {
-            const skus = Object.keys(payload.results.data);
+        // Fetch job metadata to check if this is a test job
+        const { data: jobData } = await supabase
+            .from('scrape_jobs')
+            .select('test_mode, metadata')
+            .eq('id', payload.job_id)
+            .single();
 
-            for (const sku of skus) {
-                const scrapedData = payload.results.data[sku];
+        const isTestJob = jobData?.test_mode === true;
+        const testRunId = jobData?.metadata?.test_run_id as string | undefined;
 
-                const { data: product } = await supabase
-                    .from('products_ingestion')
-                    .select('sources')
-                    .eq('sku', sku)
-                    .single();
+        if (isTestJob) {
+            console.log(`[Callback] Test job detected: ${payload.job_id} (test_run_id: ${testRunId}) - Will NOT update products_ingestion or trigger consolidation`);
+        } else {
+            console.log(`[Callback] Production job: ${payload.job_id} - Processing ${payload.results?.data ? Object.keys(payload.results.data).length : 0} scraped products`);
+            // Process scraped data if job completed successfully and is NOT a test job
+            if (payload.status === 'completed' && payload.results?.data) {
+                const skus = Object.keys(payload.results.data);
 
-                const existingSources = (product?.sources as Record<string, unknown>) || {};
-                const updatedSources = {
-                    ...existingSources,
-                    ...scrapedData,
-                    _last_scraped: new Date().toISOString(),
-                };
+                for (const sku of skus) {
+                    const scrapedData = payload.results.data[sku];
+
+                    const { data: product } = await supabase
+                        .from('products_ingestion')
+                        .select('sources')
+                        .eq('sku', sku)
+                        .single();
+
+                    const existingSources = (product?.sources as Record<string, unknown>) || {};
+                    const updatedSources = {
+                        ...existingSources,
+                        ...scrapedData,
+                        _last_scraped: new Date().toISOString(),
+                    };
 
                 const { error: productError } = await supabase
                     .from('products_ingestion')
                     .update({
                         sources: updatedSources,
                         pipeline_status: 'scraped',
+                        is_test_run: isTestJob,
                         updated_at: new Date().toISOString(),
                     })
                     .eq('sku', sku);
 
-                if (productError) {
-                    console.error(`[Callback] Failed to update product ${sku}:`, productError);
+                    if (productError) {
+                        console.error(`[Callback] Failed to update product ${sku}:`, productError);
+                    }
                 }
+
+                console.log(`[Callback] Updated ${skus.length} products with scraped data (test_mode: ${isTestJob})`);
+
+                // Trigger consolidation for scraped products (Event-Driven Automation)
+                await onScraperComplete(payload.job_id, skus);
             }
-
-            console.log(`[Callback] Updated ${skus.length} products with scraped data`);
-
-            // Trigger consolidation for scraped products (Event-Driven Automation)
-            await onScraperComplete(payload.job_id, skus);
         }
 
         // Store full results for audit/debugging
@@ -225,17 +242,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Callback] Job ${payload.job_id} updated to ${payload.status} by ${runnerName}`);
 
         // Update scraper_test_runs if this is a test job with a test_run_id
-        if (payload.status === 'completed' || payload.status === 'failed') {
-          const { data: jobData } = await supabase
-            .from('scrape_jobs')
-            .select('metadata')
-            .eq('id', payload.job_id)
-            .single();
-
-          const metadata = jobData?.metadata as Record<string, unknown> | undefined;
-          const testRunId = metadata?.test_run_id as string | undefined;
-
-          if (testRunId) {
+        if ((payload.status === 'completed' || payload.status === 'failed') && testRunId) {
             console.log(`[Callback] Updating test run ${testRunId} for job ${payload.job_id}`);
 
             // Calculate test results from the scrape results
@@ -275,7 +282,6 @@ export async function POST(request: NextRequest) {
 
             console.log(`[Callback] Updated test run ${testRunId} with status: ${testStatus}`);
           }
-        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

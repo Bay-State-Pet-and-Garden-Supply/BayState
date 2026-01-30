@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'New status is required' }, { status: 400 });
         }
 
-        const result = await bulkUpdateStatus(skus, newStatus);
+        const result = await bulkUpdateStatus(skus, newStatus, auth.user.id);
 
         if (!result.success) {
             return NextResponse.json({ error: result.error }, { status: 500 });

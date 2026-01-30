@@ -100,8 +100,8 @@ export async function createScraperConfig(
 
 const updateDraftSchema = z.object({
   configId: z.string().uuid(),
-  config: scraperConfigSchema.optional(),
-  change_summary: z.string().optional(),
+  config: scraperConfigSchema.partial().optional(),
+  change_summary: z.string().nullable().optional(),
 });
 
 export async function updateDraft(

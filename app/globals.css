@@ -173,14 +173,14 @@
   }
 
   html {
-    overflow: hidden;
+    overflow: auto;
     height: 100%;
   }
 
   body {
     @apply bg-background text-foreground;
     height: 100%;
-    overflow: hidden;
+    overflow: auto;
   }
 
   #__next {
