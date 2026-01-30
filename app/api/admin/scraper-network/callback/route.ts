@@ -17,6 +17,33 @@ interface CallbackPayload {
   error_message?: string;
   duration_ms?: number;
   runner_id?: string;
+  // Detailed results for Supabase Realtime
+  selectors?: Array<{
+    sku: string;
+    selector_name: string;
+    selector_value: string;
+    status: 'FOUND' | 'MISSING' | 'ERROR' | 'SKIPPED';
+    error_message?: string;
+    duration_ms?: number;
+  }>;
+  login?: {
+    sku: string;
+    username_field_status?: string;
+    password_field_status?: string;
+    submit_button_status?: string;
+    success_indicator_status?: string;
+    overall_status: 'SUCCESS' | 'FAILED' | 'SKIPPED' | 'ERROR';
+    error_message?: string;
+    duration_ms?: number;
+  }[];
+  extractions?: Array<{
+    sku: string;
+    field_name: string;
+    field_value?: string;
+    status: 'SUCCESS' | 'EMPTY' | 'ERROR' | 'NOT_FOUND';
+    error_message?: string;
+    duration_ms?: number;
+  }>;
 }
 
 async function validateApiKey(request: NextRequest): Promise<{ valid: boolean; runnerId?: string }> {
@@ -112,6 +139,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // INSERT individual results to enable Supabase Realtime
+    await insertDetailedResults(supabase, job_id, testRun.scraper_id, body);
+
     await updateScraperHealth(supabase, testRun.scraper_id);
 
     if (auth.runnerId) {
@@ -137,6 +167,81 @@ export async function POST(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+async function insertDetailedResults(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  testRunId: string,
+  scraperId: string,
+  payload: CallbackPayload
+) {
+  // Insert selector results
+  if (payload.selectors && payload.selectors.length > 0) {
+    const selectorRows = payload.selectors.map((s) => ({
+      test_run_id: testRunId,
+      scraper_id: scraperId,
+      sku: s.sku,
+      selector_name: s.selector_name,
+      selector_value: s.selector_value,
+      status: s.status,
+      error_message: s.error_message,
+      duration_ms: s.duration_ms,
+    }));
+
+    const { error: selectorError } = await supabase
+      .from('scraper_selector_results')
+      .insert(selectorRows);
+
+    if (selectorError) {
+      console.error('[Callback] Failed to insert selector results:', selectorError);
+    }
+  }
+
+  // Insert login results
+  if (payload.login && payload.login.length > 0) {
+    const loginRows = payload.login.map((l) => ({
+      test_run_id: testRunId,
+      scraper_id: scraperId,
+      sku: l.sku,
+      username_field_status: l.username_field_status,
+      password_field_status: l.password_field_status,
+      submit_button_status: l.submit_button_status,
+      success_indicator_status: l.success_indicator_status,
+      overall_status: l.overall_status,
+      error_message: l.error_message,
+      duration_ms: l.duration_ms,
+    }));
+
+    const { error: loginError } = await supabase
+      .from('scraper_login_results')
+      .insert(loginRows);
+
+    if (loginError) {
+      console.error('[Callback] Failed to insert login results:', loginError);
+    }
+  }
+
+  // Insert extraction results
+  if (payload.extractions && payload.extractions.length > 0) {
+    const extractionRows = payload.extractions.map((e) => ({
+      test_run_id: testRunId,
+      scraper_id: scraperId,
+      sku: e.sku,
+      field_name: e.field_name,
+      field_value: e.field_value,
+      status: e.status,
+      error_message: e.error_message,
+      duration_ms: e.duration_ms,
+    }));
+
+    const { error: extractionError } = await supabase
+      .from('scraper_extraction_results')
+      .insert(extractionRows);
+
+    if (extractionError) {
+      console.error('[Callback] Failed to insert extraction results:', extractionError);
+    }
   }
 }
 
