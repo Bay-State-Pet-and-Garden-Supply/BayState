@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { submitBatch } from '@/lib/consolidation/batch-service';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,6 +10,51 @@ function getSupabaseAdmin(): SupabaseClient {
         throw new Error('Missing Supabase configuration');
     }
     return createClient(url, key);
+}
+
+/**
+ * Trigger consolidation for scraped products (Event-Driven Automation)
+ * This function is called after a scrape job completes successfully
+ */
+async function onScraperComplete(jobId: string, skus: string[]): Promise<void> {
+    try {
+        const supabase = getSupabaseAdmin();
+
+        // Fetch scraped products that are ready for consolidation
+        const { data: products } = await supabase
+            .from('products_ingestion')
+            .select('sku, sources')
+            .in('sku', skus)
+            .eq('pipeline_status', 'scraped');
+
+        if (!products?.length) {
+            console.log(`[Callback] No scraped products to consolidate for job ${jobId}`);
+            return;
+        }
+
+        // Transform to ProductSource format for consolidation
+        const productSources = products.map(p => ({
+            sku: p.sku,
+            sources: p.sources as Record<string, unknown>,
+        }));
+
+        console.log(`[Callback] Triggering consolidation for ${productSources.length} products from job ${jobId}`);
+
+        // Submit batch for AI consolidation
+        const result = await submitBatch(productSources, {
+            description: `Auto-consolidation for scrape job ${jobId}`,
+            auto_apply: true,
+            scrape_job_id: jobId,
+        });
+
+        if (result.success && result.batch_id) {
+            console.log(`[Callback] Consolidation batch ${result.batch_id} created for job ${jobId}`);
+        } else {
+            console.error(`[Callback] Consolidation failed for job ${jobId}:`, result.error);
+        }
+    } catch (error) {
+        console.error(`[Callback] onScraperComplete error for job ${jobId}:`, error);
+    }
 }
 
 interface ScrapedData {
@@ -156,6 +202,9 @@ export async function POST(request: NextRequest) {
             }
 
             console.log(`[Callback] Updated ${skus.length} products with scraped data`);
+
+            // Trigger consolidation for scraped products (Event-Driven Automation)
+            await onScraperComplete(payload.job_id, skus);
         }
 
         // Store full results for audit/debugging

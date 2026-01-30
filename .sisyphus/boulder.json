@@ -1,8 +1,10 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/BayStateApp/.sisyphus/plans/ux-design-consistency-milestone.md",
-  "started_at": "2026-01-21T21:49:41.433Z",
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/etl-pipeline-architecture.md",
+  "started_at": "2026-01-30T16:13:25.348Z",
   "session_ids": [
-    "ses_41ff49264ffeF13apz1Pk6HCbh"
+    "ses_3f1c2db0bffe1VY5ojT4IutKg5"
   ],
-  "plan_name": "ux-design-consistency-milestone"
+  "plan_name": "etl-pipeline-architecture",
+  "last_activity": "2026-01-30T16:42:44.187Z",
+  "current_task": "Task 1: Database Migrations"
 }

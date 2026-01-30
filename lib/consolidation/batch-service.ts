@@ -20,6 +20,7 @@ import type {
     SubmitBatchResponse,
     BatchErrorResponse,
     ApplyResultsResponse,
+    PipelineStatus,
 } from './types';
 
 // =============================================================================
@@ -431,11 +432,22 @@ export async function applyResults(batchId: string): Promise<ApplyResultsRespons
                 confidence_score: result.confidence_score,
             };
 
+            // Determine pipeline status based on confidence score (Confidence-Based Routing)
+            const confidence = result.confidence_score ?? 0;
+            let newStatus: PipelineStatus;
+            if (confidence >= 0.9) {
+                newStatus = 'approved'; // High confidence - auto-approve
+            } else if (confidence >= 0.7) {
+                newStatus = 'consolidated'; // Medium confidence - manual review
+            } else {
+                newStatus = 'flagged'; // Low confidence - needs attention
+            }
+
             const { error } = await supabase
                 .from('products_ingestion')
                 .update({
                     consolidated,
-                    pipeline_status: 'consolidated',
+                    pipeline_status: newStatus,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('sku', result.sku);

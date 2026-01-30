@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useCallback } from 'react';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
 import { scrapeProducts, checkRunnersAvailable } from '@/lib/pipeline-scraping';
 import { PipelineStatusTabs } from './PipelineStatusTabs';
@@ -11,6 +11,7 @@ import { BatchEnhanceToolbar } from './BatchEnhanceToolbar';
 import { BatchJobsPanel } from './BatchJobsPanel';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
+import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
 import { Search, RefreshCw, Bot } from 'lucide-react';
 
 const statusLabels: Record<PipelineStatus, string> = {
@@ -51,6 +52,9 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     // Batch enhance workspace state
     const [showBatchEnhanceWorkspace, setShowBatchEnhanceWorkspace] = useState(false);
 
+    // WebSocket for real-time consolidation updates
+    const ws = useConsolidationWebSocket();
+
     const handleRefresh = () => {
         startTransition(async () => {
             const [productsRes, countsRes] = await Promise.all([
@@ -80,29 +84,33 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
         }
     }, [activeStatus]);
 
+    // WebSocket subscription for consolidation progress (replaces polling)
     useEffect(() => {
-        if (!consolidationBatchId) return;
+        if (!consolidationBatchId) {
+            // Connect to WebSocket when not tracking a batch
+            ws.connect();
+            return;
+        }
 
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`/api/admin/consolidation/${consolidationBatchId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setConsolidationProgress(data.progress || 0);
+        // Connect and subscribe to batch progress
+        ws.connect();
+        ws.subscribeToBatch(consolidationBatchId);
 
-                    if (data.status === 'completed' || data.status === 'failed') {
-                        setIsConsolidating(false);
-                        setConsolidationBatchId(null);
-                        handleRefresh();
-                    }
-                }
-            } catch (error) {
-                console.error('Error polling consolidation status:', error);
+        // Handle progress updates from WebSocket
+        if (ws.lastProgressEvent) {
+            setConsolidationProgress(ws.lastProgressEvent.progress);
+
+            if (ws.lastProgressEvent.status === 'completed' || ws.lastProgressEvent.status === 'failed') {
+                setIsConsolidating(false);
+                setConsolidationBatchId(null);
+                handleRefresh();
             }
-        }, 3000);
+        }
 
-        return () => clearInterval(interval);
-    }, [consolidationBatchId]);
+        return () => {
+            ws.unsubscribeFromBatch(consolidationBatchId);
+        };
+    }, [consolidationBatchId, ws.lastProgressEvent]);
 
     const handleStatusChange = async (status: PipelineStatus) => {
         setActiveStatus(status);
