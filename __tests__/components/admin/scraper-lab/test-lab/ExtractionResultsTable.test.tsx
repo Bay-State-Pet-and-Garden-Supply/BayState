@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { ExtractionResultsTable } from '@/components/admin/scrapers/test-lab/ExtractionResultsTable';
+import { ExtractionResultsTable } from '@/components/admin/scraper-lab/test-lab/ExtractionResultsTable';
 
 describe('ExtractionResultsTable', () => {
     const defaultProps = {

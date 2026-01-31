@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { LoginStatusPanel } from '@/components/admin/scrapers/test-lab/LoginStatusPanel';
+import { LoginStatusPanel } from '@/components/admin/scraper-lab/test-lab/LoginStatusPanel';
 
 describe('LoginStatusPanel', () => {
     const defaultProps = {

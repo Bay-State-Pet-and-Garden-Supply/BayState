@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { TestSummaryDashboard } from '@/components/admin/scrapers/test-lab/TestSummaryDashboard';
+import { TestSummaryDashboard } from '@/components/admin/scraper-lab/test-lab/TestSummaryDashboard';
 
 describe('TestSummaryDashboard', () => {
     const defaultProps = {

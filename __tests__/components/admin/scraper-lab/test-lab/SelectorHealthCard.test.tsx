@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { SelectorHealthCard } from '@/components/admin/scrapers/test-lab/SelectorHealthCard';
+import { SelectorHealthCard } from '@/components/admin/scraper-lab/test-lab/SelectorHealthCard';
 
 describe('SelectorHealthCard', () => {
     const defaultProps = {
