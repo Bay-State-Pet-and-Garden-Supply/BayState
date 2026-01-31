@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Play, Settings, Save } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,13 +17,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-
-  // Verify auth session
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { title: 'Config | Scraper Lab' };
-  }
+  const supabase = await createAdminClient();
 
   const { data: config } = await supabase
     .from('scraper_configs')
@@ -39,19 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ScraperLabConfigPage({ params }: PageProps) {
   const { id } = await params;
 
-  const supabase = await createClient();
-
-  // Explicitly refresh session to ensure cookies are valid
-  // const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  // if (authError || !user) {
-  //   console.error('Auth error:', authError);
-  //   // For debugging - redirect to login with debug info
-  //   const url = new URL('/login', 'http://localhost:3000');
-  //   url.searchParams.set('error', authError?.message || 'auth_required');
-  //   url.searchParams.set('message', 'Session not available. Please log in again.');
-  //   return redirect(url.toString());
-  // }
+  const supabase = await createAdminClient();
 
   // First get the config, then fetch versions separately to avoid RLS issues
   const { data: config, error } = await supabase

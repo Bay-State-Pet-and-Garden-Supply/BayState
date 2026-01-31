@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { ConfigEditorClient } from './ConfigEditorClient';
 import { defaultConfigValues } from '@/lib/admin/scraper-configs/form-schema';
@@ -16,7 +16,7 @@ export async function ConfigEditor({ configId }: ConfigEditorProps) {
     return <div>Config ID required</div>;
   }
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   // Fetch the config and its current version
   const { data: config, error: configError } = await supabase
