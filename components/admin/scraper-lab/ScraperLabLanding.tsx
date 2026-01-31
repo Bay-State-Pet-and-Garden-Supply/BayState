@@ -21,6 +21,9 @@ export interface ScraperConfig {
 async function getConfigs(): Promise<ScraperConfig[]> {
   const supabase = await createClient();
 
+  // Temporary auth bypass for verification
+  // const { data: { user } } = await supabase.auth.getUser();
+
   const { data: configs, error } = await supabase
     .from('scraper_configs')
     .select(`
@@ -115,7 +118,7 @@ export async function ScraperLabLanding() {
         </div>
         <div className="flex gap-3">
           <Button asChild variant="outline">
-            <Link href="/admin/scrapers/test-lab">
+            <Link href="/admin/scraper-lab">
               <FlaskConical className="mr-2 h-4 w-4" />
               Run Tests
             </Link>
@@ -151,7 +154,7 @@ export async function ScraperLabLanding() {
         </Card>
 
         <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-          <Link href="/admin/scrapers/configs">
+          <Link href="/admin/scraper-lab/new">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileCode className="h-5 w-5" />
@@ -170,7 +173,7 @@ export async function ScraperLabLanding() {
         </Card>
 
         <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-          <Link href="/admin/scrapers/test-lab">
+          <Link href="/admin/scraper-lab">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Play className="h-5 w-5" />
