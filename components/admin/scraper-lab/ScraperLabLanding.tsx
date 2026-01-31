@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Plus, FileCode, Settings, Play, FlaskConical } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,10 +19,7 @@ export interface ScraperConfig {
 }
 
 async function getConfigs(): Promise<ScraperConfig[]> {
-  const supabase = await createClient();
-
-  // Temporary auth bypass for verification
-  // const { data: { user } } = await supabase.auth.getUser();
+  const supabase = await createAdminClient();
 
   const { data: configs, error } = await supabase
     .from('scraper_configs')
