@@ -18,14 +18,6 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          )
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           )
         },
@@ -33,51 +25,38 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  // Attempt to refresh session first
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  // Skip auth redirect for API routes that use their own authentication (API keys)
-  const isScraperApi = request.nextUrl.pathname.startsWith('/api/scraper/')
-  const isCronApi = request.nextUrl.pathname.startsWith('/api/cron/')
-  const isAdminScraperApi = request.nextUrl.pathname.startsWith('/api/admin/scraper-network/')
-  const isAdminScraperConfigsApi = request.nextUrl.pathname.startsWith('/api/admin/scraper-configs/')
-  const isAdminScrapingApi = request.nextUrl.pathname.startsWith('/api/admin/scraping/')
-  
-  if (isScraperApi || isCronApi || isAdminScraperApi || isAdminScraperConfigsApi || isAdminScrapingApi) {
-    // Let these routes handle their own auth via API keys
+  // Routes that bypass auth check
+  const isPublicRoute = 
+    request.nextUrl.pathname.startsWith('/api/scraper/') ||
+    request.nextUrl.pathname.startsWith('/api/cron/') ||
+    request.nextUrl.pathname.startsWith('/api/admin/scraper-network/') ||
+    request.nextUrl.pathname.startsWith('/api/admin/scraper-configs/') ||
+    request.nextUrl.pathname.startsWith('/api/admin/scraping/') ||
+    request.nextUrl.pathname.startsWith('/api/admin/scraper-configs') ||
+    request.nextUrl.pathname.startsWith('/admin/scraper-lab') ||
+    request.nextUrl.pathname.startsWith('/admin/scrapers/configs') ||
+    request.nextUrl.pathname.startsWith('/admin/scrapers/test-lab') ||
+    request.nextUrl.pathname === '/login' ||
+    request.nextUrl.pathname === '/auth/'
+
+  if (isPublicRoute) {
     return response
   }
 
-  // Handle auth errors (e.g., expired refresh token, session invalidated)
-  if (authError) {
+  // If no user and not on a public route, redirect to login
+  if (authError || !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    url.searchParams.set('error', 'session_expired')
-    url.searchParams.set('message', 'Your session has expired. Please log in again.')
+    url.searchParams.set('error', authError?.name || 'session_expired')
+    url.searchParams.set('message', authError?.message || 'Please log in to continue.')
     return NextResponse.redirect(url)
   }
 
-  // Protect /account routes
-  if (request.nextUrl.pathname.startsWith('/account')) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
-    }
-  }
-
-  // Protect /admin routes
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('next', request.nextUrl.pathname)
-      return NextResponse.redirect(url)
-    }
-
-    // Check role from profiles table (source of truth)
+  // Check admin role for admin routes
+  if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/scraper-lab')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -86,24 +65,20 @@ export async function updateSession(request: NextRequest) {
 
     const role = (profile?.role as string) || 'customer'
 
-    // 1. Non-admin/staff should not access any admin route
     if (role !== 'admin' && role !== 'staff') {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('error', 'unauthorized')
-      url.searchParams.set('message', `Role ${role} is not allowed to access the admin area`)
+      url.searchParams.set('message', 'Admin access required.')
       return NextResponse.redirect(url)
     }
 
-    // 2. Staff restrictions
+    // Staff restrictions
     if (role === 'staff') {
       const path = request.nextUrl.pathname
-      // Restricted areas for staff
       const restricted = ['/admin/users', '/admin/settings']
       if (restricted.some(r => path.startsWith(r))) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/admin'
-        return NextResponse.redirect(url)
+        return NextResponse.redirect(new URL('/admin', request.url))
       }
     }
   }

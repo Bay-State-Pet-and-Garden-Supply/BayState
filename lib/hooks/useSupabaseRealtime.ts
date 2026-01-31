@@ -5,25 +5,48 @@ import { createClient } from '../supabase/client';
 // Event Types (same as useTestLabWebSocket for backward compatibility)
 export interface SelectorValidationEvent {
   selector: string;
-  status: 'valid' | 'invalid' | 'pending';
-  elementCount: number;
+  selector_name?: string;
+  selector_value?: string;
+  status: 'valid' | 'invalid' | 'pending' | 'FOUND' | 'MISSING' | 'ERROR' | 'SKIPPED';
+  elementCount?: number;
   sampleText?: string;
+  sample_text?: string;
   error?: string;
+  error_message?: string;
+  duration_ms?: number;
   timestamp: number;
 }
 
 export interface LoginStatusEvent {
-  status: 'success' | 'failed' | 'pending' | '2fa_required';
+  status: 'success' | 'failed' | 'pending' | '2fa_required' | 'SUCCESS' | 'FAILED' | 'ERROR' | 'SKIPPED';
   message?: string;
+  error_message?: string;
   screenshotUrl?: string;
+  screenshot_url?: string;
+  username_field_status?: 'FOUND' | 'MISSING' | 'ERROR' | 'PENDING';
+  username_field_duration_ms?: number;
+  password_field_status?: 'FOUND' | 'MISSING' | 'ERROR' | 'PENDING';
+  password_field_duration_ms?: number;
+  submit_button_status?: 'FOUND' | 'MISSING' | 'ERROR' | 'PENDING';
+  submit_button_duration_ms?: number;
+  success_indicator_status?: 'FOUND' | 'MISSING' | 'ERROR' | 'PENDING';
+  success_indicator_duration_ms?: number;
+  overall_status?: 'SUCCESS' | 'FAILED' | 'ERROR' | 'SKIPPED';
+  duration_ms?: number;
   timestamp: number;
 }
 
 export interface ExtractionResultEvent {
   field: string;
-  value: any;
-  confidence: number;
+  field_name?: string;
+  field_value?: string;
+  value?: any;
+  confidence?: number;
   sourceHtml?: string;
+  source_html?: string;
+  status?: 'SUCCESS' | 'EMPTY' | 'ERROR' | 'NOT_FOUND';
+  duration_ms?: number;
+  error_message?: string;
   timestamp: number;
 }
 

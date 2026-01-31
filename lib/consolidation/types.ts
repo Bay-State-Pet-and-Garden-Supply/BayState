@@ -178,3 +178,8 @@ export interface ProductType {
     id: string;
     name: string;
 }
+
+/**
+ * Pipeline status for product ingestion.
+ */
+export type PipelineStatus = 'pending' | 'consolidated' | 'approved' | 'flagged' | 'failed';

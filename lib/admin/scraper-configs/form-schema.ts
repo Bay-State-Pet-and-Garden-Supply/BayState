@@ -55,6 +55,14 @@ export const configFormSchema = z.object({
   test_skus: z.array(z.string()).default([]),
   fake_skus: z.array(z.string()).default([]),
   edge_case_skus: z.array(z.string()).optional(),
+  selectors: z.array(z.object({
+    id: z.string().optional(),
+    name: z.string(),
+    selector: z.string(),
+    attribute: z.enum(['text', 'src', 'href', 'value', 'innerHTML', 'innerText', 'alt', 'title']).default('text'),
+    multiple: z.boolean().default(false),
+    required: z.boolean().default(true),
+  })).optional(),
 });
 
 export type ConfigFormValues = z.infer<typeof configFormSchema>;
@@ -97,6 +105,7 @@ export const defaultConfigValues: ConfigFormValues = {
   test_skus: [],
   fake_skus: [],
   edge_case_skus: undefined,
+  selectors: undefined,
 };
 
 /**
