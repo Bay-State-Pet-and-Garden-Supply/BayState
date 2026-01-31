@@ -1,11 +1,15 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Play, Settings, Save } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+import { ConfigEditor } from '@/components/admin/scraper-lab/config-editor/ConfigEditor';
+
+import { TestLabClient } from '@/components/admin/scraper-lab/TestLabClient';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,6 +18,12 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
+
+  // Verify auth session
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { title: 'Config | Scraper Lab' };
+  }
 
   const { data: config } = await supabase
     .from('scraper_configs')
@@ -31,17 +41,38 @@ export default async function ScraperLabConfigPage({ params }: PageProps) {
 
   const supabase = await createClient();
 
+  // Explicitly refresh session to ensure cookies are valid
+  // const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  // if (authError || !user) {
+  //   console.error('Auth error:', authError);
+  //   // For debugging - redirect to login with debug info
+  //   const url = new URL('/login', 'http://localhost:3000');
+  //   url.searchParams.set('error', authError?.message || 'auth_required');
+  //   url.searchParams.set('message', 'Session not available. Please log in again.');
+  //   return redirect(url.toString());
+  // }
+
+  // First get the config, then fetch versions separately to avoid RLS issues
   const { data: config, error } = await supabase
     .from('scraper_configs')
-    .select('*, versions:scraper_config_versions(*)')
+    .select('*')
     .eq('id', id)
     .single();
 
   if (error || !config) {
+    // console.error('Config query failed:', { error, id, userId: user?.id });
     notFound();
   }
 
-  const currentVersion = config.versions?.find(
+  // Fetch versions with explicit auth check
+  const { data: versions } = await supabase
+    .from('scraper_config_versions')
+    .select('*')
+    .eq('config_id', id)
+    .order('created_at', { ascending: false });
+
+  const currentVersion = versions?.find(
     (v: Record<string, unknown>) => v.id === config.current_version_id
   );
 
@@ -93,51 +124,22 @@ export default async function ScraperLabConfigPage({ params }: PageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Configuration editor will be loaded here.
-              </p>
-              <pre className="mt-4 p-4 bg-muted rounded-lg overflow-auto text-sm">
-                {JSON.stringify(currentVersion?.config || {}, null, 2)}
-              </pre>
+              <ConfigEditor configId={id} />
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="test" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Runner</CardTitle>
-              <CardDescription>
-                Test your scraper configuration against real targets.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium">Target URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://example.com/product"
-                      className="mt-1 w-full px-3 py-2 border rounded-md"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Test SKU</label>
-                    <input
-                      type="text"
-                      placeholder="Enter a test SKU"
-                      className="mt-1 w-full px-3 py-2 border rounded-md"
-                    />
-                  </div>
-                </div>
-                <Button className="w-full">
-                  <Play className="mr-2 h-4 w-4" />
-                  Start Test
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <TestLabClient
+            scrapers={[{
+              id: config.id,
+              slug: config.slug,
+              display_name: config.display_name,
+              domain: config.domain || '',
+              config: (currentVersion?.config as any) || {}
+            }]}
+            recentTests={[]}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="mt-6">

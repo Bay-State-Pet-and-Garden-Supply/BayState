@@ -50,7 +50,7 @@ export default function ScraperLabNewPage() {
         </Card>
 
         <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-          <Link href="/admin/scrapers/configs">
+          <Link href="/admin/scraper-lab">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileCode className="h-5 w-5" />
