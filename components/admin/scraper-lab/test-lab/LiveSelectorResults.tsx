@@ -41,13 +41,13 @@ import {
 import { cn } from '@/lib/utils';
 
 export interface SelectorEvent {
-    selector_name: string;
-    selector_value: string;
+    selector_name?: string;
+    selector_value?: string;
     status: 'FOUND' | 'MISSING' | 'ERROR' | 'SKIPPED';
     duration_ms?: number;
     error_message?: string;
     sample_text?: string;
-    timestamp: string;
+    timestamp: string | number;
 }
 
 export type SortField = 'status' | 'duration' | 'name';
@@ -158,8 +158,8 @@ export function LiveSelectorResults({
             const lowerFilter = filterText.toLowerCase();
             filtered = filtered.filter(
                 (event) =>
-                    event.selector_name.toLowerCase().includes(lowerFilter) ||
-                    event.selector_value.toLowerCase().includes(lowerFilter)
+                    (event.selector_name?.toLowerCase() || '').includes(lowerFilter) ||
+                    (event.selector_value?.toLowerCase() || '').includes(lowerFilter)
             );
         }
 
@@ -177,7 +177,7 @@ export function LiveSelectorResults({
                     comparison = durationA - durationB;
                     break;
                 case 'name':
-                    comparison = a.selector_name.localeCompare(b.selector_name);
+                    comparison = (a.selector_name || '').localeCompare(b.selector_name || '');
                     break;
             }
 
@@ -324,15 +324,16 @@ export function LiveSelectorResults({
                         <TableBody>
                             {processedEvents.map((event) => {
                                 const config = STATUS_CONFIG[event.status];
-                                const isExpanded = expandedRows.has(event.selector_name);
+                                const selectorKey = event.selector_name || event.selector_value || String(event.timestamp);
+                                const isExpanded = expandedRows.has(selectorKey);
                                 const expandable = isExpandable(event);
 
                                 return (
                                     <Collapsible
-                                        key={event.selector_name}
+                                        key={selectorKey}
                                         open={isExpanded}
                                         onOpenChange={() =>
-                                            expandable && toggleRowExpansion(event.selector_name)
+                                            expandable && toggleRowExpansion(selectorKey)
                                         }
                                         asChild
                                     >
@@ -343,7 +344,7 @@ export function LiveSelectorResults({
                                                     expandable && 'cursor-pointer hover:bg-muted/50'
                                                 )}
                                                 onClick={() =>
-                                                    expandable && toggleRowExpansion(event.selector_name)
+                                                    expandable && toggleRowExpansion(selectorKey)
                                                 }
                                             >
                                                 <TableCell className="p-2">
@@ -387,9 +388,11 @@ export function LiveSelectorResults({
                                                 </TableCell>
                                                 <TableCell className="hidden md:table-cell">
                                                     <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs">
-                                                        {event.selector_value.length > 50
-                                                            ? `${event.selector_value.slice(0, 50)}...`
-                                                            : event.selector_value}
+                                                        {event.selector_value
+                                                            ? event.selector_value.length > 50
+                                                                ? `${event.selector_value.slice(0, 50)}...`
+                                                                : event.selector_value
+                                                            : null}
                                                     </code>
                                                 </TableCell>
                                                 <TableCell>

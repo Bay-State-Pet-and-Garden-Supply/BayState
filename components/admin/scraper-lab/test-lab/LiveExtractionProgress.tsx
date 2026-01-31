@@ -43,12 +43,12 @@ import {
 export type ExtractionStatus = 'SUCCESS' | 'EMPTY' | 'ERROR' | 'NOT_FOUND';
 
 export interface ExtractionEvent {
-    field_name: string;
+    field_name?: string;
     field_value?: string;
     status: ExtractionStatus;
     duration_ms?: number;
     error_message?: string;
-    timestamp: string;
+    timestamp: string | number;
 }
 
 interface LiveExtractionProgressProps {

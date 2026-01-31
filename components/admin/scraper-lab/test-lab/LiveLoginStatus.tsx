@@ -67,7 +67,7 @@ export interface LoginEvent {
   /** Error message if login failed or errored */
   error_message?: string;
   /** ISO timestamp of the event */
-  timestamp: string;
+  timestamp: string | number;
 }
 
 export interface LiveLoginStatusProps {
@@ -164,7 +164,13 @@ export function LiveLoginStatus({
   }, [loginEvent]);
 
   // Get overall status display config
-  const overallStatus = useMemo(() => {
+  const overallStatus = useMemo((): {
+    label: string;
+    variant: 'default' | 'destructive' | 'secondary' | 'outline';
+    color: 'green' | 'red' | 'gray' | 'orange';
+    icon: React.ElementType;
+    message: string;
+  } => {
     if (!loginEvent) {
       return {
         label: 'Waiting',

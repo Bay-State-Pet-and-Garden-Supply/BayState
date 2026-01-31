@@ -885,8 +885,9 @@ function ExtractionComparison({ runA, runB, summary }: { runA: TestRunDetail; ru
   const extractionA = runA.extraction_events || [];
   const extractionB = runB.extraction_events || [];
 
-  const fieldMapA = new Map(extractionA.map((e) => [e.field_name, e.status]));
-  const fieldMapB = new Map(extractionB.map((e) => [e.field_name, e.status]));
+  // Filter out events without field_name and create maps
+  const fieldMapA = new Map(extractionA.filter(e => e.field_name).map((e) => [e.field_name!, e.status]));
+  const fieldMapB = new Map(extractionB.filter(e => e.field_name).map((e) => [e.field_name!, e.status]));
 
   const allFields = new Set([...fieldMapA.keys(), ...fieldMapB.keys()]);
   const improved: string[] = [];
