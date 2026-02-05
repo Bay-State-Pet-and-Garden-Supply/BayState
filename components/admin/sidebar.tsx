@@ -80,10 +80,11 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: 'Scraper',
+    title: 'Scrapers',
     adminOnly: true,
     items: [
-      { href: '/admin/scraper-lab', label: 'Scraper Lab', icon: <Layers className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/configs', label: 'Configs', icon: <Settings className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/test-lab', label: 'Test Lab', icon: <Beaker className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/runs', label: 'Runs', icon: <History className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/network', label: 'Network', icon: <Network className="h-5 w-5" />, adminOnly: true },
     ],
