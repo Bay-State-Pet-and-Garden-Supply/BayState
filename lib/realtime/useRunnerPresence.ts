@@ -6,7 +6,7 @@
  * to maintain a live view of which runners are online, busy, or offline.
  */
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { RunnerPresence } from './types';
