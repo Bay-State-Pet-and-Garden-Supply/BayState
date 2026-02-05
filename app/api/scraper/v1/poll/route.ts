@@ -105,6 +105,26 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Poll] Runner ${runnerName} assigned job ${job.job_id}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
 
+        // Broadcast job assignment event to admin dashboard
+        try {
+            await supabase.channel('job-assignments').send({
+                type: 'broadcast',
+                event: 'job_assigned',
+                payload: {
+                    job_id: job.job_id,
+                    runner_id: runnerName,
+                    runner_name: runner.name,
+                    scrapers: job.scrapers || [],
+                    skus_count: skus.length,
+                    timestamp: new Date().toISOString(),
+                },
+            });
+            console.log(`[Poll] Broadcast job_assigned event for ${job.job_id}`);
+        } catch (broadcastError) {
+            // Log but don't fail the request if broadcast fails
+            console.error(`[Poll] Failed to broadcast job assignment: ${broadcastError}`);
+        }
+
         // Transform scrapers to response format - use actual column names from scrapers table
         // The table has workflows, selectors, timeout as separate columns
         // Runner expects options to contain workflows
