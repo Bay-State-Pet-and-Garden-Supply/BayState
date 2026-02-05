@@ -128,8 +128,10 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
     }
 
     try {
+      // Use private channel for RLS-based authorization (Supabase Realtime v2)
       const channel = supabase.channel(channelName, {
         config: {
+          private: true,
           presence: {
             key: 'admin-dashboard',
           },

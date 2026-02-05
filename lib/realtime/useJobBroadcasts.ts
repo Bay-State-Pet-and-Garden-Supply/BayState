@@ -217,7 +217,10 @@ export function useJobBroadcasts(
     }
 
     try {
-      const channel = supabase.channel(channelName);
+      // Use private channel for RLS-based authorization (Supabase Realtime v2)
+      const channel = supabase.channel(channelName, {
+        config: { private: true },
+      });
 
       // Subscribe to log events
       if (includeLogs) {
