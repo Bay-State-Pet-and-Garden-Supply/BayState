@@ -346,13 +346,13 @@ export function useJobSubscription(
         );
       }
 
-      channel.subscribe((status) => {
+      channel.subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           setState((prev) => ({ ...prev, isConnected: true, error: null }));
           console.log('[useJobSubscription] Connected to job subscription');
         } else if (status === 'CHANNEL_ERROR') {
-          const error = new Error('Job subscription channel error');
-          console.error('[useJobSubscription] Channel error:', error);
+          const error = new Error(`Job subscription channel error: ${err?.message || 'unknown'}`);
+          console.error('[useJobSubscription] Channel error:', error, { err });
           setState((prev) => ({ ...prev, error, isConnected: false }));
         }
       });
