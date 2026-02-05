@@ -144,40 +144,45 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
           const newOnlineIds = new Set<string>();
 
           // Process presence state
-          Object.entries(presenceState).forEach(([key, presences]) => {
-            // key is typically the runner_id or 'admin-dashboard'
-            // We only care about actual runner presence data
-            if (Array.isArray(presences) && presences.length > 0) {
-              const presence = presences[0] as RunnerPresence;
-              if (presence && typeof presence === 'object' && 'runner_id' in presence) {
-                newRunners[presence.runner_id] = presence;
-                newOnlineIds.add(presence.runner_id);
+          setState((prev) => {
+            const newRunners: Record<string, RunnerPresence> = {};
+            const newOnlineIds = new Set<string>();
 
-                // Track join events
-                if (state.runners[presence.runner_id] === undefined) {
-                  onJoin?.(presence.runner_id, presence);
+            Object.entries(presenceState).forEach(([key, presences]) => {
+              // key is typically the runner_id or 'admin-dashboard'
+              // We only care about actual runner presence data
+              if (Array.isArray(presences) && presences.length > 0) {
+                const presence = presences[0] as RunnerPresence;
+                if (presence && typeof presence === 'object' && 'runner_id' in presence) {
+                  newRunners[presence.runner_id] = presence;
+                  newOnlineIds.add(presence.runner_id);
+
+                  // Track join events
+                  if (prev.runners[presence.runner_id] === undefined) {
+                    onJoin?.(presence.runner_id, presence);
+                  }
                 }
               }
-            }
+            });
+
+            // Track leave events
+            const previousIds = prev.onlineIds;
+            previousIds.forEach((id) => {
+              if (!newOnlineIds.has(id)) {
+                onLeave?.(id);
+              }
+            });
+
+            onSync?.(newRunners);
+
+            return {
+              ...prev,
+              runners: newRunners,
+              onlineIds: newOnlineIds,
+              isConnected: true,
+              error: null,
+            };
           });
-
-          // Track leave events
-          const previousIds = state.onlineIds;
-          previousIds.forEach((id) => {
-            if (!newOnlineIds.has(id)) {
-              onLeave?.(id);
-            }
-          });
-
-          setState((prev) => ({
-            ...prev,
-            runners: newRunners,
-            onlineIds: newOnlineIds,
-            isConnected: true,
-            error: null,
-          }));
-
-          onSync?.(newRunners);
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
           console.log('[useRunnerPresence] Runner joined:', key, newPresences);
@@ -203,7 +208,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
       console.error('[useRunnerPresence] Connection error:', error);
       setState((prev) => ({ ...prev, error, isConnected: false }));
     }
-  }, [channelName, getSupabase, onJoin, onLeave, onSync, state.runners, state.onlineIds]);
+  }, [channelName, getSupabase, onJoin, onLeave, onSync]);
 
   /**
    * Disconnect from the presence channel
