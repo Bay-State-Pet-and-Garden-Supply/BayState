@@ -1,14 +1,10 @@
 import { Metadata } from 'next';
 import { Network } from 'lucide-react';
-import { RunnerGrid } from '@/components/admin/scraper-network/runner-grid';
-import { ConfigStatus } from '@/components/admin/scraper-network/config-status';
-import { JobHistory } from '@/components/admin/scraper-network/job-history';
-import { SetupGuide } from '@/components/admin/scraper-network/setup-guide';
-import { RunnerAccounts } from '@/components/admin/scraper-network/runner-accounts';
+import { ScraperNetworkDashboard } from './scraper-network-dashboard';
 
 export const metadata: Metadata = {
     title: 'Scraper Network | Admin',
-    description: 'Manage your distributed scraper fleet',
+    description: 'Real-time monitoring of your distributed scraper fleet',
 };
 
 export default function ScraperNetworkPage() {
@@ -21,26 +17,12 @@ export default function ScraperNetworkPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Scraper Network</h1>
-                    <p className="text-sm text-gray-600">Manage self-hosted runners and monitor scraping jobs</p>
+                    <p className="text-sm text-gray-600">Real-time monitoring of your distributed scraper fleet</p>
                 </div>
             </div>
 
-            {/* Config Status */}
-            <ConfigStatus />
-
-            <RunnerAccounts />
-
-            {/* Runners */}
-            <div>
-                <h2 className="mb-3 text-lg font-semibold text-gray-900">Connected Runners</h2>
-                <RunnerGrid />
-            </div>
-
-            {/* Job History */}
-            <JobHistory />
-
-            {/* Setup Guide */}
-            <SetupGuide />
+            {/* Real-time Dashboard */}
+            <ScraperNetworkDashboard />
         </div>
     );
 }
