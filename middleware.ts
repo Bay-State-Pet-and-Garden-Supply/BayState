@@ -1,8 +1,31 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  // First, update the session (authentication)
+  const response = await updateSession(request)
+
+  const pathname = request.nextUrl.pathname
+
+  // Legacy route redirects for scraper-lab consolidation
+  // Redirect /admin/scrapers/configs/* to /admin/scraper-lab/*
+  if (pathname.startsWith('/admin/scrapers/configs')) {
+    const newPath = pathname.replace('/admin/scrapers/configs', '/admin/scraper-lab')
+    const url = new URL(newPath, request.url)
+    // Explicitly preserve query parameters from original request
+    url.search = request.nextUrl.search
+    return NextResponse.redirect(url)
+  }
+
+  // Redirect /admin/scrapers/test-lab to /admin/scraper-lab
+  if (pathname === '/admin/scrapers/test-lab') {
+    const url = new URL('/admin/scraper-lab', request.url)
+    // Preserve query parameters for test-lab redirect as well
+    url.search = request.nextUrl.search
+    return NextResponse.redirect(url)
+  }
+
+  return response
 }
 
 export const config = {
