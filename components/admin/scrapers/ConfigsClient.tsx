@@ -264,7 +264,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/admin/scraper-lab`}>
+                          <Link href={`/admin/scrapers/test-lab`}>
                             <Play className="mr-2 h-4 w-4" />
                             Test Config
                           </Link>
