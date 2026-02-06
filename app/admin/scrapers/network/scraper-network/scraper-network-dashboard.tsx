@@ -14,7 +14,7 @@ import { useState, useCallback } from 'react';
 import { Metadata } from 'next';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import { Network, LayoutDashboard, List, Activity, Settings } from 'lucide-react';
+import { Network, LayoutDashboard, List, Activity, Settings, Plus, Key } from 'lucide-react';
 
 import { PresenceStats } from '@/components/admin/scraper-network/presence-stats';
 import { PresenceGrid } from '@/components/admin/scraper-network/presence-grid';
@@ -23,6 +23,7 @@ import { JobHeatmap } from '@/components/admin/scraper-network/job-heatmap';
 import { JobAssignmentFeed } from '@/components/admin/scraper-network/job-assignment-feed';
 import { LogBroadcastPanel } from '@/components/admin/scraper-network/log-broadcast-panel';
 import { JobProgressIndicator } from '@/components/admin/scraper-network/job-progress-indicator';
+import { RunnerAccountModal } from '@/components/admin/scraper-network/runner-account-modal';
 
 import type { RunnerPresence, JobAssignment, ScrapeJobLog } from '@/lib/realtime';
 
@@ -38,7 +39,7 @@ const navVariants = cva(
   {
     variants: {
       active: {
-        true: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+        true: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
         false:
           'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800',
       },
@@ -77,6 +78,7 @@ export function ScraperNetworkDashboard({
   const [viewMode, setViewMode] = useState<ViewMode>(defaultView);
   const [selectedRunner, setSelectedRunner] = useState<RunnerPresence | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobAssignment | null>(null);
+  const [showRunnerModal, setShowRunnerModal] = useState(false);
 
   // Handlers
   const handleRunnerClick = useCallback((runner: RunnerPresence) => {
@@ -95,18 +97,30 @@ export function ScraperNetworkDashboard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-          <Network className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+            <Network className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Network Status
+            </span>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              Scraper Network
+            </h1>
+            <p className="text-sm text-slate-500">
+              Real-time monitoring of your distributed scraper fleet
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Scraper Network
-          </h1>
-          <p className="text-sm text-slate-500">
-            Real-time monitoring of your distributed scraper fleet
-          </p>
-        </div>
+        <button
+          onClick={() => setShowRunnerModal(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+        >
+          <Key className="h-4 w-4" />
+          Add Runner
+        </button>
       </div>
 
       {/* View Navigation */}
@@ -266,8 +280,20 @@ export function ScraperNetworkDashboard({
             searchable={true}
             filterable={true}
             onRunnerClick={handleRunnerClick}
-          />
+           />
         </div>
+      )}
+
+      {/* Runner Account Modal */}
+      {showRunnerModal && (
+        <RunnerAccountModal
+          onClose={() => setShowRunnerModal(false)}
+          onSave={() => {
+            // Don't close modal here - let user see the API key first.
+            // The modal will close when user clicks "Done" inside it,
+            // which calls onClose() above.
+          }}
+        />
       )}
     </div>
   );

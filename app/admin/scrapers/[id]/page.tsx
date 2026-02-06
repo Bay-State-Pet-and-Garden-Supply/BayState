@@ -29,8 +29,6 @@ export default async function ScraperDetailPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
 
-  console.log(`[ScraperDetailPage] Fetching scraper with ID: "${id}"`);
-
   if (!uuidValidate(id)) {
     console.error(`[ScraperDetailPage] Invalid UUID provided: "${id}"`);
     notFound();

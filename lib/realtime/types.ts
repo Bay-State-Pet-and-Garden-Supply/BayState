@@ -51,11 +51,13 @@ export interface JobAssignment {
   /** Target SKUs to scrape */
   skus: string[];
   /** Current status of the job assignment */
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   /** ISO 8601 timestamp when the assignment was created */
   created_at: string;
   /** Optional runner ID once the job is picked up */
   runner_id?: string;
+  /** Whether this is a test mode job */
+  test_mode?: boolean;
 }
 
 /**
@@ -66,9 +68,10 @@ export const jobAssignmentSchema = z.object({
   job_id: z.string(),
   scrapers: z.array(z.string()),
   skus: z.array(z.string()),
-  status: z.enum(['pending', 'running', 'completed', 'failed']),
+  status: z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   created_at: z.string(),
   runner_id: z.string().optional(),
+  test_mode: z.boolean().optional(),
 });
 
 /**

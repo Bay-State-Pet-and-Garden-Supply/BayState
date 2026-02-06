@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import type { RunnerPresence } from '@/lib/realtime/types';
@@ -164,7 +164,7 @@ export function PresenceGrid({
   }, [allRunners]);
 
   // Notify parent of count changes
-  useMemo(() => {
+  useEffect(() => {
     onCountChange?.(counts);
   }, [counts, onCountChange]);
 
@@ -176,6 +176,27 @@ export function PresenceGrid({
   }, []);
 
   const hasFilters = searchQuery || filterBy !== 'all' || sortBy !== 'status';
+
+  // Loading state
+  if (!isConnected) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="h-10 flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+          <div className="h-10 w-40 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <div className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600 animate-pulse" />
+          <div className="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+        </div>
+        <div className={cn(gridVariants({ columns }))}>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

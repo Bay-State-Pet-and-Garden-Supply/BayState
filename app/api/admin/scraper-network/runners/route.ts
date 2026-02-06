@@ -26,18 +26,16 @@ export async function GET() {
             const lastSeen = new Date(r.last_seen_at);
             const minutesSinceSeen = (now.getTime() - lastSeen.getTime()) / 1000 / 60;
 
-            // Mark as offline if not seen in 5 minutes
             let status = r.status;
             if (minutesSinceSeen > 5) {
                 status = 'offline';
             }
 
             return {
-                id: r.name, // Use name as ID
+                id: r.name,
                 name: r.name,
-                os: 'Linux/Mac', // Placeholder
-                // Convert all active states (online, idle, polling, busy) to 'online' for UI
-                status: status === 'offline' ? 'offline' : 'online',
+                os: 'Linux/Mac',
+                status: (status === 'offline' || r.status === 'offline') ? 'offline' : 'online',
                 busy: status === 'busy',
                 labels: []
             };

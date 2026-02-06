@@ -9,7 +9,7 @@ export async function GET() {
 
         const { data, error } = await supabase
             .from('scrape_jobs')
-            .select('id, skus, status, created_at, completed_at, error_message')
+            .select('id, skus, status, runner_name, lease_token, lease_expires_at, heartbeat_at, attempt_count, max_attempts, backoff_until, created_at, completed_at, error_message')
             .order('created_at', { ascending: false })
             .limit(20);
 

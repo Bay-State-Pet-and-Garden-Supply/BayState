@@ -38,21 +38,6 @@ const statusVariants = cva('flex items-center gap-1.5', {
   },
 });
 
-interface JobProgressIndicatorProps {
-  /** Job to display progress for */
-  job: JobAssignment;
-  /** Progress value (0-100) */
-  progress?: number;
-  /** Show details */
-  showDetails?: boolean;
-  /** Show elapsed time */
-  showElapsed?: boolean;
-  /** Click handler for details */
-  onClick?: () => void;
-  /** Progress update handler */
-  onProgressUpdate?: (jobId: string, progress: number) => void;
-}
-
 interface JobProgressItemProps {
   job: JobAssignment;
   progress: number;
@@ -93,7 +78,7 @@ function getStatusIcon(status: JobAssignment['status']) {
 }
 
 /**
- * Job Progress Item Component
+ * JobProgressItem Component
  */
 function JobProgressItem({
   job,

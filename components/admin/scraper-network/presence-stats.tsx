@@ -101,19 +101,20 @@ function calculateStats(runners: RunnerPresence[]) {
   const idle = runners.filter((r) => r.status === 'idle').length;
   const offline = runners.filter((r) => r.status === 'offline').length;
 
-  const totalActive = runners.reduce((sum, r) => sum + r.active_jobs, 0);
+  const totalActiveRunners = online + busy + idle;
+  const totalActiveJobs = runners.reduce((sum, r) => sum + r.active_jobs, 0);
   const avgActivePerBusy =
-    busy > 0 ? Math.round((totalActive / busy) * 10) / 10 : 0;
+    busy > 0 ? Math.round((totalActiveJobs / busy) * 10) / 10 : 0;
 
   return {
     total,
-    online,
+    online: totalActiveRunners,
     busy,
     idle,
     offline,
-    totalActive,
+    totalActive: totalActiveJobs,
     avgActivePerBusy,
-    utilizationPercent: total > 0 ? Math.round(((online + busy) / total) * 100) : 0,
+    utilizationPercent: total > 0 ? Math.round((totalActiveRunners / total) * 100) : 0,
   };
 }
 
@@ -177,7 +178,7 @@ export function PresenceStats({
         className={cn(
           'grid gap-3',
           detailed
-            ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'
+            ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4'
             : 'grid-cols-2 md:grid-cols-4'
         )}
       >

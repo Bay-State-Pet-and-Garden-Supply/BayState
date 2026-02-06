@@ -30,6 +30,19 @@ const statusVariants = cva(
   }
 );
 
+const cardVariants = cva(
+  'rounded-xl border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer',
+  {
+    variants: {
+      size: {
+        compact: 'p-3',
+        default: 'p-4',
+      },
+    },
+    defaultVariants: { size: 'default' },
+  }
+);
+
 interface RunnerPresenceCardProps {
   /** Runner presence data to display */
   runner: RunnerPresence;
@@ -114,8 +127,8 @@ export function RunnerPresenceCard({
       <div
         onClick={handleClick}
         className={cn(
-          'flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700',
-          'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
+          cardVariants({ size: 'compact' }),
+          'flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50',
           isNew && 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-slate-900'
         )}
       >
@@ -142,8 +155,8 @@ export function RunnerPresenceCard({
     <div
       onClick={handleClick}
       className={cn(
-        'flex flex-col p-4 rounded-xl border border-slate-200 dark:border-slate-700',
-        'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
+        cardVariants({ size: 'default' }),
+        'flex flex-col hover:bg-slate-50 dark:hover:bg-slate-800/50',
         isNew && 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-slate-900'
       )}
     >

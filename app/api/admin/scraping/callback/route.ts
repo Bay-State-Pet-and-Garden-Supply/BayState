@@ -76,6 +76,7 @@ interface CallbackPayload {
     job_id: string;
     status: 'running' | 'completed' | 'failed';
     runner_name?: string;
+    lease_token?: string;
     error_message?: string;
     results?: {
         skus_processed?: number;
@@ -124,23 +125,77 @@ export async function POST(request: NextRequest) {
 
         const supabase = getSupabaseAdmin();
 
+        const { data: existingJob, error: existingJobError } = await supabase
+            .from('scrape_jobs')
+            .select('id, status, lease_token, attempt_count, max_attempts')
+            .eq('id', payload.job_id)
+            .single();
+
+        if (existingJobError || !existingJob) {
+            return NextResponse.json(
+                { error: 'Job not found' },
+                { status: 404 }
+            );
+        }
+
+        if (existingJob.lease_token && payload.lease_token !== existingJob.lease_token) {
+            return NextResponse.json(
+                { error: 'Lease token mismatch' },
+                { status: 409 }
+            );
+        }
+
         // Update job status
+        const nowIso = new Date().toISOString();
         const updateData: Record<string, unknown> = {
-            status: payload.status,
+            updated_at: nowIso,
         };
 
-        if (payload.status === 'completed' || payload.status === 'failed') {
-            updateData.completed_at = new Date().toISOString();
+        if (payload.status === 'running') {
+            updateData.status = 'running';
+            updateData.heartbeat_at = nowIso;
+        } else if (payload.status === 'completed') {
+            updateData.status = 'completed';
+            updateData.completed_at = nowIso;
+            updateData.heartbeat_at = nowIso;
+            updateData.lease_token = null;
+            updateData.leased_at = null;
+            updateData.lease_expires_at = null;
+        } else {
+            const canRetry = existingJob.attempt_count < existingJob.max_attempts;
+            if (canRetry) {
+                const backoffMs = Math.min(2 ** existingJob.attempt_count * 60 * 1000, 15 * 60 * 1000);
+                updateData.status = 'pending';
+                updateData.backoff_until = new Date(Date.now() + backoffMs).toISOString();
+                updateData.lease_token = null;
+                updateData.leased_at = null;
+                updateData.lease_expires_at = null;
+                updateData.heartbeat_at = nowIso;
+                updateData.runner_name = null;
+            } else {
+                updateData.status = 'failed';
+                updateData.completed_at = nowIso;
+                updateData.heartbeat_at = nowIso;
+                updateData.lease_token = null;
+                updateData.leased_at = null;
+                updateData.lease_expires_at = null;
+            }
         }
 
         if (payload.error_message) {
             updateData.error_message = payload.error_message;
         }
 
-        const { error: updateError } = await supabase
+        let jobUpdateQuery = supabase
             .from('scrape_jobs')
             .update(updateData)
             .eq('id', payload.job_id);
+
+        if (existingJob.lease_token) {
+            jobUpdateQuery = jobUpdateQuery.eq('lease_token', existingJob.lease_token);
+        }
+
+        const { error: updateError } = await jobUpdateQuery;
 
         if (updateError) {
             console.error('[Callback] Failed to update job:', updateError);
@@ -159,7 +214,7 @@ export async function POST(request: NextRequest) {
             .from('scraper_runners')
             .update({
                 status: runnerStatus,
-                last_seen_at: new Date().toISOString(),
+                last_seen_at: nowIso,
                 current_job_id: currentJobId,
                 metadata: { 
                     last_ip: request.headers.get('x-forwarded-for') || 'unknown',

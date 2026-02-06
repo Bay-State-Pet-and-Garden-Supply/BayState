@@ -1,17 +1,12 @@
 /**
- * Scraper Network Page
+ * Scraper Network Page (Legacy Route)
  *
- * Network monitoring and management for scraper runners.
- * This is a placeholder that will be implemented in a future task.
+ * This route now redirects to the full dashboard implementation.
+ * The real implementation is at /admin/scrapers/network/scraper-network
  */
 
+import { redirect } from 'next/navigation';
+
 export default function ScraperNetworkPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Scraper Network</h1>
-      <p className="text-muted-foreground mt-2">
-        This page will display network monitoring and runner health status.
-      </p>
-    </div>
-  );
+  redirect('/admin/scrapers/network/scraper-network');
 }

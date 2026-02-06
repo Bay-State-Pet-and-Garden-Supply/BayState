@@ -152,6 +152,7 @@ export const ScrapeCallbackPayloadSchema = z.object({
     job_id: uuid('Invalid job ID'),
     status: z.enum(['running', 'completed', 'failed']),
     runner_name: z.string().optional(),
+    lease_token: uuid('Invalid lease token').optional(),
     error_message: z.string().optional(),
     results: z
         .object({

@@ -26,7 +26,7 @@ const cellVariants = cva(
         pending:
           'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
         running:
-          'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+          'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
         completed:
           'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
         failed:
@@ -189,7 +189,7 @@ export function JobHeatmap({
             {summary.pending}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="w-2 h-2 rounded-full bg-violet-500" />
             {summary.running}
           </span>
           <span className="flex items-center gap-1">

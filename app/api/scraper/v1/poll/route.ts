@@ -28,6 +28,8 @@ interface PollResponse {
         scrapers: ScraperConfig[];
         test_mode: boolean;
         max_workers: number;
+        lease_token?: string;
+        lease_expires_at?: string;
     } | null;
 }
 
@@ -113,7 +115,7 @@ export async function POST(request: NextRequest) {
                 payload: {
                     job_id: job.job_id,
                     runner_id: runnerName,
-                    runner_name: runner.name,
+                    runner_name: runner.runnerName,
                     scrapers: job.scrapers || [],
                     skus_count: skus.length,
                     timestamp: new Date().toISOString(),
@@ -157,10 +159,16 @@ export async function POST(request: NextRequest) {
                 }),
                 test_mode: job.test_mode || false,
                 max_workers: job.max_workers || 3,
+                lease_token: job.lease_token || undefined,
+                lease_expires_at: job.lease_expires_at || undefined,
             },
         };
 
-        return NextResponse.json(response);
+        return NextResponse.json(response, {
+            headers: {
+                'X-Enforced-Runner-Name': runnerName
+            }
+        });
     } catch (error) {
         console.error('[Poll] Error:', error);
         return NextResponse.json(

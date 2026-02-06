@@ -6,10 +6,12 @@
  * to maintain a live view of which runners are online, busy, or offline.
  */
 
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { RunnerPresence } from './types';
+
+const CHANNEL_RUNNER_PRESENCE = 'runner-presence';
 
 /**
  * Runner presence state managed by the hook
@@ -29,7 +31,7 @@ export interface RunnerPresenceState {
  * Configuration options for the presence hook
  */
 export interface UseRunnerPresenceOptions {
-  /** Channel name for presence (default: 'runners-presence') */
+  /** Optional custom channel name for presence */
   channelName?: string;
   /** Whether to automatically connect on mount (default: true) */
   autoConnect?: boolean;
@@ -45,7 +47,6 @@ export interface UseRunnerPresenceOptions {
  * Default configuration values
  */
 const DEFAULT_OPTIONS: Partial<UseRunnerPresenceOptions> = {
-  channelName: 'runners-presence',
   autoConnect: true,
 };
 
@@ -89,12 +90,17 @@ export interface UseRunnerPresenceReturn extends RunnerPresenceState {
  */
 export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRunnerPresenceReturn {
   const {
-    channelName = 'runners-presence',
+    channelName: providedChannelName,
     autoConnect = true,
     onJoin,
     onLeave,
     onSync,
   } = { ...DEFAULT_OPTIONS, ...options };
+
+  const channelName = useMemo(
+    () => providedChannelName ?? `runners-presence-${Math.random().toString(36).substring(2, 9)}`,
+    [providedChannelName]
+  );
 
   const [state, setState] = useState<RunnerPresenceState>({
     runners: {},
@@ -105,6 +111,11 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const callbacksRef = useRef({ onJoin, onLeave, onSync });
+
+  useEffect(() => {
+    callbacksRef.current = { onJoin, onLeave, onSync };
+  }, [onJoin, onLeave, onSync]);
 
   /**
    * Get the Supabase client (lazy initialization)
@@ -129,7 +140,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
 
     try {
       // Use private channel for RLS-based authorization (Supabase Realtime v2)
-      const channel = supabase.channel(channelName, {
+      const channel = supabase.channel(CHANNEL_RUNNER_PRESENCE, {
         config: {
           private: true,
           presence: {
@@ -149,12 +160,13 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
           setState((prev) => {
             const newRunners: Record<string, RunnerPresence> = {};
             const newOnlineIds = new Set<string>();
+            const { onJoin, onLeave, onSync } = callbacksRef.current;
 
             Object.entries(presenceState).forEach(([key, presences]) => {
               // key is typically the runner_id or 'admin-dashboard'
               // We only care about actual runner presence data
               if (Array.isArray(presences) && presences.length > 0) {
-                const presence = presences[0] as RunnerPresence;
+                const presence = presences[0] as unknown as RunnerPresence;
                 if (presence && typeof presence === 'object' && 'runner_id' in presence) {
                   newRunners[presence.runner_id] = presence;
                   newOnlineIds.add(presence.runner_id);
@@ -210,7 +222,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
       console.error('[useRunnerPresence] Connection error:', error);
       setState((prev) => ({ ...prev, error, isConnected: false }));
     }
-  }, [channelName, getSupabase, onJoin, onLeave, onSync]);
+  }, [channelName, getSupabase]);
 
   /**
    * Disconnect from the presence channel
@@ -222,10 +234,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
       channelRef.current = null;
     }
 
-    setState((prev) => ({
-      ...prev,
-      isConnected: false,
-    }));
+    setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
   }, [getSupabase]);
 
   /**

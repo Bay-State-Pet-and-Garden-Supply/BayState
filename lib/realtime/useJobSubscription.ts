@@ -5,7 +5,7 @@
  * Used for real-time tracking of job creation, assignment, and completion.
  */
 
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { JobAssignment } from './types';
@@ -43,7 +43,7 @@ export interface JobSubscriptionState {
  * Configuration options for the job subscription hook
  */
 export interface UseJobSubscriptionOptions {
-  /** Channel name for job subscriptions (default: 'scrape-jobs-subscription') */
+  /** Optional custom channel name for job subscriptions */
   channelName?: string;
   /** Whether to automatically connect on mount (default: true) */
   autoConnect?: boolean;
@@ -77,7 +77,6 @@ export interface JobEventFilters {
  * Default configuration values
  */
 const DEFAULT_OPTIONS: Partial<UseJobSubscriptionOptions> = {
-  channelName: 'scrape-jobs-subscription',
   autoConnect: true,
   maxJobsPerStatus: 50,
 };
@@ -121,7 +120,7 @@ export function useJobSubscription(
   filters: JobEventFilters = {}
 ): UseJobSubscriptionReturn {
   const {
-    channelName = 'scrape-jobs-subscription',
+    channelName: providedChannelName,
     autoConnect = true,
     scraperNames,
     testModeOnly,
@@ -130,6 +129,11 @@ export function useJobSubscription(
     onJobUpdated,
     onJobDeleted,
   } = { ...DEFAULT_OPTIONS, ...options };
+
+  const channelName = useMemo(
+    () => providedChannelName ?? `scrape-jobs-${Math.random().toString(36).substring(2, 9)}`,
+    [providedChannelName]
+  );
 
   const {
     includeInsert = true,
@@ -160,6 +164,28 @@ export function useJobSubscription(
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const callbacksRef = useRef({ onJobCreated, onJobUpdated, onJobDeleted });
+  const subscriptionConfigRef = useRef({
+    scraperNames,
+    testModeOnly,
+    includeInsert,
+    includeUpdate,
+    includeDelete,
+  });
+
+  useEffect(() => {
+    callbacksRef.current = { onJobCreated, onJobUpdated, onJobDeleted };
+  }, [onJobCreated, onJobUpdated, onJobDeleted]);
+
+  useEffect(() => {
+    subscriptionConfigRef.current = {
+      scraperNames,
+      testModeOnly,
+      includeInsert,
+      includeUpdate,
+      includeDelete,
+    };
+  }, [scraperNames, testModeOnly, includeInsert, includeUpdate, includeDelete]);
 
   /**
    * Get the Supabase client (lazy initialization)
@@ -170,24 +196,6 @@ export function useJobSubscription(
     }
     return supabaseRef.current;
   }, []);
-
-  /**
-   * Build the filter string for the subscription
-   */
-  const buildFilter = useCallback((): string => {
-    const filters: string[] = [];
-
-    if (scraperNames && scraperNames.length > 0) {
-      // Filter by first scraper name (simplified)
-      filters.push(`scrapers=cs.{${scraperNames.join(',')}}`);
-    }
-
-    if (testModeOnly) {
-      filters.push('test_mode=eq.true');
-    }
-
-    return filters.join('&');
-  }, [scraperNames, testModeOnly]);
 
   /**
    * Process an incoming job change event
@@ -202,17 +210,17 @@ export function useJobSubscription(
 
       if (!job && !oldJob) return;
 
+      const { onJobCreated, onJobUpdated, onJobDeleted } = callbacksRef.current;
+
       setState((prev) => {
         const newJobs = { ...prev.jobs };
         const allJobs: JobAssignment[] = [];
 
-        // Collect all existing jobs
         Object.values(newJobs).forEach((jobs) => {
           allJobs.push(...jobs);
         });
 
         if (eventType === 'DELETE' && oldJob) {
-          // Remove deleted job from all status arrays
           Object.keys(newJobs).forEach((status) => {
             newJobs[status as keyof typeof newJobs] = newJobs[
               status as keyof typeof newJobs
@@ -220,14 +228,10 @@ export function useJobSubscription(
           });
           onJobDeleted?.(oldJob.id);
         } else if (job) {
-          // Determine job status
           const status = job.status as keyof typeof newJobs;
-
-          // Check if job already exists (UPDATE case)
           const existingIndex = allJobs.findIndex((j) => j.id === job.id);
 
           if (existingIndex >= 0) {
-            // UPDATE: Move job to new status array
             Object.keys(newJobs).forEach((s) => {
               newJobs[s as keyof typeof newJobs] = newJobs[s as keyof typeof newJobs].filter(
                 (j) => j.id !== job.id
@@ -235,7 +239,6 @@ export function useJobSubscription(
             });
           }
 
-          // Add to appropriate status array
           if (newJobs[status]) {
             newJobs[status as keyof typeof newJobs] = [
               job,
@@ -281,7 +284,7 @@ export function useJobSubscription(
         };
       });
     },
-    [maxJobsPerStatus, onJobCreated, onJobUpdated, onJobDeleted]
+    [maxJobsPerStatus]
   );
 
   /**
@@ -290,61 +293,51 @@ export function useJobSubscription(
   const connect = useCallback(() => {
     const supabase = getSupabase();
 
-    // Don't create duplicate channels
-    if (channelRef.current) {
-      return;
-    }
-
     try {
-      const channel = supabase.channel(channelName, {
-        config: {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      const channel = supabase.channel(channelName);
+
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
           schema: 'public',
           table: 'scrape_jobs',
-          filter: buildFilter() || undefined,
         },
-      });
+        (payload) => {
+          const {
+            scraperNames,
+            testModeOnly,
+            includeInsert,
+            includeUpdate,
+            includeDelete,
+          } = subscriptionConfigRef.current;
+          const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+          const candidate = ((payload.new as JobAssignment | null) ||
+            (payload.old as JobAssignment | null)) as JobAssignment | null;
 
-      // Subscribe to INSERT events
-      if (includeInsert) {
-        channel.on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'scrape_jobs',
-            filter: buildFilter() || undefined,
-          },
-          (payload) => processJobChange('INSERT', payload)
-        );
-      }
+          if (candidate && scraperNames && scraperNames.length > 0) {
+            const hasMatchingScraper = scraperNames.some((name) =>
+              (candidate.scrapers || []).includes(name)
+            );
+            if (!hasMatchingScraper) return;
+          }
 
-      // Subscribe to UPDATE events
-      if (includeUpdate) {
-        channel.on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'scrape_jobs',
-            filter: buildFilter() || undefined,
-          },
-          (payload) => processJobChange('UPDATE', payload)
-        );
-      }
+          if (candidate && testModeOnly && !candidate.test_mode) return;
 
-      // Subscribe to DELETE events
-      if (includeDelete) {
-        channel.on(
-          'postgres_changes',
-          {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'scrape_jobs',
-            filter: buildFilter() || undefined,
-          },
-          (payload) => processJobChange('DELETE', payload)
-        );
-      }
+          if (
+            (eventType === 'INSERT' && includeInsert) ||
+            (eventType === 'UPDATE' && includeUpdate) ||
+            (eventType === 'DELETE' && includeDelete)
+          ) {
+            processJobChange(eventType, payload as RealtimePostgresChangesPayload<JobAssignment>);
+          }
+        }
+      );
 
       channel.subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
@@ -353,18 +346,21 @@ export function useJobSubscription(
         } else if (status === 'CHANNEL_ERROR') {
           const error = new Error(`Job subscription channel error: ${err?.message || 'unknown'}`);
           console.error('[useJobSubscription] Channel error:', error, { err });
+          supabase.removeChannel(channel);
+          if (channelRef.current === channel) {
+            channelRef.current = null;
+          }
           setState((prev) => ({ ...prev, error, isConnected: false }));
         }
       });
 
       channelRef.current = channel;
-      setState((prev) => ({ ...prev, isConnected: true, error: null }));
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to connect');
       console.error('[useJobSubscription] Connection error:', error);
       setState((prev) => ({ ...prev, error, isConnected: false }));
     }
-  }, [channelName, getSupabase, buildFilter, includeInsert, includeUpdate, includeDelete, processJobChange]);
+  }, [channelName, getSupabase, processJobChange]);
 
   /**
    * Disconnect from the job subscription channel

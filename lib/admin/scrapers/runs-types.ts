@@ -4,11 +4,11 @@
 import { z } from 'zod';
 
 // Scraper run status enum (from database constraint)
-export const scrapeJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed']);
+export const scrapeJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']);
 export type ScrapeJobStatus = z.infer<typeof scrapeJobStatusSchema>;
 
 // Extended statuses used in the UI
-export type ScraperRunStatus = ScrapeJobStatus | 'claimed' | 'cancelled';
+export type ScraperRunStatus = ScrapeJobStatus | 'claimed';
 
 // Scraper run record from database (matches scrape_jobs table)
 export interface ScraperRunRecord {
@@ -26,6 +26,12 @@ export interface ScraperRunRecord {
   updated_at: string;
   error_message: string | null;
   test_mode: boolean;
+  lease_token?: string | null;
+  lease_expires_at?: string | null;
+  heartbeat_at?: string | null;
+  attempt_count?: number;
+  max_attempts?: number;
+  backoff_until?: string | null;
   // Additional fields not in schema but computed
   github_run_id?: number | null;
   created_by?: string | null;

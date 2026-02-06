@@ -30,7 +30,7 @@ const feedItemVariants = cva(
         pending:
           'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800',
         running:
-          'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800',
+          'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800',
         completed:
           'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800',
         failed:
@@ -101,7 +101,7 @@ function getStatusIcon(status: JobAssignment['status']) {
 function FeedItem({ job, compact = false, showTimestamp = true, onClick }: FeedItemProps) {
   const statusColor = {
     pending: 'text-amber-600 dark:text-amber-400',
-    running: 'text-blue-600 dark:text-blue-400',
+    running: 'text-violet-600 dark:text-violet-400',
     completed: 'text-emerald-600 dark:text-emerald-400',
     failed: 'text-red-600 dark:text-red-400',
     cancelled: 'text-slate-500',
@@ -241,7 +241,7 @@ export function JobAssignmentFeed({
             {statusCounts.pending}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="w-2 h-2 rounded-full bg-violet-500" />
             {statusCounts.running}
           </span>
           <span className="flex items-center gap-1">

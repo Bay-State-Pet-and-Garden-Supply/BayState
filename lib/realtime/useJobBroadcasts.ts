@@ -6,7 +6,7 @@
  * updates, and heartbeat events.
  */
 
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { BroadcastEvent, ScrapeJobLog } from './types';
@@ -33,7 +33,7 @@ export interface JobBroadcastState {
  * Configuration options for the broadcast hook
  */
 export interface UseJobBroadcastOptions {
-  /** Channel name for broadcasts (default: 'job-broadcasts') */
+  /** Optional custom channel name for broadcasts */
   channelName?: string;
   /** Whether to automatically connect on mount (default: true) */
   autoConnect?: boolean;
@@ -65,7 +65,7 @@ export interface BroadcastEventFilters {
  * Default configuration values
  */
 const DEFAULT_OPTIONS: Partial<UseJobBroadcastOptions> = {
-  channelName: 'job-broadcasts',
+  channelName: 'job-broadcast',
   autoConnect: true,
   maxLogs: 100,
 };
@@ -112,7 +112,7 @@ export function useJobBroadcasts(
   filters: BroadcastEventFilters = {}
 ): UseJobBroadcastsReturn {
   const {
-    channelName = 'job-broadcasts',
+    channelName: providedChannelName,
     autoConnect = true,
     maxLogs = 100,
     onBroadcast,
@@ -126,6 +126,8 @@ export function useJobBroadcasts(
     customEvents = [],
   } = filters;
 
+  const channelName = useMemo(() => providedChannelName ?? 'job-broadcast', [providedChannelName]);
+
   const [state, setState] = useState<JobBroadcastState>({
     broadcasts: {},
     latest: {},
@@ -138,6 +140,23 @@ export function useJobBroadcasts(
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const subscribedEvents = useRef<Set<string>>(new Set());
+  const mountedRef = useRef(true);
+  const callbacksRef = useRef({ onBroadcast, onLog, onProgress });
+  const eventConfigRef = useRef({ includeLogs, includeProgress, customEvents, maxLogs });
+
+  useEffect(() => {
+    callbacksRef.current = { onBroadcast, onLog, onProgress };
+  }, [onBroadcast, onLog, onProgress]);
+
+  useEffect(() => {
+    eventConfigRef.current = { includeLogs, includeProgress, customEvents, maxLogs };
+  }, [includeLogs, includeProgress, customEvents, maxLogs]);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   /**
    * Get the Supabase client (lazy initialization)
@@ -154,6 +173,9 @@ export function useJobBroadcasts(
    */
   const processBroadcast = useCallback(
     (event: string, payload: unknown) => {
+      const { includeLogs, includeProgress, customEvents, maxLogs } = eventConfigRef.current;
+      const { onBroadcast, onLog, onProgress } = callbacksRef.current;
+
       const broadcast: BroadcastEvent = {
         event,
         payload: payload as Record<string, unknown>,
@@ -180,7 +202,7 @@ export function useJobBroadcasts(
         };
 
         // Handle log events
-        if (includeLogs && event === 'runner-log') {
+        if (includeLogs && event === 'runner_log') {
           const log = payload as ScrapeJobLog;
           const newLogs = [log, ...prev.logs].slice(0, maxLogs);
           updates.logs = newLogs;
@@ -188,7 +210,7 @@ export function useJobBroadcasts(
         }
 
         // Handle progress events
-        if (includeProgress && event === 'job-progress') {
+        if (includeProgress && event === 'job_progress') {
           const { job_id, progress: progressValue } = payload as { job_id: string; progress: number };
           updates.progress = { ...prev.progress, [job_id]: progressValue };
           onProgress?.(job_id, progressValue);
@@ -202,7 +224,7 @@ export function useJobBroadcasts(
         return { ...prev, ...updates };
       });
     },
-    [includeLogs, includeProgress, customEvents, maxLogs, onBroadcast, onLog, onProgress]
+    []
   );
 
   /**
@@ -210,29 +232,26 @@ export function useJobBroadcasts(
    */
   const connect = useCallback(() => {
     const supabase = getSupabase();
-
-    // Don't create duplicate channels
-    if (channelRef.current) {
-      return;
-    }
+    const { includeLogs, includeProgress, customEvents } = eventConfigRef.current;
 
     try {
-      // Use private channel for RLS-based authorization (Supabase Realtime v2)
+      if (channelRef.current) return;
+
       const channel = supabase.channel(channelName, {
         config: { private: true },
       });
 
       // Subscribe to log events
       if (includeLogs) {
-        channel.on('broadcast', { event: 'runner-log' }, ({ payload }) => {
-          processBroadcast('runner-log', payload);
+        channel.on('broadcast', { event: 'runner_log' }, ({ payload }) => {
+          processBroadcast('runner_log', payload);
         });
       }
 
       // Subscribe to progress events
       if (includeProgress) {
-        channel.on('broadcast', { event: 'job-progress' }, ({ payload }) => {
-          processBroadcast('job-progress', payload);
+        channel.on('broadcast', { event: 'job_progress' }, ({ payload }) => {
+          processBroadcast('job_progress', payload);
         });
       }
 
@@ -244,24 +263,34 @@ export function useJobBroadcasts(
       });
 
       channel.subscribe((status) => {
+        if (!mountedRef.current) return;
+
         if (status === 'SUBSCRIBED') {
           setState((prev) => ({ ...prev, isConnected: true, error: null }));
           console.log('[useJobBroadcasts] Connected to broadcast channel');
         } else if (status === 'CHANNEL_ERROR') {
+          const lowerTopic = String((channel as unknown as { topic?: string }).topic || '').toLowerCase();
+          if (lowerTopic.includes('phoenix') || lowerTopic.includes('realtime')) {
+            return;
+          }
+
           const error = new Error('Broadcast channel error');
-          console.error('[useJobBroadcasts] Channel error:', error);
+          console.error('[useJobBroadcasts] Channel error:', error, { status, topic: lowerTopic });
+          supabase.removeChannel(channel);
+          if (channelRef.current === channel) {
+            channelRef.current = null;
+          }
           setState((prev) => ({ ...prev, error, isConnected: false }));
         }
       });
 
       channelRef.current = channel;
-      setState((prev) => ({ ...prev, isConnected: true, error: null }));
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to connect');
       console.error('[useJobBroadcasts] Connection error:', error);
       setState((prev) => ({ ...prev, error, isConnected: false }));
     }
-  }, [channelName, getSupabase, includeLogs, includeProgress, customEvents, processBroadcast]);
+  }, [channelName, getSupabase, processBroadcast]);
 
   /**
    * Disconnect from the broadcast channel
@@ -273,10 +302,7 @@ export function useJobBroadcasts(
       channelRef.current = null;
     }
 
-    setState((prev) => ({
-      ...prev,
-      isConnected: false,
-    }));
+    setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
   }, [getSupabase]);
 
   /**
@@ -340,6 +366,8 @@ export function useJobBroadcasts(
    * Auto-connect on mount if enabled
    */
   useEffect(() => {
+    mountedRef.current = true;
+
     if (autoConnect) {
       connect();
     }

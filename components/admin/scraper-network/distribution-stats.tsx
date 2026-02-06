@@ -196,7 +196,7 @@ export function DistributionStats({
         className={cn(
           'grid gap-3',
           detailed
-            ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-7'
+            ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4'
             : 'grid-cols-2 md:grid-cols-4'
         )}
       >

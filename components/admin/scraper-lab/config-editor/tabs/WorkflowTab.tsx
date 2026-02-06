@@ -189,17 +189,9 @@ export function WorkflowTab() {
                                 <FormMessage />
                               </FormItem>
                             )}
-                          />
-                         )
-                         
-                         {/* Fallback for complex/other types - simple hint */}
-                         {!['navigate', 'click', 'wait_for', 'input_text', 'wait'].includes(actionType) && (
-                            <div className="flex items-center h-full text-muted-foreground text-sm italic border rounded px-3 bg-muted/50">
-                               <Settings2 className="w-4 h-4 mr-2" />
-                               Params for {actionType} configured in JSON preview (for now)
-                            </div>
-                         )}
-                      </div>
+                           />
+                          )}
+                        </div>
 
                       <div className="col-span-1 flex justify-end items-start pt-8">
                         <Button

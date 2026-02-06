@@ -15,6 +15,8 @@ export interface ScrapeOptions {
     scrapers?: string[];
     /** Maximum number of parallel jobs to create (default: 3) */
     maxRunners?: number;
+    /** Maximum retry attempts before terminal failure (default: 3) */
+    maxAttempts?: number;
 }
 
 export interface ScrapeResult {
@@ -45,6 +47,7 @@ export async function scrapeProducts(
     const testMode = options?.testMode ?? false;
     const scrapers = options?.scrapers ?? [];
     const maxRunners = options?.maxRunners ?? 3;
+    const maxAttempts = options?.maxAttempts ?? 3;
 
     const supabase = await createClient();
 
@@ -68,6 +71,16 @@ export async function scrapeProducts(
                 test_mode: testMode,
                 max_workers: maxWorkers,
                 status: 'pending',
+                attempt_count: 0,
+                max_attempts: maxAttempts,
+                backoff_until: null,
+                lease_token: null,
+                leased_at: null,
+                lease_expires_at: null,
+                heartbeat_at: null,
+                runner_name: null,
+                started_at: null,
+                updated_at: new Date().toISOString(),
             })
             .select('id')
             .single();
