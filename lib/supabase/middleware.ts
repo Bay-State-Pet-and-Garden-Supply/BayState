@@ -50,8 +50,12 @@ export async function updateSession(request: NextRequest) {
   if (authError || !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    url.searchParams.set('error', authError?.name || 'session_expired')
-    url.searchParams.set('message', authError?.message || 'Please log in to continue.')
+    // Only preserve 'next' param for redirect after login
+    const next = request.nextUrl.searchParams.get('next')
+    url.search = ''
+    if (next) {
+      url.searchParams.set('next', next)
+    }
     return NextResponse.redirect(url)
   }
 
