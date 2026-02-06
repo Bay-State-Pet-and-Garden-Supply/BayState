@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
         }
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseRealtimeKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        // Use anon key for realtime connections (service role key is for server-side only)
+        const supabaseRealtimeKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
         if (!supabaseUrl || !supabaseRealtimeKey) {
             console.warn(`[SupabaseConfig] Supabase not configured for runner ${runner.runnerName}`);
