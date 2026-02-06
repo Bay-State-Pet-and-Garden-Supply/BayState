@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { useEffect, useState } from 'react';
 import {
   BarChart3,
   CheckCircle2,
@@ -15,6 +16,7 @@ import {
   History,
   Settings2,
   Plus,
+  RefreshCw,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +30,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
+import { useRunnerPresence } from '@/lib/realtime/useRunnerPresence';
 
 interface ScraperSummary {
   id: string;
@@ -51,12 +55,38 @@ interface TestRun {
 interface RecentJob {
   id: string;
   scraper_name: string;
+  scrapers?: string[];
   status: string;
   total_skus: number;
   completed_skus: number;
   failed_skus: number;
   created_at: string;
   runner_name: string | null;
+}
+
+// Job display type that supports both JobAssignment and RecentJob
+interface JobDisplayItem {
+  id: string;
+  scrapers?: string[];
+  scraper_name?: string;
+  status: string;
+  total_skus?: number;
+  completed_skus?: number;
+  failed_skus?: number;
+  created_at: string;
+  runner_name?: string | null;
+}
+
+// Shared job type for display (union compatible)
+interface DisplayJob {
+  id: string;
+  scrapers?: string[];
+  status: string;
+  total_skus?: number;
+  completed_skus?: number;
+  failed_skus?: number;
+  created_at: string;
+  runner_name?: string | null;
 }
 
 interface ScraperDashboardClientProps {
@@ -80,11 +110,45 @@ interface ScraperDashboardClientProps {
 export function ScraperDashboardClient({
   scrapers,
   recentTests,
-  recentJobs,
+  recentJobs: initialJobs,
   healthCounts,
   statusCounts,
-  runnerCount,
+  runnerCount: initialRunnerCount,
 }: ScraperDashboardClientProps) {
+  // Realtime job subscription
+  const {
+    jobs: realtimeJobs,
+    counts: jobCounts,
+    isConnected: isJobsConnected,
+    refetch: refetchJobs,
+  } = useJobSubscription({
+    autoConnect: true,
+    maxJobsPerStatus: 10,
+  });
+
+  // Realtime runner presence
+  const {
+    runners: realtimeRunners,
+    isConnected: isRunnersConnected,
+  } = useRunnerPresence({
+    autoConnect: true,
+  });
+
+  const realtimeRunnerCount = Object.keys(realtimeRunners).length;
+
+  // Combine initial jobs with realtime jobs for display
+  const displayJobs: JobDisplayItem[] = [
+    ...(realtimeJobs.running || []).map(job => ({
+      ...job,
+      scraper_name: job.scrapers?.[0] || 'Unknown',
+    })),
+    ...(realtimeJobs.pending || []).slice(0, 5).map(job => ({
+      ...job,
+      scraper_name: job.scrapers?.[0] || 'Unknown',
+    })),
+    ...initialJobs.slice(0, 5),
+  ].slice(0, 8);
+
   const totalScrapers = scrapers.length;
   const avgHealthScore = scrapers.length > 0
     ? Math.round(scrapers.reduce((sum, s) => sum + s.health_score, 0) / scrapers.length)
@@ -120,6 +184,42 @@ export function ScraperDashboardClient({
 
   return (
     <div className="space-y-6 p-6">
+      {/* Realtime Status Banner */}
+      <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Jobs:</span>
+            {isJobsConnected ? (
+              <Badge variant="default" className="gap-1 text-xs">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Live
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">
+                Offline
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Runners:</span>
+            {isRunnersConnected ? (
+              <Badge variant="default" className="gap-1 text-xs">
+                <RefreshCw className="h-3 w-3 animate-pulse" />
+                {realtimeRunnerCount} online
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">
+                Offline
+              </Badge>
+            )}
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetchJobs()}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
@@ -147,7 +247,7 @@ export function ScraperDashboardClient({
             </CardContent>
           </Card>
         </Link>
-        <Link href="/admin/scrapers/test-lab">
+        <Link href="/admin/scrapers/lab">
           <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
             <CardContent className="flex flex-col items-center justify-center p-4">
               <Beaker className="h-8 w-8 text-purple-600 mb-2" />
@@ -170,7 +270,7 @@ export function ScraperDashboardClient({
             <CardContent className="flex flex-col items-center justify-center p-4">
               <Server className="h-8 w-8 text-orange-600 mb-2" />
               <span className="font-medium">Network</span>
-              <span className="text-xs text-gray-600">{runnerCount} Runners</span>
+              <span className="text-xs text-gray-600">{realtimeRunnerCount} Runners</span>
             </CardContent>
           </Card>
         </Link>
@@ -308,31 +408,37 @@ export function ScraperDashboardClient({
         </Card>
       </div>
 
-      {/* Recent Jobs */}
-      {recentJobs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              Recent Jobs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Recent Jobs - Now with Realtime Updates */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="base flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Recent Jobs
+            {isJobsConnected && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Live
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {displayJobs.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Scraper</TableHead>
-                  <TableHead>Runner</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Progress</TableHead>
                   <TableHead>Started</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentJobs.slice(0, 8).map((job) => (
+                {displayJobs.map((job) => (
                   <TableRow key={job.id}>
-                    <TableCell className="font-medium">{job.scraper_name}</TableCell>
-                    <TableCell className="text-gray-600">{job.runner_name || '-'}</TableCell>
+                    <TableCell className="font-medium">
+                      {Array.isArray(job.scrapers) ? job.scrapers[0] : 'Unknown'}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -349,9 +455,15 @@ export function ScraperDashboardClient({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {job.completed_skus}/{job.total_skus}
-                      {job.failed_skus > 0 && (
-                        <span className="text-red-600 ml-1">({job.failed_skus} failed)</span>
+                      {(job.total_skus ?? 0) > 0 ? (
+                        <>
+                          {(job.completed_skus ?? 0)}/{job.total_skus}
+                          {(job.failed_skus ?? 0) > 0 && (
+                            <span className="text-red-600 ml-1">({job.failed_skus} failed)</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
@@ -361,9 +473,13 @@ export function ScraperDashboardClient({
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <p className="text-sm text-gray-600 text-center py-8">
+              No recent jobs. Start a new scrape job to see activity here.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
