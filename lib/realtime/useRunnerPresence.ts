@@ -35,6 +35,8 @@ export interface UseRunnerPresenceOptions {
   channelName?: string;
   /** Whether to automatically connect on mount (default: true) */
   autoConnect?: boolean;
+  /** Whether to fetch initial runners from API (default: true) */
+  fetchInitial?: boolean;
   /** Callback when a runner comes online */
   onJoin?: (runnerId: string, presence: RunnerPresence) => void;
   /** Callback when a runner goes offline */
@@ -49,6 +51,18 @@ export interface UseRunnerPresenceOptions {
 const DEFAULT_OPTIONS: Partial<UseRunnerPresenceOptions> = {
   autoConnect: true,
 };
+
+/**
+ * Runner data from API endpoint
+ */
+interface ApiRunnerData {
+  id: string;
+  name: string;
+  os: string;
+  status: 'online' | 'offline' | 'busy' | 'idle';
+  busy: boolean;
+  labels: string[];
+}
 
 /**
  * Hook return type
@@ -68,6 +82,8 @@ export interface UseRunnerPresenceReturn extends RunnerPresenceState {
   getBusyCount: () => number;
   /** Check if a specific runner is online */
   isOnline: (runnerId: string) => boolean;
+  /** Whether initial runners are being fetched */
+  isLoading: boolean;
 }
 
 /**
@@ -92,6 +108,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
   const {
     channelName: providedChannelName,
     autoConnect = true,
+    fetchInitial = true,
     onJoin,
     onLeave,
     onSync,
@@ -109,6 +126,8 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
     error: null,
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const callbacksRef = useRef({ onJoin, onLeave, onSync });
@@ -125,6 +144,48 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
       supabaseRef.current = createClient();
     }
     return supabaseRef.current;
+  }, []);
+
+  /**
+   * Fetch initial runners from the API endpoint
+   */
+  const fetchInitialRunners = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/admin/scraper-network/runners');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch runners');
+      }
+      
+      const data = await response.json() as { runners: ApiRunnerData[] };
+      
+      // Convert API data to RunnerPresence format
+      const initialRunners: Record<string, RunnerPresence> = {};
+      
+      data.runners.forEach((runner) => {
+        initialRunners[runner.id] = {
+          runner_id: runner.id,
+          runner_name: runner.name,
+          status: runner.status === 'offline' ? 'offline' : 'online',
+          active_jobs: runner.busy ? 1 : 0,
+          last_seen: new Date().toISOString(),
+          metadata: {
+            os: runner.os,
+            labels: runner.labels,
+          },
+        };
+      });
+      
+      setState((prev) => ({
+        ...prev,
+        runners: initialRunners,
+      }));
+    } catch (err) {
+      console.error('[useRunnerPresence] Failed to fetch initial runners:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   /**
@@ -191,7 +252,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
 
             return {
               ...prev,
-              runners: newRunners,
+              runners: { ...prev.runners, ...newRunners },
               onlineIds: newOnlineIds,
               isConnected: true,
               error: null,
@@ -285,18 +346,28 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
   );
 
   /**
-   * Auto-connect on mount if enabled
-   */
+    * Auto-connect on mount if enabled
+    */
   useEffect(() => {
-    if (autoConnect) {
-      connect();
-    }
+    const init = async () => {
+      // Fetch initial runners from API first
+      if (fetchInitial) {
+        await fetchInitialRunners();
+      }
+      
+      // Then connect to presence channel
+      if (autoConnect) {
+        connect();
+      }
+    };
+    
+    init();
 
     // Cleanup on unmount
     return () => {
       disconnect();
     };
-  }, [autoConnect, connect, disconnect]);
+  }, [autoConnect, fetchInitial, connect, disconnect, fetchInitialRunners]);
 
   return {
     ...state,
@@ -307,5 +378,6 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
     getOnlineCount,
     getBusyCount,
     isOnline,
+    isLoading,
   };
 }
