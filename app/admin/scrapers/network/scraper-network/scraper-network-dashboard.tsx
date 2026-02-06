@@ -1,302 +1,294 @@
-/**
- * ScraperNetworkDashboard - Real-time scraper runner network dashboard
- *
- * A comprehensive real-time dashboard for monitoring scraper runners,
- * job distribution, and system health using Supabase Realtime.
- *
- * Replaces the polling-based RunnerGrid and RunnerAccounts components
- * with live Presence, Broadcast, and Postgres Changes subscriptions.
- */
+"use client";
 
-'use client';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import type { RunnerPresence } from "@/lib/realtime/types";
+import { useRunnerPresence } from "@/lib/realtime/useRunnerPresence";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import {
+  Activity,
+  Server,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Settings,
+} from "lucide-react";
 
-import { useState, useCallback } from 'react';
-import { Metadata } from 'next';
-import { cva } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
-import { Network, LayoutDashboard, List, Activity, Settings, Plus, Key } from 'lucide-react';
-
-import { PresenceStats } from '@/components/admin/scraper-network/presence-stats';
-import { PresenceGrid } from '@/components/admin/scraper-network/presence-grid';
-import { DistributionStats } from '@/components/admin/scraper-network/distribution-stats';
-import { JobHeatmap } from '@/components/admin/scraper-network/job-heatmap';
-import { JobAssignmentFeed } from '@/components/admin/scraper-network/job-assignment-feed';
-import { LogBroadcastPanel } from '@/components/admin/scraper-network/log-broadcast-panel';
-import { JobProgressIndicator } from '@/components/admin/scraper-network/job-progress-indicator';
-import { RunnerAccountModal } from '@/components/admin/scraper-network/runner-account-modal';
-
-import type { RunnerPresence, JobAssignment, ScrapeJobLog } from '@/lib/realtime';
-
-export const metadata: Metadata = {
-  title: 'Scraper Network | Admin',
-  description: 'Real-time monitoring of your distributed scraper fleet',
-};
-
-type ViewMode = 'dashboard' | 'jobs' | 'logs' | 'activity';
-
-const navVariants = cva(
-  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-  {
-    variants: {
-      active: {
-        true: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-        false:
-          'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800',
-      },
-    },
-  }
-);
-
-interface ScraperNetworkDashboardProps {
-  /** Initial runners to show before connection */
-  initialRunners?: RunnerPresence[];
-  /** Default view mode */
-  defaultView?: ViewMode;
+interface NetworkStats {
+  totalRunners: number;
+  online: number;
+  busy: number;
+  idle: number;
+  offline: number;
 }
 
-/**
- * ScraperNetworkDashboard Component
- *
- * A real-time dashboard combining:
- * - PresenceStats: Runner status summary
- * - PresenceGrid: Runner presence cards with filtering
- * - DistributionStats: Job distribution overview
- * - JobHeatmap: Runner-job matrix
- * - JobAssignmentFeed: Live job feed
- * - LogBroadcastPanel: Real-time logs from runners
- * - JobProgressIndicator: Progress bars for running jobs
- *
- * @example
- * ```tsx
- * <ScraperNetworkDashboard />
- * ```
- */
-export function ScraperNetworkDashboard({
-  initialRunners = [],
-  defaultView = 'dashboard',
-}: ScraperNetworkDashboardProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>(defaultView);
-  const [selectedRunner, setSelectedRunner] = useState<RunnerPresence | null>(null);
-  const [selectedJob, setSelectedJob] = useState<JobAssignment | null>(null);
-  const [showRunnerModal, setShowRunnerModal] = useState(false);
+export function ScraperNetworkDashboard() {
+  const {
+    runners,
+    isConnected: isRealtimeConnected,
+    error,
+    connect,
+    disconnect,
+  } = useRunnerPresence({
+    autoConnect: true,
+  });
 
-  // Handlers
-  const handleRunnerClick = useCallback((runner: RunnerPresence) => {
-    setSelectedRunner(runner);
-    setViewMode('jobs');
-  }, []);
+  const [stats, setStats] = useState<NetworkStats>({
+    totalRunners: 0,
+    online: 0,
+    busy: 0,
+    idle: 0,
+    offline: 0,
+  });
 
-  const handleJobClick = useCallback((job: JobAssignment) => {
-    setSelectedJob(job);
-  }, []);
+  useEffect(() => {
+    const runnersArray = Object.values(runners);
+    const online = runnersArray.filter((r) => r.status === "online").length;
+    const busy = runnersArray.filter((r) => r.status === "busy").length;
+    const idle = runnersArray.filter((r) => r.status === "idle").length;
+    const offline = runnersArray.filter(
+      (r) => r.status === "offline"
+    ).length;
 
-  const handleLogClick = useCallback((log: ScrapeJobLog) => {
-    console.log('Log clicked:', log);
-  }, []);
+    setStats({
+      totalRunners: runnersArray.length,
+      online,
+      busy,
+      idle,
+      offline,
+    });
+  }, [runners]);
+
+  const runnersArray = Object.values(runners);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Connection Status Banner */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-            <Network className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              Network Status
-            </span>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Scraper Network
-            </h1>
-            <p className="text-sm text-slate-500">
-              Real-time monitoring of your distributed scraper fleet
-            </p>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Realtime Connection:</span>
+          {isRealtimeConnected ? (
+            <Badge variant="default" className="gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Connected
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="gap-1">
+              <XCircle className="h-3 w-3" />
+              Disconnected
+            </Badge>
+          )}
         </div>
-        <button
-          onClick={() => setShowRunnerModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
-        >
-          <Key className="h-4 w-4" />
-          Add Runner
-        </button>
+        <div className="flex gap-2">
+          {!isRealtimeConnected && (
+            <Button variant="outline" size="sm" onClick={connect}>
+              Reconnect
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* View Navigation */}
-      <div className="flex items-center gap-2 pb-4 border-b border-slate-200 dark:border-slate-700">
-        <button
-          onClick={() => setViewMode('dashboard')}
-          className={cn(navVariants({ active: viewMode === 'dashboard' }))}
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Dashboard
-        </button>
-        <button
-          onClick={() => setViewMode('jobs')}
-          className={cn(navVariants({ active: viewMode === 'jobs' }))}
-        >
-          <List className="h-4 w-4" />
-          Jobs
-        </button>
-        <button
-          onClick={() => setViewMode('logs')}
-          className={cn(navVariants({ active: viewMode === 'logs' }))}
-        >
-          <Activity className="h-4 w-4" />
-          Logs
-        </button>
-        <button
-          onClick={() => setViewMode('activity')}
-          className={cn(navVariants({ active: viewMode === 'activity' }))}
-        >
-          <Settings className="h-4 w-4" />
-          Activity
-        </button>
+      {/* Network Overview Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Runners</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalRunners}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Online</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.online}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Busy</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats.busy}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Offline</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-400">{stats.offline}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Dashboard View */}
-      {viewMode === 'dashboard' && (
-        <div className="space-y-6">
-          {/* Top Stats Row */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <PresenceStats
-              detailed={true}
-              onViewAll={() => setViewMode('dashboard')}
-            />
-            <DistributionStats
-              detailed={true}
-              onViewAll={() => setViewMode('jobs')}
-            />
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left: Presence Grid */}
-            <div className="lg:col-span-2">
-              <PresenceGrid
-                initialRunners={initialRunners}
-                compact={false}
-                searchable={true}
-                filterable={true}
-                onRunnerClick={handleRunnerClick}
-                onCountChange={(counts) => {
-                  console.log('Runner counts changed:', counts);
-                }}
-              />
-            </div>
-
-            {/* Right: Job Progress */}
-            <div>
-              <JobProgressIndicator
-                showProgress={true}
-                showElapsed={true}
-                maxItems={5}
-                onJobClick={handleJobClick}
-              />
-            </div>
-          </div>
-
-          {/* Job Heatmap */}
-          <JobHeatmap
-            maxJobsPerRunner={5}
-            maxRunners={10}
-            onCellClick={(job, runner) => {
-              setSelectedJob(job);
-              if (runner) setSelectedRunner(runner);
-            }}
-          />
-        </div>
-      )}
-
-      {/* Jobs View */}
-      {viewMode === 'jobs' && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left: Job Feed */}
-          <div className="lg:col-span-2">
-            <JobAssignmentFeed
-              statusFilter={['pending', 'running']}
-              onJobClick={handleJobClick}
-              showTimestamp={true}
-            />
-          </div>
-
-          {/* Right: Job Details */}
-          <div className="space-y-6">
-            <DistributionStats detailed={false} />
-            {selectedJob && (
-              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                  Selected Job
-                </h3>
-                <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-lg overflow-auto">
-                  {JSON.stringify(selectedJob, null, 2)}
-                </pre>
+      {/* Runner Status Distribution */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Network Status</CardTitle>
+          <CardDescription>
+            Distribution of runners by current status
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {stats.totalRunners > 0 ? (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    Online
+                  </span>
+                  <span>
+                    {stats.online} / {stats.totalRunners}
+                  </span>
+                </div>
+                <Progress
+                  value={(stats.online / stats.totalRunners) * 100}
+                  className="h-2"
+                />
               </div>
-            )}
-          </div>
-        </div>
-      )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                    Busy
+                  </span>
+                  <span>
+                    {stats.busy} / {stats.totalRunners}
+                  </span>
+                </div>
+                <Progress
+                  value={(stats.busy / stats.totalRunners) * 100}
+                  className="h-2"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-gray-400" />
+                    Idle
+                  </span>
+                  <span>
+                    {stats.idle} / {stats.totalRunners}
+                  </span>
+                </div>
+                <Progress
+                  value={(stats.idle / stats.totalRunners) * 100}
+                  className="h-2"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-400" />
+                    Offline
+                  </span>
+                  <span>
+                    {stats.offline} / {stats.totalRunners}
+                  </span>
+                </div>
+                <Progress
+                  value={(stats.offline / stats.totalRunners) * 100}
+                  className="h-2"
+                />
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No runners registered. Start scraper runner instances to see network
+              status.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Logs View */}
-      {viewMode === 'logs' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Left: Live Logs */}
-          <div>
-            <LogBroadcastPanel
-              maxLogs={100}
-              compact={false}
-              onLogClick={handleLogClick}
-            />
-          </div>
-
-          {/* Right: Job Progress */}
-          <div>
-            <JobProgressIndicator
-              showProgress={true}
-              showElapsed={true}
-              maxItems={10}
-              onJobClick={handleJobClick}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Activity View */}
-      {viewMode === 'activity' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Left: Job Feed (All) */}
-          <JobAssignmentFeed
-            statusFilter={undefined}
-            maxItems={50}
-            onJobClick={handleJobClick}
-            showTimestamp={true}
-          />
-
-          {/* Right: Presence Grid */}
-          <PresenceGrid
-            initialRunners={initialRunners}
-            compact={true}
-            searchable={true}
-            filterable={true}
-            onRunnerClick={handleRunnerClick}
-           />
-        </div>
-      )}
-
-      {/* Runner Account Modal */}
-      {showRunnerModal && (
-        <RunnerAccountModal
-          onClose={() => setShowRunnerModal(false)}
-          onSave={() => {
-            // Don't close modal here - let user see the API key first.
-            // The modal will close when user clicks "Done" inside it,
-            // which calls onClose() above.
-          }}
-        />
-      )}
+      {/* Runner List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Runners</CardTitle>
+          <CardDescription>
+            Real-time status of all connected scraper runners
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {runnersArray.length > 0 ? (
+            <div className="space-y-4">
+              {runnersArray.map((runner) => (
+                <Link
+                  key={runner.runner_id}
+                  href={`/admin/scrapers/network/${runner.runner_id}`}
+                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`h-3 w-3 rounded-full ${
+                        runner.status === "online"
+                          ? "bg-green-500"
+                          : runner.status === "busy"
+                            ? "bg-yellow-500"
+                            : runner.status === "idle"
+                              ? "bg-gray-400"
+                              : "bg-red-400"
+                      }`}
+                    />
+                    <div>
+                      <p className="font-medium">{runner.runner_name}</p>
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {runner.runner_id}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Badge
+                      variant={
+                        runner.status === "online"
+                          ? "default"
+                          : runner.status === "busy"
+                            ? "secondary"
+                            : "outline"
+                      }
+                    >
+                      {runner.status}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {runner.active_jobs} active jobs
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Last seen:{" "}
+                      {new Date(runner.last_seen).toLocaleTimeString()}
+                    </span>
+                    <Button variant="ghost" size="sm">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No runners currently connected. Start scraper runner instances to
+              see them here.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
-export default ScraperNetworkDashboard;

@@ -1,3 +1,15 @@
+/**
+ * GitHub Sync Actions - DEPRECATED
+ *
+ * This module provides GitHub sync functionality for scrapers.
+ * It is DEPRECATED and only maintained for backward compatibility.
+ *
+ * The new system uses scraper_configs instead of scrapers table.
+ * This file will be removed in a future version.
+ *
+ * @deprecated Use the new config management system instead
+ */
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';

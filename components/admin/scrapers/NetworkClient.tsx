@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
@@ -88,6 +89,7 @@ interface NetworkClientProps {
 }
 
 export function NetworkClient({ initialRunners = [], initialJobs = [] }: NetworkClientProps) {
+  const router = useRouter();
   const [runners, setRunners] = useState<Runner[]>(initialRunners);
   const [accounts, setAccounts] = useState<RunnerAccount[]>([]);
   const [jobs, setJobs] = useState<ScrapeJob[]>(initialJobs);
@@ -306,13 +308,14 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                     return (
                       <div
                         key={runnerKey}
-                        className={`rounded-lg border p-4 ${
+                        className={`rounded-lg border p-4 cursor-pointer transition-colors ${
                           isOnline
                             ? isBusy
-                                ? 'border-yellow-200 bg-yellow-50'
-                                : 'border-green-200 bg-green-50'
-                            : 'border-gray-200 bg-gray-50'
+                                ? 'border-yellow-200 bg-yellow-50 hover:border-yellow-300'
+                                : 'border-green-200 bg-green-50 hover:border-green-300'
+                            : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                         }`}
+                        onClick={() => router.push(`/admin/scrapers/network/${runner.id || runner.name}`)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
