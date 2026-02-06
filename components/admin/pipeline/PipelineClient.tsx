@@ -34,9 +34,15 @@ interface PipelineClientProps {
     initialProducts: PipelineProduct[];
     initialCounts: StatusCount[];
     initialStatus: PipelineStatus;
+    initialFilteredCount: number;
 }
 
-export function PipelineClient({ initialProducts, initialCounts, initialStatus }: PipelineClientProps) {
+export function PipelineClient({
+    initialProducts,
+    initialCounts,
+    initialStatus,
+    initialFilteredCount,
+}: PipelineClientProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -45,6 +51,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
     const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
     const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+    const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
     const [search, setSearch] = useState(searchParams.get('search') || '');
     const [isPending, startTransition] = useTransition();
     const [viewingSku, setViewingSku] = useState<string | null>(null);
@@ -61,6 +68,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     const [isScraping, setIsScraping] = useState(false);
     const [runnersAvailable, setRunnersAvailable] = useState(false);
     const [scrapeJobIds, setScrapeJobIds] = useState<string[]>([]);
+    const [filteredCount, setFilteredCount] = useState<number>(initialFilteredCount);
 
     const [isConsolidating, setIsConsolidating] = useState(false);
     const [consolidationBatchId, setConsolidationBatchId] = useState<string | null>(null);
@@ -103,6 +111,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             if (productsRes.ok) {
                 const data = await productsRes.json();
                 setProducts(data.products);
+                setFilteredCount(data.count || 0);
             }
             if (countsRes.ok) {
                 const data = await countsRes.json();
@@ -153,6 +162,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
     const handleStatusChange = async (status: PipelineStatus) => {
         setActiveStatus(status);
         setSelectedSkus(new Set());
+        setIsSelectingAllMatching(false);
         updateUrl(status, search, filters);
 
         startTransition(async () => {
@@ -161,6 +171,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             if (res.ok) {
                 const data = await res.json();
                 setProducts(data.products);
+                setFilteredCount(data.count || 0);
             }
         });
     };
@@ -173,6 +184,9 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             if (res.ok) {
                 const data = await res.json();
                 setProducts(data.products);
+                setFilteredCount(data.count || 0);
+                setSelectedSkus(new Set());
+                setIsSelectingAllMatching(false);
             }
         });
     };
@@ -187,6 +201,9 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             if (res.ok) {
                 const data = await res.json();
                 setProducts(data.products);
+                setFilteredCount(data.count || 0);
+                setSelectedSkus(new Set());
+                setIsSelectingAllMatching(false);
             }
         });
     };
@@ -199,14 +216,34 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             newSelected.add(sku);
         }
         setSelectedSkus(newSelected);
+        setIsSelectingAllMatching(false);
     };
 
     const handleSelectAll = () => {
-        if (selectedSkus.size === products.length) {
+        if (selectedSkus.size === products.length && !isSelectingAllMatching) {
             setSelectedSkus(new Set());
+            setIsSelectingAllMatching(false);
         } else {
             setSelectedSkus(new Set(products.map((p) => p.sku)));
+            setIsSelectingAllMatching(false);
         }
+    };
+
+    const handleSelectAllMatching = async () => {
+        startTransition(async () => {
+            const query = buildQueryParams(activeStatus, search, filters);
+            const res = await fetch(`/api/admin/pipeline?${query}&selectAll=true`);
+            if (!res.ok) {
+                toast.error('Failed to load all matching products');
+                return;
+            }
+
+            const data = await res.json();
+            const skus: string[] = data.skus || [];
+            setSelectedSkus(new Set(skus));
+            setFilteredCount(data.count || skus.length);
+            setIsSelectingAllMatching(true);
+        });
     };
 
     const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
@@ -299,6 +336,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             setScrapeJobIds(result.jobIds);
             // Clear selection after starting scrape
             setSelectedSkus(new Set());
+            setIsSelectingAllMatching(false);
         } else {
             console.error('Failed to start scraping:', result.error);
         }
@@ -324,6 +362,7 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
                 const data = await res.json();
                 setConsolidationBatchId(data.jobId);
                 setSelectedSkus(new Set());
+                setIsSelectingAllMatching(false);
             } else {
                 console.error('Failed to start consolidation');
                 setIsConsolidating(false);
@@ -443,13 +482,24 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
                 </button>
 
                 {products.length > 0 && (
-                    <button
-                        onClick={handleSelectAll}
-                        disabled={isScraping}
-                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
-                    >
-                        {selectedSkus.size === products.length ? 'Deselect All' : 'Select All'}
-                    </button>
+                    <>
+                        <button
+                            onClick={handleSelectAll}
+                            disabled={isScraping}
+                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+                        >
+                            {selectedSkus.size === products.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                        {!isSelectingAllMatching && products.length < filteredCount && (
+                            <button
+                                onClick={handleSelectAllMatching}
+                                disabled={isScraping || isPending}
+                                className="rounded-lg border border-[#008850] px-4 py-2 text-sm text-[#008850] hover:bg-[#008850]/5 disabled:opacity-50"
+                            >
+                                Select All Matching ({filteredCount})
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -457,10 +507,15 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             {activeStatus === 'staging' && (
                 <BatchEnhanceToolbar
                     selectedCount={selectedSkus.size}
+                    allCount={filteredCount}
+                    selectingAllMatching={isSelectingAllMatching}
                     onBatchEnhance={() => setShowBatchEnhanceWorkspace(true)}
                     isEnhancing={isScraping}
                     runnersAvailable={runnersAvailable}
-                    onClearSelection={() => setSelectedSkus(new Set())}
+                    onClearSelection={() => {
+                        setSelectedSkus(new Set());
+                        setIsSelectingAllMatching(false);
+                    }}
                 />
             )}
 
@@ -514,16 +569,18 @@ export function PipelineClient({ initialProducts, initialCounts, initialStatus }
             {!isPending && products.length > 0 && (
                 <div className="flex flex-col items-center gap-4 pt-4">
                     <p className="text-sm text-gray-600">
-                        Showing {products.length} of {counts.find(c => c.status === activeStatus)?.count || 0} products
+                        Showing {products.length} of {filteredCount} matching products
                     </p>
-                    {products.length < (counts.find(c => c.status === activeStatus)?.count || 0) && (
+                    {products.length < filteredCount && (
                         <button
                             onClick={async () => {
                                 startTransition(async () => {
-                                    const res = await fetch(`/api/admin/pipeline?status=${activeStatus}&search=${encodeURIComponent(search)}&offset=${products.length}&limit=200`);
+                                    const query = buildQueryParams(activeStatus, search, filters);
+                                    const res = await fetch(`/api/admin/pipeline?${query}&offset=${products.length}&limit=200`);
                                     if (res.ok) {
                                         const data = await res.json();
                                         setProducts([...products, ...data.products]);
+                                        setFilteredCount(data.count || filteredCount);
                                     }
                                 });
                             }}

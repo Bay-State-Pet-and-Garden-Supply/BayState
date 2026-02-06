@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bulkUpdateStatus, getProductsByStatus, type PipelineStatus } from '@/lib/pipeline';
+import { bulkUpdateStatus, getProductsByStatus, getSkusByStatus, type PipelineStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export async function GET(request: NextRequest) {
@@ -11,12 +11,29 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const limit = parseInt(searchParams.get('limit') || '200', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const selectAll = searchParams.get('selectAll') === 'true';
     
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
     const source = searchParams.get('source') || undefined;
     const minConfidence = searchParams.get('minConfidence') ? parseFloat(searchParams.get('minConfidence')!) : undefined;
     const maxConfidence = searchParams.get('maxConfidence') ? parseFloat(searchParams.get('maxConfidence')!) : undefined;
+
+    if (selectAll) {
+        const { skus, count } = await getSkusByStatus(status, {
+            search: search || undefined,
+            startDate,
+            endDate,
+            source,
+            minConfidence,
+            maxConfidence,
+        });
+
+        return NextResponse.json({
+            skus,
+            count,
+        });
+    }
 
     const { products, count } = await getProductsByStatus(status, {
         limit,

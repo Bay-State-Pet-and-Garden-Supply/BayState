@@ -4,6 +4,8 @@ import { Bot, Loader2, X } from 'lucide-react';
 
 interface BatchEnhanceToolbarProps {
     selectedCount: number;
+    allCount: number;
+    selectingAllMatching: boolean;
     onBatchEnhance: () => void;
     isEnhancing: boolean;
     runnersAvailable: boolean;
@@ -12,6 +14,8 @@ interface BatchEnhanceToolbarProps {
 
 export function BatchEnhanceToolbar({
     selectedCount,
+    allCount,
+    selectingAllMatching,
     onBatchEnhance,
     isEnhancing,
     runnersAvailable,
@@ -22,7 +26,8 @@ export function BatchEnhanceToolbar({
     return (
         <div className="flex items-center gap-4 rounded-lg bg-gray-900 px-4 py-3 text-white">
             <span className="text-sm">
-                {selectedCount} product{selectedCount > 1 ? 's' : ''} selected
+                {selectedCount} of {allCount} product{allCount !== 1 ? 's' : ''} selected
+                {selectingAllMatching ? ' (all matching)' : ''}
             </span>
 
             <div className="flex-1" />

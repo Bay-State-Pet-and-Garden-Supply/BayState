@@ -115,6 +115,65 @@ export async function getProductsByStatus(
 }
 
 /**
+ * Fetches all SKUs matching a pipeline status + filters.
+ * Used by "select all matching" flows in the admin pipeline.
+ */
+export async function getSkusByStatus(
+    status: PipelineStatus,
+    options?: {
+        search?: string;
+        startDate?: string;
+        endDate?: string;
+        source?: string;
+        minConfidence?: number;
+        maxConfidence?: number;
+    }
+): Promise<{ skus: string[]; count: number }> {
+    const supabase = await createClient();
+
+    let query = supabase
+        .from('products_ingestion')
+        .select('sku', { count: 'exact' })
+        .eq('pipeline_status', status)
+        .order('updated_at', { ascending: false });
+
+    if (options?.search) {
+        query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
+    }
+
+    if (options?.startDate) {
+        query = query.gte('updated_at', options.startDate);
+    }
+
+    if (options?.endDate) {
+        query = query.lte('updated_at', options.endDate);
+    }
+
+    if (options?.source) {
+        query = query.contains('sources', { [options.source]: {} });
+    }
+
+    if (options?.minConfidence !== undefined) {
+        query = query.gte('confidence_score', options.minConfidence);
+    }
+
+    if (options?.maxConfidence !== undefined) {
+        query = query.lte('confidence_score', options.maxConfidence);
+    }
+
+    const { data, error, count } = await query;
+    if (error) {
+        console.error('Error fetching SKUs by status:', error);
+        return { skus: [], count: 0 };
+    }
+
+    return {
+        skus: (data || []).map((row) => row.sku).filter(Boolean),
+        count: count || 0,
+    };
+}
+
+/**
  * Fetches count of products for each pipeline status using a single aggregated query.
  * This eliminates the N+1 pattern of making separate queries for each status.
  */
@@ -303,4 +362,3 @@ export async function bulkDeleteProducts(
         return { success: false, error: errorMessage, deletedCount: 0 };
     }
 }
-
