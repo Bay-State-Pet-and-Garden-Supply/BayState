@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import type { PipelineStatus, StatusCount } from '@/lib/pipeline';
 import { 
@@ -75,24 +76,35 @@ const flowOrder: PipelineStatus[] = ['staging', 'scraped', 'consolidated', 'appr
 
 export function PipelineStatusTabs({ counts, activeStatus, onStatusChange }: PipelineStatusTabsProps) {
     const activeIndex = flowOrder.indexOf(activeStatus);
+    const [showLegend, setShowLegend] = useState(false);
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                    Pipeline Stages
-                </h3>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-gray-400" />
-                        In Progress
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-green-500" />
-                        Complete
-                    </span>
+                <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                        Pipeline Stages
+                    </h3>
+                    <button
+                        onClick={() => setShowLegend(!showLegend)}
+                        className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                        {showLegend ? 'Hide' : 'Show'} legend
+                    </button>
                 </div>
+                {showLegend && (
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-gray-400" />
+                            In Progress
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-green-500" />
+                            Complete
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Flow Steps */}

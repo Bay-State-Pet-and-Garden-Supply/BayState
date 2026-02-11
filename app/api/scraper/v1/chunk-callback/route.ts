@@ -13,6 +13,7 @@ function getSupabaseAdmin(): SupabaseClient {
 
 interface ChunkCallbackRequest {
     chunk_id: string;
+    job_id?: string;
     status: 'completed' | 'failed';
     runner_name?: string;
     results?: {
@@ -24,17 +25,6 @@ interface ChunkCallbackRequest {
     error_message?: string;
 }
 
-/**
- * DEPRECATED: Chunking removed in favor of split-job (Option A).
- * This route is kept for reference only and will be removed in a future update.
- * DO NOT USE - Runners should use direct job callbacks instead.
- *
- * Original function:
- * POST /api/scraper/v1/chunk-callback
- *
- * Received results from a completed chunk and updated the database.
- * Also checked if all chunks for a job were complete to update job status.
- */
 export async function POST(request: NextRequest) {
     try {
         // Validate authentication
@@ -122,9 +112,7 @@ export async function POST(request: NextRequest) {
             const totalChunks = chunkStats.length;
             const completedChunks = chunkStats.filter(c => c.status === 'completed').length;
             const failedChunks = chunkStats.filter(c => c.status === 'failed').length;
-            const pendingOrRunning = chunkStats.filter(c => 
-                c.status === 'pending' || c.status === 'claimed' || c.status === 'running'
-            ).length;
+            const pendingOrRunning = chunkStats.filter(c => c.status === 'pending' || c.status === 'running').length;
 
             console.log(`[Chunk Callback] Job ${jobId} progress: ${completedChunks + failedChunks}/${totalChunks} chunks done (${pendingOrRunning} in progress)`);
 

@@ -100,13 +100,13 @@ describe('POST /api/scraper/v1/logs', () => {
         expect(mockSupabase.insert).toHaveBeenCalledWith(expect.arrayContaining([
             expect.objectContaining({
                 job_id: 'job-123',
-                level: 'INFO',
+                level: 'info',
                 message: 'Log 1',
                 created_at: '2023-01-01T00:00:00Z',
             }),
             expect.objectContaining({
                 job_id: 'job-123',
-                level: 'ERROR',
+                level: 'error',
                 message: 'Log 2',
                 created_at: '2023-01-01T00:00:01Z',
             }),

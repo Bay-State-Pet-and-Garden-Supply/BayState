@@ -36,6 +36,7 @@ describe('Pipeline Accessibility', () => {
       const { container } = render(
         <PipelineProductCard
           product={mockProduct as any}
+          index={0}
           isSelected={false}
           onSelect={() => {}}
           onView={() => {}}
@@ -52,6 +53,7 @@ describe('Pipeline Accessibility', () => {
       render(
         <PipelineProductCard
           product={mockProduct as any}
+          index={0}
           isSelected={false}
           onSelect={onSelect}
           onView={() => {}}
@@ -62,7 +64,7 @@ describe('Pipeline Accessibility', () => {
       const card = screen.getByRole('article');
       card.focus();
       fireEvent.keyDown(card, { key: 'Enter' });
-      expect(onSelect).toHaveBeenCalledWith('TEST-123');
+      expect(onSelect).toHaveBeenCalledWith('TEST-123', 0, false);
     });
   });
 

@@ -23,6 +23,19 @@ interface LogIngestRequest {
     logs: LogEntry[];
 }
 
+const ALLOWED_LEVELS = new Set(['debug', 'info', 'warning', 'error', 'critical']);
+
+function normalizeLevel(level: string | undefined): string {
+    const normalized = (level || 'info').toLowerCase();
+    if (normalized === 'warn') {
+        return 'warning';
+    }
+    if (!ALLOWED_LEVELS.has(normalized)) {
+        return 'info';
+    }
+    return normalized;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const runner = await validateRunnerAuth({
@@ -55,7 +68,7 @@ export async function POST(request: NextRequest) {
 
         const logsToInsert = logs.map(log => ({
             job_id,
-            level: log.level,
+            level: normalizeLevel(log.level),
             message: log.message,
             created_at: log.timestamp || new Date().toISOString(),
         }));

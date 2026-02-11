@@ -84,6 +84,7 @@ export async function getScraperRunById(id: string): Promise<ScraperRunRecord | 
       scrapers,
       status,
       skus,
+      test_mode,
       github_run_id,
       created_at,
       completed_at,
@@ -113,7 +114,7 @@ export async function getScraperRunById(id: string): Promise<ScraperRunRecord | 
     created_at: data.created_at,
     updated_at: data.created_at,
     error_message: data.error_message,
-    test_mode: false,
+    test_mode: data.test_mode || false,
   };
 }
 

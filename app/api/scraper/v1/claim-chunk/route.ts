@@ -12,15 +12,20 @@ function getSupabaseAdmin(): SupabaseClient {
 }
 
 interface ClaimChunkRequest {
-    job_id: string;
+    job_id?: string;
     runner_name?: string;
 }
 
 interface ChunkResponse {
     chunk_id: string;
+    job_id: string;
     chunk_index: number;
     skus: string[];
     scrapers: string[];
+    test_mode: boolean;
+    max_workers: number;
+    lease_token?: string;
+    lease_expires_at?: string;
 }
 
 interface ClaimChunkResponse {
@@ -29,17 +34,6 @@ interface ClaimChunkResponse {
     remaining_chunks?: number;
 }
 
-/**
- * DEPRECATED: Chunking removed in favor of split-job (Option A).
- * This route is kept for reference only and will be removed in a future update.
- * DO NOT USE - Runners should use direct job processing instead.
- *
- * Original function:
- * POST /api/scraper/v1/claim-chunk
- *
- * Atomically claimed the next pending chunk for a runner.
- * Used PostgreSQL's FOR UPDATE SKIP LOCKED to prevent race conditions.
- */
 export async function POST(request: NextRequest) {
     try {
         // Validate authentication
@@ -57,22 +51,14 @@ export async function POST(request: NextRequest) {
         }
 
         const body: ClaimChunkRequest = await request.json();
-        const { job_id, runner_name } = body;
-
-        if (!job_id) {
-            return NextResponse.json(
-                { error: 'Missing required field: job_id' },
-                { status: 400 }
-            );
-        }
+        const { runner_name } = body;
 
         // Use provided runner_name or fall back to authenticated runner name
         const claimingRunner = runner_name || runner.runnerName;
         const supabase = getSupabaseAdmin();
 
         // Call the atomic claim function
-        const { data: claimedChunks, error: claimError } = await supabase.rpc('claim_next_chunk', {
-            p_job_id: job_id,
+        const { data: claimedChunks, error: claimError } = await supabase.rpc('claim_next_pending_chunk', {
             p_runner_name: claimingRunner,
         });
 
@@ -90,10 +76,9 @@ export async function POST(request: NextRequest) {
             const { count } = await supabase
                 .from('scrape_job_chunks')
                 .select('*', { count: 'exact', head: true })
-                .eq('job_id', job_id)
-                .in('status', ['claimed', 'running']);
+                .in('status', ['pending', 'running']);
 
-            console.log(`[Claim Chunk] No pending chunks for job ${job_id}. ${count || 0} chunks in progress.`);
+            console.log(`[Claim Chunk] No pending chunks available. ${count || 0} chunks pending/running.`);
 
             const response: ClaimChunkResponse = {
                 chunk: null,
@@ -106,16 +91,6 @@ export async function POST(request: NextRequest) {
 
         const chunk = claimedChunks[0];
 
-        // Update chunk to running status
-        await supabase
-            .from('scrape_job_chunks')
-            .update({ 
-                status: 'running',
-                started_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', chunk.chunk_id);
-
         // Update runner status
         await supabase
             .from('scraper_runners')
@@ -125,14 +100,19 @@ export async function POST(request: NextRequest) {
             })
             .eq('name', claimingRunner);
 
-        console.log(`[Claim Chunk] Runner ${claimingRunner} claimed chunk ${chunk.chunk_index} (${chunk.skus?.length || 0} SKUs) for job ${job_id}`);
+        console.log(`[Claim Chunk] Runner ${claimingRunner} claimed chunk ${chunk.chunk_index} (${chunk.skus?.length || 0} SKUs) for job ${chunk.job_id}`);
 
         const response: ClaimChunkResponse = {
             chunk: {
                 chunk_id: chunk.chunk_id,
+                job_id: chunk.job_id,
                 chunk_index: chunk.chunk_index,
                 skus: chunk.skus || [],
                 scrapers: chunk.scrapers || [],
+                test_mode: chunk.test_mode || false,
+                max_workers: chunk.max_workers || 3,
+                lease_token: chunk.lease_token || undefined,
+                lease_expires_at: chunk.lease_expires_at || undefined,
             },
         };
 

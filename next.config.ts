@@ -79,7 +79,7 @@ const nextConfig: NextConfig = {
   },
 
   // External packages that should not be bundled
-  serverExternalPackages: ["zod"],
+  serverExternalPackages: [],
 
   // Headers for security and performance
   async headers() {

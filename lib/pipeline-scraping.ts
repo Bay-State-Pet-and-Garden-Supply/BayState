@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 
 /**
  * Options for scraping jobs.
- * SKUs are split into up to maxRunners separate jobs for parallel processing.
  */
 export interface ScrapeOptions {
     /** Workers per runner (default: 3) */
@@ -13,7 +12,6 @@ export interface ScrapeOptions {
     testMode?: boolean;
     /** Specific scrapers to use (empty = all) */
     scrapers?: string[];
-    /** Maximum number of parallel jobs to create (default: 3) */
     maxRunners?: number;
     /** Maximum retry attempts before terminal failure (default: 3) */
     maxAttempts?: number;
@@ -25,16 +23,6 @@ export interface ScrapeResult {
     error?: string;
 }
 
-/**
- * Triggers scraping job(s) for selected products in the pipeline.
- *
- * SKUs are split into up to `maxRunners` separate jobs using round-robin
- * distribution. Each job is processed independently by daemon runners.
- *
- * @param skus - Array of product SKUs to scrape
- * @param options - Scraping options including maxRunners (default: 3)
- * @returns Object with success status and array of job IDs
- */
 export async function scrapeProducts(
     skus: string[],
     options?: ScrapeOptions
@@ -46,61 +34,63 @@ export async function scrapeProducts(
     const maxWorkers = options?.maxWorkers ?? 3;
     const testMode = options?.testMode ?? false;
     const scrapers = options?.scrapers ?? [];
-    const maxRunners = options?.maxRunners ?? 3;
     const maxAttempts = options?.maxAttempts ?? 3;
 
     const supabase = await createClient();
 
-    // Partition SKUs into up to maxRunners jobs
-    // Uses round-robin distribution for even workload across runners
-    const numJobs = Math.min(maxRunners, skus.length);
-    const partitions: string[][] = Array.from({ length: numJobs }, () => []);
+    const nowIso = new Date().toISOString();
 
-    skus.forEach((sku, index) => {
-        partitions[index % numJobs].push(sku);
-    });
+    const { data: job, error: insertError } = await supabase
+        .from('scrape_jobs')
+        .insert({
+            skus,
+            scrapers,
+            test_mode: testMode,
+            max_workers: maxWorkers,
+            status: 'pending',
+            attempt_count: 0,
+            max_attempts: maxAttempts,
+            backoff_until: null,
+            lease_token: null,
+            leased_at: null,
+            lease_expires_at: null,
+            heartbeat_at: null,
+            runner_name: null,
+            started_at: null,
+            updated_at: nowIso,
+        })
+        .select('id')
+        .single();
 
-    const jobIds: string[] = [];
-
-    for (const partition of partitions) {
-        const { data: job, error: insertError } = await supabase
-            .from('scrape_jobs')
-            .insert({
-                skus: partition,
-                scrapers: scrapers,
-                test_mode: testMode,
-                max_workers: maxWorkers,
-                status: 'pending',
-                attempt_count: 0,
-                max_attempts: maxAttempts,
-                backoff_until: null,
-                lease_token: null,
-                leased_at: null,
-                lease_expires_at: null,
-                heartbeat_at: null,
-                runner_name: null,
-                started_at: null,
-                updated_at: new Date().toISOString(),
-            })
-            .select('id')
-            .single();
-
-        if (insertError || !job) {
-            console.error('[Pipeline Scraping] Failed to create job:', insertError);
-            return { success: false, error: 'Failed to create scraping job' };
-        }
-
-        jobIds.push(job.id);
+    if (insertError || !job) {
+        console.error('[Pipeline Scraping] Failed to create parent job:', insertError);
+        return { success: false, error: 'Failed to create scraping job' };
     }
 
-    console.log(
-        `[Pipeline Scraping] Created ${jobIds.length} job(s) for ${skus.length} SKUs ` +
-        `(${partitions.map(p => p.length).join(', ')} SKUs per job)`
-    );
+    const units = skus.map((sku, index) => ({
+        job_id: job.id,
+        chunk_index: index,
+        skus: [sku],
+        scrapers,
+        status: 'pending',
+        updated_at: nowIso,
+    }));
+
+    const { error: unitsError } = await supabase
+        .from('scrape_job_chunks')
+        .insert(units);
+
+    if (unitsError) {
+        console.error('[Pipeline Scraping] Failed to create work units:', unitsError);
+        await supabase.from('scrape_jobs').delete().eq('id', job.id);
+        return { success: false, error: 'Failed to create scraping work units' };
+    }
+
+    console.log(`[Pipeline Scraping] Created parent job ${job.id} with ${units.length} claimable units`);
 
     return {
         success: true,
-        jobIds: jobIds,
+        jobIds: [job.id],
     };
 }
 

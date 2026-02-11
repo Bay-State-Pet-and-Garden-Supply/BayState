@@ -80,6 +80,9 @@ export function PipelineClient({
     // Batch enhance workspace state
     const [showBatchEnhanceWorkspace, setShowBatchEnhanceWorkspace] = useState(false);
 
+    // Track last selected index for shift-click range selection
+    const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
     // WebSocket for real-time consolidation updates
     const ws = useConsolidationWebSocket();
 
@@ -208,23 +211,42 @@ export function PipelineClient({
         });
     };
 
-    const handleSelect = (sku: string) => {
+    const handleSelect = (sku: string, index: number, isShiftClick: boolean) => {
         const newSelected = new Set(selectedSkus);
-        if (newSelected.has(sku)) {
-            newSelected.delete(sku);
+        
+        if (isShiftClick && lastSelectedIndex !== null && lastSelectedIndex !== index) {
+            const start = Math.min(lastSelectedIndex, index);
+            const end = Math.max(lastSelectedIndex, index);
+            const isSelecting = !selectedSkus.has(sku);
+            
+            for (let i = start; i <= end; i++) {
+                if (isSelecting) {
+                    newSelected.add(products[i].sku);
+                } else {
+                    newSelected.delete(products[i].sku);
+                }
+            }
         } else {
-            newSelected.add(sku);
+            if (newSelected.has(sku)) {
+                newSelected.delete(sku);
+            } else {
+                newSelected.add(sku);
+            }
         }
+        
         setSelectedSkus(newSelected);
+        setLastSelectedIndex(index);
         setIsSelectingAllMatching(false);
     };
 
     const handleSelectAll = () => {
         if (selectedSkus.size === products.length && !isSelectingAllMatching) {
             setSelectedSkus(new Set());
+            setLastSelectedIndex(null);
             setIsSelectingAllMatching(false);
         } else {
             setSelectedSkus(new Set(products.map((p) => p.sku)));
+            setLastSelectedIndex(null);
             setIsSelectingAllMatching(false);
         }
     };
@@ -503,6 +525,24 @@ export function PipelineClient({
                 )}
             </div>
 
+            {/* Selection Hint */}
+            {products.length > 0 && (
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border text-gray-600 font-mono">Shift</kbd>
+                        + click to select range
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span>{selectedSkus.size} selected</span>
+                    {isSelectingAllMatching && (
+                        <>
+                            <span className="text-gray-300">|</span>
+                            <span className="text-blue-600">All {filteredCount} matching products selected</span>
+                        </>
+                    )}
+                </div>
+            )}
+
             {/* Batch Enhance Toolbar for Imported (staging) tab */}
             {activeStatus === 'staging' && (
                 <BatchEnhanceToolbar
@@ -547,10 +587,11 @@ export function PipelineClient({
                 </div>
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {products.map((product) => (
+                    {products.map((product, index) => (
                         <PipelineProductCard
                             key={product.sku}
                             product={product}
+                            index={index}
                             isSelected={selectedSkus.has(product.sku)}
                             onSelect={handleSelect}
                             onView={handleView}

@@ -18,8 +18,9 @@ import { formatCurrency } from '@/lib/utils';
 
 interface PipelineProductCardProps {
     product: PipelineProduct;
+    index: number;
     isSelected: boolean;
-    onSelect: (sku: string) => void;
+    onSelect: (sku: string, index: number, isShiftClick: boolean) => void;
     onView: (sku: string) => void;
     onEnrich?: (sku: string) => void;
     showEnrichButton?: boolean;
@@ -81,6 +82,7 @@ const stageConfig: Record<PipelineStatus, {
 
 export function PipelineProductCard({
     product,
+    index,
     isSelected,
     onSelect,
     onView,
@@ -90,6 +92,10 @@ export function PipelineProductCard({
     showBatchSelect = false,
     currentStage
 }: PipelineProductCardProps) {
+    const handleCheckboxChange = (e: React.MouseEvent<HTMLInputElement>) => {
+        const isShiftClick = e.shiftKey;
+        onSelect(product.sku, index, isShiftClick);
+    };
     const registerName = product.input?.name || product.sku;
     const cleanName = product.consolidated?.name;
     const price = product.consolidated?.price ?? product.input?.price ?? 0;
@@ -110,7 +116,7 @@ export function PipelineProductCard({
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         if (showBatchSelect) {
-                            onSelect(product.sku);
+                            onSelect(product.sku, index, false);
                         }
                     }
                 }}
@@ -123,9 +129,10 @@ export function PipelineProductCard({
                         <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => onSelect(product.sku)}
+                            readOnly
+                            onClick={handleCheckboxChange}
                             aria-label={`Select product ${product.sku}`}
-                            className="mt-1 h-4 w-4 rounded border-gray-300"
+                            className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer"
                         />
                     )}
                     <div className="flex-1 min-w-0">
@@ -169,7 +176,7 @@ export function PipelineProductCard({
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     if (showBatchSelect) {
-                        onSelect(product.sku);
+                        onSelect(product.sku, index, false);
                     } else {
                         onView(product.sku);
                     }
@@ -182,9 +189,10 @@ export function PipelineProductCard({
                 <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={() => onSelect(product.sku)}
+                    readOnly
+                    onClick={handleCheckboxChange}
                     aria-label={`Select product ${product.sku}`}
-                    className="mt-1 h-4 w-4 rounded border-gray-300"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer"
                 />
 
                 <div className="flex-1 min-w-0">
