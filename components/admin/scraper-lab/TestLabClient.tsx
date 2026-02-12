@@ -23,6 +23,7 @@ import {
   Terminal,
   Eye,
   Code,
+  Settings,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -139,6 +140,12 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
       setSelectedScraper(scraper);
       initializeTestSkus(scraper);
       setTestResults({});
+    }
+  };
+
+  const handleEditConfig = () => {
+    if (selectedScraper) {
+      router.push(`/admin/scrapers/configs/${selectedScraper.id}/edit`);
     }
   };
 
@@ -302,16 +309,16 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
             <Beaker className="h-5 w-5 text-purple-600" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Scraper Test Lab</h1>
+            <div>
+            <h1 className="text-2xl font-bold text-gray-900">Scraper Lab</h1>
             <p className="text-sm text-gray-600">Test and validate scraper configurations</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link href="/admin/scrapers">
+            <Link href="/admin/scrapers/configs">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Scrapers
+              Back to Configs
             </Link>
           </Button>
         </div>
@@ -325,9 +332,9 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
             Choose a scraper configuration to test
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Select onValueChange={handleSelectScraper} value={selectedScraper?.id}>
-            <SelectTrigger className="w-full max-w-md">
+        <CardContent className="flex gap-4">
+          <Select onValueChange={handleSelectScraper} value={selectedScraper?.id} className="flex-1">
+            <SelectTrigger className="max-w-md">
               <SelectValue placeholder="Select a scraper..." />
             </SelectTrigger>
             <SelectContent>
@@ -338,6 +345,12 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
               ))}
             </SelectContent>
           </Select>
+          {selectedScraper && (
+            <Button variant="outline" onClick={handleEditConfig}>
+              <Settings className="mr-2 h-4 w-4" />
+              Edit Config
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -558,19 +571,20 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
             </div>
           ) : (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Scraper</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>SKUs</TableHead>
-                  <TableHead>Duration</TableHead>
-                </TableRow>
-              </TableHeader>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Scraper</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>SKUs</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
               <TableBody>
                 {recentTests.slice(0, 10).map((test) => (
-                  <TableRow key={test.id}>
+                  <TableRow key={test.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell className="text-sm">
                       {format(new Date(test.created_at), 'MMM d, h:mm a')}
                     </TableCell>
@@ -594,6 +608,13 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
                     <TableCell>{test.skus_tested?.length || 0}</TableCell>
                     <TableCell className="text-sm text-gray-600">
                       {test.duration_ms ? `${(test.duration_ms / 1000).toFixed(1)}s` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/admin/scrapers/test-lab/${test.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

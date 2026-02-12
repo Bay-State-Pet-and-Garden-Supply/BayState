@@ -63,8 +63,8 @@ export async function renameRunner(id: string, newName: string): Promise<{ succe
     // Check if runner exists
     const { data: existingRunner, error: fetchError } = await supabase
         .from('scraper_runners')
-        .select('id')
-        .eq('id', id)
+        .select('name')
+        .eq('name', id)
         .single();
 
     if (fetchError || !existingRunner) {
@@ -74,20 +74,20 @@ export async function renameRunner(id: string, newName: string): Promise<{ succe
     // Check if name is already taken by another runner
     const { data: duplicateName } = await supabase
         .from('scraper_runners')
-        .select('id')
+        .select('name')
         .eq('name', newName.trim())
-        .neq('id', id)
+        .neq('name', id)
         .single();
 
     if (duplicateName) {
         return { success: false, error: 'A runner with this name already exists' };
     }
 
-    // Update runner name
+    // Update runner name (scraper_runners has no updated_at column)
     const { error: updateError } = await supabase
         .from('scraper_runners')
-        .update({ name: newName.trim(), updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .update({ name: newName.trim() })
+        .eq('name', id);
 
     if (updateError) {
         console.error(`Error renaming runner ${id}:`, updateError);
@@ -113,8 +113,8 @@ export async function pauseRunner(id: string): Promise<{ success: boolean; error
     // Check if runner exists
     const { data: existingRunner, error: fetchError } = await supabase
         .from('scraper_runners')
-        .select('id, status')
-        .eq('id', id)
+        .select('name, status')
+        .eq('name', id)
         .single();
 
     if (fetchError || !existingRunner) {
@@ -126,11 +126,11 @@ export async function pauseRunner(id: string): Promise<{ success: boolean; error
         return { success: false, error: 'Runner is already paused' };
     }
 
-    // Update runner status to paused
+    // Update runner status to paused (scraper_runners has no updated_at column)
     const { error: updateError } = await supabase
         .from('scraper_runners')
-        .update({ status: 'paused', updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .update({ status: 'paused' })
+        .eq('name', id);
 
     if (updateError) {
         console.error(`Error pausing runner ${id}:`, updateError);
@@ -156,8 +156,8 @@ export async function resumeRunner(id: string): Promise<{ success: boolean; erro
     // Check if runner exists
     const { data: existingRunner, error: fetchError } = await supabase
         .from('scraper_runners')
-        .select('id, status')
-        .eq('id', id)
+        .select('name, status')
+        .eq('name', id)
         .single();
 
     if (fetchError || !existingRunner) {
@@ -173,8 +173,8 @@ export async function resumeRunner(id: string): Promise<{ success: boolean; erro
     // Typically resumes to 'idle' as it has no active job
     const { error: updateError } = await supabase
         .from('scraper_runners')
-        .update({ status: 'idle', updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .update({ status: 'idle' })
+        .eq('name', id);
 
     if (updateError) {
         console.error(`Error resuming runner ${id}:`, updateError);
@@ -200,8 +200,8 @@ export async function deleteRunner(id: string): Promise<{ success: boolean; erro
     // Check if runner exists
     const { data: existingRunner, error: fetchError } = await supabase
         .from('scraper_runners')
-        .select('id, name')
-        .eq('id', id)
+        .select('name')
+        .eq('name', id)
         .single();
 
     if (fetchError || !existingRunner) {
@@ -213,7 +213,7 @@ export async function deleteRunner(id: string): Promise<{ success: boolean; erro
     const { error: keysDeleteError } = await supabase
         .from('runner_api_keys')
         .delete()
-        .eq('runner_id', id);
+        .eq('runner_name', id);
 
     if (keysDeleteError) {
         console.error(`Error deleting API keys for runner ${id}:`, keysDeleteError);
@@ -224,7 +224,7 @@ export async function deleteRunner(id: string): Promise<{ success: boolean; erro
     const { error: runnerDeleteError } = await supabase
         .from('scraper_runners')
         .delete()
-        .eq('id', id);
+        .eq('name', id);
 
     if (runnerDeleteError) {
         console.error(`Error deleting runner ${id}:`, runnerDeleteError);
@@ -257,19 +257,19 @@ export async function updateRunnerMetadata(
     // Check if runner exists
     const { data: existingRunner, error: fetchError } = await supabase
         .from('scraper_runners')
-        .select('id')
-        .eq('id', id)
+        .select('name')
+        .eq('name', id)
         .single();
 
     if (fetchError || !existingRunner) {
         return { success: false, error: 'Runner not found' };
     }
 
-    // Update runner metadata
+    // Update runner metadata (scraper_runners has no updated_at column)
     const { error: updateError } = await supabase
         .from('scraper_runners')
-        .update({ metadata: metadata as Record<string, unknown>, updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .update({ metadata: metadata as Record<string, unknown> })
+        .eq('name', id);
 
     if (updateError) {
         console.error(`Error updating metadata for runner ${id}:`, updateError);

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       console.error('[Test API] Failed to create test run:', insertError);
       // Continue even if test run tracking fails
     }
- 
+  
     // Create a scrape job - daemon runners will pick it up
     const { data: job, error: jobError } = await supabase
       .from('scrape_jobs')
@@ -106,6 +106,27 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to create test job' },
         { status: 500 }
       );
+    }
+
+    // Create chunks for the job (new chunk-based architecture)
+    // Each scraper gets its own chunk with all SKUs
+    const chunks = scraper.name.split(',').map((scraperName: string, index: number) => ({
+      job_id: job.id,
+      chunk_index: index,
+      skus: skus,
+      scrapers: [scraperName.trim()],
+      status: 'pending',
+    }));
+
+    const { error: chunkError } = await supabase
+      .from('scrape_job_chunks')
+      .insert(chunks);
+
+    if (chunkError) {
+      console.error('[Test API] Failed to create chunks:', chunkError);
+      // Don't fail the request - job was created, chunks can be created separately
+    } else {
+      console.log(`[Test API] Created ${chunks.length} chunks for job ${job.id}`);
     }
 
     console.log(`[Test API] Created test job ${job.id} for scraper ${scraper.name} with ${skus.length} SKUs`);

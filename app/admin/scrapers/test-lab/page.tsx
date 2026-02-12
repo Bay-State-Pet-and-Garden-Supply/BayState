@@ -1,4 +1,4 @@
-import { TestLabClient } from '@/components/admin/scraper-lab/TestLabClient';
+import { TestLabClient } from '@/components/admin/scrapers/TestLabClient';
 import { createClient } from '@/lib/supabase/server';
 
 interface RawScraper {

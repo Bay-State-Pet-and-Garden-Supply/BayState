@@ -2,7 +2,6 @@ import { AdminSidebar } from '@/components/admin/sidebar'
 import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/auth/roles'
 import { redirect } from 'next/navigation'
-import { Toaster } from 'sonner'
 import { SkipLink } from '@/components/ui/skip-link'
 
 export default async function AdminLayout({
@@ -35,7 +34,6 @@ export default async function AdminLayout({
       <main id="main-content" className="flex-1 h-full overflow-y-auto overflow-x-hidden overscroll-y-contain p-8">
         {children}
       </main>
-      <Toaster position="top-right" richColors closeButton />
     </div>
   )
 }

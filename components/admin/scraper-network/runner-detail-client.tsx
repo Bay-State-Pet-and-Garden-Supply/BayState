@@ -1,12 +1,25 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { deleteRunner } from '@/app/admin/scrapers/network/[id]/actions';
 import { RunnerManagementPanel } from './runner-management-panel';
 import { RunnerMetadataEditor } from './runner-metadata-editor';
 import { RunnerRunHistory } from './runner-run-history';
@@ -55,6 +68,33 @@ function formatLastSeen(isoString: string | null): string {
 }
 
 export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps) {
+  const router = useRouter();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (deleteConfirmName !== runner.name) {
+      toast.error('Runner name does not match');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const result = await deleteRunner(runner.id);
+      if (result.success) {
+        toast.success('Runner deleted successfully');
+        router.push('/admin/scrapers/network');
+      } else {
+        toast.error(result.error || 'Failed to delete runner');
+        setIsDeleting(false);
+      }
+    } catch {
+      toast.error('An error occurred while deleting the runner');
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with back button */}
@@ -69,9 +109,20 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
           <h1 className="text-2xl font-bold text-gray-900">{runner.name}</h1>
           <p className="text-sm text-gray-500">Runner ID: {runner.id}</p>
         </div>
-        <Badge variant={statusVariants[runner.status]}>
-          {statusLabels[runner.status]}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={statusVariants[runner.status]}>
+            {statusLabels[runner.status]}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -159,6 +210,55 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
           <RunnerMetadataEditor runner={runner} />
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Delete Runner
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete runner &quot;{runner.name}&quot; and all associated API keys.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800">
+              <strong>Warning:</strong> All API keys for this runner will be revoked immediately.
+              Any running jobs will be affected.
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Type <code className="bg-gray-100 px-1 rounded">{runner.name}</code> to confirm
+              </label>
+              <Input
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder={runner.name}
+                disabled={isDeleting}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteConfirmName !== runner.name || isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Runner'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

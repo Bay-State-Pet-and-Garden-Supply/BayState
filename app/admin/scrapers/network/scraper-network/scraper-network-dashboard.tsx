@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import type { RunnerPresence } from "@/lib/realtime/types";
 import { useRunnerPresence } from "@/lib/realtime/useRunnerPresence";
 import {
@@ -14,6 +15,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Activity,
   Server,
@@ -22,6 +33,9 @@ import {
   AlertCircle,
   XCircle,
   Settings,
+  Plus,
+  Copy,
+  Key,
 } from "lucide-react";
 
 interface NetworkStats {
@@ -50,6 +64,64 @@ export function ScraperNetworkDashboard() {
     idle: 0,
     offline: 0,
   });
+
+  // Add Runner Modal State
+  const [showAddRunnerModal, setShowAddRunnerModal] = useState(false);
+  const [newRunnerName, setNewRunnerName] = useState("");
+  const [newRunnerDescription, setNewRunnerDescription] = useState("");
+  const [isCreatingRunner, setIsCreatingRunner] = useState(false);
+  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
+  const [createdRunnerName, setCreatedRunnerName] = useState<string | null>(null);
+
+  const handleCreateRunner = async () => {
+    if (!newRunnerName.trim()) {
+      toast.error("Runner name is required");
+      return;
+    }
+
+    setIsCreatingRunner(true);
+    try {
+      const response = await fetch("/api/admin/runners/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runner_name: newRunnerName.trim(),
+          description: newRunnerDescription.trim() || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create runner");
+      }
+
+      const data = await response.json();
+      setCreatedApiKey(data.api_key);
+      setCreatedRunnerName(data.runner_name);
+      toast.success(`Runner "${data.runner_name}" created successfully`);
+      setNewRunnerName("");
+      setNewRunnerDescription("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create runner");
+    } finally {
+      setIsCreatingRunner(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowAddRunnerModal(false);
+    setCreatedApiKey(null);
+    setCreatedRunnerName(null);
+    setNewRunnerName("");
+    setNewRunnerDescription("");
+  };
+
+  const copyApiKey = () => {
+    if (createdApiKey) {
+      navigator.clipboard.writeText(createdApiKey);
+      toast.success("API key copied to clipboard");
+    }
+  };
 
   useEffect(() => {
     const runnersArray = Object.values(runners);
@@ -90,6 +162,10 @@ export function ScraperNetworkDashboard() {
           )}
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => setShowAddRunnerModal(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Runner
+          </Button>
           {!isRealtimeConnected && (
             <Button variant="outline" size="sm" onClick={connect}>
               Reconnect
@@ -289,6 +365,89 @@ export function ScraperNetworkDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Runner Modal */}
+      <Dialog open={showAddRunnerModal} onOpenChange={handleCloseModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              {createdApiKey ? "Runner Created" : "Add New Runner"}
+            </DialogTitle>
+            <DialogDescription>
+              {createdApiKey
+                ? "Save this API key now. It cannot be retrieved again."
+                : "Create a new scraper runner and generate an API key."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdApiKey ? (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-4 space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Runner Name</Label>
+                  <p className="font-medium">{createdRunnerName}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">API Key</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 rounded bg-background px-2 py-1 text-xs font-mono break-all">
+                      {createdApiKey}
+                    </code>
+                    <Button size="sm" variant="outline" onClick={copyApiKey}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Use this API key to authenticate your runner. Store it securely.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="runner-name">Runner Name</Label>
+                <Input
+                  id="runner-name"
+                  placeholder="e.g., macbook-air, server-us-east"
+                  value={newRunnerName}
+                  onChange={(e) => setNewRunnerName(e.target.value)}
+                  disabled={isCreatingRunner}
+                />
+                <p className="text-xs text-muted-foreground">
+                  3-50 characters, lowercase letters, numbers, and hyphens only
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="runner-description">Description (Optional)</Label>
+                <Input
+                  id="runner-description"
+                  placeholder="e.g., Production runner on MacBook Air"
+                  value={newRunnerDescription}
+                  onChange={(e) => setNewRunnerDescription(e.target.value)}
+                  disabled={isCreatingRunner}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {createdApiKey ? (
+              <Button onClick={handleCloseModal}>Done</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={handleCloseModal} disabled={isCreatingRunner}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateRunner} disabled={isCreatingRunner || !newRunnerName.trim()}>
+                  {isCreatingRunner ? "Creating..." : "Create Runner"}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

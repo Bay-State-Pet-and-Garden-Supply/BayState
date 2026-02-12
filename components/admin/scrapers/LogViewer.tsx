@@ -44,7 +44,7 @@ function LogEntry({ log }: { log: ScrapeJobLog }) {
   const Icon = config.icon;
 
   return (
-    <div className="flex gap-3 py-2 hover:bg-gray-50 px-2 rounded">
+    <div className="flex gap-3 py-2 hover:bg-gray-800 px-2 rounded">
       <div className="flex-shrink-0 w-20 flex items-center gap-1">
         <span className={`text-xs font-mono ${config.color}`}>
           {format(new Date(log.created_at), 'HH:mm:ss')}
@@ -56,7 +56,7 @@ function LogEntry({ log }: { log: ScrapeJobLog }) {
           {config.label}
         </Badge>
       </div>
-      <div className="flex-1 font-mono text-sm text-gray-700 break-all">
+      <div className="flex-1 font-mono text-sm text-gray-100 break-all">
         {log.message}
       </div>
     </div>

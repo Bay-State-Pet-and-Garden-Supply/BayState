@@ -101,12 +101,12 @@ export function ConfigQuickActions({
 
   const handleViewHistory = () => {
     // Navigate to version history
-    window.location.href = `/admin/scraper-configs/${configId}/history`;
+    window.location.href = `/admin/scrapers/configs/${configId}/history`;
   };
 
   const handleEdit = () => {
     // Navigate to edit page
-    window.location.href = `/admin/scraper-configs/${configId}`;
+    window.location.href = `/admin/scrapers/configs/${configId}/edit`;
   };
 
   const canValidate = currentStatus === 'draft';

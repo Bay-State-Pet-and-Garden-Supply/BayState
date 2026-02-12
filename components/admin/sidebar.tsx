@@ -27,6 +27,7 @@ import {
   Server,
   Settings2,
   Layers,
+  Activity,
 } from 'lucide-react';
 
 interface NavItem {
@@ -83,10 +84,11 @@ const navSections: NavSection[] = [
     title: 'Scrapers',
     adminOnly: true,
     items: [
+      { href: '/admin/scrapers', label: 'Dashboard', icon: <Activity className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/configs', label: 'Configs', icon: <Settings className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/scrapers/test-lab', label: 'Test Lab', icon: <Beaker className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/scrapers/runs', label: 'Runs', icon: <History className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/scrapers/network', label: 'Network', icon: <Network className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/lab', label: 'Scraper Lab', icon: <Beaker className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/runs', label: 'Job History', icon: <History className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/scrapers/network', label: 'Runner Network', icon: <Network className="h-5 w-5" />, adminOnly: true },
     ],
   },
   {
@@ -133,7 +135,12 @@ export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
             )}
             <div className="space-y-1">
               {section.items.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+                // For dashboard root routes like /admin/scrapers, only match exact paths
+                // to avoid highlighting when on child routes like /admin/scrapers/network
+                const isDashboardRoot = item.href === '/admin/scrapers';
+                const isActive = isDashboardRoot
+                  ? pathname === item.href || pathname === item.href + '/dashboard'
+                  : pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/'));
                 return (
                   <Link
                     key={item.href}

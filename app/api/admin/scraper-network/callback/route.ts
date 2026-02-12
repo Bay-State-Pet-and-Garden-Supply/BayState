@@ -17,6 +17,17 @@ interface CallbackPayload {
   error_message?: string;
   duration_ms?: number;
   runner_id?: string;
+  // Step events for test-lab visibility
+  steps?: Array<{
+    step_index: number;
+    action_type: string;
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+    started_at?: string;
+    completed_at?: string;
+    duration_ms?: number;
+    error_message?: string;
+    extracted_data?: Record<string, unknown>;
+  }>;
   // Detailed results for Supabase Realtime
   selectors?: Array<{
     sku: string;
@@ -176,6 +187,29 @@ async function insertDetailedResults(
   scraperId: string,
   payload: CallbackPayload
 ) {
+  // Insert step events for test-lab visibility
+  if (payload.steps && payload.steps.length > 0) {
+    const stepRows = payload.steps.map((s) => ({
+      test_run_id: testRunId,
+      step_index: s.step_index,
+      action_type: s.action_type,
+      status: s.status,
+      started_at: s.started_at || null,
+      completed_at: s.completed_at || null,
+      duration_ms: s.duration_ms || null,
+      error_message: s.error_message || null,
+      extracted_data: s.extracted_data || {},
+    }));
+
+    const { error: stepError } = await supabase
+      .from('scraper_test_run_steps')
+      .upsert(stepRows, { onConflict: 'test_run_id,step_index' });
+
+    if (stepError) {
+      console.error('[Callback] Failed to insert step events:', stepError);
+    }
+  }
+
   // Insert selector results
   if (payload.selectors && payload.selectors.length > 0) {
     const selectorRows = payload.selectors.map((s) => ({

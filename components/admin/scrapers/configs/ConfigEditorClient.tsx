@@ -96,7 +96,7 @@ export function ConfigEditorClient({ configId, initialData, mode }: ConfigEditor
 
           if (result.success && result.data && typeof result.data === 'object' && 'id' in result.data) {
             toast.success('Config created successfully');
-            router.push(`/admin/scraper-configs/${(result.data as { id: string }).id}/edit`);
+            router.push(`/admin/scrapers/configs/${(result.data as { id: string }).id}/edit`);
           } else {
             toast.error(result.error || 'Failed to create config');
           }
@@ -168,7 +168,7 @@ export function ConfigEditorClient({ configId, initialData, mode }: ConfigEditor
 
       if (result.success) {
         toast.success('Configuration published successfully');
-        router.push('/admin/scraper-configs');
+          router.push('/admin/scrapers/configs');
       } else {
         toast.error(result.error || 'Failed to publish');
       }
@@ -184,7 +184,7 @@ export function ConfigEditorClient({ configId, initialData, mode }: ConfigEditor
       <div className="flex items-center justify-between border-b bg-white px-6 py-3">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin/scraper-configs">
+            <Link href="/admin/scrapers/configs">
               <ArrowLeft className="mr-1 h-4 w-4" />
               Back
             </Link>

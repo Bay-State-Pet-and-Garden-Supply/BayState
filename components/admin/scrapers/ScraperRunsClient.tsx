@@ -14,10 +14,20 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
+  History,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -26,10 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DataTable,
-  Column,
-} from '@/components/admin/data-table';
 import { ScraperRunRecord } from '@/lib/admin/scrapers/runs-types';
 import { cancelScraperRun, retryScraperRun } from '@/app/admin/scrapers/runs/actions';
 
@@ -39,12 +45,12 @@ interface ScraperRunsClientProps {
 }
 
 const statusConfig = {
-  pending: { label: 'Pending', color: 'bg-gray-100 text-gray-700', icon: Clock },
-  claimed: { label: 'Claimed', color: 'bg-blue-100 text-blue-700', icon: Loader2 },
-  running: { label: 'Running', color: 'bg-yellow-100 text-yellow-700', icon: Loader2 },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-  failed: { label: 'Failed', color: 'bg-red-100 text-red-700', icon: AlertCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-700', icon: XCircle },
+  pending: { label: 'Pending', variant: 'secondary' as const, icon: Clock },
+  claimed: { label: 'Claimed', variant: 'secondary' as const, icon: Loader2 },
+  running: { label: 'Running', variant: 'default' as const, icon: Loader2 },
+  completed: { label: 'Completed', variant: 'default' as const, icon: CheckCircle2 },
+  failed: { label: 'Failed', variant: 'destructive' as const, icon: AlertCircle },
+  cancelled: { label: 'Cancelled', variant: 'secondary' as const, icon: XCircle },
 } as const;
 
 function StatusBadge({ status }: { status: string }) {
@@ -52,8 +58,8 @@ function StatusBadge({ status }: { status: string }) {
   const Icon = config?.icon || Clock;
 
   return (
-    <Badge className={config?.color || 'bg-gray-100 text-gray-700'}>
-      <Icon className="mr-1 h-3 w-3" />
+    <Badge variant={config?.variant || 'secondary'} className="gap-1">
+      <Icon className="h-3 w-3" />
       {config?.label || status}
     </Badge>
   );
@@ -66,124 +72,9 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
   const [retryTarget, setRetryTarget] = useState<ScraperRunRecord | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ScraperRunRecord | null>(null);
 
-  const columns: Column<ScraperRunRecord>[] = [
-    {
-      key: 'id',
-      header: 'Job ID',
-      sortable: true,
-      searchable: true,
-      render: (value) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {String(value).slice(0, 8)}...
-        </span>
-      ),
-    },
-    {
-      key: 'scraper_name',
-      header: 'Scraper',
-      sortable: true,
-      searchable: true,
-      render: (value) => (
-        <span className="font-medium capitalize">
-          {String(value)}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      render: (_, row) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: 'total_skus',
-      header: 'SKUs',
-      sortable: true,
-      render: (value, row) => {
-        const completed = row.completed_skus || 0;
-        const failed = row.failed_skus || 0;
-        const total = Number(value) || 0;
-        return (
-          <span className="text-sm">
-            {completed}/{total}
-            {failed > 0 && <span className="text-red-600"> ({failed} failed)</span>}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'items_found',
-      header: 'Items',
-      sortable: true,
-      render: (value) => Number(value).toLocaleString(),
-    },
-    {
-      key: 'created_at',
-      header: 'Started',
-      sortable: true,
-      render: (value) => (
-        <span className="text-sm text-muted-foreground">
-          {value ? format(new Date(String(value)), 'MMM d, h:mm a') : '-'}
-        </span>
-      ),
-    },
-    {
-      key: 'duration',
-      header: 'Duration',
-      sortable: false,
-      render: (_, row) => {
-        if (!row.created_at) return '-';
-        const start = new Date(row.created_at);
-        const end = row.completed_at ? new Date(row.completed_at) : new Date();
-        const seconds = Math.round((end.getTime() - start.getTime()) / 1000);
-        if (seconds < 60) return `${seconds}s`;
-        if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-        return `${Math.round(seconds / 3600)}h ${Math.round((seconds % 3600) / 60)}m`;
-      },
-    },
-  ];
-
-  const actions = (run: ScraperRunRecord) => (
-    <div className="flex items-center gap-1">
-      {run.status === 'pending' || run.status === 'claimed' || run.status === 'running' ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCancelTarget(run);
-          }}
-          disabled={isPending}
-        >
-          <XCircle className="h-4 w-4" />
-        </Button>
-      ) : null}
-      {run.status === 'failed' || run.status === 'cancelled' || run.status === 'completed' ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            setRetryTarget(run);
-          }}
-          disabled={isPending}
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-      ) : null}
-      {run.status === 'completed' && (
-        <Button
-          variant="ghost"
-          size="sm"
-          asChild
-        >
-          <a href={`/admin/scrapers/runs/${run.id}`}>
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        </Button>
-      )}
-    </div>
-  );
+  const runningCount = runs.filter((r) => r.status === 'running').length;
+  const completedCount = runs.filter((r) => r.status === 'completed').length;
+  const failedCount = runs.filter((r) => r.status === 'failed').length;
 
   const handleRetry = async () => {
     if (!retryTarget) return;
@@ -216,12 +107,12 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-            <Play className="h-5 w-5 text-purple-600" />
+            <History className="h-5 w-5 text-purple-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Scraper Runs</h1>
@@ -232,7 +123,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link href="/admin/scraper-network">
+            <Link href="/admin/scrapers/network">
               <Play className="mr-2 h-4 w-4" />
               Runner Network
             </Link>
@@ -244,41 +135,146 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div className="flex gap-4 overflow-x-auto pb-1">
-        <div className="flex-shrink-0 rounded-lg bg-gray-50 p-4 w-28">
-          <p className="text-sm text-gray-600">Total Jobs</p>
-          <p className="text-2xl font-bold">{totalCount}</p>
-        </div>
-        <div className="flex-shrink-0 rounded-lg bg-yellow-50 p-4 w-28">
-          <p className="text-sm text-yellow-700">Running</p>
-          <p className="text-2xl font-bold text-yellow-700">
-            {runs.filter((r) => r.status === 'running').length}
-          </p>
-        </div>
-        <div className="flex-shrink-0 rounded-lg bg-green-50 p-4 w-28">
-          <p className="text-sm text-green-700">Completed</p>
-          <p className="text-2xl font-bold text-green-700">
-            {runs.filter((r) => r.status === 'completed').length}
-          </p>
-        </div>
-        <div className="flex-shrink-0 rounded-lg bg-red-50 p-4 w-28">
-          <p className="text-sm text-red-700">Failed</p>
-          <p className="text-2xl font-bold text-red-700">
-            {runs.filter((r) => r.status === 'failed').length}
-          </p>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-gray-600">Total Jobs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-gray-600">Running</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-yellow-600">{runningCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-gray-600">Completed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-600">{completedCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-gray-600">Failed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{failedCount}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Runs Table */}
-      <DataTable
-        data={runs}
-        columns={columns}
-        searchPlaceholder="Search runs..."
-        pageSize={25}
-        actions={actions}
-        emptyMessage="No scraper runs found."
-      />
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Job ID</TableHead>
+                <TableHead>Scraper</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>SKUs</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Started</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {runs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-600">
+                    No scraper runs found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                runs.map((run) => {
+                  const duration = !run.created_at
+                    ? '-'
+                    : (() => {
+                        const start = new Date(run.created_at);
+                        const end = run.completed_at ? new Date(run.completed_at) : new Date();
+                        const seconds = Math.round((end.getTime() - start.getTime()) / 1000);
+                        if (seconds < 60) return `${seconds}s`;
+                        if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+                        return `${Math.round(seconds / 3600)}h ${Math.round((seconds % 3600) / 60)}m`;
+                      })();
+
+                  return (
+                    <TableRow key={run.id}>
+                      <TableCell>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {run.id.slice(0, 8)}...
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium capitalize">{run.scraper_name}</span>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={run.status} />
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {run.completed_skus || 0}/{run.total_skus}
+                          {(run.failed_skus || 0) > 0 && (
+                            <span className="text-red-600"> ({run.failed_skus} failed)</span>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell>{run.items_found?.toLocaleString() || 0}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {run.created_at ? format(new Date(run.created_at), 'MMM d, h:mm a') : '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{duration}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {run.status === 'pending' || run.status === 'claimed' || run.status === 'running' ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setCancelTarget(run)}
+                              disabled={isPending}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                          {run.status === 'failed' || run.status === 'cancelled' || run.status === 'completed' ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setRetryTarget(run)}
+                              disabled={isPending}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                          {run.status === 'completed' && (
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/admin/scrapers/runs/${run.id}`}>
+                                <ExternalLink className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Retry Confirmation Dialog */}
       <Dialog open={!!retryTarget} onOpenChange={(open) => !open && setRetryTarget(null)}>

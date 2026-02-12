@@ -1,3 +1,4 @@
+/** @deprecated This module is being replaced by the new distributed scraper architecture. */
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -41,6 +42,7 @@ interface GitHubSyncPanelProps {
 
 type SyncStatus = 'idle' | 'synced' | 'pending' | 'error';
 
+/** @deprecated This module is being replaced by the new distributed scraper architecture. */
 export function GitHubSyncPanel({ 
   scraperId, 
   scraperName, 
