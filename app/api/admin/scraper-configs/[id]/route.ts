@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -16,23 +16,32 @@ export async function GET(
 
     const client = await createClient();
 
-    const { data: config, error } = await client
+    const { data: config, error: configError } = await client
       .from('scraper_configs')
-      .select('*, scraper_config_versions(*)')
+      .select('*')
       .eq('id', id)
       .single();
 
-    if (error || !config) {
+    if (configError || !config) {
       return NextResponse.json({ error: 'Config not found' }, { status: 404 });
     }
 
-    const versions = (config.scraper_config_versions || []).sort((a: Record<string, number>, b: Record<string, number>) => 
-      b.version_number - a.version_number
-    );
+    const { data: version, error: versionError } = await client
+      .from('scraper_config_versions')
+      .select('*')
+      .eq('id', config.current_version_id)
+      .single();
+
+    if (versionError || !version) {
+      return NextResponse.json({ error: 'Configuration version not found' }, { status: 404 });
+    }
 
     return NextResponse.json({
-      ...config,
-      versions,
+      config: version.config,
+      status: version.status,
+      version: version.version_number,
+      versionId: version.id,
+      validationResult: version.validation_result,
     });
   } catch (error) {
     console.error('Request error:', error);

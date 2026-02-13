@@ -6,6 +6,7 @@ import { ScraperConfig } from '../scrapers/ConfigList';
 import { StudioConfigEditor } from './StudioConfigEditor';
 import { StudioConfigListClient } from './StudioConfigListClient';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { ScraperConfig as StudioScraperConfig } from '@/lib/admin/scrapers/types';
 
 interface ConfigEditorWrapperProps {
   configs: ScraperConfig[];
@@ -40,9 +41,10 @@ export function StudioConfigEditorWrapper({
   });
 
   const [configData, setConfigData] = useState<{
-    config: unknown;
+    config: StudioScraperConfig;
     status: string;
     version: number;
+    versionId?: string;
     validationResult?: {
       valid: boolean;
       validated_at?: string;
@@ -64,7 +66,9 @@ export function StudioConfigEditorWrapper({
         credentials: 'include',
       });
       if (!response.ok) {
-        throw new Error('Failed to fetch config');
+        const errorPayload = await response.json().catch(() => null);
+        const apiError = typeof errorPayload?.error === 'string' ? errorPayload.error : 'Failed to fetch config';
+        throw new Error(apiError);
       }
       const data = await response.json();
       setConfigData(data);
@@ -129,12 +133,13 @@ export function StudioConfigEditorWrapper({
     }
 
     return (
-      <StudioConfigEditor
-        configId={editorState.configId}
-        configName={editorState.configName}
-        initialConfig={configData.config as any}
-        initialStatus={configData.status}
-        initialVersion={configData.version}
+        <StudioConfigEditor
+          configId={editorState.configId}
+          configName={editorState.configName}
+          initialConfig={configData.config}
+          initialStatus={configData.status}
+          initialVersion={configData.version}
+          initialVersionId={configData.versionId ?? null}
         initialValidationResult={configData.validationResult}
         onClose={handleClose}
       />

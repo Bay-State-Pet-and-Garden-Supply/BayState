@@ -35,6 +35,7 @@ interface StudioConfigEditorProps {
   initialConfig: ScraperConfig;
   initialStatus: string;
   initialVersion: number;
+  initialVersionId: string | null;
   initialValidationResult?: {
     valid: boolean;
     validated_at?: string;
@@ -56,6 +57,7 @@ export function StudioConfigEditor({
   initialConfig,
   initialStatus,
   initialVersion,
+  initialVersionId,
   initialValidationResult,
   onClose,
 }: StudioConfigEditorProps) {
@@ -508,7 +510,7 @@ export function StudioConfigEditor({
                       configId={configId}
                       configName={configName}
                       versions={versions}
-                      currentVersionId={configId}
+                      currentVersionId={initialVersionId}
                       onVersionChange={loadVersions}
                       onCreateVersion={handleCreateVersion}
                       onPublishVersion={handlePublishVersion}

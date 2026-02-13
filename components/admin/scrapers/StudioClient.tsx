@@ -10,6 +10,7 @@ import { StepMetricsSkeleton } from './studio/health/StepMetricsSkeleton';
 import { TestRunHistory } from '@/components/admin/scraper-studio/TestRunHistory';
 import { StudioErrorBoundary } from './studio/StudioErrorBoundary';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StudioTestingPanel } from './studio/StudioTestingPanel';
 
 interface StudioClientProps {
   configsSlot?: ReactNode;
@@ -56,9 +57,9 @@ export default function StudioClient({ configsSlot }: StudioClientProps) {
           {configsSlot}
         </TabsContent>
         <TabsContent value="testing" className="space-y-4">
-          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            Testing interface will appear here.
-          </div>
+          <StudioErrorBoundary componentName="Studio Testing">
+            <StudioTestingPanel />
+          </StudioErrorBoundary>
         </TabsContent>
         <TabsContent value="health" className="space-y-6">
           <StudioErrorBoundary componentName="Health Dashboard">
