@@ -3,6 +3,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ReactNode } from 'react';
 
+import StudioHealthDashboard from './studio/health/StudioHealthDashboard';
+import StepMetricsDashboard from './studio/health/StepMetricsDashboard';
+
 interface StudioClientProps {
   configsSlot?: ReactNode;
 }
@@ -37,10 +40,9 @@ export default function StudioClient({ configsSlot }: StudioClientProps) {
             Testing interface will appear here.
           </div>
         </TabsContent>
-        <TabsContent value="health" className="space-y-4">
-          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            Health monitoring dashboard will appear here.
-          </div>
+        <TabsContent value="health" className="space-y-6">
+          <StudioHealthDashboard />
+          <StepMetricsDashboard />
         </TabsContent>
         <TabsContent value="history" className="space-y-4">
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">

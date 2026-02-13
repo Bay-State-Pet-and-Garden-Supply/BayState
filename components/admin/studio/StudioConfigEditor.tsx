@@ -496,7 +496,7 @@ export function StudioConfigEditor({
                   <AdvancedTab />
                 </TabsContent>
                 <TabsContent value="testing">
-                  <TestingTab />
+                  <TestingTab configId={configId} />
                 </TabsContent>
                 <TabsContent value="versions">
                   {isLoadingVersions ? (
