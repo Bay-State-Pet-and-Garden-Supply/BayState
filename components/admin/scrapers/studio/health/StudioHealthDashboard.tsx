@@ -162,7 +162,7 @@ export default function StudioHealthDashboard() {
                 <YAxis tickFormatter={(val) => `${(val / 1000).toFixed(1)}s`} />
                 <Tooltip 
                   labelFormatter={(val) => new Date(val).toLocaleDateString()}
-                  formatter={(val: number) => [`${(val / 1000).toFixed(2)}s`, 'Avg Duration']}
+                  formatter={(val: number | undefined) => [`${val ? (val / 1000).toFixed(2) : '0'}s`, 'Avg Duration']}
                   contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
                 />
                 <Area type="monotone" dataKey="avg_duration_ms" stroke="#0ea5e9" fill="#e0f2fe" strokeWidth={2} />

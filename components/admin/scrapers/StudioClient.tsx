@@ -5,6 +5,7 @@ import { ReactNode } from 'react';
 
 import StudioHealthDashboard from './studio/health/StudioHealthDashboard';
 import StepMetricsDashboard from './studio/health/StepMetricsDashboard';
+import { TestRunHistory } from '@/components/admin/scraper-studio/TestRunHistory';
 
 interface StudioClientProps {
   configsSlot?: ReactNode;
@@ -45,9 +46,7 @@ export default function StudioClient({ configsSlot }: StudioClientProps) {
           <StepMetricsDashboard />
         </TabsContent>
         <TabsContent value="history" className="space-y-4">
-          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            Execution history will appear here.
-          </div>
+          <TestRunHistory />
         </TabsContent>
       </Tabs>
     </div>
