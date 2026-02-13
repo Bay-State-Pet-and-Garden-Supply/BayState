@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Fetch the config to get the slug for the runner API
     const { data: config, error: configError } = await adminClient
       .from('scraper_configs')
-      .select('*, scraper_config_versions(*)')
+      .select('*, scraper_config_versions!fk_config_id(*)')
       .eq('id', validatedData.config_id)
       .single();
 

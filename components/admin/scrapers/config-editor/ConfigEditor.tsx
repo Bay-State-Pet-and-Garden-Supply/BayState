@@ -21,7 +21,7 @@ export async function ConfigEditor({ configId }: ConfigEditorProps) {
   // Fetch the config and its current version
   const { data: config, error: configError } = await supabase
     .from('scraper_configs')
-    .select('*, scraper_config_versions(*)')
+    .select('*, scraper_config_versions!fk_config_id(*)')
     .eq('id', configId)
     .single();
 
