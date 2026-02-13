@@ -18,7 +18,7 @@ export async function GET(
 
     const { data: config, error } = await client
       .from('scraper_configs')
-      .select('*, versions(*)')
+      .select('*, scraper_config_versions(*)')
       .eq('id', id)
       .single();
 
@@ -26,7 +26,7 @@ export async function GET(
       return NextResponse.json({ error: 'Config not found' }, { status: 404 });
     }
 
-    const versions = (config.versions || []).sort((a: Record<string, number>, b: Record<string, number>) => 
+    const versions = (config.scraper_config_versions || []).sort((a: Record<string, number>, b: Record<string, number>) => 
       b.version_number - a.version_number
     );
 

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     const fullConfig = await client
       .from('scraper_configs')
-      .select('*, versions(*)')
+      .select('*, scraper_config_versions(*)')
       .eq('id', config.id)
       .single();
 
