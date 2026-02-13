@@ -1,0 +1,23 @@
+=== init-deep Complete ===
+
+Mode: update
+
+Files:
+  ✓ ./AGENTS.md (root, 48 lines)
+  ✓ ./BayStateApp/AGENTS.md (44 lines)
+  ✓ ./BayStateApp/conductor/AGENTS.md (33 lines)
+  ✓ ./BayStateScraper/AGENTS.md (45 lines)
+  ✓ ./BayStateScraper/scraper_backend/AGENTS.md (48 lines)
+  ✓ ./BayStateTools/AGENTS.md (33 lines)
+
+Dirs Analyzed: 14 top-level
+AGENTS.md Created: 2
+AGENTS.md Updated: 4
+
+Hierarchy:
+  ./AGENTS.md
+  ├── BayStateApp/AGENTS.md
+  │   └── conductor/AGENTS.md
+  ├── BayStateScraper/AGENTS.md
+  │   └── scraper_backend/AGENTS.md
+  └── BayStateTools/AGENTS.md
