@@ -952,7 +952,7 @@ Parallel Speedup: ~50% faster than sequential
   - Message: `feat(scraper): add event schema v2 with timing and metadata`
   - Files: `BayStateScraper/scrapers/executor/workflow_executor.py`, `BayStateScraper/scrapers/executor/step_executor.py`, `BayStateScraper/tests/test_events.py` (NEW test file)
 
-- [ ] **9. Real-time Timeline Component**
+- [x] **9. Real-time Timeline Component** ✓ COMPLETED
 
   **What to do:**
   - Create timeline component for step visualization
@@ -1017,7 +1017,7 @@ Parallel Speedup: ~50% faster than sequential
 
 ### Wave 3: Testing & Debugging
 
-- [ ] **10. Test SKU Management**
+- [x] **10. Test SKU Management** ✓ COMPLETED
 
   **What to do:**
   - Create UI for managing test SKUs per config
@@ -1069,7 +1069,7 @@ Parallel Speedup: ~50% faster than sequential
   - Message: `feat(admin): add test SKU management with persistence`
   - Files: `BayStateApp/components/admin/scraper-studio/TestSkuManager.tsx`
 
-- [ ] **11. Health Dashboard**
+- [x] **11. Health Dashboard** ✓ COMPLETED
 
   **What to do:**
   - Create health dashboard with metrics
