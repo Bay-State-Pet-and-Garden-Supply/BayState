@@ -41,7 +41,7 @@ export async function ConfigList() {
       display_name,
       domain,
       updated_at,
-      scraper_config_versions (count)
+      scraper_config_versions!fk_config_id (count)
     `)
     .order('updated_at', { ascending: false });
 

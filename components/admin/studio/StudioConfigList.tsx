@@ -24,7 +24,7 @@ export async function StudioConfigList({
       display_name,
       domain,
       updated_at,
-      scraper_config_versions (count)
+      scraper_config_versions!fk_config_id (count)
     `, { count: 'exact' })
     .order('updated_at', { ascending: false });
 

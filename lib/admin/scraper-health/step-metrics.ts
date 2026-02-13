@@ -107,7 +107,7 @@ export async function getTopFailingSteps(days = 30, useCache = true): Promise<Fa
       error_message,
       created_at,
       scraper_configs (
-        name
+        display_name
       )
     `)
     .eq('status', 'failed')
@@ -126,14 +126,14 @@ export async function getTopFailingSteps(days = 30, useCache = true): Promise<Fa
     const match = run.error_message?.match(/Step '([^']+)' failed/i);
     const stepName = match ? match[1] : 'Unknown Step';
 
-    const key = `${stepName}-${run.scraper_configs?.name}`;
+    const key = `${stepName}-${run.scraper_configs?.display_name}`;
 
     if (!stepFailures[key]) {
       stepFailures[key] = {
         step_name: stepName,
         failure_count: 0,
         last_failed_at: run.created_at,
-        affected_config: run.scraper_configs?.name || 'Unknown Config'
+        affected_config: run.scraper_configs?.display_name || 'Unknown Config'
       };
     }
 

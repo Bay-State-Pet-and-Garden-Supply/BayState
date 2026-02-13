@@ -41,7 +41,7 @@ export async function getScraperHealthMetrics(
     .select(`
       *,
       scraper_configs (
-        name,
+        display_name,
         slug
       )
     `)
@@ -61,7 +61,7 @@ export async function getScraperHealthMetrics(
 
   const result = data.map((item: any) => ({
     ...item,
-    config_name: item.scraper_configs?.name,
+    config_name: item.scraper_configs?.display_name,
   }));
 
   if (useCache) {
