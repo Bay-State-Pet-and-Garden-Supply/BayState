@@ -9,13 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, CheckCircle2, AlertTriangle, Upload, FileJson, FileCode } from 'lucide-react';
+import { Loader2, Save, CheckCircle2, AlertTriangle, Upload, FileJson, FileCode, GitBranch } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { parse, stringify } from 'yaml';
 
 import { configFormSchema, defaultConfigValues } from '@/lib/admin/scraper-configs/form-schema';
 import { updateDraft, validateDraft, publishConfig } from '@/lib/admin/scraper-configs/actions';
+import { createVersion, publishVersion, rollbackToVersion, fetchVersions } from '@/lib/admin/scraper-studio/version-actions';
 import type { ScraperConfig } from '@/lib/admin/scrapers/types';
 
 import { MetadataTab } from '../scraper-lab/config-editor/tabs/MetadataTab';
@@ -26,6 +27,7 @@ import { AdvancedTab } from '../scraper-lab/config-editor/tabs/AdvancedTab';
 import { TestingTab } from '../scraper-lab/config-editor/tabs/TestingTab';
 import { PreviewTab } from '../scraper-lab/config-editor/tabs/PreviewTab';
 import { ValidationSummary } from '../scraper-lab/config-editor/validation/ValidationSummary';
+import { VersionHistory, type Version } from '../scraper-studio/VersionHistory';
 
 interface StudioConfigEditorProps {
   configId: string;
@@ -69,6 +71,22 @@ export function StudioConfigEditor({
   const [yamlContent, setYamlContent] = useState('');
   const [yamlValidation, setYamlValidation] = useState<ValidationStatus>({ isValid: true });
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+
+  const loadVersions = useCallback(async () => {
+    setIsLoadingVersions(true);
+    try {
+      const result = await fetchVersions(configId);
+      if (result.success && result.data) {
+        setVersions(result.data as Version[]);
+      }
+    } catch (error) {
+      console.error('Failed to load versions:', error);
+    } finally {
+      setIsLoadingVersions(false);
+    }
+  }, [configId]);
 
   const form = useForm<ScraperConfig>({
     resolver: zodResolver(configFormSchema) as any,
@@ -88,6 +106,10 @@ export function StudioConfigEditor({
       setYamlContent('# Error converting config to YAML\n');
     }
   }, [initialConfig]);
+
+  useEffect(() => {
+    loadVersions();
+  }, [loadVersions]);
 
   useEffect(() => {
     const draftKey = `studio-config-draft-${configId}`;
@@ -270,6 +292,37 @@ export function StudioConfigEditor({
     toast.success('Draft auto-saved locally');
   };
 
+  const handleCreateVersion = async (config: Record<string, unknown>, comment: string) => {
+    const formData = new FormData();
+    formData.append('configId', configId);
+    formData.append('config', JSON.stringify(config));
+    formData.append('change_summary', comment);
+    return await createVersion(formData);
+  };
+
+  const handlePublishVersion = async (versionId: string) => {
+    const formData = new FormData();
+    formData.append('versionId', versionId);
+    const result = await publishVersion(formData);
+    if (result.success) {
+      setStatus('published');
+      setVersion((v) => v + 1);
+      await loadVersions();
+    }
+    return result;
+  };
+
+  const handleRollback = async (targetVersionId: string, reason: string) => {
+    const formData = new FormData();
+    formData.append('versionId', targetVersionId);
+    formData.append('reason', reason);
+    const result = await rollbackToVersion(formData);
+    if (result.success) {
+      await loadVersions();
+    }
+    return result;
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       <Card className="border-none rounded-none border-b shadow-sm bg-card">
@@ -418,6 +471,9 @@ export function StudioConfigEditor({
                 <TabsTrigger value="testing" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-6">
                   Testing
                 </TabsTrigger>
+                <TabsTrigger value="versions" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-6">
+                  Versions
+                </TabsTrigger>
                 <TabsTrigger value="preview" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-6 ml-auto">
                   JSON Preview
                 </TabsTrigger>
@@ -441,6 +497,25 @@ export function StudioConfigEditor({
                 </TabsContent>
                 <TabsContent value="testing">
                   <TestingTab />
+                </TabsContent>
+                <TabsContent value="versions">
+                  {isLoadingVersions ? (
+                    <div className="flex items-center justify-center h-64">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                  ) : (
+                    <VersionHistory
+                      configId={configId}
+                      configName={configName}
+                      versions={versions}
+                      currentVersionId={configId}
+                      onVersionChange={loadVersions}
+                      onCreateVersion={handleCreateVersion}
+                      onPublishVersion={handlePublishVersion}
+                      onRollback={handleRollback}
+                      currentConfig={getValues()}
+                    />
+                  )}
                 </TabsContent>
                 <TabsContent value="preview">
                   <PreviewTab />
