@@ -81,6 +81,33 @@ const nextConfig: NextConfig = {
   // External packages that should not be bundled
   serverExternalPackages: [],
 
+  // Redirects for legacy routes
+  async redirects() {
+    return [
+      // Legacy scraper routes redirected to new studio
+      {
+        source: '/admin/scrapers/lab',
+        destination: '/admin/scrapers/studio',
+        permanent: true,
+      },
+      {
+        source: '/admin/scrapers/lab/:path*',
+        destination: '/admin/scrapers/studio',
+        permanent: true,
+      },
+      {
+        source: '/admin/scrapers/test-lab',
+        destination: '/admin/scrapers/studio',
+        permanent: true,
+      },
+      {
+        source: '/admin/scrapers/test-lab/:path*',
+        destination: '/admin/scrapers/studio',
+        permanent: true,
+      },
+    ];
+  },
+
   // Headers for security and performance
   async headers() {
     return [

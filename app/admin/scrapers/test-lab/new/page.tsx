@@ -1,4 +1,7 @@
 /**
+ * DEPRECATED: This route is deprecated. Use /admin/scrapers/studio instead.
+ * Redirects are configured in next.config.ts to maintain backward compatibility.
+ *
  * Scraper Lab New Page
  *
  * Create new scraper lab session.

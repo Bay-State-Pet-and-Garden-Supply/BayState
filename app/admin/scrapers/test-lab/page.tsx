@@ -1,3 +1,5 @@
+// DEPRECATED: This route is deprecated. Use /admin/scrapers/studio instead.
+// Redirects are configured in next.config.ts to maintain backward compatibility.
 import { TestLabClient } from '@/components/admin/scrapers/TestLabClient';
 import { createClient } from '@/lib/supabase/server';
 

@@ -1,3 +1,5 @@
+// DEPRECATED: This route is deprecated. Use /admin/scrapers/studio instead.
+// Redirects are configured in next.config.ts to maintain backward compatibility.
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
