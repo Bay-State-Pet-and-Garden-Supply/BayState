@@ -1,4 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
+import { metricsCache, getCacheKey } from './cache';
+
+const DEFAULT_CACHE_TTL = 30000;
 
 export interface SelectorHealth {
   selector: string;
@@ -15,7 +18,16 @@ export interface FailingStep {
   affected_config: string;
 }
 
-export async function getSelectorHealthStats(days = 30): Promise<SelectorHealth[]> {
+export async function getSelectorHealthStats(days = 30, useCache = true): Promise<SelectorHealth[]> {
+  const cacheKey = getCacheKey('selector-health', days);
+
+  if (useCache) {
+    const cached = metricsCache.get<SelectorHealth[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const supabase = createClient();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
@@ -49,7 +61,7 @@ export async function getSelectorHealthStats(days = 30): Promise<SelectorHealth[
         stats[selector].found++;
       } else {
         stats[selector].missed++;
-        
+
         if (!stats[selector].lastMissed || new Date(run.created_at) > new Date(stats[selector].lastMissed!)) {
           stats[selector].lastMissed = run.created_at;
         }
@@ -57,7 +69,7 @@ export async function getSelectorHealthStats(days = 30): Promise<SelectorHealth[
     });
   });
 
-  return Object.entries(stats)
+  const result = Object.entries(stats)
     .map(([selector, data]) => ({
       selector,
       found_count: data.found,
@@ -66,10 +78,25 @@ export async function getSelectorHealthStats(days = 30): Promise<SelectorHealth[
       last_missed_at: data.lastMissed
     }))
     .sort((a, b) => b.missed_count - a.missed_count)
-    .slice(0, 20); 
+    .slice(0, 20);
+
+  if (useCache) {
+    metricsCache.set(cacheKey, result, DEFAULT_CACHE_TTL);
+  }
+
+  return result;
 }
 
-export async function getTopFailingSteps(days = 30): Promise<FailingStep[]> {
+export async function getTopFailingSteps(days = 30, useCache = true): Promise<FailingStep[]> {
+  const cacheKey = getCacheKey('failing-steps', days);
+
+  if (useCache) {
+    const cached = metricsCache.get<FailingStep[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const supabase = createClient();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
@@ -98,7 +125,7 @@ export async function getTopFailingSteps(days = 30): Promise<FailingStep[]> {
   data.forEach((run: any) => {
     const match = run.error_message?.match(/Step '([^']+)' failed/i);
     const stepName = match ? match[1] : 'Unknown Step';
-    
+
     const key = `${stepName}-${run.scraper_configs?.name}`;
 
     if (!stepFailures[key]) {
@@ -113,7 +140,13 @@ export async function getTopFailingSteps(days = 30): Promise<FailingStep[]> {
     stepFailures[key].failure_count++;
   });
 
-  return Object.values(stepFailures)
+  const result = Object.values(stepFailures)
     .sort((a, b) => b.failure_count - a.failure_count)
     .slice(0, 10);
+
+  if (useCache) {
+    metricsCache.set(cacheKey, result, DEFAULT_CACHE_TTL);
+  }
+
+  return result;
 }

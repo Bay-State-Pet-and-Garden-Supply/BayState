@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ScraperConfig } from '../scrapers/ConfigList';
 import { StudioConfigEditor } from './StudioConfigEditor';
 import { StudioConfigListClient } from './StudioConfigListClient';
@@ -8,6 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface ConfigEditorWrapperProps {
   configs: ScraperConfig[];
+  totalCount: number;
+  currentPage: number;
+  pageSize: number;
+  initialFilter?: string;
 }
 
 interface EditorState {
@@ -16,7 +21,18 @@ interface EditorState {
   configName: string;
 }
 
-export function StudioConfigEditorWrapper({ configs }: ConfigEditorWrapperProps) {
+const DEFAULT_PAGE_SIZE = 20;
+
+export function StudioConfigEditorWrapper({
+  configs,
+  totalCount,
+  currentPage,
+  pageSize,
+  initialFilter = '',
+}: ConfigEditorWrapperProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [editorState, setEditorState] = useState<EditorState>({
     isOpen: false,
     configId: null,
@@ -67,6 +83,23 @@ export function StudioConfigEditorWrapper({ configs }: ConfigEditorWrapperProps)
     setConfigData(null);
   }, []);
 
+  const handlePageChange = useCallback((page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', page.toString());
+    router.push(`/admin/scrapers/studio?${params.toString()}`);
+  }, [searchParams, router]);
+
+  const handleFilterChange = useCallback((filter: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (filter) {
+      params.set('filter', filter);
+    } else {
+      params.delete('filter');
+    }
+    params.set('page', '0');
+    router.push(`/admin/scrapers/studio?${params.toString()}`);
+  }, [searchParams, router]);
+
   if (editorState.isOpen) {
     if (isLoading) {
       return (
@@ -106,7 +139,18 @@ export function StudioConfigEditorWrapper({ configs }: ConfigEditorWrapperProps)
     );
   }
 
-  return <StudioConfigListClient initialData={configs} onEdit={handleEdit} />;
+  return (
+    <StudioConfigListClient
+      initialData={configs}
+      totalCount={totalCount}
+      currentPage={currentPage}
+      pageSize={pageSize}
+      initialFilter={initialFilter}
+      onEdit={handleEdit}
+      onPageChange={handlePageChange}
+      onFilterChange={handleFilterChange}
+    />
+  );
 }
 
 export default StudioConfigEditorWrapper;

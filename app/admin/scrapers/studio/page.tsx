@@ -9,14 +9,22 @@ export const metadata: Metadata = {
   description: 'Advanced environment for scraper development and testing',
 };
 
-export default function ScraperStudioPage() {
+interface ScraperStudioPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function ScraperStudioPage({ searchParams }: ScraperStudioPageProps) {
+  const params = await searchParams;
+  const page = typeof params.page === 'string' ? parseInt(params.page, 10) : 0;
+  const filter = typeof params.filter === 'string' ? params.filter : '';
+
   return (
-    <StudioClient 
+    <StudioClient
       configsSlot={
         <Suspense fallback={<ConfigListSkeleton />}>
-          <StudioConfigList />
+          <StudioConfigList page={page} filter={filter} />
         </Suspense>
-      } 
+      }
     />
   );
 }

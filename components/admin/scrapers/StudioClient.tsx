@@ -1,14 +1,33 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ReactNode } from 'react';
+import { ReactNode, Suspense } from 'react';
 
 import StudioHealthDashboard from './studio/health/StudioHealthDashboard';
 import StepMetricsDashboard from './studio/health/StepMetricsDashboard';
+import { HealthDashboardSkeleton } from './studio/health/HealthDashboardSkeleton';
+import { StepMetricsSkeleton } from './studio/health/StepMetricsSkeleton';
 import { TestRunHistory } from '@/components/admin/scraper-studio/TestRunHistory';
+import { StudioErrorBoundary } from './studio/StudioErrorBoundary';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface StudioClientProps {
   configsSlot?: ReactNode;
+}
+
+function TestRunHistorySkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-4 w-[200px]" />
+            <Skeleton className="h-4 w-[100px]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function StudioClient({ configsSlot }: StudioClientProps) {
@@ -42,11 +61,23 @@ export default function StudioClient({ configsSlot }: StudioClientProps) {
           </div>
         </TabsContent>
         <TabsContent value="health" className="space-y-6">
-          <StudioHealthDashboard />
-          <StepMetricsDashboard />
+          <StudioErrorBoundary componentName="Health Dashboard">
+            <Suspense fallback={<HealthDashboardSkeleton />}>
+              <StudioHealthDashboard />
+            </Suspense>
+          </StudioErrorBoundary>
+          <StudioErrorBoundary componentName="Step Metrics">
+            <Suspense fallback={<StepMetricsSkeleton />}>
+              <StepMetricsDashboard />
+            </Suspense>
+          </StudioErrorBoundary>
         </TabsContent>
         <TabsContent value="history" className="space-y-4">
-          <TestRunHistory />
+          <StudioErrorBoundary componentName="Test Run History">
+            <Suspense fallback={<TestRunHistorySkeleton />}>
+              <TestRunHistory />
+            </Suspense>
+          </StudioErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>

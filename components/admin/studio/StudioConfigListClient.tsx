@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useTransition, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Search, 
   MoreHorizontal, 
@@ -14,6 +15,7 @@ import {
   XCircle,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,30 +30,62 @@ import type { ScraperConfig } from '../scrapers/ConfigList';
 
 interface StudioConfigListClientProps {
   initialData: ScraperConfig[];
+  totalCount: number;
+  currentPage: number;
+  pageSize: number;
+  initialFilter?: string;
   onEdit: (config: ScraperConfig) => void;
+  onPageChange?: (page: number) => void;
+  onFilterChange?: (filter: string) => void;
 }
 
-const ITEMS_PER_PAGE = 10;
+const FILTER_DEBOUNCE_MS = 300;
 
-export function StudioConfigListClient({ initialData, onEdit }: StudioConfigListClientProps) {
-  const [filterText, setFilterText] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
+export function StudioConfigListClient({ 
+  initialData, 
+  totalCount,
+  currentPage,
+  pageSize,
+  initialFilter = '',
+  onEdit,
+  onPageChange,
+  onFilterChange,
+}: StudioConfigListClientProps) {
+  const [filterText, setFilterText] = useState(initialFilter);
+  const [isPending, startTransition] = useTransition();
+  const filterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filteredConfigs = useMemo(() => {
-    if (!filterText) return initialData;
-    const lower = filterText.toLowerCase();
-    return initialData.filter(
-      (c) =>
-        c.display_name.toLowerCase().includes(lower) ||
-        c.slug.toLowerCase().includes(lower)
-    );
-  }, [initialData, filterText]);
+  const totalPages = Math.ceil(totalCount / pageSize);
 
-  const totalPages = Math.ceil(filteredConfigs.length / ITEMS_PER_PAGE);
-  const paginatedConfigs = filteredConfigs.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE
-  );
+  const handleFilterChange = useCallback((value: string) => {
+    setFilterText(value);
+    
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
+    
+    const timeout = setTimeout(() => {
+      startTransition(() => {
+        onFilterChange?.(value);
+      });
+    }, FILTER_DEBOUNCE_MS);
+    
+    filterTimeoutRef.current = timeout;
+  }, [onFilterChange]);
+
+  useEffect(() => {
+    return () => {
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    startTransition(() => {
+      onPageChange?.(newPage);
+    });
+  }, [onPageChange]);
 
   return (
     <div className="space-y-4">
@@ -61,19 +95,24 @@ export function StudioConfigListClient({ initialData, onEdit }: StudioConfigList
           <Input
             placeholder="Filter by name..."
             value={filterText}
-            onChange={(e) => {
-              setFilterText(e.target.value);
-              setCurrentPage(0);
-            }}
+            onChange={(e) => handleFilterChange(e.target.value)}
             className="h-8 w-[250px]"
+            disabled={isPending}
           />
+          {isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
         <div className="text-xs text-muted-foreground">
-          {filteredConfigs.length} configs found
+          {totalCount} total configs
+          {filterText && ` (filtered from ${totalCount})`}
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border relative">
+        {isPending && (
+          <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
         <table className="w-full">
           <thead className="border-b bg-muted/50">
             <tr>
@@ -86,8 +125,8 @@ export function StudioConfigListClient({ initialData, onEdit }: StudioConfigList
             </tr>
           </thead>
           <tbody>
-            {paginatedConfigs.length > 0 ? (
-              paginatedConfigs.map((config) => (
+            {initialData.length > 0 ? (
+              initialData.map((config) => (
                 <tr key={config.id} className="border-b hover:bg-muted/50">
                   <td className="p-4">
                     <div className="flex flex-col">
@@ -160,8 +199,8 @@ export function StudioConfigListClient({ initialData, onEdit }: StudioConfigList
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
-            disabled={currentPage === 0}
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 0 || isPending}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
@@ -172,8 +211,8 @@ export function StudioConfigListClient({ initialData, onEdit }: StudioConfigList
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={currentPage >= totalPages - 1}
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages - 1 || isPending}
           >
             Next
             <ChevronRight className="h-4 w-4 ml-1" />

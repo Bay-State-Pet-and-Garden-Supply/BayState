@@ -1,10 +1,3 @@
-/**
- * useTestRunSubscription - Supabase Postgres Changes hook for subscribing to scraper_test_run_steps table
- *
- * This hook subscribes to INSERT, UPDATE, and DELETE events on the scraper_test_run_steps table.
- * Used for real-time tracking of test run steps execution.
- */
-
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
@@ -30,17 +23,16 @@ export interface TestRunSubscriptionState {
 }
 
 export interface UseTestRunSubscriptionOptions {
-  /** The test run ID to subscribe to */
   testRunId: string;
-  /** Initial steps data */
   initialSteps?: TestRunStep[];
-  /** Whether to automatically connect on mount (default: true) */
   autoConnect?: boolean;
+  debounceMs?: number;
 }
 
 const DEFAULT_OPTIONS: Partial<UseTestRunSubscriptionOptions> = {
   autoConnect: true,
   initialSteps: [],
+  debounceMs: 100,
 };
 
 export function useTestRunSubscription(
@@ -53,6 +45,7 @@ export function useTestRunSubscription(
     testRunId,
     initialSteps = [],
     autoConnect = true,
+    debounceMs = 100,
   } = { ...DEFAULT_OPTIONS, ...options };
 
   const [state, setState] = useState<TestRunSubscriptionState>({
@@ -63,6 +56,8 @@ export function useTestRunSubscription(
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const pendingUpdatesRef = useRef<RealtimePostgresChangesPayload<TestRunStep>[]>([]);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setState(prev => ({
@@ -78,37 +73,44 @@ export function useTestRunSubscription(
     return supabaseRef.current;
   }, []);
 
-  const handleRealtimeUpdate = useCallback((payload: RealtimePostgresChangesPayload<TestRunStep>) => {
-    const { eventType, new: newRecord, old: oldRecord } = payload;
-    const newStep = newRecord as TestRunStep;
-    const oldStep = oldRecord as TestRunStep;
+  const processPendingUpdates = useCallback(() => {
+    const updates = pendingUpdatesRef.current;
+    pendingUpdatesRef.current = [];
+
+    if (updates.length === 0) return;
 
     setState((prev) => {
       let currentSteps = [...prev.steps];
 
-      switch (eventType) {
-        case 'INSERT':
-          if (newStep.test_run_id === testRunId) {
-            if (!currentSteps.find((s) => s.id === newStep.id)) {
-              currentSteps.push(newStep);
+      updates.forEach((payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        const newStep = newRecord as TestRunStep;
+        const oldStep = oldRecord as TestRunStep;
+
+        switch (eventType) {
+          case 'INSERT':
+            if (newStep.test_run_id === testRunId) {
+              if (!currentSteps.find((s) => s.id === newStep.id)) {
+                currentSteps.push(newStep);
+              }
             }
-          }
-          break;
+            break;
 
-        case 'UPDATE':
-          if (newStep.test_run_id === testRunId) {
-            currentSteps = currentSteps.map((step) =>
-              step.id === newStep.id ? newStep : step
-            );
-          }
-          break;
+          case 'UPDATE':
+            if (newStep.test_run_id === testRunId) {
+              currentSteps = currentSteps.map((step) =>
+                step.id === newStep.id ? newStep : step
+              );
+            }
+            break;
 
-        case 'DELETE':
-          if (oldStep && oldStep.test_run_id === testRunId) {
-            currentSteps = currentSteps.filter((step) => step.id !== oldStep.id);
-          }
-          break;
-      }
+          case 'DELETE':
+            if (oldStep && oldStep.test_run_id === testRunId) {
+              currentSteps = currentSteps.filter((step) => step.id !== oldStep.id);
+            }
+            break;
+        }
+      });
 
       return {
         ...prev,
@@ -116,6 +118,18 @@ export function useTestRunSubscription(
       };
     });
   }, [testRunId]);
+
+  const handleRealtimeUpdate = useCallback((payload: RealtimePostgresChangesPayload<TestRunStep>) => {
+    pendingUpdatesRef.current.push(payload);
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      processPendingUpdates();
+    }, debounceMs);
+  }, [debounceMs, processPendingUpdates]);
 
   const connect = useCallback(() => {
     if (!testRunId) return;
@@ -168,8 +182,16 @@ export function useTestRunSubscription(
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
+    }
+
+    processPendingUpdates();
+
     setState((prev) => ({ ...prev, isConnected: false }));
-  }, [getSupabase]);
+  }, [getSupabase, processPendingUpdates]);
 
   useEffect(() => {
     if (autoConnect && testRunId) {
@@ -179,6 +201,14 @@ export function useTestRunSubscription(
       disconnect();
     };
   }, [autoConnect, testRunId, connect, disconnect]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     ...state,
