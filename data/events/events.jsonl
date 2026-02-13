@@ -1,0 +1,3 @@
+{"event_type": "job.started", "timestamp": "2026-02-12T19:57:06.776846", "job_id": "test_job", "event_id": "a0cfd4ae", "severity": "info", "data": {"total_skus": 10, "scrapers": ["scraper1", "scraper2"], "max_workers": 1, "test_mode": false}}
+{"event_type": "job.started", "timestamp": "2026-02-12T19:57:47.503223", "job_id": "test_job", "event_id": "6285ae91", "severity": "info", "data": {"total_skus": 10, "scrapers": ["scraper1", "scraper2"], "max_workers": 1, "test_mode": false}}
+{"event_type": "job.started", "timestamp": "2026-02-12T19:57:53.399121", "job_id": "test_job", "event_id": "92e8cc18", "severity": "info", "data": {"total_skus": 10, "scrapers": ["scraper1", "scraper2"], "max_workers": 1, "test_mode": false}}

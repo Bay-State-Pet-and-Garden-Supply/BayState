@@ -46507,3 +46507,5 @@
 {"timestamp": "2026-02-13T00:31:57.289352+00:00", "level": "INFO", "logger": "daemon", "message": "============================================================"}
 {"timestamp": "2026-02-13T00:31:57.289397+00:00", "level": "INFO", "logger": "daemon", "message": "Daemon shutting down. Chunks completed: 0"}
 {"timestamp": "2026-02-13T00:31:57.289440+00:00", "level": "INFO", "logger": "daemon", "message": "============================================================"}
+{"timestamp": "2026-02-13T00:58:07.356978+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}
+{"timestamp": "2026-02-13T00:58:07.368563+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}
