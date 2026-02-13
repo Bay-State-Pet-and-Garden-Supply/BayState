@@ -60,7 +60,7 @@ export function StudioConfigEditorWrapper({
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/admin/scrapers/configs/${config.id}`);
+      const response = await fetch(`/api/admin/scraper-configs/${config.id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch config');
       }
