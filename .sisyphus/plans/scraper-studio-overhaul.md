@@ -270,7 +270,7 @@ Parallel Speedup: ~50% faster than sequential
 
 ### Wave 1: Foundation
 
-- [ ] **1. Database Schema: Test SKUs and Health Metrics**
+- [x] **1. Database Schema: Test SKUs and Health Metrics** ✓ COMPLETED
 
   **What to do:**
   - Create `scraper_config_test_skus` table for custom SKU overrides
@@ -414,7 +414,7 @@ Parallel Speedup: ~50% faster than sequential
   - Files: `BayStateApp/supabase/migrations/YYYYMMDDTTMMSS_add_scraper_studio_tables.sql`
   - Note: Run `npx supabase gen types typescript --local` to regenerate types after migration
 
-- [ ] **2. Runner Event Schema v2 Design**
+- [x] **2. Runner Event Schema v2 Design** ✓ COMPLETED
 
   **What to do:**
   - Design event schema v2 with backward compatibility
@@ -551,7 +551,7 @@ Parallel Speedup: ~50% faster than sequential
   - Message: `docs(scraper): design event schema v2 with backward compatibility`
   - Files: `BayStateScraper/docs/event-schema-v2.json`, `BayStateScraper/docs/event-versioning.md`
 
-- [ ] **3. Studio Page Shell + Layout**
+- [x] **3. Studio Page Shell + Layout** ✓ COMPLETED
 
   **What to do:**
   - Create new route: `BayStateApp/app/admin/scrapers/studio/page.tsx`
@@ -611,7 +611,7 @@ Parallel Speedup: ~50% faster than sequential
   - Message: `feat(admin): create scraper studio page shell with tabs`
   - Files: `BayStateApp/app/admin/scrapers/studio/page.tsx`, `BayStateApp/app/admin/scrapers/studio/layout.tsx`
 
-- [ ] **4. Config List Component**
+- [x] **4. Config List Component** ✓ COMPLETED
 
   **What to do:**
   - Create server component to fetch configs with versions
@@ -665,7 +665,7 @@ Parallel Speedup: ~50% faster than sequential
 
 ### Wave 2: Core Features
 
-- [ ] **5. Config Editor Integration**
+- [x] **5. Config Editor Integration** ✓ COMPLETED
 
   **What to do:**
   - Integrate existing config editor into studio
@@ -714,7 +714,7 @@ Parallel Speedup: ~50% faster than sequential
   - Message: `feat(admin): integrate config editor into studio`
   - Files: `BayStateApp/components/admin/scraper-studio/ConfigEditor.tsx`
 
-- [ ] **6. Version History + Publish Workflow**
+- [x] **6. Version History + Publish Workflow** ✓ COMPLETED
 
   **What to do:**
   - Create version history sidebar/panel
@@ -785,7 +785,7 @@ Parallel Speedup: ~50% faster than sequential
   - Message: `feat(admin): add version history and publish workflow`
   - Files: `BayStateApp/components/admin/scraper-studio/VersionHistory.tsx`, `BayStateApp/app/admin/scrapers/studio/actions.ts`
 
-- [ ] **7. Test Execution API Endpoints**
+- [x] **7. Test Execution API Endpoints** ✓ COMPLETED
 
   **What to do:**
   - Create `POST /api/admin/scrapers/studio/test` - Trigger test run
@@ -861,7 +861,7 @@ Parallel Speedup: ~50% faster than sequential
   - Message: `feat(api): add test execution endpoints for studio`
   - Files: `BayStateApp/app/api/admin/scrapers/studio/test/route.ts`, `BayStateApp/app/api/admin/scrapers/studio/test/[id]/route.ts`
 
-- [ ] **8. Runner Event Implementation**
+- [x] **8. Runner Event Implementation** ✓ COMPLETED
 
   **What to do:**
   - Modify Python runner to emit v2 events
