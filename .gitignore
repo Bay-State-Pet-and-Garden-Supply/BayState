@@ -1,0 +1,5 @@
+
+# Sisyphus QA Evidence - Ignore all evidence files except markers
+.sisyphus/evidence/*
+!.sisyphus/evidence/.gitkeep
+!.sisyphus/evidence/README.md
