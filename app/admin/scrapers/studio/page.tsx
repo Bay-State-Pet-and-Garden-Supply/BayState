@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import StudioClient from '@/components/admin/scrapers/StudioClient';
-import { ConfigList } from '@/components/admin/scrapers/ConfigList';
+import { StudioConfigList } from '@/components/admin/studio/StudioConfigList';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -14,7 +14,7 @@ export default function ScraperStudioPage() {
     <StudioClient 
       configsSlot={
         <Suspense fallback={<ConfigListSkeleton />}>
-          <ConfigList />
+          <StudioConfigList />
         </Suspense>
       } 
     />

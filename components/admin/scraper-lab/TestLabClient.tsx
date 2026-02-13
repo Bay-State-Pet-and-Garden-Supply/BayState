@@ -333,18 +333,20 @@ export function TestLabClient({ scrapers, recentTests }: TestLabClientProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex gap-4">
-          <Select onValueChange={handleSelectScraper} value={selectedScraper?.id} className="flex-1">
-            <SelectTrigger className="max-w-md">
-              <SelectValue placeholder="Select a scraper..." />
-            </SelectTrigger>
-            <SelectContent>
-              {scrapers.map((scraper) => (
-                <SelectItem key={scraper.id} value={scraper.id}>
-                  {scraper.display_name || scraper.slug} ({scraper.config.base_url || `https://${scraper.domain}`})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex-1">
+            <Select onValueChange={handleSelectScraper} value={selectedScraper?.id}>
+              <SelectTrigger className="max-w-md">
+                <SelectValue placeholder="Select a scraper..." />
+              </SelectTrigger>
+              <SelectContent>
+                {scrapers.map((scraper) => (
+                  <SelectItem key={scraper.id} value={scraper.id}>
+                    {scraper.display_name || scraper.slug} ({scraper.config.base_url || `https://${scraper.domain}`})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {selectedScraper && (
             <Button variant="outline" onClick={handleEditConfig}>
               <Settings className="mr-2 h-4 w-4" />

@@ -1,0 +1,61 @@
+import { createClient } from '@/lib/supabase/server';
+import { StudioConfigEditorWrapper } from './StudioConfigEditorWrapper';
+import type { ScraperConfig } from '../scrapers/ConfigList';
+
+export async function StudioConfigList() {
+  const supabase = await createClient();
+
+  const { data: configs, error } = await supabase
+    .from('scraper_configs')
+    .select(`
+      id,
+      slug,
+      display_name,
+      domain,
+      updated_at,
+      scraper_config_versions (count)
+    `)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching scraper configs:', error);
+    return <div className="text-red-500">Error loading configurations</div>;
+  }
+
+  const { data: healthMetrics } = await supabase
+    .from('scraper_health_metrics')
+    .select('config_id, passed_runs, total_runs')
+    .order('metric_date', { ascending: false });
+
+  const formattedConfigs: ScraperConfig[] = (configs || []).map((config) => {
+    const latestMetric = healthMetrics?.find(m => m.config_id === config.id);
+
+    let health_status: ScraperConfig['health_status'] = 'unknown';
+    let health_score = 0;
+
+    if (latestMetric && latestMetric.total_runs > 0) {
+      const rate = latestMetric.passed_runs / latestMetric.total_runs;
+      health_score = Math.round(rate * 100);
+      if (rate > 0.9) health_status = 'healthy';
+      else if (rate > 0.6) health_status = 'degraded';
+      else health_status = 'broken';
+    }
+
+    return {
+      id: config.id,
+      slug: config.slug,
+      display_name: config.display_name,
+      domain: config.domain,
+      status: 'active',
+      health_status,
+      health_score,
+      last_test_at: config.updated_at,
+      version_count: config.scraper_config_versions?.[0]?.count || 0,
+      updated_at: config.updated_at,
+    };
+  });
+
+  return <StudioConfigEditorWrapper configs={formattedConfigs} />;
+}
+
+export default StudioConfigList;
