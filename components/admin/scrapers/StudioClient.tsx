@@ -1,8 +1,13 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ReactNode } from 'react';
 
-export default function StudioClient() {
+interface StudioClientProps {
+  configsSlot?: ReactNode;
+}
+
+export default function StudioClient({ configsSlot }: StudioClientProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -25,9 +30,7 @@ export default function StudioClient() {
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
         <TabsContent value="configs" className="space-y-4">
-          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            Scraper configurations will appear here.
-          </div>
+          {configsSlot}
         </TabsContent>
         <TabsContent value="testing" className="space-y-4">
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
