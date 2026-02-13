@@ -52,8 +52,13 @@ function formatDuration(ms: number | undefined): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-function formatDate(date: string): string {
-  return new Date(date).toLocaleString();
+function formatDate(date: string | null | undefined): string {
+  if (!date) return '-';
+  try {
+    return new Date(date).toLocaleString();
+  } catch (e) {
+    return date;
+  }
 }
 
 function getStatusIcon(status: string) {

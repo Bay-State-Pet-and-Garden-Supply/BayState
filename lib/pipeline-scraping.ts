@@ -15,6 +15,8 @@ export interface ScrapeOptions {
     maxRunners?: number;
     /** Maximum retry attempts before terminal failure (default: 3) */
     maxAttempts?: number;
+    /** Number of SKUs per chunk (default: 50) */
+    chunkSize?: number;
 }
 
 export interface ScrapeResult {
@@ -35,6 +37,7 @@ export async function scrapeProducts(
     const testMode = options?.testMode ?? false;
     const scrapers = options?.scrapers ?? [];
     const maxAttempts = options?.maxAttempts ?? 3;
+    const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
 
     const supabase = await createClient();
 
@@ -67,18 +70,30 @@ export async function scrapeProducts(
         return { success: false, error: 'Failed to create scraping job' };
     }
 
-    const units = skus.map((sku, index) => ({
-        job_id: job.id,
-        chunk_index: index,
-        skus: [sku],
-        scrapers,
-        status: 'pending',
-        updated_at: nowIso,
-    }));
+    // Create chunks with configurable size (default 50 SKUs per chunk)
+    const chunks: Array<{
+        job_id: string;
+        chunk_index: number;
+        skus: string[];
+        scrapers: string[];
+        status: string;
+        updated_at: string;
+    }> = [];
+    
+    for (let i = 0; i < skus.length; i += chunkSize) {
+        chunks.push({
+            job_id: job.id,
+            chunk_index: chunks.length,
+            skus: skus.slice(i, i + chunkSize),
+            scrapers,
+            status: 'pending',
+            updated_at: nowIso,
+        });
+    }
 
     const { error: unitsError } = await supabase
         .from('scrape_job_chunks')
-        .insert(units);
+        .insert(chunks);
 
     if (unitsError) {
         console.error('[Pipeline Scraping] Failed to create work units:', unitsError);
@@ -86,7 +101,7 @@ export async function scrapeProducts(
         return { success: false, error: 'Failed to create scraping work units' };
     }
 
-    console.log(`[Pipeline Scraping] Created parent job ${job.id} with ${units.length} claimable units`);
+    console.log(`[Pipeline Scraping] Created parent job ${job.id} with ${chunks.length} chunks (${chunkSize} SKUs each)`);
 
     return {
         success: true,

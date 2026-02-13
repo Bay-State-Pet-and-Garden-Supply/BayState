@@ -93,26 +93,15 @@ export async function POST(request: NextRequest) {
     // Get SKUs to test
     let skus: string[] = validatedData.skus || [];
     if (skus.length === 0) {
-      // Fetch default test SKUs from config
-      const { data: testSkus } = await adminClient
-        .from('scraper_config_test_skus')
-        .select('sku')
-        .eq('config_id', validatedData.config_id)
-        .limit(10);
-      
-      if (testSkus && testSkus.length > 0) {
-        skus = testSkus.map((s: { sku: string }) => s.sku);
+      // Extract from config YAML (test_skus stored in scraper_config_versions.config)
+      const configData = version.config;
+      if (configData?.test_skus && Array.isArray(configData.test_skus)) {
+        skus = configData.test_skus;
       } else {
-        // Fallback: extract from config YAML
-        const configData = version.config;
-        if (configData?.test_skus && Array.isArray(configData.test_skus)) {
-          skus = configData.test_skus;
-        } else {
-          return NextResponse.json(
-            { error: 'No SKUs specified and no default test SKUs found' },
-            { status: 400 }
-          );
-        }
+        return NextResponse.json(
+          { error: 'No SKUs specified and no default test SKUs found in config' },
+          { status: 400 }
+        );
       }
     }
 

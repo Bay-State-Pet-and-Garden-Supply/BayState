@@ -100,10 +100,71 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const slug = searchParams.get('slug');
+    const include_test_skus = searchParams.get('include_test_skus') === 'true';
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
     const offset = parseInt(searchParams.get('offset') || '0');
 
     const client = await createAdminClient();
+
+    // If include_test_skus, fetch the full config including test_skus
+    if (include_test_skus) {
+      let query = client
+        .from('scraper_configs')
+        .select(`
+          id,
+          slug,
+          display_name,
+          domain,
+          current_version_id,
+          schema_version,
+          created_at,
+          updated_at,
+          created_by,
+          scraper_config_versions!fk_current_version (
+            id,
+            version_number,
+            status,
+            published_at,
+            config
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (status) {
+        query = query.eq('scraper_config_versions.status', status);
+      }
+
+      if (slug) {
+        query = query.ilike('slug', `%${slug}%`);
+      }
+
+      const { data: configs, error } = await query;
+
+      if (error) {
+        console.error('Database error:', error);
+        return NextResponse.json({ error: 'Failed to fetch configs' }, { status: 500 });
+      }
+
+      const formattedConfigs = (configs || []).map((config: Record<string, unknown>) => ({
+        id: config.id,
+        slug: config.slug,
+        display_name: config.display_name,
+        domain: config.domain,
+        current_version_id: config.current_version_id,
+        schema_version: config.schema_version,
+        created_at: config.created_at,
+        updated_at: config.updated_at,
+        created_by: config.created_by,
+        status: (config.scraper_config_versions as Record<string, unknown>)?.status || null,
+        version_number: (config.scraper_config_versions as Record<string, unknown>)?.version_number || null,
+        published_at: (config.scraper_config_versions as Record<string, unknown>)?.published_at || null,
+        test_skus: ((config.scraper_config_versions as Record<string, unknown>)?.config as Record<string, unknown>)?.test_skus || [],
+        fake_skus: ((config.scraper_config_versions as Record<string, unknown>)?.config as Record<string, unknown>)?.fake_skus || [],
+      }));
+
+      return NextResponse.json({ data: formattedConfigs });
+    }
 
     let query = client
       .from('scraper_configs')
