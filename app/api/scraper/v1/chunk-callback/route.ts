@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { submitBatch } from '@/lib/consolidation/batch-service';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,6 +24,127 @@ interface ChunkCallbackRequest {
         data?: Record<string, unknown>;
     };
     error_message?: string;
+}
+
+type ScrapedDataBySku = Record<string, Record<string, unknown>>;
+
+function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedDataBySku {
+    const aggregated: ScrapedDataBySku = {};
+
+    for (const chunk of chunks) {
+        if (!chunk.results || typeof chunk.results !== 'object') continue;
+        const chunkResults = chunk.results as Record<string, unknown>;
+
+        for (const [sku, value] of Object.entries(chunkResults)) {
+            if (!value || typeof value !== 'object') continue;
+            const existing = aggregated[sku] || {};
+            aggregated[sku] = {
+                ...existing,
+                ...(value as Record<string, unknown>),
+            };
+        }
+    }
+
+    return aggregated;
+}
+
+async function persistChunkResultsToPipeline(
+    supabase: SupabaseClient,
+    jobId: string,
+    aggregatedResults: ScrapedDataBySku,
+    isTestJob: boolean
+): Promise<string[]> {
+    const skus = Object.keys(aggregatedResults);
+    if (skus.length === 0) return [];
+
+    const nowIso = new Date().toISOString();
+
+    const { data: existingProducts, error: fetchError } = await supabase
+        .from('products_ingestion')
+        .select('sku, sources')
+        .in('sku', skus);
+
+    if (fetchError) {
+        throw new Error(`Failed to fetch products for job ${jobId}: ${fetchError.message}`);
+    }
+
+    const sourcesBySku = new Map<string, Record<string, unknown>>();
+    for (const product of existingProducts || []) {
+        sourcesBySku.set(product.sku, (product.sources as Record<string, unknown>) || {});
+    }
+
+    for (const sku of skus) {
+        const updatedSources = {
+            ...(sourcesBySku.get(sku) || {}),
+            ...aggregatedResults[sku],
+            _last_scraped: nowIso,
+        };
+
+        const { data: updatedRows, error: updateError } = await supabase
+            .from('products_ingestion')
+            .update({
+                sources: updatedSources,
+                pipeline_status: 'scraped',
+                is_test_run: isTestJob,
+                updated_at: nowIso,
+            })
+            .eq('sku', sku)
+            .select('sku');
+
+        if (updateError) {
+            throw new Error(`Failed to update SKU ${sku}: ${updateError.message}`);
+        }
+
+        if (!updatedRows || updatedRows.length === 0) {
+            throw new Error(`No products_ingestion row found for SKU ${sku}`);
+        }
+    }
+
+    console.log(`[Chunk Callback] Updated ${skus.length} products_ingestion rows for job ${jobId}`);
+    return skus;
+}
+
+async function triggerConsolidationForSkus(
+    supabase: SupabaseClient,
+    jobId: string,
+    skus: string[]
+): Promise<void> {
+    if (skus.length === 0) return;
+
+    const { data: products, error: productsError } = await supabase
+        .from('products_ingestion')
+        .select('sku, sources')
+        .in('sku', skus)
+        .eq('pipeline_status', 'scraped');
+
+    if (productsError) {
+        throw new Error(`Failed to fetch scraped products for consolidation: ${productsError.message}`);
+    }
+
+    if (!products || products.length === 0) {
+        console.log(`[Chunk Callback] No scraped products to consolidate for job ${jobId}`);
+        return;
+    }
+
+    const productSources = products.map((p) => ({
+        sku: p.sku,
+        sources: (p.sources as Record<string, unknown>) || {},
+    }));
+
+    const consolidationResult = await submitBatch(productSources, {
+        description: `Auto-consolidation for scrape job ${jobId}`,
+        auto_apply: true,
+        scrape_job_id: jobId,
+    });
+
+    if (consolidationResult.success && consolidationResult.batch_id) {
+        console.log(`[Chunk Callback] Consolidation batch ${consolidationResult.batch_id} created for job ${jobId}`);
+        return;
+    }
+
+    if (!consolidationResult.success) {
+        console.error(`[Chunk Callback] Consolidation failed for job ${jobId}:`, consolidationResult.error);
+    }
 }
 
 export async function POST(request: NextRequest) {
@@ -135,13 +257,64 @@ export async function POST(request: NextRequest) {
                     skus_failed: allChunks?.reduce((sum, c) => sum + (c.skus_failed || 0), 0) || 0,
                 };
 
-                await supabase
+                const { data: updatedJob, error: jobUpdateError } = await supabase
                     .from('scrape_jobs')
                     .update({
                         status: jobStatus,
                         completed_at: new Date().toISOString(),
                     })
-                    .eq('id', jobId);
+                    .eq('id', jobId)
+                    .select('id, test_mode')
+                    .single();
+
+                if (jobUpdateError) {
+                    console.error(`[Chunk Callback] Failed to update job ${jobId}:`, jobUpdateError);
+                }
+
+                const isTestJob = updatedJob?.test_mode === true;
+
+                if (jobStatus === 'completed' && updatedJob) {
+                    const aggregatedResultsBySku = mergeChunkResults(allChunks || []);
+                    const aggregatedSkuCount = Object.keys(aggregatedResultsBySku).length;
+
+                    if (aggregatedSkuCount > 0) {
+                        try {
+                            const persistedSkus = await persistChunkResultsToPipeline(
+                                supabase,
+                                jobId,
+                                aggregatedResultsBySku,
+                                isTestJob
+                            );
+
+                            if (!isTestJob) {
+                                await triggerConsolidationForSkus(supabase, jobId, persistedSkus);
+                            } else {
+                                console.log(`[Chunk Callback] Test job ${jobId} completed - skipping consolidation`);
+                            }
+
+                            const { error: scrapeResultsError } = await supabase
+                                .from('scrape_results')
+                                .insert({
+                                    job_id: jobId,
+                                    runner_name: runner.runnerName,
+                                    data: {
+                                        skus_processed: aggregatedResults.skus_processed,
+                                        skus_successful: aggregatedResults.skus_successful,
+                                        skus_failed: aggregatedResults.skus_failed,
+                                        data: aggregatedResultsBySku,
+                                    },
+                                });
+
+                            if (scrapeResultsError) {
+                                console.error(`[Chunk Callback] Failed to insert scrape_results for job ${jobId}:`, scrapeResultsError);
+                            }
+                        } catch (persistError) {
+                            console.error(`[Chunk Callback] Failed to persist aggregated results for job ${jobId}:`, persistError);
+                        }
+                    } else {
+                        console.log(`[Chunk Callback] Job ${jobId} completed with no aggregated SKU data to persist`);
+                    }
+                }
 
                 console.log(`[Chunk Callback] Job ${jobId} completed with status: ${jobStatus}`, aggregatedResults);
             }
