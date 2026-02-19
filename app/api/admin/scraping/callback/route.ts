@@ -242,7 +242,18 @@ export async function POST(request: NextRequest) {
                 const skus = Object.keys(payload.results.data);
 
                 for (const sku of skus) {
-                    const scrapedData = payload.results.data[sku];
+                    const scrapedDataContainer = payload.results.data[sku];
+
+                    // The scraper sends data in format: { "bradley": { title, price, images } }
+                    // We need to extract the first scraper's data
+                    const scraperNames = Object.keys(scrapedDataContainer);
+                    const scraperName = scraperNames[0];
+                    const scrapedData = scraperName ? scrapedDataContainer[scraperName] : scrapedDataContainer;
+
+                    if (!scrapedData) {
+                        console.log(`[Callback] No scraped data found for SKU ${sku}`);
+                        continue;
+                    }
 
                     const { data: product } = await supabase
                         .from('products_ingestion')
@@ -274,8 +285,8 @@ export async function POST(request: NextRequest) {
 
                 console.log(`[Callback] Updated ${skus.length} products with scraped data (test_mode: ${isTestJob})`);
 
-                // Trigger consolidation for scraped products (Event-Driven Automation)
-                await onScraperComplete(payload.job_id, skus);
+                // NOTE: Consolidation is now manually triggered by users
+                // Previously: await onScraperComplete(payload.job_id, skus);
             }
         }
 

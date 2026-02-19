@@ -362,3 +362,63 @@ export async function bulkDeleteProducts(
         return { success: false, error: errorMessage, deletedCount: 0 };
     }
 }
+
+/**
+ * Clears scrape results and resets products back to staging (imported) status.
+ * This removes all scraped source data and consolidated data, allowing products
+ * to be re-enhanced from scratch.
+ */
+export async function clearScrapeResultsAndResetStatus(
+    skus: string[],
+    userId?: string
+): Promise<{ success: boolean; error?: string; updatedCount: number }> {
+    const supabase = await createClient();
+
+    try {
+        // Clear sources (scraped data) and consolidated fields, reset to staging
+        // Only update fields that are known to exist in the schema
+        const { error, count } = await supabase
+            .from('products_ingestion')
+            .update({
+                pipeline_status: 'staging',
+                sources: {},
+                consolidated: {},
+                updated_at: new Date().toISOString(),
+            })
+            .in('sku', skus);
+
+        if (error) {
+            console.error('Error clearing scrape results:', error);
+            return { success: false, error: error.message, updatedCount: 0 };
+        }
+
+        // Log the action to audit_log
+        const auditPayload = {
+            job_type: 'clear_scrape_results',
+            job_id: crypto.randomUUID(),
+            from_state: 'scraped',
+            to_state: 'staging',
+            actor_id: userId || null,
+            actor_type: userId ? 'user' : 'system',
+            metadata: {
+                cleared_skus: skus,
+                cleared_count: count || skus.length,
+                timestamp: new Date().toISOString(),
+            },
+        };
+
+        const { error: auditError } = await supabase
+            .from('pipeline_audit_log')
+            .insert([auditPayload]);
+
+        if (auditError) {
+            console.error('Warning: Failed to log clear_scrape_results to audit_log:', auditError);
+        }
+
+        return { success: true, updatedCount: count || skus.length };
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error during clear scrape results';
+        console.error('Error in clearScrapeResultsAndResetStatus:', errorMessage);
+        return { success: false, error: errorMessage, updatedCount: 0 };
+    }
+}
