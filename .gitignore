@@ -13,7 +13,9 @@ tmp/
 # Workspace / stray files (ignored in parent repo)
 package.json
 test-coastal.js
-.opencode/
+# ignore everything in .opencode except `opencode.json`
+.opencode/*
+!.opencode/opencode.json
 data/
 nul
 
