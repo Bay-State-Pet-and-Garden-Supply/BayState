@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bot, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Loader2, Sparkles, RotateCcw } from 'lucide-react';
 import type { PipelineStatus } from '@/lib/pipeline';
 import { ExportButton } from './ExportButton';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
@@ -20,12 +20,15 @@ interface BulkActionsToolbarProps {
     selectedSkus?: string[];
     onDeleteStart?: () => void;
     onDeleteEnd?: () => void;
+    onClearScrapeResults?: () => void;
+    isClearingScrapeResults?: boolean;
 }
 
 const nextStatusMap: Record<PipelineStatus, { action: string; nextStatus: PipelineStatus }[]> = {
     staging: [], // Staging (Imported) tab is now read-only, no bulk actions
     scraped: [
         { action: 'consolidate', nextStatus: 'consolidated' },
+        { action: 'reject', nextStatus: 'staging' },
     ],
     consolidated: [
         { action: 'approve', nextStatus: 'approved' },
@@ -46,6 +49,8 @@ const actionLabels: Record<string, string> = {
     reject: 'Move Back',
 };
 
+const scrapeRejectLabel = 'Clear & Reset';
+
 export function BulkActionsToolbar({
     selectedCount,
     currentStatus,
@@ -60,12 +65,15 @@ export function BulkActionsToolbar({
     selectedSkus = [],
     onDeleteStart,
     onDeleteEnd,
+    onClearScrapeResults,
+    isClearingScrapeResults = false,
 }: BulkActionsToolbarProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const actions = nextStatusMap[currentStatus];
     const showScrapeButton = currentStatus === 'staging' && onScrape;
+    const showClearScrapeButton = currentStatus === 'scraped' && onClearScrapeResults;
 
     const visibleActions = onConsolidate
         ? actions.filter(a => a.action !== 'consolidate')
@@ -147,6 +155,22 @@ export function BulkActionsToolbar({
                                         <Sparkles className="h-4 w-4" />
                                     )}
                                     {isConsolidating ? 'Consolidating...' : 'AI Consolidate'}
+                                </button>
+                            )}
+
+                            {showClearScrapeButton && (
+                                <button
+                                    onClick={onClearScrapeResults}
+                                    disabled={isClearingScrapeResults || isScraping || isConsolidating}
+                                    className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+                                    title="Clear scrape results and move back to Imported"
+                                >
+                                    {isClearingScrapeResults ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <RotateCcw className="h-4 w-4" />
+                                    )}
+                                    {isClearingScrapeResults ? 'Clearing...' : scrapeRejectLabel}
                                 </button>
                             )}
 

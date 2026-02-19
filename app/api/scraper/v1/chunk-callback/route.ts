@@ -37,10 +37,20 @@ function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedDataBySk
 
         for (const [sku, value] of Object.entries(chunkResults)) {
             if (!value || typeof value !== 'object') continue;
+            
+            // The scraper sends data in format: { "bradley": { title, price, images } }
+            // We need to extract the first scraper's data
+            const scraperData = value as Record<string, unknown>;
+            const scraperNames = Object.keys(scraperData);
+            const scraperName = scraperNames[0];
+            const extractedData = scraperName ? scraperData[scraperName] : scraperData;
+            
+            if (!extractedData) continue;
+            
             const existing = aggregated[sku] || {};
             aggregated[sku] = {
                 ...existing,
-                ...(value as Record<string, unknown>),
+                ...(extractedData as Record<string, unknown>),
             };
         }
     }
@@ -73,6 +83,9 @@ async function persistChunkResultsToPipeline(
         sourcesBySku.set(product.sku, (product.sources as Record<string, unknown>) || {});
     }
 
+    const successfulSkus: string[] = [];
+    const failedSkus: string[] = [];
+
     for (const sku of skus) {
         const updatedSources = {
             ...(sourcesBySku.get(sku) || {}),
@@ -92,16 +105,26 @@ async function persistChunkResultsToPipeline(
             .select('sku');
 
         if (updateError) {
-            throw new Error(`Failed to update SKU ${sku}: ${updateError.message}`);
+            console.error(`[Chunk Callback] Failed to update SKU ${sku}:`, updateError);
+            failedSkus.push(sku);
+            continue; // Continue with next SKU instead of failing entirely
         }
 
         if (!updatedRows || updatedRows.length === 0) {
-            throw new Error(`No products_ingestion row found for SKU ${sku}`);
+            console.error(`[Chunk Callback] No products_ingestion row found for SKU ${sku}`);
+            failedSkus.push(sku);
+            continue; // Continue with next SKU instead of failing entirely
         }
+
+        successfulSkus.push(sku);
     }
 
-    console.log(`[Chunk Callback] Updated ${skus.length} products_ingestion rows for job ${jobId}`);
-    return skus;
+    console.log(`[Chunk Callback] Updated ${successfulSkus.length}/${skus.length} products for job ${jobId}`);
+    if (failedSkus.length > 0) {
+        console.error(`[Chunk Callback] Failed to update ${failedSkus.length} SKUs:`, failedSkus);
+    }
+
+    return successfulSkus;
 }
 
 async function triggerConsolidationForSkus(
@@ -286,11 +309,9 @@ export async function POST(request: NextRequest) {
                                 isTestJob
                             );
 
-                            if (!isTestJob) {
-                                await triggerConsolidationForSkus(supabase, jobId, persistedSkus);
-                            } else {
-                                console.log(`[Chunk Callback] Test job ${jobId} completed - skipping consolidation`);
-                            }
+                            // NOTE: Consolidation is now manually triggered by users
+                            // Previously: await triggerConsolidationForSkus(supabase, jobId, persistedSkus);
+                            console.log(`[Chunk Callback] Job ${jobId} completed - consolidation must be triggered manually`);
 
                             const { error: scrapeResultsError } = await supabase
                                 .from('scrape_results')

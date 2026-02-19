@@ -75,6 +75,9 @@ export function PipelineClient({
     const [consolidationProgress, setConsolidationProgress] = useState(0);
     const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 
+    // Clear scrape results state
+    const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
+
     const [enrichingSku, setEnrichingSku] = useState<string | null>(null);
 
     // Batch enhance workspace state
@@ -408,6 +411,56 @@ export function PipelineClient({
         }
     };
 
+    const handleClearScrapeResults = async () => {
+        if (selectedSkus.size === 0) return;
+
+        const confirmed = window.confirm(
+            `Are you sure you want to clear scrape results for ${selectedSkus.size} product${selectedSkus.size > 1 ? 's' : ''}? This will move them back to the Imported tab.`
+        );
+
+        if (!confirmed) return;
+
+        setIsClearingScrapeResults(true);
+
+        try {
+            const res = await fetch('/api/admin/pipeline/clear-scrape-results', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skus: Array.from(selectedSkus) }),
+            });
+
+            if (res.ok) {
+                toast.success(`Cleared scrape results for ${selectedSkus.size} product${selectedSkus.size > 1 ? 's' : ''}`);
+                
+                // Refresh data
+                const [productsRes, countsRes] = await Promise.all([
+                    fetch(`/api/admin/pipeline?status=${activeStatus}`),
+                    fetch('/api/admin/pipeline/counts'),
+                ]);
+
+                if (productsRes.ok) {
+                    const data = await productsRes.json();
+                    setProducts(data.products);
+                }
+                if (countsRes.ok) {
+                    const data = await countsRes.json();
+                    setCounts(data.counts);
+                }
+                
+                setSelectedSkus(new Set());
+                setIsSelectingAllMatching(false);
+            } else {
+                const error = await res.json();
+                toast.error(error.error || 'Failed to clear scrape results');
+            }
+        } catch (error) {
+            console.error('Error clearing scrape results:', error);
+            toast.error('Failed to clear scrape results');
+        } finally {
+            setIsClearingScrapeResults(false);
+        }
+    };
+
     const handleView = (sku: string) => {
         setViewingSku(sku);
     };
@@ -572,6 +625,8 @@ export function PipelineClient({
                     onConsolidate={handleConsolidate}
                     isConsolidating={isConsolidating}
                     onClearSelection={() => setSelectedSkus(new Set())}
+                    onClearScrapeResults={handleClearScrapeResults}
+                    isClearingScrapeResults={isClearingScrapeResults}
                 />
             )}
 
