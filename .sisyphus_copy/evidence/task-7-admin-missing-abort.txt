@@ -1,0 +1,22 @@
+Task 7: Missing SKU Strict Fail - Admin Callback
+=================================================
+Date: 2026-02-18
+
+Strict-Fail Verification:
+- Mixed existing/missing SKU set → 409 response
+- Zero update invocations when any SKU missing
+- Error includes specific missing SKU list
+
+Response Format:
+{
+  error: 'Missing products_ingestion SKUs',
+  missing_skus: ['SKU-MISSING-1', 'SKU-MISSING-2']
+}
+
+No Partial Writes Confirmed:
+- persistProductsIngestionSourcesStrict pre-checks all SKUs
+- Throws MissingProductsIngestionSkusError before first update
+- Transaction-like all-or-nothing behavior
+
+Test: strict-fails with zero writes when any target SKU is missing ✓
+

@@ -1,0 +1,19 @@
+Task 13: Missing Required Keys - 400 Response
+===============================================
+Date: 2026-02-18
+
+Admin Payloads - Missing Required Fields:
+- Missing job_id → 400 (expects job_id string)
+- Missing status → 400 (expects status enum)
+- Empty string job_id → 400 (min length 1)
+
+Chunk Payloads - Missing Required Fields:
+- Missing chunk_id → 400 (expects chunk_id string)
+- Missing status → 400 (expects status enum)
+- Empty string chunk_id → 400 (min length 1)
+
+All missing required fields return validation failures.
+No persistence side effects.
+
+Tests: 6 passed
+

@@ -14,7 +14,7 @@ import type {
   SourceEnrichmentData 
 } from './types';
 import { validateEnrichmentConfig, ENRICHABLE_FIELDS } from './types';
-import { getAllSources, isB2BSource } from './sources';
+import { getAllSources } from './sources';
 
 /**
  * Gets the enrichment config for a product.
@@ -160,7 +160,7 @@ export async function getProductEnrichmentSummary(sku: string): Promise<ProductE
 
   const { data, error } = await supabase
     .from('products_ingestion')
-    .select('sku, sources, b2b_sources, enrichment_config')
+    .select('sku, sources, enrichment_config')
     .eq('sku', sku)
     .single();
 
@@ -170,7 +170,6 @@ export async function getProductEnrichmentSummary(sku: string): Promise<ProductE
   }
 
   const sources = (data.sources ?? {}) as Record<string, Record<string, unknown>>;
-  const b2bSources = (data.b2b_sources ?? {}) as Record<string, Record<string, unknown>>;
   const config = (data.enrichment_config ?? {}) as EnrichmentConfig;
 
   // Convert raw sources to SourceEnrichmentData format
@@ -185,28 +184,15 @@ export async function getProductEnrichmentSummary(sku: string): Promise<ProductE
     };
   }
 
-  const b2bSourcesFormatted: Record<string, SourceEnrichmentData> = {};
-  for (const [distributorCode, rawData] of Object.entries(b2bSources)) {
-    const sourceId = `b2b_${distributorCode.toLowerCase()}`;
-    b2bSourcesFormatted[sourceId] = {
-      sourceId,
-      sourceType: 'b2b',
-      fetchedAt: (rawData.synced_at as string) ?? new Date().toISOString(),
-      data: extractEnrichableFields(rawData),
-      raw: rawData,
-    };
-  }
-
   // Detect conflicts
-  const conflicts = detectConflicts(scraperSources, b2bSourcesFormatted);
+  const conflicts = detectConflicts(scraperSources);
 
   // Resolve to "Golden Record"
-  const resolved = resolveEnrichmentData(scraperSources, b2bSourcesFormatted, config);
+  const resolved = resolveEnrichmentData(scraperSources, config);
 
   return {
     sku,
     scraperSources,
-    b2bSources: b2bSourcesFormatted,
     config,
     conflicts,
     resolved,
@@ -232,11 +218,10 @@ function extractEnrichableFields(rawData: Record<string, unknown>): Partial<Reco
  * Detects fields where multiple sources provide different values.
  */
 function detectConflicts(
-  scraperSources: Record<string, SourceEnrichmentData>,
-  b2bSources: Record<string, SourceEnrichmentData>
+  scraperSources: Record<string, SourceEnrichmentData>
 ): EnrichableField[] {
   const conflicts: EnrichableField[] = [];
-  const allSources = { ...scraperSources, ...b2bSources };
+  const allSources = scraperSources;
 
   for (const field of ENRICHABLE_FIELDS) {
     const values: { source: string; value: unknown }[] = [];
@@ -266,11 +251,10 @@ function detectConflicts(
  */
 function resolveEnrichmentData(
   scraperSources: Record<string, SourceEnrichmentData>,
-  b2bSources: Record<string, SourceEnrichmentData>,
   config: EnrichmentConfig
 ): Partial<Record<EnrichableField, { value: unknown; source: string }>> {
   const resolved: Partial<Record<EnrichableField, { value: unknown; source: string }>> = {};
-  const allSources = { ...scraperSources, ...b2bSources };
+  const allSources = scraperSources;
   const enabledSources = config.enabled_sources;
 
   for (const field of ENRICHABLE_FIELDS) {

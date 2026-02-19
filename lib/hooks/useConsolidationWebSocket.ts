@@ -51,6 +51,12 @@ export function useConsolidationWebSocket(
     const connect = useCallback(() => {
         if (socketRef.current?.connected) return;
 
+        // Don't attempt connection if URL isn't configured
+        if (!url || url === 'http://localhost:3001') {
+            console.debug('[ConsolidationWS] WebSocket URL not configured, skipping connection');
+            return;
+        }
+
         setIsConnecting(true);
         setLastError(null);
 

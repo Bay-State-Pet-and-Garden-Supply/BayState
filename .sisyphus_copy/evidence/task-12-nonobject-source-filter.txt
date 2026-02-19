@@ -1,0 +1,18 @@
+Task 12: Non-Object Source Filter
+===================================
+Date: 2026-02-18
+
+Implementation:
+- Uses '?' operator for JSONB key existence
+- Works with any value type: object, string, number, null, array
+
+Non-Object Test Cases:
+- Source value: string-value → filtered correctly ✓
+- Source value: 123 (number) → filtered correctly ✓
+- Source value: null → filtered correctly ✓
+- Source value: [1, 2, 3] (array) → filtered correctly ✓
+
+Heterogeneous source values now supported.
+
+Tests Passing: 6/6
+

@@ -182,4 +182,4 @@ export interface ProductType {
 /**
  * Pipeline status for product ingestion.
  */
-export type PipelineStatus = 'pending' | 'consolidated' | 'approved' | 'flagged' | 'failed';
+export type PipelineStatus = 'staging' | 'scraped' | 'consolidated' | 'approved' | 'published' | 'failed';

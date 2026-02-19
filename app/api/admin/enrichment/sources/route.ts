@@ -5,7 +5,7 @@ import { getAllSources } from '@/lib/enrichment/sources';
 /**
  * GET /api/admin/enrichment/sources
  * 
- * Fetches all available enrichment sources (scrapers + B2B feeds).
+ * Fetches all available enrichment sources (web scrapers).
  * Used by batch enhancement to show source selection without a specific SKU.
  */
 export async function GET() {

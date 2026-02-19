@@ -1,0 +1,73 @@
+================================================================================
+F4: SCOPE FIDELITY CHECK
+================================================================================
+Date: 2026-02-18
+Plan: .sisyphus/plans/scraper-callback-persistence-multi-source.md (READ-ONLY)
+Executor: Sisyphus-Junior
+================================================================================
+
+Scope under review
+- Final Verification task F4 only
+- Plan tasks 1-15 + final scope guardrail
+
+Changed-file evidence snapshots used
+- Repo root: `git status --short`, `git diff --name-only`
+- BayStateApp: `git status --short --untracked-files=all`, `git diff --name-only`
+- Dependency manifests: `git diff --name-only -- package.json package-lock.json`
+
+UNDER-BUILD CHECK (Tasks 1-15 artifacts)
+--------------------------------------------------------------------------------
+| Requirement area | Evidence | Status |
+|---|---|---|
+| Task 1 shared callback contract/type guards | `lib/scraper-callback/contract.ts`, `__tests__/validation/callback-validation.test.ts`, evidence `task-1-valid-contract.txt`, `task-1-malformed-reject.txt` | ✅ In-scope complete |
+| Task 2 strict missing-SKU helper | `lib/scraper-callback/products-ingestion.ts`, `MissingProductsIngestionSkusError`, tests `products-ingestion-callback.test.ts`, evidence `task-2-all-skus-exist.txt`, `task-2-missing-sku-fail.txt` | ✅ In-scope complete |
+| Task 3 prod vs test-mode semantics | admin/chunk callback route branches (`isTestJob`), evidence `task-3-prod-persists.txt`, `task-3-test-skip.txt` | ✅ In-scope complete |
+| Task 4 idempotency/replay strategy | `lib/scraper-callback/idempotency.ts`, integration tests `callback-idempotency.test.ts`, evidence `task-4-first-process.txt`, `task-4-duplicate-noop.txt` | ✅ In-scope complete |
+| Task 5 strict auth local/prod parity | `lib/scraper-auth.ts`, tests `scraper-auth-callback.test.ts`, evidence `task-5-valid-auth.txt`, `task-5-invalid-auth.txt` | ✅ In-scope complete |
+| Task 6 admin route shared primitives | `app/api/admin/scraping/callback/route.ts` imports shared contract/persistence/idempotency, evidence `task-6-admin-valid.txt`, `task-6-admin-malformed.txt` | ✅ In-scope complete |
+| Task 7 admin atomic strict-fail writes | `persistProductsIngestionSourcesStrict` usage + `MissingProductsIngestionSkusError` handling in admin route, evidence `task-7-admin-all-valid.txt`, `task-7-admin-missing-abort.txt` | ✅ In-scope complete |
+| Task 8 consolidation gated on persistence success | admin route triggers `onScraperComplete` only after successful strict persistence; evidence `task-8-consolidation-trigger.txt`, `task-8-consolidation-suppressed.txt` | ✅ In-scope complete |
+| Task 9 chunk route shared primitives | `app/api/scraper/v1/chunk-callback/route.ts` uses shared parser/auth/persistence/idempotency; evidence `task-9-chunk-valid.txt` present; expected `task-9-chunk-malformed.txt` missing by filename | ⚠️ Partial evidence gap (artifact naming/absence) |
+| Task 10 chunk atomic strict-fail + status consistency | chunk route strict persistence + deterministic 409 for missing SKUs; evidence `task-10-chunk-persist-success.txt` present; expected `task-10-chunk-missing-fail.txt` missing by filename | ⚠️ Partial evidence gap (artifact naming/absence) |
+| Task 11 replay/idempotency tests both callbacks | `callback-idempotency.test.ts`, `idempotency.test.ts`, evidence `task-11-first-delivery.txt`, `task-11-replay-noop.txt` | ✅ In-scope complete |
+| Task 12 heterogeneous source filter behavior | `lib/pipeline.ts` uses JSONB key-exists operator `?`, tests `__tests__/lib/pipeline.test.ts`, evidence `task-12-object-source-filter.txt`, `task-12-nonobject-source-filter.txt` | ✅ In-scope complete |
+| Task 13 malformed payload matrix tests | `callback-validation.test.ts` expanded matrix, evidence `task-13-missing-required.txt`, `task-13-wrong-type.txt` | ✅ In-scope complete |
+| Task 14 integrated regression run | evidence `task-14-targeted-tests.txt`, `task-14-full-tests.txt` | ✅ In-scope complete |
+| Task 15 parity behavior matrix | evidence `task-15-prod-persist.txt`, `task-15-strict-fail-no-partial.txt` | ✅ In-scope complete |
+
+OVER-BUILD CHECK (outside callback/persistence scope)
+--------------------------------------------------------------------------------
+| Requirement area | Evidence | Status |
+|---|---|---|
+| Callback-scope code diff in BayStateApp | Changed/untracked files are callback routes, shared callback libs, callback/pipeline tests, and `lib/pipeline.ts` source-filter hardening | ✅ In-scope |
+| No global pipeline redesign | No observed changes to orchestration architecture, migrations, or unrelated pipeline subsystems in callback diff set | ✅ In-scope |
+| Unrelated workspace churn separation | Root repo includes pre-existing unrelated modifications (`.sisyphus/boulder.json`, `.sisyphus/plans/scraper-studio-overhaul.md`, `BayStateScraper`, logs, events) not attributable to callback scope | ✅ Distinguished as pre-existing/out-of-scope churn |
+
+DEPENDENCY CHECK
+--------------------------------------------------------------------------------
+- `git diff --name-only -- package.json package-lock.json` in `BayStateApp` returned no changes.
+- Verdict: no new package dependencies added for callback effort.
+
+FINDINGS
+--------------------------------------------------------------------------------
+In-scope findings:
+- Implementation files and tests align with plan’s callback/persistence hardening objectives.
+- Guardrail "No global pipeline redesign outside callback/persistence scope" is respected in the callback workset.
+- No dependency footprint expansion detected.
+
+Out-of-scope / deviation findings:
+- Workspace has unrelated pre-existing churn outside callback scope (root-level logs/plans/other project changes).
+- Evidence filename gaps for Task 9 malformed and Task 10 missing-SKU scenario artifacts (expected by plan naming), while route/tests and broader F3 evidence indicate behavior coverage.
+
+FINAL SCOPE FIDELITY VERDICT
+--------------------------------------------------------------------------------
+Overall: ⚠️ CONDITIONALLY IN-SCOPE
+
+Rationale:
+1) No over-build detected in callback/persistence implementation scope.
+2) Under-build at code/test capability level is not indicated.
+3) Evidence traceability has two filename-level gaps (Task 9 malformed artifact, Task 10 missing-fail artifact) that should be reconciled for strict plan-to-artifact completeness.
+
+================================================================================
+F4 CHECK COMPLETE
+================================================================================
