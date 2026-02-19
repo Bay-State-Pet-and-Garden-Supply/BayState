@@ -1,1 +1,19 @@
-/node_modules\n/.next\n/dist\n.env*\n.DS_Store\nlogs/\ntmp/\n.sisyphus/\n.vscode/\n*.log\n
+# Node / build artifacts
+/node_modules/
+/.next/
+/dist/
+.env*
+.DS_Store
+logs/
+tmp/
+.sisyphus/
+.vscode/
+*.log
+
+# Workspace / stray files (ignored in parent repo)
+package.json
+test-coastal.js
+.opencode/
+data/
+nul
+
