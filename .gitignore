@@ -1,0 +1,1 @@
+/node_modules\n/.next\n/dist\n.env*\n.DS_Store\nlogs/\ntmp/\n.sisyphus/\n.vscode/\n*.log\n
