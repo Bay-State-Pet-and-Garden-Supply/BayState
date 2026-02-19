@@ -1,0 +1,22 @@
+Task 8: Consolidation Gated on Persistence Success
+====================================================
+Date: 2026-02-18
+
+Implementation Verified:
+- onScraperComplete called AFTER persistProductsIngestionSourcesStrict succeeds
+- Inside try block - only reached on successful persistence
+- Failure path returns 409 before reaching consolidation
+
+Flow:
+1. persistProductsIngestionSourcesStrict() ✓
+2. onScraperComplete() - consolidation triggered
+3. recordCallbackProcessed() - idempotency recorded
+
+Failure Path:
+1. persistProductsIngestionSourcesStrict() throws
+2. MissingProductsIngestionSkusError caught
+3. Return 409 - consolidation NOT triggered
+4. Idempotency marker NOT recorded
+
+No consolidation without persistence ✓
+

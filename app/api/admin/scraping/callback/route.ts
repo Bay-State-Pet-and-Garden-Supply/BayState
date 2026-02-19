@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { submitBatch } from '@/lib/consolidation/batch-service';
+import {
+    parseScraperCallbackPayload,
+    ScraperCallbackPayload,
+    isCallbackValidationSuccess,
+} from '@/lib/scraper-callback/contract';
+import {
+    persistProductsIngestionSourcesPartial,
+} from '@/lib/scraper-callback/products-ingestion';
+import {
+    checkIdempotency,
+    recordCallbackProcessed,
+} from '@/lib/scraper-callback/idempotency';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,8 +27,9 @@ function getSupabaseAdmin(): SupabaseClient {
 /**
  * Trigger consolidation for scraped products (Event-Driven Automation)
  * This function is called after a scrape job completes successfully
+ * NOTE: Currently disabled - consolidation is now manually triggered by users
  */
-async function onScraperComplete(jobId: string, skus: string[]): Promise<void> {
+async function onScraperComplete(jobId: string, _skus: string[]): Promise<void> {
     try {
         const supabase = getSupabaseAdmin();
 
@@ -38,67 +51,35 @@ async function onScraperComplete(jobId: string, skus: string[]): Promise<void> {
             sources: p.sources as Record<string, unknown>,
         }));
 
-        console.log(`[Callback] Triggering consolidation for ${productSources.length} products from job ${jobId}`);
-
-        // Submit batch for AI consolidation
-        const result = await submitBatch(productSources, {
-            description: `Auto-consolidation for scrape job ${jobId}`,
-            auto_apply: true,
-            scrape_job_id: jobId,
-        });
-
-        if (result.success && result.batch_id) {
-            console.log(`[Callback] Consolidation batch ${result.batch_id} created for job ${jobId}`);
-        } else {
-            const errorResponse = result as { success: false; error: string };
-            console.error(`[Callback] Consolidation failed for job ${jobId}:`, errorResponse.error);
-        }
+        // NOTE: Consolidation is now manually triggered by users via the UI
+        // Previously: This would auto-submit scraped products for AI consolidation
+        console.log(`[Callback] Skipping auto-consolidation for job ${jobId} - manual trigger required`);
     } catch (error) {
         console.error(`[Callback] onScraperComplete error for job ${jobId}:`, error);
     }
-}
-
-interface ScrapedData {
-    [scraperName: string]: {
-        price?: number;
-        title?: string;
-        description?: string;
-        images?: string[];
-        availability?: string;
-        ratings?: number;
-        reviews_count?: number;
-        url?: string;
-        scraped_at?: string;
-    };
-}
-
-interface CallbackPayload {
-    job_id: string;
-    status: 'running' | 'completed' | 'failed';
-    runner_name?: string;
-    lease_token?: string;
-    error_message?: string;
-    results?: {
-        skus_processed?: number;
-        scrapers_run?: string[];
-        data?: Record<string, ScrapedData>;
-    };
 }
 
 export async function POST(request: NextRequest) {
     try {
         // Read body as text first for HMAC validation
         const bodyText = await request.text();
-        let payload: CallbackPayload;
-        
-        try {
-            payload = JSON.parse(bodyText);
-        } catch {
+        const payloadResult = parseScraperCallbackPayload(bodyText);
+
+        if (!payloadResult.success) {
             return NextResponse.json(
-                { error: 'Invalid JSON payload' },
+                { error: payloadResult.error.message },
                 { status: 400 }
             );
         }
+
+        if (!isCallbackValidationSuccess(payloadResult)) {
+            return NextResponse.json(
+                { error: 'Invalid callback payload' },
+                { status: 400 }
+            );
+        }
+
+        const payload: ScraperCallbackPayload = payloadResult.payload;
 
         // Validate authentication using unified auth function
         const runner = await validateRunnerAuth({
@@ -216,7 +197,7 @@ export async function POST(request: NextRequest) {
                 status: runnerStatus,
                 last_seen_at: nowIso,
                 current_job_id: currentJobId,
-                metadata: { 
+                metadata: {
                     last_ip: request.headers.get('x-forwarded-for') || 'unknown',
                     auth_method: runner.authMethod,
                 }
@@ -232,55 +213,79 @@ export async function POST(request: NextRequest) {
 
         const isTestJob = jobData?.test_mode === true;
         const testRunId = jobData?.metadata?.test_run_id as string | undefined;
+        const resultsData = payload.results?.data;
 
         if (isTestJob) {
             console.log(`[Callback] Test job detected: ${payload.job_id} (test_run_id: ${testRunId}) - Will NOT update products_ingestion or trigger consolidation`);
         } else {
-            console.log(`[Callback] Production job: ${payload.job_id} - Processing ${payload.results?.data ? Object.keys(payload.results.data).length : 0} scraped products`);
-            // Process scraped data if job completed successfully and is NOT a test job
-            if (payload.status === 'completed' && payload.results?.data) {
-                const skus = Object.keys(payload.results.data);
+            const scrapedCount = resultsData ? Object.keys(resultsData).length : 0;
+            console.log(`[Callback] Production job: ${payload.job_id} - Processing ${scrapedCount} scraped products`);
+        }
 
-                for (const sku of skus) {
-                    const scrapedDataContainer = payload.results.data[sku];
-
-                    // The scraper sends data in format: { "bradley": { title, price, images } }
-                    // We need to extract the first scraper's data
+        if (payload.status === 'completed' && resultsData) {
+            const skus = Object.keys(resultsData);
+            
+            // Transform results to handle nested scraper format: { "bradley": { title, price, images } }
+            const transformedResults: Record<string, Record<string, unknown>> = {};
+            for (const sku of skus) {
+                const scrapedDataContainer = resultsData[sku];
+                
+                // The scraper sends data in format: { "bradley": { title, price, images } }
+                // We need to extract the first scraper's data
+                if (scrapedDataContainer && typeof scrapedDataContainer === 'object') {
                     const scraperNames = Object.keys(scrapedDataContainer);
                     const scraperName = scraperNames[0];
-                    const scrapedData = scraperName ? scrapedDataContainer[scraperName] : scrapedDataContainer;
+                    const scrapedData = scraperName 
+                        ? (scrapedDataContainer as Record<string, unknown>)[scraperName] 
+                        : scrapedDataContainer;
 
-                    if (!scrapedData) {
-                        console.log(`[Callback] No scraped data found for SKU ${sku}`);
-                        continue;
+                    if (scrapedData && typeof scrapedData === 'object') {
+                        transformedResults[sku] = scrapedData as Record<string, unknown>;
+                    } else {
+                        console.log(`[Callback] No valid scraped data found for SKU ${sku}`);
+                    }
+                }
+            }
+
+            const idempotencyCheck = await checkIdempotency(
+                supabase,
+                payload.job_id,
+                'admin',
+                transformedResults
+            );
+
+            if (idempotencyCheck.isDuplicate) {
+                console.log(`[Callback] Duplicate callback detected for job ${payload.job_id}. Skipping side effects.`);
+                return NextResponse.json({
+                    success: true,
+                    idempotent: true,
+                    message: 'Callback already processed',
+                });
+            }
+
+            if (isTestJob) {
+                console.log(`[Callback] Test job ${payload.job_id} completed with ${skus.length} SKUs. Skipping products_ingestion persistence.`);
+            } else {
+                const persistenceTimestamp = new Date().toISOString();
+
+                try {
+                    const { persisted, missing } = await persistProductsIngestionSourcesPartial(
+                        supabase,
+                        transformedResults,
+                        false,
+                        persistenceTimestamp
+                    );
+
+                    if (missing.length > 0) {
+                        console.warn(
+                            `[Callback] Job ${payload.job_id}: ${missing.length} SKU(s) not found in products_ingestion, skipped: ${missing.join(', ')}`
+                        );
                     }
 
-                    const { data: product } = await supabase
-                        .from('products_ingestion')
-                        .select('sources')
-                        .eq('sku', sku)
-                        .single();
-
-                    const existingSources = (product?.sources as Record<string, unknown>) || {};
-                    const updatedSources = {
-                        ...existingSources,
-                        ...scrapedData,
-                        _last_scraped: new Date().toISOString(),
-                    };
-
-                const { error: productError } = await supabase
-                    .from('products_ingestion')
-                    .update({
-                        sources: updatedSources,
-                        pipeline_status: 'scraped',
-                        is_test_run: isTestJob,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq('sku', sku);
-
-                    if (productError) {
-                        console.error(`[Callback] Failed to update product ${sku}:`, productError);
-                    }
+                    console.log(`[Callback] Updated ${persisted.length} products with scraped data`);
+                } catch (error) {
+                    console.error(`[Callback] Failed to persist results for job ${payload.job_id}:`, error);
+                    throw error;
                 }
 
                 console.log(`[Callback] Updated ${skus.length} products with scraped data (test_mode: ${isTestJob})`);
@@ -288,20 +293,17 @@ export async function POST(request: NextRequest) {
                 // NOTE: Consolidation is now manually triggered by users
                 // Previously: await onScraperComplete(payload.job_id, skus);
             }
-        }
 
-        // Store full results for audit/debugging
-        if (payload.status === 'completed' && payload.results) {
-            const { error: insertError } = await supabase
-                .from('scrape_results')
-                .insert({
-                    job_id: payload.job_id,
-                    runner_name: runnerName,
-                    data: payload.results,
-                });
+            const recordResult = await recordCallbackProcessed(
+                supabase,
+                payload.job_id,
+                runnerName,
+                idempotencyCheck.key,
+                payload.results || {}
+            );
 
-            if (insertError) {
-                console.error('[Callback] Failed to insert results:', insertError);
+            if (!recordResult.success) {
+                console.warn(`[Callback] Failed to record idempotency marker: ${recordResult.error}`);
             }
         }
 
@@ -314,40 +316,40 @@ export async function POST(request: NextRequest) {
             // Calculate test results from the scrape results
             let testStatus: 'passed' | 'failed' | 'partial' = 'failed';
             let results: Array<{
-              sku: string;
-              status: 'success' | 'no_results' | 'error' | 'timeout';
-              data?: Record<string, unknown>;
-              error_message?: string;
-              duration_ms?: number;
+                sku: string;
+                status: 'success' | 'no_results' | 'error' | 'timeout';
+                data?: Record<string, unknown>;
+                error_message?: string;
+                duration_ms?: number;
             }> = [];
 
             if (payload.results?.data) {
-              const skus = Object.keys(payload.results.data);
-              results = skus.map(sku => {
-                const scraperData = payload.results?.data?.[sku];
-                const hasData = scraperData && Object.keys(scraperData).some(k => k !== 'scraped_at');
-                return {
-                  sku,
-                  status: hasData ? 'success' : 'no_results',
-                  data: scraperData,
-                };
-              });
+                const skus = Object.keys(payload.results.data);
+                results = skus.map(sku => {
+                    const scraperData = payload.results?.data?.[sku];
+                    const hasData = scraperData && Object.keys(scraperData).some(k => k !== 'scraped_at');
+                    return {
+                        sku,
+                        status: hasData ? 'success' : 'no_results',
+                        data: scraperData,
+                    };
+                });
 
-              const allSuccess = results.every(r => r.status === 'success' || r.status === 'no_results');
-              testStatus = allSuccess ? 'passed' : 'partial';
+                const allSuccess = results.every(r => r.status === 'success' || r.status === 'no_results');
+                testStatus = allSuccess ? 'passed' : 'partial';
             }
 
             await supabase
-              .from('scraper_test_runs')
-              .update({
-                status: testStatus,
-                results,
-                completed_at: new Date().toISOString(),
-              })
-              .eq('id', testRunId);
+                .from('scraper_test_runs')
+                .update({
+                    status: testStatus,
+                    results,
+                    completed_at: new Date().toISOString(),
+                })
+                .eq('id', testRunId);
 
             console.log(`[Callback] Updated test run ${testRunId} with status: ${testStatus}`);
-          }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -12,7 +12,7 @@ import { formatCurrency } from '@/lib/utils';
 interface EnrichmentSource {
   id: string;
   displayName: string;
-  type: 'scraper' | 'b2b';
+  type: 'scraper';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -178,7 +178,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
 
     setIsRunningEnhancement(true);
     try {
-      // Get selected source IDs (scrapers and B2B)
+      // Get selected source IDs (scrapers)
       const selectedSources = sources
         .filter((s) => enabledSourceIds.includes(s.id))
         .map((s) => s.id);
@@ -291,10 +291,8 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
     );
   }
 
-  const scraperSources = sources.filter((s) => s.type === 'scraper');
-  const b2bSources = sources.filter((s) => s.type === 'b2b');
+  const scraperSources = sources;
   const enabledScrapers = scraperSources.filter((s) => enabledSourceIds.includes(s.id));
-  const enabledB2B = b2bSources.filter((s) => enabledSourceIds.includes(s.id));
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -452,16 +450,8 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                         <div>
                           <h4 className="font-medium text-blue-900">Ready to Enhance</h4>
                           <p className="text-sm text-blue-700 mt-1">
-                            {enabledScrapers.length > 0 && (
-                              <span>
-                                {enabledScrapers.length} scraper{enabledScrapers.length !== 1 ? 's' : ''}
-                                {enabledB2B.length > 0 && ' and '}
-                              </span>
-                            )}
-                            {enabledB2B.length > 0 && (
-                              <span>{enabledB2B.length} B2B feed{enabledB2B.length !== 1 ? 's' : ''}</span>
-                            )}
-                            {' '}selected. Click &quot;Run Enhancement&quot; to fetch data.
+                            {enabledScrapers.length} scraper{enabledScrapers.length !== 1 ? 's' : ''} selected.
+                            Click &quot;Run Enhancement&quot; to fetch data.
                           </p>
                         </div>
                       </div>

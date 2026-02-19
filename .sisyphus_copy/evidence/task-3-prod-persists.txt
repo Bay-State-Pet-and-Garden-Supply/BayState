@@ -1,0 +1,19 @@
+
+> temp_app@0.1.0 test
+> jest --testPathPatterns=chunk-callback-route --testNamePattern=persists aggregated results for production jobs
+
+  console.log
+    [Chunk Callback] Updated 1 products_ingestion rows for job job-prod
+
+      at log (app/api/scraper/v1/chunk-callback/route.ts:76:13)
+
+PASS __tests__/lib/scraper-callback/chunk-callback-route.test.ts
+  persistChunkResultsToPipeline
+    ✓ persists aggregated results for production jobs (35 ms)
+    ○ skipped skips products_ingestion writes for test jobs
+
+Test Suites: 1 passed, 1 total
+Tests:       1 skipped, 1 passed, 2 total
+Snapshots:   0 total
+Time:        1.125 s
+Ran all test suites matching chunk-callback-route with tests matching "persists aggregated results for production jobs".

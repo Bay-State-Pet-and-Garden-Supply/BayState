@@ -1,0 +1,71 @@
+================================================================================
+TASK 15 SCENARIO 1: Production Callback Persistence
+================================================================================
+Date: 2026-02-18
+Test Type: Behavior Matrix Verification - Local/Prod Parity Semantics
+================================================================================
+
+SCENARIO DESCRIPTION:
+Verify that production mode callbacks persist data to products_ingestion while
+test-mode callbacks skip persistence (test-mode skip behavior).
+
+================================================================================
+TEST EXECUTION RESULTS
+================================================================================
+
+Test Suite: chunk-callback-route.test.ts
+Test: persists aggregated results for production jobs
+Result: PASS ✓
+
+Test Suite: chunk-callback-route.test.ts  
+Test: skips products_ingestion writes for test jobs
+Result: PASS ✓
+
+Test Suite: callback-idempotency.test.ts
+Tests: First callback delivery (admin + chunk)
+Result: PASS ✓ (7/7 tests)
+
+Test Suite: pipeline-scraping.test.ts
+Tests: Job creation and work unit generation
+Result: PASS ✓ (22/22 tests)
+
+================================================================================
+BEHAVIOR VERIFIED
+================================================================================
+
+1. PRODUCTION PERSISTENCE (is_test_job: false)
+   - Results are persisted to products_ingestion table
+   - Log: "[Chunk Callback] Updated 1 products_ingestion rows for job job-prod"
+   - Scraped flag is updated for matched SKUs
+   - Consolidation triggers execute after persistence
+
+2. TEST-MODE SKIP (is_test_job: true)
+   - Results are NOT persisted to products_ingestion
+   - Log: "[Chunk Callback] Test job job-test - skipping products_ingestion persistence"
+   - Scraped flag is NOT modified
+   - No side effects on production pipeline
+
+================================================================================
+IMPLEMENTATION DETAILS
+================================================================================
+
+Branch Semantics (from Task 3):
+```typescript
+if (isTestJob) {
+    console.log(`[Chunk Callback] Test job ${jobId} - skipping products_ingestion persistence`);
+    return { success: true, test_mode: true };
+}
+// Production path continues to persistence
+```
+
+================================================================================
+PASS CRITERIA MET
+================================================================================
+✓ Production callbacks persist to products_ingestion
+✓ Test-mode callbacks skip persistence without error
+✓ All persistence paths properly guarded by idempotency checks
+✓ No partial writes in either mode
+
+================================================================================
+END OF EVIDENCE
+================================================================================

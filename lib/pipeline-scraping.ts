@@ -17,6 +17,18 @@ export interface ScrapeOptions {
     maxAttempts?: number;
     /** Number of SKUs per chunk (default: 50) */
     chunkSize?: number;
+    jobType?: 'standard' | 'discovery';
+    discoveryConfig?: {
+        product_name?: string;
+        brand?: string;
+        max_search_results?: number;
+        max_steps?: number;
+        confidence_threshold?: number;
+        llm_model?: 'gpt-4o-mini' | 'gpt-4o';
+        prefer_manufacturer?: boolean;
+        fallback_to_static?: boolean;
+        max_concurrency?: number;
+    };
 }
 
 export interface ScrapeResult {
@@ -38,6 +50,9 @@ export async function scrapeProducts(
     const scrapers = options?.scrapers ?? [];
     const maxAttempts = options?.maxAttempts ?? 3;
     const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
+    const jobType = options?.jobType ?? 'standard';
+    const isDiscovery = jobType === 'discovery';
+    const effectiveScrapers = isDiscovery ? ['ai_discovery'] : scrapers;
 
     const supabase = await createClient();
 
@@ -47,7 +62,7 @@ export async function scrapeProducts(
         .from('scrape_jobs')
         .insert({
             skus,
-            scrapers,
+            scrapers: effectiveScrapers,
             test_mode: testMode,
             max_workers: maxWorkers,
             status: 'pending',
@@ -60,6 +75,9 @@ export async function scrapeProducts(
             heartbeat_at: null,
             runner_name: null,
             started_at: null,
+            type: jobType,
+            config: isDiscovery ? (options?.discoveryConfig ?? {}) : null,
+            metadata: isDiscovery ? { source: 'pipeline', mode: 'discovery' } : null,
             updated_at: nowIso,
         })
         .select('id')
@@ -85,7 +103,7 @@ export async function scrapeProducts(
             job_id: job.id,
             chunk_index: chunks.length,
             skus: skus.slice(i, i + chunkSize),
-            scrapers,
+            scrapers: effectiveScrapers,
             status: 'pending',
             updated_at: nowIso,
         });

@@ -1,0 +1,5 @@
+Documentation files verified:
+README.md
+api.md
+events.md
+migration-guide.md
