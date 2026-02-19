@@ -36,13 +36,13 @@ export type EnrichableField = (typeof ENRICHABLE_FIELDS)[number];
 /**
  * Source types for enrichment data.
  */
-export type SourceType = 'scraper' | 'b2b';
+export type SourceType = 'scraper';
 
 /**
- * Represents an enrichment source (scraper or B2B feed).
+ * Represents an enrichment source (web scraper).
  */
 export interface EnrichmentSource {
-  /** Unique identifier (e.g., 'amazon', 'phillips', 'b2b_orgill') */
+  /** Unique identifier (e.g., 'amazon', 'phillips') */
   id: string;
   /** Human-readable name */
   displayName: string;
@@ -110,8 +110,6 @@ export interface ProductEnrichmentSummary {
   sku: string;
   /** Data from web scrapers (keyed by scraper name) */
   scraperSources: Record<string, SourceEnrichmentData>;
-  /** Data from B2B feeds (keyed by distributor code) */
-  b2bSources: Record<string, SourceEnrichmentData>;
   /** Current enrichment config */
   config: EnrichmentConfig;
   /** Fields with conflicts (multiple sources providing different values) */

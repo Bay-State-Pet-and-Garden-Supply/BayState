@@ -27,6 +27,8 @@ interface JobConfigResponse {
     scrapers: ScraperConfig[];
     test_mode: boolean;
     max_workers: number;
+    job_type: string;
+    job_config?: Record<string, unknown>;
     lease_token?: string;
     lease_expires_at?: string;
 }
@@ -131,6 +133,8 @@ export async function GET(request: NextRequest) {
             }),
             test_mode: job.test_mode || false,
             max_workers: job.max_workers || 3,
+            job_type: job.type || 'standard',
+            job_config: (job.config || undefined) as Record<string, unknown> | undefined,
             lease_token: job.lease_token || undefined,
             lease_expires_at: job.lease_expires_at || undefined,
         };

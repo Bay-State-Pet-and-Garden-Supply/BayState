@@ -1,0 +1,4 @@
+
+> temp_app@0.1.0 test
+> jest --testPathPatterns=scraper-callback/contract.test.ts --testNamePattern=rejects invalid JSON payloads
+

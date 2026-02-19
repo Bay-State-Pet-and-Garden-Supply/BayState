@@ -1,0 +1,55 @@
+=== Schema Validation Report ===
+
+Required fields: ['event_type', 'timestamp']
+Schema version: 2.0.0
+Title: BayState Scraper Event Schema v2
+
+Event types defined: 29
+  - job.started
+  - job.completed
+  - job.failed
+  - job.cancelled
+  - scraper.started
+  - scraper.completed
+  - scraper.failed
+  - scraper.browser_init
+  - scraper.browser_restart
+  - sku.processing
+  - sku.success
+  - sku.failed
+  - sku.no_results
+  - sku.not_found
+  - step.started
+  - step.completed
+  - step.failed
+  - step.skipped
+  - selector.resolved
+  - selector.missing
+  - extraction.completed
+  - progress.update
+  - progress.worker
+  - system.info
+  - system.warning
+  - system.error
+  - data.synced
+  - data.sync_failed
+  - login.selector_status
+
+Examples provided: 5
+  Example 1: job.started (version: 2.0)
+  Example 2: step.completed (version: 2.0)
+  Example 3: selector.resolved (version: 2.0)
+  Example 4: extraction.completed (version: 2.0)
+  Example 5: sku.success (version: 1.0)
+
+=== Example Validation ===
+Example 1: VALID (has all required fields)
+Example 2: VALID (has all required fields)
+Example 3: VALID (has all required fields)
+Example 4: VALID (has all required fields)
+Example 5: VALID (has all required fields)
+
+=== Schema Structure ===
+Top-level properties: ['version', 'event_type', 'timestamp', 'run_id', 'job_id', 'event_id', 'severity', 'runner_name', 'scraper', 'worker_id', 'sku', 'payload', 'data', 'timing', 'step', 'selector', 'extraction', 'error', 'progress', 'context']
+
+All validation checks PASSED

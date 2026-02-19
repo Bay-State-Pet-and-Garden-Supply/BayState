@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-02-19T01:11:35Z",
+  "test_summary": {
+    "total_sites_tested": 1,
+    "sites_with_anti_bot": 1,
+    "sites_blocked": 1,
+    "block_rate_percent": 100,
+    "test_duration_seconds": 300
+  },
+  "anti_bot_detection_results": [
+    {
+      "site": "walmart.com",
+      "url": "https://www.walmart.com/ip/035585499741",
+      "anti_bot_triggered": true,
+      "detection_method": "Human Verification Challenge",
+      "challenge_type": "Press & Hold Button",
+      "detection_timing": "Immediately on page load",
+      "bypass_attempted": true,
+      "bypass_successful": false,
+      "bypass_strategies_attempted": [
+        "Click and hold button",
+        "JavaScript event dispatch (mousedown/mouseup)",
+        "Page refresh",
+        "Multiple retry cycles"
+      ],
+      "steps_before_timeout": 24,
+      "browser_use_response": "Agent detected challenge but could not complete verification",
+      "severity": "HIGH - Complete blocking of access",
+      "recommendation": "Requires residential proxies, fingerprint randomization, or CAPTCHA solving service"
+    }
+  ],
+  "anti_bot_indicators_detected": {
+    "captcha": false,
+    "press_and_hold": true,
+    "javascript_challenges": false,
+    "fingerprinting": "Suspected but not confirmed",
+    "rate_limiting": false,
+    "ip_blocking": false
+  },
+  "sites_not_tested": [
+    {
+      "site": "amazon.com",
+      "reason": "Test interrupted due to walmart.com timeout"
+    }
+  ],
+  "mitigation_strategies": {
+    "browser_use_stealth": {
+      "available": true,
+      "effectiveness": "Limited against advanced challenges",
+      "notes": "Built-in uBlock Origin and cookie extensions did not prevent detection"
+    },
+    "proxy_rotation": {
+      "tested": false,
+      "recommended": true,
+      "potential_effectiveness": "High - Would rotate fingerprints and IPs"
+    },
+    "residential_proxies": {
+      "tested": false,
+      "recommended": true,
+      "potential_effectiveness": "High - Residential IPs less likely to trigger challenges"
+    },
+    "headless_detection_bypass": {
+      "tested": false,
+      "available_in_browser_use": true,
+      "notes": "Browser-use has disable_security option but not enabled in test"
+    }
+  },
+  "conclusion": {
+    "anti_bot_resistance": "LOW - Major e-commerce sites immediately detect and block browser-use",
+    "fallback_required": true,
+    "recommendation": "AI scraper must implement fallback chain: AI → Traditional → Manual"
+  }
+}

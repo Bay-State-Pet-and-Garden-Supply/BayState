@@ -7,6 +7,49 @@ export type SchemaVersion = (typeof KNOWN_SCHEMA_VERSIONS)[number];
 
 export const schemaVersionSchema = z.enum(KNOWN_SCHEMA_VERSIONS);
 
+// ============================================================================
+// AI SCRAPER TYPES
+// ============================================================================
+
+export const scraperTypeSchema = z.enum(['static', 'agentic']);
+export type ScraperType = z.infer<typeof scraperTypeSchema>;
+
+export const aiModelSchema = z.enum(['gpt-4o-mini', 'gpt-4o', 'gpt-4', 'gpt-3.5-turbo']);
+export type AIModel = z.infer<typeof aiModelSchema>;
+
+export const aiConfigSchema = z.object({
+  tool: z.literal('browser-use').default('browser-use'),
+  task: z.string().min(1, 'AI task description is required'),
+  max_steps: z.number().min(1).max(50).default(10),
+  confidence_threshold: z.number().min(0).max(1).default(0.7),
+  llm_model: aiModelSchema.default('gpt-4o-mini'),
+  use_vision: z.boolean().default(true),
+  headless: z.boolean().default(true),
+});
+
+export type AIConfig = z.infer<typeof aiConfigSchema>;
+
+// AI-specific action parameter schemas
+export const aiSearchParamsSchema = z.object({
+  query: z.string().min(1, 'Search query is required'),
+  max_results: z.number().min(1).max(20).default(5),
+});
+
+export const aiExtractParamsSchema = z.object({
+  task: z.string().optional(),
+  schema: z.record(z.string(), z.enum(['str', 'int', 'float', 'list', 'bool'])).optional(),
+  visit_top_n: z.number().min(1).max(10).default(1),
+  max_steps: z.number().min(1).max(50).optional(),
+  confidence_threshold: z.number().min(0).max(1).optional(),
+  use_vision: z.boolean().optional(),
+});
+
+export const aiValidateParamsSchema = z.object({
+  required_fields: z.array(z.string()).default([]),
+  sku_must_match: z.boolean().default(true),
+  min_confidence: z.number().min(0).max(1).default(0.0),
+});
+
 // Transform types supported by the extract_and_transform action
 export const transformTypeSchema = z.enum([
   'replace',
@@ -176,6 +219,7 @@ export const scraperConfigSchema = z.object({
   name: z.string().min(1, 'Scraper name is required'),
   display_name: z.string().optional(),
   base_url: z.string().url('Must be a valid URL'),
+  scraper_type: scraperTypeSchema.default('static'),
   selectors: z.array(selectorConfigSchema).default([]),
   workflows: z.array(workflowStepSchema).default([]),
   normalization: z.array(normalizationRuleSchema).optional(),
@@ -189,6 +233,7 @@ export const scraperConfigSchema = z.object({
   test_skus: z.array(z.string()).default([]),
   fake_skus: z.array(z.string()).default([]),
   edge_case_skus: z.array(z.string()).optional(),
+  ai_config: aiConfigSchema.optional(),
 });
 
 // Database record schemas
@@ -275,6 +320,9 @@ export const actionTypes = [
   'combine_fields',
   'parse_weight',
   'extract_from_json',
+  'ai_search',
+  'ai_extract',
+  'ai_validate',
 ] as const;
 
 export const actionTypeSchema = z.enum(actionTypes);

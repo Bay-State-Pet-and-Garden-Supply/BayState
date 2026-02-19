@@ -526,6 +526,103 @@ export const actionDefinitions: Record<ActionType, ActionDefinition> = {
       },
     },
   },
+
+  ai_search: {
+    type: 'ai_search',
+    label: 'AI Search',
+    icon: 'Brain',
+    color: 'violet',
+    description: 'Use AI to search for and navigate to product pages',
+    category: 'ai',
+    browserBound: true,
+    params: {
+      query_template: {
+        type: 'string',
+        label: 'Search Query Template',
+        required: true,
+        placeholder: 'site:example.com {sku}',
+        description: 'Search query. Use {sku} for variable substitution.',
+      },
+      navigate_to_first: {
+        type: 'boolean',
+        label: 'Navigate to First Result',
+        required: false,
+        default: true,
+        description: 'Automatically click the first search result',
+      },
+      max_results: {
+        type: 'number',
+        label: 'Max Results to Consider',
+        required: false,
+        default: 3,
+        description: 'Number of search results to analyze',
+      },
+    },
+  },
+
+  ai_extract: {
+    type: 'ai_extract',
+    label: 'AI Extract',
+    icon: 'Sparkles',
+    color: 'fuchsia',
+    description: 'Use AI to intelligently extract structured data from the page',
+    category: 'ai',
+    browserBound: true,
+    params: {
+      instruction: {
+        type: 'string',
+        label: 'Extraction Instruction',
+        required: true,
+        placeholder: 'Extract the product name, brand, price, and main image URL',
+        description: 'Natural language instruction for what to extract',
+      },
+      output_schema: {
+        type: 'object',
+        label: 'Output Schema',
+        required: false,
+        description: 'Expected output structure (JSON schema)',
+      },
+      use_vision: {
+        type: 'boolean',
+        label: 'Use Vision',
+        required: false,
+        default: true,
+        description: 'Enable visual analysis of the page',
+      },
+    },
+  },
+
+  ai_validate: {
+    type: 'ai_validate',
+    label: 'AI Validate',
+    icon: 'ShieldCheck',
+    color: 'emerald',
+    description: 'Use AI to validate extracted data with confidence scoring',
+    category: 'ai',
+    browserBound: false,
+    params: {
+      field: {
+        type: 'string',
+        label: 'Field to Validate',
+        required: true,
+        description: 'The field name to validate',
+      },
+      criteria: {
+        type: 'string',
+        label: 'Validation Criteria',
+        required: true,
+        placeholder: 'Check if the price is a valid number with currency symbol',
+        description: 'Natural language description of what makes this valid',
+      },
+      confidence_threshold: {
+        type: 'number',
+        label: 'Confidence Threshold',
+        required: false,
+        default: 0.7,
+        description: 'Minimum confidence score (0-1) to pass validation',
+      },
+    },
+  },
 };
 
 export const actionCategories = {
@@ -558,5 +655,10 @@ export const actionCategories = {
     label: 'Flow Control',
     description: 'Workflow branching and control',
     actions: ['conditional_skip', 'conditional'],
+  },
+  ai: {
+    label: 'AI-Powered',
+    description: 'AI-driven extraction and validation',
+    actions: ['ai_search', 'ai_extract', 'ai_validate'],
   },
 } as const;

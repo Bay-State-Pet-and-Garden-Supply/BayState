@@ -1,0 +1,239 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0 -- /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.12.1
+collecting ... collected 168 items
+
+tests/test_database_migration.py::TestDatabaseMigration::test_migration_file_exists PASSED [  0%]
+tests/test_database_migration.py::TestDatabaseMigration::test_migration_adds_selector_results_table PASSED [  1%]
+tests/test_database_migration.py::TestDatabaseMigration::test_migration_adds_login_results_table PASSED [  1%]
+tests/test_database_migration.py::TestDatabaseMigration::test_migration_adds_extraction_results_table PASSED [  2%]
+tests/test_database_migration.py::TestDatabaseMigration::test_migration_adds_columns_to_scraper_test_runs PASSED [  2%]
+tests/test_database_migration.py::TestDatabaseMigration::test_migration_adds_indexes PASSED [  3%]
+tests/test_database_migration.py::TestDatabaseMigration::test_selector_results_has_required_columns PASSED [  4%]
+tests/test_database_migration.py::TestDatabaseMigration::test_login_results_has_required_columns PASSED [  4%]
+tests/test_database_migration.py::TestDatabaseMigration::test_extraction_results_has_required_columns PASSED [  5%]
+tests/test_database_migration.py::TestDatabaseMigration::test_migration_follows_existing_patterns PASSED [  5%]
+tests/test_database_migration.py::TestDatabaseMigrationDown::test_migration_has_down_function PASSED [  6%]
+tests/test_event_handlers.py::TestSelectorResultHandler::test_handler_persists_selector_event PASSED [  7%]
+tests/test_event_handlers.py::TestSelectorResultHandler::test_handler_persists_missing_selector PASSED [  7%]
+tests/test_event_handlers.py::TestSelectorResultHandler::test_handler_persists_error_selector PASSED [  8%]
+tests/test_event_handlers.py::TestLoginResultHandler::test_handler_persists_login_event PASSED [  8%]
+tests/test_event_handlers.py::TestLoginResultHandler::test_handler_persists_failed_login PASSED [  9%]
+tests/test_event_handlers.py::TestExtractionResultHandler::test_handler_persists_extraction_event PASSED [ 10%]
+tests/test_event_handlers.py::TestExtractionResultHandler::test_handler_persists_empty_extraction PASSED [ 10%]
+tests/test_event_handlers.py::TestExtractionResultHandler::test_handler_persists_not_found_extraction PASSED [ 11%]
+tests/test_event_handlers.py::TestConsoleLoggerHandler::test_handler_logs_selector_event PASSED [ 11%]
+tests/test_event_handlers.py::TestConsoleLoggerHandler::test_handler_logs_login_event PASSED [ 12%]
+tests/test_event_handlers.py::TestConsoleLoggerHandler::test_handler_logs_extraction_event PASSED [ 13%]
+tests/test_event_handlers.py::TestHandlerRegistration::test_handler_module_init_exports_handlers PASSED [ 13%]
+tests/test_event_handlers.py::TestHandlerRegistration::test_selector_handler_is_class PASSED [ 14%]
+tests/test_event_handlers.py::TestHandlerRegistration::test_login_handler_is_class PASSED [ 14%]
+tests/test_event_handlers.py::TestHandlerRegistration::test_extraction_handler_is_class PASSED [ 15%]
+tests/test_event_handlers.py::TestHandlerRegistration::test_console_handler_is_class PASSED [ 16%]
+tests/test_events.py::TestBaseEvent::test_event_creation PASSED          [ 16%]
+tests/test_events.py::TestBaseEvent::test_event_serialization PASSED     [ 17%]
+tests/test_events.py::TestBaseEvent::test_event_deserialization PASSED   [ 17%]
+tests/test_events.py::TestSelectorValidationEvent::test_event_creation PASSED [ 18%]
+tests/test_events.py::TestSelectorValidationEvent::test_event_status_values PASSED [ 19%]
+tests/test_events.py::TestSelectorValidationEvent::test_event_serialization PASSED [ 19%]
+tests/test_events.py::TestLoginStatusEvent::test_event_creation PASSED   [ 20%]
+tests/test_events.py::TestLoginStatusEvent::test_event_with_selector_details PASSED [ 20%]
+tests/test_events.py::TestExtractionResultEvent::test_event_creation PASSED [ 21%]
+tests/test_events.py::TestExtractionResultEvent::test_event_status_values PASSED [ 22%]
+tests/test_events.py::TestEventEmitter::test_emitter_subscribe PASSED    [ 22%]
+tests/test_events.py::TestEventEmitter::test_emitter_unsubscribe PASSED  [ 23%]
+tests/test_events.py::TestEventEmitter::test_emit_calls_subscribers PASSED [ 23%]
+tests/test_events.py::TestEventEmitter::test_emit_multiple_subscribers PASSED [ 24%]
+tests/test_events.py::TestEventEmitter::test_emit_no_subscribers PASSED  [ 25%]
+tests/test_events.py::TestEventEmitter::test_wildcard_subscription PASSED [ 25%]
+tests/test_events.py::TestEventEmitter::test_login_selector_status PASSED [ 26%]
+tests/test_events.py::TestEventEmitter::test_selector_validation PASSED  [ 26%]
+tests/test_events.py::TestEventEmitter::test_extraction_result PASSED    [ 27%]
+tests/test_integration.py::TestEventFlowIntegration::test_full_event_flow PASSED [ 27%]
+tests/test_integration.py::TestEventFlowIntegration::test_database_persistence PASSED [ 28%]
+tests/test_integration.py::TestWebSocketIntegration::test_server_with_emitter PASSED [ 29%]
+tests/test_integration.py::TestWebSocketIntegration::test_multiple_clients_receive_events PASSED [ 29%]
+tests/test_integration.py::TestGracefulDegradation::test_fallback_to_polling PASSED [ 30%]
+tests/test_integration.py::TestEndToEndEventTypes::test_selector_event_flow PASSED [ 30%]
+tests/test_integration.py::TestEndToEndEventTypes::test_login_event_flow PASSED [ 31%]
+tests/test_integration.py::TestEndToEndEventTypes::test_extraction_event_flow PASSED [ 32%]
+tests/test_runner_config_errors.py::TestRunnerConfigurationErrorHandling::test_config_parsing_error_is_raised PASSED [ 32%]
+tests/test_runner_config_errors.py::TestRunnerConfigurationErrorHandling::test_multiple_config_errors_are_reported PASSED [ 33%]
+tests/test_runner_config_errors.py::TestRunnerConfigurationErrorHandling::test_no_configs_raises_error PASSED [ 33%]
+tests/test_runner_config_errors.py::TestRunnerConfigurationErrorHandling::test_valid_configs_succeed PASSED [ 34%]
+tests/test_runner_events.py::TestRunnerEventIntegration::test_login_action_has_event_emitter PASSED [ 35%]
+tests/test_runner_events.py::TestRunnerEventIntegration::test_login_action_emits_selector_status PASSED [ 35%]
+tests/test_runner_events.py::TestRunnerEventIntegration::test_executor_has_event_emitter_attribute PASSED [ 36%]
+tests/test_runner_events.py::TestScraperTestingClientEvents::test_testing_client_has_event_emitter PASSED [ 36%]
+tests/test_runner_events.py::TestExtractActionEvents::test_extract_action_has_event_emitter PASSED [ 37%]
+tests/test_runner_events.py::TestNavigateActionEvents::test_navigate_action_has_event_emitter PASSED [ 38%]
+tests/test_runner_events.py::TestClickActionEvents::test_click_action_has_event_emitter PASSED [ 38%]
+tests/test_runner_events.py::TestWaitForActionEvents::test_wait_for_action_has_event_emitter PASSED [ 39%]
+tests/test_runner_events.py::TestEventEmitterIntegration::test_event_emitter_can_be_added_to_context PASSED [ 39%]
+tests/test_runner_events.py::TestEventEmitterIntegration::test_event_emitter_receives_selector_events PASSED [ 40%]
+tests/test_runner_events.py::TestEventEmitterIntegration::test_event_emitter_receives_extraction_events PASSED [ 41%]
+tests/test_runner_structured_logging.py::TestSensitiveDataFilter::test_redacts_api_key_pattern PASSED [ 41%]
+tests/test_runner_structured_logging.py::TestSensitiveDataFilter::test_redacts_password_pattern PASSED [ 42%]
+tests/test_runner_structured_logging.py::TestSensitiveDataFilter::test_redacts_bearer_token PASSED [ 42%]
+tests/test_runner_structured_logging.py::TestSensitiveDataFilter::test_redacts_authorization_header PASSED [ 43%]
+tests/test_runner_structured_logging.py::TestJSONFormatter::test_format_basic_log PASSED [ 44%]
+tests/test_runner_structured_logging.py::TestJSONFormatter::test_format_with_context_fields PASSED [ 44%]
+tests/test_runner_structured_logging.py::TestJSONFormatter::test_format_error_with_exception PASSED [ 45%]
+tests/test_runner_structured_logging.py::TestGenerateTraceId::test_generates_unique_ids PASSED [ 45%]
+tests/test_runner_structured_logging.py::TestGenerateTraceId::test_generates_short_ids PASSED [ 46%]
+tests/test_runner_structured_logging.py::TestGenerateTraceId::test_generates_hex_characters PASSED [ 47%]
+tests/test_runner_structured_logging.py::TestSetupStructuredLogging::test_sets_json_formatter PASSED [ 47%]
+tests/test_runner_structured_logging.py::TestSetupStructuredLogging::test_sets_sensitive_data_filter PASSED [ 48%]
+tests/test_runner_structured_logging.py::TestSetupStructuredLogging::test_debug_mode_sets_debug_level PASSED [ 48%]
+tests/test_websocket_server.py::TestWebSocketServer::test_server_creation PASSED [ 49%]
+tests/test_websocket_server.py::TestWebSocketServer::test_server_has_emit_method PASSED [ 50%]
+tests/test_websocket_server.py::TestWebSocketServer::test_server_has_connect_method PASSED [ 50%]
+tests/test_websocket_server.py::TestWebSocketServer::test_server_has_disconnect_method PASSED [ 51%]
+tests/test_websocket_server.py::TestWebSocketServer::test_server_has_subscribe_method PASSED [ 51%]
+tests/test_websocket_server.py::TestWebSocketConnection::test_connection_handler_exists PASSED [ 52%]
+tests/test_websocket_server.py::TestWebSocketConnection::test_connection_has_client_id PASSED [ 52%]
+tests/test_websocket_server.py::TestWebSocketRoomManagement::test_room_subscription PASSED [ 53%]
+tests/test_websocket_server.py::TestWebSocketRoomManagement::test_room_unsubscription PASSED [ 54%]
+tests/test_websocket_server.py::TestWebSocketRoomManagement::test_get_room_clients PASSED [ 54%]
+tests/test_websocket_server.py::TestWebSocketEventBroadcasting::test_broadcast_to_room PASSED [ 55%]
+tests/test_websocket_server.py::TestWebSocketEventBroadcasting::test_broadcast_to_all PASSED [ 55%]
+tests/test_websocket_server.py::TestWebSocketReconnection::test_reconnect_handler_exists PASSED [ 56%]
+tests/test_websocket_server.py::TestWebSocketReconnection::test_max_reconnect_attempts PASSED [ 57%]
+tests/test_websocket_server.py::TestWebSocketReconnection::test_reconnect_delay PASSED [ 57%]
+tests/test_websocket_server.py::TestWebSocketAuthentication::test_authenticate_method_exists PASSED [ 58%]
+tests/test_websocket_server.py::TestWebSocketAuthentication::test_auth_valid_token PASSED [ 58%]
+tests/test_websocket_server.py::TestWebSocketAuthentication::test_auth_invalid_token PASSED [ 59%]
+tests/test_websocket_server.py::TestWebSocketServerModule::test_module_exports_server PASSED [ 60%]
+tests/test_websocket_server.py::TestWebSocketServerModule::test_module_exports_connection_handler PASSED [ 60%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_init_sets_attributes PASSED [ 61%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_get_headers_includes_api_key PASSED [ 61%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_get_headers_raises_if_no_key PASSED [ 62%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_make_request_success PASSED [ 63%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_make_request_401_raises_auth_error PASSED [ 63%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_get_job_config_parses_response PASSED [ 64%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_submit_results_sends_payload PASSED [ 64%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_claim_chunk_returns_typed_claimed_chunk PASSED [ 65%]
+tests/unit/test_api_client.py::TestScraperAPIClient::test_claim_chunk_returns_none_when_no_chunk PASSED [ 66%]
+tests/unit/test_api_client.py::TestRetryLogic::test_succeeds_on_first_attempt PASSED [ 66%]
+tests/unit/test_api_client.py::TestRetryLogic::test_retries_on_500_error PASSED [ 67%]
+tests/unit/test_api_client.py::TestRetryLogic::test_retries_on_503_error PASSED [ 67%]
+tests/unit/test_api_client.py::TestRetryLogic::test_no_retry_on_400_error PASSED [ 68%]
+tests/unit/test_api_client.py::TestRetryLogic::test_no_retry_on_404_error PASSED [ 69%]
+tests/unit/test_api_client.py::TestRetryLogic::test_no_retry_on_401_error PASSED [ 69%]
+tests/unit/test_api_client.py::TestRetryLogic::test_retries_on_network_error PASSED [ 70%]
+tests/unit/test_api_client.py::TestRetryLogic::test_retries_on_timeout PASSED [ 70%]
+tests/unit/test_api_client.py::TestRetryLogic::test_fails_after_max_retries PASSED [ 71%]
+tests/unit/test_api_client.py::TestRetryLogic::test_exponential_backoff_timing PASSED [ 72%]
+tests/unit/test_api_client.py::TestRetryLogic::test_retries_on_429_rate_limit PASSED [ 72%]
+tests/unit/test_api_client.py::TestHealthCheck::test_health_check_returns_true_on_success PASSED [ 73%]
+tests/unit/test_api_client.py::TestHealthCheck::test_health_check_raises_connection_error_on_missing_url PASSED [ 73%]
+tests/unit/test_api_client.py::TestHealthCheck::test_health_check_raises_connection_error_on_non_200 PASSED [ 74%]
+tests/unit/test_api_client.py::TestHealthCheck::test_health_check_raises_connection_error_on_network_error PASSED [ 75%]
+tests/unit/test_api_client.py::TestHealthCheck::test_health_check_raises_connection_error_on_timeout PASSED [ 75%]
+tests/unit/test_api_client.py::TestHealthCheck::test_health_check_does_not_use_retry_logic PASSED [ 76%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_extract_single_field_no_transform PASSED [ 76%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_extract_with_regex_transform PASSED [ 77%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_extract_multiple_with_replace_transform PASSED [ 77%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_extract_optional_field_not_found PASSED [ 78%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_extract_multiple_fields PASSED [ 79%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_transform_strip PASSED [ 79%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_transform_case_changes PASSED [ 80%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_chained_transforms PASSED [ 80%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_deduplication_for_multiple PASSED [ 81%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_missing_fields_param_raises PASSED [ 82%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_missing_name_raises PASSED [ 82%]
+tests/unit/test_extract_transform.py::TestExtractAndTransformAction::test_missing_selector_raises PASSED [ 83%]
+tests/unit/test_logging.py::TestJSONFormatter::test_format_basic_log PASSED [ 83%]
+tests/unit/test_logging.py::TestJSONFormatter::test_format_with_context PASSED [ 84%]
+tests/unit/test_logging.py::TestJSONFormatter::test_format_error_with_exception PASSED [ 85%]
+tests/unit/test_logging.py::TestScraperAPIHandler::test_emit_adds_to_buffer PASSED [ 85%]
+tests/unit/test_logging.py::TestScraperAPIHandler::test_context_fields_included PASSED [ 86%]
+tests/unit/test_logging.py::TestScraperAPIHandler::test_flush_on_close PASSED [ 86%]
+tests/unit/test_logging.py::TestScraperAPIHandler::test_no_infinite_recursion PASSED [ 87%]
+tests/unit/test_logging.py::TestSetupLogging::test_setup_logging_idempotent PASSED [ 88%]
+tests/unit/test_logging.py::TestSetupLogging::test_json_output_by_default PASSED [ 88%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_load_valid_yaml PASSED [ 89%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_load_nonexistent_file PASSED [ 89%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_load_invalid_yaml PASSED [ 90%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_normalize_adds_schema_version PASSED [ 91%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_normalize_copies_required_fields PASSED [ 91%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_normalize_applies_defaults PASSED [ 92%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_normalize_preserves_existing_values PASSED [ 92%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_normalize_generates_display_name PASSED [ 93%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_normalize_missing_name_error PASSED [ 94%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_normalize_missing_base_url_error PASSED [ 94%]
+tests/unit/test_migration.py::TestConfigNormalizer::test_validate_valid_config PASSED [ 95%]
+tests/unit/test_migration.py::TestScraperConfigValidation::test_validate_invalid_timeout PASSED [ 95%]
+tests/unit/test_migration.py::TestScraperConfigValidation::test_validate_selector_without_name PASSED [ 96%]
+tests/unit/test_migration.py::TestScraperConfigValidation::test_validate_valid_config PASSED [ 97%]
+tests/unit/test_migration.py::TestScraperConfigValidation::test_validate_unknown_schema_version PASSED [ 97%]
+tests/unit/test_migration.py::TestMigrationResult::test_result_initialization PASSED [ 98%]
+tests/unit/test_migration.py::TestIntegration::test_full_migration_pipeline PASSED [ 98%]
+tests/unit/test_migration.py::TestIntegration::test_minimal_config_migration PASSED [ 99%]
+tests/unit/test_migration.py::TestIntegration::test_complex_amazon_like_config PASSED [100%]
+
+=============================== warnings summary ===============================
+tests/test_event_handlers.py: 4 warnings
+tests/test_events.py: 7 warnings
+tests/test_integration.py: 3 warnings
+tests/test_runner_events.py: 1 warning
+  /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/scrapers/events/selector.py:40: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_event_handlers.py::TestLoginResultHandler::test_handler_persists_login_event
+tests/test_event_handlers.py::TestLoginResultHandler::test_handler_persists_failed_login
+tests/test_event_handlers.py::TestConsoleLoggerHandler::test_handler_logs_login_event
+tests/test_events.py::TestLoginStatusEvent::test_event_creation
+tests/test_events.py::TestLoginStatusEvent::test_event_with_selector_details
+tests/test_events.py::TestEventEmitter::test_login_selector_status
+tests/test_integration.py::TestEventFlowIntegration::test_database_persistence
+tests/test_integration.py::TestEndToEndEventTypes::test_login_event_flow
+tests/test_runner_events.py::TestRunnerEventIntegration::test_login_action_emits_selector_status
+  /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/scrapers/events/login.py:44: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_event_handlers.py: 4 warnings
+tests/test_events.py: 6 warnings
+tests/test_integration.py: 1 warning
+tests/test_runner_events.py: 1 warning
+  /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/scrapers/events/extraction.py:40: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_events.py::TestBaseEvent::test_event_creation
+tests/test_events.py::TestBaseEvent::test_event_serialization
+tests/test_events.py::TestBaseEvent::test_event_deserialization
+tests/test_events.py::TestEventEmitter::test_emit_calls_subscribers
+tests/test_events.py::TestEventEmitter::test_emit_multiple_subscribers
+tests/test_events.py::TestEventEmitter::test_emit_no_subscribers
+tests/test_events.py::TestEventEmitter::test_wildcard_subscription
+tests/test_events.py::TestEventEmitter::test_wildcard_subscription
+  /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/scrapers/events/base.py:22: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_runner_config_errors.py: 23 warnings
+  /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/runner.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow().isoformat() + "Z",
+
+tests/test_runner_structured_logging.py: 3 warnings
+tests/test_websocket_server.py: 10 warnings
+tests/unit/test_api_client.py: 22 warnings
+tests/unit/test_extract_transform.py: 35 warnings
+tests/unit/test_logging.py: 8 warnings
+  /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/scraper_backend/utils/structured_logging.py:90: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow().isoformat() + "Z",
+
+tests/unit/test_logging.py::TestScraperAPIHandler::test_emit_adds_to_buffer
+tests/unit/test_logging.py::TestScraperAPIHandler::test_context_fields_included
+tests/unit/test_logging.py::TestScraperAPIHandler::test_flush_on_close
+tests/unit/test_logging.py::TestScraperAPIHandler::test_no_infinite_recursion
+  /Users/nickborrello/Desktop/Projects/BayState/BayStateScraper/utils/api_handler.py:124: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    self.api_client.post_logs(self.job_id, logs)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+====================== 168 passed, 149 warnings in 13.19s ======================

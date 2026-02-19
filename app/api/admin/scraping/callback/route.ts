@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { submitBatch } from '@/lib/consolidation/batch-service';
+import {
+    parseScraperCallbackPayload,
+    ScraperCallbackPayload,
+    isCallbackValidationSuccess,
+} from '@/lib/scraper-callback/contract';
+import {
+    persistProductsIngestionSourcesPartial,
+} from '@/lib/scraper-callback/products-ingestion';
+import {
+    checkIdempotency,
+    recordCallbackProcessed,
+} from '@/lib/scraper-callback/idempotency';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -58,47 +70,27 @@ async function onScraperComplete(jobId: string, skus: string[]): Promise<void> {
     }
 }
 
-interface ScrapedData {
-    [scraperName: string]: {
-        price?: number;
-        title?: string;
-        description?: string;
-        images?: string[];
-        availability?: string;
-        ratings?: number;
-        reviews_count?: number;
-        url?: string;
-        scraped_at?: string;
-    };
-}
-
-interface CallbackPayload {
-    job_id: string;
-    status: 'running' | 'completed' | 'failed';
-    runner_name?: string;
-    lease_token?: string;
-    error_message?: string;
-    results?: {
-        skus_processed?: number;
-        scrapers_run?: string[];
-        data?: Record<string, ScrapedData>;
-    };
-}
-
 export async function POST(request: NextRequest) {
     try {
         // Read body as text first for HMAC validation
         const bodyText = await request.text();
-        let payload: CallbackPayload;
-        
-        try {
-            payload = JSON.parse(bodyText);
-        } catch {
+        const payloadResult = parseScraperCallbackPayload(bodyText);
+
+        if (!payloadResult.success) {
             return NextResponse.json(
-                { error: 'Invalid JSON payload' },
+                { error: payloadResult.error.message },
                 { status: 400 }
             );
         }
+
+        if (!isCallbackValidationSuccess(payloadResult)) {
+            return NextResponse.json(
+                { error: 'Invalid callback payload' },
+                { status: 400 }
+            );
+        }
+
+        const payload: ScraperCallbackPayload = payloadResult.payload;
 
         // Validate authentication using unified auth function
         const runner = await validateRunnerAuth({
@@ -216,7 +208,7 @@ export async function POST(request: NextRequest) {
                 status: runnerStatus,
                 last_seen_at: nowIso,
                 current_job_id: currentJobId,
-                metadata: { 
+                metadata: {
                     last_ip: request.headers.get('x-forwarded-for') || 'unknown',
                     auth_method: runner.authMethod,
                 }
@@ -232,65 +224,74 @@ export async function POST(request: NextRequest) {
 
         const isTestJob = jobData?.test_mode === true;
         const testRunId = jobData?.metadata?.test_run_id as string | undefined;
+        const resultsData = payload.results?.data;
 
         if (isTestJob) {
             console.log(`[Callback] Test job detected: ${payload.job_id} (test_run_id: ${testRunId}) - Will NOT update products_ingestion or trigger consolidation`);
         } else {
-            console.log(`[Callback] Production job: ${payload.job_id} - Processing ${payload.results?.data ? Object.keys(payload.results.data).length : 0} scraped products`);
-            // Process scraped data if job completed successfully and is NOT a test job
-            if (payload.status === 'completed' && payload.results?.data) {
-                const skus = Object.keys(payload.results.data);
+            const scrapedCount = resultsData ? Object.keys(resultsData).length : 0;
+            console.log(`[Callback] Production job: ${payload.job_id} - Processing ${scrapedCount} scraped products`);
+        }
 
-                for (const sku of skus) {
-                    const scrapedData = payload.results.data[sku];
+        if (payload.status === 'completed' && resultsData) {
+            const skus = Object.keys(resultsData);
 
-                    const { data: product } = await supabase
-                        .from('products_ingestion')
-                        .select('sources')
-                        .eq('sku', sku)
-                        .single();
+            const idempotencyCheck = await checkIdempotency(
+                supabase,
+                payload.job_id,
+                'admin',
+                resultsData
+            );
 
-                    const existingSources = (product?.sources as Record<string, unknown>) || {};
-                    const updatedSources = {
-                        ...existingSources,
-                        ...scrapedData,
-                        _last_scraped: new Date().toISOString(),
-                    };
+            if (idempotencyCheck.isDuplicate) {
+                console.log(`[Callback] Duplicate callback detected for job ${payload.job_id}. Skipping side effects.`);
+                return NextResponse.json({
+                    success: true,
+                    idempotent: true,
+                    message: 'Callback already processed',
+                });
+            }
 
-                const { error: productError } = await supabase
-                    .from('products_ingestion')
-                    .update({
-                        sources: updatedSources,
-                        pipeline_status: 'scraped',
-                        is_test_run: isTestJob,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq('sku', sku);
+            if (isTestJob) {
+                console.log(`[Callback] Test job ${payload.job_id} completed with ${skus.length} SKUs. Skipping products_ingestion persistence.`);
+            } else {
+                const persistenceTimestamp = new Date().toISOString();
 
-                    if (productError) {
-                        console.error(`[Callback] Failed to update product ${sku}:`, productError);
+                try {
+                    const { persisted, missing } = await persistProductsIngestionSourcesPartial(
+                        supabase,
+                        resultsData,
+                        false,
+                        persistenceTimestamp
+                    );
+
+                    if (missing.length > 0) {
+                        console.warn(
+                            `[Callback] Job ${payload.job_id}: ${missing.length} SKU(s) not found in products_ingestion, skipped: ${missing.join(', ')}`
+                        );
                     }
+
+                    console.log(`[Callback] Updated ${persisted.length} products with scraped data`);
+                } catch (error) {
+                    console.error(`[Callback] Failed to persist results for job ${payload.job_id}:`, error);
+                    throw error;
                 }
 
                 console.log(`[Callback] Updated ${skus.length} products with scraped data (test_mode: ${isTestJob})`);
 
-                // Trigger consolidation for scraped products (Event-Driven Automation)
                 await onScraperComplete(payload.job_id, skus);
             }
-        }
 
-        // Store full results for audit/debugging
-        if (payload.status === 'completed' && payload.results) {
-            const { error: insertError } = await supabase
-                .from('scrape_results')
-                .insert({
-                    job_id: payload.job_id,
-                    runner_name: runnerName,
-                    data: payload.results,
-                });
+            const recordResult = await recordCallbackProcessed(
+                supabase,
+                payload.job_id,
+                runnerName,
+                idempotencyCheck.key,
+                payload.results || {}
+            );
 
-            if (insertError) {
-                console.error('[Callback] Failed to insert results:', insertError);
+            if (!recordResult.success) {
+                console.warn(`[Callback] Failed to record idempotency marker: ${recordResult.error}`);
             }
         }
 
@@ -303,40 +304,40 @@ export async function POST(request: NextRequest) {
             // Calculate test results from the scrape results
             let testStatus: 'passed' | 'failed' | 'partial' = 'failed';
             let results: Array<{
-              sku: string;
-              status: 'success' | 'no_results' | 'error' | 'timeout';
-              data?: Record<string, unknown>;
-              error_message?: string;
-              duration_ms?: number;
+                sku: string;
+                status: 'success' | 'no_results' | 'error' | 'timeout';
+                data?: Record<string, unknown>;
+                error_message?: string;
+                duration_ms?: number;
             }> = [];
 
             if (payload.results?.data) {
-              const skus = Object.keys(payload.results.data);
-              results = skus.map(sku => {
-                const scraperData = payload.results?.data?.[sku];
-                const hasData = scraperData && Object.keys(scraperData).some(k => k !== 'scraped_at');
-                return {
-                  sku,
-                  status: hasData ? 'success' : 'no_results',
-                  data: scraperData,
-                };
-              });
+                const skus = Object.keys(payload.results.data);
+                results = skus.map(sku => {
+                    const scraperData = payload.results?.data?.[sku];
+                    const hasData = scraperData && Object.keys(scraperData).some(k => k !== 'scraped_at');
+                    return {
+                        sku,
+                        status: hasData ? 'success' : 'no_results',
+                        data: scraperData,
+                    };
+                });
 
-              const allSuccess = results.every(r => r.status === 'success' || r.status === 'no_results');
-              testStatus = allSuccess ? 'passed' : 'partial';
+                const allSuccess = results.every(r => r.status === 'success' || r.status === 'no_results');
+                testStatus = allSuccess ? 'passed' : 'partial';
             }
 
             await supabase
-              .from('scraper_test_runs')
-              .update({
-                status: testStatus,
-                results,
-                completed_at: new Date().toISOString(),
-              })
-              .eq('id', testRunId);
+                .from('scraper_test_runs')
+                .update({
+                    status: testStatus,
+                    results,
+                    completed_at: new Date().toISOString(),
+                })
+                .eq('id', testRunId);
 
             console.log(`[Callback] Updated test run ${testRunId} with status: ${testStatus}`);
-          }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

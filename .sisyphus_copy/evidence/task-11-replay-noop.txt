@@ -1,0 +1,24 @@
+Task 11: Duplicate Callback No-Op
+===================================
+Date: 2026-02-18
+
+Tests Verify:
+- Duplicate admin callback detected (isDuplicate=true)
+- Duplicate chunk callback detected (isDuplicate=true)
+- Persistence skipped for duplicates
+- No duplicate scrape_results inserts
+
+Integration Tests:
+- detects duplicate admin callback and skips processing ✓
+- detects duplicate chunk callback and skips processing ✓
+- prevents duplicate scrape_results inserts via idempotency ✓
+- different payloads create different keys ✓
+- same results treated as duplicate for chunks ✓
+
+Side Effects Prevented:
+- No persistence calls for duplicates
+- No consolidation triggers for duplicates
+- No duplicate database inserts
+
+Total Tests: 54 passing (7 new integration tests)
+

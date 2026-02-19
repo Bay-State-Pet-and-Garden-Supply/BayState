@@ -6,7 +6,7 @@ This guide covers upgrading from the legacy import system to the new ETL Pipelin
 The new pipeline introduces a multi-stage ingestion process:
 1. **Staging**: Initial import from ShopSite XML.
 2. **Scraped**: Data enriched from external web scrapers.
-3. **Consolidated**: Data merged from multiple sources (B2B, Scrapers).
+3. **Consolidated**: Data merged from multiple scraper sources.
 4. **Approved**: Verified by an admin.
 5. **Published**: Synced to the live product catalog.
 

@@ -13,6 +13,12 @@ import {
   transformationSchema,
   extractFieldConfigSchema,
   actionTypeSchema,
+  scraperTypeSchema,
+  aiModelSchema,
+  aiConfigSchema,
+  aiSearchParamsSchema,
+  aiExtractParamsSchema,
+  aiValidateParamsSchema,
 } from './schema';
 
 // Core configuration types
@@ -21,6 +27,10 @@ export type WorkflowStep = z.infer<typeof workflowStepSchema>;
 export type SelectorConfig = z.infer<typeof selectorConfigSchema>;
 export type Transformation = z.infer<typeof transformationSchema>;
 export type ExtractFieldConfig = z.infer<typeof extractFieldConfigSchema>;
+
+export type AISearchParams = z.infer<typeof aiSearchParamsSchema>;
+export type AIExtractParams = z.infer<typeof aiExtractParamsSchema>;
+export type AIValidateParams = z.infer<typeof aiValidateParamsSchema>;
 
 // Database record types
 export type ScraperRecord = z.infer<typeof scraperRecordSchema>;
@@ -54,7 +64,7 @@ export interface ActionDefinition {
   icon: string;
   color: string;
   description: string;
-  category: 'navigation' | 'interaction' | 'extraction' | 'transform' | 'validation' | 'flow';
+  category: 'navigation' | 'interaction' | 'extraction' | 'transform' | 'validation' | 'flow' | 'ai';
   browserBound: boolean;
   params: Record<string, ActionParamDefinition>;
 }

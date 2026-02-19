@@ -1,0 +1,40 @@
+# Task 1: Database Schema Verification - scraper_config_test_skus
+# Generated: 2026-02-12
+
+## Table: scraper_config_test_skus
+
+### Columns
+| Column Name | Data Type | Nullable | Default |
+|-------------|-----------|----------|---------|
+| id | uuid | NO | gen_random_uuid() |
+| config_id | uuid | NO | NULL |
+| sku | text | NO | NULL |
+| sku_type | text | NO | NULL |
+| added_by | uuid | YES | NULL |
+| created_at | timestamp with time zone | NO | now() |
+
+### Constraints
+- PRIMARY KEY: scraper_config_test_skus_pkey (id)
+- FOREIGN KEY: scraper_config_test_skus_config_id_fkey (config_id -> scraper_configs.id)
+- FOREIGN KEY: scraper_config_test_skus_added_by_fkey (added_by -> auth.users.id)
+- UNIQUE: unique_config_sku (config_id, sku)
+- CHECK: scraper_config_test_skus_sku_type_check (sku_type IN ('test', 'fake', 'edge_case'))
+
+### Indexes
+- idx_scraper_config_test_skus_config_id (config_id)
+- idx_scraper_config_test_skus_type (config_id, sku_type)
+
+### RLS Status
+- Row Level Security: ENABLED
+
+### RLS Policies
+1. "Admin and staff can view test SKUs" (SELECT)
+2. "Admin and staff can add test SKUs" (INSERT)
+3. "Admin and staff can update test SKUs" (UPDATE)
+4. "Admin and staff can delete test SKUs" (DELETE)
+5. "Service role can manage test SKUs" (ALL)
+
+### Verification Result
+✅ Table created successfully with all required columns
+✅ RLS enabled
+✅ All constraints and indexes in place

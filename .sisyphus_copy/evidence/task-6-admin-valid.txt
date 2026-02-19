@@ -1,0 +1,20 @@
+Task 6: Admin Callback Refactor Complete
+==========================================
+Date: 2026-02-18
+
+Shared Primitives Integrated:
+- ✅ parseScraperCallbackPayload (Task 1 contract validation)
+- ✅ validateRunnerAuth (Task 5 auth harness)
+- ✅ persistProductsIngestionSourcesStrict (Task 2 strict SKU policy)
+- ✅ checkIdempotency / recordCallbackProcessed (Task 4 idempotency)
+
+Validation Flow (Pre-Write Guards):
+1. Body parsed with shared Zod schema
+2. Invalid payload → 400 (before auth)
+3. Auth validation → 401 if invalid
+4. Job lookup → 404 if not found
+5. Lease token check → 409 if mismatch
+6. All guards pass before any persistence
+
+Test Results: 47/47 passing
+

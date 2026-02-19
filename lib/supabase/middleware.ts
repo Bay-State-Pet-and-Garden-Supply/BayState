@@ -30,6 +30,14 @@ export async function updateSession(request: NextRequest) {
 
   // Routes that bypass auth check
   const isPublicRoute = 
+    request.nextUrl.pathname === '/' ||
+    request.nextUrl.pathname.startsWith('/products') ||
+    request.nextUrl.pathname.startsWith('/brands') ||
+    request.nextUrl.pathname.startsWith('/services') ||
+    request.nextUrl.pathname.startsWith('/about') ||
+    request.nextUrl.pathname.startsWith('/contact') ||
+    request.nextUrl.pathname.startsWith('/cart') ||
+    request.nextUrl.pathname.startsWith('/checkout') ||
     request.nextUrl.pathname.startsWith('/api/scraper/') ||
     request.nextUrl.pathname.startsWith('/api/cron/') ||
     request.nextUrl.pathname.startsWith('/api/admin/scraper-network/') ||
@@ -40,7 +48,11 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/admin/scrapers/configs') ||
     request.nextUrl.pathname.startsWith('/admin/scrapers/test-lab') ||
     request.nextUrl.pathname === '/login' ||
-    request.nextUrl.pathname === '/auth/'
+    request.nextUrl.pathname.startsWith('/auth/') ||
+    request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.startsWith('/signup') ||
+    request.nextUrl.pathname.startsWith('/forgot-password') ||
+    request.nextUrl.pathname.startsWith('/update-password')
 
   if (isPublicRoute) {
     return response

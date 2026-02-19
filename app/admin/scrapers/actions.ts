@@ -31,6 +31,8 @@ export async function createScraper(
     image_quality: 50,
     test_skus: [],
     fake_skus: [],
+    scraper_type: 'static',
+    ai_config: undefined,
   };
 
   // Validate config
