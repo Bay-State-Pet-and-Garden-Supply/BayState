@@ -1,0 +1,20 @@
+Task 7: Atomic Strict-Fail Persistence - Admin Callback
+==========================================================
+Date: 2026-02-18
+
+Implementation Verified:
+- Uses persistProductsIngestionSourcesStrict from Task 2
+- Pre-validates ALL SKUs before any writes
+- MissingProductsIngestionSkusError caught and handled
+
+Strict-Fail Behavior:
+- Any missing SKU → 409 response with missing_skus list
+- Zero writes occur when any SKU is missing
+- All SKUs must exist for persistence to succeed
+
+Test Coverage:
+- updates all rows when every target SKU exists ✓
+- strict-fails with zero writes when any target SKU is missing ✓
+
+Tests Passing: 2/2 strict-SKU tests
+

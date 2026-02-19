@@ -1,0 +1,33 @@
+TASK 4 EVIDENCE: First Callback Processing
+
+Scenario: First callback processes successfully
+Status: PASSED
+
+Test Execution:
+- Command: cd BayStateApp && CI=true npm test -- --testPathPatterns="idempotency"
+- Timestamp: 2026-02-18
+- Result: All 14 tests passed
+
+Idempotency Key Strategy:
+- Admin callbacks: key = `admin:{job_id}`
+- Chunk callbacks: key = `chunk:{job_id}:{payload_hash}`
+- Hash algorithm: SHA-256 (first 16 chars)
+- Storage location: scrape_results.data._idempotency_key
+
+First Processing Behavior:
+1. Idempotency check returns isDuplicate=false
+2. All side effects execute:
+   - products_ingestion updates via persistProductsIngestionSourcesStrict
+   - Consolidation triggered via submitBatch
+   - scrape_results inserted with idempotency key
+3. Response returns success: true
+
+Test Coverage:
+- checkIdempotency returns isDuplicate=false for new callbacks
+- recordCallbackProcessed successfully inserts scrape_results
+- Idempotency key correctly generated for both admin and chunk types
+
+Files Modified:
+- lib/scraper-callback/idempotency.ts (new)
+- app/api/admin/scraping/callback/route.ts
+- app/api/scraper/v1/chunk-callback/route.ts

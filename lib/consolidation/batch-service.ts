@@ -440,7 +440,7 @@ export async function applyResults(batchId: string): Promise<ApplyResultsRespons
             } else if (confidence >= 0.7) {
                 newStatus = 'consolidated'; // Medium confidence - manual review
             } else {
-                newStatus = 'flagged'; // Low confidence - needs attention
+                newStatus = 'consolidated'; // Low confidence - needs manual review
             }
 
             const { error } = await supabase

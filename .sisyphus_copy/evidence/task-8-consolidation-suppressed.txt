@@ -1,0 +1,26 @@
+Task 8: Consolidation Suppressed on Persistence Failure
+=========================================================
+Date: 2026-02-18
+
+Failure Scenario Verified:
+- Missing SKU detected during pre-validation
+- MissingProductsIngestionSkusError thrown
+- Caught and handled with 409 response
+- onScraperComplete NEVER called
+- No consolidation triggered
+
+Error Response:
+{
+  error: 'Missing products_ingestion SKUs',
+  missing_skus: [...],
+  status: 409
+}
+
+Side Effects Prevented:
+- No products_ingestion updates
+- No consolidation batch creation
+- No downstream processing
+- Scraped data preserved for retry
+
+Consolidation suppression confirmed ✓
+

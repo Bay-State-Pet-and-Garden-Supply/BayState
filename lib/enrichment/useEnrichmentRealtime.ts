@@ -7,7 +7,6 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 type ProductIngestionRow = {
   sku: string;
   sources: Record<string, unknown>;
-  b2b_sources: Record<string, unknown>;
   pipeline_status: string;
   updated_at: string;
 };

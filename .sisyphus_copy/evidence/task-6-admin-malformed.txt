@@ -1,0 +1,23 @@
+Task 6: Admin Callback Malformed Payload Handling
+===================================================
+Date: 2026-02-18
+
+Malformed Payload Scenarios (All return 400 before persistence):
+- Invalid JSON body
+- Missing required fields (job_id, status)
+- Invalid status enum
+- Completed callback without results.data
+
+Auth Failures (All return 401 before persistence):
+- Missing X-API-Key header
+- Invalid API key format
+- Expired/non-existent API key
+
+Early Validation Prevents:
+- No database writes on malformed payloads
+- No persistence on auth failures
+- No partial job state mutations
+
+All validation occurs before any state change.
+Test Coverage: Contract validation tests pass
+

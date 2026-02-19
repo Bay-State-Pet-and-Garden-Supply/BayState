@@ -78,14 +78,9 @@ export async function getProductsByStatus(
 
     if (options?.source) {
         // Check if the source key exists in the sources JSONB column
-        // We use the contains operator @> with a partial object
-        // Note: This assumes the source value is an object. If it can be anything, this might need adjustment.
-        // But based on Record<string, unknown>, it's likely an object map.
-        // A safer way to check for key existence in JSONB in Supabase/PostgREST is tricky without raw SQL.
-        // However, if we assume standard usage where sources are keyed by scraper/feed ID:
-        // We can try to match any non-null value for that key?
-        // Actually, let's try the simple contains approach first.
-        query = query.contains('sources', { [options.source]: {} });
+        // Use the '?' operator for key existence - works regardless of value type
+        // (object, string, number, null, array, etc.)
+        query = query.filter('sources', '?', options.source);
     }
 
     if (options?.minConfidence !== undefined) {
@@ -150,7 +145,8 @@ export async function getSkusByStatus(
     }
 
     if (options?.source) {
-        query = query.contains('sources', { [options.source]: {} });
+        // Use the '?' operator for key existence - works regardless of value type
+        query = query.filter('sources', '?', options.source);
     }
 
     if (options?.minConfidence !== undefined) {

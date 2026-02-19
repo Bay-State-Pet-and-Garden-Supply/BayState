@@ -1,0 +1,209 @@
+================================================================================
+TASK 5: AI COST TRACKER - TEST EVIDENCE
+================================================================================
+Date: 2026-02-19
+Task: Setup cost tracking infrastructure with hard limits
+Module: BayStateScraper/scrapers/ai_cost_tracker.py
+
+================================================================================
+CONFIGURATION CONSTANTS
+================================================================================
+MAX_COST_PER_PAGE = $0.15 USD (hard limit before fallback)
+COST_WARNING_THRESHOLD = $0.10 USD (warning alert)
+CIRCUIT_BREAKER_THRESHOLD = 3 (consecutive overruns before disabling)
+
+================================================================================
+OPENAI PRICING (per 1K tokens)
+================================================================================
+Model           Input        Output
+--------------- ------------ ------------
+gpt-4o          $0.00500     $0.01500
+gpt-4o-mini     $0.00015     $0.00060
+gpt-4           $0.03000     $0.06000
+gpt-3.5-turbo   $0.00050     $0.00150
+
+================================================================================
+TEST RESULTS
+================================================================================
+
+[TEST 1] Basic instantiation
+  Status: PASSED
+  Details: Tracker created successfully with initial cost $0.0
+
+[TEST 2] Cost calculation - gpt-4o-mini
+  Status: PASSED
+  Input: 1000 tokens, Output: 500 tokens
+  Calculated: $0.000450, Expected: $0.000450
+  ✓ gpt-4o-mini cost calculation correct
+
+[TEST 3] Cost calculation - gpt-4o
+  Status: PASSED
+  Input: 1000 tokens, Output: 500 tokens
+  Calculated: $0.012500, Expected: $0.012500
+  ✓ gpt-4o cost calculation correct
+
+[TEST 4] Cost calculation - gpt-4
+  Status: PASSED
+  Input: 1000 tokens, Output: 500 tokens
+  Calculated: $0.060000, Expected: $0.060000
+  ✓ gpt-4 cost calculation correct
+
+[TEST 5] Cost calculation - gpt-3.5-turbo
+  Status: PASSED
+  Input: 1000 tokens, Output: 500 tokens
+  Calculated: $0.001250, Expected: $0.001250
+  ✓ gpt-3.5-turbo cost calculation correct
+
+[TEST 6] Unknown model fallback
+  Status: PASSED
+  Model: unknown-model
+  Falls back to gpt-4o-mini pricing: $0.000450
+  ✓ Unknown model fallback works
+
+[TEST 7] Hard limit enforcement
+  Status: PASSED
+  MAX_COST_PER_PAGE: $0.15
+  ✓ Budget check for $0.08: True (under limit)
+  ✓ Budget check for $0.15: True (at limit)
+  ✓ Budget check for $0.1501: False (over limit)
+  ✓ Budget check for $0.20: False (way over limit)
+
+[TEST 8] Circuit breaker (3 consecutive overruns)
+  Status: PASSED
+  Using gpt-4 with 5000 input, 3000 output tokens
+  Expected cost per extraction: $0.3300 (limit: $0.15)
+  CIRCUIT_BREAKER_THRESHOLD: 3
+  Running 4 expensive extractions...
+    Extraction 1: $0.3300 - Circuit active: False (strike 1/3)
+    Extraction 2: $0.3300 - Circuit active: False (strike 2/3)
+    Extraction 3: $0.3300 - Circuit active: True (strike 3/3)
+    Extraction 4: $0.3300 - Circuit active: True (strike 4/3)
+  ✓ Circuit breaker activated after 3 overruns
+  ✓ Budget check returns False when circuit breaker active
+
+[TEST 9] Circuit breaker reset
+  Status: PASSED
+  ✓ Circuit breaker reset successful
+  ✓ Budget check works again after reset
+
+[TEST 10] Track extraction data storage
+  Status: PASSED
+  Input tokens: 2500
+  Output tokens: 800
+  Model: gpt-4o-mini
+  Cost USD: $0.000855
+  Timestamp: 2026-02-19T02:03:16.791310
+  ✓ Extraction data stored correctly
+
+[TEST 11] Cost summary
+  Status: PASSED
+  Empty summary: {'total_extractions': 0, 'total_cost_usd': 0.0, 'average_cost_usd': 0.0, 'max_cost_usd': 0.0, 'min_cost_usd': 0.0}
+  After 2 extractions:
+    Total extractions: 2
+    Total cost: $0.001350
+    Average cost: $0.000675
+    Min cost: $0.000450
+    Max cost: $0.000900
+  ✓ Cost summary works correctly
+
+[TEST 12] Standalone check_cost_budget function
+  Status: PASSED
+  ✓ check_cost_budget(0.10) returns True
+  ✓ check_cost_budget(0.16) returns False
+  ✓ Standalone function works
+
+================================================================================
+COST SCENARIOS - WHEN LIMITS TRIGGER
+================================================================================
+
+Scenario 1: Small extraction with gpt-4o-mini
+  Input: 4000 tokens, Output: 2000 tokens
+  Cost: (4000/1000)*0.00015 + (2000/1000)*0.0006 = $0.0006 + $0.0012 = $0.0018
+  Result: UNDER LIMIT ✓ (0.18% of budget)
+
+Scenario 2: Medium extraction with gpt-4o
+  Input: 5000 tokens, Output: 2000 tokens
+  Cost: (5000/1000)*0.005 + (2000/1000)*0.015 = $0.025 + $0.03 = $0.055
+  Result: UNDER LIMIT ✓ (36.7% of budget)
+
+Scenario 3: Large extraction with gpt-4o
+  Input: 20000 tokens, Output: 5000 tokens
+  Cost: (20000/1000)*0.005 + (5000/1000)*0.015 = $0.10 + $0.075 = $0.175
+  Result: OVER LIMIT ✗ (triggers circuit breaker)
+
+Scenario 4: Large extraction with gpt-4
+  Input: 5000 tokens, Output: 3000 tokens
+  Cost: (5000/1000)*0.03 + (3000/1000)*0.06 = $0.15 + $0.18 = $0.33
+  Result: OVER LIMIT ✗ (220% of budget, immediate circuit breaker strike)
+
+================================================================================
+CIRCUIT BREAKER BEHAVIOR
+================================================================================
+
+1. Each extraction that exceeds MAX_COST_PER_PAGE increments the strike counter
+2. After CIRCUIT_BREAKER_THRESHOLD (3) consecutive overruns:
+   - Circuit breaker activates for that scraper
+   - All future check_cost_budget() calls return False
+   - Logging shows: "Circuit breaker activated for scraper 'X' after 3 overruns"
+3. Circuit breaker is per-scraper (isolated between scrapers)
+4. Reset via reset_circuit_breaker(scraper_name) after manual intervention
+5. Successful extraction (under limit) resets the counter for that scraper
+
+================================================================================
+NON-BLOCKING DESIGN
+================================================================================
+
+✓ track_extraction() never raises exceptions
+✓ Returns ExtractionCost dataclass with all cost data
+✓ Logging used for warnings and errors (not exceptions)
+✓ Failed budget checks return False (don't crash extraction)
+✓ Unknown models fallback to gpt-4o-mini pricing with warning
+
+================================================================================
+API USAGE EXAMPLES
+================================================================================
+
+# Basic tracking
+tracker = AICostTracker()
+extraction = tracker.track_extraction(
+    input_tokens=1000,
+    output_tokens=500,
+    model="gpt-4o-mini",
+    scraper_name="amazon_scraper"
+)
+print(f"Cost: ${extraction.cost_usd:.4f}")
+
+# Budget checking
+if tracker.check_cost_budget(current_cost=0.08):
+    continue_extraction()
+else:
+    trigger_fallback()
+
+# Standalone budget check (no instantiation needed)
+if check_cost_budget(0.12):
+    proceed_with_extraction()
+
+# Circuit breaker check
+if tracker.is_circuit_breaker_active("amazon_scraper"):
+    disable_scraper("amazon_scraper")
+
+# Cost summary
+summary = tracker.get_cost_summary()
+print(f"Total spent: ${summary['total_cost_usd']:.4f}")
+
+================================================================================
+ACCEPTANCE CRITERIA VERIFICATION
+================================================================================
+
+[✓] AICostTracker class exists with track_extraction() method
+[✓] Calculates costs for gpt-4o, gpt-4o-mini, gpt-4, gpt-3.5-turbo
+[✓] Stores cost data in extraction results (ExtractionCost dataclass)
+[✓] Aggregates costs per job/scraper (via get_cost_summary())
+[✓] HARD LIMIT: Auto-fallback if cost exceeds $0.15/page (check_cost_budget returns False)
+[✓] Circuit breaker after 3 consecutive cost overruns
+[✓] Non-blocking (failures don't break extraction - returns False, no exceptions)
+[✓] check_cost_budget() function for standalone use
+
+================================================================================
+OVERALL STATUS: ALL TESTS PASSED ✓
+================================================================================

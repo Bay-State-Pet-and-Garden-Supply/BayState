@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { isB2BSource, getScraperName } from '@/lib/enrichment/sources';
 
 /**
  * POST /api/admin/enrichment/[sku]/scrape
@@ -46,21 +45,13 @@ export async function POST(
       );
     }
 
-    // Separate scraper sources from B2B sources
-    const scraperSources = sources
-      .filter((s: string) => !isB2BSource(s))
-      .map((s: string) => getScraperName(s))
-      .filter(Boolean) as string[];
-
-    const b2bSources = sources.filter((s: string) => isB2BSource(s));
-
-    // For scrapers, create a scrape job
-    if (scraperSources.length > 0) {
+    // Create a scrape job with the selected scrapers
+    if (sources.length > 0) {
       const { data: job, error: jobError } = await supabase
         .from('scrape_jobs')
         .insert({
           skus: [sku],
-          scrapers: scraperSources,
+          scrapers: sources,
           test_mode: false,
           max_workers: 1,
           status: 'pending',
@@ -77,18 +68,8 @@ export async function POST(
       return NextResponse.json({
         success: true,
         jobId: job.id,
-        scrapers: scraperSources,
-        b2bSources: b2bSources,
-        message: `Scrape job created for ${scraperSources.length} scraper(s)`,
-      });
-    }
-
-    // For B2B sources, we could trigger a sync, but for now just acknowledge
-    if (b2bSources.length > 0) {
-      return NextResponse.json({
-        success: true,
-        b2bSources: b2bSources,
-        message: `B2B sources will be refreshed on next sync: ${b2bSources.join(', ')}`,
+        scrapers: sources,
+        message: `Scrape job created for ${sources.length} scraper(s)`,
       });
     }
 

@@ -5,7 +5,7 @@ import { Check, Lock, RefreshCw, Circle } from 'lucide-react';
 interface Source {
   id: string;
   displayName: string;
-  type: 'scraper' | 'b2b';
+  type: 'scraper';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -32,7 +32,7 @@ const STATUS_COLORS = {
 };
 
 /**
- * A panel showing all available enrichment sources (scrapers + B2B) with toggle checkboxes.
+ * A panel showing all available enrichment sources (web scrapers) with toggle checkboxes.
  * Designed to fit in a sidebar (max-width ~280px).
  */
 export function SourceSelectorPanel({
@@ -42,9 +42,7 @@ export function SourceSelectorPanel({
   onRefreshSource,
   isLoading = false,
 }: SourceSelectorPanelProps) {
-  // Group sources by type
-  const scrapers = sources.filter((s) => s.type === 'scraper');
-  const b2b = sources.filter((s) => s.type === 'b2b');
+  const scrapers = sources;
 
   const renderSourceRow = (source: Source) => {
     const isEnabled = enabledSourceIds.includes(source.id);
@@ -125,18 +123,6 @@ export function SourceSelectorPanel({
             </h4>
             <div className="mt-1 space-y-0.5">
               {scrapers.map(renderSourceRow)}
-            </div>
-          </div>
-        )}
-
-        {/* B2B Section */}
-        {b2b.length > 0 && (
-          <div>
-            <h4 className="px-3 py-1 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              B2B Integrations
-            </h4>
-            <div className="mt-1 space-y-0.5">
-              {b2b.map(renderSourceRow)}
             </div>
           </div>
         )}

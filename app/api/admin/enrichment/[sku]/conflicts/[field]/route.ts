@@ -66,18 +66,6 @@ export async function GET(
       }
     }
 
-    // From B2B
-    for (const [sourceId, sourceData] of Object.entries(summary.b2bSources)) {
-      const value = sourceData.data[field as EnrichableField];
-      if (value !== undefined && value !== null) {
-        options.push({
-          sourceId,
-          sourceName: sourceMap.get(sourceId) ?? sourceId,
-          value,
-        });
-      }
-    }
-
     return NextResponse.json({
       field,
       sku,

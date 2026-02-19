@@ -30,12 +30,8 @@ export {
 // Sources
 export {
   getScraperSources,
-  getB2BSources,
   getAllSources,
   getSourceById,
-  isB2BSource,
-  getDistributorCode,
-  getScraperName,
 } from './sources';
 
 // Config operations
