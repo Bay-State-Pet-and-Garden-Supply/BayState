@@ -71,19 +71,34 @@ export async function persistProductsIngestionSourcesStrict(
   }
 
   for (const sku of skus) {
+    const scrapedData = skuData[sku];
+    const hasMeaningfulData = scrapedData && typeof scrapedData === 'object' && 
+      Object.keys(scrapedData).some(key => {
+        const value = scrapedData[key];
+        // Check for meaningful data: non-empty strings, non-empty arrays, or truthy values (excluding metadata)
+        if (key === '_scraped_at' || key === 'scraped_at') return false;
+        if (typeof value === 'string' && value.length > 0) return true;
+        if (Array.isArray(value) && value.length > 0) return true;
+        if (typeof value === 'number' || typeof value === 'boolean') return true;
+        return false;
+      });
+
     const updatedSources = {
       ...(existingSourcesBySku.get(sku) || {}),
-      ...skuData[sku],
+      ...scrapedData,
       _last_scraped: nowIso,
     };
+
+    // Only mark as 'scraped' if there's meaningful scraped data; otherwise keep current status
+    const statusUpdate = hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {};
 
     const { error: updateError } = await supabase
       .from('products_ingestion')
       .update({
         sources: updatedSources,
-        pipeline_status: 'scraped',
         is_test_run: isTestJob,
         updated_at: nowIso,
+        ...statusUpdate,
       })
       .eq('sku', sku);
 
@@ -123,19 +138,34 @@ export async function persistProductsIngestionSourcesPartial(
 
   const persisted: string[] = [];
   for (const sku of toUpdate) {
+    const scrapedData = skuData[sku];
+    const hasMeaningfulData = scrapedData && typeof scrapedData === 'object' && 
+      Object.keys(scrapedData).some(key => {
+        const value = scrapedData[key];
+        // Check for meaningful data: non-empty strings, non-empty arrays, or truthy values (excluding metadata)
+        if (key === '_scraped_at' || key === 'scraped_at') return false;
+        if (typeof value === 'string' && value.length > 0) return true;
+        if (Array.isArray(value) && value.length > 0) return true;
+        if (typeof value === 'number' || typeof value === 'boolean') return true;
+        return false;
+      });
+
     const updatedSources = {
       ...(existingSourcesBySku.get(sku) || {}),
-      ...skuData[sku],
+      ...scrapedData,
       _last_scraped: nowIso,
     };
+
+    // Only mark as 'scraped' if there's meaningful scraped data; otherwise keep current status
+    const statusUpdate = hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {};
 
     const { error: updateError } = await supabase
       .from('products_ingestion')
       .update({
         sources: updatedSources,
-        pipeline_status: 'scraped',
         is_test_run: isTestJob,
         updated_at: nowIso,
+        ...statusUpdate,
       })
       .eq('sku', sku);
 

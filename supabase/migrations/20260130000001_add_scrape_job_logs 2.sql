@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS scrape_job_logs (
   job_id UUID NOT NULL,
   level TEXT NOT NULL DEFAULT 'info',
   message TEXT NOT NULL,
+  details JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
 
   -- Index for efficient querying by job
@@ -24,4 +25,5 @@ COMMENT ON TABLE scrape_job_logs IS 'Stores structured logs from scraper runners
 COMMENT ON COLUMN scrape_job_logs.job_id IS 'Reference to the scrape_job this log belongs to';
 COMMENT ON COLUMN scrape_job_logs.level IS 'Log level: debug, info, warning, error, critical';
 COMMENT ON COLUMN scrape_job_logs.message IS 'The log message content';
+COMMENT ON COLUMN scrape_job_logs.details IS 'Optional structured JSON details from runner logs';
 COMMENT ON COLUMN scrape_job_logs.created_at IS 'When the log entry was created';

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.scrape_job_logs (
   job_id uuid NOT NULL REFERENCES public.scrape_jobs(id) ON DELETE CASCADE,
   level text NOT NULL,
   message text NOT NULL,
+  details jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -29,5 +30,7 @@ CREATE POLICY "Service role can insert scrape logs"
   ON public.scrape_job_logs
   FOR INSERT
   WITH CHECK (true);
+
+COMMENT ON COLUMN public.scrape_job_logs.details IS 'Optional structured JSON details from runner logs';
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.scrape_job_logs;
