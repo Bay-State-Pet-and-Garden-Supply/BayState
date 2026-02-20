@@ -23,6 +23,7 @@ import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 interface LogViewerProps {
   jobId: string;
   logs: ScrapeJobLog[];
+  className?: string;
 }
 
 const logLevelConfig = {
@@ -74,7 +75,7 @@ function LogEntry({ log }: { log: ScrapeJobLog }) {
   );
 }
 
-export function LogViewer({ jobId, logs: initialLogs }: LogViewerProps) {
+export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProps) {
   const [logs, setLogs] = useState<ScrapeJobLog[]>(initialLogs);
   const [isExpanded, setIsExpanded] = useState(true);
   const [filter, setFilter] = useState('');
@@ -100,7 +101,7 @@ export function LogViewer({ jobId, logs: initialLogs }: LogViewerProps) {
           };
           
           // Prevent duplicates
-          if (prev.some(existingLog => existingLog.id === normalizedLog.id)) {
+          if (prev.some((existingLog: ScrapeJobLog) => existingLog.id === normalizedLog.id)) {
             return prev;
           }
           return [...prev, normalizedLog];
@@ -116,7 +117,7 @@ export function LogViewer({ jobId, logs: initialLogs }: LogViewerProps) {
     }
   }, [logs, isExpanded]);
 
-  const filteredLogs = logs.filter((log) => {
+  const filteredLogs = logs.filter((log: ScrapeJobLog) => {
     const matchesSearch = filter === '' || 
       log.message.toLowerCase().includes(filter.toLowerCase());
     const matchesLevel = levelFilter === 'all' || log.level.toLowerCase() === levelFilter.toLowerCase();
@@ -125,15 +126,15 @@ export function LogViewer({ jobId, logs: initialLogs }: LogViewerProps) {
 
   const logCounts = {
     all: logs.length,
-    info: logs.filter(l => l.level.toLowerCase() === 'info').length,
-    warn: logs.filter(l => ['warn', 'warning'].includes(l.level.toLowerCase())).length,
-    error: logs.filter(l => l.level.toLowerCase() === 'error').length,
-    success: logs.filter(l => l.level.toLowerCase() === 'success').length,
+    info: logs.filter((l: ScrapeJobLog) => l.level.toLowerCase() === 'info').length,
+    warn: logs.filter((l: ScrapeJobLog) => ['warn', 'warning'].includes(l.level.toLowerCase())).length,
+    error: logs.filter((l: ScrapeJobLog) => l.level.toLowerCase() === 'error').length,
+    success: logs.filter((l: ScrapeJobLog) => l.level.toLowerCase() === 'success').length,
   };
 
   if (logs.length === 0) {
     return (
-      <Card>
+      <Card className={className}>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Terminal className="h-4 w-4" />
@@ -148,7 +149,7 @@ export function LogViewer({ jobId, logs: initialLogs }: LogViewerProps) {
   }
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -215,7 +216,7 @@ export function LogViewer({ jobId, logs: initialLogs }: LogViewerProps) {
                 No logs match your filters.
               </p>
             ) : (
-              filteredLogs.map((log) => (
+              filteredLogs.map((log: ScrapeJobLog) => (
                 <LogEntry key={log.id} log={log} />
               ))
             )}
