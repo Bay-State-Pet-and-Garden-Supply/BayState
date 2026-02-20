@@ -31,6 +31,8 @@ export interface ScrapeOptions {
         fallback_to_static?: boolean;
         max_concurrency?: number;
     };
+    /** Maximum cost in USD for Discovery jobs (default: 5.00, max: 10.00) */
+    maxDiscoveryCostUsd?: number;
 }
 
 export interface ScrapeResult {
@@ -57,6 +59,11 @@ export async function scrapeProducts(
     const effectiveScrapers = isDiscovery ? ['ai_discovery'] : scrapers;
     const jobType = isDiscovery ? 'discovery' : 'standard';
 
+    const maxDiscoveryCostUsd = isDiscovery ? (options?.maxDiscoveryCostUsd ?? 5.00) : undefined;
+    if (isDiscovery && maxDiscoveryCostUsd !== undefined && maxDiscoveryCostUsd > 10.00) {
+        return { success: false, error: 'Cost cap exceeds maximum of $10.00' };
+    }
+
     const supabase = await createClient();
 
     const nowIso = new Date().toISOString();
@@ -79,7 +86,10 @@ export async function scrapeProducts(
             runner_name: null,
             started_at: null,
             type: jobType,
-            config: isDiscovery ? (options?.discoveryConfig ?? {}) : null,
+            config: isDiscovery ? {
+                ...(options?.discoveryConfig ?? {}),
+                max_cost_usd: maxDiscoveryCostUsd,
+            } : null,
             metadata: isDiscovery ? { source: 'pipeline', mode: 'discovery' } : null,
             updated_at: nowIso,
         })
