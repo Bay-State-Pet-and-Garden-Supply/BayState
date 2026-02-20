@@ -56,3 +56,5 @@ walkthrough.md
 *.session.json
 sessions/
 session_*.json
+.env*.local
+ai_debug.log
