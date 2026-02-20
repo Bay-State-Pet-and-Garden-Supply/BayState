@@ -247,7 +247,7 @@ export function ScraperDashboardClient({
             </CardContent>
           </Card>
         </Link>
-        <Link href="/admin/scrapers/lab">
+        <Link href="/admin/scrapers/test-lab">
           <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
             <CardContent className="flex flex-col items-center justify-center p-4">
               <Beaker className="h-8 w-8 text-purple-600 mb-2" />
