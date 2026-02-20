@@ -84,26 +84,27 @@ const nextConfig: NextConfig = {
   // Redirects for legacy routes
   async redirects() {
     return [
-      // Legacy scraper routes redirected to new studio
+      // Phase 3: Redirect deprecated lab route to canonical test-lab
       {
         source: '/admin/scrapers/lab',
-        destination: '/admin/scrapers/studio',
-        permanent: true,
+        destination: '/admin/scrapers/test-lab',
+        permanent: false, // 307 temporary redirect
       },
       {
         source: '/admin/scrapers/lab/:path*',
-        destination: '/admin/scrapers/studio',
-        permanent: true,
+        destination: '/admin/scrapers/test-lab',
+        permanent: false, // 307 temporary redirect
+      },
+      // Phase 3: Redirect scraper-network to scrapers/network
+      {
+        source: '/admin/scraper-network',
+        destination: '/admin/scrapers/network',
+        permanent: false, // 307 temporary redirect
       },
       {
-        source: '/admin/scrapers/test-lab',
-        destination: '/admin/scrapers/studio',
-        permanent: true,
-      },
-      {
-        source: '/admin/scrapers/test-lab/:path*',
-        destination: '/admin/scrapers/studio',
-        permanent: true,
+        source: '/admin/scraper-network/:path*',
+        destination: '/admin/scrapers/network',
+        permanent: false, // 307 temporary redirect
       },
     ];
   },
