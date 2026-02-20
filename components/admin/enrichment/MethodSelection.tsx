@@ -36,7 +36,7 @@ interface Scraper {
 }
 
 export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectionProps) {
-    const [method, setMethod] = useState<EnrichmentMethod>('scrapers');
+    const [method, setMethod] = useState<EnrichmentMethod>('discovery');
     const [scrapers, setScrapers] = useState<Scraper[]>([]);
     const [loadingScrapers, setLoadingScrapers] = useState(false);
     const [scrapersError, setScrapersError] = useState<string | null>(null);
