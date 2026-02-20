@@ -195,7 +195,7 @@ export function PipelineClient({
     const handleFilterChange = async (newFilters: PipelineFiltersState) => {
         setFilters(newFilters);
         updateUrl(activeStatus, search, newFilters);
-        
+
         startTransition(async () => {
             const query = buildQueryParams(activeStatus, search, newFilters);
             const res = await fetch(`/api/admin/pipeline?${query}`);
@@ -211,12 +211,12 @@ export function PipelineClient({
 
     const handleSelect = (sku: string, index: number, isShiftClick: boolean) => {
         const newSelected = new Set(selectedSkus);
-        
+
         if (isShiftClick && lastSelectedIndex !== null && lastSelectedIndex !== index) {
             const start = Math.min(lastSelectedIndex, index);
             const end = Math.max(lastSelectedIndex, index);
             const isSelecting = !selectedSkus.has(sku);
-            
+
             for (let i = start; i <= end; i++) {
                 if (isSelecting) {
                     newSelected.add(products[i].sku);
@@ -231,7 +231,7 @@ export function PipelineClient({
                 newSelected.add(sku);
             }
         }
-        
+
         setSelectedSkus(newSelected);
         setLastSelectedIndex(index);
         setIsSelectingAllMatching(false);
@@ -391,7 +391,7 @@ export function PipelineClient({
 
             if (res.ok) {
                 toast.success(`Cleared scrape results for ${selectedSkus.size} product${selectedSkus.size > 1 ? 's' : ''}`);
-                
+
                 // Refresh data
                 const [productsRes, countsRes] = await Promise.all([
                     fetch(`/api/admin/pipeline?status=${activeStatus}`),
@@ -406,7 +406,7 @@ export function PipelineClient({
                     const data = await countsRes.json();
                     setCounts(data.counts);
                 }
-                
+
                 setSelectedSkus(new Set());
                 setIsSelectingAllMatching(false);
             } else {
@@ -444,7 +444,7 @@ export function PipelineClient({
             </div>
 
             {/* ETL Pipeline Flow Visualization */}
-            <PipelineFlowVisualization 
+            <PipelineFlowVisualization
                 currentStage={activeStatus}
                 counts={counts}
             />
@@ -596,33 +596,33 @@ export function PipelineClient({
 
             {/* Product Grid */}
             <div id="main-content" tabIndex={-1} className="scroll-mt-16 outline-none">
-            {isPending ? (
-                <div className="flex h-64 items-center justify-center">
-                    <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
-                </div>
-            ) : products.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
-                    <p className="text-gray-600">No products in &quot;{statusLabels[activeStatus]}&quot; stage.</p>
-                </div>
-            ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {products.map((product, index) => (
-                        <PipelineProductCard
-                            key={product.sku}
-                            product={product}
-                            index={index}
-                            isSelected={selectedSkus.has(product.sku)}
-                            onSelect={handleSelect}
-                            onView={handleView}
-                            onEnrich={setEnrichingSku}
-                            showEnrichButton={activeStatus === 'scraped'}
-                            readOnly={activeStatus === 'staging'}
-                            showBatchSelect={activeStatus === 'staging'}
-                            currentStage={activeStatus}
-                        />
-                    ))}
-                </div>
-            )}
+                {isPending ? (
+                    <div className="flex h-64 items-center justify-center">
+                        <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
+                    </div>
+                ) : products.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
+                        <p className="text-gray-600">No products in &quot;{statusLabels[activeStatus]}&quot; stage.</p>
+                    </div>
+                ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {products.map((product, index) => (
+                            <PipelineProductCard
+                                key={product.sku}
+                                product={product}
+                                index={index}
+                                isSelected={selectedSkus.has(product.sku)}
+                                onSelect={handleSelect}
+                                onView={handleView}
+                                onEnrich={setEnrichingSku}
+                                showEnrichButton={activeStatus === 'scraped'}
+                                readOnly={activeStatus === 'staging'}
+                                showBatchSelect={activeStatus === 'staging'}
+                                currentStage={activeStatus}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Load More and Count Info */}
@@ -686,39 +686,41 @@ export function PipelineClient({
             {/* Enrichment Wizard Modal - Multi-step flow */}
             {enrichmentStep && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-                        {enrichmentStep === 1 && (
-                            <MethodSelection
-                                selectedSkus={Array.from(selectedSkus)}
-                                onNext={(data) => {
-                                    setEnrichmentMethod(data.method);
-                                    setEnrichmentMethodConfig(data.config);
-                                    setEnrichmentStep(2);
-                                }}
-                                onBack={() => setEnrichmentStep(null)}
-                            />
-                        )}
-                        {enrichmentStep === 2 && (
-                            <ChunkConfig
-                                method={enrichmentMethod}
-                                config={enrichmentMethodConfig}
-                                selectedSkus={Array.from(selectedSkus)}
-                                onNext={(data) => {
-                                    setEnrichmentChunkConfig(data);
-                                    setEnrichmentStep(3);
-                                }}
-                                onBack={() => setEnrichmentStep(1)}
-                            />
-                        )}
-                        {enrichmentStep === 3 && (
-                            <ReviewSubmit
-                                selectedSkus={Array.from(selectedSkus)}
-                                method={enrichmentMethod}
-                                methodConfig={enrichmentMethodConfig || { scrapers: [] }}
-                                chunkConfig={enrichmentChunkConfig || { chunkSize: 50, maxWorkers: 3 }}
-                                onBack={() => setEnrichmentStep(2)}
-                            />
-                        )}
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-8 overflow-y-auto flex-1">
+                            {enrichmentStep === 1 && (
+                                <MethodSelection
+                                    selectedSkus={Array.from(selectedSkus)}
+                                    onNext={(data) => {
+                                        setEnrichmentMethod(data.method);
+                                        setEnrichmentMethodConfig(data.config);
+                                        setEnrichmentStep(2);
+                                    }}
+                                    onBack={() => setEnrichmentStep(null)}
+                                />
+                            )}
+                            {enrichmentStep === 2 && (
+                                <ChunkConfig
+                                    method={enrichmentMethod}
+                                    config={enrichmentMethodConfig}
+                                    selectedSkus={Array.from(selectedSkus)}
+                                    onNext={(data) => {
+                                        setEnrichmentChunkConfig(data);
+                                        setEnrichmentStep(3);
+                                    }}
+                                    onBack={() => setEnrichmentStep(1)}
+                                />
+                            )}
+                            {enrichmentStep === 3 && (
+                                <ReviewSubmit
+                                    selectedSkus={Array.from(selectedSkus)}
+                                    method={enrichmentMethod}
+                                    methodConfig={enrichmentMethodConfig || { scrapers: [] }}
+                                    chunkConfig={enrichmentChunkConfig || { chunkSize: 50, maxWorkers: 3 }}
+                                    onBack={() => setEnrichmentStep(2)}
+                                />
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
