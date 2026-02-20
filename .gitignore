@@ -1,3 +1,23 @@
+# Node / build artifacts
+/node_modules/
+/.next/
+/dist/
+.env*
+.DS_Store
+logs/
+tmp/
+.sisyphus/
+.vscode/
+*.log
+
+# Workspace / stray files (ignored in parent repo)
+package.json
+test-coastal.js
+# ignore everything in .opencode except `opencode.json`
+.opencode/*
+!.opencode/opencode.json
+data/
+nul
 
 # Sisyphus QA Evidence - Ignore all evidence files except markers
 .sisyphus/evidence/*
