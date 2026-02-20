@@ -19,11 +19,15 @@ import { updateDraft, validateDraft, publishConfig } from '@/lib/admin/scraper-c
 import { createVersion, publishVersion, rollbackToVersion, fetchVersions } from '@/lib/admin/scraper-studio/version-actions';
 import type { ScraperConfig } from '@/lib/admin/scrapers/types';
 
-import { MetadataTab } from '../scraper-lab/config-editor/tabs/MetadataTab';
-import { SelectorsTab } from '../scraper-lab/config-editor/tabs/SelectorsTab';
-import { WorkflowTab } from '../scraper-lab/config-editor/tabs/WorkflowTab';
+// TODO: Migrate tabs from deprecated scraper-lab/config-editor to scraper-configs/
+// The following tabs from scraper-configs/ are available: Metadata, Selectors, Workflow, Advanced, Login
+// Tabs still using deprecated editor: Configuration, Testing, Preview
+import { MetadataTab } from '../scraper-configs/tabs/MetadataTab';
+import { SelectorsTab } from '../scraper-configs/tabs/SelectorsTab';
+import { WorkflowTab } from '../scraper-configs/tabs/WorkflowTab';
+import { AdvancedTab } from '../scraper-configs/tabs/AdvancedTab';
+// DEPRECATED: Using scraper-lab/config-editor tabs (to be migrated)
 import { ConfigurationTab } from '../scraper-lab/config-editor/tabs/ConfigurationTab';
-import { AdvancedTab } from '../scraper-lab/config-editor/tabs/AdvancedTab';
 import { TestingTab } from '../scraper-lab/config-editor/tabs/TestingTab';
 import { PreviewTab } from '../scraper-lab/config-editor/tabs/PreviewTab';
 import { ValidationSummary } from '../scraper-lab/config-editor/validation/ValidationSummary';
