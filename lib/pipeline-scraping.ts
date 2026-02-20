@@ -18,6 +18,8 @@ export interface ScrapeOptions {
     /** Number of SKUs per chunk (default: 50) */
     chunkSize?: number;
     jobType?: 'standard' | 'discovery';
+    /** Explicit enrichment method - takes precedence over jobType */
+    enrichment_method?: 'scrapers' | 'discovery';
     discoveryConfig?: {
         product_name?: string;
         brand?: string;
@@ -50,9 +52,10 @@ export async function scrapeProducts(
     const scrapers = options?.scrapers ?? [];
     const maxAttempts = options?.maxAttempts ?? 3;
     const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
-    const jobType = options?.jobType ?? 'standard';
-    const isDiscovery = jobType === 'discovery';
+    const enrichmentMethod = options?.enrichment_method ?? (options?.jobType === 'discovery' ? 'discovery' : 'scrapers');
+    const isDiscovery = enrichmentMethod === 'discovery';
     const effectiveScrapers = isDiscovery ? ['ai_discovery'] : scrapers;
+    const jobType = isDiscovery ? 'discovery' : 'standard';
 
     const supabase = await createClient();
 
