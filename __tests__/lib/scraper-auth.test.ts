@@ -63,7 +63,7 @@ describe('scraper-auth', () => {
 
         it('returns runner info for valid key', async () => {
             const mockRpc = jest.fn().mockResolvedValue({
-                data: [{ runner_name: 'test-runner', key_id: 'key-123', is_valid: true }],
+                data: [{ runner_name: 'test-runner', key_id: 'key-123', is_valid: true, allowed_scrapers: null }],
                 error: null,
             });
 
@@ -75,6 +75,7 @@ describe('scraper-auth', () => {
                 runnerName: 'test-runner',
                 keyId: 'key-123',
                 authMethod: 'api_key',
+                allowedScrapers: null,
             });
         });
 
