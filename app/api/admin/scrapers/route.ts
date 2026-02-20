@@ -3,6 +3,27 @@ import { scraperConfigSchema } from '@/lib/admin/scrapers/schema';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('scrapers')
+      .select('id, name, display_name, description, status, health_status, health_score, base_url')
+      .order('name');
+
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data || []);
+  } catch (error) {
+    console.error('Request error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();

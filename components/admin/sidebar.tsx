@@ -3,31 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Package,
-  Wrench,
-  ShoppingCart,
   Home,
   Settings,
   PackagePlus,
-  BarChart3,
-  Tag,
-  Users,
-  Palette,
   RefreshCw,
   LogOut,
-  FolderTree,
-  UserCircle,
-  Percent,
   Network,
   FileCode2,
-  Star,
-  Play,
   History,
-  Server,
-  Settings2,
-  Layers,
   Activity,
-  Sparkles,
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,34 +34,10 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: 'Catalog',
+    title: 'Ingestion',
+    adminOnly: true,
     items: [
-      { href: '/admin/products', label: 'Products', icon: <Package className="h-5 w-5" /> },
-      { href: '/admin/categories', label: 'Categories', icon: <FolderTree className="h-5 w-5" /> },
-      { href: '/admin/brands', label: 'Brands', icon: <Tag className="h-5 w-5" /> },
-      { href: '/admin/services', label: 'Services', icon: <Wrench className="h-5 w-5" /> },
-      { href: '/admin/pipeline', label: 'New Products', icon: <PackagePlus className="h-5 w-5" /> },
-    ],
-  },
-  {
-    title: 'Sales',
-    items: [
-      { href: '/admin/orders', label: 'Orders', icon: <ShoppingCart className="h-5 w-5" /> },
-      { href: '/admin/customers', label: 'Customers', icon: <UserCircle className="h-5 w-5" /> },
-      { href: '/admin/promotions', label: 'Promotions', icon: <Percent className="h-5 w-5" /> },
-      { href: '/admin/reviews', label: 'Reviews', icon: <Star className="h-5 w-5" /> },
-    ],
-  },
-  {
-    title: 'Reports',
-    items: [
-      { href: '/admin/analytics', label: 'Analytics', icon: <BarChart3 className="h-5 w-5" /> },
-    ],
-  },
-  {
-    title: 'Storefront',
-    items: [
-      { href: '/admin/design', label: 'Site Design', icon: <Palette className="h-5 w-5" /> },
+      { href: '/admin/pipeline', label: 'New Products', icon: <PackagePlus className="h-5 w-5" />, adminOnly: true },
     ],
   },
   {
@@ -85,8 +45,6 @@ const navSections: NavSection[] = [
     adminOnly: true,
     items: [
       { href: '/admin/scrapers', label: 'Dashboard', icon: <Activity className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/enrichment', label: 'Enrich Products', icon: <Sparkles className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/scrapers/configs', label: 'Configs', icon: <Settings className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/studio', label: 'Studio', icon: <FileCode2 className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/runs', label: 'Job History', icon: <History className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/network', label: 'Runner Network', icon: <Network className="h-5 w-5" />, adminOnly: true },
@@ -96,9 +54,7 @@ const navSections: NavSection[] = [
     title: 'System',
     adminOnly: true,
     items: [
-      { href: '/admin/users', label: 'Users', icon: <Users className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/migration', label: 'Data Migration', icon: <RefreshCw className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/tools/integra-sync', label: 'Integra Sync', icon: <RefreshCw className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/settings', label: 'Settings', icon: <Settings className="h-5 w-5" />, adminOnly: true },
     ],
   },
@@ -139,9 +95,11 @@ export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
                 // For dashboard root routes like /admin/scrapers, only match exact paths
                 // to avoid highlighting when on child routes like /admin/scrapers/network
                 const isDashboardRoot = item.href === '/admin/scrapers';
-                const isActive = isDashboardRoot
-                  ? pathname === item.href || pathname === item.href + '/dashboard'
-                  : pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/'));
+                const isActive = pathname
+                  ? isDashboardRoot
+                    ? pathname === item.href || pathname === item.href + '/dashboard'
+                    : pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/'))
+                  : false;
                 return (
                   <Link
                     key={item.href}

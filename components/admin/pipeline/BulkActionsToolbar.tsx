@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bot, Loader2, Sparkles, RotateCcw } from 'lucide-react';
+import { Loader2, Sparkles, RotateCcw } from 'lucide-react';
 import type { PipelineStatus } from '@/lib/pipeline';
 import { ExportButton } from './ExportButton';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
@@ -11,9 +11,6 @@ interface BulkActionsToolbarProps {
     currentStatus: PipelineStatus;
     searchQuery?: string;
     onAction: (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => void;
-    onScrape?: () => void;
-    isScraping?: boolean;
-    runnersAvailable?: boolean;
     onConsolidate?: () => void;
     isConsolidating?: boolean;
     onClearSelection: () => void;
@@ -49,16 +46,11 @@ const actionLabels: Record<string, string> = {
     reject: 'Move Back',
 };
 
-const scrapeRejectLabel = 'Clear & Reset';
-
 export function BulkActionsToolbar({
     selectedCount,
     currentStatus,
     searchQuery,
     onAction,
-    onScrape,
-    isScraping = false,
-    runnersAvailable = false,
     onConsolidate,
     isConsolidating = false,
     onClearSelection,
@@ -72,7 +64,6 @@ export function BulkActionsToolbar({
     const [isDeleting, setIsDeleting] = useState(false);
 
     const actions = nextStatusMap[currentStatus];
-    const showScrapeButton = currentStatus === 'staging' && onScrape;
     const showClearScrapeButton = currentStatus === 'scraped' && onClearScrapeResults;
 
     const visibleActions = onConsolidate
@@ -124,29 +115,10 @@ export function BulkActionsToolbar({
                 <div className="flex items-center gap-2">
                     {selectedCount > 0 && (
                         <>
-                            {showScrapeButton && (
-                                <button
-                                    onClick={onScrape}
-                                    disabled={isScraping || !runnersAvailable || isConsolidating}
-                                    className={`flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${runnersAvailable
-                                        ? 'bg-purple-600 hover:bg-purple-700'
-                                        : 'bg-gray-600 cursor-not-allowed'
-                                        } disabled:opacity-50`}
-                                    title={!runnersAvailable ? 'No scraping runners available' : undefined}
-                                >
-                                    {isScraping ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Bot className="h-4 w-4" />
-                                    )}
-                                    {isScraping ? 'Scraping...' : 'Enhance Data'}
-                                </button>
-                            )}
-
                             {showConsolidateButton && (
                                 <button
                                     onClick={onConsolidate}
-                                    disabled={isConsolidating || isScraping}
+                                    disabled={isConsolidating}
                                     className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
                                 >
                                     {isConsolidating ? (
@@ -161,7 +133,7 @@ export function BulkActionsToolbar({
                             {showClearScrapeButton && (
                                 <button
                                     onClick={onClearScrapeResults}
-                                    disabled={isClearingScrapeResults || isScraping || isConsolidating}
+                                    disabled={isClearingScrapeResults || isConsolidating}
                                     className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
                                     title="Clear scrape results and move back to Imported"
                                 >
@@ -170,7 +142,7 @@ export function BulkActionsToolbar({
                                     ) : (
                                         <RotateCcw className="h-4 w-4" />
                                     )}
-                                    {isClearingScrapeResults ? 'Clearing...' : scrapeRejectLabel}
+                                    {isClearingScrapeResults ? 'Clearing...' : 'Clear & Reset'}
                                 </button>
                             )}
 
@@ -178,7 +150,7 @@ export function BulkActionsToolbar({
                                 <button
                                     key={action}
                                     onClick={() => onAction(action as 'approve' | 'publish' | 'reject' | 'consolidate')}
-                                    disabled={isScraping || isConsolidating}
+                                    disabled={isConsolidating}
                                     className={`rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${action === 'reject'
                                         ? 'bg-red-600 hover:bg-red-700'
                                         : action === 'publish'
@@ -192,7 +164,7 @@ export function BulkActionsToolbar({
 
                             <button
                                 onClick={handleDeleteClick}
-                                disabled={isScraping || isConsolidating || isDeleting}
+                                disabled={isConsolidating || isDeleting}
                                 className="rounded px-3 py-1.5 text-sm font-medium transition-colors bg-red-600 hover:bg-red-700 disabled:opacity-50"
                                 title="Permanently delete selected products"
                             >
@@ -201,7 +173,7 @@ export function BulkActionsToolbar({
 
                             <button
                                 onClick={onClearSelection}
-                                disabled={isScraping || isConsolidating}
+                                disabled={isConsolidating}
                                 className="rounded px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white disabled:opacity-50"
                             >
                                 Clear

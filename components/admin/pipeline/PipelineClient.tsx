@@ -3,19 +3,20 @@
 import { useState, useTransition, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
-import { scrapeProducts, checkRunnersAvailable } from '@/lib/pipeline-scraping';
 import { PipelineStatusTabs } from './PipelineStatusTabs';
 import { PipelineProductCard } from './PipelineProductCard';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
-import { BatchEnhanceToolbar } from './BatchEnhanceToolbar';
-import { BatchJobsPanel } from './BatchJobsPanel';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
+import { MethodSelection, EnrichmentMethod } from '@/components/admin/enrichment/MethodSelection';
+import { ChunkConfig } from '@/components/admin/enrichment/ChunkConfig';
+import { ReviewSubmit } from '@/components/admin/enrichment/ReviewSubmit';
+import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 import { PipelineFlowVisualization } from './PipelineFlowVisualization';
 import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
-import { Search, RefreshCw, Bot } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { UndoToast } from './UndoToast';
 import { undoQueue } from '@/lib/pipeline/undo';
@@ -64,10 +65,6 @@ export function PipelineClient({
         maxConfidence: searchParams.get('maxConfidence') ? parseFloat(searchParams.get('maxConfidence')!) : undefined,
     });
 
-    // Scraping state
-    const [isScraping, setIsScraping] = useState(false);
-    const [runnersAvailable, setRunnersAvailable] = useState(false);
-    const [scrapeJobIds, setScrapeJobIds] = useState<string[]>([]);
     const [filteredCount, setFilteredCount] = useState<number>(initialFilteredCount);
 
     const [isConsolidating, setIsConsolidating] = useState(false);
@@ -82,6 +79,15 @@ export function PipelineClient({
 
     // Batch enhance workspace state
     const [showBatchEnhanceWorkspace, setShowBatchEnhanceWorkspace] = useState(false);
+
+    // Enrichment wizard state (multi-step flow)
+    const [enrichmentStep, setEnrichmentStep] = useState<1 | 2 | 3 | null>(null);
+    const [enrichmentMethod, setEnrichmentMethod] = useState<EnrichmentMethod>('scrapers');
+    const [enrichmentMethodConfig, setEnrichmentMethodConfig] = useState<unknown>(null);
+    const [enrichmentChunkConfig, setEnrichmentChunkConfig] = useState<{ chunkSize: number; maxWorkers: number; maxRunners?: number } | null>(null);
+
+    // Integra import modal state
+    const [showIntegraImport, setShowIntegraImport] = useState(false);
 
     // Track last selected index for shift-click range selection
     const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
@@ -123,19 +129,8 @@ export function PipelineClient({
                 const data = await countsRes.json();
                 setCounts(data.counts);
             }
-
-            // Refresh runner status
-            if (activeStatus === 'staging') {
-                checkRunnersAvailable().then(setRunnersAvailable);
-            }
         });
     };
-
-    useEffect(() => {
-        if (activeStatus === 'staging') {
-            checkRunnersAvailable().then(setRunnersAvailable);
-        }
-    }, [activeStatus]);
 
     // WebSocket subscription for consolidation progress (replaces polling)
     useEffect(() => {
@@ -347,28 +342,6 @@ export function PipelineClient({
         });
     };
 
-    const handleScrape = async (scrapers?: string[]) => {
-        if (selectedSkus.size === 0) return;
-
-        setIsScraping(true);
-        setShowBatchEnhanceWorkspace(false);
-
-        const result = await scrapeProducts(Array.from(selectedSkus), {
-            scrapers: scrapers,
-        });
-
-        if (result.success && result.jobIds && result.jobIds.length > 0) {
-            setScrapeJobIds(result.jobIds);
-            // Clear selection after starting scrape
-            setSelectedSkus(new Set());
-            setIsSelectingAllMatching(false);
-        } else {
-            console.error('Failed to start scraping:', result.error);
-        }
-
-        setIsScraping(false);
-    };
-
     const handleConsolidate = async () => {
         if (selectedSkus.size === 0) return;
 
@@ -395,19 +368,6 @@ export function PipelineClient({
         } catch (error) {
             console.error('Error submitting consolidation:', error);
             setIsConsolidating(false);
-        }
-    };
-
-    const handleApplyBatch = async (batchId: string) => {
-        try {
-            const res = await fetch(`/api/admin/consolidation/${batchId}/apply`, {
-                method: 'POST'
-            });
-            if (res.ok) {
-                handleRefresh();
-            }
-        } catch (error) {
-            console.error('Error applying batch:', error);
         }
     };
 
@@ -496,11 +456,6 @@ export function PipelineClient({
                 onStatusChange={handleStatusChange}
             />
 
-            <BatchJobsPanel
-                onApplyBatch={handleApplyBatch}
-                activeBatchId={consolidationBatchId}
-            />
-
             {consolidationBatchId && (
                 <ConsolidationProgressBanner
                     batchId={consolidationBatchId}
@@ -509,22 +464,6 @@ export function PipelineClient({
                     onDismiss={() => setIsBannerDismissed(true)}
                     onViewDetails={() => setIsBannerDismissed(false)}
                 />
-            )}
-
-            {/* Scraping Job Banner */}
-            {scrapeJobIds.length > 0 && (
-                <div className="flex items-center gap-3 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
-                    <Bot className="h-5 w-5 text-purple-600 animate-pulse" />
-                    <span className="text-sm text-purple-800">
-                        Enhancement running: {scrapeJobIds.length} job{scrapeJobIds.length !== 1 ? 's' : ''}. Products will move to &quot;Enhanced&quot; when complete.
-                    </span>
-                    <button
-                        onClick={() => setScrapeJobIds([])}
-                        className="ml-auto text-sm text-purple-600 hover:text-purple-800"
-                    >
-                        Dismiss
-                    </button>
-                </div>
             )}
 
             {/* Search and Actions Bar */}
@@ -549,7 +488,7 @@ export function PipelineClient({
 
                 <button
                     onClick={handleRefresh}
-                    disabled={isPending || isScraping}
+                    disabled={isPending}
                     className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
                 >
                     <RefreshCw className={`h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
@@ -560,7 +499,6 @@ export function PipelineClient({
                     <>
                         <button
                             onClick={handleSelectAll}
-                            disabled={isScraping}
                             className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
                         >
                             {selectedSkus.size === products.length ? 'Deselect All' : 'Select All'}
@@ -568,7 +506,7 @@ export function PipelineClient({
                         {!isSelectingAllMatching && products.length < filteredCount && (
                             <button
                                 onClick={handleSelectAllMatching}
-                                disabled={isScraping || isPending}
+                                disabled={isPending}
                                 className="rounded-lg border border-[#008850] px-4 py-2 text-sm text-[#008850] hover:bg-[#008850]/5 disabled:opacity-50"
                             >
                                 Select All Matching ({filteredCount})
@@ -577,6 +515,26 @@ export function PipelineClient({
                     </>
                 )}
             </div>
+
+            {/* Import CTA for staging tab - always visible */}
+            {activeStatus === 'staging' && (
+                <div className="flex items-center justify-between rounded-lg bg-orange-50 border border-orange-200 px-4 py-3">
+                    <div>
+                        <p className="text-sm text-orange-900 font-medium">
+                            Import products from external sources
+                        </p>
+                        <p className="text-xs text-orange-700">
+                            Add new products from Integra register or other sources
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setShowIntegraImport(true)}
+                        className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 transition-colors"
+                    >
+                        Import from Integra
+                    </button>
+                </div>
+            )}
 
             {/* Selection Hint */}
             {products.length > 0 && (
@@ -596,20 +554,29 @@ export function PipelineClient({
                 </div>
             )}
 
-            {/* Batch Enhance Toolbar for Imported (staging) tab */}
-            {activeStatus === 'staging' && (
-                <BatchEnhanceToolbar
-                    selectedCount={selectedSkus.size}
-                    allCount={filteredCount}
-                    selectingAllMatching={isSelectingAllMatching}
-                    onBatchEnhance={() => setShowBatchEnhanceWorkspace(true)}
-                    isEnhancing={isScraping}
-                    runnersAvailable={runnersAvailable}
-                    onClearSelection={() => {
-                        setSelectedSkus(new Set());
-                        setIsSelectingAllMatching(false);
-                    }}
-                />
+            {activeStatus === 'staging' && selectedSkus.size > 0 && (
+                <div className="flex items-center gap-4 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
+                    <div className="flex-1">
+                        <p className="text-sm text-purple-900">
+                            <strong>{selectedSkus.size}</strong> product{selectedSkus.size !== 1 ? 's' : ''} selected for enhancement
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setEnrichmentStep(1)}
+                        className="flex items-center gap-2 rounded-lg bg-[#008850] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a7034] transition-colors"
+                    >
+                        Enhance Products
+                    </button>
+                    <button
+                        onClick={() => {
+                            setSelectedSkus(new Set());
+                            setIsSelectingAllMatching(false);
+                        }}
+                        className="text-sm text-purple-700 hover:text-purple-900"
+                    >
+                        Clear
+                    </button>
+                </div>
             )}
 
             {/* Bulk Actions - hidden on Imported (staging) tab */}
@@ -619,9 +586,6 @@ export function PipelineClient({
                     currentStatus={activeStatus}
                     searchQuery={search}
                     onAction={handleBulkAction}
-                    onScrape={handleScrape}
-                    isScraping={isScraping}
-                    runnersAvailable={runnersAvailable}
                     onConsolidate={handleConsolidate}
                     isConsolidating={isConsolidating}
                     onClearSelection={() => setSelectedSkus(new Set())}
@@ -712,12 +676,79 @@ export function PipelineClient({
                 <EnrichmentWorkspace
                     skus={Array.from(selectedSkus)}
                     onClose={() => setShowBatchEnhanceWorkspace(false)}
-                    onRunBatch={(jobIds) => setScrapeJobIds(jobIds)}
                     onSave={() => {
                         setSelectedSkus(new Set());
                         handleRefresh();
                     }}
                 />
+            )}
+
+            {/* Enrichment Wizard Modal - Multi-step flow */}
+            {enrichmentStep && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                        {enrichmentStep === 1 && (
+                            <MethodSelection
+                                selectedSkus={Array.from(selectedSkus)}
+                                onNext={(data) => {
+                                    setEnrichmentMethod(data.method);
+                                    setEnrichmentMethodConfig(data.config);
+                                    setEnrichmentStep(2);
+                                }}
+                                onBack={() => setEnrichmentStep(null)}
+                            />
+                        )}
+                        {enrichmentStep === 2 && (
+                            <ChunkConfig
+                                method={enrichmentMethod}
+                                config={enrichmentMethodConfig}
+                                selectedSkus={Array.from(selectedSkus)}
+                                onNext={(data) => {
+                                    setEnrichmentChunkConfig(data);
+                                    setEnrichmentStep(3);
+                                }}
+                                onBack={() => setEnrichmentStep(1)}
+                            />
+                        )}
+                        {enrichmentStep === 3 && (
+                            <ReviewSubmit
+                                selectedSkus={Array.from(selectedSkus)}
+                                method={enrichmentMethod}
+                                methodConfig={enrichmentMethodConfig || { scrapers: [] }}
+                                chunkConfig={enrichmentChunkConfig || { chunkSize: 50, maxWorkers: 3 }}
+                                onBack={() => setEnrichmentStep(2)}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Integra Import Modal */}
+            {showIntegraImport && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                        <div className="p-6 border-b border-gray-200">
+                            <h2 className="text-xl font-bold">Import from Integra</h2>
+                            <p className="text-sm text-gray-600">
+                                Upload your Integra register export to import products
+                            </p>
+                        </div>
+                        <div className="p-6 overflow-auto max-h-[70vh]">
+                            <SyncClient />
+                        </div>
+                        <div className="p-4 border-t border-gray-200 flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowIntegraImport(false);
+                                    handleRefresh();
+                                }}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
