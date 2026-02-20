@@ -63,37 +63,7 @@ export const configFormSchema = z.object({
     multiple: z.boolean().default(false),
     required: z.boolean().default(true),
   })).optional(),
-  scraper_type: z.enum(['static', 'ai', 'discovery']).default('static'),
-  ai_config: z.object({
-    tool: z.enum(['browser-use']).default('browser-use'),
-    task: z.string().min(1, 'Task is required'),
-    max_steps: z.number().min(1).max(50).default(10),
-    confidence_threshold: z.number().min(0).max(1).default(0.7),
-    llm_model: z.enum(['gpt-4o', 'gpt-4o-mini']).default('gpt-4o-mini'),
-    use_vision: z.boolean().default(true),
-    headless: z.boolean().default(true),
-  }).optional(),
-  discovery_config: z.object({
-    enabled: z.boolean().default(true),
-    max_search_results: z.number().min(1).max(10).default(5),
-    max_steps: z.number().min(1).max(50).default(15),
-    confidence_threshold: z.number().min(0).max(1).default(0.7),
-    llm_model: z.enum(['gpt-4o', 'gpt-4o-mini']).default('gpt-4o-mini'),
-    prefer_manufacturer: z.boolean().default(true),
-    fallback_to_static: z.boolean().default(true),
-  }).optional(),
-}).refine(
-  (data) => {
-    if (data.scraper_type === 'ai' && data.ai_config) {
-      return data.ai_config.task && data.ai_config.task.length > 0;
-    }
-    return true;
-  },
-  {
-    message: 'Task is required when AI config is present for AI scrapers',
-    path: ['ai_config', 'task'],
-  }
-);
+});
 
 export type ConfigFormValues = z.infer<typeof configFormSchema>;
 
