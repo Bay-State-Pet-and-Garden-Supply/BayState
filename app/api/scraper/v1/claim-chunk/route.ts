@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { getAIScrapingRuntimeCredentials } from '@/lib/ai-scraping/credentials';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,6 +25,12 @@ interface ChunkResponse {
     scrapers: string[];
     test_mode: boolean;
     max_workers: number;
+    job_type?: string;
+    job_config?: Record<string, unknown>;
+    ai_credentials?: {
+        openai_api_key?: string;
+        brave_api_key?: string;
+    };
     lease_token?: string;
     lease_expires_at?: string;
 }
@@ -90,6 +97,9 @@ export async function POST(request: NextRequest) {
         }
 
         const chunk = claimedChunks[0];
+        
+        // Fetch AI credentials
+        const aiCredentials = await getAIScrapingRuntimeCredentials();
 
         // Update runner status
         await supabase
@@ -111,6 +121,9 @@ export async function POST(request: NextRequest) {
                 scrapers: chunk.scrapers || [],
                 test_mode: chunk.test_mode || false,
                 max_workers: chunk.max_workers || 3,
+                job_type: chunk.type || 'standard',
+                job_config: chunk.config || undefined,
+                ai_credentials: aiCredentials || undefined,
                 lease_token: chunk.lease_token || undefined,
                 lease_expires_at: chunk.lease_expires_at || undefined,
             },
