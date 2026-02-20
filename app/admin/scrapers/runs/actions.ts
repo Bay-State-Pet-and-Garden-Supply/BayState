@@ -174,6 +174,7 @@ export interface ScrapeJobLog {
   level: string;
   message: string;
   created_at: string;
+  details?: Record<string, unknown>;
 }
 
 export async function getScraperRunLogs(jobId: string): Promise<ScrapeJobLog[]> {
@@ -181,7 +182,7 @@ export async function getScraperRunLogs(jobId: string): Promise<ScrapeJobLog[]> 
 
   const { data, error } = await supabase
     .from('scrape_job_logs')
-    .select('id, job_id, level, message, created_at')
+    .select('id, job_id, level, message, details, created_at')
     .eq('job_id', jobId)
     .order('created_at', { ascending: true });
 

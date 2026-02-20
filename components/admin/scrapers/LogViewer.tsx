@@ -18,8 +18,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrapeJobLog } from '@/app/admin/scrapers/runs/actions';
+import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 
 interface LogViewerProps {
+  jobId: string;
   logs: ScrapeJobLog[];
 }
 
@@ -56,18 +58,56 @@ function LogEntry({ log }: { log: ScrapeJobLog }) {
           {config.label}
         </Badge>
       </div>
-      <div className="flex-1 font-mono text-sm text-gray-100 break-all">
-        {log.message}
+      <div className="flex-1 min-w-0">
+        <div className="font-mono text-sm text-gray-100 break-all">
+          {log.message}
+        </div>
+        {log.details && Object.keys(log.details).length > 0 && typeof log.details === 'object' && (
+          <div className="mt-2 text-xs bg-gray-950 p-2 rounded border border-gray-800 overflow-x-auto text-gray-300">
+            <pre className="font-mono">
+              {JSON.stringify(log.details, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export function LogViewer({ logs }: LogViewerProps) {
+export function LogViewer({ jobId, logs: initialLogs }: LogViewerProps) {
+  const [logs, setLogs] = useState<ScrapeJobLog[]>(initialLogs);
   const [isExpanded, setIsExpanded] = useState(true);
   const [filter, setFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLogs(initialLogs);
+  }, [initialLogs]);
+
+  const { isConnected } = useJobBroadcasts({
+    onLog: (log) => {
+      if (log.job_id === jobId) {
+        setLogs((prev) => {
+          // Normalize realtime log to match DB ScrapeJobLog type
+          const normalizedLog: ScrapeJobLog = {
+            id: log.id || `temp-${Date.now()}`,
+            job_id: log.job_id,
+            level: log.level,
+            message: log.message,
+            details: log.details,
+            created_at: log.timestamp || new Date().toISOString(),
+          };
+          
+          // Prevent duplicates
+          if (prev.some(existingLog => existingLog.id === normalizedLog.id)) {
+            return prev;
+          }
+          return [...prev, normalizedLog];
+        });
+      }
+    }
+  });
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -114,6 +154,17 @@ export function LogViewer({ logs }: LogViewerProps) {
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Terminal className="h-4 w-4" />
             Execution Logs ({logs.length})
+            {isConnected ? (
+              <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200 text-[10px] h-5 px-1.5 gap-1 ml-2">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                </span>
+                Live
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground text-[10px] h-5 px-1.5 ml-2">Offline</Badge>
+            )}
           </CardTitle>
           <Button
             variant="ghost"

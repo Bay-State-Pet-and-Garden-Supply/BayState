@@ -116,6 +116,8 @@ export interface ScrapeJobLog {
   message: string;
   /** ISO 8601 timestamp when the log was created */
   timestamp: string;
+  /** Optional JSON payload with additional context (e.g. product data) */
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -128,6 +130,7 @@ export const scrapeJobLogSchema = z.object({
   level: z.enum(['DEBUG', 'INFO', 'WARN', 'ERROR']),
   message: z.string(),
   timestamp: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
