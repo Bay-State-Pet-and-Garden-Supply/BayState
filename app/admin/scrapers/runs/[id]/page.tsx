@@ -127,7 +127,7 @@ export default async function ScraperRunDetailPage({ params }: PageProps) {
       )}
 
       {/* Execution Logs - Main Content */}
-      <LogViewer logs={logs} />
+      <LogViewer jobId={run.id} logs={logs} />
     </div>
   );
 }

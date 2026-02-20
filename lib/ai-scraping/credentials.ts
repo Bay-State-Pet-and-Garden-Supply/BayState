@@ -41,6 +41,7 @@ function getSupabaseAdmin(): SupabaseClient {
 function resolveEncryptionKey(required: boolean): Buffer | null {
   const raw = process.env.AI_CREDENTIALS_ENCRYPTION_KEY;
   if (!raw || !raw.trim()) {
+    console.error('[Scraper API] AI_CREDENTIALS_ENCRYPTION_KEY is missing or empty in process.env');
     if (required) {
       throw new Error('AI_CREDENTIALS_ENCRYPTION_KEY is not configured');
     }
@@ -58,6 +59,7 @@ function resolveEncryptionKey(required: boolean): Buffer | null {
   }
 
   if (keyBuffer.length !== 32) {
+    console.error(`[Scraper API] AI_CREDENTIALS_ENCRYPTION_KEY length is invalid: ${keyBuffer.length} bytes (expected 32)`);
     if (required) {
       throw new Error('AI_CREDENTIALS_ENCRYPTION_KEY must be 32 bytes (utf8) or base64-encoded 32 bytes');
     }
@@ -225,6 +227,7 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
 async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string | null> {
   const key = resolveEncryptionKey(false);
   if (!key) {
+    console.error(`[Scraper API] No encryption key for ${provider}`);
     return null;
   }
 
@@ -236,8 +239,11 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
     .single();
 
   if (error || !data) {
+    console.error(`[Scraper API] Failed to fetch encrypted ${provider} secret:`, error || 'No data');
     return null;
   }
+
+  console.log(`[Scraper API] Decrypting ${provider} secret...`);
 
   try {
     return decryptSecret({
@@ -245,7 +251,8 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
       iv: data.iv as string,
       authTag: data.auth_tag as string,
     });
-  } catch {
+  } catch (err) {
+    console.error(`[Scraper API] Failed to decrypt ${provider} secret:`, err);
     return null;
   }
 }
