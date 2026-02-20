@@ -27,6 +27,7 @@ import {
   Settings2,
   Layers,
   Activity,
+  Sparkles,
 } from 'lucide-react';
 
 interface NavItem {
@@ -84,6 +85,7 @@ const navSections: NavSection[] = [
     adminOnly: true,
     items: [
       { href: '/admin/scrapers', label: 'Dashboard', icon: <Activity className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/enrichment', label: 'Enrich Products', icon: <Sparkles className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/configs', label: 'Configs', icon: <Settings className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/studio', label: 'Studio', icon: <FileCode2 className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/scrapers/runs', label: 'Job History', icon: <History className="h-5 w-5" />, adminOnly: true },
