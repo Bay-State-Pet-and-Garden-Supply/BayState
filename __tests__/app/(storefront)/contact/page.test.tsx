@@ -6,7 +6,7 @@ describe('Contact Page', () => {
         const Page = await ContactPage();
         render(Page);
 
-        expect(screen.getByRole('heading', { name: /contact/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /contact us/i })).toBeInTheDocument();
     });
 
     it('displays store hours', async () => {

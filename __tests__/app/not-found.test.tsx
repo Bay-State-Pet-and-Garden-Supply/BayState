@@ -17,6 +17,6 @@ describe('404 Not Found Page', () => {
     it('displays link to home page', () => {
         render(<NotFoundPage />);
 
-        expect(screen.getByRole('link', { name: /back to home/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /go home/i })).toBeInTheDocument();
     });
 });

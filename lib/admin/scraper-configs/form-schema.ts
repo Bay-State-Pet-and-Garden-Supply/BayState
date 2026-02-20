@@ -106,9 +106,6 @@ export const defaultConfigValues: ConfigFormValues = {
   fake_skus: [],
   edge_case_skus: undefined,
   selectors: undefined,
-  scraper_type: 'static',
-  ai_config: undefined,
-  discovery_config: undefined,
 };
 
 /**

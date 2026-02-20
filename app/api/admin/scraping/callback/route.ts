@@ -37,7 +37,7 @@ async function onScraperComplete(jobId: string, _skus: string[]): Promise<void> 
         const { data: products } = await supabase
             .from('products_ingestion')
             .select('sku, sources')
-            .in('sku', skus)
+            .in('sku', _skus)
             .eq('pipeline_status', 'scraped');
 
         if (!products?.length) {

@@ -1,6 +1,21 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+type AppRole = 'admin' | 'staff' | 'customer'
+
+function normalizeRole(value: unknown): AppRole | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.toLowerCase()
+  if (normalized === 'admin' || normalized === 'staff' || normalized === 'customer') {
+    return normalized
+  }
+
+  return null
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -62,24 +77,25 @@ export async function updateSession(request: NextRequest) {
   if (authError || !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    // Only preserve 'next' param for redirect after login
-    const next = request.nextUrl.searchParams.get('next')
+    // Preserve the current path as 'next' param for redirect after login
     url.search = ''
-    if (next) {
-      url.searchParams.set('next', next)
-    }
+    url.searchParams.set('next', request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
 
   // Check admin role for admin routes
   if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/scraper-lab')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    let role = normalizeRole(user.app_metadata?.role) ?? normalizeRole(user.user_metadata?.role)
 
-    const role = (profile?.role as string) || 'customer'
+    if (role !== 'admin' && role !== 'staff') {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      role = normalizeRole((profile as { role?: unknown } | null)?.role) ?? role ?? 'customer'
+    }
 
     if (role !== 'admin' && role !== 'staff') {
       const url = request.nextUrl.clone()

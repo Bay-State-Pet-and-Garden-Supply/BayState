@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 jest.mock('@supabase/ssr');
 const mockCreateServerClient = createServerClient as jest.Mock;
 
-describe('Issue #6: Middleware DB Fetch - FIXED', () => {
+describe('Middleware role resolution', () => {
     let mockSupabase: any;
     let mockGetUser: jest.Mock;
     let mockFrom: jest.Mock;
@@ -43,70 +43,119 @@ describe('Issue #6: Middleware DB Fetch - FIXED', () => {
         return new NextRequest(new URL(path, 'http://localhost'));
     }
 
-    it('VERIFIED: middleware NO LONGER performs DB fetch to profiles table (uses JWT instead)', async () => {
-        // Setup: User is authenticated with role in JWT app_metadata
+    it('does not fetch profile when role exists in JWT app_metadata', async () => {
         mockGetUser.mockResolvedValue({
             data: { user: { id: 'test-user-id', app_metadata: { role: 'admin' } } },
             error: null
         });
 
-        // Act: Make request to admin route
         const req = createReq('/admin/dashboard');
         await updateSession(req);
 
-        // Assert: NO DB fetch to profiles table was made (role comes from JWT)
         const profilesCalls = profilesTableCalls.filter(t => t === 'profiles');
         expect(profilesCalls.length).toBe(0);
         expect(mockFrom).not.toHaveBeenCalledWith('profiles');
     });
 
-    it('VERIFIED: role is correctly read from JWT app_metadata', async () => {
-        // Setup: User with 'staff' role in JWT
+    it('does not fetch profile when role exists in JWT user_metadata', async () => {
         mockGetUser.mockResolvedValue({
-            data: { user: { id: 'test-user-id', app_metadata: { role: 'staff' } } },
+            data: { user: { id: 'test-user-id', app_metadata: {}, user_metadata: { role: 'staff' } } },
             error: null
         });
 
-        // Act: Make request to admin route (non-restricted)
         const req = createReq('/admin/products');
         const res = await updateSession(req);
 
-        // Should NOT redirect (staff can access products)
+        expect(res.status).not.toBe(307);
+        expect(mockFrom).not.toHaveBeenCalledWith('profiles');
+    });
+
+    it('falls back to profiles lookup when JWT role is missing', async () => {
+        mockGetUser.mockResolvedValue({
+            data: { user: { id: 'test-user-id', app_metadata: {} } },
+            error: null
+        });
+
+        const req = createReq('/admin/dashboard');
+        const res = await updateSession(req);
+
+        expect(mockFrom).toHaveBeenCalledWith('profiles');
         expect(res.status).not.toBe(307);
     });
 
-    it('VERIFIED: customer role is rejected', async () => {
-        // Setup: User with 'customer' role in JWT
+    it('falls back to profiles lookup when JWT role is customer', async () => {
+        mockFrom.mockImplementationOnce((table: string) => {
+            profilesTableCalls.push(table);
+            return {
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null })
+                    })
+                })
+            };
+        });
+
         mockGetUser.mockResolvedValue({
             data: { user: { id: 'test-user-id', app_metadata: { role: 'customer' } } },
             error: null
         });
 
-        // Act: Make request to admin route
         const req = createReq('/admin/dashboard');
         const res = await updateSession(req);
 
-        // Assert: Should redirect to login with unauthorized error
+        expect(mockFrom).toHaveBeenCalledWith('profiles');
+        expect(res.status).not.toBe(307);
+    });
+
+    it('rejects user when JWT and profile roles are both customer', async () => {
+        mockFrom.mockImplementationOnce((table: string) => {
+            profilesTableCalls.push(table);
+            return {
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        single: jest.fn().mockResolvedValue({ data: { role: 'customer' }, error: null })
+                    })
+                })
+            };
+        });
+
+        mockGetUser.mockResolvedValue({
+            data: { user: { id: 'test-user-id', app_metadata: { role: 'customer' } } },
+            error: null
+        });
+
+        const req = createReq('/admin/dashboard');
+        const res = await updateSession(req);
+
+        expect(mockFrom).toHaveBeenCalledWith('profiles');
         expect(res.status).toBe(307);
         const location = new URL(res.headers.get('location') || '');
         expect(location.pathname).toBe('/login');
         expect(location.searchParams.get('error')).toBe('unauthorized');
     });
 
-    it('VERIFIED: fallback to customer when no role in JWT', async () => {
-        // Setup: User with NO role in JWT app_metadata
+    it('falls back to customer when profile lookup returns customer', async () => {
+        mockFrom.mockImplementationOnce((table: string) => {
+            profilesTableCalls.push(table);
+            return {
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        single: jest.fn().mockResolvedValue({ data: { role: 'customer' }, error: null })
+                    })
+                })
+            };
+        });
+
         mockGetUser.mockResolvedValue({
             data: { user: { id: 'test-user-id', app_metadata: {} } },
             error: null
         });
 
-        // Act: Make request to admin route
         const req = createReq('/admin/dashboard');
         const res = await updateSession(req);
 
-        // Assert: Should redirect (treated as customer)
         expect(res.status).toBe(307);
         const location = new URL(res.headers.get('location') || '');
-        expect(location.searchParams.get('message')).toContain('customer');
+        expect(location.searchParams.get('message')).toContain('Admin access required');
     });
 });

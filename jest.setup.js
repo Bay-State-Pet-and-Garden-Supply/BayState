@@ -3,6 +3,8 @@ import { TextEncoder, TextDecoder } from 'util';
 
 Object.assign(global, { TextEncoder, TextDecoder });
 
+
+
 // Polyfill for TransformStream (required by Playwright MCP tests)
 if (typeof global.TransformStream === 'undefined') {
   const { ReadableStream, WritableStream } = require('stream/web');

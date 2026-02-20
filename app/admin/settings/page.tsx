@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Palette, Database, Shield, Bell } from 'lucide-react';
 import { EnrichmentDefaultsCard } from '@/components/admin/settings/EnrichmentDefaultsCard';
+import { AIScrapingCredentialsCard } from '@/components/admin/settings/AIScrapingCredentialsCard';
 
 export default function AdminSettingsPage() {
   return (
@@ -124,6 +125,8 @@ export default function AdminSettingsPage() {
 
       {/* Enrichment Defaults - Full Width */}
       <EnrichmentDefaultsCard />
+
+      <AIScrapingCredentialsCard />
     </div>
   );
 }
