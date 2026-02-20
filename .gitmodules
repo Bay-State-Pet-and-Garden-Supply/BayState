@@ -1,0 +1,8 @@
+[submodule "BayStateApp"]
+	path = BayStateApp
+	url = https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateApp.git
+	branch = main
+[submodule "BayStateScraper"]
+	path = BayStateScraper
+	url = https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper.git
+	branch = main
