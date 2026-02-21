@@ -91,4 +91,48 @@ describe('chunk callback contract validation', () => {
         expect(result.success).toBe(true);
         expect(result.payload.chunk_id).toBe('chunk-1');
     });
+
+    it('accepts chunk callbacks with logs and telemetry', () => {
+        const payload = {
+            chunk_id: 'chunk-telemetry',
+            status: 'completed',
+            results: {
+                skus_processed: 1,
+                skus_successful: 1,
+                skus_failed: 0,
+                data: {
+                    '001135': {
+                        bradley: {
+                            Name: 'Test Product',
+                        },
+                    },
+                },
+                logs: [
+                    {
+                        level: 'info',
+                        message: 'bradley/001135: Found data',
+                    },
+                ],
+                telemetry: {
+                    steps: [
+                        {
+                            step_index: 9,
+                            action_type: 'extract',
+                            status: 'completed',
+                            extracted_data: {
+                                Name: 'Test Product',
+                            },
+                        },
+                    ],
+                    selectors: [],
+                    extractions: [],
+                },
+            },
+        };
+
+        const result = parseChunkCallbackPayload(JSON.stringify(payload));
+        expect(result.success).toBe(true);
+        expect(result.payload.results?.logs).toHaveLength(1);
+        expect(result.payload.results?.telemetry?.steps).toHaveLength(1);
+    });
 });

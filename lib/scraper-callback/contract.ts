@@ -70,6 +70,59 @@ const ChunkResultsSchema = z.object({
     skus_successful: z.number().int().min(0).optional(),
     skus_failed: z.number().int().min(0).optional(),
     data: z.record(z.string().min(1, 'sku is required'), z.unknown()).optional(),
+    logs: z
+        .array(
+            z.object({
+                level: z.string(),
+                message: z.string(),
+                timestamp: z.string().optional(),
+                details: z.record(z.string(), z.unknown()).optional(),
+            })
+        )
+        .optional(),
+    telemetry: z
+        .object({
+            steps: z
+                .array(
+                    z.object({
+                        step_index: z.number().int().nonnegative(),
+                        action_type: z.string(),
+                        status: z.enum(['pending', 'running', 'completed', 'failed', 'skipped']),
+                        started_at: z.string().optional(),
+                        completed_at: z.string().optional(),
+                        duration_ms: z.number().int().optional(),
+                        error_message: z.string().optional(),
+                        extracted_data: z.record(z.string(), z.unknown()).optional(),
+                        sku: z.string().optional(),
+                    })
+                )
+                .optional(),
+            selectors: z
+                .array(
+                    z.object({
+                        sku: z.string().optional(),
+                        selector_name: z.string(),
+                        selector_value: z.string(),
+                        status: z.enum(['FOUND', 'MISSING', 'ERROR', 'SKIPPED']),
+                        error_message: z.string().optional(),
+                        duration_ms: z.number().int().optional(),
+                    })
+                )
+                .optional(),
+            extractions: z
+                .array(
+                    z.object({
+                        sku: z.string().optional(),
+                        field_name: z.string(),
+                        field_value: z.string().optional(),
+                        status: z.enum(['SUCCESS', 'EMPTY', 'ERROR', 'NOT_FOUND']),
+                        error_message: z.string().optional(),
+                        duration_ms: z.number().int().optional(),
+                    })
+                )
+                .optional(),
+        })
+        .optional(),
 });
 
 const ScraperCallbackPayloadSchema = z.object({

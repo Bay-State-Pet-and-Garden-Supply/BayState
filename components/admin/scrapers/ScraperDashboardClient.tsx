@@ -349,7 +349,7 @@ export function ScraperDashboardClient({
               {scrapers.slice(0, 10).map((scraper) => (
                 <Link
                   key={scraper.id}
-                  href={`/admin/scrapers/${scraper.id}`}
+                  href={`/admin/scrapers/configs/${scraper.id}/edit`}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">

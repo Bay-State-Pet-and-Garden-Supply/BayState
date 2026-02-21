@@ -219,17 +219,17 @@ export async function POST(request: NextRequest) {
 
         if (!statsError && chunkStats) {
             const totalChunks = chunkStats.length;
-            const completedChunks = chunkStats.filter(c => c.status === 'completed').length;
-            const failedChunks = chunkStats.filter(c => c.status === 'failed').length;
-            const pendingOrRunning = chunkStats.filter(c => c.status === 'pending' || c.status === 'running').length;
+            const completedChunks = chunkStats.filter((c) => c.status === 'completed').length;
+            const failedChunks = chunkStats.filter((c) => c.status === 'failed').length;
+            const pendingOrRunning = chunkStats.filter((c) => c.status === 'pending' || c.status === 'running').length;
 
-            console.log(`[Chunk Callback] Job ${jobId} progress: ${completedChunks + failedChunks}/${totalChunks} chunks done (${pendingOrRunning} in progress)`);
+            console.log(
+                `[Chunk Callback] Job ${jobId} progress: ${completedChunks + failedChunks}/${totalChunks} chunks done (${pendingOrRunning} in progress)`
+            );
 
-            // If all chunks are complete (success or failure), update job status
             if (pendingOrRunning === 0) {
                 const jobStatus = failedChunks > 0 && completedChunks === 0 ? 'failed' : 'completed';
 
-                // Aggregate results from all chunks
                 const { data: allChunks } = await supabase
                     .from('scrape_job_chunks')
                     .select('results, skus_processed, skus_successful, skus_failed')
@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
                         completed_at: new Date().toISOString(),
                     })
                     .eq('id', jobId)
-                    .select('id, test_mode')
+                    .select('id, test_mode, metadata')
                     .single();
 
                 if (jobUpdateError) {
@@ -282,17 +282,9 @@ export async function POST(request: NextRequest) {
                         }
 
                         try {
-                            const persistedSkus = await persistChunkResultsToPipeline(
-                                supabase,
-                                jobId,
-                                aggregatedResultsBySku,
-                                isTestJob
-                            );
+                            await persistChunkResultsToPipeline(supabase, jobId, aggregatedResultsBySku, isTestJob);
 
-    // NOTE: Consolidation is now manually triggered by users
-    // Previously: await triggerConsolidationForSkus(supabase, jobId, persistedSkus);
-    // await triggerConsolidationForSkus(supabase, jobId, persistedSkus);
-    console.log(`[Chunk Callback] Job ${jobId} completed - consolidation must be triggered manually`);
+                            console.log(`[Chunk Callback] Job ${jobId} completed - consolidation must be triggered manually`);
 
                             const recordResult = await recordCallbackProcessed(
                                 supabase,
@@ -315,6 +307,33 @@ export async function POST(request: NextRequest) {
                         }
                     } else {
                         console.log(`[Chunk Callback] Job ${jobId} completed with no aggregated SKU data to persist`);
+                    }
+                }
+
+                const metadata = (updatedJob?.metadata ?? null) as Record<string, unknown> | null;
+                const testRunId = typeof metadata?.test_run_id === 'string' ? metadata.test_run_id : undefined;
+                if (isTestJob && testRunId && results?.telemetry?.steps && results.telemetry.steps.length > 0) {
+                    const stepRows = results.telemetry.steps.map((step) => ({
+                        test_run_id: testRunId,
+                        step_index: step.step_index,
+                        action_type: step.action_type,
+                        status: step.status,
+                        started_at: step.started_at ?? null,
+                        completed_at: step.completed_at ?? null,
+                        duration_ms: step.duration_ms ?? null,
+                        error_message: step.error_message ?? null,
+                        extracted_data: step.extracted_data ?? {},
+                    }));
+
+                    const { error: stepsError } = await supabase
+                        .from('scraper_test_run_steps')
+                        .upsert(stepRows, { onConflict: 'test_run_id,step_index' });
+
+                    if (stepsError) {
+                        console.warn(
+                            `[Chunk Callback] Failed to persist test telemetry steps for run ${testRunId}:`,
+                            stepsError.message
+                        );
                     }
                 }
 

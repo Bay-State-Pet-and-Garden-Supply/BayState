@@ -246,4 +246,58 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.confidence_threshold).toBe(0.82);
         expect(data.job.job_config.llm_model).toBe('gpt-4o');
     });
+
+    it('preserves selectors arrays and validation in scraper payload', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+
+        const configRow = {
+            slug: 'bradley',
+            scraper_config_versions: {
+                status: 'published',
+                config: {
+                    base_url: 'https://www.bradleycaldwell.com',
+                    selectors: [
+                        { name: 'Name', selector: 'main h1', attribute: 'text' },
+                    ],
+                    workflows: [{ action: 'extract', name: 'extract', params: { fields: ['Name'] } }],
+                    validation: {
+                        no_results_selectors: ['main h3:has-text("Sorry")'],
+                        no_results_text_patterns: ['Sorry, no results'],
+                    },
+                    retries: 1,
+                    test_skus: ['001135'],
+                },
+            },
+        };
+
+        mockSupabase.eq.mockImplementation(function(this: any) {
+            return this;
+        });
+        mockSupabase.in.mockResolvedValue({ data: [configRow], error: null });
+
+        mockSupabase.rpc.mockResolvedValue({
+            data: [{
+                job_id: 'job-123',
+                skus: ['001135'],
+                scrapers: ['bradley'],
+                test_mode: true,
+                max_workers: 1,
+            }],
+            error: null,
+        });
+
+        const req = createRequest({});
+        const res = await POST(req);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.job.scrapers).toHaveLength(1);
+        expect(Array.isArray(data.job.scrapers[0].selectors)).toBe(true);
+        expect(data.job.scrapers[0].selectors[0].name).toBe('Name');
+        expect(data.job.scrapers[0].validation.no_results_selectors[0]).toContain('Sorry');
+        expect(data.job.scrapers[0].retries).toBe(1);
+    });
 });
