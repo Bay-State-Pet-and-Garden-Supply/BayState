@@ -59,6 +59,15 @@ export function StudioTestingPanel() {
     autoConnect: !!currentRun,
   });
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[Studio] currentRun:', currentRun?.id, 'status:', currentRun?.status);
+  }, [currentRun]);
+
+  useEffect(() => {
+    console.log('[Studio] runRealtime:', { isConnected: runRealtime.isConnected, runId: runRealtime.run?.id, status: runRealtime.run?.status });
+  }, [runRealtime]);
+
   useEffect(() => {
     if (!currentRun?.id) {
       return;
