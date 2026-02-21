@@ -194,9 +194,11 @@ export async function retryScraperRun(jobId: string) {
 export interface ScrapeJobLog {
   id: string;
   job_id: string;
+  runner_id?: string;
   level: string;
   message: string;
   created_at: string;
+  timestamp?: string;
   details?: Record<string, unknown>;
 }
 
