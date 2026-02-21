@@ -56,15 +56,34 @@ export async function scrapeProducts(
     const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
     const enrichmentMethod = options?.enrichment_method ?? (options?.jobType === 'discovery' ? 'discovery' : 'scrapers');
     const isDiscovery = enrichmentMethod === 'discovery';
-    const effectiveScrapers = isDiscovery ? ['ai_discovery'] : scrapers;
+    const effectiveScrapersRaw = isDiscovery ? ['ai_discovery'] : scrapers;
     const jobType = isDiscovery ? 'discovery' : 'standard';
+
+    const supabase = await createClient();
+
+    // Resolve scraper display names to slugs if possible
+    let effectiveScrapers = effectiveScrapersRaw;
+    if (scrapers.length > 0 && !isDiscovery) {
+        const { data: configRows } = await supabase
+            .from('scraper_configs')
+            .select('slug, display_name');
+        
+        if (configRows) {
+            const slugMap = new Map<string, string>();
+            configRows.forEach(row => {
+                slugMap.set(row.slug.toLowerCase(), row.slug);
+                if (row.display_name) {
+                    slugMap.set(row.display_name.toLowerCase(), row.slug);
+                }
+            });
+            effectiveScrapers = effectiveScrapersRaw.map(s => slugMap.get(s.toLowerCase()) || s);
+        }
+    }
 
     const maxDiscoveryCostUsd = isDiscovery ? (options?.maxDiscoveryCostUsd ?? 5.00) : undefined;
     if (isDiscovery && maxDiscoveryCostUsd !== undefined && maxDiscoveryCostUsd > 10.00) {
         return { success: false, error: 'Cost cap exceeds maximum of $10.00' };
     }
-
-    const supabase = await createClient();
 
     const nowIso = new Date().toISOString();
 

@@ -45,13 +45,30 @@ export async function POST(
       );
     }
 
+    // Resolve scraper display names to slugs if possible
+    const { data: configRows } = await supabase
+      .from('scraper_configs')
+      .select('slug, display_name');
+
+    let resolvedSources = sources;
+    if (configRows) {
+      const slugMap = new Map<string, string>();
+      configRows.forEach(row => {
+        slugMap.set(row.slug.toLowerCase(), row.slug);
+        if (row.display_name) {
+          slugMap.set(row.display_name.toLowerCase(), row.slug);
+        }
+      });
+      resolvedSources = sources.map((s: string) => slugMap.get(s.toLowerCase()) || s);
+    }
+
     // Create a scrape job with the selected scrapers
-    if (sources.length > 0) {
+    if (resolvedSources.length > 0) {
       const { data: job, error: jobError } = await supabase
         .from('scrape_jobs')
         .insert({
           skus: [sku],
-          scrapers: sources,
+          scrapers: resolvedSources,
           test_mode: false,
           max_workers: 1,
           status: 'pending',

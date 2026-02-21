@@ -20,9 +20,21 @@ interface ScraperConfig {
     disabled: boolean;
     base_url?: string;
     search_url_template?: string;
-    selectors?: Record<string, unknown>;
+    selectors?: Record<string, unknown> | Record<string, unknown>[];
     options?: Record<string, unknown>;
     test_skus?: string[];
+    retries?: number;
+    validation?: Record<string, unknown>;
+}
+
+interface ScraperConfigVersionRow {
+    status?: string | null;
+    config?: unknown;
+}
+
+interface ScraperConfigRow {
+    slug: string;
+    scraper_config_versions: ScraperConfigVersionRow | ScraperConfigVersionRow[] | null;
 }
 
 interface PollResponse {
@@ -45,6 +57,41 @@ interface PollResponse {
 
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeCurrentVersion(
+    version: ScraperConfigRow['scraper_config_versions']
+): ScraperConfigVersionRow | null {
+    if (Array.isArray(version)) {
+        return version[0] ?? null;
+    }
+    return version ?? null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return undefined;
+}
+
+function toSelectors(value: unknown): Record<string, unknown> | Record<string, unknown>[] | undefined {
+    if (Array.isArray(value)) {
+        return value.filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item));
+    }
+
+    if (value && typeof value === 'object') {
+        return value as Record<string, unknown>;
+    }
+
+    return undefined;
+}
+
+function toStringArray(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    return value.filter((item): item is string => typeof item === 'string');
 }
 
 export async function POST(request: NextRequest) {
@@ -91,23 +138,59 @@ export async function POST(request: NextRequest) {
 
         const job = claimedJobs[0];
 
-        // Query scrapers directly (scrapers table stores config in a JSONB column)
+        // Query scraper configs from canonical versioned schema
         let scraperQuery = supabase
-            .from('scrapers')
-            .select('*')
-            .eq('status', 'active');  // Use status='active' not disabled=false
+            .from('scraper_configs')
+            .select(`
+                slug,
+                scraper_config_versions!fk_current_version (
+                    status,
+                    config
+                )
+            `)
+            .eq('scraper_config_versions.status', 'published');
 
         if (job.scrapers && job.scrapers.length > 0) {
-            scraperQuery = scraperQuery.in('name', job.scrapers);
+            scraperQuery = scraperQuery.in('slug', job.scrapers);
         }
 
-        const { data: scrapers, error: scraperError } = await scraperQuery;
+        const { data: scraperRows, error: scraperError } = await scraperQuery;
 
         if (scraperError) {
             console.error('[Poll] Scraper query error:', scraperError);
         }
 
-        console.log('[Poll] Scrapers from DB:', scrapers?.length || 0);
+        const scrapers: ScraperConfig[] = ((scraperRows || []) as ScraperConfigRow[]).map((row) => {
+            const version = normalizeCurrentVersion(row.scraper_config_versions);
+            const config = toRecord(version?.config);
+            const workflows = Array.isArray(config?.workflows) ? config.workflows : undefined;
+            const timeout = typeof config?.timeout === 'number' ? config.timeout : undefined;
+
+            const options: Record<string, unknown> = {};
+            if (workflows && workflows.length > 0) {
+                options.workflows = workflows;
+            }
+            if (typeof timeout === 'number') {
+                options.timeout = timeout;
+            }
+
+            return {
+                name: row.slug,
+                disabled: version?.status === 'archived',
+                base_url: typeof config?.base_url === 'string' ? config.base_url : undefined,
+                search_url_template:
+                    typeof config?.search_url_template === 'string'
+                        ? config.search_url_template
+                        : undefined,
+                selectors: toSelectors(config?.selectors),
+                options,
+                test_skus: toStringArray(config?.test_skus),
+                retries: typeof config?.retries === 'number' ? config.retries : undefined,
+                validation: toRecord(config?.validation),
+            };
+        });
+
+        console.log('[Poll] Scrapers from DB:', scrapers.length);
 
         // Extract config from JSONB column
         const skus: string[] = job.skus || [];
@@ -119,7 +202,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log(`[Poll] Runner ${runnerName} assigned job ${job.job_id}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
+        console.log(`[Poll] Runner ${runnerName} assigned job ${job.job_id}: ${skus.length} SKUs, ${scrapers.length} scrapers`);
 
         // Broadcast job assignment event to admin dashboard
         try {
@@ -144,36 +227,13 @@ export async function POST(request: NextRequest) {
         const aiDefaults = await getAIScrapingDefaults();
         const aiCredentials = await getAIScrapingRuntimeCredentials();
 
-        // Transform scrapers to response format - use actual column names from scrapers table
-        // The table has workflows, selectors, timeout as separate columns
-        // Runner expects options to contain workflows
+        // Transform scrapers to response format for runner consumption
+        // Runner expects options.workflows and optional timeout
         const response: PollResponse = {
             job: {
                 job_id: job.job_id,
                 skus,
-                scrapers: (scrapers || []).map(s => {
-                    // Get workflows from the workflows column
-                    const workflows = s.workflows as unknown[] | undefined;
-                    
-                    // Build options with workflows (runner looks for options.workflows)
-                    const options: Record<string, unknown> = {};
-                    if (workflows && workflows.length > 0) {
-                        options["workflows"] = workflows;
-                    }
-                    if (s.timeout) {
-                        options["timeout"] = s.timeout;
-                    }
-                    
-                    return {
-                        name: s.name,
-                        disabled: s.status === 'disabled',
-                        base_url: s.base_url,
-                        search_url_template: s.url_template || undefined,
-                        selectors: s.selectors as Record<string, unknown> | undefined,
-                        options: options,
-                        test_skus: s.test_skus || undefined,
-                    };
-                }),
+                scrapers,
                 test_mode: job.test_mode || false,
                 max_workers: job.max_workers || 3,
                 job_type: job.type || 'standard',

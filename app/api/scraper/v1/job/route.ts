@@ -17,12 +17,26 @@ function getSupabaseAdmin(): SupabaseClient {
 
 interface ScraperConfig {
     name: string;
+    display_name?: string | null;
     disabled: boolean;
     base_url?: string;
     search_url_template?: string;
-    selectors?: Record<string, unknown>;
+    selectors?: Record<string, unknown> | Record<string, unknown>[];
     options?: Record<string, unknown>;
     test_skus?: string[];
+    retries?: number;
+    validation?: Record<string, unknown>;
+}
+
+interface ScraperConfigVersionRow {
+    status?: string | null;
+    config?: unknown;
+}
+
+interface ScraperConfigRow {
+    slug: string;
+    display_name: string | null;
+    scraper_config_versions: ScraperConfigVersionRow | ScraperConfigVersionRow[] | null;
 }
 
 interface JobConfigResponse {
@@ -44,6 +58,42 @@ interface JobConfigResponse {
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
+
+function normalizeCurrentVersion(
+    version: ScraperConfigRow['scraper_config_versions']
+): ScraperConfigVersionRow | null {
+    if (Array.isArray(version)) {
+        return version[0] ?? null;
+    }
+    return version ?? null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return undefined;
+}
+
+function toSelectors(value: unknown): Record<string, unknown> | Record<string, unknown>[] | undefined {
+    if (Array.isArray(value)) {
+        return value.filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item));
+    }
+
+    if (value && typeof value === 'object') {
+        return value as Record<string, unknown>;
+    }
+
+    return undefined;
+}
+
+function toStringArray(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    return value.filter((item): item is string => typeof item === 'string');
+}
+
 
 export async function GET(request: NextRequest) {
     try {
@@ -90,17 +140,18 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Fetch scraper configurations
-        let scraperQuery = supabase
-            .from('scrapers')
-            .select('*')
-            .eq('status', 'active');  // Use status='active' not disabled=false
-
-        if (job.scrapers && job.scrapers.length > 0) {
-            scraperQuery = scraperQuery.in('name', job.scrapers);
-        }
-
-        const { data: scrapers, error: scrapersError } = await scraperQuery;
+        // Fetch scraper configurations from the canonical versioned schema
+        const { data: scraperRows, error: scrapersError } = await supabase
+            .from('scraper_configs')
+            .select(`
+                slug,
+                display_name,
+                scraper_config_versions!fk_current_version (
+                    status,
+                    config
+                )
+            `)
+            .eq('scraper_config_versions.status', 'published');
 
         if (scrapersError) {
             console.error(`[Scraper API] Failed to fetch scrapers:`, scrapersError);
@@ -109,6 +160,44 @@ export async function GET(request: NextRequest) {
                 { status: 500 }
             );
         }
+
+        const requestedScrapers = job.scrapers || [];
+        const filteredScraperRows = (scraperRows || []).filter(row => {
+            if (requestedScrapers.length === 0) return true;
+            return requestedScrapers.includes(row.slug) || 
+                   (row.display_name && requestedScrapers.includes(row.display_name));
+        });
+
+        const scrapers: ScraperConfig[] = (filteredScraperRows as ScraperConfigRow[]).map((row) => {
+            const version = normalizeCurrentVersion(row.scraper_config_versions);
+            const config = toRecord(version?.config);
+            const workflows = Array.isArray(config?.workflows) ? config.workflows : undefined;
+            const timeout = typeof config?.timeout === 'number' ? config.timeout : undefined;
+
+            const options: Record<string, unknown> = {};
+            if (workflows && workflows.length > 0) {
+                options.workflows = workflows;
+            }
+            if (typeof timeout === 'number') {
+                options.timeout = timeout;
+            }
+
+            return {
+                name: row.slug,
+                display_name: row.display_name,
+                disabled: version?.status === 'archived',
+                base_url: typeof config?.base_url === 'string' ? config.base_url : undefined,
+                search_url_template:
+                    typeof config?.search_url_template === 'string'
+                        ? config.search_url_template
+                        : undefined,
+                selectors: toSelectors(config?.selectors),
+                options,
+                test_skus: toStringArray(config?.test_skus),
+                retries: typeof config?.retries === 'number' ? config.retries : undefined,
+                validation: toRecord(config?.validation),
+            };
+        });
 
         const skus: string[] = job.skus || [];
         if (skus.length === 0) {
@@ -126,26 +215,7 @@ export async function GET(request: NextRequest) {
         const response: JobConfigResponse = {
             job_id: job.id,
             skus,
-            scrapers: (scrapers || []).map(s => {
-                const workflows = s.workflows as unknown[] | undefined;
-                const options: Record<string, unknown> = {};
-                if (workflows && workflows.length > 0) {
-                    options["workflows"] = workflows;
-                }
-                if (s.timeout) {
-                    options["timeout"] = s.timeout;
-                }
-                
-                return {
-                    name: s.name,
-                    disabled: s.status === 'disabled',
-                    base_url: s.base_url,
-                    search_url_template: s.url_template || undefined,
-                    selectors: s.selectors,
-                    options: options,
-                    test_skus: s.test_skus,
-                };
-            }),
+            scrapers,
             test_mode: job.test_mode || false,
             max_workers: job.max_workers || 3,
             job_type: job.type || 'standard',
@@ -172,7 +242,7 @@ export async function GET(request: NextRequest) {
             };
         }
 
-        console.log(`[Scraper API] Job ${jobId} config sent to ${runner.runnerName}: ${skus.length} SKUs, ${scrapers?.length || 0} scrapers`);
+        console.log(`[Scraper API] Job ${jobId} config sent to ${runner.runnerName}: ${skus.length} SKUs, ${scrapers.length} scrapers`);
 
         return NextResponse.json(response);
     } catch (error) {

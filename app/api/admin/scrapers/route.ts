@@ -1,63 +1,57 @@
-import { createClient } from '@/lib/supabase/server';
-import { scraperConfigSchema } from '@/lib/admin/scrapers/schema';
+import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+
+type CurrentVersionRow = {
+  status?: string | null;
+};
+
+type ScraperRow = {
+  id: string;
+  slug: string;
+  display_name: string | null;
+  domain: string | null;
+  scraper_config_versions: CurrentVersionRow | null;
+};
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    
+    const supabase = await createAdminClient();
+
     const { data, error } = await supabase
-      .from('scrapers')
-      .select('id, name, display_name, status, health_status, health_score, base_url')
-      .order('name');
+      .from('scraper_configs')
+      .select(
+        `
+          id,
+          slug,
+          display_name,
+          domain,
+          scraper_config_versions!fk_current_version (
+            status
+          )
+        `
+      )
+      .order('slug', { ascending: true });
 
     if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[Admin Scrapers API] Failed to fetch scrapers:', error);
+      return NextResponse.json({ error: 'Failed to fetch scrapers' }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    const scrapers =
+      (data as ScraperRow[] | null)?.map((row) => {
+        const versionStatus = row.scraper_config_versions?.status ?? 'draft';
+        return {
+          id: row.id,
+          slug: row.slug,
+          name: row.display_name || row.slug,
+          description: row.domain,
+          status: versionStatus === 'published' ? 'operational' : versionStatus,
+        };
+      }) ?? [];
+
+    return NextResponse.json(scrapers);
   } catch (error) {
-    console.error('Request error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const supabase = await createClient();
-    const json = await request.json();
-
-    // Validate config structure
-    const config = scraperConfigSchema.parse(json);
-
-    // Insert into database
-    const { data, error } = await supabase
-      .from('scrapers')
-      .insert({
-        name: config.name,
-        display_name: config.display_name,
-        base_url: config.base_url,
-        config: config,
-        status: 'draft',
-        health_status: 'unknown',
-        health_score: 100
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Request error:', error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation failed', details: error.issues }, { status: 400 });
-    }
+    console.error('[Admin Scrapers API] Request failed:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
