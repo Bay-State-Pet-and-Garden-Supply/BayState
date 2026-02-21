@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Clock, CheckCircle2, XCircle, Loader2, ChevronRight, Terminal,
   RotateCcw, Eye, Calendar, Hash, BarChart3, Target
@@ -149,9 +149,12 @@ export function TestRunHistory() {
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [retryingStep, setRetryingStep] = useState<string | null>(null);
 
+  // Memoize initialSteps to prevent infinite re-renders in useTestRunSubscription
+  const initialSteps = useMemo(() => timelineData?.steps || [], [timelineData?.steps]);
+
   const realtime = useTestRunSubscription({
     testRunId: selectedRun?.id || '',
-    initialSteps: timelineData?.steps || [],
+    initialSteps,
     autoConnect: !!selectedRun,
   });
 
