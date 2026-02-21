@@ -58,13 +58,16 @@ export function useTestRunSubscription(
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const pendingUpdatesRef = useRef<RealtimePostgresChangesPayload<TestRunStep>[]>([]);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialStepsRef = useRef(initialSteps);
 
+  // Only update steps from initialSteps when testRunId changes, not on every render
   useEffect(() => {
     setState(prev => ({
       ...prev,
       steps: initialSteps
     }));
-  }, [initialSteps]);
+    initialStepsRef.current = initialSteps;
+  }, [testRunId, initialSteps]);
 
   const getSupabase = useCallback(() => {
     if (!supabaseRef.current) {
