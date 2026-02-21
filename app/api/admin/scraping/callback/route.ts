@@ -10,6 +10,7 @@ import {
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
+import { normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
     recordCallbackProcessed,
@@ -224,23 +225,15 @@ export async function POST(request: NextRequest) {
 
         if (payload.status === 'completed' && resultsData) {
             const skus = Object.keys(resultsData);
-            
-            // Transform results to handle nested scraper format: { "bradley": { title, price, images } }
+
             const transformedResults: Record<string, Record<string, unknown>> = {};
             for (const sku of skus) {
                 const scrapedDataContainer = resultsData[sku];
-                
-                // The scraper sends data in format: { "bradley": { title, price, images } }
-                // We need to extract the first scraper's data
-                if (scrapedDataContainer && typeof scrapedDataContainer === 'object') {
-                    const scraperNames = Object.keys(scrapedDataContainer);
-                    const scraperName = scraperNames[0];
-                    const scrapedData = scraperName 
-                        ? (scrapedDataContainer as Record<string, unknown>)[scraperName] 
-                        : scrapedDataContainer;
 
-                    if (scrapedData && typeof scrapedData === 'object') {
-                        transformedResults[sku] = scrapedData as Record<string, unknown>;
+                if (scrapedDataContainer && typeof scrapedDataContainer === 'object') {
+                    const normalizedSources = normalizeProductSources(scrapedDataContainer);
+                    if (Object.keys(normalizedSources).length > 0) {
+                        transformedResults[sku] = normalizedSources;
                     } else {
                         console.log(`[Callback] No valid scraped data found for SKU ${sku}`);
                     }

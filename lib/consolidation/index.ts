@@ -26,6 +26,7 @@ export {
     getBatchStatus,
     retrieveResults,
     applyResults,
+    applyConsolidationResults,
     listBatchJobs,
     cancelBatch,
     createBatchContent,

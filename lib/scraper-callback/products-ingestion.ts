@@ -1,4 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import {
+  hasMeaningfulProductSourceData,
+  mergeProductSources,
+} from '@/lib/product-sources';
 
 type SourcePayloadBySku = Record<string, Record<string, unknown>>;
 
@@ -72,20 +76,10 @@ export async function persistProductsIngestionSourcesStrict(
 
   for (const sku of skus) {
     const scrapedData = skuData[sku];
-    const hasMeaningfulData = scrapedData && typeof scrapedData === 'object' && 
-      Object.keys(scrapedData).some(key => {
-        const value = scrapedData[key];
-        // Check for meaningful data: non-empty strings, non-empty arrays, or truthy values (excluding metadata)
-        if (key === '_scraped_at' || key === 'scraped_at') return false;
-        if (typeof value === 'string' && value.length > 0) return true;
-        if (Array.isArray(value) && value.length > 0) return true;
-        if (typeof value === 'number' || typeof value === 'boolean') return true;
-        return false;
-      });
+    const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = {
-      ...(existingSourcesBySku.get(sku) || {}),
-      ...scrapedData,
+      ...mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData),
       _last_scraped: nowIso,
     };
 
@@ -139,20 +133,10 @@ export async function persistProductsIngestionSourcesPartial(
   const persisted: string[] = [];
   for (const sku of toUpdate) {
     const scrapedData = skuData[sku];
-    const hasMeaningfulData = scrapedData && typeof scrapedData === 'object' && 
-      Object.keys(scrapedData).some(key => {
-        const value = scrapedData[key];
-        // Check for meaningful data: non-empty strings, non-empty arrays, or truthy values (excluding metadata)
-        if (key === '_scraped_at' || key === 'scraped_at') return false;
-        if (typeof value === 'string' && value.length > 0) return true;
-        if (Array.isArray(value) && value.length > 0) return true;
-        if (typeof value === 'number' || typeof value === 'boolean') return true;
-        return false;
-      });
+    const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = {
-      ...(existingSourcesBySku.get(sku) || {}),
-      ...scrapedData,
+      ...mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData),
       _last_scraped: nowIso,
     };
 

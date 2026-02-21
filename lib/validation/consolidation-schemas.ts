@@ -24,7 +24,7 @@ export const BatchMetadataSchema = z.object({
 });
 
 export const BatchStatusSchema = z.object({
-    id: uuid('Invalid batch ID'),
+    id: z.string().min(1, 'Invalid batch ID'),
     status: BatchJobStatusSchema,
     is_complete: z.boolean(),
     is_failed: z.boolean(),
@@ -39,7 +39,9 @@ export const BatchStatusSchema = z.object({
 });
 
 export const BatchJobSchema = z.object({
-    id: uuid('Invalid batch job ID'),
+    id: z.string().min(1, 'Invalid batch job ID'),
+    db_id: uuid('Invalid database batch job ID').optional(),
+    openai_batch_id: z.string().nullable().optional(),
     status: z.string(),
     description: z.string().nullable().optional(),
     auto_apply: z.boolean(),
@@ -100,7 +102,7 @@ export const ConsolidatedDataSchema = z.object({
 
 export const SubmitBatchResponseSchema = z.object({
     success: z.literal(true),
-    batch_id: uuid('Invalid batch ID'),
+    batch_id: z.string().min(1, 'Invalid batch ID'),
     product_count: z.number().int().min(1),
 });
 
@@ -114,6 +116,14 @@ export const ApplyResultsResponseSchema = z.object({
     success_count: z.number().int().min(0),
     error_count: z.number().int().min(0),
     total: z.number().int().min(0),
+    quality_metrics: z
+        .object({
+            matched_brand_count: z.number().int().min(0),
+            unresolved_brand_count: z.number().int().min(0),
+            preserved_existing_field_count: z.number().int().min(0),
+            overwritten_field_count: z.number().int().min(0),
+        })
+        .optional(),
     errors: z.array(z.string()).optional(),
 });
 

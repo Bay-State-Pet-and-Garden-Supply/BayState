@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +26,23 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ product: data });
+  const consolidated = (data.consolidated && typeof data.consolidated === 'object')
+    ? (data.consolidated as Record<string, unknown>)
+    : {};
+
+  const consolidatedImages = Array.isArray(consolidated.images)
+    ? consolidated.images.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+  const sourceImageCandidates = extractImageCandidatesFromSources(data.sources, 24);
+
+  const mergedCandidates = Array.from(new Set([...consolidatedImages, ...sourceImageCandidates]));
+
+  return NextResponse.json({
+    product: {
+      ...data,
+      image_candidates: mergedCandidates,
+    },
+  });
 }
 
 export async function PATCH(

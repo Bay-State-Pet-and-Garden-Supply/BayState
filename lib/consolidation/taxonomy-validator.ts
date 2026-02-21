@@ -202,7 +202,16 @@ export function validateConsolidationTaxonomy(
 
     if ('category' in validated) {
         if (Array.isArray(validated.category)) {
-            validated.category = validated.category.map((c) => validateCategory(c, validCategories)).join('|');
+            const uniqueValues = new Set<string>();
+            const normalizedValues = validated.category
+                .map((value) => validateCategory(value, validCategories))
+                .filter((value) => {
+                    if (!value) return false;
+                    if (uniqueValues.has(value)) return false;
+                    uniqueValues.add(value);
+                    return true;
+                });
+            validated.category = normalizedValues.join('|');
         } else {
             validated.category = validateCategory(validated.category as string, validCategories);
         }
@@ -210,12 +219,30 @@ export function validateConsolidationTaxonomy(
 
     if ('product_type' in validated) {
         if (Array.isArray(validated.product_type)) {
-            validated.product_type = validated.product_type
-                .map((t) => validateProductType(t, validProductTypes))
-                .join('|');
+            const uniqueValues = new Set<string>();
+            const normalizedValues = validated.product_type
+                .map((value) => validateProductType(value, validProductTypes))
+                .filter((value) => {
+                    if (!value) return false;
+                    if (uniqueValues.has(value)) return false;
+                    uniqueValues.add(value);
+                    return true;
+                });
+            validated.product_type = normalizedValues.join('|');
         } else {
             validated.product_type = validateProductType(validated.product_type as string, validProductTypes);
         }
+    }
+
+    const categoryValue = typeof validated.category === 'string' ? validated.category : '';
+    const productTypeValue = typeof validated.product_type === 'string' ? validated.product_type : '';
+
+    if (!categoryValue.trim()) {
+        throw new Error('Invalid consolidation taxonomy: category is required');
+    }
+
+    if (!productTypeValue.trim()) {
+        throw new Error('Invalid consolidation taxonomy: product_type is required');
     }
 
     return validated;

@@ -197,8 +197,8 @@ describe('Consolidation Schemas', () => {
             expect(result.total_requests).toBe(100);
         });
 
-        it('should reject batch job with invalid UUID', () => {
-            const invalidJob = { ...validBatchJob, id: 'not-a-uuid' };
+        it('should reject batch job with empty id', () => {
+            const invalidJob = { ...validBatchJob, id: '' };
             expect(() => BatchJobSchema.parse(invalidJob)).toThrow();
         });
 

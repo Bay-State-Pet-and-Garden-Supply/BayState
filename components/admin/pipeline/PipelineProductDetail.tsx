@@ -62,6 +62,8 @@ export function PipelineProductDetail({
   const [stockStatus, setStockStatus] = useState('in_stock');
   const [isFeatured, setIsFeatured] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('staging');
+  const [imageCandidates, setImageCandidates] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
   // Fetch product and brands
   useEffect(() => {
@@ -85,6 +87,13 @@ export function PipelineProductDetail({
         // Initialize form with consolidated data
         const consolidated = productData.product?.consolidated || {};
         const input = productData.product?.input || {};
+        const candidates = Array.isArray(productData.product?.image_candidates)
+          ? (productData.product.image_candidates as unknown[])
+              .filter((entry): entry is string => typeof entry === 'string')
+          : [];
+        const currentImages = Array.isArray(consolidated.images)
+          ? (consolidated.images as unknown[]).filter((entry): entry is string => typeof entry === 'string')
+          : [];
 
         setName(consolidated.name || input.name || '');
         setDescription(consolidated.description || '');
@@ -93,6 +102,8 @@ export function PipelineProductDetail({
         setStockStatus(consolidated.stock_status || 'in_stock');
         setIsFeatured(consolidated.is_featured || false);
         setPipelineStatus(productData.product?.pipeline_status || 'staging');
+        setImageCandidates(candidates);
+        setSelectedImages(currentImages);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load product');
       } finally {
@@ -176,7 +187,9 @@ export function PipelineProductDetail({
         brand_id: brandId === 'none' ? null : brandId,
         stock_status: stockStatus,
         is_featured: isFeatured,
-        images: product?.consolidated?.images || [],
+        images: selectedImages
+          .map((img) => img.trim())
+          .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/')),
       };
 
       const newStatus = andApprove ? 'approved' : pipelineStatus;
@@ -226,6 +239,15 @@ export function PipelineProductDetail({
       </div>
     );
   }
+
+  const toggleImageSelection = (imageUrl: string) => {
+    setSelectedImages((current) => {
+      if (current.includes(imageUrl)) {
+        return current.filter((entry) => entry !== imageUrl);
+      }
+      return [...current, imageUrl];
+    });
+  };
 
   return (
     <div 
@@ -366,32 +388,36 @@ export function PipelineProductDetail({
                 />
               </div>
 
-              {/* Images Preview */}
-              {product.consolidated?.images && product.consolidated.images.length > 0 && (
+              {imageCandidates.length > 0 && (
                 <div className="space-y-2">
-                  <Label>Images</Label>
-                  <div className="flex gap-2 flex-wrap">
-                    {product.consolidated.images
+                  <div className="flex items-center justify-between">
+                    <Label>Final Images</Label>
+                    <span className="text-xs text-gray-500">
+                      {selectedImages.length} selected
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {imageCandidates
                       .map((img) => img.trim())
-                      .filter((img) => img.startsWith('/') || img.startsWith('http'))
-                      .slice(0, 4)
+                      .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/'))
                       .map((img, idx) => (
-                        <div
+                        <button
+                          type="button"
                           key={idx}
-                          className="h-16 w-16 rounded border bg-gray-100 overflow-hidden"
+                          onClick={() => toggleImageSelection(img)}
+                          className={`relative h-20 w-20 rounded border overflow-hidden ${selectedImages.includes(img)
+                            ? 'border-[#008850] ring-2 ring-[#008850]/30'
+                            : 'border-gray-200 bg-gray-100'
+                            }`}
+                          title={selectedImages.includes(img) ? 'Selected image' : 'Click to select image'}
                         >
                           <img
                             src={img}
                             alt={`Product image ${idx + 1}`}
                             className="h-full w-full object-cover"
                           />
-                        </div>
+                        </button>
                       ))}
-                    {product.consolidated.images.length > 4 && (
-                      <div className="flex h-16 w-16 items-center justify-center rounded border bg-gray-50 text-sm text-gray-600">
-                        +{product.consolidated.images.length - 4}
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

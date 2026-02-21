@@ -6,6 +6,7 @@ import { parseChunkCallbackPayload, ChunkCallbackPayload } from '@/lib/scraper-c
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
+import { mergeProductSources, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
     recordCallbackProcessed,
@@ -35,7 +36,7 @@ interface ChunkCallbackRequest {
 
 type ScrapedDataBySku = Record<string, Record<string, unknown>>;
 
-function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedDataBySku {
+export function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedDataBySku {
     const aggregated: ScrapedDataBySku = {};
 
     for (const chunk of chunks) {
@@ -44,21 +45,12 @@ function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedDataBySk
 
         for (const [sku, value] of Object.entries(chunkResults)) {
             if (!value || typeof value !== 'object') continue;
-            
-            // The scraper sends data in format: { "bradley": { title, price, images } }
-            // We need to extract the first scraper's data
-            const scraperData = value as Record<string, unknown>;
-            const scraperNames = Object.keys(scraperData);
-            const scraperName = scraperNames[0];
-            const extractedData = scraperName ? scraperData[scraperName] : scraperData;
-            
-            if (!extractedData) continue;
-            
+
+            const normalizedSources = normalizeProductSources(value);
+            if (Object.keys(normalizedSources).length === 0) continue;
+
             const existing = aggregated[sku] || {};
-            aggregated[sku] = {
-                ...existing,
-                ...(extractedData as Record<string, unknown>),
-            };
+            aggregated[sku] = mergeProductSources(existing, normalizedSources);
         }
     }
 
