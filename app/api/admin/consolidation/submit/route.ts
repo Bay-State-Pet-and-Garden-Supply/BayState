@@ -3,6 +3,7 @@ import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { submitBatch, isOpenAIConfigured } from '@/lib/consolidation';
 import type { ProductSource } from '@/lib/consolidation';
+import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/submit
@@ -49,11 +50,7 @@ export async function POST(request: NextRequest) {
             .filter((p) => p.sources && Object.keys(p.sources).length > 0)
             .map((p) => ({
                 sku: p.sku,
-                sources: {
-                    ...p.sources,
-                    // Include input data as a source for fallback
-                    _input: p.input,
-                },
+                sources: buildConsolidationSourcesPayload(p.sources, p.input),
             }));
 
         if (productsWithSources.length === 0) {

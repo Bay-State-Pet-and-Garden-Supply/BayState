@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { applyResults } from '@/lib/consolidation';
 
+function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim());
+}
+
 /**
  * POST /api/admin/consolidation/webhook
  * Webhook handler for OpenAI Batch API completion notifications.
@@ -18,35 +22,45 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'batch_id is required' }, { status: 400 });
         }
 
-        // Record webhook receipt
         const supabase = await createClient();
-        await supabase
+        const openAiLookup = await supabase
             .from('batch_jobs')
-            .update({
-                webhook_received_at: new Date().toISOString(),
-                webhook_payload: body,
-            })
-            .eq('id', batch_id);
+            .select('id, auto_apply')
+            .eq('openai_batch_id', batch_id)
+            .limit(1)
+            .maybeSingle();
 
-        // If batch is complete and auto_apply is enabled, apply results
-        if (status === 'completed') {
-            const { data: job } = await supabase
+        let batchJob = openAiLookup.data;
+        if (!batchJob && isUuid(batch_id)) {
+            const legacyLookup = await supabase
                 .from('batch_jobs')
-                .select('auto_apply')
+                .select('id, auto_apply')
                 .eq('id', batch_id)
-                .single();
+                .limit(1)
+                .maybeSingle();
+            batchJob = legacyLookup.data;
+        }
 
-            if (job?.auto_apply) {
-                console.log(`[Consolidation Webhook] Auto-applying results for batch ${batch_id}`);
-                const result = await applyResults(batch_id);
+        if (batchJob) {
+            await supabase
+                .from('batch_jobs')
+                .update({
+                    webhook_received_at: new Date().toISOString(),
+                    webhook_payload: body,
+                })
+                .eq('id', batchJob.id);
+        }
 
-                if ('success' in result && !result.success) {
-                    console.error(`[Consolidation Webhook] Auto-apply failed:`, result.error);
-                } else if ('success_count' in result) {
-                    console.log(
-                        `[Consolidation Webhook] Auto-applied: ${result.success_count}/${result.total} successful`
-                    );
-                }
+        if (status === 'completed' && batchJob?.auto_apply) {
+            console.log(`[Consolidation Webhook] Auto-applying results for batch ${batch_id}`);
+            const result = await applyResults(batch_id);
+
+            if ('success' in result && !result.success) {
+                console.error(`[Consolidation Webhook] Auto-apply failed:`, result.error);
+            } else if ('success_count' in result) {
+                console.log(
+                    `[Consolidation Webhook] Auto-applied: ${result.success_count}/${result.total} successful`
+                );
             }
         }
 

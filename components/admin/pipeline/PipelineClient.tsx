@@ -358,7 +358,20 @@ export function PipelineClient({
 
             if (res.ok) {
                 const data = await res.json();
-                setConsolidationBatchId(data.jobId);
+                const batchId =
+                    typeof data.batch_id === 'string' && data.batch_id.length > 0
+                        ? data.batch_id
+                        : typeof data.jobId === 'string' && data.jobId.length > 0
+                            ? data.jobId
+                            : null;
+
+                if (!batchId) {
+                    setIsConsolidating(false);
+                    toast.error('Consolidation started but no batch ID was returned');
+                    return;
+                }
+
+                setConsolidationBatchId(batchId);
                 setSelectedSkus(new Set());
                 setIsSelectingAllMatching(false);
             } else {

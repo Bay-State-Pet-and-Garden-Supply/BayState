@@ -9,8 +9,12 @@ if (typeof (globalThis as any).Response === 'undefined') {
 }
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { persistChunkResultsToPipeline as PersistChunkResultsToPipelineFn } from '@/app/api/scraper/v1/chunk-callback/route';
 import { persistProductsIngestionSourcesPartial } from '@/lib/scraper-callback/products-ingestion';
+
+type PersistChunkResultsToPipelineFn =
+  typeof import('@/app/api/scraper/v1/chunk-callback/route').persistChunkResultsToPipeline;
+type MergeChunkResultsFn =
+  typeof import('@/app/api/scraper/v1/chunk-callback/route').mergeChunkResults;
 
 jest.mock('@/lib/scraper-callback/products-ingestion', () => ({
   persistProductsIngestionSourcesPartial: jest.fn(),
@@ -21,6 +25,7 @@ const mockedPersist = persistProductsIngestionSourcesPartial as jest.MockedFunct
 >;
 
 let persistChunkResultsToPipeline: PersistChunkResultsToPipelineFn;
+let mergeChunkResults: MergeChunkResultsFn;
 
 describe('persistChunkResultsToPipeline', () => {
   const supabase = {} as SupabaseClient;
@@ -31,6 +36,7 @@ describe('persistChunkResultsToPipeline', () => {
   beforeAll(async () => {
     const routeModule = await import('@/app/api/scraper/v1/chunk-callback/route');
     persistChunkResultsToPipeline = routeModule.persistChunkResultsToPipeline;
+    mergeChunkResults = routeModule.mergeChunkResults;
   });
 
   beforeEach(() => {
@@ -66,5 +72,43 @@ describe('persistChunkResultsToPipeline', () => {
 
     expect(result).toEqual(['SKU-1']);
     // Should NOT throw — partial persistence handles missing SKUs gracefully
+  });
+
+  it('merges chunk results by source and preserves multiple scrapers', () => {
+    const merged = mergeChunkResults([
+      {
+        results: {
+          'SKU-1': {
+            amazon: { Name: 'Product A', Price: '$10.00' },
+          },
+        },
+      },
+      {
+        results: {
+          'SKU-1': {
+            ai_discovery: { Brand: 'KONG', Description: 'Discovery text' },
+          },
+        },
+      },
+      {
+        results: {
+          'SKU-1': {
+            amazon: { Color: 'Red' },
+          },
+        },
+      },
+    ]);
+
+    expect(merged['SKU-1']).toEqual({
+      amazon: {
+        Name: 'Product A',
+        Price: '$10.00',
+        Color: 'Red',
+      },
+      ai_discovery: {
+        Brand: 'KONG',
+        Description: 'Discovery text',
+      },
+    });
   });
 });

@@ -15,6 +15,7 @@ export interface PipelineProduct {
         price?: number;
     };
     sources: Record<string, unknown>;
+    image_candidates?: string[];
     consolidated: {
         name?: string;
         description?: string;

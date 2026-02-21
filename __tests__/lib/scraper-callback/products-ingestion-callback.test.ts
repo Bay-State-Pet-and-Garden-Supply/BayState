@@ -70,6 +70,67 @@ describe('persistProductsIngestionSourcesStrict', () => {
     });
   });
 
+  it('deep-merges existing source payloads without dropping prior fields', async () => {
+    const { supabase, selectIn, update, updateEq } = createSupabaseMock();
+    const nowIso = '2026-02-17T00:00:00.000Z';
+
+    selectIn.mockResolvedValue({
+      data: [
+        { sku: 'SKU-1', sources: { amazon: { title: 'Existing title', upc: '12345' } } },
+      ],
+      error: null,
+    });
+    updateEq.mockResolvedValue({ error: null });
+
+    await persistProductsIngestionSourcesStrict(
+      supabase,
+      {
+        'SKU-1': { amazon: { price: 12 } },
+      },
+      false,
+      nowIso
+    );
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: {
+          amazon: {
+            title: 'Existing title',
+            upc: '12345',
+            price: 12,
+          },
+          _last_scraped: nowIso,
+        },
+      })
+    );
+  });
+
+  it('marks nested source payload as meaningful and sets scraped status', async () => {
+    const { supabase, selectIn, update, updateEq } = createSupabaseMock();
+    const nowIso = '2026-02-17T00:00:00.000Z';
+
+    selectIn.mockResolvedValue({
+      data: [{ sku: 'SKU-1', sources: {} }],
+      error: null,
+    });
+    updateEq.mockResolvedValue({ error: null });
+
+    await persistProductsIngestionSourcesStrict(
+      supabase,
+      {
+        'SKU-1': { ai_discovery: { Name: 'Discovery Name' } },
+      },
+      false,
+      nowIso
+    );
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pipeline_status: 'scraped',
+      })
+    );
+  });
+
   it('strict-fails with zero writes when any target SKU is missing', async () => {
     const { selectIn, update, updateEq, supabase } = createSupabaseMock();
 

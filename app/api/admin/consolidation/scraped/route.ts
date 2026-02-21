@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { submitBatch } from '@/lib/consolidation/batch-service';
+import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/scraped
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
         // Build query - either specific SKUs or all scraped products
         let query = supabase
             .from('products_ingestion')
-            .select('sku, sources')
+            .select('sku, sources, input')
             .eq('pipeline_status', 'scraped');
 
         if (skus && Array.isArray(skus) && skus.length > 0) {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
         // Transform to ProductSource format
         const productSources = products.map((p) => ({
             sku: p.sku,
-            sources: (p.sources as Record<string, unknown>) || {},
+            sources: buildConsolidationSourcesPayload(p.sources, p.input),
         }));
 
         // Submit for consolidation
@@ -59,19 +60,6 @@ export async function POST(request: NextRequest) {
                 { error: result.error || 'Consolidation failed' },
                 { status: 500 }
             );
-        }
-
-        // Update pipeline status to indicate consolidation is pending
-        const { error: updateError } = await supabase
-            .from('products_ingestion')
-            .update({ pipeline_status: 'consolidating' })
-            .in(
-                'sku',
-                products.map((p) => p.sku)
-            );
-
-        if (updateError) {
-            console.error('[Consolidation Scraped API] Failed to update status:', updateError);
         }
 
         return NextResponse.json({

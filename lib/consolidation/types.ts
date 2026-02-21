@@ -55,6 +55,8 @@ export type BatchJobStatus =
  */
 export interface BatchJob {
     id: string;
+    db_id?: string;
+    openai_batch_id?: string | null;
     status: string;
     description: string | null;
     auto_apply: boolean;
@@ -155,6 +157,12 @@ export interface ApplyResultsResponse {
     success_count: number;
     error_count: number;
     total: number;
+    quality_metrics?: {
+        matched_brand_count: number;
+        unresolved_brand_count: number;
+        preserved_existing_field_count: number;
+        overwritten_field_count: number;
+    };
     errors?: string[];
 }
 
