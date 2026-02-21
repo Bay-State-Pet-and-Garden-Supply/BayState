@@ -11,8 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StepTrace } from './StepTrace';
-import { TestRunStep } from '@/lib/realtime/useTestRunSubscription';
+import { TestRunStep, useTestRunSubscription } from '@/lib/realtime/useTestRunSubscription';
 import { SelectorValidation } from './SelectorValidation';
+import { EventLogViewer } from '@/components/admin/scraping/EventLogViewer';
+
+interface ImageCollections {
+  current: string[];
+  baseline: string[];
+}
 
 interface TestRun {
   id: string;
@@ -28,6 +34,8 @@ interface TestRun {
     sku: string;
     status: string;
     error?: string;
+    error_message?: string;
+    data?: Record<string, unknown>;
   }>;
   metadata?: {
     config_id?: string;
@@ -89,6 +97,50 @@ function getStatusBadge(status: string) {
   }
 }
 
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
+}
+
+function extractImageCollections(resultData: Record<string, unknown> | undefined): ImageCollections {
+  if (!resultData) {
+    return { current: [], baseline: [] };
+  }
+
+  const current = new Set<string>();
+  const baseline = new Set<string>();
+
+  const collectCurrent = (obj: Record<string, unknown>) => {
+    for (const key of ['images', 'image_urls', 'imageUrls', 'Images', 'Image URLs']) {
+      toStringArray(obj[key]).forEach((url) => current.add(url));
+    }
+  };
+
+  const collectBaseline = (obj: Record<string, unknown>) => {
+    for (const key of ['baseline_images', 'expected_images', 'reference_images', 'baselineImageUrls', 'expectedImageUrls']) {
+      toStringArray(obj[key]).forEach((url) => baseline.add(url));
+    }
+  };
+
+  collectCurrent(resultData);
+  collectBaseline(resultData);
+
+  for (const value of Object.values(resultData)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      continue;
+    }
+
+    const nested = value as Record<string, unknown>;
+    collectCurrent(nested);
+    collectBaseline(nested);
+  }
+
+  return {
+    current: Array.from(current),
+    baseline: Array.from(baseline),
+  };
+}
+
 export function TestRunHistory() {
   const [testRuns, setTestRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +148,12 @@ export function TestRunHistory() {
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [retryingStep, setRetryingStep] = useState<string | null>(null);
+
+  const realtime = useTestRunSubscription({
+    testRunId: selectedRun?.id || '',
+    initialSteps: timelineData?.steps || [],
+    autoConnect: !!selectedRun,
+  });
 
   useEffect(() => {
     loadTestRuns();
@@ -181,6 +239,8 @@ export function TestRunHistory() {
   }
 
   if (selectedRun) {
+    const liveSteps = realtime.steps.length > 0 ? realtime.steps : (timelineData?.steps || []);
+
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-4">
@@ -200,12 +260,16 @@ export function TestRunHistory() {
             <RotateCcw className={`h-4 w-4 mr-2 ${loadingTimeline ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Badge variant="outline" className={realtime.isConnected ? 'text-green-600' : 'text-muted-foreground'}>
+            {realtime.isConnected ? 'Live Connected' : 'Live Offline'}
+          </Badge>
         </div>
 
         <Tabs defaultValue="trace" className="space-y-4">
           <TabsList>
             <TabsTrigger value="trace">Step Trace</TabsTrigger>
             <TabsTrigger value="selectors">Selectors</TabsTrigger>
+            <TabsTrigger value="logs">Logs</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="results">SKU Results</TabsTrigger>
           </TabsList>
@@ -217,7 +281,7 @@ export function TestRunHistory() {
               </div>
             ) : timelineData ? (
               <StepTrace
-                steps={timelineData.steps}
+                steps={liveSteps}
                 testRunId={selectedRun.id}
                 configId={selectedRun.metadata?.config_id || selectedRun.config_id}
                 onRetryStep={handleRetryStep}
@@ -236,6 +300,16 @@ export function TestRunHistory() {
               configId={selectedRun.metadata?.config_id || selectedRun.config_id}
               configSelectors={[]}
             />
+          </TabsContent>
+
+          <TabsContent value="logs">
+            {selectedRun.metadata?.job_id ? (
+              <EventLogViewer jobId={selectedRun.metadata.job_id} />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                No job id found for this test run.
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="overview">
@@ -312,27 +386,97 @@ export function TestRunHistory() {
               <CardContent>
                 <div className="space-y-2">
                   {selectedRun.results?.map((result, idx) => (
+                    (() => {
+                      const imageCollections = extractImageCollections(result.data);
+                      const currentImages = imageCollections.current;
+                      const baselineImages = imageCollections.baseline;
+                      const compareSlots = Math.min(Math.max(currentImages.length, baselineImages.length), 4);
+
+                      return (
                     <div 
                       key={idx}
-                      className="flex items-center justify-between p-3 rounded-lg border"
+                      className="p-3 rounded-lg border space-y-3"
                     >
-                      <div className="flex items-center gap-3">
-                        <Hash className="h-4 w-4 text-gray-500" />
-                        <span className="font-mono text-sm">{result.sku}</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Hash className="h-4 w-4 text-gray-500" />
+                          <span className="font-mono text-sm">{result.sku}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {result.status === 'success' || result.status === 'completed' ? (
+                            <Badge variant="outline" className="border-green-500 text-green-600">
+                              Passed
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">Failed</Badge>
+                          )}
+                          {(result.error || result.error_message) && (
+                            <span className="text-sm text-red-600">{result.error || result.error_message}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {result.status === 'success' || result.status === 'completed' ? (
-                          <Badge variant="outline" className="border-green-500 text-green-600">
-                            Passed
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive">Failed</Badge>
-                        )}
-                        {result.error && (
-                          <span className="text-sm text-red-600">{result.error}</span>
-                        )}
-                      </div>
+
+                      {compareSlots > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">Image Comparison</p>
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {Array.from({ length: compareSlots }).map((_, imageIndex) => {
+                              const currentImage = currentImages[imageIndex];
+                              const baselineImage = baselineImages[imageIndex];
+                              return (
+                                <div key={`${result.sku}-img-${imageIndex}`} className="rounded border p-2 space-y-2">
+                                  <p className="text-[11px] text-muted-foreground">Pair {imageIndex + 1}</p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground mb-1">Current</p>
+                                      {currentImage ? (
+                                        <a href={currentImage} target="_blank" rel="noreferrer" className="block">
+                                          <img
+                                            src={currentImage}
+                                            alt={`Current image ${imageIndex + 1} for ${result.sku}`}
+                                            className="h-20 w-full rounded object-cover border"
+                                            loading="lazy"
+                                          />
+                                        </a>
+                                      ) : (
+                                        <div className="h-20 rounded border border-dashed flex items-center justify-center text-[10px] text-muted-foreground">
+                                          Missing
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground mb-1">Baseline</p>
+                                      {baselineImage ? (
+                                        <a href={baselineImage} target="_blank" rel="noreferrer" className="block">
+                                          <img
+                                            src={baselineImage}
+                                            alt={`Baseline image ${imageIndex + 1} for ${result.sku}`}
+                                            className="h-20 w-full rounded object-cover border"
+                                            loading="lazy"
+                                          />
+                                        </a>
+                                      ) : (
+                                        <div className="h-20 rounded border border-dashed flex items-center justify-center text-[10px] text-muted-foreground">
+                                          No baseline
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {result.data && (
+                        <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
+                          {JSON.stringify(result.data, null, 2)}
+                        </pre>
+                      )}
                     </div>
+                      );
+                    })()
                   ))}
                 </div>
               </CardContent>

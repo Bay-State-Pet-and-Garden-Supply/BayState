@@ -76,7 +76,11 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
 
     const handleNext = () => {
         if (method === 'scrapers') {
-            onNext({ method, config: { scrapers: selectedScrapers } });
+            // Convert selected scraper IDs to scraper names for the API
+            const selectedScraperNames = scrapers
+                .filter(s => selectedScrapers.includes(s.id))
+                .map(s => s.name);
+            onNext({ method, config: { scrapers: selectedScraperNames } });
         } else {
             onNext({ method, config: discoveryConfig });
         }

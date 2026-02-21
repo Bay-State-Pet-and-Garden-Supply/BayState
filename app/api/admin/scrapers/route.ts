@@ -9,7 +9,7 @@ export async function GET() {
     
     const { data, error } = await supabase
       .from('scrapers')
-      .select('id, name, display_name, description, status, health_status, health_score, base_url')
+      .select('id, name, display_name, status, health_status, health_score, base_url')
       .order('name');
 
     if (error) {
