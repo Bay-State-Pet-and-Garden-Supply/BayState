@@ -45,15 +45,35 @@ export function useTestRunRecordSubscription(
     return supabaseRef.current;
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!testRunId) return;
 
     const supabase = getSupabase();
+    
+    // Fetch initial data first
+    try {
+      const { data, error } = await supabase
+        .from('scraper_test_runs')
+        .select('*')
+        .eq('id', testRunId)
+        .single();
+      
+      if (error) {
+        console.warn('[useTestRunRecordSubscription] Failed to fetch initial data:', error.message);
+      } else if (data) {
+        setState((prev) => ({ ...prev, run: data as TestRunRecord }));
+      }
+    } catch (err) {
+      console.warn('[useTestRunRecordSubscription] Error fetching initial data:', err);
+    }
+
+    // Clean up existing channel
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
+    // Subscribe to changes
     const channel = supabase
       .channel(`test-run-record-${testRunId}-${Date.now()}`)
       .on(
