@@ -258,7 +258,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
                               <RotateCcw className="h-4 w-4" />
                             </Button>
                           ) : null}
-                          {run.status === 'completed' && (
+                          {(run.status === 'completed' || run.status === 'running' || run.status === 'claimed' || run.status === 'failed' || run.status === 'cancelled') && (
                             <Button variant="ghost" size="sm" asChild>
                               <Link href={`/admin/scrapers/runs/${run.id}`}>
                                 <ExternalLink className="h-4 w-4" />

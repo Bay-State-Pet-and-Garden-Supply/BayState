@@ -36,15 +36,39 @@ export async function validateAPIKey(
 
     try {
         const supabase = getSupabaseAdmin();
-        
-        // Use the database function to validate and update last_used_at atomically
+
+        // Preferred path: RPC for atomic validation + last_used_at update
         const { data, error } = await supabase.rpc('validate_runner_api_key', {
             api_key: apiKey
         });
 
+        // Local/dev fallback when RPC is not installed
         if (error) {
-            console.error('[Runner Auth] RPC error:', error.message);
-            return null;
+            console.warn('[Runner Auth] RPC unavailable, falling back to direct hash validation:', error.message);
+
+            const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+            const { data: runner, error: runnerError } = await supabase
+                .from('scraper_runners')
+                .select('id, name, allowed_scrapers, status')
+                .eq('api_key_hash', keyHash)
+                .single();
+
+            if (runnerError || !runner) {
+                console.error('[Runner Auth] Fallback validation failed:', runnerError?.message ?? 'runner not found');
+                return null;
+            }
+
+            if (runner.status === 'revoked') {
+                console.error('[Runner Auth] API key is revoked');
+                return null;
+            }
+
+            return {
+                runnerName: runner.name,
+                keyId: runner.id,
+                authMethod: 'api_key',
+                allowedScrapers: runner.allowed_scrapers ?? null,
+            };
         }
 
         if (!data || data.length === 0 || !data[0].is_valid) {

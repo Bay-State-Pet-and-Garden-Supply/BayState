@@ -16,10 +16,11 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { TestRunHistory } from '@/components/admin/scraper-studio/TestRunHistory';
+import { useTestRunRecordSubscription } from '@/lib/realtime/useTestRunRecordSubscription';
 
 interface TestRunStatus {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'passed' | 'partial';
   skus_tested?: string[];
   summary?: {
     passed: number;
@@ -27,6 +28,7 @@ interface TestRunStatus {
     total: number;
   };
   duration_ms?: number;
+  job_status?: string;
 }
 
 interface ScraperConfig {
@@ -52,6 +54,74 @@ export function StudioTestingPanel() {
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentRun, setCurrentRun] = useState<TestRunStatus | null>(null);
+  const runRealtime = useTestRunRecordSubscription({
+    testRunId: currentRun?.id || '',
+    autoConnect: !!currentRun,
+  });
+
+  useEffect(() => {
+    if (!currentRun?.id) {
+      return;
+    }
+
+    const hydrateRun = async () => {
+      try {
+        const response = await fetch(`/api/admin/scrapers/studio/test/${currentRun.id}`);
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        setCurrentRun((prev) => {
+          if (!prev || prev.id !== data.id) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            status: data.status,
+            summary: data.summary,
+            duration_ms: data.duration_ms,
+            job_status: data.job_status,
+          };
+        });
+      } catch {
+        // best effort initial hydration
+      }
+    };
+
+    hydrateRun();
+  }, [currentRun?.id]);
+
+  useEffect(() => {
+    if (!runRealtime.run || !currentRun || runRealtime.run.id !== currentRun.id) {
+      return;
+    }
+
+    const nextStatus = runRealtime.run.status;
+    const runResults = Array.isArray(runRealtime.run.results) ? runRealtime.run.results : [];
+    const passed = runResults.filter((r) => {
+      const status = typeof r.status === 'string' ? r.status : '';
+      return status === 'success' || status === 'completed' || status === 'no_results';
+    }).length;
+
+    setCurrentRun((prev) => {
+      if (!prev || prev.id !== runRealtime.run?.id) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        status: nextStatus,
+        summary: {
+          passed,
+          failed: Math.max(runResults.length - passed, 0),
+          total: runResults.length,
+        },
+        duration_ms: runRealtime.run.duration_ms ?? prev.duration_ms,
+      };
+    });
+  }, [runRealtime.run, currentRun]);
 
   // Fetch scraper configs with test_skus on mount
   useEffect(() => {
@@ -213,6 +283,19 @@ export function StudioTestingPanel() {
                 <Badge variant="outline">{currentRun.status.toUpperCase()}</Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1 font-mono">{currentRun.id}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Live status: {runRealtime.isConnected ? 'connected' : 'offline'}
+              </p>
+              {currentRun.job_status && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Job status: {currentRun.job_status}
+                </p>
+              )}
+              {currentRun.summary && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Passed {currentRun.summary.passed} / {currentRun.summary.total}
+                </p>
+              )}
             </div>
           )}
         </CardContent>

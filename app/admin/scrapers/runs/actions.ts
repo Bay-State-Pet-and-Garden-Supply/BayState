@@ -159,9 +159,32 @@ export async function retryScraperRun(jobId: string) {
     .select()
     .single();
 
-  if (createError) {
+  if (createError || !newJob) {
     console.error('Error retrying scraper run:', createError);
     return { error: 'Failed to retry scraper run' };
+  }
+
+  // Create chunks for the new job - each scraper gets its own chunk
+  const scrapers = originalJob.scrapers || [];
+  if (scrapers.length > 0) {
+    const chunks = scrapers.map((scraperName: string, index: number) => ({
+      job_id: newJob.id,
+      chunk_index: index,
+      skus: originalJob.skus || [],
+      scrapers: [scraperName],
+      status: 'pending' as const,
+      test_mode: originalJob.test_mode || false,
+      max_workers: originalJob.max_workers || 3,
+    }));
+
+    const { error: chunkError } = await supabase
+      .from('scrape_job_chunks')
+      .insert(chunks);
+
+    if (chunkError) {
+      console.error('Error creating chunks for retried job:', chunkError);
+      // Don't fail - job was created, chunks can be handled separately
+    }
   }
 
   revalidatePath('/admin/scrapers/runs');
