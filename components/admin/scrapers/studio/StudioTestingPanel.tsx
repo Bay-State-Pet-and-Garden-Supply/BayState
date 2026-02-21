@@ -102,6 +102,59 @@ export function StudioTestingPanel() {
     hydrateRun();
   }, [currentRun?.id]);
 
+  // Poll for step progress while job is running (results only populated at end)
+  useEffect(() => {
+    if (!currentRun?.id || (currentRun.status !== 'pending' && currentRun.status !== 'running')) {
+      return;
+    }
+
+    const fetchProgress = async () => {
+      try {
+        const response = await fetch(`/api/admin/scrapers/studio/test/${currentRun.id}/timeline`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const steps = data.steps || [];
+        const completedSteps = steps.filter((s: { status: string }) => s.status === 'completed').length;
+        const failedSteps = steps.filter((s: { status: string }) => s.status === 'failed').length;
+        
+        setCurrentRun((prev) => {
+          if (!prev || prev.id !== currentRun.id) return prev;
+          
+          // If we have actual results from callback, use those; otherwise use step progress
+          const runResults = Array.isArray(runRealtime.run?.results) ? runRealtime.run.results : [];
+          if (runResults.length > 0) {
+            const passed = runResults.filter((r) => {
+              const status = typeof r.status === 'string' ? r.status : '';
+              return status === 'success' || status === 'completed' || status === 'no_results';
+            }).length;
+            return {
+              ...prev,
+              summary: { passed, failed: runResults.length - passed, total: runResults.length },
+            };
+          }
+          
+          // Show step progress while running
+          return {
+            ...prev,
+            summary: { 
+              passed: completedSteps, 
+              failed: failedSteps, 
+              total: steps.length 
+            },
+          };
+        });
+      } catch {
+        // Best effort
+      }
+    };
+
+    fetchProgress();
+    const interval = setInterval(fetchProgress, 2000);
+    return () => clearInterval(interval);
+  }, [currentRun?.id, currentRun?.status]);
+
+  // Update from realtime subscription when results arrive
   useEffect(() => {
     if (!runRealtime.run || !currentRun || runRealtime.run.id !== currentRun.id) {
       return;
@@ -109,27 +162,43 @@ export function StudioTestingPanel() {
 
     const nextStatus = runRealtime.run.status;
     const runResults = Array.isArray(runRealtime.run.results) ? runRealtime.run.results : [];
-    const passed = runResults.filter((r) => {
-      const status = typeof r.status === 'string' ? r.status : '';
-      return status === 'success' || status === 'completed' || status === 'no_results';
-    }).length;
+    
+    // Only update summary if we have actual results
+    if (runResults.length > 0) {
+      const passed = runResults.filter((r) => {
+        const status = typeof r.status === 'string' ? r.status : '';
+        return status === 'success' || status === 'completed' || status === 'no_results';
+      }).length;
 
-    setCurrentRun((prev) => {
-      if (!prev || prev.id !== runRealtime.run?.id) {
-        return prev;
-      }
+      setCurrentRun((prev) => {
+        if (!prev || prev.id !== runRealtime.run?.id) {
+          return prev;
+        }
 
-      return {
-        ...prev,
-        status: nextStatus,
-        summary: {
-          passed,
-          failed: Math.max(runResults.length - passed, 0),
-          total: runResults.length,
-        },
-        duration_ms: runRealtime.run.duration_ms ?? prev.duration_ms,
-      };
-    });
+        return {
+          ...prev,
+          status: nextStatus,
+          summary: {
+            passed,
+            failed: Math.max(runResults.length - passed, 0),
+            total: runResults.length,
+          },
+          duration_ms: runRealtime.run.duration_ms ?? prev.duration_ms,
+        };
+      });
+    } else {
+      // Just update status and duration
+      setCurrentRun((prev) => {
+        if (!prev || prev.id !== runRealtime.run?.id) {
+          return prev;
+        }
+        return {
+          ...prev,
+          status: nextStatus,
+          duration_ms: runRealtime.run.duration_ms ?? prev.duration_ms,
+        };
+      });
+    }
   }, [runRealtime.run, currentRun]);
 
   // Fetch scraper configs with test_skus on mount
