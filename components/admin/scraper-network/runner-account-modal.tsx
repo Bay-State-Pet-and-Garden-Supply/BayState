@@ -18,12 +18,15 @@ interface CreatedCredentials {
     api_key: string;
 }
 
+const INSTALL_COMMAND =
+    'curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash';
+
 export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: RunnerAccountModalProps) {
     const [runnerName, setRunnerName] = useState(initialRunnerName || '');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [credentials, setCredentials] = useState<CreatedCredentials | null>(null);
-    const [copied, setCopied] = useState<'key' | 'env' | null>(null);
+    const [copied, setCopied] = useState<'key' | 'env' | 'install' | null>(null);
 
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
@@ -72,7 +75,7 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
         }
     };
 
-    const copyToClipboard = async (text: string, field: 'key' | 'env') => {
+    const copyToClipboard = async (text: string, field: 'key' | 'env' | 'install') => {
         await navigator.clipboard.writeText(text);
         setCopied(field);
         setTimeout(() => setCopied(null), 2000);
@@ -82,6 +85,10 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
         if (!credentials) return;
         const text = `SCRAPER_API_KEY=${credentials.api_key}`;
         copyToClipboard(text, 'env');
+    };
+
+    const copyInstallCommand = () => {
+        copyToClipboard(INSTALL_COMMAND, 'install');
     };
 
     if (credentials) {
@@ -139,10 +146,25 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                             <h4 className="text-sm font-semibold text-gray-900">Next Steps:</h4>
                             <ul className="text-sm text-gray-600 space-y-2 list-disc ml-5">
                                 <li>Copy the API key above and save it securely.</li>
-                                <li>Add <code className="bg-gray-100 px-1 rounded">SCRAPER_API_KEY</code> to your GitHub repository secrets.</li>
-                                <li>The runner will authenticate automatically when it starts.</li>
-                                <li>The runner will appear as <strong>Online</strong> once connected.</li>
+                                <li>On the new machine, run the one-line installer below.</li>
+                                <li>Paste this key when the setup wizard prompts for <code className="bg-gray-100 px-1 rounded">SCRAPER_API_KEY</code>.</li>
+                                <li>The runner will appear as <strong>Ready</strong> once connected.</li>
                             </ul>
+
+                            <div className="space-y-2 pt-2">
+                                <Label>One-line installer (Docker)</Label>
+                                <div className="flex gap-2">
+                                    <Input value={INSTALL_COMMAND} readOnly className="font-mono text-xs" />
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={copyInstallCommand}
+                                        aria-label="Copy installer command"
+                                    >
+                                        {copied === 'install' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

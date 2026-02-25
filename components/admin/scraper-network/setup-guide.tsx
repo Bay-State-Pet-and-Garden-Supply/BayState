@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Terminal, Copy, Check } from 'lucide-react';
+import { RunnerAccountModal } from '@/components/admin/scraper-network/runner-account-modal';
 
 interface CodeBlockProps {
     code: string;
@@ -29,6 +30,9 @@ function CodeBlock({ code, id, copied, onCopy }: CodeBlockProps) {
 export function SetupGuide() {
     const [isOpen, setIsOpen] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
+    const [showCreateRunnerModal, setShowCreateRunnerModal] = useState(false);
+
+    const installCommand = `curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash`;
 
     const copyToClipboard = async (text: string, id: string) => {
         await navigator.clipboard.writeText(text);
@@ -59,8 +63,7 @@ export function SetupGuide() {
                         <section>
                             <h4 className="font-semibold text-gray-900">1. Prerequisites</h4>
                             <ul className="mt-2 list-inside list-disc space-y-1">
-                                <li>Python 3.9 or higher</li>
-                                <li>Docker installed (optional, but recommended)</li>
+                                <li>Docker installed and running</li>
                                 <li>Admin access to generate an API key</li>
                             </ul>
                         </section>
@@ -71,7 +74,16 @@ export function SetupGuide() {
                                 Scroll up to the <strong>Runner Accounts</strong> section on this page.
                             </p>
                             <ul className="mt-2 list-inside list-disc space-y-1">
-                                <li>Click <strong>Create Runner</strong></li>
+                                <li>
+                                    Click{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateRunnerModal(true)}
+                                        className="font-semibold text-green-700 underline underline-offset-2 hover:text-green-800"
+                                    >
+                                        Create Runner
+                                    </button>
+                                </li>
                                 <li>Enter a unique runner name (e.g. <code className="bg-gray-100 px-1 rounded">my-server-1</code>)</li>
                                 <li>Copy the generated <strong>API Key</strong> (starts with <code className="bg-gray-100 px-1 rounded">bsr_</code>)</li>
                             </ul>
@@ -82,23 +94,30 @@ export function SetupGuide() {
 
                         <section>
                             <h4 className="font-semibold text-gray-900">3. Automatic Install (Recommended)</h4>
-                            <p className="mt-1">Run the new installer script on your machine (macOS/Linux). This handles Python setup, virtual environments, and configuration automatically.</p>
+                            <p className="mt-1">
+                                Paste one command into your terminal (macOS/Linux). The installer deploys the scraper runner in Docker and starts a setup wizard.
+                            </p>
                             <CodeBlock
-                                code={`curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/install.sh | bash`}
+                                code={installCommand}
                                 id="curl-install"
                                 copied={copied}
                                 onCopy={copyToClipboard}
                             />
-                            <p className="mt-2 text-gray-600">The interactive wizard will ask for your Runner Name and API Key.</p>
+                            <p className="mt-2 text-gray-600">
+                                The wizard asks for your app URL, prompts you to open this page to generate a key, then asks you to paste the key.
+                            </p>
+                            <p className="mt-2 text-gray-600">
+                                Optional: enable Docker auto-updates (Watchtower) during setup.
+                            </p>
                         </section>
 
                         <section>
-                            <h4 className="font-semibold text-gray-900">4. GitHub Actions / Docker Setup</h4>
-                            <p className="mt-1">For headless CI/CD environments, configure these secrets in your repository or container:</p>
+                            <h4 className="font-semibold text-gray-900">4. Required Environment Variables</h4>
+                            <p className="mt-1">For manual Docker or CI setups, provide these values:</p>
                             <div className="mt-2 rounded-lg bg-gray-50 p-3 font-mono text-xs">
                                 <div className="grid grid-cols-[1fr,2fr] gap-2">
                                     <div className="font-semibold text-gray-700">SCRAPER_API_URL</div>
-                                    <div className="text-gray-600">This app's URL (e.g. https://app.baystatepet.com)</div>
+                                    <div className="text-gray-600">BayStateApp URL (e.g. https://app.baystatepet.com)</div>
 
                                     <div className="font-semibold text-gray-700">SCRAPER_API_KEY</div>
                                     <div className="text-gray-600">Your bsr_... key</div>
@@ -115,7 +134,7 @@ export function SetupGuide() {
                                 To run the scraper with a visual interface for debugging:
                             </p>
                             <p>
-                                Ensure the runner's API key matches what you see in the Runner Accounts table.
+                                Ensure the runner API key matches what you see in the Runner Accounts table.
                             </p>
                             <p>
                                 If using Docker: &quot;runner_id&quot; in <code>docker-compose.yml</code> must verify against the ID in Runner Accounts.
@@ -138,6 +157,15 @@ cd ../src-tauri && cargo tauri dev`}
                         </section>
                     </div>
                 </div>
+            )}
+
+            {showCreateRunnerModal && (
+                <RunnerAccountModal
+                    onClose={() => setShowCreateRunnerModal(false)}
+                    onSave={() => {
+                        setShowCreateRunnerModal(false);
+                    }}
+                />
             )}
         </div>
     );
