@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
+    "test:api-compat": "ts-node scripts/test-api-compatibility.ts",
     "test:a11y:e2e": "playwright test --config=playwright.config.ts",
     "test:a11y:unit": "jest --config=jest.a11y.config.ts --testPathPattern=a11y"
   },
