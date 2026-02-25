@@ -60,7 +60,7 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
   const typedRuns = (testRuns || []) as unknown as TestRunRecord[];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-content-test-lab">
       {!version && (
         <Alert>
           <InfoIcon className="h-4 w-4" />

@@ -36,6 +36,7 @@ interface SelectorEditorProps {
   versionId: string;
   selectors: ScraperSelector[];
   isReadOnly?: boolean;
+  versionStatus?: string | null;
 }
 
 // Draggable Item Component
@@ -163,7 +164,7 @@ function SortableSelectorItem({
   );
 }
 
-export function SelectorEditor({ versionId, selectors: initialSelectors, isReadOnly = false }: SelectorEditorProps) {
+export function SelectorEditor({ versionId, selectors: initialSelectors, isReadOnly = false, versionStatus }: SelectorEditorProps) {
   const [items, setItems] = useState<ScraperSelector[]>(initialSelectors);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -294,7 +295,7 @@ export function SelectorEditor({ versionId, selectors: initialSelectors, isReadO
   };
 
   return (
-    <Card className="border-border">
+    <Card className="border-border" data-testid="selector-editor">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div>
           <CardTitle className="text-xl">Data Selectors</CardTitle>
@@ -303,7 +304,7 @@ export function SelectorEditor({ versionId, selectors: initialSelectors, isReadO
           </CardDescription>
         </div>
         {!isReadOnly && (
-          <Button onClick={handleAdd} size="sm" variant="outline" className="gap-2">
+          <Button onClick={handleAdd} size="sm" variant="outline" className="gap-2" data-testid="add-selector-button">
             <Plus className="h-4 w-4" />
             Add Selector
           </Button>
@@ -311,7 +312,7 @@ export function SelectorEditor({ versionId, selectors: initialSelectors, isReadO
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg border-dashed bg-muted/20">
+          <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg border-dashed bg-muted/20" data-testid="selectors-empty-state">
             <p className="text-muted-foreground mb-4">No selectors defined for this version.</p>
             {!isReadOnly && (
               <Button onClick={handleAdd} variant="secondary">Create First Selector</Button>
@@ -327,7 +328,7 @@ export function SelectorEditor({ versionId, selectors: initialSelectors, isReadO
               items={items.map(i => i.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-3">
+              <div className="space-y-3" data-testid="selectors-list">
                 {items.map((selector) => (
                   <SortableSelectorItem 
                     key={selector.id} 
@@ -343,18 +344,25 @@ export function SelectorEditor({ versionId, selectors: initialSelectors, isReadO
         )}
       </CardContent>
       {hasChanges && !isReadOnly && (
-        <CardFooter className="flex justify-between border-t bg-muted/20 pt-4">
+        <CardFooter className="flex justify-between border-t bg-muted/20 pt-4" data-testid="selector-editor-unsaved-footer">
           <p className="text-sm text-muted-foreground">You have unsaved changes</p>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={handleDiscard} disabled={isSaving}>
               <Undo className="mr-2 h-4 w-4" />
               Discard
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={isSaving}>
+            <Button size="sm" onClick={handleSave} disabled={isSaving} data-testid="save-selectors-button">
               <Save className="mr-2 h-4 w-4" />
               {isSaving ? 'Saving...' : 'Save Selectors'}
             </Button>
           </div>
+        </CardFooter>
+      )}
+      {isReadOnly && (
+        <CardFooter className="flex justify-between border-t bg-muted/20 pt-4" data-testid="selector-editor-readonly-footer">
+          <p className="text-sm text-muted-foreground" data-testid="selector-editor-readonly-message">
+            Selectors are read-only while the current version is {versionStatus || 'published'}. Create a draft version to make edits.
+          </p>
         </CardFooter>
       )}
     </Card>
