@@ -94,13 +94,13 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
   const isDraft = version.status === 'draft';
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12" data-testid="tab-content-configuration">
       {/* Version Header */}
       <div className="flex items-center justify-between p-4 bg-muted/40 rounded-lg border">
         <div className="flex items-center gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Version {version.version_number}</h2>
+              <h2 className="text-lg font-semibold" data-testid="configuration-version-label">Version {version.version_number}</h2>
               <Badge variant={isDraft ? "secondary" : "default"} className={!isDraft ? "bg-green-600 hover:bg-green-700" : ""}>
                 {isDraft ? 'Draft' : 'Published'}
               </Badge>
@@ -117,7 +117,7 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
               'use server';
               await publishVersion(version.id);
             }}>
-              <Button type="submit" variant="default" className="gap-2">
+              <Button type="submit" variant="default" className="gap-2" data-testid="publish-version-button">
                 <CheckCircle2 className="w-4 h-4" />
                 Publish Version
               </Button>
@@ -129,7 +129,7 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
                 await createNewVersion(scraper.id);
               }
             }}>
-              <Button type="submit" variant="outline" className="gap-2">
+              <Button type="submit" variant="outline" className="gap-2" data-testid="create-new-version-button">
                 <FileEdit className="w-4 h-4" />
                 Edit Draft
               </Button>
@@ -145,6 +145,7 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
             versionId={version.id} 
             selectors={selectors || []} 
             isReadOnly={!isDraft}
+            versionStatus={version.status}
           />
         </div>
 

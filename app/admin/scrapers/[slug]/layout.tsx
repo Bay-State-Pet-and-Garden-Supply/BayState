@@ -27,12 +27,12 @@ export default async function ScraperWorkbenchLayout({
   }
 
   return (
-    <div className="flex flex-col h-full space-y-6">
+    <div className="flex flex-col h-full space-y-6" data-testid="scraper-workbench">
       {/* Header section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between pb-4 border-b">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight" data-testid="scraper-workbench-title">
               {scraper.display_name || scraper.name || slug}
             </h1>
             <StatusBadge 
@@ -60,7 +60,7 @@ export default async function ScraperWorkbenchLayout({
       <ScraperTabsClient slug={slug} />
 
       {/* Content area */}
-      <div className="flex-1 min-h-0 pt-2">
+      <div className="flex-1 min-h-0 pt-2" data-testid="workbench-content">
         {children}
       </div>
     </div>

@@ -37,7 +37,7 @@ export default async function ScraperOverviewPage({ params }: ScraperOverviewPro
   const testRuns = scraper.id ? await getRecentTestRuns(scraper.id) : [];
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="tab-content-overview">
       {/* Quick Actions */}
       <Card className="col-span-full md:col-span-2 lg:col-span-3">
         <CardHeader>

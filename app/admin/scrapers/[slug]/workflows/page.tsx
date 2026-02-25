@@ -59,7 +59,7 @@ export default async function ScraperWorkflowsPage({ params }: ScraperWorkflowsP
   const isReadOnly = version?.status === 'published';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-content-workflows">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Workflow Builder</h1>

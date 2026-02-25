@@ -51,8 +51,8 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: any[] 
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg shadow-sm border">
+    <div className="space-y-6" data-testid="scraper-list">
+      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg shadow-sm border" data-testid="scraper-filters">
         <div className="flex-1">
           <label className="text-sm font-medium mb-1.5 block text-gray-700">Status</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -99,7 +99,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: any[] 
       </div>
 
       {filteredScrapers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-xl border border-dashed">
+        <div className="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-xl border border-dashed" data-testid="scraper-list-empty">
           <SearchX className="h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900">No scrapers found</h3>
           <p className="text-gray-500 mt-1 max-w-sm text-center mb-6">
@@ -114,14 +114,14 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: any[] 
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="scraper-card-grid">
           {filteredScrapers.map((scraper) => (
-            <Card key={scraper.id} className="overflow-hidden border shadow-sm hover:shadow-md transition-shadow group">
+            <Card key={scraper.id} className="overflow-hidden border shadow-sm hover:shadow-md transition-shadow group" data-testid="scraper-card">
               <CardHeader className="pb-3 border-b bg-gray-50/50">
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-xl font-semibold leading-tight text-gray-900 group-hover:text-[#66161D] transition-colors">
-                      <Link href={`/admin/scrapers/${scraper.slug}`}>
+                      <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-title-link">
                         {scraper.name || scraper.slug}
                       </Link>
                     </CardTitle>
@@ -137,7 +137,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: any[] 
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/admin/scrapers/${scraper.slug}`}>View Details</Link>
+                        <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-view-details-link">View Details</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href={`/admin/scrapers/test-lab/${scraper.slug}`}>Run Test</Link>
@@ -172,7 +172,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: any[] 
               </CardContent>
               <CardFooter className="pt-2 pb-4 bg-white border-t flex gap-2">
                 <Button variant="outline" size="sm" className="flex-1 bg-white hover:bg-gray-50 text-gray-700" asChild>
-                  <Link href={`/admin/scrapers/${scraper.slug}`}>
+                  <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-view-link">
                     <ExternalLink className="mr-2 h-3.5 w-3.5" />
                     View
                   </Link>
