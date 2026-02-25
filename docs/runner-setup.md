@@ -1,201 +1,108 @@
-# Self-Hosted Runner Setup Guide
+# Scraper Runner Setup Guide (One-Line Install)
 
-Set up a new scraping runner in **under 5 minutes**.
+Set up a new scraper runner in under 5 minutes using a single terminal command.
 
-## TL;DR (One Command)
+## TL;DR
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/scripts/bootstrap-runner.sh | bash
-```
-
----
-
-## What You'll Need
-
-1. A Mac or Linux machine that stays powered on
-2. A GitHub runner registration token (instructions below)
-3. 5 minutes
-
----
-
-## Step-by-Step Setup
-
-### Step 1: Get Your Runner Token
-
-1. Go to: **[Add New Runner](https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/settings/actions/runners/new)**
-2. Select your OS (macOS or Linux)
-3. Copy the token from the `--token` part of the configure command
-
-The token looks like: `AXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`
-
-### Step 2: Run the Bootstrap Script
-
-Open Terminal and run:
+1. Open **Admin → Scrapers → Network** in BayStateApp
+2. Create a key under **Runner Accounts**
+3. Run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/scripts/bootstrap-runner.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
 ```
 
-The script will prompt you for:
-- **Runner token**: Paste the token from Step 1
-- **Runner name**: A name for this machine (e.g., "nicks-macbook")
+4. Paste the key into the setup wizard
 
-### Step 3: Verify
-
-Check your runner appears at:
-**[GitHub Runners](https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/settings/actions/runners)**
-
-It should show as **Idle** (green dot).
+The runner is deployed to Docker and starts immediately.
 
 ---
 
-## What the Bootstrap Script Does
+## Step-by-Step
 
-1. **Installs Docker** (if not already installed)
-2. **Downloads GitHub Actions Runner** (latest version)
-3. **Configures the runner** with labels `self-hosted,docker`
-4. **Pulls the Docker image** for scraping
-5. **Installs as a system service** (auto-starts on boot)
+### 1) Generate a Runner API Key
 
----
+In BayStateApp admin:
 
-## Architecture Overview
+- Go to **Scrapers → Network**
+- Open **Runner Accounts**
+- Click **Add Runner**
+- Copy the `bsr_...` API key (shown once)
 
-```
-┌─────────────────┐                         ┌─────────────────────┐
-│   BayStateApp   │   "Run scrape job"      │   GitHub Actions    │
-│   (Admin Panel) │ ──────────────────────▶ │                     │
-└─────────────────┘                         └──────────┬──────────┘
-                                                       │
-                                                       ▼
-                                            ┌─────────────────────┐
-                                            │   Your Laptop       │
-                                            │   (Runner Service)  │
-                                            │                     │
-                                            │   Runs Docker       │
-                                            │   container with    │
-                                            │   scraper code      │
-                                            └──────────┬──────────┘
-                                                       │
-         Results sent back                             │
-┌─────────────────┐                                    │
-│   BayStateApp   │ ◀──────────────────────────────────┘
-│   (Database)    │
-└─────────────────┘
-```
-
----
-
-## Required GitHub Secrets
-
-These must be configured in the **BayStateScraper** repository settings by an admin:
-
-| Secret | Description |
-|--------|-------------|
-| `SCRAPER_API_URL` | BayStateApp URL (e.g., `https://app.baystatepet.com`) |
-| `SCRAPER_API_KEY` | Runner API key from Admin Panel |
-| `SCRAPER_WEBHOOK_SECRET` | HMAC fallback signing key |
-| `SCRAPER_CALLBACK_URL` | `{SCRAPER_API_URL}/api/admin/scraping/callback` |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_KEY` | Supabase service role key |
-| `SETTINGS_ENCRYPTION_KEY` | Key for decrypting stored credentials |
-
----
-
-## Managing Your Runner
-
-### Service Commands (macOS)
+### 2) Run the One-Line Installer on the New Machine
 
 ```bash
-cd ~/actions-runner
-
-# Check status
-./svc.sh status
-
-# Stop the runner
-./svc.sh stop
-
-# Start the runner
-./svc.sh start
-
-# View logs
-tail -f ~/Library/Logs/actions.runner.*.log
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
 ```
 
-### Service Commands (Linux)
+The setup wizard will ask for:
+
+- **SCRAPER_API_URL** (defaults to `https://app.baystatepet.com`)
+- **SCRAPER_API_KEY** (paste the key you generated)
+- It auto-detects **RUNNER_NAME** from hostname
+- Optional prompt: enable auto-updates
+
+### 3) Verify Connection
+
+Return to **Scrapers → Network** and confirm the runner appears as **Ready**.
+
+---
+
+## Docker Deployment Details
+
+The installer:
+
+1. Validates Docker installation/daemon
+2. Pulls `ghcr.io/bay-state-pet-and-garden-supply/baystatescraper:latest`
+3. Starts container `baystate-scraper` with `--restart unless-stopped`
+4. Passes `SCRAPER_API_URL`, `SCRAPER_API_KEY`, and `RUNNER_NAME`
+
+Installer state is saved to:
 
 ```bash
-# Check status
-sudo systemctl status actions.runner.*
-
-# Stop the runner
-sudo systemctl stop actions.runner.*
-
-# Start the runner
-sudo systemctl start actions.runner.*
-
-# View logs
-journalctl -u actions.runner.* -f
+~/.baystate-scraper/runner.env
 ```
 
-### Remove the Runner
+---
+
+## Auto Updates
+
+### Supported (Docker)
+
+During setup, you can enable Watchtower-based updates.
+
+- A companion container (`baystate-scraper-watchtower`) is started
+- It updates only labeled containers (the BayState scraper runner)
+- Default poll interval: 3600 seconds (`WATCHTOWER_INTERVAL` can override)
+
+### If You Skip Auto Updates
+
+Manual update command:
 
 ```bash
-cd ~/actions-runner
-./svc.sh stop
-./svc.sh uninstall
-./config.sh remove --token YOUR_TOKEN
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
 ```
 
 ---
 
-## Credential Security (Vault Pattern)
+## Useful Commands
 
-Site passwords (Phillips, Orgill, etc.) are **never stored on the runner**:
+```bash
+# View runner logs
+docker logs -f baystate-scraper
 
-1. GitHub Actions passes "vault keys" to the Docker container
-2. Container connects to Supabase and downloads encrypted settings
-3. Container decrypts settings using `SETTINGS_ENCRYPTION_KEY`
-4. Credentials exist only in memory during execution
-5. Container exits and credentials are gone
+# Stop/start runner
+docker stop baystate-scraper
+docker start baystate-scraper
 
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| "Docker not running" | Open Docker Desktop (macOS) or `sudo systemctl start docker` (Linux) |
-| Runner shows offline | Check if service is running: `./svc.sh status` |
-| Jobs stuck in "queued" | Verify runner has labels `self-hosted,docker` |
-| "Permission denied" on Docker | Run `sudo usermod -aG docker $USER` and log out/in |
-| Token expired | Get a new token from GitHub Settings |
+# Check auto-updater (if enabled)
+docker logs -f baystate-scraper-watchtower
+```
 
 ---
 
-## FAQ
+## Security Notes
 
-**Q: Can I use my laptop while it's running jobs?**
-A: Yes. Jobs run in Docker containers and don't interfere with normal use.
-
-**Q: Does my laptop need to stay open?**
-A: Yes, it needs to be powered on and connected to the internet. Sleep mode will pause jobs.
-
-**Q: Can I have multiple runners?**
-A: Yes! Run the bootstrap script on each machine with a unique name.
-
-**Q: What happens if I close my laptop during a job?**
-A: The job will fail and be marked as such. No data is lost.
-
----
-
-## Alternative: Desktop App
-
-For testing and debugging, use the Desktop App instead:
-
-1. Download from [GitHub Releases](https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/releases/latest)
-2. Open the app
-3. Enter your API key from Admin Panel → Scraper Network
-4. Run scrapes manually with full visibility
-
-The Desktop App is for **development/testing**. For production, use the GitHub Runner setup above.
+- API keys are displayed once and stored hashed server-side
+- The installer prompts for keys interactively (hidden input)
+- Runners use API key auth via `X-API-Key` and do not connect directly to the database

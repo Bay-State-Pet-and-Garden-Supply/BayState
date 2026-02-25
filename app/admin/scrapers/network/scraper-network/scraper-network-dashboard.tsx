@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { RunnerPresence } from "@/lib/realtime/types";
 import { useRunnerPresence } from "@/lib/realtime/useRunnerPresence";
 import {
   Card,
@@ -37,6 +36,7 @@ import {
   Copy,
   Key,
 } from "lucide-react";
+import { SetupGuide } from "@/components/admin/scraper-network/setup-guide";
 
 interface NetworkStats {
   totalRunners: number;
@@ -50,9 +50,7 @@ export function ScraperNetworkDashboard() {
   const {
     runners,
     isConnected: isRealtimeConnected,
-    error,
     connect,
-    disconnect,
   } = useRunnerPresence({
     autoConnect: true,
   });
@@ -72,6 +70,8 @@ export function ScraperNetworkDashboard() {
   const [isCreatingRunner, setIsCreatingRunner] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [createdRunnerName, setCreatedRunnerName] = useState<string | null>(null);
+  const installCommand =
+    "curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash";
 
   const handleCreateRunner = async () => {
     if (!newRunnerName.trim()) {
@@ -121,6 +121,11 @@ export function ScraperNetworkDashboard() {
       navigator.clipboard.writeText(createdApiKey);
       toast.success("API key copied to clipboard");
     }
+  };
+
+  const copyInstallCommand = () => {
+    navigator.clipboard.writeText(installCommand);
+    toast.success("Installer command copied to clipboard");
   };
 
   useEffect(() => {
@@ -213,6 +218,8 @@ export function ScraperNetworkDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <SetupGuide />
 
       {/* Runner Status Distribution */}
       <Card>
@@ -376,7 +383,7 @@ export function ScraperNetworkDashboard() {
             </DialogTitle>
             <DialogDescription>
               {createdApiKey
-                ? "Save this API key now. It cannot be retrieved again."
+                ? "Save this API key now. Then run the installer and paste this key into the setup wizard."
                 : "Create a new scraper runner and generate an API key."}
             </DialogDescription>
           </DialogHeader>
@@ -403,6 +410,17 @@ export function ScraperNetworkDashboard() {
               <p className="text-sm text-muted-foreground">
                 Use this API key to authenticate your runner. Store it securely.
               </p>
+              <div className="rounded-lg bg-muted p-4 space-y-2">
+                <Label className="text-xs text-muted-foreground">One-line installer</Label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded bg-background px-2 py-1 text-xs font-mono break-all">
+                    {installCommand}
+                  </code>
+                  <Button size="sm" variant="outline" onClick={copyInstallCommand}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-4 py-4">
