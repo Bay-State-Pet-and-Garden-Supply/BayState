@@ -40,7 +40,7 @@ export function AdvancedTab() {
                     </div>
                     <FormControl>
                       <Switch
-                        checked={field.value}
+                        checked={Boolean(field.value)}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -60,7 +60,7 @@ export function AdvancedTab() {
                     </div>
                     <FormControl>
                       <Switch
-                        checked={field.value}
+                        checked={Boolean(field.value)}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -90,7 +90,7 @@ export function AdvancedTab() {
                     </div>
                     <FormControl>
                       <Switch
-                        checked={field.value}
+                        checked={Boolean(field.value)}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -114,7 +114,14 @@ export function AdvancedTab() {
                     <FormItem>
                       <FormLabel>Login URL</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com/login" {...field} />
+                        <Input
+                          placeholder="https://example.com/login"
+                          value={typeof field.value === 'string' ? field.value : ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -127,7 +134,14 @@ export function AdvancedTab() {
                       <FormItem>
                         <FormLabel>Username Selector</FormLabel>
                         <FormControl>
-                          <Input placeholder="#username" {...field} />
+                          <Input
+                            placeholder="#username"
+                            value={typeof field.value === 'string' ? field.value : ''}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -139,7 +153,14 @@ export function AdvancedTab() {
                       <FormItem>
                         <FormLabel>Password Selector</FormLabel>
                         <FormControl>
-                          <Input placeholder="#password" {...field} />
+                          <Input
+                            placeholder="#password"
+                            value={typeof field.value === 'string' ? field.value : ''}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
                         </FormControl>
                       </FormItem>
                     )}

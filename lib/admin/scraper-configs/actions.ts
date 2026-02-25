@@ -5,6 +5,20 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { scraperConfigSchema } from '../scrapers/schema';
 
+const selectorSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  selector: z.string().min(1, 'Selector is required'),
+  attribute: z.string().default('text'),
+  multiple: z.boolean().default(false),
+  required: z.boolean().default(true),
+});
+
+const workflowStepSchema = z.object({
+  action: z.string().min(1, 'Action is required'),
+  name: z.string().optional(),
+  params: z.record(z.string(), z.unknown()).default({}),
+});
+
 export type ActionState = {
   success: boolean;
   error?: string;
@@ -701,5 +715,540 @@ export async function getTestResults(
   } catch (error) {
     console.error('Get test results error:', error);
     return { success: false, error: 'Failed to get test results' };
+  }
+}
+
+export async function addSelector(
+  versionId: string,
+  data: unknown
+): Promise<ActionState> {
+  try {
+    const validatedData = selectorSchema.parse(data);
+
+    const supabase = await createClient();
+
+    const { data: lastSelector } = await supabase
+      .from('scraper_selectors')
+      .select('sort_order')
+      .eq('version_id', versionId)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextSortOrder = (lastSelector?.sort_order ?? -1) + 1;
+
+    const { data: selector, error } = await supabase
+      .from('scraper_selectors')
+      .insert({
+        version_id: versionId,
+        name: validatedData.name,
+        selector: validatedData.selector,
+        attribute: validatedData.attribute,
+        multiple: validatedData.multiple,
+        required: validatedData.required,
+        sort_order: nextSortOrder,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to add selector' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true, data: selector };
+  } catch (error) {
+    console.error('Action error:', error);
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Validation failed', details: error.issues };
+    }
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function updateSelector(
+  selectorId: string,
+  data: unknown
+): Promise<ActionState> {
+  try {
+    const validatedData = selectorSchema.parse(data);
+
+    const supabase = await createClient();
+
+    const { data: selector, error } = await supabase
+      .from('scraper_selectors')
+      .update({
+        name: validatedData.name,
+        selector: validatedData.selector,
+        attribute: validatedData.attribute,
+        multiple: validatedData.multiple,
+        required: validatedData.required,
+      })
+      .eq('id', selectorId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to update selector' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true, data: selector };
+  } catch (error) {
+    console.error('Action error:', error);
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Validation failed', details: error.issues };
+    }
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function deleteSelector(selectorId: string): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('scraper_selectors')
+      .delete()
+      .eq('id', selectorId);
+
+    if (error) {
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to delete selector' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function reorderSelectors(
+  versionId: string,
+  selectorIds: string[]
+): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+
+    const updates = selectorIds.map((id, index) =>
+      supabase
+        .from('scraper_selectors')
+        .update({ sort_order: index })
+        .eq('id', id)
+        .eq('version_id', versionId)
+    );
+
+    const results = await Promise.all(updates);
+    const failed = results.find(result => result.error);
+
+    if (failed?.error) {
+      console.error('Database error:', failed.error);
+      return { success: false, error: 'Failed to reorder selectors' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function addWorkflowStep(
+  versionId: string,
+  data: unknown
+): Promise<ActionState> {
+  try {
+    const validatedData = workflowStepSchema.parse(data);
+
+    const supabase = await createClient();
+
+    const { data: lastStep } = await supabase
+      .from('scraper_workflow_steps')
+      .select('sort_order')
+      .eq('version_id', versionId)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextSortOrder = (lastStep?.sort_order ?? -1) + 1;
+
+    const { data: step, error } = await supabase
+      .from('scraper_workflow_steps')
+      .insert({
+        version_id: versionId,
+        action: validatedData.action,
+        name: validatedData.name,
+        params: validatedData.params,
+        sort_order: nextSortOrder,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to add workflow step' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true, data: step };
+  } catch (error) {
+    console.error('Action error:', error);
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Validation failed', details: error.issues };
+    }
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function updateWorkflowStep(
+  stepId: string,
+  data: unknown
+): Promise<ActionState> {
+  try {
+    const validatedData = workflowStepSchema.parse(data);
+
+    const supabase = await createClient();
+
+    const { data: step, error } = await supabase
+      .from('scraper_workflow_steps')
+      .update({
+        action: validatedData.action,
+        name: validatedData.name,
+        params: validatedData.params,
+      })
+      .eq('id', stepId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to update workflow step' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true, data: step };
+  } catch (error) {
+    console.error('Action error:', error);
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Validation failed', details: error.issues };
+    }
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function deleteWorkflowStep(stepId: string): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('scraper_workflow_steps')
+      .delete()
+      .eq('id', stepId);
+
+    if (error) {
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to delete workflow step' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function reorderWorkflowSteps(
+  versionId: string,
+  stepIds: string[]
+): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+
+    const updates = stepIds.map((id, index) =>
+      supabase
+        .from('scraper_workflow_steps')
+        .update({ sort_order: index })
+        .eq('id', id)
+        .eq('version_id', versionId)
+    );
+
+    const results = await Promise.all(updates);
+    const failed = results.find(result => result.error);
+
+    if (failed?.error) {
+      console.error('Database error:', failed.error);
+      return { success: false, error: 'Failed to reorder workflow steps' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function publishVersion(versionId: string): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const { data: version, error: versionError } = await supabase
+      .from('scraper_config_versions')
+      .select('*')
+      .eq('id', versionId)
+      .single();
+
+    if (versionError || !version) {
+      return { success: false, error: 'Version not found' };
+    }
+
+    const { error: publishError } = await supabase
+      .from('scraper_config_versions')
+      .update({
+        status: 'published',
+        published_at: new Date().toISOString(),
+        published_by: user.id,
+      })
+      .eq('id', versionId);
+
+    if (publishError) {
+      console.error('Database error:', publishError);
+      return { success: false, error: 'Failed to publish version' };
+    }
+
+    const { error: configUpdateError } = await supabase
+      .from('scraper_configs')
+      .update({
+        current_version_id: versionId,
+        schema_version: version.schema_version,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', version.config_id);
+
+    if (configUpdateError) {
+      console.error('Database error:', configUpdateError);
+      return { success: false, error: 'Failed to update config current version' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true, data: version };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function createNewVersion(configId: string): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const { data: config, error: configError } = await supabase
+      .from('scraper_configs')
+      .select('*')
+      .eq('id', configId)
+      .single();
+
+    if (configError || !config) {
+      return { success: false, error: 'Config not found' };
+    }
+
+    const { data: latestVersion } = await supabase
+      .from('scraper_config_versions')
+      .select('version_number')
+      .eq('config_id', configId)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    const newVersionNumber = (latestVersion?.version_number || 0) + 1;
+
+    const { data: sourceVersion, error: sourceVersionError } = await supabase
+      .from('scraper_config_versions')
+      .select('*')
+      .eq('id', config.current_version_id)
+      .single();
+
+    if (sourceVersionError || !sourceVersion) {
+      return { success: false, error: 'Source version not found' };
+    }
+
+    const { data: newVersion, error: createError } = await supabase
+      .from('scraper_config_versions')
+      .insert({
+        config_id: configId,
+        schema_version: sourceVersion.schema_version,
+        config: sourceVersion.config,
+        ai_config: sourceVersion.ai_config,
+        anti_detection: sourceVersion.anti_detection,
+        validation_config: sourceVersion.validation_config,
+        login_config: sourceVersion.login_config,
+        http_status_config: sourceVersion.http_status_config,
+        normalization_config: sourceVersion.normalization_config,
+        timeout: sourceVersion.timeout,
+        retries: sourceVersion.retries,
+        image_quality: sourceVersion.image_quality,
+        status: 'draft',
+        version_number: newVersionNumber,
+        change_summary: `Draft from v${sourceVersion.version_number}`,
+        validation_result: null,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (createError || !newVersion) {
+      console.error('Database error:', createError);
+      return { success: false, error: 'Failed to create new version' };
+    }
+
+    const { data: selectors } = await supabase
+      .from('scraper_selectors')
+      .select('*')
+      .eq('version_id', sourceVersion.id)
+      .order('sort_order', { ascending: true });
+
+    if (selectors && selectors.length > 0) {
+      const selectorInserts = selectors.map(selector => ({
+        version_id: newVersion.id,
+        name: selector.name,
+        selector: selector.selector,
+        attribute: selector.attribute,
+        multiple: selector.multiple,
+        required: selector.required,
+        sort_order: selector.sort_order,
+      }));
+
+      const { error: selectorInsertError } = await supabase
+        .from('scraper_selectors')
+        .insert(selectorInserts);
+
+      if (selectorInsertError) {
+        console.error('Database error:', selectorInsertError);
+        return { success: false, error: 'Failed to clone selectors' };
+      }
+    }
+
+    const { data: steps } = await supabase
+      .from('scraper_workflow_steps')
+      .select('*')
+      .eq('version_id', sourceVersion.id)
+      .order('sort_order', { ascending: true });
+
+    if (steps && steps.length > 0) {
+      const stepInserts = steps.map(step => ({
+        version_id: newVersion.id,
+        action: step.action,
+        name: step.name,
+        params: step.params,
+        sort_order: step.sort_order,
+      }));
+
+      const { error: stepInsertError } = await supabase
+        .from('scraper_workflow_steps')
+        .insert(stepInserts);
+
+      if (stepInsertError) {
+        console.error('Database error:', stepInsertError);
+        return { success: false, error: 'Failed to clone workflow steps' };
+      }
+    }
+
+    const { error: configUpdateError } = await supabase
+      .from('scraper_configs')
+      .update({
+        current_version_id: newVersion.id,
+        schema_version: newVersion.schema_version,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', configId);
+
+    if (configUpdateError) {
+      console.error('Database error:', configUpdateError);
+      return { success: false, error: 'Failed to update config current version' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true, data: newVersion };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function addTestSku(
+  configId: string,
+  sku: string,
+  skuType: 'test' | 'fake' | 'edge_case'
+): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const { data: testSku, error } = await supabase
+      .from('scraper_config_test_skus')
+      .insert({
+        config_id: configId,
+        sku: sku.trim(),
+        sku_type: skuType,
+        added_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return { success: false, error: 'This SKU already exists for this config' };
+      }
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to add test SKU' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true, data: testSku };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+export async function removeTestSku(skuId: string): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('scraper_config_test_skus')
+      .delete()
+      .eq('id', skuId);
+
+    if (error) {
+      console.error('Database error:', error);
+      return { success: false, error: 'Failed to remove test SKU' };
+    }
+
+    revalidatePath('/admin/scrapers');
+    return { success: true };
+  } catch (error) {
+    console.error('Action error:', error);
+    return { success: false, error: 'Internal server error' };
   }
 }

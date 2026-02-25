@@ -71,7 +71,14 @@ export function SelectorsTab() {
                       <FormItem>
                         <FormLabel className="text-xs">Field Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. title" {...field} />
+                          <Input
+                            placeholder="e.g. title"
+                            value={typeof field.value === 'string' ? field.value : ''}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -87,7 +94,15 @@ export function SelectorsTab() {
                       <FormItem>
                         <FormLabel className="text-xs">CSS Selector</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. h1.product-title" className="font-mono text-sm" {...field} />
+                          <Input
+                            placeholder="e.g. h1.product-title"
+                            className="font-mono text-sm"
+                            value={typeof field.value === 'string' ? field.value : ''}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -135,7 +150,7 @@ export function SelectorsTab() {
                         </div>
                         <FormControl>
                           <Switch
-                            checked={field.value}
+                            checked={Boolean(field.value)}
                             onCheckedChange={field.onChange}
                             className="scale-75"
                           />
@@ -153,7 +168,7 @@ export function SelectorsTab() {
                         </div>
                         <FormControl>
                           <Switch
-                            checked={field.value}
+                            checked={Boolean(field.value)}
                             onCheckedChange={field.onChange}
                             className="scale-75"
                           />

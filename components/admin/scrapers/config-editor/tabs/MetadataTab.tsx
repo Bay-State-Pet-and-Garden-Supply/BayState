@@ -44,7 +44,14 @@ export function MetadataTab() {
               <FormItem>
                 <FormLabel>Display Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. Amazon Product Scraper" {...field} />
+                  <Input
+                    placeholder="e.g. Amazon Product Scraper"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    ref={field.ref}
+                  />
                 </FormControl>
                 <FormDescription>
                   Human-readable name for the admin panel.
@@ -61,7 +68,14 @@ export function MetadataTab() {
               <FormItem>
                 <FormLabel>Base URL</FormLabel>
                 <FormControl>
-                  <Input placeholder="https://www.example.com" {...field} />
+                  <Input
+                    placeholder="https://www.example.com"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    ref={field.ref}
+                  />
                 </FormControl>
                 <FormDescription>
                   The starting point for this scraper.

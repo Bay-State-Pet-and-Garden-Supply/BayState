@@ -19,15 +19,16 @@ function getSelectorId(sel: SelectorConfig, index: number): string {
 
 export function SelectorsEditor() {
   const { config, addSelector, updateSelector, removeSelector } = useScraperEditorStore();
+  const selectors = config.selectors ?? [];
 
   // Ensure all selectors have IDs on first render (migration helper)
   React.useEffect(() => {
-    const selectorsWithoutId = config.selectors.filter((sel) => !sel.id);
+    const selectorsWithoutId = selectors.filter((sel) => !sel.id);
     if (selectorsWithoutId.length > 0) {
       // This is a one-time migration - selectors will get IDs on next save
       // The UI will use index-based fallback for these old selectors
     }
-  }, [config.selectors]);
+  }, [selectors]);
 
   return (
     <div className="space-y-6">
@@ -42,13 +43,13 @@ export function SelectorsEditor() {
       </div>
 
       <div className="grid gap-4">
-        {config.selectors.length === 0 && (
+        {selectors.length === 0 && (
           <div className="text-center py-12 bg-muted/20 rounded-lg border border-dashed">
             <p className="text-muted-foreground">No selectors defined. Add one to start extracting data.</p>
           </div>
         )}
 
-        {config.selectors.map((sel, index) => {
+        {selectors.map((sel, index) => {
           const selectorId = getSelectorId(sel, index);
           
           return (

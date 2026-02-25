@@ -48,6 +48,7 @@ const defaultConfig = { icon: Code, color: '#6B7280', bgColor: 'bg-gray-50 dark:
 function ActionParams({ step, index }: { step: { action: string; params?: Record<string, unknown> }; index: number }) {
   const { updateWorkflowStep, config } = useScraperEditorStore();
   const params = step.params || {};
+  const selectors = config.selectors ?? [];
 
   const updateParam = (key: string, value: unknown) => {
     updateWorkflowStep(index, { params: { ...params, [key]: value } });
@@ -133,11 +134,11 @@ function ActionParams({ step, index }: { step: { action: string; params?: Record
       return (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Fields to Extract:</p>
-          {config.selectors.length === 0 ? (
+          {selectors.length === 0 ? (
             <p className="text-xs text-muted-foreground italic">No selectors defined.</p>
           ) : (
             <div className="flex flex-wrap gap-1">
-              {config.selectors.map(sel => (
+              {selectors.map(sel => (
                 <Badge key={sel.name} variant="secondary" className="text-[10px]">
                   {sel.name}
                 </Badge>

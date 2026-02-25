@@ -72,7 +72,8 @@ export function WorkflowTab() {
         )}
 
         {fields.map((field, index) => {
-           const actionType = watch(`workflows.${index}.action`);
+           const watchedActionType = watch(`workflows.${index}.action`);
+           const actionType = typeof watchedActionType === 'string' ? watchedActionType : '';
 
            return (
             <Card key={field.id} className="relative group transition-all hover:shadow-md border-l-4 border-l-primary/20 hover:border-l-primary">
@@ -129,7 +130,14 @@ export function WorkflowTab() {
                               <FormItem>
                                 <FormLabel className="text-xs">Target URL</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="https://..." {...field} value={field.value as string || ''} />
+                                  <Input
+                                    placeholder="https://..."
+                                    value={typeof field.value === 'string' ? field.value : ''}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -145,7 +153,15 @@ export function WorkflowTab() {
                               <FormItem>
                                 <FormLabel className="text-xs">Target Selector</FormLabel>
                                 <FormControl>
-                                  <Input placeholder=".class or #id" className="font-mono" {...field} value={field.value as string || ''} />
+                                  <Input
+                                    placeholder=".class or #id"
+                                    className="font-mono"
+                                    value={typeof field.value === 'string' ? field.value : ''}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -162,7 +178,14 @@ export function WorkflowTab() {
                                 <FormItem>
                                   <FormLabel className="text-xs">Input Text</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Value to type..." {...field} value={field.value as string || ''} />
+                                    <Input
+                                      placeholder="Value to type..."
+                                      value={typeof field.value === 'string' ? field.value : ''}
+                                      onChange={field.onChange}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -181,9 +204,11 @@ export function WorkflowTab() {
                                 <FormControl>
                                   <Input 
                                     type="number" 
-                                    {...field} 
                                     onChange={e => field.onChange(parseFloat(e.target.value))}
-                                    value={field.value as number || 0} 
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                    value={typeof field.value === 'number' ? field.value : 0}
                                   />
                                 </FormControl>
                                 <FormMessage />

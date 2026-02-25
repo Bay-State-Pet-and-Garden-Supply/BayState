@@ -519,7 +519,7 @@ export function StudioConfigEditor({
                       onCreateVersion={handleCreateVersion}
                       onPublishVersion={handlePublishVersion}
                       onRollback={handleRollback}
-                      currentConfig={getValues()}
+                      currentConfig={getValues() as unknown as Record<string, unknown>}
                     />
                   )}
                 </TabsContent>
