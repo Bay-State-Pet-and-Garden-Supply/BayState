@@ -69,11 +69,11 @@ Installer state is saved to:
 
 ### Supported (Docker)
 
-During setup, you can enable Watchtower-based updates.
+During setup, you can enable GitHub Packages (GHCR) auto-updates.
 
-- A companion container (`baystate-scraper-watchtower`) is started
-- It updates only labeled containers (the BayState scraper runner)
-- Default poll interval: 3600 seconds (`WATCHTOWER_INTERVAL` can override)
+- The installer writes `~/.baystate-scraper/update-runner.sh`
+- An hourly cron entry runs it (`0 * * * *`)
+- It only restarts the container when a newer GHCR image is available
 
 ### If You Skip Auto Updates
 
