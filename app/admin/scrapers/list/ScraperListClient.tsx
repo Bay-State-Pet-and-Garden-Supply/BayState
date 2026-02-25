@@ -29,22 +29,23 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
     // Health filter
     if (healthFilter !== 'all') {
       const score = scraper.health_score;
-      if (healthFilter === 'healthy' && (score === null || score < 90)) return false;
-      if (healthFilter === 'warning' && (score === null || score < 60 || score >= 90)) return false;
-      if (healthFilter === 'critical' && (score === null || score >= 60)) return false;
+      if (score === null || score === undefined) return false;
+      if (healthFilter === 'healthy' && score < 90) return false;
+      if (healthFilter === 'warning' && (score < 60 || score >= 90)) return false;
+      if (healthFilter === 'critical' && score >= 60) return false;
     }
     
     return true;
   });
 
-  const getHealthColor = (score: number | null) => {
+  const getHealthColor = (score: number | null | undefined) => {
     if (score === null || score === undefined) return 'bg-gray-100 text-gray-800 border-gray-200';
     if (score >= 90) return 'bg-green-100 text-green-800 border-green-200';
     if (score >= 60) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     return 'bg-red-100 text-red-800 border-red-200';
   };
 
-  const getHealthLabel = (score: number | null) => {
+  const getHealthLabel = (score: number | null | undefined) => {
     if (score === null || score === undefined) return 'Unknown';
     if (score >= 90) return 'Healthy';
     if (score >= 60) return 'Warning';

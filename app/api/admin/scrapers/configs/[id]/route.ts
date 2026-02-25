@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { assembleScraperConfig } from '@/lib/admin/scraper-configs/assemble-config';
 
 export async function GET(
   request: Request,
@@ -34,8 +35,10 @@ export async function GET(
       );
     }
 
+    const fullConfig = await assembleScraperConfig(config.id);
+
     return NextResponse.json({
-      config: currentVersion.config,
+      config: fullConfig,
       status: currentVersion.status,
       version: currentVersion.version_number,
       validationResult: currentVersion.validation_result,
