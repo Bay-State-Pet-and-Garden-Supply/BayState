@@ -107,7 +107,7 @@ export function SetupGuide() {
                                 The wizard asks for your app URL, prompts you to open this page to generate a key, then asks you to paste the key.
                             </p>
                             <p className="mt-2 text-gray-600">
-                                Optional: enable Docker auto-updates (Watchtower) during setup.
+                                Optional: enable hourly auto-updates directly from GitHub Packages during setup.
                             </p>
                         </section>
 
