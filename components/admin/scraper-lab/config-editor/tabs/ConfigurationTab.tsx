@@ -74,7 +74,7 @@ export function ConfigurationTab() {
                   <FormLabel>Image Quality ({field.value}%)</FormLabel>
                   <FormControl>
                     <Slider
-                      defaultValue={[field.value]}
+                      defaultValue={[typeof field.value === 'number' ? field.value : 50]}
                       max={100}
                       step={1}
                       onValueChange={(vals) => field.onChange(vals[0])}

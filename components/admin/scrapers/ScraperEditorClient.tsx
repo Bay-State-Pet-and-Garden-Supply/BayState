@@ -110,8 +110,8 @@ export function ScraperEditorClient({ scraper }: ScraperEditorClientProps) {
     startTransition(async () => {
       const result = await updateScraper(scraper.id, {
         config,
-        base_url: config.base_url,
-        name: config.name,
+        base_url: config.base_url || undefined,
+        name: config.name || undefined,
         display_name: config.display_name || undefined,
       });
 

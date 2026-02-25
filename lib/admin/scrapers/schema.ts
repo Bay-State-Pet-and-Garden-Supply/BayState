@@ -326,3 +326,45 @@ export const actionTypes = [
 ] as const;
 
 export const actionTypeSchema = z.enum(actionTypes);
+
+// ============================================================================
+// NORMALIZED SCHEMA ZOD SCHEMAS (from scraper-schema-overhaul)
+// ============================================================================
+
+// Selector for normalized table
+export const scraperSelectorSchema = z.object({
+  name: z.string().min(1, 'Selector name is required'),
+  selector: z.string().min(1, 'Selector is required'),
+  attribute: z.string().default('text'),
+  multiple: z.boolean().default(false),
+  required: z.boolean().default(true),
+});
+
+// Workflow step for normalized table
+export const scraperWorkflowStepSchema = z.object({
+  action: z.string().min(1, 'Action is required'),
+  name: z.string().optional(),
+  params: z.record(z.string(), z.unknown()).default({}),
+});
+
+// Scraper config metadata (for forms)
+export const scraperConfigMetadataSchema = z.object({
+  slug: z.string().min(1, 'Slug is required').max(255).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
+  display_name: z.string().optional(),
+  base_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  domain: z.string().optional(),
+  scraper_type: z.enum(['static', 'agentic']).default('static'),
+});
+
+// Settings for version (timeout, retries, etc.)
+export const scraperVersionSettingsSchema = z.object({
+  timeout: z.number().min(1).max(300).default(30),
+  retries: z.number().min(0).max(10).default(3),
+  image_quality: z.number().min(0).max(100).default(50),
+});
+
+// Test SKU schema
+export const scraperTestSkuSchema = z.object({
+  sku: z.string().min(1, 'SKU is required'),
+  sku_type: z.enum(['test', 'fake', 'edge_case']),
+});

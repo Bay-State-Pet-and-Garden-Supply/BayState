@@ -69,7 +69,7 @@ export const useScraperEditorStore = create<ScraperEditorState>((set) => ({
     if (actionType === 'click') newStep.params = { selector: '' };
     if (actionType === 'wait_for') newStep.params = { selector: '', timeout: 10 };
     
-    const newWorkflows = [...state.config.workflows];
+    const newWorkflows = [...(state.config.workflows ?? [])];
     if (index !== undefined && index >= 0) {
       newWorkflows.splice(index, 0, newStep);
     } else {
@@ -80,7 +80,7 @@ export const useScraperEditorStore = create<ScraperEditorState>((set) => ({
   }),
 
   updateWorkflowStep: (index, updates) => set((state) => {
-    const newWorkflows = [...state.config.workflows];
+    const newWorkflows = [...(state.config.workflows ?? [])];
     if (newWorkflows[index]) {
       newWorkflows[index] = { ...newWorkflows[index], ...updates };
     }
@@ -88,12 +88,12 @@ export const useScraperEditorStore = create<ScraperEditorState>((set) => ({
   }),
 
   removeWorkflowStep: (index) => set((state) => {
-    const newWorkflows = state.config.workflows.filter((_, i) => i !== index);
+    const newWorkflows = (state.config.workflows ?? []).filter((_, i) => i !== index);
     return { config: { ...state.config, workflows: newWorkflows } };
   }),
 
   moveWorkflowStep: (fromIndex, toIndex) => set((state) => {
-    const newWorkflows = [...state.config.workflows];
+    const newWorkflows = [...(state.config.workflows ?? [])];
     const [movedStep] = newWorkflows.splice(fromIndex, 1);
     newWorkflows.splice(toIndex, 0, movedStep);
     return { config: { ...state.config, workflows: newWorkflows } };
@@ -105,14 +105,14 @@ export const useScraperEditorStore = create<ScraperEditorState>((set) => ({
     return {
       config: {
         ...state.config,
-        selectors: [...state.config.selectors, selectorWithId]
+        selectors: [...(state.config.selectors ?? []), selectorWithId]
       }
     };
   }),
 
   updateSelector: (id, updates) => set((state) => {
     // Handle both UUID-based IDs and index-based fallback (selector-N format)
-    const newSelectors = state.config.selectors.map((sel, index) => {
+    const newSelectors = (state.config.selectors ?? []).map((sel, index) => {
       // Check if ID matches actual ID or matches the fallback format
       const isMatch = sel.id === id || `selector-${index}` === id;
       if (isMatch) {
@@ -129,7 +129,7 @@ export const useScraperEditorStore = create<ScraperEditorState>((set) => ({
 
   removeSelector: (id) => set((state) => {
     // Handle both UUID-based IDs and index-based fallback (selector-N format)
-    const newSelectors = state.config.selectors.filter((sel, index) => {
+    const newSelectors = (state.config.selectors ?? []).filter((sel, index) => {
       // Keep if ID doesn't match
       const isMatch = sel.id === id || `selector-${index}` === id;
       return !isMatch;

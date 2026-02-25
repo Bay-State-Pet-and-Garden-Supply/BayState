@@ -25,6 +25,7 @@ interface ActionCardProps {
 function ActionParams({ step, index }: { step: WorkflowStep; index: number }) {
   const { updateWorkflowStep, config } = useScraperEditorStore();
   const params = step.params || {};
+  const selectors = config.selectors ?? [];
 
   const updateParam = (key: string, value: string | number | boolean) => {
     updateWorkflowStep(index, { params: { ...params, [key]: value } });
@@ -107,11 +108,11 @@ function ActionParams({ step, index }: { step: WorkflowStep; index: number }) {
         <div className="space-y-4">
           <div className="p-4 bg-muted rounded-md text-sm">
             <p className="mb-2"><strong>Fields to Extract:</strong></p>
-            {config.selectors.length === 0 ? (
+            {selectors.length === 0 ? (
               <p className="text-muted-foreground italic">No selectors defined. Go to the Selectors tab to add some.</p>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {config.selectors.map(sel => (
+                {selectors.map(sel => (
                   <div key={sel.name} className="flex items-center gap-2 p-2 bg-background border rounded">
                     <div className="h-2 w-2 rounded-full bg-green-500" />
                     <span className="font-mono text-xs">{sel.name}</span>

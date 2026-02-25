@@ -65,19 +65,20 @@ function WorkflowCanvas() {
   const { config, addWorkflowStep, moveWorkflowStep } = useScraperEditorStore();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+  const workflows = config.workflows ?? [];
 
   // Convert store workflows to nodes/edges
-  const initialNodes = useMemo(() => workflowToNodes(config.workflows), [config.workflows]);
-  const initialEdges = useMemo(() => workflowToEdges(config.workflows), [config.workflows]);
+  const initialNodes = useMemo(() => workflowToNodes(workflows), [workflows]);
+  const initialEdges = useMemo(() => workflowToEdges(workflows), [workflows]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Sync nodes when store changes
   React.useEffect(() => {
-    setNodes(workflowToNodes(config.workflows));
-    setEdges(workflowToEdges(config.workflows));
-  }, [config.workflows, setNodes, setEdges]);
+    setNodes(workflowToNodes(workflows));
+    setEdges(workflowToEdges(workflows));
+  }, [workflows, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -107,8 +108,8 @@ function WorkflowCanvas() {
       });
 
       // Find the best insertion index based on Y position
-      let insertIndex = config.workflows.length;
-      const existingNodes = workflowToNodes(config.workflows);
+      let insertIndex = workflows.length;
+      const existingNodes = workflowToNodes(workflows);
       
       for (let i = 0; i < existingNodes.length; i++) {
         if (position.y < existingNodes[i].position.y) {
@@ -119,7 +120,7 @@ function WorkflowCanvas() {
 
       addWorkflowStep(actionType, insertIndex);
     },
-    [screenToFlowPosition, addWorkflowStep, config.workflows]
+    [screenToFlowPosition, addWorkflowStep, workflows]
   );
 
   // Handle node drag end to reorder
@@ -183,7 +184,7 @@ function WorkflowCanvas() {
           />
           
           {/* Empty state */}
-          {config.workflows.length === 0 && (
+          {workflows.length === 0 && (
             <Panel position="top-center" className="mt-20">
               <div className="border-2 border-dashed rounded-lg p-12 text-center text-muted-foreground bg-background/80 backdrop-blur">
                 <p className="text-lg font-medium mb-2">Drag actions here to build your workflow</p>

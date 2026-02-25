@@ -22,6 +22,7 @@ const DEFAULT_ANTI_DETECTION = {
 
 export function GlobalSettings() {
   const { config, setGeneralInfo, updateConfig } = useScraperEditorStore();
+  const antiDetection = config.anti_detection as Record<string, unknown> | undefined;
 
   return (
     <div className="space-y-6">
@@ -37,7 +38,7 @@ export function GlobalSettings() {
               <Input 
                 id="name" 
                 placeholder="e.g. amazon_products" 
-                value={config.name}
+                value={config.name ?? ''}
                 onChange={(e) => setGeneralInfo({ ...config, name: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">Unique identifier used in code and logs.</p>
@@ -59,7 +60,7 @@ export function GlobalSettings() {
             <Input 
               id="base_url" 
               placeholder="https://www.example.com" 
-              value={config.base_url}
+              value={config.base_url ?? ''}
               onChange={(e) => setGeneralInfo({ ...config, base_url: e.target.value })}
             />
           </div>
@@ -80,7 +81,7 @@ export function GlobalSettings() {
                 type="number"
                 min={1}
                 max={300}
-                value={config.timeout}
+                value={config.timeout ?? 30}
                 onChange={(e) => updateConfig({ timeout: parseInt(e.target.value) || 30 })}
               />
             </div>
@@ -92,7 +93,7 @@ export function GlobalSettings() {
                 type="number"
                 min={0}
                 max={10}
-                value={config.retries}
+                value={config.retries ?? 3}
                 onChange={(e) => updateConfig({ retries: parseInt(e.target.value) || 3 })}
               />
             </div>
@@ -104,7 +105,7 @@ export function GlobalSettings() {
                 type="number"
                 min={0}
                 max={100}
-                value={config.image_quality}
+                value={config.image_quality ?? 50}
                 onChange={(e) => updateConfig({ image_quality: parseInt(e.target.value) || 50 })}
               />
             </div>
@@ -125,9 +126,9 @@ export function GlobalSettings() {
             </div>
             <Switch 
               aria-label="Enable human simulation"
-              checked={config.anti_detection?.enable_human_simulation || false}
+              checked={Boolean(antiDetection?.enable_human_simulation)}
               onCheckedChange={(checked) => updateConfig({ 
-                anti_detection: { ...DEFAULT_ANTI_DETECTION, ...config.anti_detection, enable_human_simulation: checked } 
+                anti_detection: { ...DEFAULT_ANTI_DETECTION, ...(antiDetection ?? {}), enable_human_simulation: checked } 
               })}
             />
           </div>
@@ -140,9 +141,9 @@ export function GlobalSettings() {
             </div>
             <Switch 
               aria-label="Enable session rotation"
-              checked={config.anti_detection?.enable_session_rotation || false}
+              checked={Boolean(antiDetection?.enable_session_rotation)}
               onCheckedChange={(checked) => updateConfig({ 
-                anti_detection: { ...DEFAULT_ANTI_DETECTION, ...config.anti_detection, enable_session_rotation: checked } 
+                anti_detection: { ...DEFAULT_ANTI_DETECTION, ...(antiDetection ?? {}), enable_session_rotation: checked } 
               })}
             />
           </div>
@@ -154,9 +155,9 @@ export function GlobalSettings() {
             </div>
             <Switch 
               aria-label="Enable rate limiting"
-              checked={config.anti_detection?.enable_rate_limiting || false}
+              checked={Boolean(antiDetection?.enable_rate_limiting)}
               onCheckedChange={(checked) => updateConfig({
-                anti_detection: { ...DEFAULT_ANTI_DETECTION, ...config.anti_detection, enable_rate_limiting: checked } 
+                anti_detection: { ...DEFAULT_ANTI_DETECTION, ...(antiDetection ?? {}), enable_rate_limiting: checked } 
               })}
             />
           </div>

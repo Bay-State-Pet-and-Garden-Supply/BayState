@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { assembleScraperConfigBySlug } from '@/lib/admin/scraper-configs/assemble-config';
 import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
@@ -20,23 +21,21 @@ interface ScraperConfig {
     display_name?: string | null;
     disabled: boolean;
     base_url?: string;
-    search_url_template?: string;
-    selectors?: Record<string, unknown> | Record<string, unknown>[];
-    options?: Record<string, unknown>;
+    scraper_type?: string;
+    selectors?: unknown;
+    options?: unknown;
     test_skus?: string[];
     retries?: number;
-    validation?: Record<string, unknown>;
-}
-
-interface ScraperConfigVersionRow {
-    status?: string | null;
-    config?: unknown;
-}
-
-interface ScraperConfigRow {
-    slug: string;
-    display_name: string | null;
-    scraper_config_versions: ScraperConfigVersionRow | ScraperConfigVersionRow[] | null;
+    validation?: unknown;
+    ai_config?: unknown;
+    anti_detection?: unknown;
+    http_status?: unknown;
+    login?: unknown;
+    workflows?: unknown;
+    normalization?: unknown;
+    image_quality?: number;
+    fake_skus?: string[];
+    edge_case_skus?: string[];
 }
 
 interface JobConfigResponse {
@@ -58,42 +57,6 @@ interface JobConfigResponse {
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
-
-function normalizeCurrentVersion(
-    version: ScraperConfigRow['scraper_config_versions']
-): ScraperConfigVersionRow | null {
-    if (Array.isArray(version)) {
-        return version[0] ?? null;
-    }
-    return version ?? null;
-}
-
-function toRecord(value: unknown): Record<string, unknown> | undefined {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-        return value as Record<string, unknown>;
-    }
-    return undefined;
-}
-
-function toSelectors(value: unknown): Record<string, unknown> | Record<string, unknown>[] | undefined {
-    if (Array.isArray(value)) {
-        return value.filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item));
-    }
-
-    if (value && typeof value === 'object') {
-        return value as Record<string, unknown>;
-    }
-
-    return undefined;
-}
-
-function toStringArray(value: unknown): string[] | undefined {
-    if (!Array.isArray(value)) {
-        return undefined;
-    }
-    return value.filter((item): item is string => typeof item === 'string');
-}
-
 
 export async function GET(request: NextRequest) {
     try {
@@ -140,18 +103,11 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Fetch scraper configurations from the canonical versioned schema
-        const { data: scraperRows, error: scrapersError } = await supabase
+        // Fetch all published scraper configs (for metadata)
+        const { data: scraperConfigs, error: scrapersError } = await supabase
             .from('scraper_configs')
-            .select(`
-                slug,
-                display_name,
-                scraper_config_versions!fk_current_version (
-                    status,
-                    config
-                )
-            `)
-            .eq('scraper_config_versions.status', 'published');
+            .select('slug, display_name, scraper_type')
+            .eq('status', 'active');
 
         if (scrapersError) {
             console.error(`[Scraper API] Failed to fetch scrapers:`, scrapersError);
@@ -162,42 +118,54 @@ export async function GET(request: NextRequest) {
         }
 
         const requestedScrapers = job.scrapers || [];
-        const filteredScraperRows = (scraperRows || []).filter(row => {
+        
+        // Filter to only requested scrapers (or all if none specified)
+        const filteredConfigs = (scraperConfigs || []).filter((row: { slug: string; display_name: string | null }) => {
             if (requestedScrapers.length === 0) return true;
             return requestedScrapers.includes(row.slug) || 
                    (row.display_name && requestedScrapers.includes(row.display_name));
         });
 
-        const scrapers: ScraperConfig[] = (filteredScraperRows as ScraperConfigRow[]).map((row) => {
-            const version = normalizeCurrentVersion(row.scraper_config_versions);
-            const config = toRecord(version?.config);
-            const workflows = Array.isArray(config?.workflows) ? config.workflows : undefined;
-            const timeout = typeof config?.timeout === 'number' ? config.timeout : undefined;
-
-            const options: Record<string, unknown> = {};
-            if (workflows && workflows.length > 0) {
-                options.workflows = workflows;
+        // Build scraper configs using the new assembly utility
+        const scrapers: ScraperConfig[] = [];
+        
+        for (const configRow of filteredConfigs) {
+            // Use the normalized assembly utility (creates its own admin client)
+            const assembledConfig = await assembleScraperConfigBySlug(configRow.slug);
+            
+            if (assembledConfig) {
+                scrapers.push({
+                    name: assembledConfig.name,
+                    display_name: assembledConfig.display_name,
+                    disabled: false,
+                    base_url: assembledConfig.base_url,
+                    scraper_type: assembledConfig.scraper_type,
+                    selectors: assembledConfig.selectors,
+                    options: {
+                        workflows: assembledConfig.workflows,
+                        timeout: assembledConfig.timeout,
+                        image_quality: assembledConfig.image_quality,
+                        ai_config: assembledConfig.ai_config,
+                        anti_detection: assembledConfig.anti_detection,
+                        http_status: assembledConfig.http_status,
+                        login: assembledConfig.login,
+                        normalization: assembledConfig.normalization,
+                    },
+                    test_skus: assembledConfig.test_skus,
+                    fake_skus: assembledConfig.fake_skus,
+                    edge_case_skus: assembledConfig.edge_case_skus,
+                    retries: assembledConfig.retries,
+                    validation: assembledConfig.validation,
+                    ai_config: assembledConfig.ai_config,
+                    anti_detection: assembledConfig.anti_detection,
+                    http_status: assembledConfig.http_status,
+                    login: assembledConfig.login,
+                    workflows: assembledConfig.workflows,
+                    normalization: assembledConfig.normalization,
+                    image_quality: assembledConfig.image_quality,
+                });
             }
-            if (typeof timeout === 'number') {
-                options.timeout = timeout;
-            }
-
-            return {
-                name: row.slug,
-                display_name: row.display_name,
-                disabled: version?.status === 'archived',
-                base_url: typeof config?.base_url === 'string' ? config.base_url : undefined,
-                search_url_template:
-                    typeof config?.search_url_template === 'string'
-                        ? config.search_url_template
-                        : undefined,
-                selectors: toSelectors(config?.selectors),
-                options,
-                test_skus: toStringArray(config?.test_skus),
-                retries: typeof config?.retries === 'number' ? config.retries : undefined,
-                validation: toRecord(config?.validation),
-            };
-        });
+        }
 
         const skus: string[] = job.skus || [];
         if (skus.length === 0) {
@@ -211,7 +179,6 @@ export async function GET(request: NextRequest) {
         const aiDefaults = await getAIScrapingDefaults();
         const aiCredentials = await getAIScrapingRuntimeCredentials();
 
-        // Transform scrapers - build options with workflows (runner expects options.workflows)
         const response: JobConfigResponse = {
             job_id: job.id,
             skus,

@@ -2,7 +2,8 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfigEditorClient } from './ConfigEditorClient';
-import { ScraperConfig } from '@/lib/admin/scrapers/types';
+import { z } from 'zod';
+import { scraperConfigSchema } from '@/lib/admin/scrapers/schema';
 
 // Mock server actions
 jest.mock('@/lib/admin/scraper-configs/actions', () => ({
@@ -19,7 +20,9 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-const mockConfig: ScraperConfig = {
+type ScraperConfigFormValues = z.input<typeof scraperConfigSchema>;
+
+const mockConfig: ScraperConfigFormValues = {
   schema_version: '1.0',
   name: 'test-scraper',
   base_url: 'https://example.com',
