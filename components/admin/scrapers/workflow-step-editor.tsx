@@ -341,7 +341,7 @@ export function WorkflowStepEditor({ versionId, steps: initialSteps, isReadOnly 
   };
 
   return (
-    <Card className="border-border">
+    <Card className="border-border" data-testid="workflow-step-editor">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div>
           <CardTitle className="text-xl">Workflow Steps</CardTitle>
@@ -367,7 +367,7 @@ export function WorkflowStepEditor({ versionId, steps: initialSteps, isReadOnly 
               items={items.map(i => i.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-1">
+              <div className="space-y-1" data-testid="workflow-steps-list">
                 {items.map((step, index) => (
                   <SortableStepItem 
                     key={step.id} 

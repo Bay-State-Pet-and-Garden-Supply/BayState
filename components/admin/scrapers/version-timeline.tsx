@@ -57,7 +57,7 @@ export function VersionTimeline({ configId, versions, currentVersionId }: Versio
 
   if (!versions.length) {
     return (
-      <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+      <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg" data-testid="version-timeline-empty">
         <History className="h-8 w-8 mx-auto mb-3 opacity-50" />
         <p>No versions found.</p>
         <p className="text-sm">Create a version in the Configuration tab.</p>
@@ -66,7 +66,7 @@ export function VersionTimeline({ configId, versions, currentVersionId }: Versio
   }
 
   return (
-    <div className="space-y-4 relative">
+    <div className="space-y-4 relative" data-testid="version-timeline">
       <div className="absolute top-2 bottom-2 left-[21px] w-0.5 bg-border z-0"></div>
       
       {versions.map((version, idx) => {
@@ -75,7 +75,14 @@ export function VersionTimeline({ configId, versions, currentVersionId }: Versio
         const isDraft = version.status === 'draft';
         
         return (
-          <div key={version.id} className="relative z-10 flex gap-4 pb-6 last:pb-0">
+          <div
+            key={version.id}
+            className="relative z-10 flex gap-4 pb-6 last:pb-0"
+            data-testid="version-timeline-item"
+            data-version-number={String(version.version_number)}
+            data-version-status={version.status}
+            data-current={isCurrent ? 'true' : 'false'}
+          >
             <div className={`mt-1 h-10 w-10 shrink-0 rounded-full border-2 flex items-center justify-center bg-background
               ${isCurrent ? 'border-primary text-primary' : 'border-muted-foreground/30 text-muted-foreground'}`}
             >
@@ -94,11 +101,14 @@ export function VersionTimeline({ configId, versions, currentVersionId }: Versio
                         </span>
                       )}
                     </h4>
-                    <Badge variant={
+                    <Badge
+                      data-testid="version-status-badge"
+                      variant={
                       isPublished ? "default" : 
                       isDraft ? "secondary" : 
                       "outline"
-                    }>
+                      }
+                    >
                       {version.status}
                     </Badge>
                   </div>
@@ -118,6 +128,7 @@ export function VersionTimeline({ configId, versions, currentVersionId }: Versio
                     className="shrink-0 h-8"
                     onClick={() => setRollbackTarget(version)}
                     disabled={isPending}
+                    data-testid="rollback-version-button"
                   >
                     <RotateCcw className="h-3 w-3 mr-1.5" />
                     Rollback
