@@ -114,7 +114,7 @@ export function TestSkuManager({ configId, testSkus }: TestSkuManagerProps) {
   };
 
   return (
-    <Card>
+    <Card data-testid="test-sku-manager">
       <CardHeader>
         <CardTitle>Test SKUs</CardTitle>
         <CardDescription>
@@ -144,15 +144,16 @@ export function TestSkuManager({ configId, testSkus }: TestSkuManagerProps) {
             </TabsTrigger>
           </TabsList>
           
-          <form onSubmit={handleAddSku} className="flex gap-2 mb-4">
+          <form onSubmit={handleAddSku} className="flex gap-2 mb-4" data-testid="test-sku-add-form">
             <Input
+              data-testid="test-sku-input"
               placeholder={`Add ${activeTab.replace('_', ' ')} SKU...`}
               value={newSku}
               onChange={(e) => setNewSku(e.target.value)}
               className="flex-1"
               disabled={isAdding}
             />
-            <Button type="submit" disabled={isAdding || !newSku.trim()}>
+            <Button type="submit" disabled={isAdding || !newSku.trim()} data-testid="add-test-sku-button">
               {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               Add
             </Button>

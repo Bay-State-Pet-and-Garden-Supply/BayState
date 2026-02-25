@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreVertical, ExternalLink, Play, SearchX } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScraperConfig } from '@/lib/admin/scrapers/types';
 
-export function ScraperListClient({ initialScrapers }: { initialScrapers: any[] }) {
+export function ScraperListClient({ initialScrapers }: { initialScrapers: ScraperConfig[] }) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [healthFilter, setHealthFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');

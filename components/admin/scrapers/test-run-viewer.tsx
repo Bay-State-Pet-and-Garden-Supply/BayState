@@ -139,7 +139,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
   };
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col" data-testid="test-run-viewer">
       <CardHeader className="flex flex-row items-start justify-between pb-2">
         <div>
           <CardTitle>Test Runs</CardTitle>
@@ -150,6 +150,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
         <Button 
           onClick={handleRunTest} 
           disabled={disabled || isRunning || isPolling || activeSkus.length === 0}
+          data-testid="run-tests-button"
         >
           {isRunning ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />

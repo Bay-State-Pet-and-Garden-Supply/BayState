@@ -69,6 +69,7 @@ function SortableSelectorItem({
       ref={setNodeRef} 
       style={style} 
       className={`flex items-start gap-3 p-4 border rounded-md bg-card ${isReadOnly ? 'opacity-80' : ''}`}
+      data-testid="selector-item"
     >
       {!isReadOnly && (
         <div 
@@ -85,6 +86,7 @@ function SortableSelectorItem({
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Name</label>
             <Input 
+              data-testid="selector-name-input"
               value={selector.name} 
               onChange={(e) => onUpdate(selector.id, 'name', e.target.value)}
               disabled={isReadOnly}
@@ -156,6 +158,7 @@ function SortableSelectorItem({
           size="icon" 
           onClick={() => onDelete(selector.id)}
           className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          data-testid="delete-selector-button"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
