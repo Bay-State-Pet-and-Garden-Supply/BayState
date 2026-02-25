@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
       .insert({
         config_id: config.id,
         schema_version: validatedData.config.schema_version,
-        config: validatedData.config,
         status: 'draft',
         version_number: 1,
         change_summary: validatedData.change_summary ?? 'Initial draft',
@@ -124,8 +123,7 @@ export async function GET(request: NextRequest) {
             id,
             version_number,
             status,
-            published_at,
-            config
+            published_at
           )
         `)
         .order('created_at', { ascending: false })
@@ -146,22 +144,45 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch configs' }, { status: 500 });
       }
 
-      const formattedConfigs = (configs || []).map((config: Record<string, unknown>) => ({
-        id: config.id,
-        slug: config.slug,
-        display_name: config.display_name,
-        domain: config.domain,
-        current_version_id: config.current_version_id,
-        schema_version: config.schema_version,
-        created_at: config.created_at,
-        updated_at: config.updated_at,
-        created_by: config.created_by,
-        status: (config.scraper_config_versions as Record<string, unknown>)?.status || null,
-        version_number: (config.scraper_config_versions as Record<string, unknown>)?.version_number || null,
-        published_at: (config.scraper_config_versions as Record<string, unknown>)?.published_at || null,
-        test_skus: ((config.scraper_config_versions as Record<string, unknown>)?.config as Record<string, unknown>)?.test_skus || [],
-        fake_skus: ((config.scraper_config_versions as Record<string, unknown>)?.config as Record<string, unknown>)?.fake_skus || [],
-      }));
+      const configsList = configs || [];
+      const configIds = configsList.map((config: Record<string, unknown>) => config.id).filter(Boolean);
+
+      let allTestSkus: Array<{ config_id: string; sku: string; sku_type: string }> = [];
+
+      if (configIds.length > 0) {
+        const { data: skuData, error: skuError } = await client
+          .from('scraper_config_test_skus')
+          .select('config_id, sku, sku_type')
+          .in('config_id', configIds);
+
+        if (skuError) {
+          console.error('Database error fetching test skus:', skuError);
+          return NextResponse.json({ error: 'Failed to fetch test skus' }, { status: 500 });
+        }
+
+        allTestSkus = (skuData || []) as Array<{ config_id: string; sku: string; sku_type: string }>;
+      }
+
+      const formattedConfigs = configsList.map((config: Record<string, unknown>) => {
+        const skusForConfig = allTestSkus.filter((sku) => sku.config_id === config.id);
+
+        return {
+          id: config.id,
+          slug: config.slug,
+          display_name: config.display_name,
+          domain: config.domain,
+          current_version_id: config.current_version_id,
+          schema_version: config.schema_version,
+          created_at: config.created_at,
+          updated_at: config.updated_at,
+          created_by: config.created_by,
+          status: (config.scraper_config_versions as Record<string, unknown>)?.status || null,
+          version_number: (config.scraper_config_versions as Record<string, unknown>)?.version_number || null,
+          published_at: (config.scraper_config_versions as Record<string, unknown>)?.published_at || null,
+          test_skus: skusForConfig.filter((sku) => sku.sku_type === 'test').map((sku) => sku.sku),
+          fake_skus: skusForConfig.filter((sku) => sku.sku_type === 'fake').map((sku) => sku.sku),
+        };
+      });
 
       return NextResponse.json({ data: formattedConfigs });
     }
