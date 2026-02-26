@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Play, Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Clock, Terminal, Info, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScraperTestSku, TestRunRecord } from '@/lib/admin/scrapers/types';
+import { ScrapeJobLog, getScraperRunLogs } from '@/app/admin/scrapers/runs/actions';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
@@ -36,7 +37,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
   const [historicalLogs, setHistoricalLogs] = useState<ScrapeJobLog[]>([]);
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+
 
   const selectedRun = testRuns.find(r => r.id === selectedRunId);
   const activeSkus = testSkus.filter(s => s.sku_type !== 'fake');
@@ -66,6 +67,11 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                     updatedJob.status === 'failed' ? 'failed' : prev.status
           };
         });
+
+        // Stop polling when job reaches terminal state
+        if (updatedJob.status === 'completed' || updatedJob.status === 'failed') {
+          setIsPolling(false);
+        }
       }
     }
   });
@@ -93,8 +99,6 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
     fetchHistoricalLogs();
   }, [jobId]);
 
-  // Update connection status when either hook connects
-  }, [isBroadcastConnected, isSubscriptionConnected]);
 
   // Fetch run details when selected run changes or when polling
   useEffect(() => {
@@ -516,9 +520,6 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                       </div>
                     </div>
                   )}
-                </>
-              ) : (
-                  </div>
                 </>
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
