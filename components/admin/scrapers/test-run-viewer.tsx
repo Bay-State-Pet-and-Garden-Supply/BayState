@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Clock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Play, Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Clock, Terminal, Info, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScraperTestSku, TestRunRecord } from '@/lib/admin/scrapers/types';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
+
 
 interface TestRunViewerProps {
   configId: string;
@@ -29,6 +32,10 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
   const [isPolling, setIsPolling] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [realtimeLogs, setRealtimeLogs] = useState<any[]>([]);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [historicalLogs, setHistoricalLogs] = useState<ScrapeJobLog[]>([]);
+  const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
 
   const selectedRun = testRuns.find(r => r.id === selectedRunId);
@@ -65,7 +72,28 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
 
   // Update connection status when either hook connects
   useEffect(() => {
-    setIsRealtimeConnected(isBroadcastConnected || isSubscriptionConnected);
+  }, [isBroadcastConnected, isSubscriptionConnected]);
+
+  // Fetch historical logs when jobId becomes available
+  useEffect(() => {
+    if (!jobId) return;
+
+    const fetchHistoricalLogs = async () => {
+      setIsLoadingLogs(true);
+      try {
+        const logs = await getScraperRunLogs(jobId);
+        setHistoricalLogs(logs);
+      } catch (error) {
+        console.error('Error fetching historical logs:', error);
+      } finally {
+        setIsLoadingLogs(false);
+      }
+    };
+
+    fetchHistoricalLogs();
+  }, [jobId]);
+
+  // Update connection status when either hook connects
   }, [isBroadcastConnected, isSubscriptionConnected]);
 
   // Fetch run details when selected run changes or when polling
@@ -384,6 +412,112 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                         No individual SKU results available for this run.
                       </div>
                     )}
+                  </div>
+
+                  {/* Execution Logs Section */}
+                  {jobId && (
+                    <div className="border-t bg-muted/20 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium flex items-center gap-2">
+                          <Terminal className="h-4 w-4" />
+                          Execution Logs
+                          {isRealtimeConnected && (activeRunDetails.status === 'running' || activeRunDetails.status === 'pending') ? (
+                            <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200 text-[10px] h-5 px-1.5 gap-1">
+                              <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                              </span>
+                              Live
+                            </Badge>
+                          ) : null}
+                        </h4>
+                        {isLoadingLogs && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Loading logs...
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Log Level Filter Buttons */}
+                      <div className="flex gap-2 mb-3">
+                        {(['all', 'info', 'warn', 'error', 'debug'] as const).map((level) => (
+                          <button
+                            key={level}
+                            onClick={() => setLogLevelFilter(level)}
+                            className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                              logLevelFilter === level
+                                ? level === 'error' ? 'bg-red-100 text-red-700 border border-red-200'
+                                  : level === 'warn' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                  : level === 'info' ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                  : level === 'debug' ? 'bg-gray-100 text-gray-700 border border-gray-200'
+                                  : 'bg-primary text-white'
+                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            }`}
+                          >
+                            {level.charAt(0).toUpperCase() + level.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Log Display */}
+                      <div className="max-h-64 overflow-y-auto border rounded-lg bg-gray-900 text-gray-100 p-3 font-mono text-xs">
+                        {(() => {
+                          // Combine historical and realtime logs
+                          const normalizedRealtimeLogs: ScrapeJobLog[] = realtimeLogs.map((log) => ({
+                            id: log.id || `temp-${Date.now()}-${Math.random()}`,
+                            job_id: log.job_id,
+                            level: log.level || 'info',
+                            message: log.message,
+                            details: log.details,
+                            created_at: log.timestamp || new Date().toISOString(),
+                          }));
+
+                          const allLogs = [...historicalLogs, ...normalizedRealtimeLogs]
+                            .filter((log) => {
+                              if (logLevelFilter === 'all') return true;
+                              return log.level.toLowerCase() === logLevelFilter;
+                            })
+                            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+                          if (allLogs.length === 0) {
+                            return (
+                              <p className="text-gray-500 text-center py-4">
+                                No logs available yet. Logs will appear as the scraper executes.
+                              </p>
+                            );
+                          }
+
+                          return allLogs.map((log) => {
+                            const level = log.level.toLowerCase();
+                            const levelColors: Record<string, string> = {
+                              error: 'text-red-400',
+                              warn: 'text-yellow-400',
+                              warning: 'text-yellow-400',
+                              info: 'text-blue-400',
+                              debug: 'text-gray-400',
+                              success: 'text-green-400',
+                            };
+                            const color = levelColors[level] || 'text-gray-300';
+
+                            return (
+                              <div key={log.id} className="flex gap-3 py-1.5 hover:bg-gray-800 px-1 rounded">
+                                <span className="text-gray-500 flex-shrink-0">
+                                  {format(new Date(log.created_at), 'HH:mm:ss')}
+                                </span>
+                                <span className={`flex-shrink-0 w-14 ${color}`}>
+                                  {level.toUpperCase().padEnd(5)}
+                                </span>
+                                <span className="flex-1 break-all">{log.message}</span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
                   </div>
                 </>
               ) : (
