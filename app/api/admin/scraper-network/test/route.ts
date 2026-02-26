@@ -70,6 +70,9 @@ export async function POST(request: NextRequest) {
       results: [],
       status: 'pending' as const,
       started_at: new Date().toISOString(),
+      metadata: {
+        scraper_id: scraper.id,
+      },
     };
 
     const { data: insertedRun, error: insertError } = await supabase
@@ -94,7 +97,7 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         metadata: {
           test_run_id: insertedRun?.id || null,
-          scraper_id: scraper_id,
+          scraper_id: scraper.id,
         },
       })
       .select('id')
@@ -106,6 +109,28 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to create test job' },
         { status: 500 }
       );
+    }
+
+    if (insertedRun?.id) {
+      const existingMetadata =
+        insertedRun.metadata && typeof insertedRun.metadata === 'object'
+          ? (insertedRun.metadata as Record<string, unknown>)
+          : {};
+
+      const { error: runMetadataError } = await supabase
+        .from('scraper_test_runs')
+        .update({
+          metadata: {
+            ...existingMetadata,
+            scraper_id: scraper.id,
+            job_id: job.id,
+          },
+        })
+        .eq('id', insertedRun.id);
+
+      if (runMetadataError) {
+        console.warn('[Test API] Failed to attach job_id to test run metadata:', runMetadataError);
+      }
     }
 
     // Create chunks for the job (new chunk-based architecture)

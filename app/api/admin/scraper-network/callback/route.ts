@@ -108,10 +108,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // First get the job to find the test_run_id from metadata
+    const { data: job, error: jobError } = await supabase
+      .from('scrape_jobs')
+      .select('metadata')
+      .eq('id', job_id)
+      .single();
+
+    if (jobError || !job) {
+      return NextResponse.json(
+        { error: 'Job not found' },
+        { status: 404 }
+      );
+    }
+
+    const testRunId = job.metadata?.test_run_id;
+
+    if (!testRunId) {
+      return NextResponse.json(
+        { error: 'No test_run_id in job metadata' },
+        { status: 400 }
+      );
+    }
+
     const { data: testRun, error: fetchError } = await supabase
       .from('scraper_test_runs')
       .select('*')
-      .eq('id', job_id)
+      .eq('id', testRunId)
       .single();
 
     if (fetchError || !testRun) {
@@ -140,7 +163,7 @@ export async function POST(request: NextRequest) {
         completed_at: new Date().toISOString(),
         runner_id: auth.runnerId,
       })
-      .eq('id', job_id);
+      .eq('id', testRunId);
 
     if (updateError) {
       console.error('[Callback] Failed to update test run:', updateError);

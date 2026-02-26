@@ -81,8 +81,43 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const runsWithResolvedMetadata = await Promise.all(
+      (runs || []).map(async (run) => {
+        const metadata = (run.metadata as Record<string, unknown>) || {};
+
+        if (typeof metadata.job_id === 'string' && metadata.job_id.length > 0) {
+          return { run, metadata };
+        }
+
+        const runId = typeof run.id === 'string' ? run.id : '';
+        if (!runId) {
+          return { run, metadata };
+        }
+
+        const { data: linkedJob } = await supabase
+          .from('scrape_jobs')
+          .select('id')
+          .contains('metadata', { test_run_id: runId })
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (linkedJob?.id) {
+          return {
+            run,
+            metadata: {
+              ...metadata,
+              job_id: linkedJob.id,
+            },
+          };
+        }
+
+        return { run, metadata };
+      })
+    );
+
     // Transform runs to include computed fields
-    const transformedRuns = (runs || []).map((run) => ({
+    const transformedRuns = runsWithResolvedMetadata.map(({ run, metadata }) => ({
       id: run.id,
       scraper_id: run.scraper_id,
       scraper_name: run.scraper_name || null,
@@ -94,7 +129,7 @@ export async function GET(request: NextRequest) {
       duration_ms: run.duration_ms,
       skus_tested: (run.skus_tested as string[]) || [],
       results: (run.results as Array<Record<string, unknown>>) || [],
-      metadata: (run.metadata as Record<string, unknown>) || {},
+      metadata,
       passed_count: run.passed_count || 0,
       failed_count: run.failed_count || 0,
       error_message: run.error_message || null,
