@@ -365,7 +365,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
 
                   {/* Results List */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {activeRunDetails.status === 'pending' || activeRunDetails.status === 'running' ? (
+                    {(activeRunDetails.status === 'pending' || activeRunDetails.status === 'running') && !['completed', 'failed', 'cancelled', 'error'].includes(activeRunDetails.job_status || '') ? (
                       <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3 py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         <p>Waiting for results from scraper network...</p>

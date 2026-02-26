@@ -343,14 +343,18 @@ export async function POST(request: NextRequest) {
                     const durationMs = completedAt - startedAt;
 
                     // Build results array from chunk data
+                    // Actual format: { sku: { scraper_name: scraped_data } }
+                    // We need to determine status based on whether data exists
                     const testResults: Array<{ sku: string; status: string; data?: unknown }> = [];
                     for (const chunk of allChunks || []) {
-                        const chunkResults = chunk.results as Record<string, { status?: string; data?: unknown }> || {};
-                        for (const [sku, result] of Object.entries(chunkResults)) {
+                        const chunkData = (chunk.results as Record<string, Record<string, unknown>>) || {};
+                        for (const [sku, scraperData] of Object.entries(chunkData)) {
+                            // Check if there's actual scraped data (any non-empty object)
+                            const hasData = scraperData && Object.keys(scraperData).length > 0;
                             testResults.push({
                                 sku,
-                                status: result.status || 'unknown',
-                                data: result.data,
+                                status: hasData ? 'success' : 'no_results',
+                                data: scraperData,
                             });
                         }
                     }
