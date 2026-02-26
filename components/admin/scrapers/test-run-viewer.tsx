@@ -9,6 +9,8 @@ import { Play, Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Clock } f
 import { toast } from 'sonner';
 import { ScraperTestSku, TestRunRecord } from '@/lib/admin/scrapers/types';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
+import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 
 interface TestRunViewerProps {
   configId: string;
@@ -20,16 +22,51 @@ interface TestRunViewerProps {
 
 export function TestRunViewer({ configId, versionId, testRuns, testSkus, disabled }: TestRunViewerProps) {
   const router = useRouter();
-  // Use imported toast instead
   
   const [isRunning, setIsRunning] = useState(false);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(testRuns[0]?.id || null);
   const [activeRunDetails, setActiveRunDetails] = useState<any | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [realtimeLogs, setRealtimeLogs] = useState<any[]>([]);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
 
   const selectedRun = testRuns.find(r => r.id === selectedRunId);
   const activeSkus = testSkus.filter(s => s.sku_type !== 'fake');
+
+  // Real-time logs hook (useJobBroadcasts)
+  const { logs, isConnected: isBroadcastConnected } = useJobBroadcasts({
+    autoConnect: true,
+    onLog: (log) => {
+      if (jobId && log.job_id === jobId) {
+        setRealtimeLogs((prev) => [...prev, log]);
+      }
+    }
+  });
+
+  // Real-time status hook (useJobSubscription)
+  const { isConnected: isSubscriptionConnected } = useJobSubscription({
+    autoConnect: true,
+    onJobUpdated: (updatedJob) => {
+      if (jobId && updatedJob.id === jobId) {
+        // Update activeRunDetails with new job status
+        setActiveRunDetails((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            job_status: updatedJob.status,
+            status: updatedJob.status === 'completed' ? 'completed' : 
+                    updatedJob.status === 'failed' ? 'failed' : prev.status
+          };
+        });
+      }
+    }
+  });
+
+  // Update connection status when either hook connects
+  useEffect(() => {
+    setIsRealtimeConnected(isBroadcastConnected || isSubscriptionConnected);
+  }, [isBroadcastConnected, isSubscriptionConnected]);
 
   // Fetch run details when selected run changes or when polling
   useEffect(() => {
@@ -42,10 +79,6 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
         const data = await res.json();
         setActiveRunDetails(data);
         
-        // Stop polling if completed or failed
-
-
-
         // Stop polling if completed or failed (check both test run status AND job status)
         const isTestRunTerminal = data.status === 'completed' || data.status === 'failed' || data.status === 'error';
         const isJobTerminal = data.job_status === 'completed' || data.job_status === 'failed' || data.job_status === 'error';
@@ -245,15 +278,24 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                                 {activeRunDetails.status === 'running' ? 'Running' : 'Queued'}
                               </Badge>
                             ) : null}
+                            {/* Connection status indicator */}
+                            {jobId && (activeRunDetails.status === 'running' || activeRunDetails.status === 'pending') && (
+                              isRealtimeConnected ? (
+                                <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200 text-[10px] h-5 px-1.5 gap-1">
+                                  <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                                  </span>
+                                  Live
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-muted-foreground text-[10px] h-5 px-1.5">
+                                  Polling
+                                </Badge>
+                              )
+                            )}
                           </h3>
                           <div className="text-xs text-muted-foreground flex items-center gap-3 mt-1">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {activeRunDetails.duration_ms ? formatDuration(activeRunDetails.duration_ms) : 'Running...'}
-                            </span>
-                            <span>•</span>
-                            <span>{formatDate(activeRunDetails.started_at)}</span>
-
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {activeRunDetails.duration_ms ? formatDuration(activeRunDetails.duration_ms) : 'Running...'}
@@ -266,6 +308,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                                 <span className="text-blue-600 dark:text-blue-400">Job: {activeRunDetails.job_status}</span>
                               </>
                             )}
+                          </div>
                         </div>
                       </div>
                       
@@ -296,8 +339,6 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                         <p>Waiting for results from scraper network...</p>
                         {activeRunDetails.job_id && (
                           <p className="text-xs font-mono">Job: {activeRunDetails.job_id}</p>
-
-
                         )}
                         {activeRunDetails.job_status && (
                           <Badge variant="outline" className="text-xs">
