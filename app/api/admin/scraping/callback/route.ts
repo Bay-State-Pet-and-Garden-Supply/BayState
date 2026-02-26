@@ -384,11 +384,20 @@ export async function POST(request: NextRequest) {
 
             if (idempotencyCheck.isDuplicate) {
                 console.log(`[Callback] Duplicate callback detected for job ${payload.job_id}. Skipping side effects.`);
-                return NextResponse.json({
-                    success: true,
-                    idempotent: true,
-                    message: 'Callback already processed',
-                });
+                
+                // For test jobs, still update the test run status even if duplicate
+                // This ensures test runs don't stay stuck in 'pending'
+                if (isTestJob && testRunId) {
+                    console.log(`[Callback] Test job duplicate - ensuring test run ${testRunId} is updated`);
+                    // Test run update will be handled below after this block
+                } else if (!isTestJob) {
+                    // For production jobs, truly skip on duplicate
+                    return NextResponse.json({
+                        success: true,
+                        idempotent: true,
+                        message: 'Callback already processed',
+                    });
+                }
             }
 
             if (isTestJob) {
@@ -467,36 +476,53 @@ export async function POST(request: NextRequest) {
                 testStatus = allSuccess ? 'passed' : 'partial';
             }
 
-            await supabase
-                .from('scraper_test_runs')
-                .update({
-                    status: testStatus,
-                    results,
-                    completed_at: new Date().toISOString(),
-                })
-                .eq('id', testRunId);
+            // Only update test runs that exist and are still pending
+            if (testRunId) {
+                // First check if test run exists and is pending
+                const { data: existingRun, error: checkError } = await supabase
+                    .from('scraper_test_runs')
+                    .select('id, status, scraper_id')
+                    .eq('id', testRunId)
+                    .single();
 
-            const telemetry = payload.results?.telemetry;
-            const logs = payload.results?.logs;
-            const { data: testRunRecord } = await supabase
-                .from('scraper_test_runs')
-                .select('scraper_id')
-                .eq('id', testRunId)
-                .single();
+                if (checkError) {
+                    console.warn(`[Callback] Test run ${testRunId} not found or error checking:`, checkError.message);
+                } else if (existingRun?.status === 'pending') {
+                    // Update test run with error handling
+                    const { error: testRunError } = await supabase
+                        .from('scraper_test_runs')
+                        .update({
+                            status: testStatus,
+                            results,
+                            completed_at: new Date().toISOString(),
+                        })
+                        .eq('id', testRunId);
+                    if (testRunError) {
+                        console.error(`[Callback] Failed to update test run ${testRunId}:`, testRunError.message);
+                    } else {
+                        console.log(`[Callback] Successfully updated test run ${testRunId} with status: ${testStatus}`);
+                    }
 
-            await persistTestRunTelemetry(supabase, {
-                testRunId,
-                scraperId: testRunRecord?.scraper_id ?? null,
-                steps: telemetry?.steps,
-                selectors: telemetry?.selectors,
-                extractions: telemetry?.extractions,
-            });
+                    // Persist telemetry and logs for test runs
+                    const telemetry = payload.results?.telemetry;
+                    const logs = payload.results?.logs;
 
-            if (logs && Array.isArray(logs)) {
-                await persistJobLogs(supabase, payload.job_id, logs);
-            }
+                    if (telemetry || logs) {
+                        await persistTestRunTelemetry(supabase, {
+                            testRunId,
+                            scraperId: existingRun?.scraper_id ?? null,
+                            steps: telemetry?.steps,
+                            selectors: telemetry?.selectors,
+                            extractions: telemetry?.extractions,
+                        });
 
-            console.log(`[Callback] Updated test run ${testRunId} with status: ${testStatus}`);
+                        if (logs && Array.isArray(logs)) {
+                            await persistJobLogs(supabase, payload.job_id, logs);
+                        }
+                    }
+                } else {
+                    console.log(`[Callback] Test run ${testRunId} already processed with status: ${existingRun?.status}`);
+                }
         }
 
         return NextResponse.json({ success: true });
