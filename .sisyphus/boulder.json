@@ -1,10 +1,8 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/scraper-runners-refactor.md",
-  "started_at": "2026-02-20T00:48:08.691Z",
-  "session_ids": [
-    "ses_387a42725ffe66QxQpN3QNpBt5",
-    "ses_386d086b9ffeZ162GWfwDAfUMM"
-  ],
-  "plan_name": "scraper-runners-refactor",
-  "agent": "atlas"
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\test-lab-fix.md",
+  "started_at": "2026-02-26T19:10:51.717Z",
+  "session_ids": ["ses_364b28fc5ffe1F91gVMae62cFl"],
+  "plan_name": "test-lab-fix",
+  "agent": "atlas",
+  "commit_after_each_task": true
 }
