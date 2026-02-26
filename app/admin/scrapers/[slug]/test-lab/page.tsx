@@ -26,7 +26,7 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
   if (scraper.current_version_id) {
     const { data } = await supabase
       .from('scraper_config_versions')
-      .select('id, version, status, config')
+      .select('id, version_number, status')
       .eq('id', scraper.current_version_id)
       .single();
     

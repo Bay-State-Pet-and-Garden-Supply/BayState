@@ -20,7 +20,7 @@ export default async function ScraperHistoryPage({ params }: ScraperHistoryPageP
   // 1. Fetch the config by slug
   const { data: config, error: configError } = await supabase
     .from('scraper_configs')
-    .select('id, name, current_version_id')
+    .select('id, display_name, current_version_id')
     .eq('slug', slug)
     .single();
 
@@ -34,7 +34,7 @@ export default async function ScraperHistoryPage({ params }: ScraperHistoryPageP
         <div>
           <h1 className="text-3xl font-bold tracking-tight">History & Runs</h1>
           <p className="text-muted-foreground mt-2">
-            View version history and past execution runs for {config.name}
+            View version history and past execution runs for {config.display_name || slug}
           </p>
         </div>
       </div>

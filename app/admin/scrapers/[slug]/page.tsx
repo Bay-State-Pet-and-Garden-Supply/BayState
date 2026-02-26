@@ -46,7 +46,7 @@ export default async function ScraperOverviewPage({ params }: ScraperOverviewPro
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <Button asChild>
-            <Link href={`/admin/scrapers/${slug}/test-lab/new`}>
+            <Link href={`/admin/scrapers/${slug}/test-lab`}>
               <Play className="mr-2 h-4 w-4" />
               Run Test
             </Link>
