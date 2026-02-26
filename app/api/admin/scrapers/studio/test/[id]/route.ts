@@ -61,7 +61,7 @@ export async function GET(
     }
 
     // Calculate summary from results
-    let summary = { passed: 0, failed: 0, total: 0 };
+    const summary = { passed: 0, failed: 0, total: 0 };
     if (testRun.results && Array.isArray(testRun.results)) {
       summary.total = testRun.results.length;
       summary.passed = testRun.results.filter((r: { status: string }) => 
@@ -79,9 +79,27 @@ export async function GET(
                     new Date(testRun.started_at).getTime();
     }
 
+    const metadata = (testRun.metadata as Record<string, unknown>) || {};
+
     // Fetch related job status if job_id exists in metadata
     let jobStatus: string | undefined;
-    const jobId = testRun.metadata?.job_id;
+    let jobId = typeof metadata.job_id === 'string' ? metadata.job_id : undefined;
+
+    if (!jobId) {
+      const { data: linkedJob } = await adminClient
+        .from('scrape_jobs')
+        .select('id')
+        .contains('metadata', { test_run_id: id })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (linkedJob?.id) {
+        jobId = linkedJob.id;
+        metadata.job_id = linkedJob.id;
+      }
+    }
+
     if (jobId) {
       const { data: job } = await adminClient
         .from('scrape_jobs')
@@ -103,7 +121,7 @@ export async function GET(
       summary,
       job_id: jobId,
       job_status: jobStatus,
-      metadata: testRun.metadata,
+      metadata,
       scraper_id: testRun.scraper_id,
       test_type: testRun.test_type,
       skus_tested: testRun.skus_tested,
