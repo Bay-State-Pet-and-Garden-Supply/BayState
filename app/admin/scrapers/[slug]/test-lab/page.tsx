@@ -44,20 +44,29 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
     console.error('Error fetching test SKUs:', skusError);
   }
 
-  // Fetch recent test runs
+  // Fetch recent test runs with join to scrape_jobs for real-time status
   const { data: testRuns, error: runsError } = await supabase
     .from('scraper_test_runs')
-    .select('*')
+    .select(`
+      *,
+      scrape_jobs!left(status)
+    `)
     .eq('scraper_id', scraper.id)
     .order('created_at', { ascending: false })
     .limit(10);
+
+  // Map scrape_jobs.status to the status field for real-time accuracy
+  const mappedRuns = (testRuns || []).map((run) => ({
+    ...run,
+    status: run.scrape_jobs?.status || run.status,
+  }));
 
   if (runsError) {
     console.error('Error fetching test runs:', runsError);
   }
 
   const typedSkus = (testSkus || []) as ScraperTestSku[];
-  const typedRuns = (testRuns || []) as unknown as TestRunRecord[];
+  const typedRuns = mappedRuns as unknown as TestRunRecord[];
 
   return (
     <div className="space-y-6" data-testid="tab-content-test-lab">
