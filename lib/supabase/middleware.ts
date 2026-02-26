@@ -61,6 +61,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/api/admin/scraper-configs') ||
     request.nextUrl.pathname.startsWith('/admin/scraper-lab') ||
     request.nextUrl.pathname.startsWith('/admin/scrapers/configs') ||
+    request.nextUrl.pathname.match(/^\/admin\/scrapers\/[^\/]+\/test-lab/) ||
+    request.nextUrl.pathname.startsWith('/admin/scrapers/configs') ||
     request.nextUrl.pathname.startsWith('/admin/scrapers/test-lab') ||
     request.nextUrl.pathname === '/login' ||
     request.nextUrl.pathname.startsWith('/auth/') ||
