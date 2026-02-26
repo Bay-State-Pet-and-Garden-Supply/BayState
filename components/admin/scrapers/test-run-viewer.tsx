@@ -26,6 +26,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
   const [selectedRunId, setSelectedRunId] = useState<string | null>(testRuns[0]?.id || null);
   const [activeRunDetails, setActiveRunDetails] = useState<any | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   const selectedRun = testRuns.find(r => r.id === selectedRunId);
   const activeSkus = testSkus.filter(s => s.sku_type !== 'fake');
@@ -42,9 +43,24 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
         setActiveRunDetails(data);
         
         // Stop polling if completed or failed
-        if (data.status === 'completed' || data.status === 'failed' || data.status === 'error') {
+
+
+
+        // Stop polling if completed or failed (check both test run status AND job status)
+        const isTestRunTerminal = data.status === 'completed' || data.status === 'failed' || data.status === 'error';
+        const isJobTerminal = data.job_status === 'completed' || data.job_status === 'failed' || data.job_status === 'error';
+        const isJobRunning = data.job_status === 'running';
+        
+        if (isTestRunTerminal || isJobTerminal) {
           setIsPolling(false);
-          router.refresh(); // Refresh list if status changed
+          router.refresh();
+        } else if (isJobRunning || data.job_status) {
+          // Job is actively running, continue polling
+        }
+        
+        // Capture job_id from response if not already set
+        if (data.job_id && !jobId) {
+          setJobId(data.job_id);
         }
       } catch (error) {
         console.error('Error fetching run details:', error);
@@ -63,7 +79,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [selectedRunId, isPolling, router]);
+  }, [selectedRunId, isPolling, router, jobId]);
 
   // Handle starting a new test run
   const handleRunTest = async () => {
@@ -98,6 +114,7 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
       // Update local state to show the new run immediately
       router.refresh();
       setSelectedRunId(data.test_run_id);
+      setJobId(data.job_id || null);
       setIsPolling(true);
     } catch (error: any) {
       toast.error('Error', { description: error.message || 'An unexpected error occurred.' });
@@ -236,7 +253,19 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                             </span>
                             <span>•</span>
                             <span>{formatDate(activeRunDetails.started_at)}</span>
-                          </div>
+
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {activeRunDetails.duration_ms ? formatDuration(activeRunDetails.duration_ms) : 'Running...'}
+                            </span>
+                            <span>•</span>
+                            <span>{formatDate(activeRunDetails.started_at)}</span>
+                            {activeRunDetails.job_status && (
+                              <>
+                                <span>•</span>
+                                <span className="text-blue-600 dark:text-blue-400">Job: {activeRunDetails.job_status}</span>
+                              </>
+                            )}
                         </div>
                       </div>
                       
@@ -267,6 +296,13 @@ export function TestRunViewer({ configId, versionId, testRuns, testSkus, disable
                         <p>Waiting for results from scraper network...</p>
                         {activeRunDetails.job_id && (
                           <p className="text-xs font-mono">Job: {activeRunDetails.job_id}</p>
+
+
+                        )}
+                        {activeRunDetails.job_status && (
+                          <Badge variant="outline" className="text-xs">
+                            Job Status: {activeRunDetails.job_status}
+                          </Badge>
                         )}
                       </div>
                     ) : activeRunDetails.sku_results?.length > 0 ? (
