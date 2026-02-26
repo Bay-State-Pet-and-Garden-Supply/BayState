@@ -1,5 +1,8 @@
 # BAY STATE WORKSPACE
 
+**Generated:** 2026-02-26
+**Context:** Multi-project monorepo for e-commerce (Next.js) and distributed scraping (Python).
+
 **Generated:** 2026-01-11
 **Context:** Multi-project monorepo for e-commerce (Next.js) and distributed scraping (Python).
 
@@ -87,6 +90,10 @@ Three-part system: **BayStateApp** (Next.js 16 PWA + Admin), **BayStateScraper**
 - **NO** direct DB in client components (use Server Actions)
 - **NO** code before failing tests (TDD violation)
 - **NO** commits without `git notes` task summary
+
+## SUBPROJECTS
+- **BayStateApp/** → `BayStateApp/AGENTS.md` (Next.js 16 PWA details)
+- **BayStateScraper/** → `BayStateScraper/AGENTS.md` (Python scraper details)
 
 ## COMMANDS
 ```bash
