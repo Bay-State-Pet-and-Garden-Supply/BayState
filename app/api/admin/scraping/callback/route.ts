@@ -524,6 +524,7 @@ export async function POST(request: NextRequest) {
                     console.log(`[Callback] Test run ${testRunId} already processed with status: ${existingRun?.status}`);
                 }
         }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
