@@ -49,7 +49,7 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
     .from('scraper_test_runs')
     .select(`
       *,
-      scrape_jobs!left(status)
+      scrape_jobs!inner(status)
     `)
     .eq('scraper_id', scraper.id)
     .order('created_at', { ascending: false })
