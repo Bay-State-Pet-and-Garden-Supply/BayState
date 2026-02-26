@@ -330,7 +330,6 @@ export async function createNewVersion(configId: string): Promise<ActionState> {
         timeout: currentVersion.timeout,
         retries: currentVersion.retries,
         image_quality: currentVersion.image_quality,
-        config: currentVersion.config,
       })
       .select()
       .single();

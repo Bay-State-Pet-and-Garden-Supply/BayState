@@ -1,7 +1,8 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+
+import { createClient } from '@/lib/supabase/server';
 import { ScraperRunRecord } from '@/lib/admin/scrapers/runs-types';
 
 export async function getScraperRuns(options?: {
@@ -32,17 +33,14 @@ export async function getScraperRuns(options?: {
       { count: 'exact' }
     );
 
-  // Filter by scraper name if provided
   if (options?.scraperName) {
     query = query.contains('scrapers', [options.scraperName]);
   }
 
-  // Filter by status if provided
   if (options?.status) {
     query = query.eq('status', options.status);
   }
 
-  // Order by creation date descending and paginate
   query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
@@ -52,7 +50,6 @@ export async function getScraperRuns(options?: {
     throw new Error('Failed to fetch scraper runs');
   }
 
-  // Transform data to include computed fields
   const runs: ScraperRunRecord[] = (data || []).map((job) => ({
     id: job.id,
     scraper_name: Array.isArray(job.scrapers) ? job.scrapers[0] ?? 'unknown' : 'unknown',
@@ -129,13 +126,13 @@ export async function cancelScraperRun(jobId: string) {
   }
 
   revalidatePath('/admin/scrapers/runs');
+  revalidatePath(`/admin/scrapers/runs/${jobId}`);
   return { success: true };
 }
 
 export async function retryScraperRun(jobId: string) {
   const supabase = await createClient();
 
-  // Get the original job
   const { data: originalJob, error: fetchError } = await supabase
     .from('scrape_jobs')
     .select('*')
@@ -146,7 +143,6 @@ export async function retryScraperRun(jobId: string) {
     return { error: 'Original job not found' };
   }
 
-  // Create a new job with the same parameters
   const { data: newJob, error: createError } = await supabase
     .from('scrape_jobs')
     .insert({
@@ -164,7 +160,6 @@ export async function retryScraperRun(jobId: string) {
     return { error: 'Failed to retry scraper run' };
   }
 
-  // Create chunks for the new job - each scraper gets its own chunk
   const scrapers = originalJob.scrapers || [];
   if (scrapers.length > 0) {
     const chunks = scrapers.map((scraperName: string, index: number) => ({
@@ -177,13 +172,9 @@ export async function retryScraperRun(jobId: string) {
       max_workers: originalJob.max_workers || 3,
     }));
 
-    const { error: chunkError } = await supabase
-      .from('scrape_job_chunks')
-      .insert(chunks);
-
+    const { error: chunkError } = await supabase.from('scrape_job_chunks').insert(chunks);
     if (chunkError) {
       console.error('Error creating chunks for retried job:', chunkError);
-      // Don't fail - job was created, chunks can be handled separately
     }
   }
 

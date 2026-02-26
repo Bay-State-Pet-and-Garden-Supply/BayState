@@ -20,7 +20,7 @@ export default async function ScraperWorkflowsPage({ params }: ScraperWorkflowsP
   // 1. Fetch the config by slug
   const { data: config, error: configError } = await supabase
     .from('scraper_configs')
-    .select('id, name, current_version_id')
+    .select('id, display_name, current_version_id')
     .eq('slug', slug)
     .single();
 
@@ -64,7 +64,7 @@ export default async function ScraperWorkflowsPage({ params }: ScraperWorkflowsP
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Workflow Builder</h1>
           <p className="text-muted-foreground mt-2">
-            Design the execution flow for {config.name} (v{version?.version_number || '?'})
+            Design the execution flow for {config.display_name || slug} (v{version?.version_number || '?'})
           </p>
         </div>
       </div>

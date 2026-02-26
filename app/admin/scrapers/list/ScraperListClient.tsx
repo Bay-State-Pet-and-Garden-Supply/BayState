@@ -142,7 +142,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                         <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-view-details-link">View Details</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/admin/scrapers/test-lab/${scraper.slug}`}>Run Test</Link>
+                        <Link href={`/admin/scrapers/${scraper.slug}/test-lab`}>Run Test</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem>Toggle Status</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -180,7 +180,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                   </Link>
                 </Button>
                 <Button size="sm" className="flex-1 bg-[#008850] hover:bg-[#2a7034] text-white" asChild>
-                  <Link href={`/admin/scrapers/test-lab/${scraper.slug}`}>
+                  <Link href={`/admin/scrapers/${scraper.slug}/test-lab`}>
                     <Play className="mr-2 h-3.5 w-3.5" />
                     Test
                   </Link>
