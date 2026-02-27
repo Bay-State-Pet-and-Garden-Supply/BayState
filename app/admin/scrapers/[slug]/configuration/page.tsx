@@ -127,6 +127,7 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
               'use server';
               if (scraper.id) {
                 await createNewVersion(scraper.id);
+                revalidatePath(`/admin/scrapers/${slug}/configuration`);
               }
             }}>
               <Button type="submit" variant="outline" className="gap-2" data-testid="create-new-version-button">
