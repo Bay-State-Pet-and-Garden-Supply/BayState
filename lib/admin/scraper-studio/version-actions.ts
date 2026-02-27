@@ -72,7 +72,7 @@ export async function createVersion(
       .insert({
         config_id: validatedData.configId,
         schema_version: validatedData.config.schema_version as string || '1.0',
-        config: validatedData.config,
+        // config column dropped in migration 20260226003000_drop_legacy_config_column.sql
         status: 'draft',
         version_number: newVersionNumber,
         change_summary: validatedData.change_summary || `Version ${newVersionNumber}`,
@@ -175,7 +175,7 @@ export async function publishVersion(
       .insert({
         config_id: version.config_id,
         schema_version: version.schema_version,
-        config: version.config,
+        // config column dropped in migration 20260226003000_drop_legacy_config_column.sql
         status: 'published',
         version_number: newVersionNumber,
         published_at: new Date().toISOString(),
@@ -283,7 +283,7 @@ export async function rollbackToVersion(
       .insert({
         config_id: targetVersion.config_id,
         schema_version: targetVersion.schema_version,
-        config: targetVersion.config,
+        // config column dropped in migration 20260226003000_drop_legacy_config_column.sql
         status: 'published',
         version_number: newVersionNumber,
         published_at: new Date().toISOString(),

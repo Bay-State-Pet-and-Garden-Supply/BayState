@@ -80,7 +80,7 @@ export async function createScraperConfig(
       .insert({
         config_id: config.id,
         schema_version: validatedData.config.schema_version,
-        config: validatedData.config,
+        // config column dropped in migration 20260226003000_drop_legacy_config_column.sql
         status: 'draft',
         version_number: 1,
         change_summary: validatedData.change_summary ?? 'Initial draft',
@@ -349,7 +349,7 @@ export async function publishConfig(
       .insert({
         config_id: configId,
         schema_version: currentVersion.schema_version,
-        config: currentVersion.config,
+        // config column dropped in migration 20260226003000_drop_legacy_config_column.sql
         status: 'published',
         version_number: newVersionNumber,
         published_at: new Date().toISOString(),
@@ -473,7 +473,7 @@ export async function rollbackConfig(
       .insert({
         config_id: configId,
         schema_version: targetVersion.schema_version,
-        config: targetVersion.config,
+        // config column dropped in migration 20260226003000_drop_legacy_config_column.sql
         status: 'published',
         version_number: newVersionNumber,
         published_at: new Date().toISOString(),
@@ -1093,7 +1093,7 @@ export async function createNewVersion(configId: string): Promise<ActionState> {
       .insert({
         config_id: configId,
         schema_version: sourceVersion.schema_version,
-        config: sourceVersion.config,
+        // config column dropped in migration 20260226003000_drop_legacy_config_column.sql
         ai_config: sourceVersion.ai_config,
         anti_detection: sourceVersion.anti_detection,
         validation_config: sourceVersion.validation_config,
