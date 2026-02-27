@@ -292,10 +292,6 @@ export async function createNewVersion(configId: string): Promise<ActionState> {
       .single();
     
     console.log('createNewVersion - configId:', configId, 'config:', config, 'error:', configError);
-      .from('scraper_configs')
-      .select('current_version_id')
-      .eq('id', configId)
-      .single();
     
     if (configError || !config?.current_version_id) {
     if (configError) {

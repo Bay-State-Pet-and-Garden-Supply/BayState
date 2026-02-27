@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { UndoToast } from './UndoToast';
 import { undoQueue } from '@/lib/pipeline/undo';
 import { SkipLink } from '@/components/ui/skip-link';
-import { isOpenAIConfigured } from '@/lib/consolidation';
+import { isOpenAIConfigured } from '@/lib/consolidation/openai-client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 

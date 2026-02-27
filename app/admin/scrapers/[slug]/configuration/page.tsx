@@ -154,7 +154,7 @@ export default async function ConfigurationPage({ params, searchParams }: Config
                 Edit Draft
               </Button>
             </form>
-          )}
+          ) : null}
         </div>
       </div>
 
