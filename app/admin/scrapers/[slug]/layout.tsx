@@ -27,8 +27,8 @@ export default async function ScraperWorkbenchLayout({
   }
 
   return (
-    <div className="flex flex-col h-full space-y-6" data-testid="scraper-workbench">
-      {/* Header section */}
+    <div className="flex flex-col h-full space-y-4" data-testid="scraper-workbench">
+      {/* Header section with tabs inline */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between pb-4 border-b">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -54,13 +54,12 @@ export default async function ScraperWorkbenchLayout({
             )}
           </div>
         </div>
+        {/* Tabs navigation - inline with heading */}
+        <ScraperTabsClient slug={slug} />
       </div>
 
-      {/* Tabs navigation */}
-      <ScraperTabsClient slug={slug} />
-
       {/* Content area */}
-      <div className="flex-1 min-h-0 pt-2" data-testid="workbench-content">
+      <div className="flex-1 min-h-0" data-testid="workbench-content">
         {children}
       </div>
     </div>

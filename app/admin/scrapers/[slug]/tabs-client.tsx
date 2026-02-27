@@ -18,7 +18,7 @@ export function ScraperTabsClient({ slug }: ScraperTabsClientProps) {
   const tabSegment = segments.length > 3 ? segments[3] : 'overview';
   
   return (
-    <Tabs value={tabSegment} className="w-full mt-6" data-testid="workbench-tabs">
+    <Tabs value={tabSegment} className="w-full" data-testid="workbench-tabs">
       <div className="overflow-x-auto pb-2 -mb-2">
         <TabsList className="inline-flex h-11 w-max min-w-full justify-start rounded-md bg-muted p-1 text-muted-foreground" data-testid="workbench-tabs-list">
           <TabsTrigger value="overview" asChild className="min-w-[120px] h-9">
