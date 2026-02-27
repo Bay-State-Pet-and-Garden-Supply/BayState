@@ -152,17 +152,66 @@ export function PipelineClient({
         if (ws.lastProgressEvent) {
             setConsolidationProgress(ws.lastProgressEvent.progress);
 
-            if (ws.lastProgressEvent.status === 'completed' || ws.lastProgressEvent.status === 'failed') {
+            if (ws.lastProgressEvent.status === 'completed') {
+                const { successfulProducts, failedProducts } = ws.lastProgressEvent;
+                
+                if (failedProducts === 0) {
+                    toast.success(`Consolidation complete! ${successfulProducts} products processed.`);
+                } else if (successfulProducts === 0) {
+                    toast.error('Consolidation failed. All products failed.');
+                } else {
+                    toast.warning(`Consolidation complete. ${successfulProducts} succeeded, ${failedProducts} failed.`);
+                }
+                
                 setIsConsolidating(false);
                 setConsolidationBatchId(null);
                 handleRefresh();
-            }
+            } else if (ws.lastProgressEvent.status === 'failed') {
+                toast.error('Consolidation failed. Please retry.');
+                setIsConsolidating(false);
+                setConsolidationBatchId(null);
         }
 
         return () => {
             ws.unsubscribeFromBatch(consolidationBatchId);
         };
     }, [consolidationBatchId, ws.lastProgressEvent]);
+
+    // Polling fallback when WebSocket is not connected
+    useEffect(() => {
+        if (!consolidationBatchId || ws.isConnected) return;
+        
+        let pollCount = 0;
+        const maxPolls = 360;
+        
+        const poll = async () => {
+            try {
+                const res = await fetch(`/api/admin/consolidation/${consolidationBatchId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status) {
+                        setConsolidationProgress(data.status.progress || 0);
+                        if (data.status.is_complete || data.status.status === 'failed') {
+                            clearInterval(interval);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+            
+            pollCount++;
+            if (pollCount >= maxPolls) {
+                clearInterval(interval);
+                toast.error('Status check timed out.');
+            }
+        };
+        
+        const interval = setInterval(poll, 5000);
+        poll();
+        
+        return () => clearInterval(interval);
+    }, [consolidationBatchId, ws.isConnected]);
 
     // Check OpenAI configuration on mount
     useEffect(() => {
