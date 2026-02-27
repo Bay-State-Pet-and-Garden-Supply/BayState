@@ -34,12 +34,23 @@ export function ImageSelector({ images, onSave }: ImageSelectorProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-4">
-        {images.map((imageUrl) => (
+        {images.map((imageUrl, index) => (
           <div
             key={imageUrl}
             onClick={() => toggleSelection(imageUrl)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleSelection(imageUrl);
+              }
+            }}
+            tabIndex={0}
+            role="button"
+            aria-pressed={selected.includes(imageUrl)}
+            aria-label={`Select image ${index + 1}`}
             className={`
               relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all
+              focus:outline-none focus:ring-2 focus:ring-[#008850] focus:ring-offset-2
               ${
                 selected.includes(imageUrl)
                   ? 'border-[#008850] ring-2 ring-[#008850]'
@@ -49,7 +60,7 @@ export function ImageSelector({ images, onSave }: ImageSelectorProps) {
           >
             <img
               src={imageUrl}
-              alt={imageUrl}
+              alt={`Product image ${index + 1}`}
               className={`w-full h-32 object-cover ${selected.includes(imageUrl) ? 'selected' : ''}`}
             />
             {selected.includes(imageUrl) && (

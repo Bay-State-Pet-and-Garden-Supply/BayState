@@ -19,9 +19,9 @@ describe('ImageSelector', () => {
       render(<ImageSelector images={mockImages} onSave={mockOnSave} />);
 
       // Should render all images
-      mockImages.forEach((imageUrl) => {
-        expect(screen.getByRole('img', { name: new RegExp(imageUrl) })).toBeInTheDocument();
-      });
+      mockImages.forEach((_, index) => {
+        expect(screen.getByRole('img', { name: new RegExp(`Product image ${index + 1}`) })).toBeInTheDocument();
+      })
     });
 
     it('shows empty state when no images provided', () => {
@@ -35,7 +35,7 @@ describe('ImageSelector', () => {
     it('clicking image selects it (toggle)', () => {
       render(<ImageSelector images={mockImages} onSave={mockOnSave} />);
 
-      const firstImage = screen.getByRole('img', { name: /image1\.jpg/ });
+      const firstImage = screen.getByRole('img', { name: /Product image 1/ });
       fireEvent.click(firstImage);
 
       // Should have visual indication of selection (border/styling)
@@ -45,8 +45,8 @@ describe('ImageSelector', () => {
     it('selected images are tracked in state', () => {
       render(<ImageSelector images={mockImages} onSave={mockOnSave} />);
 
-      const firstImage = screen.getByRole('img', { name: /image1\.jpg/ });
-      const secondImage = screen.getByRole('img', { name: /image2\.jpg/ });
+      const firstImage = screen.getByRole('img', { name: /Product image 1/ });
+      const secondImage = screen.getByRole('img', { name: /Product image 2/ });
 
       // Select first image
       fireEvent.click(firstImage);
@@ -63,7 +63,7 @@ describe('ImageSelector', () => {
     it('save button calls onSave callback with selected URLs', () => {
       render(<ImageSelector images={mockImages} onSave={mockOnSave} />);
 
-      const firstImage = screen.getByRole('img', { name: /image1\.jpg/ });
+      const firstImage = screen.getByRole('img', { name: /Product image 1/ });
       fireEvent.click(firstImage);
 
       const saveButton = screen.getByRole('button', { name: /save selected images/i });
