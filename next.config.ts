@@ -39,6 +39,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.supabase.co",
       },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
     ],
     // Limit generated variants to specific quality levels
     qualities: [50, 75],

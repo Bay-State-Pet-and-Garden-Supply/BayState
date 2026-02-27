@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getScraperBySlug } from '../../actions-workbench';
+import { TestLabClient } from '@/components/admin/scrapers/test-lab';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon, Wrench } from 'lucide-react';
+import { InfoIcon } from 'lucide-react';
+import { ScraperTestSku, TestRunRecord } from '@/lib/admin/scrapers/types';
 
 interface TestLabPageProps {
   params: Promise<{ slug: string }>;
@@ -16,16 +18,64 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
     notFound();
   }
 
+  const supabase = await createClient();
+
+  // Get current version for running tests
+  const { data: version } = await supabase
+    .from('scraper_config_versions')
+    .select('id, version, status, config')
+    .eq('config_id', scraper.id)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Fetch test SKUs
+  const { data: testSkus, error: skusError } = await supabase
+    .from('scraper_config_test_skus')
+    .select('*')
+    .eq('config_id', scraper.id)
+    .order('created_at', { ascending: false });
+
+  if (skusError) {
+    console.error('Error fetching test SKUs:', skusError);
+  }
+
+  // Fetch recent test runs
+  const { data: testRuns, error: runsError } = await supabase
+    .from('scraper_test_runs')
+    .select('*, scrape_jobs(status)')
+    .eq('scraper_id', scraper.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  if (runsError) {
+    console.error('Error fetching test runs:', runsError);
+  }
+
+  const typedSkus = (testSkus || []) as ScraperTestSku[];
+  const typedRuns = (testRuns || []) as TestRunRecord[];
+
   return (
     <div className="space-y-6" data-testid="tab-content-test-lab">
-      <Alert>
-        <Wrench className="h-4 w-4" />
-        <AlertTitle>Test Lab Migration Pending</AlertTitle>
-        <AlertDescription>
-          The Test Lab is being migrated to the new Studio interface. 
-          Please use the Studio for running tests until the migration is complete.
-        </AlertDescription>
-      </Alert>
+      {!version && (
+        <Alert>
+          <InfoIcon className="h-4 w-4" />
+          <AlertTitle>No Configuration Version</AlertTitle>
+          <AlertDescription>
+            You need to publish a configuration version before you can run tests in the Test Lab.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <TestLabClient
+        configId={scraper.id}
+        versionId={version?.id || null}
+        scraperName={scraper.display_name || scraper.slug || 'Unknown Scraper'}
+        testRuns={typedRuns}
+        testSkus={typedSkus}
+        disabled={!version}
+      />
     </div>
   );
 }
