@@ -299,29 +299,29 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        #KK|        }
-#NN|
-#BB|        // Store crawl4ai metrics if provided
-#QM|        if (payload.status === 'completed' && payload.results) {
-#XS|            const results = payload.results;
-#NM|            if (results.extraction_strategy) {
-#NM|                updateData.extraction_strategy = results.extraction_strategy;
-#NM|            }
-#NM|            if (results.llm_cost !== undefined) {
-#NM|                updateData.llm_cost = results.llm_cost;
-#NM|            }
-#NM|            if (results.total_cost !== undefined) {
-#NM|                updateData.total_cost = results.total_cost;
-#NM|            }
-#NM|            if (results.anti_bot_success_rate !== undefined) {
-#NM|                updateData.anti_bot_success_rate = results.anti_bot_success_rate;
-#NM|            }
-#NM|            if (results.crawl4ai_errors && results.crawl4ai_errors.length > 0) {
-#NM|                updateData.crawl4ai_errors = results.crawl4ai_errors;
-#NM|            }
-#NM|        }
-#NN|
-#BB|        let jobUpdateQuery = supabase
+        if (payload.error_message) {
+            updateData.error_message = payload.error_message;
+        }
+
+        // Store crawl4ai metrics if provided
+        if (payload.status === 'completed' && payload.results) {
+            const results = payload.results;
+            if (results.extraction_strategy) {
+                updateData.extraction_strategy = results.extraction_strategy;
+            }
+            if (results.llm_cost !== undefined) {
+                updateData.llm_cost = results.llm_cost;
+            }
+            if (results.total_cost !== undefined) {
+                updateData.total_cost = results.total_cost;
+            }
+            if (results.anti_bot_success_rate !== undefined) {
+                updateData.anti_bot_success_rate = results.anti_bot_success_rate;
+            }
+            if (results.crawl4ai_errors && results.crawl4ai_errors.length > 0) {
+                updateData.crawl4ai_errors = results.crawl4ai_errors;
+            }
+        }
 
         let jobUpdateQuery = supabase
             .from('scrape_jobs')
@@ -543,7 +543,7 @@ export async function POST(request: NextRequest) {
                 } else {
                     console.log(`[Callback] Test run ${testRunId} already processed with status: ${existingRun?.status}`);
                 }
-        }
+            }
         }
 
         return NextResponse.json({ success: true });

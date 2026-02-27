@@ -293,7 +293,6 @@ export async function createNewVersion(configId: string): Promise<ActionState> {
     
     console.log('createNewVersion - configId:', configId, 'config:', config, 'error:', configError);
     
-    if (configError || !config?.current_version_id) {
     if (configError) {
       console.error('Config fetch error:', configError);
       return { success: false, error: `Config fetch failed: ${configError.message}` };
@@ -301,7 +300,6 @@ export async function createNewVersion(configId: string): Promise<ActionState> {
     if (!config?.current_version_id) {
       return { success: false, error: 'Config has no current_version_id set - publish a version first' };
     }
-    
     const { data: currentVersion } = await supabase
       .from('scraper_config_versions')
       .select('*')

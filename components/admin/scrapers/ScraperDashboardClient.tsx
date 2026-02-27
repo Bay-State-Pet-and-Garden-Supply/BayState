@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/table';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 import { useRunnerPresence } from '@/lib/realtime/useRunnerPresence';
+import { Crawl4AIDashboard } from '@/components/admin/scraping/Crawl4AIDashboard';
 
 interface ScraperSummary {
   id: string;
@@ -480,6 +481,9 @@ export function ScraperDashboardClient({
           )}
         </CardContent>
       </Card>
+
+      {/* Crawl4AI Metrics Dashboard */}
+      <Crawl4AIDashboard days={30} />
     </div>
   );
 }
