@@ -291,8 +291,19 @@ export async function createNewVersion(configId: string): Promise<ActionState> {
       .eq('id', configId)
       .single();
     
+    console.log('createNewVersion - configId:', configId, 'config:', config, 'error:', configError);
+      .from('scraper_configs')
+      .select('current_version_id')
+      .eq('id', configId)
+      .single();
+    
     if (configError || !config?.current_version_id) {
-      return { success: false, error: 'Config not found or has no version' };
+    if (configError) {
+      console.error('Config fetch error:', configError);
+      return { success: false, error: `Config fetch failed: ${configError.message}` };
+    }
+    if (!config?.current_version_id) {
+      return { success: false, error: 'Config has no current_version_id set - publish a version first' };
     }
     
     const { data: currentVersion } = await supabase

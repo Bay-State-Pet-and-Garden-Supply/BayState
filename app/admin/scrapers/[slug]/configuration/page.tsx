@@ -74,7 +74,7 @@ export default async function ConfigurationPage({ params, searchParams }: Config
             })
             .select()
             .single();
-            
+          
           if (!error && newVersion) {
             await supabase
               .from('scraper_configs')
@@ -140,16 +140,14 @@ export default async function ConfigurationPage({ params, searchParams }: Config
                 Publish Version
               </Button>
             </form>
-          ) : (
+          ) : scraper.current_version_id ? (
             <form action={async () => {
               'use server';
-              if (scraper.id) {
-                const result = await createNewVersion(scraper.id);
-                if (!result.success) {
-                  redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to create version')}`);
-                }
-                revalidatePath(`/admin/scrapers/${slug}/configuration`);
+              const result = await createNewVersion(scraper.id);
+              if (!result.success) {
+                redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to create version')}`);
               }
+              revalidatePath(`/admin/scrapers/${slug}/configuration`);
             }}>
               <Button type="submit" variant="outline" className="gap-2" data-testid="create-new-version-button">
                 <FileEdit className="w-4 h-4" />

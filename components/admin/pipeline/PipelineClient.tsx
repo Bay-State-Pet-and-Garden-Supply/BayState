@@ -375,11 +375,23 @@ export function PipelineClient({
                 setSelectedSkus(new Set());
                 setIsSelectingAllMatching(false);
             } else {
-                console.error('Failed to start consolidation');
+                const errorData = await res.json().catch(() => ({}));
+                const errorMessage = errorData.error || errorData.message;
+                
+                if (res.status === 503) {
+                    toast.error('AI service temporarily unavailable. Please try again in a few moments.');
+                } else if (res.status === 429) {
+                    toast.error('Too many requests. Please wait before trying again.');
+                } else if (errorMessage) {
+                    toast.error(errorMessage);
+                } else {
+                    toast.error('Failed to start consolidation. Please try again.');
+                }
                 setIsConsolidating(false);
             }
         } catch (error) {
             console.error('Error submitting consolidation:', error);
+            toast.error('Network error. Please check your connection and try again.');
             setIsConsolidating(false);
         }
     };
