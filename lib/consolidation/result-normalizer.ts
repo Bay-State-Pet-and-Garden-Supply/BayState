@@ -132,12 +132,11 @@ export function normalizeConsolidationResult(data: Record<string, unknown>): Rec
         normalized.name = name;
     }
 
-    // Normalize weight field
+    // Normalize weight field - convert to pounds
     if (typeof normalized.weight === 'string') {
-        const weightNum = parseFloat(normalized.weight);
-        if (!isNaN(weightNum)) {
-            // Trim trailing zeros
-            normalized.weight = weightNum.toString();
+        const converted = convertWeightToPounds(normalized.weight);
+        if (converted !== null) {
+            normalized.weight = converted;
         }
     }
 
