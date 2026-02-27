@@ -63,6 +63,20 @@ const ScraperResultsSchema = z.object({
                 .optional(),
         })
         .optional(),
+    // Crawl4AI-specific metrics
+    extraction_strategy: z.enum(['llm', 'css', 'xpath']).optional(),
+    llm_cost: z.number().optional(),
+    total_cost: z.number().optional(),
+    anti_bot_success_rate: z.number().min(0).max(1).optional(),
+    crawl4ai_errors: z
+        .array(
+            z.object({
+                error_type: z.string(),
+                message: z.string(),
+                count: z.number().int().min(0),
+            })
+        )
+        .optional(),
 });
 
 const ChunkResultsSchema = z.object({
@@ -122,6 +136,20 @@ const ChunkResultsSchema = z.object({
                 )
                 .optional(),
         })
+        .optional(),
+    // Crawl4AI-specific metrics
+    extraction_strategy: z.enum(['llm', 'css', 'xpath']).optional(),
+    llm_cost: z.number().optional(),
+    total_cost: z.number().optional(),
+    anti_bot_success_rate: z.number().min(0).max(1).optional(),
+    crawl4ai_errors: z
+        .array(
+            z.object({
+                error_type: z.string(),
+                message: z.string(),
+                count: z.number().int().min(0),
+            })
+        )
         .optional(),
 });
 

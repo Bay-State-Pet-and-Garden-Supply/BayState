@@ -299,9 +299,29 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        if (payload.error_message) {
-            updateData.error_message = payload.error_message;
-        }
+        #KK|        }
+#NN|
+#BB|        // Store crawl4ai metrics if provided
+#QM|        if (payload.status === 'completed' && payload.results) {
+#XS|            const results = payload.results;
+#NM|            if (results.extraction_strategy) {
+#NM|                updateData.extraction_strategy = results.extraction_strategy;
+#NM|            }
+#NM|            if (results.llm_cost !== undefined) {
+#NM|                updateData.llm_cost = results.llm_cost;
+#NM|            }
+#NM|            if (results.total_cost !== undefined) {
+#NM|                updateData.total_cost = results.total_cost;
+#NM|            }
+#NM|            if (results.anti_bot_success_rate !== undefined) {
+#NM|                updateData.anti_bot_success_rate = results.anti_bot_success_rate;
+#NM|            }
+#NM|            if (results.crawl4ai_errors && results.crawl4ai_errors.length > 0) {
+#NM|                updateData.crawl4ai_errors = results.crawl4ai_errors;
+#NM|            }
+#NM|        }
+#NN|
+#BB|        let jobUpdateQuery = supabase
 
         let jobUpdateQuery = supabase
             .from('scrape_jobs')
