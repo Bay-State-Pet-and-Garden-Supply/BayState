@@ -181,3 +181,60 @@ export function parseJsonResponse(text: string): Record<string, unknown> | null 
 
     return null;
 }
+
+/**
+ * Convert weight string to pounds.
+ * Supports: oz (ounces), lb (pounds), g (grams)
+ * Handles compound units like "1 lb 8 oz"
+ * Returns null for invalid/empty inputs.
+ */
+export function convertWeightToPounds(weight: string): string | null {
+    // Handle null, undefined, empty, or N/A
+    if (!weight || weight.trim() === '' || weight.trim().toUpperCase() === 'N/A') {
+        return null;
+    }
+
+    const trimmed = weight.trim();
+    
+    // Conversion factors
+    const OZ_PER_LB = 16;
+    const G_PER_LB = 453.592;
+
+    let totalPounds = 0;
+
+    // Try to match pounds and ounces pattern: "1 lb 8 oz" or "1lb 8oz"
+    const lbOzMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*lb\s+(?:and\s+)?(\d+(?:\.\d+)?)\s*oz$/i);
+    if (lbOzMatch) {
+        const lbs = parseFloat(lbOzMatch[1]);
+        const oz = parseFloat(lbOzMatch[2]);
+        totalPounds = lbs + (oz / OZ_PER_LB);
+        return totalPounds.toFixed(2);
+    }
+
+    // Try to match ounces only: "16 oz" or "16oz"
+    const ozMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*oz$/i);
+    if (ozMatch) {
+        const oz = parseFloat(ozMatch[1]);
+        totalPounds = oz / OZ_PER_LB;
+        return totalPounds.toFixed(2);
+    }
+
+    // Try to match pounds only: "5 lb" or "5lb"
+    const lbMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*lb$/i);
+    if (lbMatch) {
+        const lbs = parseFloat(lbMatch[1]);
+        totalPounds = lbs;
+        return totalPounds.toFixed(2);
+    }
+
+    // Try to match grams: "500 g" or "500g"
+    const gMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*g$/i);
+    if (gMatch) {
+        const g = parseFloat(gMatch[1]);
+        totalPounds = g / G_PER_LB;
+        return totalPounds.toFixed(2);
+    }
+
+    // If none of the patterns match, return null
+    return null;
+}

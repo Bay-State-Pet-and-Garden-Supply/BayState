@@ -81,8 +81,12 @@ The "name" field MUST follow these conventions:
 3. **Decimal formatting**: Use up to 2 decimal places; trim trailing zeros ("0.70" -> "0.7"; "1.0" -> "1")
 4. **Dimensions**: Use uppercase "X" with spaces (e.g., "3 X 25 ft"); inches use "in" (never quotes)
 5. **Capitalization**: Title Case for words; preserve brand styling when provided (e.g., keep all-caps brands)
-6. **Ampersand**: Use "&" instead of "and" when connecting words
 7. **Spacing/Punctuation**: Single spaces only; no trailing periods on units
+8. **Brand Exclusion**: EXCLUDE brand names from the product name field. The brand should ONLY go in the dedicated 'brand' field.
+   - Brand at start: "Blue Buffalo Dog Food" → name: "Dog Food"
+   - Brand in middle: "Dog Food by Blue Buffalo" → name: "Dog Food"
+   - Brand at end: "Dog Food Blue Buffalo" → name: "Dog Food"
+   - Use case-insensitive matching (e.g., "blue buffalo" matches "Blue Buffalo")
 
 ## TAXONOMY RULES (STRICT - EXACT MATCH REQUIRED)
 You MUST select "category" and "product_type" ONLY from the lists above.
