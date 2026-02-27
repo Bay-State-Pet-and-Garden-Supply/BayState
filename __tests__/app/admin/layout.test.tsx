@@ -7,21 +7,25 @@ describe('Admin Layout', () => {
     render(<AdminSidebar userRole="admin" />);
 
     // Check for key navigation items (using exact text to avoid collisions)
-    expect(screen.getByRole('link', { name: 'Products' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Services' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Users' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New Products' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Scrapers' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Network' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Data Migration' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
   });
 
   it('hides admin-only links for staff role', () => {
     render(<AdminSidebar userRole="staff" />);
 
-    // Non-admin items should be visible
-    expect(screen.getByRole('link', { name: 'Products' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Services' })).toBeInTheDocument();
+    // Staff should only see Overview (non-admin-only item)
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
 
-    // Staff should NOT see Users and Settings
-    expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument();
+    // Staff should NOT see admin-only items
+    expect(screen.queryByRole('link', { name: 'New Products' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Scrapers' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Network' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Data Migration' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
   });
 
