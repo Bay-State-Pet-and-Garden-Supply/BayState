@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ImageSelector } from './ImageSelector';
 
 interface Brand {
   id: string;
@@ -388,7 +389,7 @@ export function PipelineProductDetail({
                 />
               </div>
 
-              {imageCandidates.length > 0 && (
+{imageCandidates.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Final Images</Label>
@@ -396,29 +397,12 @@ export function PipelineProductDetail({
                       {selectedImages.length} selected
                     </span>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {imageCandidates
+                  <ImageSelector
+                    images={imageCandidates
                       .map((img) => img.trim())
-                      .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/'))
-                      .map((img, idx) => (
-                        <button
-                          type="button"
-                          key={idx}
-                          onClick={() => toggleImageSelection(img)}
-                          className={`relative h-20 w-20 rounded border overflow-hidden ${selectedImages.includes(img)
-                            ? 'border-[#008850] ring-2 ring-[#008850]/30'
-                            : 'border-gray-200 bg-gray-100'
-                            }`}
-                          title={selectedImages.includes(img) ? 'Selected image' : 'Click to select image'}
-                        >
-                          <img
-                            src={img}
-                            alt={`Product image ${idx + 1}`}
-                            className="h-full w-full object-cover"
-                          />
-                        </button>
-                      ))}
-                  </div>
+                      .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/'))}
+                    onSave={(selected) => setSelectedImages(selected)}
+                  />
                 </div>
               )}
             </div>

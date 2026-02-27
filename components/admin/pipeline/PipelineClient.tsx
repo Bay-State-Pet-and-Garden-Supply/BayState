@@ -8,6 +8,7 @@ import { PipelineProductCard } from './PipelineProductCard';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
+import { ConsolidationDetailsModal } from './ConsolidationDetailsModal';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
 import { MethodSelection, EnrichmentMethod } from '@/components/admin/enrichment/MethodSelection';
 import { ChunkConfig } from '@/components/admin/enrichment/ChunkConfig';
@@ -16,14 +17,13 @@ import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 import { PipelineFlowVisualization } from './PipelineFlowVisualization';
 import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
-import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
-20#RR|import { Search, RefreshCw, AlertTriangle } from 'lucide-react';
-21#HY|import { toast } from 'sonner';
-22#MS|import { UndoToast } from './UndoToast';
-23#JR|import { undoQueue } from '@/lib/pipeline/undo';
-24#XK|import { SkipLink } from '@/components/ui/skip-link';
-25#YH|import { isOpenAIConfigured } from '@/lib/consolidation';
-26#AL|import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Search, RefreshCw, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+import { UndoToast } from './UndoToast';
+import { undoQueue } from '@/lib/pipeline/undo';
+import { SkipLink } from '@/components/ui/skip-link';
+import { isOpenAIConfigured } from '@/lib/consolidation';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const statusLabels: Record<PipelineStatus, string> = {
     staging: 'Imported',
@@ -75,6 +75,7 @@ export function PipelineClient({
     const [consolidationProgress, setConsolidationProgress] = useState(0);
     const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isOpenAIReady, setIsOpenAIReady] = useState(true);
     // Clear scrape results state
     const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
@@ -170,6 +171,8 @@ export function PipelineClient({
                 toast.error('Consolidation failed. Please retry.');
                 setIsConsolidating(false);
                 setConsolidationBatchId(null);
+            }
+
         }
 
         return () => {
@@ -562,9 +565,25 @@ export function PipelineClient({
                     progress={consolidationProgress}
                     isDismissed={isBannerDismissed}
                     onDismiss={() => setIsBannerDismissed(true)}
-                    onViewDetails={() => setIsBannerDismissed(false)}
+                    onViewDetails={() => setIsDetailsModalOpen(true)}
                 />
             )}
+
+            <ConsolidationDetailsModal
+                isOpen={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                batchId={consolidationBatchId}
+                status={ws.lastProgressEvent ? {
+                    batchId: consolidationBatchId || '',
+                    status: ws.lastProgressEvent.status || 'in_progress',
+                    totalProducts: ws.lastProgressEvent.totalProducts || 0,
+                    processedCount: ws.lastProgressEvent.processedCount || 0,
+                    successCount: ws.lastProgressEvent.successfulProducts || 0,
+                    errorCount: ws.lastProgressEvent.failedProducts || 0,
+                    errors: ws.lastProgressEvent.errors || [],
+                    results: ws.lastProgressEvent.results || []
+                } : null}
+            />
 
             {/* Search and Actions Bar */}
             <div className="flex items-center gap-4">
