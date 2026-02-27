@@ -6,7 +6,7 @@
 .DS_Store
 logs/
 tmp/
-.sisyphus/
+#XM|#.sisyphus/
 .vscode/
 *.log
 
