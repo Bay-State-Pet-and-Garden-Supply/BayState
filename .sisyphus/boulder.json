@@ -1,9 +1,9 @@
 {
-  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\ai-consolidation.md",
-  "started_at": "2026-02-27T17:53:17.821Z",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\crawl4ai-migration.md",
+  "started_at": "2026-02-27T20:36:00.707Z",
   "session_ids": [
-    "ses_35fe07681ffeJwhzHcZlgGhWz8"
+    "ses_35f3ac91affe4lGnMq603n5EQH"
   ],
-  "plan_name": "ai-consolidation",
+  "plan_name": "crawl4ai-migration",
   "agent": "atlas"
 }
