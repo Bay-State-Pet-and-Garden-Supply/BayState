@@ -5,16 +5,21 @@ import { SelectorEditor } from '@/components/admin/scrapers/selector-editor';
 import { SettingsForm } from '@/components/admin/scrapers/settings-form';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileEdit, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { FileEdit, CheckCircle2, AlertCircle } from 'lucide-react';
 import { publishVersion, createNewVersion } from '@/lib/admin/scraper-configs/actions-normalized';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 interface ConfigurationPageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ error?: string }>;
 }
 
-export default async function ConfigurationPage({ params }: ConfigurationPageProps) {
+export default async function ConfigurationPage({ params, searchParams }: ConfigurationPageProps) {
   const { slug } = await params;
+  const searchParamsData = await searchParams || {};
+  const actionError = searchParamsData.error;
   const scraper = await getScraperBySlug(slug);
 
   if (!scraper || !scraper.id) {
@@ -95,6 +100,15 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
 
   return (
     <div className="space-y-6 pb-12" data-testid="tab-content-configuration">
+      {/* Error Alert */}
+      {actionError && (
+        <Alert variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Version Header */}
       <div className="flex items-center justify-between p-4 bg-muted/40 rounded-lg border">
         <div className="flex items-center gap-4">
@@ -115,7 +129,11 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
           {isDraft ? (
             <form action={async () => {
               'use server';
-              await publishVersion(version.id);
+              const result = await publishVersion(version.id);
+              if (!result.success) {
+                redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to publish')}`);
+              }
+              revalidatePath(`/admin/scrapers/${slug}/configuration`);
             }}>
               <Button type="submit" variant="default" className="gap-2" data-testid="publish-version-button">
                 <CheckCircle2 className="w-4 h-4" />
@@ -126,7 +144,10 @@ export default async function ConfigurationPage({ params }: ConfigurationPagePro
             <form action={async () => {
               'use server';
               if (scraper.id) {
-                await createNewVersion(scraper.id);
+                const result = await createNewVersion(scraper.id);
+                if (!result.success) {
+                  redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to create version')}`);
+                }
                 revalidatePath(`/admin/scrapers/${slug}/configuration`);
               }
             }}>

@@ -23,7 +23,7 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
   // Get current version for running tests
   const { data: version } = await supabase
     .from('scraper_config_versions')
-    .select('id, version, status, config')
+    .select('id, version_number, status')
     .eq('config_id', scraper.id)
     .eq('status', 'published')
     .order('created_at', { ascending: false })
