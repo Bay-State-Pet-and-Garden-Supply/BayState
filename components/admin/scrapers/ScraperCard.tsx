@@ -6,7 +6,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { ScraperTestDialog } from './ScraperTestDialog';
 import { Play, Clock, AlertTriangle, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,7 +16,6 @@ interface ScraperCardProps {
 export function ScraperCard({ scraper }: ScraperCardProps) {
   const [disabled, setDisabled] = useState(scraper.disabled);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showTestDialog, setShowTestDialog] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
     setIsUpdating(true);
@@ -99,7 +97,7 @@ export function ScraperCard({ scraper }: ScraperCardProps) {
             variant="outline" 
             size="sm" 
             className="w-full gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/30"
-            onClick={() => setShowTestDialog(true)}
+            onClick={() => window.location.href = `/admin/scrapers/${scraper.name}/test-lab`}
             disabled={disabled}
           >
             <Play className="h-3.5 w-3.5" />
@@ -107,12 +105,6 @@ export function ScraperCard({ scraper }: ScraperCardProps) {
           </Button>
         </CardFooter>
       </Card>
-      
-      <ScraperTestDialog 
-        open={showTestDialog} 
-        onOpenChange={setShowTestDialog} 
-        scraperName={scraper.name} 
-      />
     </>
   );
 }

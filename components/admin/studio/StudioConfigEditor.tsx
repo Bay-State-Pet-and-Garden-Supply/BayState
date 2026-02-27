@@ -26,11 +26,38 @@ import { MetadataTab } from '../scraper-configs/tabs/MetadataTab';
 import { SelectorsTab } from '../scraper-configs/tabs/SelectorsTab';
 import { WorkflowTab } from '../scraper-configs/tabs/WorkflowTab';
 import { AdvancedTab } from '../scraper-configs/tabs/AdvancedTab';
-// DEPRECATED: Using scraper-lab/config-editor tabs (to be migrated)
-import { ConfigurationTab } from '../scraper-lab/config-editor/tabs/ConfigurationTab';
-import { TestingTab } from '../scraper-lab/config-editor/tabs/TestingTab';
-import { PreviewTab } from '../scraper-lab/config-editor/tabs/PreviewTab';
-import { ValidationSummary } from '../scraper-lab/config-editor/validation/ValidationSummary';
+// DEPRECATED: scraper-lab/config-editor tabs have been deleted
+// Configuration, Testing, Preview tabs stubbed out pending migration
+
+function ConfigurationTab() {
+  return <div className="p-4 text-muted-foreground">Configuration tab migrated to scraper-configs</div>;
+}
+
+function TestingTab({ configId }: { configId: string }) {
+  return <div className="p-4 text-muted-foreground">Testing tab migrated to scraper-configs</div>;
+}
+
+function PreviewTab() {
+  return <div className="p-4 text-muted-foreground">Preview tab migrated to scraper-configs</div>;
+}
+
+function ValidationSummary({ errors }: { errors: string[] }) {
+  return errors.length > 0 ? (
+    <Alert variant="destructive">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle>Validation Errors</AlertTitle>
+      <AlertDescription>
+        <ul className="list-disc pl-4 mt-2">
+          {errors.map((error, i) => <li key={i}>{error}</li>)}
+        </ul>
+      </AlertDescription>
+    </Alert>
+  ) : null;
+}
+
+
+
+
 import { VersionHistory, type Version } from '../scraper-studio/VersionHistory';
 
 interface StudioConfigEditorProps {
