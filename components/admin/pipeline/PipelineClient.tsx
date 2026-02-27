@@ -24,6 +24,7 @@ import { undoQueue } from '@/lib/pipeline/undo';
 import { SkipLink } from '@/components/ui/skip-link';
 import { isOpenAIConfigured } from '@/lib/consolidation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 const statusLabels: Record<PipelineStatus, string> = {
     staging: 'Imported',
