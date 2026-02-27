@@ -1,8 +1,9 @@
 {
-  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\test-lab-fix.md",
-  "started_at": "2026-02-26T19:10:51.717Z",
-  "session_ids": ["ses_364b28fc5ffe1F91gVMae62cFl"],
-  "plan_name": "test-lab-fix",
-  "agent": "atlas",
-  "commit_after_each_task": true
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\ai-consolidation.md",
+  "started_at": "2026-02-27T17:53:17.821Z",
+  "session_ids": [
+    "ses_35fe07681ffeJwhzHcZlgGhWz8"
+  ],
+  "plan_name": "ai-consolidation",
+  "agent": "atlas"
 }
