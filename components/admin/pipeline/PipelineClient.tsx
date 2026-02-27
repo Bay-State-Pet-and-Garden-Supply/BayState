@@ -16,11 +16,14 @@ import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 import { PipelineFlowVisualization } from './PipelineFlowVisualization';
 import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
-import { Search, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
-import { UndoToast } from './UndoToast';
-import { undoQueue } from '@/lib/pipeline/undo';
-import { SkipLink } from '@/components/ui/skip-link';
+import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
+20#RR|import { Search, RefreshCw, AlertTriangle } from 'lucide-react';
+21#HY|import { toast } from 'sonner';
+22#MS|import { UndoToast } from './UndoToast';
+23#JR|import { undoQueue } from '@/lib/pipeline/undo';
+24#XK|import { SkipLink } from '@/components/ui/skip-link';
+25#YH|import { isOpenAIConfigured } from '@/lib/consolidation';
+26#AL|import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const statusLabels: Record<PipelineStatus, string> = {
     staging: 'Imported',
@@ -72,6 +75,7 @@ export function PipelineClient({
     const [consolidationProgress, setConsolidationProgress] = useState(0);
     const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 
+    const [isOpenAIReady, setIsOpenAIReady] = useState(true);
     // Clear scrape results state
     const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
 
@@ -160,6 +164,10 @@ export function PipelineClient({
         };
     }, [consolidationBatchId, ws.lastProgressEvent]);
 
+    // Check OpenAI configuration on mount
+    useEffect(() => {
+        isOpenAIConfigured().then(setIsOpenAIReady);
+    }, []);
     const handleStatusChange = async (status: PipelineStatus) => {
         setActiveStatus(status);
         setSelectedSkus(new Set());
@@ -474,6 +482,24 @@ export function PipelineClient({
                 counts={counts}
             />
 
+            {/* OpenAI Config Warning */}
+            {!isOpenAIReady && (
+                <Alert variant="warning" className="mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>AI Consolidation Disabled</AlertTitle>
+                    <AlertDescription className="flex items-center gap-2">
+                        OpenAI API key not configured.
+                        <Button 
+                            variant="link" 
+                            className="p-0 h-auto"
+                            onClick={() => router.push('/admin/settings')}
+                        >
+                            Configure
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Status Tabs */}
             <PipelineStatusTabs
                 counts={counts}
@@ -611,7 +637,7 @@ export function PipelineClient({
                     currentStatus={activeStatus}
                     searchQuery={search}
                     onAction={handleBulkAction}
-                    onConsolidate={handleConsolidate}
+                    onConsolidate={isOpenAIReady ? handleConsolidate : undefined}
                     isConsolidating={isConsolidating}
                     onClearSelection={() => setSelectedSkus(new Set())}
                     onClearScrapeResults={handleClearScrapeResults}
