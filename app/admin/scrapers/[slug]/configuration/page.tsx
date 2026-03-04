@@ -129,6 +129,10 @@ export default async function ConfigurationPage({ params, searchParams }: Config
           {isDraft ? (
             <form action={async () => {
               'use server';
+              if (!version?.id) {
+                redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent('Version ID is required')}`);
+                return;
+              }
               const result = await publishVersion(version.id);
               if (!result.success) {
                 redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to publish')}`);
