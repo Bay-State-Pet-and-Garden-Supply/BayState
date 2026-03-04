@@ -219,7 +219,7 @@ export function PipelineClient({
 
     // Check OpenAI configuration on mount
     useEffect(() => {
-        isOpenAIConfigured().then(setIsOpenAIReady);
+        setIsOpenAIReady(isOpenAIConfigured());
     }, []);
     const handleStatusChange = async (status: PipelineStatus) => {
         setActiveStatus(status);
