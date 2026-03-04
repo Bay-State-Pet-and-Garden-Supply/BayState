@@ -56,6 +56,42 @@ describe('scraper callback contract validation', () => {
         expect(result.payload.job_id).toBe('job-123');
         expect(result.payload.results?.data?.['SKU-1']?.sourceA).toBeDefined();
     });
+
+    it('accepts crawl4ai metadata on scraper callbacks', () => {
+        const payload = {
+            job_id: 'job-456',
+            status: 'completed',
+            results: {
+                data: {
+                    'SKU-2': {
+                        sourceA: {
+                            title: 'Crawl4AI Product',
+                        },
+                    },
+                },
+                extraction_strategy: ['css', 'llm'],
+                cost_breakdown: {
+                    total_usd: 0.17,
+                },
+                anti_bot_metrics: {
+                    challenge_rate: 0.02,
+                },
+                crawl4ai: {
+                    extraction_strategy: {
+                        'SKU-2': 'llm',
+                    },
+                },
+            },
+        };
+
+        const result = parseScraperCallbackPayload(JSON.stringify(payload));
+        expect(result.success).toBe(true);
+        if (result.success) {
+            expect(result.payload.results?.cost_breakdown).toBeDefined();
+            expect(result.payload.results?.anti_bot_metrics).toBeDefined();
+            expect(result.payload.results?.crawl4ai?.extraction_strategy).toBeDefined();
+        }
+    });
 });
 
 describe('chunk callback contract validation', () => {

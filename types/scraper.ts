@@ -135,6 +135,15 @@ export interface ScrapeJob {
   completed_at: string | null;
   error_message: string | null;
   created_by: string | null;
+  metadata?: Record<string, unknown> | null;
+  crawl4ai?: {
+    extraction_strategy: string[];
+    cost_breakdown: Record<string, unknown> | null;
+    anti_bot_metrics: Record<string, unknown> | null;
+    llm_count: number;
+    llm_free_count: number;
+    llm_ratio: number | null;
+  };
 }
 
 export interface ScrapeJobChunk {

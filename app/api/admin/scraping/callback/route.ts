@@ -57,6 +57,80 @@ interface TelemetryExtraction {
     duration_ms?: number;
 }
 
+type ExtractionStrategy = 'css' | 'xpath' | 'llm';
+
+interface Crawl4AiMetadata {
+    extractionStrategies: ExtractionStrategy[];
+    costBreakdown: Record<string, unknown> | null;
+    antiBotMetrics: Record<string, unknown> | null;
+    llmCount: number;
+    llmFreeCount: number;
+    llmRatio: number | null;
+}
+
+function normalizeExtractionStrategies(value: unknown): ExtractionStrategy[] {
+    const acceptedStrategies: ExtractionStrategy[] = ['css', 'xpath', 'llm'];
+
+    const toStrategy = (candidate: unknown): ExtractionStrategy | null => {
+        if (typeof candidate !== 'string') {
+            return null;
+        }
+
+        const lower = candidate.toLowerCase();
+        return acceptedStrategies.includes(lower as ExtractionStrategy) ? (lower as ExtractionStrategy) : null;
+    };
+
+    if (typeof value === 'string') {
+        const strategy = toStrategy(value);
+        return strategy ? [strategy] : [];
+    }
+
+    if (Array.isArray(value)) {
+        return value
+            .map(toStrategy)
+            .filter((strategy): strategy is ExtractionStrategy => strategy !== null);
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.values(value)
+            .map(toStrategy)
+            .filter((strategy): strategy is ExtractionStrategy => strategy !== null);
+    }
+
+    return [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function extractCrawl4AiMetadata(payload: ScraperCallbackPayload): Crawl4AiMetadata {
+    const results = payload.results;
+    const crawl4ai = isRecord(results?.crawl4ai) ? results.crawl4ai : null;
+
+    const strategySource = crawl4ai?.extraction_strategy ?? results?.extraction_strategy;
+    const extractionStrategies = normalizeExtractionStrategies(strategySource);
+
+    const costBreakdownSource = crawl4ai?.cost_breakdown ?? results?.cost_breakdown;
+    const antiBotSource = crawl4ai?.anti_bot_metrics ?? results?.anti_bot_metrics;
+
+    const costBreakdown = isRecord(costBreakdownSource) ? costBreakdownSource : null;
+    const antiBotMetrics = isRecord(antiBotSource) ? antiBotSource : null;
+
+    const llmCount = extractionStrategies.filter((strategy) => strategy === 'llm').length;
+    const llmFreeCount = extractionStrategies.filter((strategy) => strategy !== 'llm').length;
+    const totalCount = llmCount + llmFreeCount;
+
+    return {
+        extractionStrategies,
+        costBreakdown,
+        antiBotMetrics,
+        llmCount,
+        llmFreeCount,
+        llmRatio: totalCount > 0 ? llmCount / totalCount : null,
+    };
+}
+
 async function persistTestRunTelemetry(
     supabase: SupabaseClient,
     params: {
@@ -303,25 +377,49 @@ export async function POST(request: NextRequest) {
             updateData.error_message = payload.error_message;
         }
 
-        // Store crawl4ai metrics if provided
-        if (payload.status === 'completed' && payload.results) {
-            const results = payload.results;
-            if (results.extraction_strategy) {
-                updateData.extraction_strategy = results.extraction_strategy;
-            }
-            if (results.llm_cost !== undefined) {
-                updateData.llm_cost = results.llm_cost;
-            }
-            if (results.total_cost !== undefined) {
-                updateData.total_cost = results.total_cost;
-            }
-            if (results.anti_bot_success_rate !== undefined) {
-                updateData.anti_bot_success_rate = results.anti_bot_success_rate;
-            }
-            if (results.crawl4ai_errors && results.crawl4ai_errors.length > 0) {
-                updateData.crawl4ai_errors = results.crawl4ai_errors;
-            }
+        const crawl4aiMetadata = extractCrawl4AiMetadata(payload);
+        const { data: existingJobMetadata } = await supabase
+            .from('scrape_jobs')
+            .select('metadata')
+            .eq('id', payload.job_id)
+            .single();
+
+        const priorMetadata = (existingJobMetadata?.metadata && typeof existingJobMetadata.metadata === 'object')
+            ? (existingJobMetadata.metadata as Record<string, unknown>)
+            : {};
+
+        const priorCrawl4Ai = (priorMetadata.crawl4ai && typeof priorMetadata.crawl4ai === 'object')
+            ? (priorMetadata.crawl4ai as Record<string, unknown>)
+            : {};
+
+        const previousLlmCount = typeof priorCrawl4Ai.llm_count === 'number' ? priorCrawl4Ai.llm_count : 0;
+        const previousLlmFreeCount = typeof priorCrawl4Ai.llm_free_count === 'number' ? priorCrawl4Ai.llm_free_count : 0;
+        const cumulativeLlmCount = previousLlmCount + crawl4aiMetadata.llmCount;
+        const cumulativeLlmFreeCount = previousLlmFreeCount + crawl4aiMetadata.llmFreeCount;
+        const cumulativeTotal = cumulativeLlmCount + cumulativeLlmFreeCount;
+
+        const nextCrawl4AiMetadata: Record<string, unknown> = {
+            ...priorCrawl4Ai,
+            extraction_strategy: crawl4aiMetadata.extractionStrategies,
+            llm_count: cumulativeLlmCount,
+            llm_free_count: cumulativeLlmFreeCount,
+            llm_ratio: cumulativeTotal > 0 ? cumulativeLlmCount / cumulativeTotal : null,
+            callback_llm_ratio: crawl4aiMetadata.llmRatio,
+            updated_at: nowIso,
+        };
+
+        if (crawl4aiMetadata.costBreakdown) {
+            nextCrawl4AiMetadata.cost_breakdown = crawl4aiMetadata.costBreakdown;
         }
+
+        if (crawl4aiMetadata.antiBotMetrics) {
+            nextCrawl4AiMetadata.anti_bot_metrics = crawl4aiMetadata.antiBotMetrics;
+        }
+
+        updateData.metadata = {
+            ...priorMetadata,
+            crawl4ai: nextCrawl4AiMetadata,
+        };
 
         let jobUpdateQuery = supabase
             .from('scrape_jobs')

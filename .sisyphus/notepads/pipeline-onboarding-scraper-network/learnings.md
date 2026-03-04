@@ -273,3 +273,16 @@ skus.forEach((sku, index) => {
 - Limits blast radius if a runner key is compromised
 - Enables multi-tenant runner deployments with restricted access
 - Prepares for per-distributor runner isolation
+
+## 2026-03-04 Crawl4AI callback integration
+
+### Patterns and conventions confirmed
+- Callback payload contracts are Zod-first and must stay permissive for optional runner metadata.
+- `scrape_jobs.metadata` is the stable extension point for adding runner-specific telemetry without schema churn.
+- Backward compatibility is best preserved by supporting both top-level and nested metadata shapes in callback payloads.
+
+### Successful approach used
+- Added Crawl4AI fields to callback contract as optional (`results.*` and `results.crawl4ai.*`).
+- Normalized extraction strategy values to strict enum set (`css`, `xpath`, `llm`) in callback route.
+- Persisted derived aggregate metrics to metadata (`llm_count`, `llm_free_count`, `llm_ratio`, `callback_llm_ratio`).
+- Surfaced Crawl4AI status data through existing job status reads/API responses instead of creating new endpoints.

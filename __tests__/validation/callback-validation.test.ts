@@ -279,6 +279,33 @@ describe('callback validation - admin payloads', () => {
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(true);
     });
+
+    it('accepts crawl4ai nested metadata object for completed callbacks', () => {
+      const payload = JSON.stringify({
+        job_id: 'job-789',
+        status: 'completed',
+        results: {
+          data: {
+            'sku-1': { amazon: { price: 12.34 } }
+          },
+          crawl4ai: {
+            extraction_strategy: {
+              'sku-1': 'llm'
+            },
+            cost_breakdown: {
+              llm_usd: 0.04,
+              network_usd: 0.01,
+            },
+            anti_bot_metrics: {
+              blocked_requests: 1,
+              retries: 2,
+            }
+          }
+        }
+      });
+      const result = parseScraperCallbackPayload(payload);
+      expect(result.success).toBe(true);
+    });
   });
 });
 
