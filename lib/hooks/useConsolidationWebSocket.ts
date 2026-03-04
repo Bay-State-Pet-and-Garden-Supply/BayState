@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 // Event Types for Consolidation
 export interface ConsolidationProgressEvent {
     batchId: string;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
     progress: number; // 0-100
     totalProducts: number;
     processedProducts: number;
