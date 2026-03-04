@@ -166,12 +166,20 @@ export async function getScrapeJobStatus(jobId: string): Promise<{
     status: 'pending' | 'running' | 'completed' | 'failed';
     completedAt?: string;
     error?: string;
+    crawl4ai?: {
+        extraction_strategy?: string[];
+        cost_breakdown?: Record<string, unknown>;
+        anti_bot_metrics?: Record<string, unknown>;
+        llm_count?: number;
+        llm_free_count?: number;
+        llm_ratio?: number | null;
+    };
 }> {
     const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('scrape_jobs')
-        .select('status, completed_at, error_message')
+        .select('status, completed_at, error_message, metadata')
         .eq('id', jobId)
         .single();
 
@@ -179,10 +187,33 @@ export async function getScrapeJobStatus(jobId: string): Promise<{
         return { status: 'failed', error: 'Job not found' };
     }
 
+    const metadata = (data.metadata && typeof data.metadata === 'object')
+        ? (data.metadata as Record<string, unknown>)
+        : null;
+    const crawl4ai = (metadata?.crawl4ai && typeof metadata.crawl4ai === 'object')
+        ? (metadata.crawl4ai as Record<string, unknown>)
+        : null;
+
     return {
         status: data.status,
         completedAt: data.completed_at,
         error: data.error_message,
+        crawl4ai: crawl4ai
+            ? {
+                extraction_strategy: Array.isArray(crawl4ai.extraction_strategy)
+                    ? (crawl4ai.extraction_strategy as string[])
+                    : undefined,
+                cost_breakdown: (crawl4ai.cost_breakdown && typeof crawl4ai.cost_breakdown === 'object')
+                    ? (crawl4ai.cost_breakdown as Record<string, unknown>)
+                    : undefined,
+                anti_bot_metrics: (crawl4ai.anti_bot_metrics && typeof crawl4ai.anti_bot_metrics === 'object')
+                    ? (crawl4ai.anti_bot_metrics as Record<string, unknown>)
+                    : undefined,
+                llm_count: typeof crawl4ai.llm_count === 'number' ? crawl4ai.llm_count : undefined,
+                llm_free_count: typeof crawl4ai.llm_free_count === 'number' ? crawl4ai.llm_free_count : undefined,
+                llm_ratio: typeof crawl4ai.llm_ratio === 'number' ? crawl4ai.llm_ratio : null,
+            }
+            : undefined,
     };
 }
 

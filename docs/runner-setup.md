@@ -1,11 +1,13 @@
-# Self-Hosted Runner Setup Guide
+# Runner Setup Guide
 
 Set up a new scraping runner in **under 5 minutes**.
+
+> **Deprecation Notice (2026-03):** The GitHub Actions-based runner has been deprecated. This guide covers the **polling daemon** approach, which is the current recommended method.
 
 ## TL;DR (One Command)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/scripts/bootstrap-runner.sh | bash
+curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
 ```
 
 ---
@@ -13,49 +15,34 @@ curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/Bay
 ## What You'll Need
 
 1. A Mac or Linux machine that stays powered on
-2. A GitHub runner registration token (instructions below)
+2. A runner API key from the Admin Panel
 3. 5 minutes
 
 ---
 
 ## Step-by-Step Setup
 
-### Step 1: Get Your Runner Token
+### Step 1: Get Your Runner API Key
 
-1. Go to: **[Add New Runner](https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/settings/actions/runners/new)**
-2. Select your OS (macOS or Linux)
-3. Copy the token from the `--token` part of the configure command
-
-The token looks like: `AXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`
+1. Go to: **Admin Panel → Scraper Network → Runner Accounts**
+2. Create a new runner account
+3. Copy the API key (starts with `bsr_`)
 
 ### Step 2: Run the Bootstrap Script
 
 Open Terminal and run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/scripts/bootstrap-runner.sh | bash
+curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
 ```
 
 The script will prompt you for:
-- **Runner token**: Paste the token from Step 1
-- **Runner name**: A name for this machine (e.g., "nicks-macbook")
+- **API URL**: Your BayStateApp URL (e.g., `https://app.baystatepet.com`)
+- **API Key**: Paste the key from Step 1
 
 ### Step 3: Verify
 
-Check your runner appears at:
-**[GitHub Runners](https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/settings/actions/runners)**
-
-It should show as **Idle** (green dot).
-
----
-
-## What the Bootstrap Script Does
-
-1. **Installs Docker** (if not already installed)
-2. **Downloads GitHub Actions Runner** (latest version)
-3. **Configures the runner** with labels `self-hosted,docker`
-4. **Pulls the Docker image** for scraping
-5. **Installs as a system service** (auto-starts on boot)
+The runner should connect automatically. Check the Admin Panel → Scraper Network to see the runner status.
 
 ---
 
@@ -63,99 +50,95 @@ It should show as **Idle** (green dot).
 
 ```
 ┌─────────────────┐                         ┌─────────────────────┐
-│   BayStateApp   │   "Run scrape job"      │   GitHub Actions    │
-│   (Admin Panel) │ ──────────────────────▶ │                     │
+│   BayStateApp   │   Polls for jobs        │   Self-Hosted       │
+│   (Coordinator) │ ◀──────────────────────▶│   Runner            │
+│                 │   every 30 seconds       │   (Docker Daemon)   │
 └─────────────────┘                         └──────────┬──────────┘
                                                        │
                                                        ▼
-                                            ┌─────────────────────┐
-                                            │   Your Laptop       │
-                                            │   (Runner Service)  │
-                                            │                     │
-                                            │   Runs Docker       │
-                                            │   container with    │
-                                            │   scraper code      │
-                                            └──────────┬──────────┘
-                                                       │
-         Results sent back                             │
-┌─────────────────┐                                    │
-│   BayStateApp   │ ◀──────────────────────────────────┘
+                                             ┌─────────────────────┐
+                                             │   Docker Container  │
+                                             │   - Polling daemon  │
+                                             │   - Playwright      │
+                                             │   - Scraper code    │
+                                             └─────────────────────┘
+          Results sent via callback           │
+┌─────────────────┐ ◀──────────────────────────┘
+│   BayStateApp   │
 │   (Database)    │
 └─────────────────┘
 ```
 
----
+### Two Modes
 
-## Required GitHub Secrets
-
-These must be configured in the **BayStateScraper** repository settings by an admin:
-
-| Secret | Description |
-|--------|-------------|
-| `SCRAPER_API_URL` | BayStateApp URL (e.g., `https://app.baystatepet.com`) |
-| `SCRAPER_API_KEY` | Runner API key from Admin Panel |
-| `SCRAPER_WEBHOOK_SECRET` | HMAC fallback signing key |
-| `SCRAPER_CALLBACK_URL` | `{SCRAPER_API_URL}/api/admin/scraping/callback` |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_KEY` | Supabase service role key |
-| `SETTINGS_ENCRYPTION_KEY` | Key for decrypting stored credentials |
+| Mode | How It Works | Use Case |
+|------|--------------|----------|
+| **Polling** (default) | Polls coordinator every 30 seconds | Most common |
+| **Realtime** (v0.2.0+) | Connects via WebSocket for instant dispatch | High-volume setups |
 
 ---
 
 ## Managing Your Runner
 
-### Service Commands (macOS)
+### Docker Commands
 
 ```bash
-cd ~/actions-runner
-
-# Check status
-./svc.sh status
+# View logs
+docker logs -f baystate-scraper
 
 # Stop the runner
-./svc.sh stop
+docker stop baystate-scraper
 
 # Start the runner
-./svc.sh start
+docker start baystate-scraper
 
-# View logs
-tail -f ~/Library/Logs/actions.runner.*.log
+# Restart (after config changes)
+docker restart baystate-scraper
 ```
 
-### Service Commands (Linux)
+### View Real-Time Events (v0.2.0+)
+
+If running in realtime mode, connect to the event stream:
 
 ```bash
-# Check status
-sudo systemctl status actions.runner.*
+docker exec baystate-scraper python -c "from scrapers.events.emitter import EventEmitter; import asyncio; asyncio.run(EventEmitter().subscribe('*', lambda e: print(e)))"
+```
 
-# Stop the runner
-sudo systemctl stop actions.runner.*
+### Update the Runner
 
-# Start the runner
-sudo systemctl start actions.runner.*
-
-# View logs
-journalctl -u actions.runner.* -f
+```bash
+curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
 ```
 
 ### Remove the Runner
 
 ```bash
-cd ~/actions-runner
-./svc.sh stop
-./svc.sh uninstall
-./config.sh remove --token YOUR_TOKEN
+docker stop baystate-scraper
+docker rm baystate-scraper
 ```
+
+---
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SCRAPER_API_URL` | Yes | - | BayStateApp URL |
+| `SCRAPER_API_KEY` | Yes | - | Runner API key (starts with `bsr_`) |
+| `RUNNER_NAME` | No | hostname | Identifier for this runner |
+| `POLL_INTERVAL` | No | 30 | Seconds between job polls |
+| `BSR_SUPABASE_REALTIME_KEY` | No | - | For realtime mode (optional) |
+| `HEADLESS` | No | `true` | Set to `false` for visible browser |
 
 ---
 
 ## Credential Security (Vault Pattern)
 
-Site passwords (Phillips, Orgill, etc.) are **never stored on the runner**:
+Site passwords are **never stored on the runner**:
 
-1. GitHub Actions passes "vault keys" to the Docker container
-2. Container connects to Supabase and downloads encrypted settings
-3. Container decrypts settings using `SETTINGS_ENCRYPTION_KEY`
+1. Runner connects to Supabase on-demand
+2. Downloads encrypted credentials
+3. Decrypts using `SETTINGS_ENCRYPTION_KEY` (fetched from coordinator)
 4. Credentials exist only in memory during execution
 5. Container exits and credentials are gone
 
@@ -166,10 +149,9 @@ Site passwords (Phillips, Orgill, etc.) are **never stored on the runner**:
 | Issue | Solution |
 |-------|----------|
 | "Docker not running" | Open Docker Desktop (macOS) or `sudo systemctl start docker` (Linux) |
-| Runner shows offline | Check if service is running: `./svc.sh status` |
-| Jobs stuck in "queued" | Verify runner has labels `self-hosted,docker` |
+| Runner shows offline | Check logs: `docker logs baystate-scraper` |
+| Jobs stuck in "queued" | Verify API key is valid in Admin Panel |
 | "Permission denied" on Docker | Run `sudo usermod -aG docker $USER` and log out/in |
-| Token expired | Get a new token from GitHub Settings |
 
 ---
 
@@ -187,6 +169,9 @@ A: Yes! Run the bootstrap script on each machine with a unique name.
 **Q: What happens if I close my laptop during a job?**
 A: The job will fail and be marked as such. No data is lost.
 
+**Q: What's the difference from the old GitHub Actions runner?**
+A: The polling daemon is self-contained and doesn't require GitHub Actions infrastructure. It's simpler, more reliable, and has lower latency.
+
 ---
 
 ## Alternative: Desktop App
@@ -198,4 +183,4 @@ For testing and debugging, use the Desktop App instead:
 3. Enter your API key from Admin Panel → Scraper Network
 4. Run scrapes manually with full visibility
 
-The Desktop App is for **development/testing**. For production, use the GitHub Runner setup above.
+The Desktop App is for **development/testing**. For production, use the Docker daemon setup above.
