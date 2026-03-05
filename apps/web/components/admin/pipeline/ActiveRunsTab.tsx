@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Play, Clock, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Play, Clock, Loader2, XCircle, ExternalLink, History } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface ActiveJob {
     id: string;
@@ -17,9 +21,11 @@ interface ActiveRunsTabProps {
 }
 
 export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
+    const router = useRouter();
     const [jobs, setJobs] = useState<ActiveJob[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
 
     const fetchJobs = async () => {
         try {
@@ -40,6 +46,28 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         const interval = setInterval(fetchJobs, 10000);
         return () => clearInterval(interval);
     }, []);
+
+    const handleCancel = async (jobId: string) => {
+        if (!confirm('Are you sure you want to cancel this job?')) return;
+        
+        setCancellingId(jobId);
+        try {
+            const res = await fetch(`/api/admin/scrapers/runs/${jobId}/cancel`, {
+                method: 'POST',
+            });
+            
+            if (res.ok) {
+                toast.success('Job cancelled');
+                fetchJobs();
+            } else {
+                toast.error('Failed to cancel job');
+            }
+        } catch (error) {
+            toast.error('Failed to cancel job');
+        } finally {
+            setCancellingId(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -71,6 +99,16 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
 
     return (
         <div className={`space-y-4 ${className}`}>
+            <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{jobs.length} active job{jobs.length !== 1 ? 's' : ''}</span>
+                <Button variant="outline" size="sm" asChild>
+                    <Link href="/admin/scrapers/runs">
+                        <History className="mr-2 h-4 w-4" />
+                        View All Runs
+                    </Link>
+                </Button>
+            </div>
+            
             {jobs.map((job) => (
                 <div
                     key={job.id}
@@ -110,16 +148,42 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-gray-600">Progress</span>
-                            <span className="font-medium text-gray-900">{job.progress}%</span>
+                    
+                    <div className="mt-3 flex items-center justify-between">
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-gray-600">Progress</span>
+                                <span className="font-medium text-gray-900">{job.progress}%</span>
+                            </div>
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                                <div
+                                    className="h-full rounded-full bg-[#008850] transition-all duration-500"
+                                    style={{ width: `${job.progress}%` }}
+                                />
+                            </div>
                         </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                            <div
-                                className="h-full rounded-full bg-[#008850] transition-all duration-500"
-                                style={{ width: `${job.progress}%` }}
-                            />
+                        
+                        <div className="flex items-center gap-2 ml-4">
+                            {(job.status === 'pending' || job.status === 'running') && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleCancel(job.id)}
+                                    disabled={cancellingId === job.id}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                    {cancellingId === job.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <XCircle className="h-4 w-4" />
+                                    )}
+                                </Button>
+                            )}
+                            <Button variant="ghost" size="sm" asChild>
+                                <Link href={`/admin/scrapers/runs/${job.id}`}>
+                                    <ExternalLink className="h-4 w-4" />
+                                </Link>
+                            </Button>
                         </div>
                     </div>
                 </div>
