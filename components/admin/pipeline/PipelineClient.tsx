@@ -219,7 +219,7 @@ export function PipelineClient({
 
     // Check OpenAI configuration on mount
     useEffect(() => {
-        isOpenAIConfigured().then(setIsOpenAIReady);
+        setIsOpenAIReady(isOpenAIConfigured());
     }, []);
     const handleStatusChange = async (status: PipelineStatus) => {
         setActiveStatus(status);
@@ -576,13 +576,13 @@ export function PipelineClient({
                 batchId={consolidationBatchId}
                 status={ws.lastProgressEvent ? {
                     batchId: consolidationBatchId || '',
-                    status: ws.lastProgressEvent.status || 'in_progress',
+                    status: ws.lastProgressEvent.status === 'processing' ? 'in_progress' : ws.lastProgressEvent.status,
                     totalProducts: ws.lastProgressEvent.totalProducts || 0,
-                    processedCount: ws.lastProgressEvent.processedCount || 0,
+                    processedCount: ws.lastProgressEvent.processedProducts || 0,
                     successCount: ws.lastProgressEvent.successfulProducts || 0,
                     errorCount: ws.lastProgressEvent.failedProducts || 0,
-                    errors: ws.lastProgressEvent.errors || [],
-                    results: ws.lastProgressEvent.results || []
+                    errors: [],
+                    results: []
                 } : null}
             />
 

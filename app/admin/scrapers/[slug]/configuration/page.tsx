@@ -143,6 +143,7 @@ export default async function ConfigurationPage({ params, searchParams }: Config
           ) : scraper.current_version_id ? (
             <form action={async () => {
               'use server';
+              if (!scraper.id) return;
               const result = await createNewVersion(scraper.id);
               if (!result.success) {
                 redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to create version')}`);
