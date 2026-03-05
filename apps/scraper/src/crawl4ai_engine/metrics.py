@@ -126,6 +126,8 @@ class Crawl4AIMetricsCollector:
         """Initialize the metrics collector."""
         self._extractions: list[ExtractionMetrics] = []
         self._error_counts: dict[ErrorType, int] = defaultdict(int)
+        # Tracks validation errors separately (field-level / categorized)
+        self._validation_errors: dict[str, int] = defaultdict(int)
         self._mode_counts: dict[ExtractionMode, int] = defaultdict(int)
         self._site_stats: dict[str, dict[str, Any]] = defaultdict(
             lambda: {
@@ -232,6 +234,14 @@ class Crawl4AIMetricsCollector:
 
         return extraction
 
+    def record_validation_error(self, error_type: str = "unknown") -> None:
+        """Record a validation error instance.
+
+        error_type is a short string/category (eg. 'price', 'name', 'missing_field', 'unknown')
+        """
+        # Fail-fast metric increment for validation problems
+        self._validation_errors[error_type] = self._validation_errors.get(error_type, 0) + 1
+
     def _extract_site(self, url: str) -> str:
         """Extract site identifier from URL."""
         try:
@@ -336,6 +346,7 @@ class Crawl4AIMetricsCollector:
                 "cache_hit_rate": round(self.cache_hit_rate, 4),
             },
             "errors": self.get_error_breakdown(),
+            "validation_errors": dict(self._validation_errors),
             "anti_bot": {
                 "total_attempts": self._anti_bot.total_attempts,
                 "success_rate": round(self._anti_bot.success_rate, 4),

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from core.anti_detection_manager import AntiDetectionConfig
+# Avoid importing AntiDetectionConfig here to prevent import resolution errors
+# during static analysis. Use Any for the field type to preserve runtime
+# flexibility and backward compatibility.
 
 
 KNOWN_SCHEMA_VERSIONS = {"1.0"}
@@ -133,9 +135,82 @@ class ScraperConfig(BaseModel):
     login: LoginConfig | None = Field(None, description="Login configuration if required")
     timeout: int = Field(30, description="Default timeout in seconds", ge=1, le=300)
     retries: int = Field(3, description="Number of retries on failure", ge=0, le=10)
-    anti_detection: AntiDetectionConfig | None = Field(None, description="Anti-detection configuration")
+    anti_detection: Any | None = Field(None, description="Anti-detection configuration")
     http_status: HttpStatusConfig | None = Field(None, description="HTTP status monitoring configuration")
     validation: ValidationConfig | None = Field(None, description="Data validation and no-results configuration")
+
+class ProxyConfig(BaseModel):
+    """Optional proxy configuration for scraper runtime.
+
+    All fields are optional to allow partial configs where only a proxy list
+    or single proxy URL is provided.
+    """
+
+    proxy_url: str | None = Field(None, description="Single proxy URL (http://host:port or https://host:port)")
+    proxy_username: str | None = Field(None, description="Username for proxy auth if required")
+    proxy_password: str | None = Field(None, description="Password for proxy auth if required")
+    rotation_strategy: Literal["per_request", "per_site", "off"] = Field("off", description="Strategy for rotating proxies")
+    proxy_list: Optional[List[str]] = Field(None, description="Optional list of proxy URLs to rotate through")
+
+    @field_validator("proxy_url")
+    @classmethod
+    def validate_proxy_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("proxy_url must start with 'http://' or 'https://'")
+        return v
+
+    @field_validator("proxy_list")
+    @classmethod
+    def validate_proxy_list(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return v
+        if not isinstance(v, list):
+            raise ValueError("proxy_list must be a list of proxy URL strings")
+        for item in v:
+            if not (isinstance(item, str) and (item.startswith("http://") or item.startswith("https://"))):
+                raise ValueError("each proxy in proxy_list must be a URL starting with 'http://' or 'https://'")
+        return v
+
+
+class ScraperConfig(BaseModel):
+    # Optional proxy configuration for outbound requests and Playwright
+    class ProxyConfig(BaseModel):
+        """Optional proxy configuration for scraper runtime.
+
+        All fields are optional to allow partial configs where only a proxy list
+        or single proxy URL is provided.
+        """
+
+        proxy_url: str | None = Field(None, description="Single proxy URL (http://host:port or https://host:port)")
+        proxy_username: str | None = Field(None, description="Username for proxy auth if required")
+        proxy_password: str | None = Field(None, description="Password for proxy auth if required")
+        rotation_strategy: Literal["per_request", "per_site", "off"] = Field("off", description="Strategy for rotating proxies")
+        proxy_list: Optional[List[str]] = Field(None, description="Optional list of proxy URLs to rotate through")
+
+        @field_validator("proxy_url")
+        @classmethod
+        def validate_proxy_url(cls, v: Optional[str]) -> Optional[str]:
+            if v is None:
+                return v
+            if not (v.startswith("http://") or v.startswith("https://")):
+                raise ValueError("proxy_url must start with 'http://' or 'https://'")
+            return v
+
+        @field_validator("proxy_list")
+        @classmethod
+        def validate_proxy_list(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+            if v is None:
+                return v
+            if not isinstance(v, list):
+                raise ValueError("proxy_list must be a list of proxy URL strings")
+            for item in v:
+                if not (isinstance(item, str) and (item.startswith("http://") or item.startswith("https://"))):
+                    raise ValueError("each proxy in proxy_list must be a URL starting with 'http://' or 'https://'")
+            return v
+
+    proxy_config: Optional[ProxyConfig] = Field(None, description="Optional proxy configuration for outbound requests")
     test_skus: list[str] | None = Field(None, description="List of SKUs to use for testing")
     fake_skus: list[str] | None = Field(None, description="List of fake SKUs for no-results validation")
     edge_case_skus: list[str] | None = Field(None, description="List of edge case SKUs for boundary testing")

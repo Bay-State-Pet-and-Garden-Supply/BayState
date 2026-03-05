@@ -9,12 +9,16 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Final
+from typing import Any, Final
 
 import httpx
+
+from ...validation.schemas import validate_callback_payload, validate_scraped_result
 
 
 def _utcnow_iso() -> str:
@@ -176,8 +180,91 @@ class CallbackClient:
         self._webhook_secret: Final[str] = webhook_secret
         self._timeout_seconds: Final[float] = timeout_seconds
 
+    def _validate_payload(self, payload: Mapping[str, object]) -> dict[str, Any]:
+        """Validate callback payload using Pandera schemas.
+
+        Performs two-level validation:
+        1. Validates overall callback payload structure
+        2. Validates each SKU's scraped result individually
+
+        Times the validation operation and reports failures to Sentry.
+
+        Args:
+            payload: The callback payload to validate
+
+        Returns:
+            Dict containing validation results with keys:
+            - valid: bool indicating if validation passed
+            - duration_ms: float of validation time in milliseconds
+            - errors: list of error messages (empty if valid)
+
+        Raises:
+            Does not raise - validation errors are captured and reported.
+        """
+        start_time = time.perf_counter()
+        errors: list[str] = []
+
+        try:
+            # Cast to dict for validation functions
+            payload_dict = dict(payload)
+
+            # Level 1: Validate overall callback structure
+            validate_callback_payload(payload_dict)
+
+            # Level 2: Validate each SKU's data
+            results = payload_dict.get("results", {})
+            data_by_sku = results.get("data", {}) if isinstance(results, dict) else {}
+
+            for sku, vendor_data in data_by_sku.items():
+                if not isinstance(vendor_data, dict):
+                    errors.append(f"SKU {sku}: vendor data is not a dict")
+                    continue
+
+                for vendor, scraped_data in vendor_data.items():
+                    if not isinstance(scraped_data, dict):
+                        errors.append(f"SKU {sku} vendor {vendor}: scraped data is not a dict")
+                        continue
+
+                    try:
+                        validate_scraped_result(scraped_data)
+                    except Exception as e:
+                        errors.append(f"SKU {sku} vendor {vendor}: {e}")
+
+        except Exception as e:
+            errors.append(f"Payload validation failed: {e}")
+
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        # Report to Sentry if validation failed
+        if errors:
+            try:
+                sentry_sdk = __import__("sentry_sdk")
+                with sentry_sdk.push_scope() as scope:
+                    scope.set_extra("validation_duration_ms", duration_ms)
+                    scope.set_extra("validation_errors", errors)
+                    scope.set_extra("payload_job_id", payload.get("job_id", "unknown"))
+                    sentry_sdk.capture_message(f"Callback payload validation failed: {len(errors)} errors", level="warning")
+            except Exception:
+                pass  # Sentry not available, continue silently
+
+        return {
+            "valid": len(errors) == 0,
+            "duration_ms": duration_ms,
+            "errors": errors,
+        }
+
     def send(self, payload: Mapping[str, object], idempotency_key: str) -> httpx.Response:
         """Send callback payload and raise for HTTP failure."""
+        # Check if Pandera validation is enabled
+        if os.environ.get("ENABLE_PANDERA_VALIDATION", "").lower() in ("1", "true", "yes"):
+            validation_result = self._validate_payload(payload)
+            if not validation_result["valid"]:
+                # Validation failed - errors already reported to Sentry
+                # Still continue to send the payload (don't block on validation failure)
+                # The validation errors are logged and the coordinator will receive
+                # the data for further processing/decision
+                pass
+
         body = _canonical_json(payload)
         headers = build_callback_headers(
             body=body,

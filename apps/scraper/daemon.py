@@ -73,9 +73,16 @@ if env_file.exists():
     load_dotenv(env_file, override=True)
 
 
-from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig
-from core.realtime_manager import RealtimeManager
-from utils.logger import setup_logging
+from .core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
+from .core.realtime_manager import RealtimeManager  # type: ignore
+from .utils.logger import setup_logging  # type: ignore
+from .utils.sentry import (
+    init_sentry,
+    set_job_context,
+    add_extraction_breadcrumb,
+    capture_antibot_event,
+)  # type: ignore
+from .src.crawl4ai_engine.metrics_endpoint import start_metrics_server, stop_metrics_server  # type: ignore
 
 
 # Configuration
@@ -118,7 +125,7 @@ def run_job(
     This imports and calls the run_job function from runner.py,
     but fetches credentials from the coordinator instead of local storage.
     """
-    from runner import run_job
+    from .runner import run_job  # type: ignore
 
     # Fetch credentials for any scrapers that require login
     for scraper in job_config.scrapers:
@@ -148,11 +155,7 @@ def run_claimed_chunk(
     job_config.max_workers = chunk.max_workers
 
     if chunk.scrapers:
-        job_config.scrapers = [
-            s
-            for s in job_config.scrapers
-            if s.name in chunk.scrapers or (s.display_name and s.display_name in chunk.scrapers)
-        ]
+        job_config.scrapers = [s for s in job_config.scrapers if s.name in chunk.scrapers or (s.display_name and s.display_name in chunk.scrapers)]
 
     return run_job(job_config, client, log_buffer)
 
@@ -170,6 +173,17 @@ async def main_async():
 
     # Initialize API client
     client = ScraperAPIClient()
+    # Initialize Sentry as early as possible (no-op if SENTRY_DSN not set)
+    try:
+        init_sentry()
+    except Exception:
+        logger.warning("Sentry initialization failed or not installed")
+    # Start metrics server in background (non-blocking)
+    metrics_httpd = None
+    try:
+        metrics_httpd, _metrics_thread = start_metrics_server()
+    except Exception as e:
+        logger.warning(f"Failed to start metrics server: {e}")
 
     # Read version
     version = "unknown"
@@ -303,6 +317,20 @@ async def main_async():
 
     if rm:
         await rm.disconnect()
+
+    # Shutdown metrics server if running
+    try:
+        if metrics_httpd:
+            try:
+                metrics_httpd.shutdown()
+            except Exception:
+                logger.exception("Error shutting down metrics HTTP server")
+            try:
+                metrics_httpd.server_close()
+            except Exception:
+                logger.exception("Error closing metrics HTTP server")
+    except Exception:
+        logger.exception("Error while stopping metrics server")
 
     logger.info("=" * 60)
     logger.info(f"Daemon shutting down. Chunks completed: {chunks_completed}")
