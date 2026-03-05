@@ -19,6 +19,8 @@ interface BulkActionsToolbarProps {
     onDeleteEnd?: () => void;
     onClearScrapeResults?: () => void;
     isClearingScrapeResults?: boolean;
+    onBulkEnrich?: () => void;
+    isBulkEnriching?: boolean;
 }
 
 const nextStatusMap: Record<PipelineStatus, { action: string; nextStatus: PipelineStatus }[]> = {
@@ -59,6 +61,8 @@ export function BulkActionsToolbar({
     onDeleteEnd,
     onClearScrapeResults,
     isClearingScrapeResults = false,
+    onBulkEnrich,
+    isBulkEnriching = false,
 }: BulkActionsToolbarProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -143,6 +147,22 @@ export function BulkActionsToolbar({
                                         <RotateCcw className="h-4 w-4" />
                                     )}
                                     {isClearingScrapeResults ? 'Clearing...' : 'Clear & Reset'}
+                                </button>
+                            )}
+
+                            {currentStatus === 'staging' && onBulkEnrich && (
+                                <button
+                                    onClick={onBulkEnrich}
+                                    disabled={isBulkEnriching}
+                                    className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                                    title="Run scraper enhancement on selected products"
+                                >
+                                    {isBulkEnriching ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-4 w-4" />
+                                    )}
+                                    {isBulkEnriching ? 'Enhancing...' : 'Enhance'}
                                 </button>
                             )}
 
