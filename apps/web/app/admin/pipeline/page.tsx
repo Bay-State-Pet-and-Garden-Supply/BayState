@@ -1,20 +1,18 @@
 import { getProductsByStatus, getStatusCounts } from '@/lib/pipeline';
-import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
+import { UnifiedPipelineClient } from '@/components/admin/pipeline/UnifiedPipelineClient';
 
 export default async function PipelinePage() {
     // Fetch initial data server-side
-    const [{ products, count }, counts] = await Promise.all([
+    const [{ products }, counts] = await Promise.all([
         getProductsByStatus('staging', { limit: 200 }),
         getStatusCounts(),
     ]);
 
     return (
         <div className="p-8">
-            <PipelineClient
+            <UnifiedPipelineClient
                 initialProducts={products}
                 initialCounts={counts}
-                initialTab="staging"
-                initialFilteredCount={count}
             />
         </div>
     );

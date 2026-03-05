@@ -5,7 +5,6 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
 import type { PipelineTab } from '@/lib/pipeline-tabs';
 import { isStatusTab } from '@/lib/pipeline-tabs';
-import { PipelineStatusTabs } from './PipelineStatusTabs';
 import { PipelineProductCard } from './PipelineProductCard';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
@@ -17,7 +16,6 @@ import { ChunkConfig } from '@/components/admin/enrichment/ChunkConfig';
 import { ReviewSubmit } from '@/components/admin/enrichment/ReviewSubmit';
 import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
-import { PipelineFlowVisualization } from './PipelineFlowVisualization';
 import { ActiveRunsTab } from './ActiveRunsTab';
 import { ActiveConsolidationsTab } from './ActiveConsolidationsTab';
 import { ImageSelectionTab } from './ImageSelectionTab';
@@ -486,19 +484,10 @@ export function PipelineClient({
             </div>
 
             {/* ETL Pipeline Flow Visualization */}
-            <PipelineFlowVisualization
-                currentTab={activeTab}
-                counts={counts}
-            />
+            {/* Deprecated - removed */}
 
             {/* Status Tabs */}
-            <PipelineStatusTabs
-                counts={counts}
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                monitoringCounts={monitoringCounts}
-                actionCounts={{ 'images': imagesNeedingCount }}
-            />
+            {/* Deprecated - removed */}
 
             {consolidationBatchId && (
                 <ConsolidationProgressBanner
