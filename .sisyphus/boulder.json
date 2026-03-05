@@ -1,9 +1,9 @@
 {
-  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-infrastructure-improvements.md",
-  "started_at": "2026-03-05T20:40:15.313Z",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-architecture-cleanup.md",
+  "started_at": "2026-03-05T22:25:42.206Z",
   "session_ids": [
-    "ses_34045a905ffewSe0S385RfgbwN"
+    "ses_33fe4ad17ffepchqkQgR6xTTdI"
   ],
-  "plan_name": "scraper-infrastructure-improvements",
+  "plan_name": "scraper-architecture-cleanup",
   "agent": "atlas"
 }
