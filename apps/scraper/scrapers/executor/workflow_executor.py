@@ -18,13 +18,18 @@ import threading
 import time
 from typing import Any, cast
 
-from core.adaptive_retry_strategy import AdaptiveRetryStrategy
-from core.anti_detection_manager import AntiDetectionManager
-from core.failure_analytics import FailureAnalytics
-from core.failure_classifier import FailureClassifier, FailureType
-from core.retry_executor import CircuitBreakerConfig, RetryExecutor
-from core.settings_manager import PROJECT_ROOT, SettingsManager
-from scrapers.actions import ActionRegistry
+from infra.adaptive_retry_strategy import $$$
+from infra.anti_detection_manager import $$$
+from infra.failure_analytics import $$$
+from infra.failure_classifier import $$$
+from infra.retry_executor import $$$
+from infra.settings_manager import $$$
+
+try:
+    # Prefer new location
+    from actions import ActionRegistry
+except Exception:
+    from scrapers.actions import ActionRegistry
 from scrapers.exceptions import (
     BrowserError,
     CircuitBreakerOpenError,

@@ -9,14 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.events import (
-    EventBus,
-    EventEmitter,
-    EventSeverity,
-    EventType,
-    ScraperEvent,
-    create_emitter,
-)
+from infra.events import $$$
 
 
 class TestScraperEventV2:

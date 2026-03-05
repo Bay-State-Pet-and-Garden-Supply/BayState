@@ -10,7 +10,7 @@ import logging
 from enum import Enum
 from typing import Any, Callable
 
-from core.api_client import ScraperAPIClient
+from infra.api_client import $$$
 
 logger = logging.getLogger(__name__)
 

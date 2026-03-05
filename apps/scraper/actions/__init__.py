@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
+# Use the existing implementations under scrapers.actions for compatibility.
 from scrapers.actions.base import BaseAction
 
-# Keep importing handlers to ensure registration (backwards compatible)
+# Import handlers to ensure they are registered
 from scrapers.actions.handlers import (
     anti_detection,
     browser,

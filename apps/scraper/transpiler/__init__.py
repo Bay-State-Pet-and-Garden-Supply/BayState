@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.crawl4ai_engine.transpiler import (
+from engine.transpiler import (
     ParsedYAMLConfig,
     SelectorField,
     UnsupportedFeature,

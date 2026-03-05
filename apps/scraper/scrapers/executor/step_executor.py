@@ -8,9 +8,13 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from core.events import EventEmitter
-from core.retry_executor import RetryExecutor
-from scrapers.actions import ActionRegistry
+from infra.events import $$$
+from infra.retry_executor import $$$
+
+try:
+    from actions import ActionRegistry
+except Exception:
+    from scrapers.actions import ActionRegistry
 from scrapers.exceptions import ConfigurationError, ErrorContext
 from scrapers.models.config import WorkflowStep
 

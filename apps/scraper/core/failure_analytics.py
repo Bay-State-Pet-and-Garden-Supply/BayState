@@ -17,8 +17,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from core.failure_classifier import FailureType
-from core.settings_manager import PROJECT_ROOT
+from infra.failure_classifier import $$$
+from infra.settings_manager import $$$
 
 logger = logging.getLogger(__name__)
 

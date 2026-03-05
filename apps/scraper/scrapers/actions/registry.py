@@ -37,12 +37,20 @@ class ActionRegistry:
         from pathlib import Path
 
         # Get the handlers package path
+        # Support both old location (scrapers.actions.handlers) and new location (actions.handlers)
         handlers_path = Path(__file__).parent / "handlers"
+        if not handlers_path.exists():
+            # fallback to new location
+            handlers_path = Path(__file__).parent.parent / "actions" / "handlers"
 
         # Import all modules in the handlers directory
         for _, module_name, _ in pkgutil.iter_modules([str(handlers_path)]):
             try:
-                _ = importlib.import_module(f"scrapers.actions.handlers.{module_name}")
+                # Try importing from the old package path first, fall back to new package path
+                try:
+                    _ = importlib.import_module(f"scrapers.actions.handlers.{module_name}")
+                except ImportError:
+                    _ = importlib.import_module(f"actions.handlers.{module_name}")
                 # The decorators will register the actions automatically
             except ImportError as e:
                 # Log but don't fail - some handlers might have dependencies

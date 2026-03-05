@@ -12,8 +12,8 @@ from typing import TypeAlias
 import pytest
 from typing_extensions import override
 
-from core.performance_profiler import OperationType, PerformanceProfiler
-from core.performance_profiler import OperationStats
+from infra.performance_profiler import $$$
+from infra.performance_profiler import $$$
 from scrapers.ai_discovery import AIDiscoveryScraper
 
 JsonScalar: TypeAlias = str | int | float | bool | None
