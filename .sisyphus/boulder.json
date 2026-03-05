@@ -1,10 +1,9 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/crawl4ai-migration.md",
-  "started_at": "2026-03-04T08:22:28.339Z",
+  "active_plan": "C:\\Users\\Nick\\Desktop\\Projects\\BayState\\.sisyphus\\plans\\crawl4ai-migration.md",
+  "started_at": "2026-02-28T00:25:24.101Z",
   "session_ids": [
-    "ses_3480f091fffeaoVTW4TG9k3GFB"
+    "ses_35e5e1b0dffeAiC7O4Gbv6S5Xf"
   ],
   "plan_name": "crawl4ai-migration",
-  "agent": "atlas",
-  "worktree_path": "/Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration"
+  "agent": "atlas"
 }

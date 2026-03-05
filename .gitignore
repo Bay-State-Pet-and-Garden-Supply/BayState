@@ -6,7 +6,7 @@
 .DS_Store
 logs/
 tmp/
-.sisyphus/
+#XM|#.sisyphus/
 .vscode/
 *.log
 
@@ -23,3 +23,4 @@ nul
 .sisyphus/evidence/*
 !.sisyphus/evidence/.gitkeep
 !.sisyphus/evidence/README.md
+pyrightconfig.json
