@@ -1,0 +1,97 @@
+# AI Scraper Config: Orgill
+# Migrated from legacy static scraper to Crawl4AI
+# NOTE: Requires login - manual review needed for authentication handling
+name: "ai-orgill"
+display_name: "AI Orgill Extractor"
+base_url: "https://www.orgill.com"
+scraper_type: "agentic"
+
+ai_config:
+  provider: "crawl4ai"
+  task: "Find Orgill products by UPC or model number and extract product name, brand, model number, weight, and images. Navigate through search results and handle login if required."
+  max_steps: 16
+  confidence_threshold: 0.75
+  llm_model: "gpt-4o-mini"
+  use_vision: true
+  headless: true
+
+workflows:
+  - action: "navigate"
+    name: "search_orgill_for_sku"
+    params:
+      url: "https://www.orgill.com/SearchResultN.aspx?ddlhQ={sku}"
+
+  - action: "ai_extract"
+    name: "extract_orgill_product"
+    params:
+      task: "Search for and extract Orgill product information including Name, Brand, Model Number, Weight, and Images. Handle login page if encountered. Navigate to product details if needed."
+      visit_top_n: 2
+      max_steps: 18
+      confidence_threshold: 0.75
+      schema:
+        name: str
+        brand: str
+        model_number: str
+        weight: str
+        images: list
+        description: str
+
+  - action: "ai_validate"
+    name: "validate_orgill_extraction"
+    params:
+      required_fields:
+        - name
+        - brand
+        - images
+      sku_must_match: false
+      min_confidence: 0.7
+
+test_skus:
+  - "037193347322"
+  - "032700006105"
+  - "073091023005"
+  - "027773008934"
+  - "032886595189"
+  - "071859975047"
+
+fake_skus:
+  - "zzzzqqqq9999xxxx"
+  - "000000000000"
+  - "999999999999"
+
+edge_case_skus:
+  - "123"
+  - "1234567890123456789"
+
+timeout: 60
+retries: 0
+
+anti_detection:
+  enable_captcha_detection: true
+  enable_rate_limiting: true
+  enable_human_simulation: true
+  enable_session_rotation: false
+  enable_blocking_handling: true
+  rate_limit_min_delay: 1.0
+  rate_limit_max_delay: 3.0
+  session_rotation_interval: 50
+  max_retries_on_detection: 2
+
+validation:
+  no_results_selectors:
+    - "span:has-text('Found 0 results')"
+    - ".no-results"
+    - ".empty-search"
+    - ".search-no-results"
+  no_results_text_patterns:
+    - "no results found"
+    - "no products found"
+    - "your search returned no results"
+    - "we couldn't find any results"
+    - "no items match your search"
+    - "Found 0 results"
+
+# NOTE: This scraper requires authentication.
+# The legacy config had login credentials that need to be migrated separately.
+needs_manual_review: true
+review_reason: "Requires login authentication handling"

@@ -1,0 +1,59 @@
+# Docker Compose for Bay State Scraper Runner
+# Uses production configuration by default (connects to Vercel deployment)
+# For local development, use: ./run-dev.sh instead
+#
+# IMPORTANT: Issue #1754 Mitigation
+# crawl4ai v0.8.0 has an asyncio.Lock deadlock that causes unresponsiveness
+# after days of operation. This configuration includes health checks and
+# auto-restart to mitigate the issue.
+# See: https://github.com/unclecode/crawl4ai/issues/1754
+
+services:
+  scraper:
+    image: baystate-scraper:latest
+    build: .
+    restart: on-failure
+    init: true
+    shm_size: '2gb'
+    environment:
+      # Production settings - uses .env file values
+      - SCRAPER_API_URL=${SCRAPER_API_URL}
+      - SCRAPER_API_KEY=${SCRAPER_API_KEY}
+      - RUNNER_NAME=${RUNNER_NAME:-default-runner}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30}
+      - MAX_JOBS_BEFORE_RESTART=${MAX_JOBS_BEFORE_RESTART:-100}
+      - HEALTHCHECK_MAX_MEMORY_PERCENT=${HEALTHCHECK_MAX_MEMORY_PERCENT:-90}
+      - LOG_LEVEL=DEBUG
+    healthcheck:
+      test: ["CMD", "python", "scripts/health_check.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    mem_limit: 4g
+    mem_reservation: 1g
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          # 2GB limit per container (Issue #1754 mitigation)
+          # crawl4ai can leak memory leading to asyncio.Lock deadlock
+          memory: 2g
+          cpus: '1.0'
+        reservations:
+          memory: 512m
+    # Docker health check configuration
+    # Detects Issue #1754 deadlock symptoms and triggers restart
+    healthcheck:
+      test: ["CMD", "python", "/app/scripts/health_check.py"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+      start_interval: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
