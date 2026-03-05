@@ -10,7 +10,7 @@ from typing import TypeAlias
 
 import pytest
 
-from core.performance_profiler import OperationStats, OperationType
+from infra.performance_profiler import $$$
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

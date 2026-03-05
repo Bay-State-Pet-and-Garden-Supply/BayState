@@ -4,8 +4,8 @@ import json
 import logging
 import sys
 
-from core.api_client import ScraperAPIClient
-from core.config_fetcher import ConfigFetchError, ConfigValidationError
+from infra.api_client import $$$
+from infra.config_fetcher import $$$
 from utils.structured_logging import generate_trace_id
 
 from runner import run_job

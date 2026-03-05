@@ -36,19 +36,14 @@ pydantic_module = importlib.import_module("pydantic")
 BaseModel = pydantic_module.BaseModel
 field_validator = pydantic_module.field_validator
 
-from core.api_client import ScraperAPIClient
+from infra.api_client import $$$
 
 # Ensure backend is in path
 project_root = str(Path(__file__).resolve().parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from core.events import (
-    EventType,
-    ScraperEvent,
-    create_emitter,
-    event_bus,
-)
+from infra.events import $$$
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from src.crawl4ai_engine.transpiler import YAMLToCrawl4AI
+from engine.transpiler import YAMLToCrawl4AI
 
 
 def _default_output_path(config_path: Path, output_format: str) -> Path:

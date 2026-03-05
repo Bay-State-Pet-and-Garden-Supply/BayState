@@ -6,13 +6,20 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from core.api_client import JobConfig
-from core.events import ScraperEvent, create_emitter, event_bus
-from core.settings_manager import settings
-from scrapers.ai_discovery import AIDiscoveryScraper
-from scrapers.executor.workflow_executor import WorkflowExecutor
-from scrapers.parser import ScraperConfigParser
-from scrapers.result_collector import ResultCollector
+from ..infra import JobConfig
+from ..infra import ScraperEvent, create_emitter, event_bus
+from ..infra import settings
+
+try:
+    # Prefer new location
+    from ..ai.discovery import AIDiscoveryScraper  # type: ignore
+except Exception:
+    from ..scrapers.ai_discovery import AIDiscoveryScraper  # type: ignore
+from ..scrapers.executor.workflow_executor import WorkflowExecutor
+from ..scrapers.parser import ScraperConfigParser
+from ..scrapers.result_collector import ResultCollector
+from ..scrapers.models.config import ScraperConfig as ScraperConfigModel
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -259,10 +266,11 @@ def run_job(
                 "validation": getattr(scraper_cfg, "validation", None),
             }
 
-            config = parser.load_from_dict(config_dict)
+            config = cast(ScraperConfigModel, parser.load_from_dict(config_dict))
             configs.append(config)
-            log_buffer.append(create_log_entry("info", f"Loaded scraper config: {config.name}"))
-            logger.info(f"[Runner] Loaded scraper config: {config.name}")
+            cfg_name = getattr(config, "name", "unknown")
+            log_buffer.append(create_log_entry("info", f"Loaded scraper config: {cfg_name}"))
+            logger.info(f"[Runner] Loaded scraper config: {cfg_name}")
         except Exception as e:
             config_errors.append((scraper_cfg.name, str(e)))
             log_buffer.append(create_log_entry("error", f"Failed to parse config for {scraper_cfg.name}: {e}"))
@@ -282,9 +290,10 @@ def run_job(
         raise ConfigurationError(f"[Runner] {error_msg}")
 
     for config in configs:
-        log_buffer.append(create_log_entry("info", f"Starting scraper: {config.name}"))
-        logger.info(f"[Runner] Running scraper: {config.name}")
-        results["scrapers_run"].append(config.name)
+        cfg_name = getattr(config, "name", "unknown")
+        log_buffer.append(create_log_entry("info", f"Starting scraper: {cfg_name}"))
+        logger.info(f"[Runner] Running scraper: {cfg_name}")
+        results["scrapers_run"].append(cfg_name)
 
         executor = None
         try:
@@ -319,8 +328,8 @@ def run_job(
                             )
                             scrape_results.append((sku, result))
                         except Exception as e:
-                            log_buffer.append(create_log_entry("error", f"{config.name}/{sku}: {type(e).__name__} - {e}"))
-                            logger.error(f"[Runner] {config.name}/{sku}: Error - {e}")
+                            log_buffer.append(create_log_entry("error", f"{cfg_name}/{sku}: {type(e).__name__} - {e}"))
+                            logger.error(f"[Runner] {cfg_name}/{sku}: Error - {e}")
                             scrape_results.append((sku, None))
                 finally:
                     # Ensure browser is properly quit inside the async context
@@ -374,40 +383,40 @@ def run_job(
                             except Exception:
                                 pass
 
-                        results["data"][sku][config.name] = {
-                            # Note: Price is NOT scraped - we use our own pricing
-                            "title": extracted_data.get("Name"),
-                            "brand": extracted_data.get("Brand"),
-                            "weight": extracted_data.get("Weight"),
-                            "description": extracted_data.get("Description"),
-                            "images": extracted_data.get("Image URLs", []) or extracted_data.get("Images", []),
-                            "availability": extracted_data.get("Availability"),
-                            "url": page_url,
-                            "scraped_at": datetime.now().isoformat(),
-                        }
+                            results["data"][sku][cfg_name] = {
+                                # Note: Price is NOT scraped - we use our own pricing
+                                "title": extracted_data.get("Name"),
+                                "brand": extracted_data.get("Brand"),
+                                "weight": extracted_data.get("Weight"),
+                                "description": extracted_data.get("Description"),
+                                "images": extracted_data.get("Image URLs", []) or extracted_data.get("Images", []),
+                                "availability": extracted_data.get("Availability"),
+                                "url": page_url,
+                                "scraped_at": datetime.now().isoformat(),
+                            }
 
-                        collector.add_result(sku, config.name, extracted_data)
+                        collector.add_result(sku, cfg_name, extracted_data)
 
                         # Call progress callback if provided (for incremental saving)
                         if progress_callback:
                             try:
-                                progress_callback(sku, config.name, results["data"][sku][config.name])
+                                progress_callback(sku, cfg_name, results["data"][sku][cfg_name])
                             except Exception as e:
                                 logger.warning(f"[Runner] Progress callback failed for {config.name}/{sku}: {e}")
 
-                        log_buffer.append(create_log_entry("info", f"{config.name}/{sku}: Found data"))
-                        emitter.info(f"{config.name}/{sku}: Found data", data=results["data"][sku][config.name])
-                        logger.info(f"[Runner] {config.name}/{sku}: Found data")
+                        log_buffer.append(create_log_entry("info", f"{cfg_name}/{sku}: Found data"))
+                        emitter.info(f"{cfg_name}/{sku}: Found data", data=results["data"][sku][cfg_name])
+                        logger.info(f"[Runner] {cfg_name}/{sku}: Found data")
                     else:
-                        log_buffer.append(create_log_entry("info", f"{config.name}/{sku}: No data found"))
-                        logger.info(f"[Runner] {config.name}/{sku}: No data found")
+                        log_buffer.append(create_log_entry("info", f"{cfg_name}/{sku}: No data found"))
+                        logger.info(f"[Runner] {cfg_name}/{sku}: No data found")
                 else:
-                    log_buffer.append(create_log_entry("warning", f"{config.name}/{sku}: Workflow failed"))
-                    logger.warning(f"[Runner] {config.name}/{sku}: Workflow failed")
+                    log_buffer.append(create_log_entry("warning", f"{cfg_name}/{sku}: Workflow failed"))
+                    logger.warning(f"[Runner] {cfg_name}/{sku}: Workflow failed")
 
         except Exception as e:
-            log_buffer.append(create_log_entry("error", f"Failed to initialize {config.name}: {e}"))
-            logger.error(f"[Runner] Failed to initialize {config.name}: {e}")
+            log_buffer.append(create_log_entry("error", f"Failed to initialize {cfg_name}: {e}"))
+            logger.error(f"[Runner] Failed to initialize {cfg_name}: {e}")
 
     log_buffer.append(create_log_entry("info", f"Job complete. Processed {results['skus_processed']} SKUs"))
     logger.info(f"[Runner] Job complete. Processed {results['skus_processed']} SKUs")
@@ -546,9 +555,32 @@ def _run_discovery_job(
     return results
 
 
+# Execution engine imports
+from .execution import (
+    ExecutionResult,
+    WorkerConfig,
+    create_work_stealing_queues,
+    execute_with_thread_pool,
+    load_skus_from_excel,
+    load_skus_with_metadata,
+    process_sku_with_batch_restart,
+    run_worker_thread,
+    should_restart_browser,
+)
+
 __all__ = [
     "ConfigurationError",
     "create_emitter",
     "create_log_entry",
     "run_job",
+    # Execution engine exports
+    "ExecutionResult",
+    "WorkerConfig",
+    "create_work_stealing_queues",
+    "execute_with_thread_pool",
+    "load_skus_from_excel",
+    "load_skus_with_metadata",
+    "process_sku_with_batch_restart",
+    "run_worker_thread",
+    "should_restart_browser",
 ]

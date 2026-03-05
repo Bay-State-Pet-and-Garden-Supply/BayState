@@ -199,7 +199,7 @@ class TestErrorClassification:
 
     def test_error_classification_with_failure_type(self):
         """Test classification with failure type."""
-        from core.failure_classifier import FailureType
+        from infra.failure_classifier import $$$
 
         classification = ErrorClassification(
             category=ErrorCategory.ANTI_BOT,

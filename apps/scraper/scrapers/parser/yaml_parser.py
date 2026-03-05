@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml  # type: ignore
 
-from core.anti_detection_manager import AntiDetectionConfig
+from infra.anti_detection_manager import $$$
 from scrapers.models import ScraperConfig, ValidationConfig
 from scrapers.schemas import validate_config_dict
 

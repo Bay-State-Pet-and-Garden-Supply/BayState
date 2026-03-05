@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from core.api_client import ClaimedChunk, JobConfig, ScraperConfig
+from infra.api_client import $$$
 from runner.chunk_mode import run_chunk_worker_mode
 
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.api_client import JobConfig, ScraperConfig
+from infra.api_client import $$$
 from runner import run_job, ConfigurationError
 
 
@@ -108,7 +108,7 @@ class TestRunnerConfigurationErrorHandling:
     def test_valid_configs_succeed(self):
         """Test that valid configurations are processed successfully."""
         # Create a mock emitter that doesn't actually emit
-        from core.events import EventEmitter
+        from infra.events import $$$
 
         mock_emitter = MagicMock(spec=EventEmitter)
 

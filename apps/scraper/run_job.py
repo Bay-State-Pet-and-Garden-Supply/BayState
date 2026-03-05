@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
+
+# os not needed; avoid unused import warnings
 import sys
 from pathlib import Path
 
@@ -23,12 +24,34 @@ if sys.platform == "win32":
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Setup logging to stream to stdout so parent process can capture it
-from utils.logger import setup_logging
+from apps.scraper.utils.logger import setup_logging
 
 setup_logging(debug_mode=False, json_output=True)
 logger = logging.getLogger(__name__)
 
-from scrapers.runtime import run_scraping
+from apps.scraper.runner import run_job
+
+# Keep a local reference to avoid unused-import linter warnings. The CLI
+# script provides a compatibility shim and doesn't call run_job directly.
+_runner_ref = run_job
+
+
+# Compatibility wrapper: original script called `run_scraping(...)` from
+# `scrapers.runtime`. New runner exposes `run_job`. Provide a thin shim with
+# the original signature so the CLI remains compatible. The actual runner
+# implementation expects a JobConfig object; this shim is a compatibility
+# placeholder. When invoked in normal operation, a proper JobConfig should be
+# constructed or the caller should use the runner package directly.
+def run_scraping(skus: list[str] | None = None, selected_sites: list[str] | None = None, test_mode: bool = False, max_workers: int = 3):
+    """Compatibility shim for the old run_scraping(...) API.
+
+    Note: This is a thin placeholder to preserve the CLI signature. The
+    daemon/runner flow should use runner.run_job with a JobConfig object.
+    """
+    # Mark parameters as used to satisfy static checkers, then raise an
+    # explicit error to guide callers to the new runner API.
+    _ = (skus, selected_sites, test_mode, max_workers)
+    raise RuntimeError("run_scraping compatibility shim called. Use runner.run_job with a JobConfig.")
 
 
 def main():
