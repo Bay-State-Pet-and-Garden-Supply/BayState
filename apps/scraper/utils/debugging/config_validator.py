@@ -308,7 +308,7 @@ class ConfigValidator:
         warnings: list[str] = []
 
         try:
-            from core.anti_detection_manager import AntiDetectionConfig
+            from infra.anti_detection_manager import $$$
             from scrapers.models import ScraperConfig
 
             # Preprocess anti_detection if present

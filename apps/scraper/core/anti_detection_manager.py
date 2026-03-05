@@ -14,11 +14,11 @@ import time
 from typing import TYPE_CHECKING, Any
 
 
-from core.adaptive_retry_strategy import AdaptiveRetryStrategy, FailureContext
-from core.captcha_solver import CaptchaSolver, CaptchaSolverConfig
-from core.failure_analytics import FailureAnalytics
-from core.failure_classifier import FailureClassifier, FailureType
-from core.settings_manager import PROJECT_ROOT
+from infra.adaptive_retry_strategy import $$$
+from infra.captcha_solver import $$$
+from infra.failure_analytics import $$$
+from infra.failure_classifier import $$$
+from infra.settings_manager import $$$
 
 if TYPE_CHECKING:
     from utils.scraping.playwright_browser import (

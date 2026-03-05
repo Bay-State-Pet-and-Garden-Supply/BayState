@@ -14,7 +14,7 @@ from inspect import isawaitable, iscoroutinefunction
 from threading import RLock
 from typing import ParamSpec, Protocol, TypeVar, cast, runtime_checkable
 
-from core.failure_classifier import FailureClassifier, FailureType
+from infra.failure_classifier import $$$
 from scrapers.exceptions import (
     AccessDeniedError,
     CaptchaError,

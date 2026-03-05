@@ -1,10 +1,10 @@
-from src.crawl4ai_engine.config import load_config
+from engine.config import load_config
 
 try:
-    from src.crawl4ai_engine.engine import Crawl4AIEngine
+    from engine.engine import Crawl4AIEngine
 except ModuleNotFoundError:
     Crawl4AIEngine = None
-from src.crawl4ai_engine.metrics import (
+from engine.metrics import (
     Crawl4AIMetricsCollector,
     ErrorType,
     ExtractionMode,

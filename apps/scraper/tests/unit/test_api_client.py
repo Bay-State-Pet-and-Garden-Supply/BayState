@@ -5,12 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import httpx
 
-from core.api_client import (
-    AuthenticationError,
-    ClaimedChunk,
-    ConnectionError,
-    ScraperAPIClient,
-)
+from infra.api_client import $$$
 
 
 class TestScraperAPIClient:
