@@ -27,10 +27,7 @@ from pathlib import Path
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-try:
-    from apps.scraper.ai.discovery import AIDiscoveryScraper, DiscoveryResult  # type: ignore
-except Exception:
-    from scrapers.ai_discovery import AIDiscoveryScraper, DiscoveryResult
+from scrapers.ai_discovery import AIDiscoveryScraper, DiscoveryResult
 
 logging.basicConfig(
     level=logging.INFO,
