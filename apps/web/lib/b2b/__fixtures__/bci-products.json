@@ -1,0 +1,33 @@
+{
+  "Items": [
+    {
+      "Description": "Veterinarian recommended formula with real chicken",
+      "ID": "BCI-001",
+      "Name": "Ultra Premium Dog Kibble 40lb",
+      "xp": {
+        "Brand": "VetChoice",
+        "Category": "Dog Food",
+        "Images": ["https://cdn.ordercloud.io/bci/BCI-001.jpg"],
+        "UPC": "345678901001",
+        "Weight": 40
+      }
+    },
+    {
+      "Description": "Daily dental care treats for large breeds",
+      "ID": "BCI-002",
+      "Name": "Dental Chews Large Dog 30ct",
+      "xp": {
+        "Brand": "DentaCare",
+        "Category": "Treats",
+        "Images": [],
+        "UPC": "345678901002",
+        "Weight": 2.5
+      }
+    }
+  ],
+  "Meta": {
+    "Page": 1,
+    "PageSize": 100,
+    "TotalCount": 2
+  }
+}
