@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+export interface ConsolidatedProduct {
+    id: string;
+    name: string;
+    brand: string;
+    weight: string;
+    images: string[];
+}
+
 // Event Types for Consolidation
 export interface ConsolidationProgressEvent {
     batchId: string;
@@ -12,7 +20,7 @@ export interface ConsolidationProgressEvent {
     successfulProducts: number;
     failedProducts: number;
     errors?: string[];
-    results?: unknown[];
+    results?: ConsolidatedProduct[];
     estimatedTimeRemaining?: number; // seconds
     timestamp: number;
 }
