@@ -23,3 +23,30 @@ nul
 !.sisyphus/evidence/.gitkeep
 !.sisyphus/evidence/README.md
 pyrightconfig.json
+.vercel
+
+# ------------------------------
+# Sensitive and credential files
+# ------------------------------
+# Explicitly ignore local env files (covers .env.local, .env.development.local, etc.)
+.env.local
+.env.*.local
+.envrc
+
+# npm, yarn credentials and configs
+.npmrc
+.yarnrc
+
+# Docker credentials
+.docker/config.json
+
+# SSH key material
+id_rsa
+id_rsa.pub
+
+# Certificate and key files
+*.pem
+*.key
+*.crt
+
+# note: keep other application JSON files tracked; avoid broad *.json ignores
