@@ -1,6 +1,6 @@
 # BAY STATE WORKSPACE
 
-**Generated:** 2026-01-11
+**Generated:** 2026-03-04
 **Context:** Multi-project monorepo for e-commerce (Next.js) and distributed scraping (Python).
 
 ## OVERVIEW
@@ -63,46 +63,78 @@ Three-part system: **BayStateApp** (Next.js 16 PWA + Admin), **BayStateScraper**
 
 ## CROSS-PROJECT CONVENTIONS
 - **Auth**: `X-API-Key` (bsr_*) for Scrapers. `getUser()` + Supabase RLS for App.
-- **DB Access**: App ONLY via `@supabase/ssr`. Scrapers use API callbacks.
-- **Imports**: `@/*` aliases in App. Named exports only.
+- **DB Access**: App ONLY via `@supabase/ssr`. Scrapers use API callbacks (NO direct DB credentials).
+- **Imports**: `@/*` aliases in App. Named exports only (no default exports for libraries).
 - **State**: Zustand (cart/UI), URL state (filters), Server Components (data).
-- **Forms**: React Hook Form + Zod. Server Actions for mutations.
+- **Forms**: React Hook Form + Zod validation. Server Actions for mutations.
 - **Git**: `<type>(<scope>): <description>`. PRs require `workflow.md` adherence.
+- **Package Manager**: Bun v1.3.5 (`bun install --frozen-lockfile`)
 
 ## TESTING
 | Project | Framework | Command | Pattern |
 |---------|-----------|---------|---------|
 | **App** | Jest + RTL | `CI=true npm test` | `__tests__/` mirrors source |
-| **Scraper** | pytest + custom | `python -m pytest` | `tests/unit/`, YAML `test_skus` |
+| **App E2E** | Playwright | `npm run test:a11y:e2e` | `tests/e2e/` |
+| **Scraper** | pytest | `python -m pytest` | `tests/unit/`, `scraper_backend/tests/` |
 
 - **TDD Required**: Red → Green → Refactor. 80% coverage minimum.
 - **Mocks**: Supabase via `@/lib/supabase/server`. Radix via `jest.setup.js`.
+- **CI Mode**: Use `CI=true` for all automated test commands.
 
 ## ANTI-PATTERNS (GLOBAL)
-- **NO** database credentials in `BayStateScraper` runners
-- **NO** new features in `BayStateTools` (deprecated)
-- **NO** mixed lockfiles (use `package-lock.json` in App)
+- **NO** database credentials in `BayStateScraper` runners (API callbacks only)
+- **NO** new features in `BayStateTools` (deprecated - reference only)
+- **NO** mixed lockfiles (use Bun + `bun.lockb` in App)
 - **NO** visual changes without `frontend-ui-ux-engineer`
-- **NO** `any`, `@ts-ignore`, default exports, `var`
+- **NO** `any`, `@ts-ignore`, `@ts-expect-error` (strict TypeScript)
+- **NO** default exports (named only for refactoring)
+- **NO** `var` (use `const`/`let` with strict typing)
 - **NO** direct DB in client components (use Server Actions)
+- **NO** logic in page files (move to `lib/` or components)
 - **NO** code before failing tests (TDD violation)
 - **NO** commits without `git notes` task summary
+- **NO** Selenium (Playwright only in scrapers)
+- **NO** `print()` in scraper production code (use structured logger)
+- **NO** bare `except:` clauses (classify failures for retry logic)
 
 ## COMMANDS
+
+### BayStateApp (Next.js)
 ```bash
-# App
-cd BayStateApp && npm run dev          # Dev server (localhost:3000)
-cd BayStateApp && CI=true npm test     # Run tests
-cd BayStateApp && npm run lint         # ESLint
+cd BayStateApp
+bun install --frozen-lockfile      # Install deps (uses Bun v1.3.5)
+bun run dev                         # Dev server (localhost:3000)
+CI=true npm test                    # Run Jest tests with coverage
+npm run test:a11y:e2e               # Playwright E2E tests
+npm run lint                        # ESLint 9 flat config
+bun run build                       # Production build (Vercel)
+```
 
-# Scraper (Local)
-cd BayStateScraper && python -m scraper_backend.runner --job-id test
+### BayStateScraper (Python)
+```bash
+cd BayStateScraper
+pip install -r requirements.txt     # Install deps
+python daemon.py --env dev          # Local polling (localhost:3000)
+./run-dev.sh                        # Dev mode wrapper
+./run-prod.sh                       # Production mode (Vercel)
+python -m pytest                    # Run test suite
+ruff check .                        # Lint check
+mypy scraper_backend/               # Type check (non-blocking)
+```
 
-# Scraper (Docker)
-cd BayStateScraper && docker build -t baystate-scraper .
+### Docker (Scraper)
+```bash
+cd BayStateScraper
+docker build -t baystate-scraper .  # Build image
+docker compose up -d                # Start runner stack
+docker logs -f baystate-scraper     # View logs
+```
 
-# Desktop App
-cd BayStateScraper/ui && npm run tauri dev
+### Desktop App (Tauri)
+```bash
+cd BayStateScraper/ui
+npm install
+npm run tauri dev                   # Dev mode with hot reload
 ```
 
 ## NOTES
@@ -110,3 +142,4 @@ cd BayStateScraper/ui && npm run tauri dev
 - **ESLint**: App uses ESLint 9 flat config, ignores `__tests__/`
 - **Python Linting**: Ruff with permissive ignores (F401, E501, E722)
 - **Supabase Types**: Regenerate with `npx supabase gen types typescript --local`
+- **Bun Migration**: App migrated from npm to Bun (use `bun.lockb` not `package-lock.json`)

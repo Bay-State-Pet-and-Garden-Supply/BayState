@@ -13825,3 +13825,7 @@
 {"timestamp": "2026-02-21T02:20:07.813164+00:00", "level": "ERROR", "logger": "asyncio", "message": "Task exception was never retrieved\nfuture: <Task finished name='Task-190' coro=<AsyncRealtimeClient._listen() done, defined at /opt/homebrew/lib/python3.14/site-packages/realtime/_async/client.py:100> exception=ValueError('Set of Tasks/Futures is empty.')>", "error_type": "ValueError", "error_message": "Set of Tasks/Futures is empty."}
 {"timestamp": "2026-02-25T08:13:07.378338+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}
 {"timestamp": "2026-02-25T08:13:07.388015+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}
+{"timestamp": "2026-02-27T07:09:23.810160+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}
+{"timestamp": "2026-02-27T07:09:23.817961+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}
+{"timestamp": "2026-02-27T07:38:29.237875+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}
+{"timestamp": "2026-02-27T07:38:29.248937+00:00", "level": "INFO", "logger": "root", "message": "Logging initialized (JSON mode). Level: INFO"}

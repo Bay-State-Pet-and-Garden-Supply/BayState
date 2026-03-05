@@ -1,7 +1,10 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/scraper-schema-overhaul.md",
-  "started_at": "2026-02-25T08:32:58.507Z",
-  "session_ids": ["ses_36c11ef87ffeZWwMIbrzvCMcMM"],
-  "plan_name": "scraper-schema-overhaul",
-  "agent": "atlas"
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/crawl4ai-migration.md",
+  "started_at": "2026-03-04T08:22:28.339Z",
+  "session_ids": [
+    "ses_3480f091fffeaoVTW4TG9k3GFB"
+  ],
+  "plan_name": "crawl4ai-migration",
+  "agent": "atlas",
+  "worktree_path": "/Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration"
 }
