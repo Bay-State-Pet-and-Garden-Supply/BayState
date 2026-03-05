@@ -25,7 +25,7 @@ Distributed headless scraper runners for Bay State Pet & Garden Supply.
 **One-liner** - paste this into your terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 ```
 
 Setup flow:
@@ -215,7 +215,7 @@ docker stop baystate-scraper
 docker start baystate-scraper
 
 # Update to latest version
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 ```
 
 ## How It Works
@@ -242,7 +242,7 @@ If you prefer docker-compose:
 
 ```bash
 # Clone the repo
-git clone https://github.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper.git
+git clone https://github.com/Bay-State-Pet-and-Garden-Supply/BayState.git
 cd BayStateScraper
 
 # Create .env file
