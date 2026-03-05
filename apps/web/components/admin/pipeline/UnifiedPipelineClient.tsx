@@ -27,6 +27,7 @@ import {
 import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { undoQueue } from '@/lib/pipeline/undo';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
+import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 
 const statusLabels: Record<PipelineStatus, string> = {
   staging: 'Imported',
@@ -57,6 +58,7 @@ export function UnifiedPipelineClient({
   const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
   const [isBulkActionPending, setIsBulkActionPending] = useState(false);
   const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
+  const [isBulkEnriching, setIsBulkEnriching] = useState(false);
   const [showProductDetail, setShowProductDetail] = useState(false);
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
@@ -64,6 +66,7 @@ export function UnifiedPipelineClient({
   const [exportStatus, setExportStatus] = useState<PipelineStatus>('staging');
   const [exportSearch, setExportSearch] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [filters, setFilters] = useState<PipelineFiltersState>({});
 
   const getCount = (status: PipelineStatus): number => {
     const found = counts.find(c => c.status === status);
@@ -196,6 +199,21 @@ export function UnifiedPipelineClient({
       }
       if (searchQuery.trim()) {
         params.set('search', searchQuery.trim());
+      }
+      if (filters.startDate) {
+        params.set('startDate', filters.startDate.toISOString());
+      }
+      if (filters.endDate) {
+        params.set('endDate', filters.endDate.toISOString());
+      }
+      if (filters.source) {
+        params.set('source', filters.source);
+      }
+      if (filters.minConfidence !== undefined) {
+        params.set('minConfidence', filters.minConfidence.toString());
+      }
+      if (filters.maxConfidence !== undefined) {
+        params.set('maxConfidence', filters.maxConfidence.toString());
       }
       params.set('limit', '1000'); // Get all matching
 
@@ -383,6 +401,32 @@ export function UnifiedPipelineClient({
     }
   };
 
+  const handleBulkEnrich = async () => {
+    if (selectedProducts.size === 0) return;
+    
+    setIsBulkEnriching(true);
+    try {
+      const res = await fetch('/api/admin/pipeline/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skus: Array.from(selectedProducts) }),
+      });
+      
+      if (res.ok) {
+        toast.success(`Started enrichment for ${selectedProducts.size} products`);
+        setSelectedProducts(new Set());
+        await handleRefresh();
+      } else {
+        const error = await res.json().catch(() => null);
+        toast.error(error?.error || 'Failed to start enrichment');
+      }
+    } catch (error) {
+      toast.error('Failed to start enrichment');
+    } finally {
+      setIsBulkEnriching(false);
+    }
+  };
+
   const handleEnrich = async (sku: string) => {
     try {
       const res = await fetch('/api/admin/pipeline/enrich', {
@@ -527,10 +571,13 @@ export function UnifiedPipelineClient({
           </SelectContent>
         </Select>
 
-        <Button variant="outline">
-          <Filter className="mr-2 h-4 w-4" />
-          Filters
-        </Button>
+        <PipelineFilters
+          filters={filters}
+          onFilterChange={(newFilters) => {
+            setFilters(newFilters);
+            void handleRefresh();
+          }}
+        />
 
         <Button variant="outline" onClick={() => void handleRefresh(true)} disabled={isRefreshing}>
           <RefreshCw className="mr-2 h-4 w-4" />
@@ -575,6 +622,8 @@ export function UnifiedPipelineClient({
           onAction={(action) => void handleBulkAction(action)}
           onConsolidate={() => void handleBulkAction('consolidate')}
           isConsolidating={isBulkActionPending}
+          onBulkEnrich={handleBulkEnrich}
+          isBulkEnriching={isBulkEnriching}
           onClearSelection={() => {
             setSelectedProducts(new Set());
             setIsSelectingAllMatching(false);
