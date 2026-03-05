@@ -1,0 +1,91 @@
+# AI Scraper Config: Phillips Pet
+# Migrated from legacy static scraper to Crawl4AI
+# NOTE: Requires login - manual review needed for authentication handling
+name: "ai-phillips"
+display_name: "AI Phillips Pet Extractor"
+base_url: "https://shop.phillipspet.com"
+scraper_type: "agentic"
+
+ai_config:
+  provider: "crawl4ai"
+  task: "Find Phillips Pet products by UPC or item number and extract product name, brand, UPC, item number, and images. Navigate through search results and handle login if required."
+  max_steps: 14
+  confidence_threshold: 0.75
+  llm_model: "gpt-4o-mini"
+  use_vision: true
+  headless: true
+
+workflows:
+  - action: "navigate"
+    name: "search_phillips_for_sku"
+    params:
+      url: "https://shop.phillipspet.com/ccrz__ProductList?operation=quickSearch&searchText={sku}"
+
+  - action: "ai_extract"
+    name: "extract_phillips_product"
+    params:
+      task: "Search for and extract Phillips Pet product information including Name, Brand, UPC, Item Number, and Images. Handle login page if encountered. Navigate to product details page if needed."
+      visit_top_n: 2
+      max_steps: 16
+      confidence_threshold: 0.75
+      schema:
+        name: str
+        brand: str
+        upc: str
+        item_number: str
+        images: list
+        description: str
+
+  - action: "ai_validate"
+    name: "validate_phillips_extraction"
+    params:
+      required_fields:
+        - name
+        - brand
+        - images
+      sku_must_match: false
+      min_confidence: 0.7
+
+test_skus:
+  - "072705115310"
+  - "072705104321"
+  - "072705201234"
+  - "045663012106"
+  - "073893191001"
+  - "038100175489"
+
+fake_skus:
+  - "xyzabc123notexist456"
+  - "000000000000"
+  - "999999999999"
+
+edge_case_skus:
+  - "123"
+  - "1234567890123456789"
+
+timeout: 60
+retries: 0
+
+anti_detection:
+  enable_captcha_detection: true
+  enable_rate_limiting: true
+  enable_human_simulation: true
+  enable_session_rotation: false
+  enable_blocking_handling: true
+  rate_limit_min_delay: 1.0
+  rate_limit_max_delay: 3.0
+  session_rotation_interval: 50
+  max_retries_on_detection: 2
+
+validation:
+  no_results_selectors:
+    - ".plp-empty-state-message-container h3"
+    - ".no-results"
+  no_results_text_patterns:
+    - "no results"
+    - "0 items"
+
+# NOTE: This scraper requires authentication.
+# The legacy config had login credentials that need to be migrated separately.
+needs_manual_review: true
+review_reason: "Requires login authentication handling"

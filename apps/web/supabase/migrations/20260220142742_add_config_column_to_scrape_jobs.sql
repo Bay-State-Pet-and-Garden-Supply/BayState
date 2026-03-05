@@ -1,0 +1,1 @@
+ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS config JSONB;
