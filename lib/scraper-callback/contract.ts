@@ -86,7 +86,6 @@ const ScraperResultsSchema = z.object({
         })
         .optional(),
     // Crawl4AI-specific metrics
-    extraction_strategy: z.enum(['llm', 'css', 'xpath']).optional(),
     llm_cost: z.number().optional(),
     total_cost: z.number().optional(),
     anti_bot_success_rate: z.number().min(0).max(1).optional(),
