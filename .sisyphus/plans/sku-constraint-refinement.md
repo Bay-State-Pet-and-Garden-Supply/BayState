@@ -311,7 +311,7 @@ Critical Path: Task 1 → Task 4 → Task 5 → F1-F2
 
 ### Wave 2: Testing
 
-- [ ] 4. Write Unit Tests
+- [x] 4. Write Unit Tests
 
   **What to do**:
   Create `tests/test_ai_discovery_validation.py`:
@@ -409,7 +409,7 @@ Critical Path: Task 1 → Task 4 → Task 5 → F1-F2
   **Commit**: 
   - Message: `test(discovery): add unit tests for validation logic`
 
-- [ ] 5. Integration Testing
+- [x] 5. Integration Testing
 
   **What to do**:
   Create `scripts/test_discovery_sample.py`:
