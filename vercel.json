@@ -1,4 +1,4 @@
 {
-  "rootDirectory": "BayStateApp",
+  "rootDirectory": "apps/web",
   "framework": "nextjs"
 }
