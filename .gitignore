@@ -9,6 +9,7 @@ tmp/
 #XM|#.sisyphus/
 .vscode/
 *.log
+.agents/
 
 # Workspace / stray files
 test-coastal.js
