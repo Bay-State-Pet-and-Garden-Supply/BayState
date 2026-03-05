@@ -1,1 +1,16 @@
-{"projectId":"prj_XdzQxNxKk0Zk0TjzA2NzsEoh5rcd","orgId":"team_URvSkoNbIY59BwvkXBJdqWGI","projectName":"bay-state-app"}
+{
+  "projectId": "prj_XdzQxNxKk0Zk0TjzA2NzsEoh5rcd",
+  "orgId": "team_URvSkoNbIY59BwvkXBJdqWGI",
+  "projectName": "bay-state-app",
+  "settings": {
+    "createdAt": 1767145970849,
+    "framework": "nextjs",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": "BayStateApp",
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}

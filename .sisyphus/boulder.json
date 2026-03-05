@@ -1,9 +1,10 @@
 {
-  "active_plan": "C:\\Users\\Nick\\Desktop\\Projects\\BayState\\.sisyphus\\plans\\crawl4ai-migration.md",
-  "started_at": "2026-02-28T00:25:24.101Z",
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/sku-constraint-refinement.md",
+  "started_at": "2026-03-05T05:59:28.713Z",
   "session_ids": [
-    "ses_35e5e1b0dffeAiC7O4Gbv6S5Xf"
+    "ses_343805d53ffe5cAc9JESEDIZdN"
   ],
-  "plan_name": "crawl4ai-migration",
-  "agent": "atlas"
+  "plan_name": "sku-constraint-refinement",
+  "agent": "atlas",
+  "worktree_path": "/Users/nickborrello/Desktop/Projects/BayState"
 }

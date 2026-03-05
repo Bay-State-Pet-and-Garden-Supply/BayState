@@ -1,0 +1,94 @@
+# AI Scraper Config: Bradley Caldwell
+# Migrated from legacy static scraper to Crawl4AI
+name: "ai-bradley"
+display_name: "AI Bradley Caldwell Extractor"
+base_url: "https://www.bradleycaldwell.com"
+scraper_type: "agentic"
+
+ai_config:
+  provider: "crawl4ai"
+  task: "Find Bradley Caldwell products by BCI item number or search term and extract product name, brand, BCI item number, manufacturer number, UPC, weight, dimensions, case pack, and images."
+  max_steps: 14
+  confidence_threshold: 0.75
+  llm_model: "gpt-4o-mini"
+  use_vision: true
+  headless: true
+
+workflows:
+  - action: "navigate"
+    name: "search_bradley_for_sku"
+    params:
+      url: "https://www.bradleycaldwell.com/search?term={sku}"
+
+  - action: "ai_extract"
+    name: "extract_bradley_product"
+    params:
+      task: "Search for the Bradley Caldwell product and extract Name, Brand, BCI Item Number, Manufacturer Number, UPC Code, Weight, Dimensions, Case Pack, Unit of Measure, and Images. Verify the BCI# matches the search term if searching by BCI number."
+      visit_top_n: 2
+      max_steps: 16
+      confidence_threshold: 0.75
+      schema:
+        name: str
+        brand: str
+        bci_item_number: str
+        manufacturer_number: str
+        upc: str
+        weight: str
+        dimensions: str
+        case_pack: str
+        unit_of_measure: str
+        images: list
+        ingredients: str
+
+  - action: "ai_validate"
+    name: "validate_bradley_extraction"
+    params:
+      required_fields:
+        - name
+        - brand
+        - images
+      sku_must_match: false
+      min_confidence: 0.7
+
+test_skus:
+  - "001135"
+  - "010199"
+  - "010202"
+  - "043205"
+  - "083354"
+  - "269376"
+  - "055353"
+
+fake_skus:
+  - "xyzabc123notexist456"
+  - "999999"
+  - "NOTEXIST"
+
+edge_case_skus:
+  - "1"
+  - "0000000000000"
+
+timeout: 60
+retries: 0
+
+anti_detection:
+  enable_captcha_detection: false
+  enable_rate_limiting: true
+  enable_human_simulation: true
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  rate_limit_min_delay: 1.5
+  rate_limit_max_delay: 3.5
+  session_rotation_interval: 40
+  max_retries_on_detection: 2
+
+validation:
+  no_results_selectors:
+    - "main h3:has-text('Sorry')"
+    - "span:has-text('0 items')"
+    - ".no-results"
+  no_results_text_patterns:
+    - "Sorry, no results"
+    - "0 items"
+    - "no results found"
+    - "Your search returned no results"

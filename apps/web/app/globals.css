@@ -1,0 +1,270 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ========== DESIGN SYSTEM TOKENS ========== */
+
+  /* Button Heights (consistent touch targets) */
+  --size-btn-height-sm: 2rem;         /* 32px - small actions, table buttons */
+  --size-btn-height-default: 2.25rem; /* 36px - standard buttons */
+  --size-btn-height-lg: 2.5rem;       /* 40px - prominent CTAs */
+  --size-btn-height-icon-sm: 2.5rem;  /* 40px - icon-only small */
+  --size-btn-height-icon: 2.75rem;    /* 44px - icon-only default */
+  --size-btn-height-icon-lg: 3rem;    /* 48px - icon-only large */
+
+  /* Icon Sizes (standardized for consistency) */
+  --icon-size-xs: 0.75rem;    /* 12px - very small indicators, badges */
+  --icon-size-sm: 1rem;       /* 16px - inline with text, form icons */
+  --icon-size-md: 1.25rem;    /* 20px - default action buttons */
+  --icon-size-lg: 1.5rem;     /* 24px - navigation, menu items */
+  --icon-size-xl: 2rem;       /* 32px - cards, sections */
+  --icon-size-2xl: 2.5rem;    /* 40px - product cards, prominent icons */
+  --icon-size-3xl: 4rem;      /* 64px - empty states, hero icons */
+
+  /* Font Weights (consistent typography hierarchy) */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Animation Durations (consistent motion design) */
+  --animate-duration-fast: 150ms;     /* Quick state changes, focus */
+  --animate-duration-default: 200ms;  /* Standard transitions */
+  --animate-duration-slow: 300ms;     /* Hover effects, cards */
+  --animate-duration-slower: 500ms;   /* Image zooms, complex animations */
+  --animate-duration-slowest: 700ms;  /* Page transitions, modals */
+
+  /* Card Hover Effects */
+  --card-hover-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Semantic Color Tokens (for badges and status indicators) */
+  /* Out of Stock - Red/Rose tones */
+  --color-stock-out-bg: #f43f5e;
+  --color-stock-out-bg-hover: #e11d48;
+  --color-stock-out-text: #ffffff;
+
+  /* Pre-Order - Amber/Yellow tones */
+  --color-stock-preorder-bg: #fef3c7;
+  --color-stock-preorder-bg-hover: #fde68a;
+  --color-stock-preorder-text: #92400e;
+  --color-stock-preorder-border: #fde68a;
+
+  /* ========== SHADCN/UI TOKENS ========== */
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-outfit);
+  --font-mono: monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #66161D;
+  --card: #ffffff;
+  --card-foreground: #66161D;
+  --popover: #ffffff;
+  --popover-foreground: #66161D;
+  --primary: #008850; /* Forest Green (Prominent) */
+  --primary-foreground: #ffffff;
+  --secondary: #66161D; /* Bay State Burgundy (Secondary) */
+  --secondary-foreground: #FCD048; /* Harvest Gold text on Burgundy */
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #FCD048; /* Harvest Gold (Special Cases) */
+  --accent-foreground: #66161D;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #008850; /* Forest Green */
+  --chart-1: #008850;
+  --chart-2: #66161D;
+  --chart-3: #FCD048;
+  --chart-4: #e76e50;
+  --chart-5: #2a9d8f;
+  --sidebar: #008850; /* Forest Green */
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #008850;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a7034; /* Darker Green for hover */
+  --sidebar-accent-foreground: #FCD048;
+  --sidebar-border: #FCD048;
+  --sidebar-ring: #FCD048;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #ffffff;
+  --card: #09090b;
+  --card-foreground: #ffffff;
+  --popover: #09090b;
+  --popover-foreground: #ffffff;
+  --primary: #008850; /* Forest Green */
+  --primary-foreground: #ffffff;
+  --secondary: #66161D; /* Bay State Burgundy */
+  --secondary-foreground: #FCD048;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #FCD048; /* Harvest Gold */
+  --accent-foreground: #66161D;
+  --destructive: #760F1D;
+  --destructive-foreground: #ffffff;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #008850;
+  --chart-1: #008850;
+  --chart-2: #66161D;
+  --chart-3: #FCD048;
+  --chart-4: #e76e50;
+  --chart-5: #2a9d8f;
+  --sidebar: #008850;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #008850;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a7034;
+  --sidebar-accent-foreground: #FCD048;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #FCD048;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    overflow: auto;
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    height: 100%;
+    overflow: auto;
+  }
+
+  #__next {
+    height: 100%;
+  }
+}
+
+@media print {
+  /* Hide UI elements */
+  nav,
+  header,
+  footer,
+  aside,
+  button,
+  [role="dialog"],
+  [role="alert"],
+  .no-print,
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Reset layout constraints */
+  body,
+  main,
+  #root,
+  #__next {
+    background-color: white !important;
+    color: black !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Typography optimization */
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Link handling */
+  a {
+    text-decoration: underline;
+    color: black !important;
+  }
+  
+  /* Show URL after links (except internal or hash links) */
+  a[href^="http"]:not([href*="baystatepetgarden.com"])::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    word-break: break-all;
+  }
+
+  /* Page breaks */
+  h1, h2, h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  img, table, figure, pre, code {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Border handling */
+  * {
+    border-color: #000 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

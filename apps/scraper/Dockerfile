@@ -1,0 +1,49 @@
+# Bay State Scraper - Docker Image for Self-Hosted Runners
+# Provides consistent Python + Playwright environment for web scraping
+#
+# Usage (daemon mode - recommended):
+#   docker run -d --restart unless-stopped \
+#     -e SCRAPER_API_URL=https://app.baystatepet.com \
+#     -e SCRAPER_API_KEY=bsr_xxxx \
+#     baystate-scraper:latest
+#
+# Usage (single job mode - legacy):
+#   docker run --rm \
+#     -e SCRAPER_API_URL=https://app.baystatepet.com \
+#     -e SCRAPER_API_KEY=bsr_xxxx \
+#     baystate-scraper:latest \
+#     python runner.py --job-id <uuid>
+
+FROM mcr.microsoft.com/playwright/python:v1.57.0-jammy
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install psutil for health check script
+RUN pip install --no-cache-dir psutil
+
+# Install Playwright browsers (chromium only - firefox rarely needed)
+RUN playwright install chromium
+
+# Copy scraper source code
+COPY . .
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Environment defaults
+ENV POLL_INTERVAL=30
+ENV MAX_JOBS_BEFORE_RESTART=100
+ENV HEALTH_CHECK_MEMORY_LIMIT_MB=1800
+
+# Default command runs the polling daemon
+# Override with: docker run ... python runner.py --job-id <uuid>
+ENTRYPOINT ["python", "daemon.py"]
+
+# Docker health check (native, works standalone)
+# Mitigates Issue #1754: asyncio.Lock deadlock detection
+HEALTHCHECK --interval=60s --timeout=15s --start-period=30s --retries=3 \
+    CMD python /app/scripts/health_check.py || exit 1

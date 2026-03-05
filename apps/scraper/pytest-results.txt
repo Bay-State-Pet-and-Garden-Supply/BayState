@@ -1,0 +1,91 @@
+/Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper/.venv_qa/lib/python3.14/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.0.0)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.12.1, langsmith-0.7.11
+collected 245 items
+
+tests/ab_testing/test_comparison.py ....                                 [  1%]
+tests/performance/test_benchmark.py ...                                  [  2%]
+tests/test_action_registry.py ...                                        [  4%]
+tests/test_ai_discovery.py .....                                         [  6%]
+tests/test_chunk_mode.py ..                                              [  6%]
+tests/test_database_migration.py ...........                             [ 11%]
+tests/test_event_handlers.py ................                            [ 17%]
+tests/test_events.py ...................                                 [ 25%]
+tests/test_events_v2.py ..............................                   [ 37%]
+tests/test_integration.py ........                                       [ 41%]
+tests/test_no_selenium_in_core.py .......                                [ 44%]
+tests/test_no_selenium_in_handlers.py ...                                [ 45%]
+tests/test_runner_config_errors.py ......                                [ 47%]
+tests/test_runner_events.py ...........                                  [ 52%]
+tests/test_runner_structured_logging.py .............                    [ 57%]
+tests/test_selenium_removal.py ......                                    [ 60%]
+tests/test_websocket_server.py ....................                      [ 68%]
+tests/test_workflow_executor.py .....                                    [ 70%]
+tests/unit/test_api_client.py ............................               [ 81%]
+tests/unit/test_extract_transform.py ssssssssssss                        [ 86%]
+tests/unit/test_logging.py .........                                     [ 90%]
+tests/unit/test_migration.py ...................                         [ 97%]
+tests/unit/test_optional_field_timeouts.py .....                         [100%]
+
+=============================== warnings summary ===============================
+tests/test_event_handlers.py: 4 warnings
+tests/test_events.py: 7 warnings
+tests/test_integration.py: 3 warnings
+tests/test_runner_events.py: 1 warning
+  /Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper/scrapers/events/selector.py:40: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_event_handlers.py::TestLoginResultHandler::test_handler_persists_login_event
+tests/test_event_handlers.py::TestLoginResultHandler::test_handler_persists_failed_login
+tests/test_event_handlers.py::TestConsoleLoggerHandler::test_handler_logs_login_event
+tests/test_events.py::TestLoginStatusEvent::test_event_creation
+tests/test_events.py::TestLoginStatusEvent::test_event_with_selector_details
+tests/test_events.py::TestEventEmitter::test_login_selector_status
+tests/test_integration.py::TestEventFlowIntegration::test_database_persistence
+tests/test_integration.py::TestEndToEndEventTypes::test_login_event_flow
+tests/test_runner_events.py::TestRunnerEventIntegration::test_login_action_emits_selector_status
+  /Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper/scrapers/events/login.py:44: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_event_handlers.py: 4 warnings
+tests/test_events.py: 6 warnings
+tests/test_integration.py: 1 warning
+tests/test_runner_events.py: 1 warning
+  /Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper/scrapers/events/extraction.py:40: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_events.py::TestBaseEvent::test_event_creation
+tests/test_events.py::TestBaseEvent::test_event_serialization
+tests/test_events.py::TestBaseEvent::test_event_deserialization
+tests/test_events.py::TestEventEmitter::test_emit_calls_subscribers
+tests/test_events.py::TestEventEmitter::test_emit_multiple_subscribers
+tests/test_events.py::TestEventEmitter::test_emit_no_subscribers
+tests/test_events.py::TestEventEmitter::test_wildcard_subscription
+tests/test_events.py::TestEventEmitter::test_wildcard_subscription
+  /Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper/scrapers/events/base.py:22: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.timestamp = datetime.utcnow()
+
+tests/test_runner_structured_logging.py: 3 warnings
+tests/test_websocket_server.py: 10 warnings
+tests/test_workflow_executor.py: 62 warnings
+tests/unit/test_api_client.py: 23 warnings
+tests/unit/test_logging.py: 8 warnings
+  /Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper/utils/structured_logging.py:90: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow().isoformat() + "Z",
+
+tests/unit/test_logging.py::TestScraperAPIHandler::test_emit_adds_to_buffer
+tests/unit/test_logging.py::TestScraperAPIHandler::test_context_fields_included
+tests/unit/test_logging.py::TestScraperAPIHandler::test_flush_on_close
+tests/unit/test_logging.py::TestScraperAPIHandler::test_no_infinite_recursion
+  /Users/nickborrello/Desktop/Projects/BayState-worktrees/crawl4ai-migration/BayStateScraper/utils/api_handler.py:124: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    self.api_client.post_logs(self.job_id, logs)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================ 233 passed, 12 skipped, 154 warnings in 13.06s ================

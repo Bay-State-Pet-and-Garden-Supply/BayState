@@ -1,0 +1,39 @@
+{
+  "items": [
+    {
+      "brand": "NutriPro",
+      "category": "Dog Food",
+      "cost": 34.5,
+      "description": "Premium grain-free formula for adult dogs",
+      "id": "PHIL-001",
+      "images": ["https://cdn.phillips.com/products/PHIL-001-1.jpg"],
+      "msrp": 59.99,
+      "name": "Grain-Free Dog Food 30lb",
+      "price": 54.99,
+      "quantity": 85,
+      "sku": "PHIL-001",
+      "upc": "234567890001",
+      "weight": 30
+    },
+    {
+      "brand": "SeaCatch",
+      "category": "Cat Food",
+      "cost": 26.8,
+      "description": "Wild-caught salmon formula for cats",
+      "id": "PHIL-002",
+      "images": ["https://cdn.phillips.com/products/PHIL-002-1.jpg"],
+      "msrp": 47.99,
+      "name": "Salmon Cat Food 12lb",
+      "price": 42.99,
+      "quantity": 120,
+      "sku": "PHIL-002",
+      "upc": "234567890002",
+      "weight": 12
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "pageSize": 100,
+    "totalItems": 2
+  }
+}

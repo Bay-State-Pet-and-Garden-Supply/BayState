@@ -1,0 +1,23 @@
+{
+  "name": "baystate-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for Bay State Pet and Garden Supply - Next.js web app and Python scraper",
+  "packageManager": "bun@1.3.5",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "cd apps/web && bun run dev",
+    "build": "cd apps/web && bun run build",
+    "test": "cd apps/web && bun run test",
+    "lint": "cd apps/web && bun run lint",
+    "web": "cd apps/web && bun",
+    "scraper": "cd apps/scraper && python",
+    "vercel-build": "cd apps/web && next build"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {}
+}
