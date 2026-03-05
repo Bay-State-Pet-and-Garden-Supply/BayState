@@ -8,7 +8,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-IMAGE="ghcr.io/bay-state-pet-and-garden-supply/baystatescraper:latest"
+IMAGE="ghcr.io/bay-state-pet-and-garden-supply/baystate/scraper:latest"
 CONTAINER_NAME="baystate-scraper"
 INSTALL_COMMAND="curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash"
 CONFIG_DIR="$HOME/.baystate-scraper"
