@@ -204,3 +204,20 @@ Fixed accessibility issues in two files per Vercel Web Interface Guidelines:
 - `lsp_diagnostics` clean for both files
 - No new lint errors introduced
 - All pre-existing lint errors are unrelated (react/no-unescaped-entities in other files)
+
+## Task: UnifiedPipelineClient Missing Functionality (2026-03-05)
+
+### Implementation Details
+- Added missing pipeline interaction imports in `UnifiedPipelineClient.tsx`: `BulkActionsToolbar`, `PipelineProductDetail`, and `UndoToast`.
+- Added new interaction state: product detail modal (`viewingSku`, `showProductDetail`) and bulk/selection flags (`isSelectingAllMatching`, `isBulkActionPending`, `isClearingScrapeResults`).
+- Implemented missing handlers: `handleSelectAll`, `handleSelectAllMatching`, `handleBulkAction`, `handleClearScrapeResults`, `handleEnrich`, plus modal open/close/save handlers.
+- Wired `BulkActionsToolbar` using its current prop contract (`onAction`, `onConsolidate`, `onClearSelection`) and connected undo UX via `undoQueue` + `UndoToast` for reversible status transitions.
+- Updated `PipelineProductCard` usage to pass `onEnrich` and `showEnrichButton={product.pipeline_status === 'staging'}` and rendered `PipelineProductDetail` as an overlay modal from unified client state.
+
+### Integration Notes
+- Used existing backend routes for bulk/status workflows (`/api/admin/pipeline/bulk`, `/api/admin/pipeline/delete`, `/api/admin/pipeline/clear-scrape-results`) to stay compatible with current server contracts.
+- Kept enrichment trigger call at `/api/admin/pipeline/enrich` per task contract even though this route is not present in current API tree.
+
+### Verification
+- `lsp_diagnostics` on `apps/web/components/admin/pipeline/UnifiedPipelineClient.tsx`: clean.
+- Ran requested command `npx tsc --noEmit components/admin/pipeline/UnifiedPipelineClient.tsx`; it fails in this workspace because file-mode invocation bypasses project tsconfig and local dependencies/types are not installed.

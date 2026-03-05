@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { Package, Search, RefreshCw, Filter, Upload, Download } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
+import { BulkActionsToolbar } from './BulkActionsToolbar';
+import { PipelineProductDetail } from './PipelineProductDetail';
+import { UndoToast } from './UndoToast';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
+import { undoQueue } from '@/lib/pipeline/undo';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
 
 const statusLabels: Record<PipelineStatus, string> = {
@@ -46,9 +50,14 @@ export function UnifiedPipelineClient({
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PipelineStatus | 'all'>('all');
-const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [viewingSku, setViewingSku] = useState<string | null>(null);
+  const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
+  const [isBulkActionPending, setIsBulkActionPending] = useState(false);
+  const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
+  const [showProductDetail, setShowProductDetail] = useState(false);
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -112,7 +121,7 @@ const [isRefreshing, setIsRefreshing] = useState(false);
     } finally {
       setIsRefreshing(false);
     }
-};
+  };
 
   const handleSelect = (sku: string, index: number, isShiftClick: boolean) => {
     setSelectedProducts(prev => {
@@ -134,10 +143,265 @@ const [isRefreshing, setIsRefreshing] = useState(false);
       }
       return newSet;
     });
+
+    setIsSelectingAllMatching(false);
   };
 
   const handleView = (sku: string) => {
-    console.log('View product:', sku);
+    setViewingSku(sku);
+    setShowProductDetail(true);
+  };
+
+  const handleCloseModal = () => {
+    setViewingSku(null);
+    setShowProductDetail(false);
+  };
+
+  const handleSaveModal = () => {
+    handleCloseModal();
+    void handleRefresh();
+  };
+
+  const handleSelectAll = () => {
+    const allSkus = products.map((p) => p.sku);
+    const allSelected = allSkus.length > 0 && allSkus.every((sku) => selectedProducts.has(sku));
+
+    if (allSelected) {
+      // Deselect all
+      setSelectedProducts((prev) => {
+        const newSet = new Set(prev);
+        allSkus.forEach((sku) => newSet.delete(sku));
+        return newSet;
+      });
+    } else {
+      // Select all
+      setSelectedProducts((prev) => {
+        const newSet = new Set(prev);
+        allSkus.forEach((sku) => newSet.add(sku));
+        return newSet;
+      });
+    }
+
+    setLastSelectedIndex(null);
+    setIsSelectingAllMatching(false);
+  };
+
+  const handleSelectAllMatching = async () => {
+    setIsSelectingAllMatching(true);
+    try {
+      const params = new URLSearchParams();
+      const requestStatus = getRequestStatus();
+      if (requestStatus) {
+        params.set('status', requestStatus);
+      }
+      if (searchQuery.trim()) {
+        params.set('search', searchQuery.trim());
+      }
+      params.set('limit', '1000'); // Get all matching
+
+      const res = await fetch(`/api/admin/pipeline?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error('Failed to select matching products');
+      }
+
+      const data = await res.json();
+      const allMatchingSkus = (data.products ?? []).map((p: PipelineProduct) => p.sku);
+      setSelectedProducts(new Set(allMatchingSkus));
+      toast.success(`Selected ${allMatchingSkus.length} products`);
+    } catch (error) {
+      console.error('Select all matching failed:', error);
+      toast.error('Failed to select all matching products');
+    } finally {
+      setIsSelectingAllMatching(false);
+    }
+  };
+
+  const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
+    if (selectedProducts.size === 0) return;
+
+    const selectedSkus = Array.from(selectedProducts);
+    const selectedCount = selectedSkus.length;
+    const currentStatus = getRequestStatus() || 'staging';
+    const actionLabels: Record<'approve' | 'publish' | 'reject' | 'consolidate' | 'delete', string> = {
+      approve: 'Approved',
+      publish: 'Published',
+      reject: 'Rejected',
+      consolidate: 'Consolidated',
+      delete: 'Deleted',
+    };
+
+    setIsBulkActionPending(true);
+    try {
+      if (action === 'delete') {
+        const res = await fetch('/api/admin/pipeline/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skus: selectedSkus }),
+        });
+
+        if (!res.ok) {
+          const error = (await res.json().catch(() => null)) as { error?: string } | null;
+          toast.error(error?.error || 'Failed to delete products');
+          return;
+        }
+
+        toast.success(`${actionLabels[action]} ${selectedCount} product${selectedCount === 1 ? '' : 's'}`);
+        setSelectedProducts(new Set());
+        setIsSelectingAllMatching(false);
+        await handleRefresh();
+        return;
+      }
+
+      const statusMap: Record<'approve' | 'publish' | 'reject' | 'consolidate', Record<PipelineStatus, PipelineStatus>> = {
+        approve: {
+          staging: 'staging',
+          scraped: 'scraped',
+          consolidated: 'approved',
+          approved: 'approved',
+          published: 'published',
+          failed: 'failed',
+        },
+        publish: {
+          staging: 'staging',
+          scraped: 'scraped',
+          consolidated: 'consolidated',
+          approved: 'published',
+          published: 'published',
+          failed: 'failed',
+        },
+        reject: {
+          staging: 'staging',
+          scraped: 'staging',
+          consolidated: 'staging',
+          approved: 'consolidated',
+          published: 'approved',
+          failed: 'failed',
+        },
+        consolidate: {
+          staging: 'consolidated',
+          scraped: 'consolidated',
+          consolidated: 'consolidated',
+          approved: 'approved',
+          published: 'published',
+          failed: 'failed',
+        },
+      };
+
+      const newStatus = statusMap[action][currentStatus];
+      const res = await fetch('/api/admin/pipeline/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skus: selectedSkus,
+          newStatus,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(error?.error || `Failed to ${action} products`);
+        return;
+      }
+
+      const revert = async () => {
+        const revertRes = await fetch('/api/admin/pipeline/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            skus: selectedSkus,
+            newStatus: currentStatus,
+          }),
+        });
+
+        if (!revertRes.ok) {
+          throw new Error('Failed to undo bulk action');
+        }
+
+        await handleRefresh();
+      };
+
+      if (newStatus !== currentStatus) {
+        undoQueue.add({
+          type: 'status_change',
+          skus: selectedSkus,
+          fromStatus: currentStatus,
+          toStatus: newStatus,
+          revert,
+        });
+
+        toast.custom((toastId) => (
+          <UndoToast
+            id={toastId}
+            count={selectedCount}
+            toStatus={statusLabels[newStatus]}
+            onUndo={revert}
+          />
+        ), { duration: 30000 });
+      }
+
+      toast.success(`${actionLabels[action]} ${selectedCount} product${selectedCount === 1 ? '' : 's'}`);
+      setSelectedProducts(new Set());
+      setIsSelectingAllMatching(false);
+      await handleRefresh();
+    } catch (error) {
+      console.error('Bulk action failed:', error);
+      toast.error(`Failed to ${action} products`);
+    } finally {
+      setIsBulkActionPending(false);
+    }
+  };
+
+  const handleClearScrapeResults = async () => {
+    if (selectedProducts.size === 0) return;
+
+    if (!window.confirm(`Clear scrape results for ${selectedProducts.size} products? This will move them back to Imported.`)) {
+      return;
+    }
+
+    setIsClearingScrapeResults(true);
+    try {
+      const res = await fetch('/api/admin/pipeline/clear-scrape-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skus: Array.from(selectedProducts) }),
+      });
+
+      if (res.ok) {
+        toast.success(`Cleared scrape results for ${selectedProducts.size} products`);
+        setSelectedProducts(new Set());
+        setIsSelectingAllMatching(false);
+        await handleRefresh();
+      } else {
+        const error = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(error?.error || 'Failed to clear scrape results');
+      }
+    } catch (error) {
+      console.error('Clear scrape results failed:', error);
+      toast.error('Failed to clear scrape results');
+    } finally {
+      setIsClearingScrapeResults(false);
+    }
+  };
+
+  const handleEnrich = async (sku: string) => {
+    try {
+      const res = await fetch('/api/admin/pipeline/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skus: [sku] }),
+      });
+
+      if (res.ok) {
+        toast.success(`Started enrichment for ${sku}`);
+        await handleRefresh();
+      } else {
+        const error = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(error?.error || 'Failed to start enrichment');
+      }
+    } catch (error) {
+      console.error('Enrichment trigger failed:', error);
+      toast.error('Failed to start enrichment');
+    }
   };
 
   const openExportDialog = () => {
@@ -274,6 +538,52 @@ const [isRefreshing, setIsRefreshing] = useState(false);
         </Button>
       </div>
 
+      {/* Selection Controls */}
+      {products.length > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+            >
+              Select All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleSelectAllMatching()}
+              disabled={isSelectingAllMatching}
+            >
+              {isSelectingAllMatching ? 'Selecting...' : 'Select All Matching'}
+            </Button>
+            {selectedProducts.size > 0 && (
+              <span className="ml-2 text-sm text-gray-600">
+                {selectedProducts.size} selected
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Actions Toolbar */}
+      {selectedProducts.size > 0 && (
+        <BulkActionsToolbar
+          selectedCount={selectedProducts.size}
+          currentStatus={getRequestStatus() || 'staging'}
+          searchQuery={searchQuery}
+          onAction={(action) => void handleBulkAction(action)}
+          onConsolidate={() => void handleBulkAction('consolidate')}
+          isConsolidating={isBulkActionPending}
+          onClearSelection={() => {
+            setSelectedProducts(new Set());
+            setIsSelectingAllMatching(false);
+          }}
+          onClearScrapeResults={() => void handleClearScrapeResults()}
+          isClearingScrapeResults={isClearingScrapeResults}
+        />
+      )}
+
       {products.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12 text-center min-h-[400px] flex items-center justify-center">
           <div>
@@ -294,11 +604,22 @@ const [isRefreshing, setIsRefreshing] = useState(false);
               isSelected={selectedProducts.has(product.sku)}
               onSelect={handleSelect}
               onView={handleView}
+              onEnrich={handleEnrich}
+              showEnrichButton={product.pipeline_status === 'staging'}
               showBatchSelect
               currentStage={product.pipeline_status}
             />
           ))}
         </div>
+      )}
+
+      {/* Product Detail Modal */}
+      {showProductDetail && viewingSku && (
+        <PipelineProductDetail
+          sku={viewingSku}
+          onClose={handleCloseModal}
+          onSave={handleSaveModal}
+        />
       )}
 
       <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>

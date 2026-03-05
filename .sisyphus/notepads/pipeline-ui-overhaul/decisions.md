@@ -49,4 +49,11 @@
   - No broken `aria-labelledby` references.
   - No broken `aria-describedby` references.
   - No duplicate IDs detected.
-  - Console surfaced Radix accessibility warning during modal flows (`DialogContent` requires `DialogTitle`) indicating an accessibility issue path in at least one dialog interaction state.
+- Console surfaced Radix accessibility warning during modal flows (`DialogContent` requires `DialogTitle`) indicating an accessibility issue path in at least one dialog interaction state.
+
+## 2026-03-05 — UnifiedPipelineClient missing features implementation
+
+- **Bulk toolbar wiring:** Used existing `BulkActionsToolbar` prop interface (`onAction`, `onConsolidate`, `onClearSelection`) instead of adding new props (`onApprove`, `onPublish`, etc.) to avoid breaking component contracts across the pipeline UI.
+- **Bulk action API compatibility:** Implemented status and delete actions against existing routes (`/api/admin/pipeline/bulk`, `/api/admin/pipeline/delete`) because `/api/admin/pipeline/bulk-action` is not present in the current codebase.
+- **Undo UX:** Integrated `UndoToast` through `undoQueue` in unified client bulk status transitions to match existing pipeline undo behavior patterns.
+- **Type-check verification approach:** Recorded both requested TS command output and LSP diagnostics; requested single-file `tsc` invocation fails due environment/dependency baseline, while `lsp_diagnostics` for changed file is clean.
