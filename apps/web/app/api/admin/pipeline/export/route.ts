@@ -4,6 +4,8 @@ import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { PipelineStatus } from '@/lib/pipeline';
 import * as ExcelJS from 'exceljs';
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;

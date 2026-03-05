@@ -9,7 +9,7 @@
     "installCommand": null,
     "buildCommand": null,
     "outputDirectory": null,
-    "rootDirectory": "BayStateApp",
+    "rootDirectory": null,
     "directoryListing": false,
     "nodeVersion": "24.x"
   }
