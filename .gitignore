@@ -10,6 +10,7 @@ tmp/
 .vscode/
 *.log
 .agents/
+.sisyphus/
 
 # Workspace / stray files
 test-coastal.js
@@ -51,3 +52,10 @@ id_rsa.pub
 *.crt
 
 # note: keep other application JSON files tracked; avoid broad *.json ignores
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+

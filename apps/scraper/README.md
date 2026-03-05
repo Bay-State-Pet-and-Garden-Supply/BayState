@@ -300,6 +300,39 @@ CRAWL4AI_CACHE_ENABLED=true
 # Anti-detection level (basic, standard, aggressive)
 ANTI_DETECTION_LEVEL=standard
 ```
+## Monitoring
+
+The scraper provides built-in monitoring via Prometheus metrics and optional Sentry error tracking.
+
+### Prometheus Metrics
+
+Metrics are exposed at `http://localhost:8000/metrics` (configurable via `METRICS_PORT`):
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `crawl4ai_extractions_total` | Counter | Total extractions by mode (llm, llm_free, auto) |
+| `crawl4ai_success_rate` | Gauge | Overall extraction success rate (0-1) |
+| `crawl4ai_duration_ms` | Gauge | Average extraction duration |
+| `crawl4ai_cache_hit_rate` | Gauge | Cache hit rate (0-1) |
+| `crawl4ai_errors_total` | Counter | Errors by type |
+| `crawl4ai_antibot_attempts_total` | Counter | Anti-bot bypass attempts |
+| `crawl4ai_antibot_success_rate` | Gauge | Anti-bot success rate |
+| `crawl4ai_cost_usd_total` | Counter | Total cost in USD |
+| `crawl4ai_cost_average_usd` | Gauge | Average cost per extraction |
+
+### Sentry Error Tracking
+
+Enable error tracking by setting:
+
+```bash
+SENTRY_DSN=https://public_key@o0.ingest.sentry.io/project_id
+```
+
+See the full [Monitoring Guide](docs/monitoring.md) for:
+- Complete Prometheus configuration
+- Sentry setup instructions
+- Troubleshooting common issues
+- Example scrape configurations
 
 ## Security
 
