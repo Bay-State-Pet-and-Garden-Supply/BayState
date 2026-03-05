@@ -1,0 +1,50 @@
+name: Scraper CI
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/scraper/**'
+      - '.github/workflows/scraper-ci.yml'
+  push:
+    branches: [ develop ]
+    paths:
+      - 'apps/scraper/**'
+      - '.github/workflows/scraper-ci.yml'
+
+jobs:
+  python-quality:
+    name: Python Quality & Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/scraper
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: './apps/scraper/requirements.txt'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff==0.1.9 mypy pytest pytest-cov types-requests types-PyYAML
+
+      - name: Lint with Ruff
+        # Initial check - strictly fail on syntax errors, warn on style
+        run: ruff check . --output-format=github
+
+      - name: Type check with Mypy
+        # verifying types without blocking build yet
+        run: mypy . --ignore-missing-imports || true
+
+      - name: Run Tests
+        env:
+          PYTHONPATH: .
+        # fail if tests fail
+        run: pytest
