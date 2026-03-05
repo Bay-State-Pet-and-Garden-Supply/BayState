@@ -3,12 +3,13 @@
 import { useState, useTransition, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
+import type { PipelineTab } from '@/lib/pipeline-tabs';
+import { isStatusTab } from '@/lib/pipeline-tabs';
 import { PipelineStatusTabs } from './PipelineStatusTabs';
 import { PipelineProductCard } from './PipelineProductCard';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
-import { ConsolidationDetailsModal } from './ConsolidationDetailsModal';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
 import { MethodSelection, EnrichmentMethod } from '@/components/admin/enrichment/MethodSelection';
 import { ChunkConfig } from '@/components/admin/enrichment/ChunkConfig';
@@ -16,15 +17,16 @@ import { ReviewSubmit } from '@/components/admin/enrichment/ReviewSubmit';
 import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 import { PipelineFlowVisualization } from './PipelineFlowVisualization';
+import { ActiveRunsTab } from './ActiveRunsTab';
+import { ActiveConsolidationsTab } from './ActiveConsolidationsTab';
+import { ImageSelectionTab } from './ImageSelectionTab';
+import { ExportTab } from './ExportTab';
 import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
-import { Search, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { UndoToast } from './UndoToast';
 import { undoQueue } from '@/lib/pipeline/undo';
 import { SkipLink } from '@/components/ui/skip-link';
-import { isOpenAIConfigured } from '@/lib/consolidation/openai-client';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 
 const statusLabels: Record<PipelineStatus, string> = {
     staging: 'Imported',
@@ -38,21 +40,22 @@ const statusLabels: Record<PipelineStatus, string> = {
 interface PipelineClientProps {
     initialProducts: PipelineProduct[];
     initialCounts: StatusCount[];
-    initialStatus: PipelineStatus;
+    initialTab: PipelineTab;
     initialFilteredCount: number;
 }
 
 export function PipelineClient({
     initialProducts,
     initialCounts,
-    initialStatus,
+    initialTab,
     initialFilteredCount,
 }: PipelineClientProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const [activeStatus, setActiveStatus] = useState<PipelineStatus>(initialStatus);
+    const [activeTab, setActiveTab] = useState<PipelineTab>(initialTab);
+    const activeStatus = isStatusTab(activeTab) ? activeTab : 'staging';
     const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
     const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
     const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
@@ -71,13 +74,17 @@ export function PipelineClient({
 
     const [filteredCount, setFilteredCount] = useState<number>(initialFilteredCount);
 
+    const [monitoringCounts, setMonitoringCounts] = useState({
+        'active-runs': 0,
+        'active-consolidations': 0,
+    });
+    const [imagesNeedingCount, setImagesNeedingCount] = useState(0);
+
     const [isConsolidating, setIsConsolidating] = useState(false);
     const [consolidationBatchId, setConsolidationBatchId] = useState<string | null>(null);
     const [consolidationProgress, setConsolidationProgress] = useState(0);
     const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 
-    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-    const [isOpenAIReady, setIsOpenAIReady] = useState(true);
     // Clear scrape results state
     const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
 
@@ -119,8 +126,10 @@ export function PipelineClient({
     };
 
     const handleRefresh = () => {
+        if (!isStatusTab(activeTab)) return;
+        const status = activeTab as PipelineStatus;
         startTransition(async () => {
-            const query = buildQueryParams(activeStatus, search, filters);
+            const query = buildQueryParams(status, search, filters);
             const [productsRes, countsRes] = await Promise.all([
                 fetch(`/api/admin/pipeline?${query}`),
                 fetch('/api/admin/pipeline/counts'),
@@ -154,26 +163,11 @@ export function PipelineClient({
         if (ws.lastProgressEvent) {
             setConsolidationProgress(ws.lastProgressEvent.progress);
 
-            if (ws.lastProgressEvent.status === 'completed') {
-                const { successfulProducts, failedProducts } = ws.lastProgressEvent;
-                
-                if (failedProducts === 0) {
-                    toast.success(`Consolidation complete! ${successfulProducts} products processed.`);
-                } else if (successfulProducts === 0) {
-                    toast.error('Consolidation failed. All products failed.');
-                } else {
-                    toast.warning(`Consolidation complete. ${successfulProducts} succeeded, ${failedProducts} failed.`);
-                }
-                
+            if (ws.lastProgressEvent.status === 'completed' || ws.lastProgressEvent.status === 'failed') {
                 setIsConsolidating(false);
                 setConsolidationBatchId(null);
                 handleRefresh();
-            } else if (ws.lastProgressEvent.status === 'failed') {
-                toast.error('Consolidation failed. Please retry.');
-                setIsConsolidating(false);
-                setConsolidationBatchId(null);
             }
-
         }
 
         return () => {
@@ -181,67 +175,32 @@ export function PipelineClient({
         };
     }, [consolidationBatchId, ws.lastProgressEvent]);
 
-    // Polling fallback when WebSocket is not connected
-    useEffect(() => {
-        if (!consolidationBatchId || ws.isConnected) return;
-        
-        let pollCount = 0;
-        const maxPolls = 360;
-        
-        const poll = async () => {
-            try {
-                const res = await fetch(`/api/admin/consolidation/${consolidationBatchId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.status) {
-                        setConsolidationProgress(data.status.progress || 0);
-                        if (data.status.is_complete || data.status.status === 'failed') {
-                            clearInterval(interval);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Polling error:', error);
-            }
-            
-            pollCount++;
-            if (pollCount >= maxPolls) {
-                clearInterval(interval);
-                toast.error('Status check timed out.');
-            }
-        };
-        
-        const interval = setInterval(poll, 5000);
-        poll();
-        
-        return () => clearInterval(interval);
-    }, [consolidationBatchId, ws.isConnected]);
-
-    // Check OpenAI configuration on mount
-    useEffect(() => {
-        setIsOpenAIReady(isOpenAIConfigured());
-    }, []);
-    const handleStatusChange = async (status: PipelineStatus) => {
-        setActiveStatus(status);
+    const handleTabChange = async (tab: PipelineTab) => {
+        setActiveTab(tab);
         setSelectedSkus(new Set());
         setIsSelectingAllMatching(false);
-        updateUrl(status, search, filters);
 
-        startTransition(async () => {
-            const query = buildQueryParams(status, search, filters);
-            const res = await fetch(`/api/admin/pipeline?${query}`);
-            if (res.ok) {
-                const data = await res.json();
-                setProducts(data.products);
-                setFilteredCount(data.count || 0);
-            }
-        });
+        if (isStatusTab(tab)) {
+            const status = tab as PipelineStatus;
+            updateUrl(status, search, filters);
+            startTransition(async () => {
+                const query = buildQueryParams(status, search, filters);
+                const res = await fetch(`/api/admin/pipeline?${query}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setProducts(data.products);
+                    setFilteredCount(data.count || 0);
+                }
+            });
+        }
     };
 
     const handleSearch = async () => {
-        updateUrl(activeStatus, search, filters);
+        if (!isStatusTab(activeTab)) return;
+        const status = activeTab as PipelineStatus;
+        updateUrl(status, search, filters);
         startTransition(async () => {
-            const query = buildQueryParams(activeStatus, search, filters);
+            const query = buildQueryParams(status, search, filters);
             const res = await fetch(`/api/admin/pipeline?${query}`);
             if (res.ok) {
                 const data = await res.json();
@@ -254,11 +213,13 @@ export function PipelineClient({
     };
 
     const handleFilterChange = async (newFilters: PipelineFiltersState) => {
+        if (!isStatusTab(activeTab)) return;
+        const status = activeTab as PipelineStatus;
         setFilters(newFilters);
-        updateUrl(activeStatus, search, newFilters);
+        updateUrl(status, search, newFilters);
 
         startTransition(async () => {
-            const query = buildQueryParams(activeStatus, search, newFilters);
+            const query = buildQueryParams(status, search, newFilters);
             const res = await fetch(`/api/admin/pipeline?${query}`);
             if (res.ok) {
                 const data = await res.json();
@@ -311,8 +272,10 @@ export function PipelineClient({
     };
 
     const handleSelectAllMatching = async () => {
+        if (!isStatusTab(activeTab)) return;
+        const status = activeTab as PipelineStatus;
         startTransition(async () => {
-            const query = buildQueryParams(activeStatus, search, filters);
+            const query = buildQueryParams(status, search, filters);
             const res = await fetch(`/api/admin/pipeline?${query}&selectAll=true`);
             if (!res.ok) {
                 toast.error('Failed to load all matching products');
@@ -333,16 +296,19 @@ export function PipelineClient({
             return;
         }
 
+        if (!isStatusTab(activeTab)) return;
+        const status = activeTab as PipelineStatus;
+
         const statusMap: Record<string, Record<PipelineStatus, PipelineStatus>> = {
             approve: { consolidated: 'approved', staging: 'staging', scraped: 'scraped', approved: 'approved', published: 'published', failed: 'failed' },
             publish: { approved: 'published', staging: 'staging', scraped: 'scraped', consolidated: 'consolidated', published: 'published', failed: 'failed' },
             reject: { consolidated: 'staging', approved: 'consolidated', staging: 'staging', scraped: 'staging', published: 'approved', failed: 'failed' },
-            consolidate: { staging: 'consolidated', scraped: 'consolidated', consolidated: 'consolidated', approved: 'approved', published: 'published', failed: 'failed' },
+            consolidate: { staging: 'consolidated', scraped: 'scraped', consolidated: 'consolidated', approved: 'approved', published: 'published', failed: 'failed' },
         };
 
-        const newStatus = statusMap[action][activeStatus];
+        const newStatus = statusMap[action][status];
         const skusToUpdate = Array.from(selectedSkus);
-        const previousStatus = activeStatus;
+        const previousStatus = status;
 
         startTransition(async () => {
             const res = await fetch('/api/admin/pipeline/bulk', {
@@ -354,7 +320,7 @@ export function PipelineClient({
             if (res.ok) {
                 // Refresh data
                 const [productsRes, countsRes] = await Promise.all([
-                    fetch(`/api/admin/pipeline?status=${activeStatus}`),
+                    fetch(`/api/admin/pipeline?status=${status}`),
                     fetch('/api/admin/pipeline/counts'),
                 ]);
 
@@ -436,23 +402,11 @@ export function PipelineClient({
                 setSelectedSkus(new Set());
                 setIsSelectingAllMatching(false);
             } else {
-                const errorData = await res.json().catch(() => ({}));
-                const errorMessage = errorData.error || errorData.message;
-                
-                if (res.status === 503) {
-                    toast.error('AI service temporarily unavailable. Please try again in a few moments.');
-                } else if (res.status === 429) {
-                    toast.error('Too many requests. Please wait before trying again.');
-                } else if (errorMessage) {
-                    toast.error(errorMessage);
-                } else {
-                    toast.error('Failed to start consolidation. Please try again.');
-                }
+                console.error('Failed to start consolidation');
                 setIsConsolidating(false);
             }
         } catch (error) {
             console.error('Error submitting consolidation:', error);
-            toast.error('Network error. Please check your connection and try again.');
             setIsConsolidating(false);
         }
     };
@@ -526,38 +480,22 @@ export function PipelineClient({
         <div className="space-y-6">
             <SkipLink />
             <div className="sr-only" role="status" aria-live="polite">
-                {isPending ? 'Loading products...' : `Showing ${products.length} products in ${statusLabels[activeStatus]} stage`}
+                {isPending ? 'Loading products...' : `Showing ${products.length} products in ${isStatusTab(activeTab) ? statusLabels[activeTab as PipelineStatus] : activeTab} stage`}
             </div>
 
             {/* ETL Pipeline Flow Visualization */}
             <PipelineFlowVisualization
-                currentStage={activeStatus}
+                currentTab={activeTab}
                 counts={counts}
             />
-
-            {/* OpenAI Config Warning */}
-            {!isOpenAIReady && (
-                <Alert variant="destructive" className="mb-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>AI Consolidation Disabled</AlertTitle>
-                    <AlertDescription className="flex items-center gap-2">
-                        OpenAI API key not configured.
-                        <Button 
-                            variant="link" 
-                            className="p-0 h-auto"
-                            onClick={() => router.push('/admin/settings')}
-                        >
-                            Configure
-                        </Button>
-                    </AlertDescription>
-                </Alert>
-            )}
 
             {/* Status Tabs */}
             <PipelineStatusTabs
                 counts={counts}
-                activeStatus={activeStatus}
-                onStatusChange={handleStatusChange}
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                monitoringCounts={monitoringCounts}
+                actionCounts={{ 'images': imagesNeedingCount }}
             />
 
             {consolidationBatchId && (
@@ -566,25 +504,9 @@ export function PipelineClient({
                     progress={consolidationProgress}
                     isDismissed={isBannerDismissed}
                     onDismiss={() => setIsBannerDismissed(true)}
-                    onViewDetails={() => setIsDetailsModalOpen(true)}
+                    onViewDetails={() => setIsBannerDismissed(false)}
                 />
             )}
-
-            <ConsolidationDetailsModal
-                isOpen={isDetailsModalOpen}
-                onClose={() => setIsDetailsModalOpen(false)}
-                batchId={consolidationBatchId}
-                status={ws.lastProgressEvent ? {
-                    batchId: consolidationBatchId || '',
-                    status: ws.lastProgressEvent.status || 'in_progress',
-                    totalProducts: ws.lastProgressEvent.totalProducts || 0,
-                    processedCount: ws.lastProgressEvent.processedCount || 0,
-                    successCount: ws.lastProgressEvent.successfulProducts || 0,
-                    errorCount: ws.lastProgressEvent.failedProducts || 0,
-                    errors: ws.lastProgressEvent.errors || [],
-                    results: ws.lastProgressEvent.results || []
-                } : null}
-            />
 
             {/* Search and Actions Bar */}
             <div className="flex items-center gap-4">
@@ -674,7 +596,7 @@ export function PipelineClient({
                 </div>
             )}
 
-            {activeStatus === 'staging' && selectedSkus.size > 0 && (
+            {(activeStatus === 'staging' || activeStatus === 'scraped') && selectedSkus.size > 0 && (
                 <div className="flex items-center gap-4 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
                     <div className="flex-1">
                         <p className="text-sm text-purple-900">
@@ -700,13 +622,13 @@ export function PipelineClient({
             )}
 
             {/* Bulk Actions - hidden on Imported (staging) tab */}
-            {activeStatus !== 'staging' && (
+            {isStatusTab(activeTab) && activeTab !== 'staging' && (
                 <BulkActionsToolbar
                     selectedCount={selectedSkus.size}
-                    currentStatus={activeStatus}
+                    currentStatus={activeTab as PipelineStatus}
                     searchQuery={search}
                     onAction={handleBulkAction}
-                    onConsolidate={isOpenAIReady ? handleConsolidate : undefined}
+                    onConsolidate={handleConsolidate}
                     isConsolidating={isConsolidating}
                     onClearSelection={() => setSelectedSkus(new Set())}
                     onClearScrapeResults={handleClearScrapeResults}
@@ -714,36 +636,43 @@ export function PipelineClient({
                 />
             )}
 
-            {/* Product Grid */}
-            <div id="main-content" tabIndex={-1} className="scroll-mt-16 outline-none">
-                {isPending ? (
-                    <div className="flex h-64 items-center justify-center">
-                        <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
-                    </div>
-                ) : products.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
-                        <p className="text-gray-600">No products in &quot;{statusLabels[activeStatus]}&quot; stage.</p>
-                    </div>
-                ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {products.map((product, index) => (
-                            <PipelineProductCard
-                                key={product.sku}
-                                product={product}
-                                index={index}
-                                isSelected={selectedSkus.has(product.sku)}
-                                onSelect={handleSelect}
-                                onView={handleView}
-                                onEnrich={setEnrichingSku}
-                                showEnrichButton={activeStatus === 'scraped'}
-                                readOnly={activeStatus === 'staging'}
-                                showBatchSelect={activeStatus === 'staging'}
-                                currentStage={activeStatus}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
+            {/* Tab Content */}
+            {activeTab === 'active-runs' && <ActiveRunsTab />}
+            {activeTab === 'active-consolidations' && <ActiveConsolidationsTab />}
+            {activeTab === 'images' && <ImageSelectionTab />}
+            {activeTab === 'export' && <ExportTab productCounts={Object.fromEntries(counts.map(c => [c.status, c.count]))} />}
+            
+            {isStatusTab(activeTab) && (
+                <div id="main-content" tabIndex={-1} className="scroll-mt-16 outline-none">
+                    {isPending ? (
+                        <div className="flex h-64 items-center justify-center">
+                            <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
+                        </div>
+                    ) : products.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
+                            <p className="text-gray-600">No products in &quot;{statusLabels[activeTab as PipelineStatus]}&quot; stage.</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {products.map((product, index) => (
+                                <PipelineProductCard
+                                    key={product.sku}
+                                    product={product}
+                                    index={index}
+                                    isSelected={selectedSkus.has(product.sku)}
+                                    onSelect={handleSelect}
+                                    onView={handleView}
+                                    onEnrich={setEnrichingSku}
+                                    showEnrichButton={activeTab === 'scraped'}
+                                    readOnly={activeTab === 'staging'}
+                                    showBatchSelect={activeTab === 'staging'}
+                                    currentStage={activeTab as PipelineStatus}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Load More and Count Info */}
             {!isPending && products.length > 0 && (
@@ -755,7 +684,7 @@ export function PipelineClient({
                         <button
                             onClick={async () => {
                                 startTransition(async () => {
-                                    const query = buildQueryParams(activeStatus, search, filters);
+                                    const query = buildQueryParams(activeTab as PipelineStatus, search, filters);
                                     const res = await fetch(`/api/admin/pipeline?${query}&offset=${products.length}&limit=200`);
                                     if (res.ok) {
                                         const data = await res.json();

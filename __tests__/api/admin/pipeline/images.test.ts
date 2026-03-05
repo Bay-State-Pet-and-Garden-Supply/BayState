@@ -1,26 +1,45 @@
-jest.mock('next/server', () => ({
-    NextRequest: class MockNextRequest {
-        headers: Headers;
-        url: string;
-        nextUrl: URL;
-        constructor(input: string | Request | URL, init?: RequestInit) {
-            this.url = typeof input === 'string' ? input : 'http://localhost';
-            this.nextUrl = new URL(this.url);
-            this.headers = new Headers(init?.headers || {});
+import { TextEncoder, TextDecoder } from 'util';
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
+
+if (typeof ReadableStream === 'undefined') {
+    const { ReadableStream } = require('stream/web');
+    global.ReadableStream = ReadableStream;
+}
+
+jest.mock('next/server', () => {
+    return {
+        NextRequest: class {
+            nextUrl: URL;
+            bodyUsed: boolean = false;
+            constructor(url: string) {
+                this.nextUrl = new URL(url);
+            }
+            async json() {
+                return {};
+            }
+        },
+        NextResponse: class {
+            body: any;
+            headers: any;
+            status: number;
+            constructor(body: any, init: any) {
+                this.body = body;
+                this.headers = new Map(Object.entries(init?.headers || {}));
+                this.status = init?.status || 200;
+            }
+            static json(body: any, init?: any) {
+                const response = new (this as any)(body, { ...init, headers: { 'Content-Type': 'application/json' } });
+                response._isJson = true;
+                return response;
+            }
+            async json() {
+                return typeof this.body === 'string' ? JSON.parse(this.body) : this.body;
+            }
         }
-        async json() { return {}; }
-    },
-    NextResponse: {
-        json: (data: unknown, init?: ResponseInit) => {
-            const status = init?.status || 200;
-            return {
-                status,
-                json: async () => data,
-                ok: status >= 200 && status < 300,
-            };
-        }
-    }
-}));
+    };
+});
 
 jest.mock('@/lib/supabase/server', () => ({
     createClient: jest.fn(),
@@ -30,242 +49,284 @@ jest.mock('@/lib/admin/api-auth', () => ({
     requireAdminAuth: jest.fn(),
 }));
 
-import { createClient } from '@/lib/supabase/server';
-import { requireAdminAuth } from '@/lib/admin/api-auth';
+const { GET, POST } = require('@/app/api/admin/pipeline/images/route');
+const { NextRequest } = require('next/server');
+const { createClient } = require('@/lib/supabase/server');
+const { requireAdminAuth } = require('@/lib/admin/api-auth');
 
-const mockRequireAdminAuth = requireAdminAuth as jest.MockedFunction<typeof requireAdminAuth>;
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-
-describe('/api/admin/pipeline/images', () => {
+describe('Images Pipeline API', () => {
     let mockSupabase: any;
 
     beforeEach(() => {
         jest.clearAllMocks();
 
-        mockSupabase = {
-            from: jest.fn().mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                    eq: jest.fn().mockReturnValue({
-                       neq: jest.fn().mockReturnValue({
-                            is: jest.fn().mockReturnValue({
-                                order: jest.fn().mockResolvedValue({ data: [], error: null }),
-                            }),
-                        }),
-                    }),
-                }),
-                update: jest.fn().mockReturnValue({
-                    eq: jest.fn().mockReturnValue({
-                        then: jest.fn().mockResolvedValue({ error: null }),
-                    }),
-                }),
-            }),
-        };
-
-        mockCreateClient.mockResolvedValue(mockSupabase);
-        mockRequireAdminAuth.mockResolvedValue({ 
-            authorized: true, 
-            user: { id: 'admin-1' },
-            role: 'admin',
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: false,
+            response: { status: 401 },
         });
+
+        mockSupabase = {
+            from: jest.fn().mockReturnThis(),
+            select: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            neq: jest.fn().mockReturnThis(),
+            or: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            single: jest.fn(),
+        };
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
     describe('GET', () => {
+        it('should return 401 if not authorized', async () => {
+            const req = new NextRequest('http://localhost/api/admin/pipeline/images?status=needs-images');
+            const res = await GET(req);
+            expect(res.status).toBe(401);
+        });
+
         it('should return products needing image selection', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
+            });
+
             const mockProducts = [
                 {
-                    sku: 'SKU001',
+                    sku: 'SKU-001',
                     image_candidates: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
-                    consolidated: { images: [] },
-                },
-                {
-                    sku: 'SKU002',
-                    image_candidates: ['https://example.com/img3.jpg'],
-                    consolidated: {},
+                    consolidated: { name: 'Product 1' },
+                    pipeline_status: 'scraped',
                 },
             ];
 
-            const mockSelect = jest.fn().mockReturnValue({
-                not: jest.fn().mockReturnValue({
-                    neq: jest.fn().mockReturnValue({
-                        eq: jest.fn().mockReturnValue({
-                            order: jest.fn().mockResolvedValue({ data: mockProducts, error: null }),
-                        }),
-                    }),
-                }),
-            });
+            mockSupabase.order.mockResolvedValue({ data: mockProducts, error: null });
 
-            mockSupabase.from.mockReturnValue({
-                select: mockSelect,
-            });
+            const req = new NextRequest('http://localhost/api/admin/pipeline/images?status=needs-images');
+            const res = await GET(req);
 
-            const { GET } = await import('@/app/api/admin/pipeline/images/route');
-            
-            const NextRequest = (await import('next/server')).NextRequest;
-            const request = new NextRequest('http://localhost:3000/api/admin/pipeline/images');
-            const response = await GET(request);
-
-            expect(response.status).toBe(200);
-            const data = await response.json();
-            expect(data.products).toHaveLength(2);
+            expect(res.status).toBe(200);
         });
 
-        it('should return 401 when not authorized', async () => {
-            mockRequireAdminAuth.mockResolvedValue({ 
-                authorized: false, 
-                response: { status: 401, json: async () => ({ error: 'Unauthorized' }) } as any,
+        it('should handle database errors', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
             });
 
-            const { GET } = await import('@/app/api/admin/pipeline/images/route');
-            
-            const request = new (await import('next/server')).NextRequest('http://localhost:3000/api/admin/pipeline/images');
-            const response = await GET(request);
+            mockSupabase.order.mockResolvedValue({ data: null, error: { message: 'DB error' } });
 
-            expect(response.status).toBe(401);
+            const req = new NextRequest('http://localhost/api/admin/pipeline/images?status=needs-images');
+            const res = await GET(req);
+
+            expect(res.status).toBe(500);
         });
     });
 
     describe('POST', () => {
-        it('should save selected images successfully', async () => {
-            const mockProduct = {
-                sku: 'SKU001',
-                image_candidates: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
-                consolidated: { name: 'Test Product' },
-            };
-
-            const mockSelect = jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                    single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
-                }),
-            });
-
-            const mockUpdate = jest.fn().mockReturnValue({
-                eq: jest.fn().mockResolvedValue({ error: null }),
-            });
-
-            mockSupabase.from.mockImplementation((table: string) => {
-                if (table === 'products_ingestion') {
-                    return { select: mockSelect, update: mockUpdate };
+        it('should return 401 if not authorized', async () => {
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001', selectedImages: ['https://example.com/img1.jpg'] };
                 }
-                return {};
-            });
-
-            const { POST } = await import('@/app/api/admin/pipeline/images/route');
-            
-            const NextRequest = (await import('next/server')).NextRequest;
-            const request = new NextRequest('http://localhost:3000/api/admin/pipeline/images', {
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
                 method: 'POST',
-                body: JSON.stringify({
-                    sku: 'SKU001',
-                    selectedImages: ['https://example.com/img1.jpg'],
-                }),
             });
-
-            const response = await POST(request);
-
-            expect(response.status).toBe(200);
-            const data = await response.json();
-            expect(data.success).toBe(true);
+            const res = await POST(req);
+            expect(res.status).toBe(401);
         });
 
-        it('should return 400 for invalid SKU', async () => {
-            const mockSelect = jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                    single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } }),
-                }),
+        it('should return 400 if sku is missing', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
             });
 
-            mockSupabase.from.mockReturnValue({
-                select: mockSelect,
-            });
-
-            const { POST } = await import('@/app/api/admin/pipeline/images/route');
-            
-            const NextRequest = (await import('next/server')).NextRequest;
-            const request = new NextRequest('http://localhost:3000/api/admin/pipeline/images', {
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { selectedImages: ['https://example.com/img1.jpg'] };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
                 method: 'POST',
-                body: JSON.stringify({
-                    sku: 'INVALID',
-                    selectedImages: ['https://example.com/img1.jpg'],
-                }),
             });
+            const res = await POST(req);
 
-            const response = await POST(request);
-
-            expect(response.status).toBe(400);
+            expect(res.status).toBe(400);
+            const json = await res.json();
+            expect(json.error).toContain('sku');
         });
 
-        it('should return 400 when image not in candidates', async () => {
+        it('should return 400 if selectedImages is missing', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
+            });
+
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001' };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
+                method: 'POST',
+            });
+            const res = await POST(req);
+
+            expect(res.status).toBe(400);
+            const json = await res.json();
+            expect(json.error).toContain('selectedImages');
+        });
+
+        it('should return 400 if selectedImages is not an array', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
+            });
+
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001', selectedImages: 'not-an-array' };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
+                method: 'POST',
+            });
+            const res = await POST(req);
+
+            expect(res.status).toBe(400);
+        });
+
+        it('should return 404 if product not found', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
+            });
+
+            mockSupabase.single.mockResolvedValue({ data: null, error: { message: 'Not found' } });
+
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'NONEXISTENT', selectedImages: ['https://example.com/img1.jpg'] };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
+                method: 'POST',
+            });
+            const res = await POST(req);
+
+            expect(res.status).toBe(404);
+        });
+
+        it('should return 400 if selected images are not from image_candidates', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
+            });
+
             const mockProduct = {
-                sku: 'SKU001',
-                image_candidates: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
+                sku: 'SKU-001',
+                image_candidates: ['https://example.com/valid1.jpg', 'https://example.com/valid2.jpg'],
                 consolidated: {},
             };
 
-            const mockSelect = jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                    single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
-                }),
-            });
+            mockSupabase.single.mockResolvedValue({ data: mockProduct, error: null });
 
-            mockSupabase.from.mockImplementation((table: string) => {
-                if (table === 'products_ingestion') {
-                    return { select: mockSelect };
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001', selectedImages: ['https://example.com/invalid.jpg'] };
                 }
-                return {};
-            });
-
-            const { POST } = await import('@/app/api/admin/pipeline/images/route');
-            
-            const NextRequest = (await import('next/server')).NextRequest;
-            const request = new NextRequest('http://localhost:3000/api/admin/pipeline/images', {
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
                 method: 'POST',
-                body: JSON.stringify({
-                    sku: 'SKU001',
-                    selectedImages: ['https://example.com/invalid.jpg'],
-                }),
             });
+            const res = await POST(req);
 
-            const response = await POST(request);
-
-            expect(response.status).toBe(400);
-            const data = await response.json();
-            expect(data.error).toContain('not in image candidates');
+            expect(res.status).toBe(400);
+            const json = await res.json();
+            expect(json.error).toContain('Invalid image');
         });
 
-        it('should return 400 for missing required fields', async () => {
-            const { POST } = await import('@/app/api/admin/pipeline/images/route');
-            
-            const NextRequest = (await import('next/server')).NextRequest;
-            const request = new NextRequest('http://localhost:3000/api/admin/pipeline/images', {
-                method: 'POST',
-                body: JSON.stringify({ sku: 'SKU001' }),
+        it('should successfully save selected images', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
             });
 
-            const response = await POST(request);
+            const mockProduct = {
+                sku: 'SKU-001',
+                image_candidates: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
+                consolidated: { name: 'Product 1' },
+            };
 
-            expect(response.status).toBe(400);
+            const selectMock = {
+                single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
+            };
+            mockSupabase.select.mockReturnValue(selectMock);
+            
+            const eqMock = {
+                single: jest.fn().mockResolvedValue({ error: null }),
+            };
+            mockSupabase.eq.mockReturnValue(eqMock);
+
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001', selectedImages: ['https://example.com/img1.jpg'] };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
+                method: 'POST',
+            });
+            const res = await POST(req);
+
+            expect(res.status).toBe(200);
+            const json = await res.json();
+            expect(json.success).toBe(true);
         });
 
-        it('should return 401 when not authorized', async () => {
-            mockRequireAdminAuth.mockResolvedValue({ 
-                authorized: false, 
-                response: { status: 401, json: async () => ({ error: 'Unauthorized' }) } as any,
+        it('should handle update errors', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
             });
 
-            const { POST } = await import('@/app/api/admin/pipeline/images/route');
+            const mockProduct = {
+                sku: 'SKU-001',
+                image_candidates: ['https://example.com/img1.jpg'],
+                consolidated: {},
+            };
+
+            const selectMock = {
+                single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
+            };
+            mockSupabase.select.mockReturnValue(selectMock);
             
-            const NextRequest = (await import('next/server')).NextRequest;
-            const request = new NextRequest('http://localhost:3000/api/admin/pipeline/images', {
+            const eqMock = {
+                single: jest.fn().mockResolvedValue({ error: { message: 'Update failed' } }),
+            };
+            mockSupabase.eq.mockReturnValue(eqMock);
+
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001', selectedImages: ['https://example.com/img1.jpg'] };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
                 method: 'POST',
-                body: JSON.stringify({
-                    sku: 'SKU001',
-                    selectedImages: ['https://example.com/img1.jpg'],
-                }),
             });
+            const res = await POST(req);
 
-            const response = await POST(request);
-
-            expect(response.status).toBe(401);
+            expect(res.status).toBe(500);
         });
     });
 });

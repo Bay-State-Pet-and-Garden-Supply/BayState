@@ -1,26 +1,37 @@
-jest.mock('next/server', () => ({
-    NextRequest: class MockNextRequest {
-        headers: Headers;
-        url: string;
-        nextUrl: URL;
-        constructor(input: string | Request | URL, init?: RequestInit) {
-            this.url = typeof input === 'string' ? input : 'http://localhost';
-            this.nextUrl = new URL(this.url);
-            this.headers = new Headers(init?.headers || {});
+import { TextEncoder, TextDecoder } from 'util';
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
+
+if (typeof ReadableStream === 'undefined') {
+    // @ts-ignore
+    const { ReadableStream } = require('stream/web');
+    global.ReadableStream = ReadableStream;
+}
+
+jest.mock('next/server', () => {
+    return {
+        NextRequest: class {
+            nextUrl: URL;
+            constructor(url: string) {
+                this.nextUrl = new URL(url);
+            }
+        },
+        NextResponse: class {
+            body: any;
+            headers: any;
+            status: number;
+            constructor(body: any, init: any) {
+                this.body = body;
+                this.headers = new Map(Object.entries(init?.headers || {}));
+                this.status = init?.status || 200;
+            }
+            static json(body: any, init?: any) {
+                return new (this as any)(body, { ...init, headers: { 'Content-Type': 'application/json' } });
+            }
         }
-        async json() { return {}; }
-    },
-    NextResponse: {
-        json: (data: unknown, init?: ResponseInit) => {
-            const status = init?.status || 200;
-            return {
-                status,
-                json: async () => data,
-                ok: status >= 200 && status < 300,
-            };
-        }
-    }
-}));
+    };
+});
 
 jest.mock('@/lib/supabase/server', () => ({
     createClient: jest.fn(),
@@ -30,202 +41,167 @@ jest.mock('@/lib/admin/api-auth', () => ({
     requireAdminAuth: jest.fn(),
 }));
 
-import { createClient } from '@/lib/supabase/server';
-import { requireAdminAuth } from '@/lib/admin/api-auth';
+const { GET } = require('@/app/api/admin/pipeline/active-runs/route');
+const { NextRequest } = require('next/server');
+const { createClient } = require('@/lib/supabase/server');
+const { requireAdminAuth } = require('@/lib/admin/api-auth');
 
-const mockRequireAdminAuth = requireAdminAuth as jest.MockedFunction<typeof requireAdminAuth>;
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-
-describe('GET /api/admin/pipeline/active-runs', () => {
+describe('Active Runs API', () => {
     let mockSupabase: any;
 
     beforeEach(() => {
         jest.clearAllMocks();
 
-        mockSupabase = {
-            from: jest.fn().mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                    in: jest.fn().mockReturnValue({
-                        order: jest.fn().mockResolvedValue({ data: [], error: null }),
-                    }),
-                }),
-            }),
-        };
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: false,
+            response: { status: 401 },
+        });
 
-        mockCreateClient.mockResolvedValue(mockSupabase);
-        mockRequireAdminAuth.mockResolvedValue({ 
-            authorized: true, 
-            response: null, 
-            user: { id: 'admin-1' },
+        mockSupabase = {
+            from: jest.fn().mockReturnThis(),
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+        };
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    });
+
+    it('should return 401 if not authorized', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: false,
+            response: { status: 401 },
+        });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
+        const res = await GET(req);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('should return active jobs with progress', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
             role: 'admin',
         });
-    });
 
-    it('returns 401 when user is not authenticated', async () => {
-        mockRequireAdminAuth.mockResolvedValue({ 
-            authorized: false, 
-            response: { status: 401, json: async () => ({ error: 'Unauthorized' }) } as any,
-            user: null,
-        });
-
-        const { GET } = await import('@/app/api/admin/pipeline/active-runs/route');
-        
-        const request = new (await import('next/server')).NextRequest('http://localhost:3000/api/admin/pipeline/active-runs');
-        const response = await GET(request);
-
-        expect(response.status).toBe(401);
-    });
-
-    it('returns active jobs with pending status', async () => {
         const mockJobs = [
             {
                 id: 'job-1',
-                status: 'pending',
-                scrapers: ['petfoodex', 'amazon'],
-                created_at: '2026-03-01T10:00:00Z',
-                skus: ['sku1', 'sku2'],
+                status: 'running',
+                created_at: '2024-01-15T10:00:00Z',
+                scrapers: ['amazon', 'walmart'],
+                skus: ['SKU-001', 'SKU-002', 'SKU-003'],
             },
             {
                 id: 'job-2',
-                status: 'running',
-                scrapers: ['bradley'],
-                created_at: '2026-03-01T09:00:00Z',
-                skus: ['sku3'],
-            },
-        ];
-
-        mockSupabase.from.mockImplementation((table: string) => {
-            if (table === 'scrape_jobs') {
-                return {
-                    select: () => ({
-                        in: () => ({
-                            order: () => Promise.resolve({ data: mockJobs, error: null }),
-                        }),
-                    }),
-                };
-            }
-            if (table === 'scrape_job_chunks') {
-                return {
-                    select: () => ({
-                        eq: () => Promise.resolve({ 
-                            data: [{ status: 'completed' }, { status: 'pending' }], 
-                            error: null 
-                        }),
-                    }),
-                };
-            }
-            return { select: () => ({}) };
-        });
-
-        const { GET } = await import('@/app/api/admin/pipeline/active-runs/route');
-        
-        const { NextRequest } = await import('next/server');
-        const request = new NextRequest('http://localhost:3000/api/admin/pipeline/active-runs');
-        const response = await GET(request);
-
-        expect(response.status).toBe(200);
-        const data = await (response as any).json();
-        
-        expect(data.jobs).toBeDefined();
-        expect(Array.isArray(data.jobs)).toBe(true);
-    });
-
-    it('returns empty array when no active jobs', async () => {
-        mockSupabase.from.mockReturnValue({
-            select: () => ({
-                in: () => ({
-                    order: () => Promise.resolve({ data: [], error: null }),
-                }),
-            }),
-        });
-
-        const { GET } = await import('@/app/api/admin/pipeline/active-runs/route');
-        
-        const { NextRequest } = await import('next/server');
-        const request = new NextRequest('http://localhost:3000/api/admin/pipeline/active-runs');
-        const response = await GET(request);
-
-        expect(response.status).toBe(200);
-        const data = await (response as any).json();
-        
-        expect(data.jobs).toEqual([]);
-    });
-
-    it('includes correct job fields in response', async () => {
-        const mockJobsData = [
-            {
-                id: 'job-test-123',
-                status: 'running',
-                scrapers: ['test-scraper'],
-                created_at: '2026-03-01T12:00:00Z',
-                skus: ['sku1', 'sku2', 'sku3'],
+                status: 'pending',
+                created_at: '2024-01-15T09:00:00Z',
+                scrapers: ['target'],
+                skus: ['SKU-004', 'SKU-005'],
             },
         ];
 
         const mockChunks = [
-            { status: 'completed' },
-            { status: 'completed' },
-            { status: 'running' },
+            { job_id: 'job-1', status: 'completed', chunk_index: 0 },
+            { job_id: 'job-1', status: 'completed', chunk_index: 1 },
+            { job_id: 'job-1', status: 'running', chunk_index: 2 },
+            { job_id: 'job-1', status: 'pending', chunk_index: 3 },
+            { job_id: 'job-2', status: 'pending', chunk_index: 0 },
         ];
 
-        mockSupabase.from.mockImplementation((table: string) => {
-            if (table === 'scrape_jobs') {
-                return {
-                    select: () => ({
-                        in: () => ({
-                            order: () => Promise.resolve({ data: mockJobsData, error: null }),
-                        }),
-                    }),
-                };
-            }
-            if (table === 'scrape_job_chunks') {
-                return {
-                    select: () => ({
-                        eq: () => Promise.resolve({ data: mockChunks, error: null }),
-                    }),
-                };
-            }
-            return { select: () => ({}) };
+        mockSupabase.order.mockResolvedValueOnce({ data: mockJobs, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: mockChunks, error: null });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
+        const res = await GET(req);
+
+        expect(res.status).toBe(200);
+
+        const json = await res.json();
+        expect(json.jobs).toHaveLength(2);
+
+        expect(json.jobs[0]).toEqual({
+            id: 'job-1',
+            status: 'running',
+            createdAt: '2024-01-15T10:00:00Z',
+            scrapers: ['amazon', 'walmart'],
+            skuCount: 3,
+            progress: 50,
         });
 
-        const { GET } = await import('@/app/api/admin/pipeline/active-runs/route');
-        
-        const { NextRequest } = await import('next/server');
-        const request = new NextRequest('http://localhost:3000/api/admin/pipeline/active-runs');
-        const response = await GET(request);
-
-        expect(response.status).toBe(200);
-        const data = await (response as any).json();
-        
-        expect(data.jobs).toHaveLength(1);
-        const job = data.jobs[0];
-        
-        expect(job.id).toBe('job-test-123');
-        expect(job.status).toBe('running');
-        expect(job.scrapers).toEqual(['test-scraper']);
-        expect(job.createdAt).toBe('2026-03-01T12:00:00Z');
-        expect(job.skuCount).toBe(3);
-        expect(job.progress).toEqual({ completed: 2, total: 3 });
+        expect(json.jobs[1]).toEqual({
+            id: 'job-2',
+            status: 'pending',
+            createdAt: '2024-01-15T09:00:00Z',
+            scrapers: ['target'],
+            skuCount: 2,
+            progress: 0,
+        });
     });
 
-    it('handles database errors', async () => {
-        mockSupabase.from.mockReturnValue({
-            select: () => ({
-                in: () => ({
-                    order: () => Promise.resolve({ data: null, error: 'Database error' }),
-                }),
-            }),
+    it('should query for pending and running jobs only', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
         });
 
-        const { GET } = await import('@/app/api/admin/pipeline/active-runs/route');
-        
-        const { NextRequest } = await import('next/server');
-        const request = new NextRequest('http://localhost:3000/api/admin/pipeline/active-runs');
-        const response = await GET(request);
+        mockSupabase.order.mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
 
-        expect(response.status).toBe(500);
-        const data = await (response as any).json();
-        
-        expect(data.error).toBe('Failed to fetch active jobs');
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
+        await GET(req);
+
+        expect(mockSupabase.in).toHaveBeenCalledWith('status', ['pending', 'running']);
+    });
+
+    it('should order by created_at DESC', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
+
+        mockSupabase.order.mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
+        await GET(req);
+
+        expect(mockSupabase.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    });
+
+    it('should return empty array when no active jobs', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
+
+        mockSupabase.order.mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
+        const res = await GET(req);
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.jobs).toEqual([]);
+    });
+
+    it('should handle errors gracefully', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
+
+        mockSupabase.order.mockResolvedValueOnce({ data: null, error: { message: 'Database error' } });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
+        const res = await GET(req);
+
+        expect(res.status).toBe(500);
     });
 });

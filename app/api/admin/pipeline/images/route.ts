@@ -6,91 +6,107 @@ export async function GET(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
+    const { searchParams } = request.nextUrl;
+    const status = searchParams.get('status');
+
+    if (status !== 'needs-images') {
+        return NextResponse.json(
+            { error: 'Invalid status parameter. Use status=needs-images' },
+            { status: 400 }
+        );
+    }
+
     const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('products_ingestion')
-        .select('sku, image_candidates, consolidated')
-        .not('image_candidates', 'is', null)
+        .select('sku, image_candidates, consolidated, pipeline_status')
+        .neq('image_candidates', '{}')
         .neq('image_candidates', '[]')
-        .eq('pipeline_status', 'scraped');
+        .or('consolidated.images.is.null,consolidated.images.eq.{}')
+        .order('updated_at', { ascending: false });
 
     if (error) {
-        console.error('Error fetching products needing image selection:', error);
+        console.error('Error fetching products needing images:', error);
         return NextResponse.json(
             { error: 'Failed to fetch products' },
             { status: 500 }
         );
     }
 
-    const productsNeedingImages = (data || []).filter((product) => {
-        const consolidated = product.consolidated && typeof product.consolidated === 'object'
-            ? (product.consolidated as Record<string, unknown>)
-            : {};
-        const consolidatedImages = Array.isArray(consolidated.images)
-            ? consolidated.images
-            : [];
-        return consolidatedImages.length === 0;
-    });
+    const products = (data || []).map((row: any) => ({
+        sku: row.sku,
+        image_candidates: row.image_candidates,
+        consolidated: row.consolidated,
+        pipeline_status: row.pipeline_status,
+    }));
 
-    return NextResponse.json({ products: productsNeedingImages });
+    return NextResponse.json({ products });
 }
 
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
+    const supabase = await createClient();
+
     try {
         const body = await request.json();
-        const { sku, selectedImages } = body as { sku: string; selectedImages: string[] };
+        const { sku, selectedImages } = body;
 
         if (!sku || typeof sku !== 'string') {
             return NextResponse.json(
-                { error: 'SKU is required' },
+                { error: 'Missing or invalid sku' },
                 { status: 400 }
             );
         }
 
-        if (!selectedImages || !Array.isArray(selectedImages) || selectedImages.length === 0) {
+        if (!selectedImages || !Array.isArray(selectedImages)) {
             return NextResponse.json(
-                { error: 'selectedImages array is required and must not be empty' },
+                { error: 'Missing or invalid selectedImages' },
                 { status: 400 }
             );
         }
 
-        const supabase = await createClient();
+        if (selectedImages.length === 0) {
+            return NextResponse.json(
+                { error: 'selectedImages cannot be empty' },
+                { status: 400 }
+            );
+        }
 
-        const { data: product, error: fetchError } = await supabase
+        const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('image_candidates, consolidated')
+            .select('sku, image_candidates, consolidated')
             .eq('sku', sku)
             .single();
 
-        if (fetchError || !product) {
+        if (fetchError || !products) {
             return NextResponse.json(
                 { error: 'Product not found' },
-                { status: 400 }
+                { status: 404 }
             );
         }
 
-        const imageCandidates = Array.isArray(product.image_candidates)
-            ? product.image_candidates
+        const imageCandidates = Array.isArray(products.image_candidates)
+            ? products.image_candidates
             : [];
 
-        const invalidImages = selectedImages.filter(img => !imageCandidates.includes(img));
-        if (invalidImages.length > 0) {
-            return NextResponse.json(
-                { error: `Selected images not in image candidates: ${invalidImages.join(', ')}` },
-                { status: 400 }
-            );
+        for (const img of selectedImages) {
+            if (!imageCandidates.includes(img)) {
+                return NextResponse.json(
+                    { error: `Invalid image: ${img} is not in image_candidates` },
+                    { status: 400 }
+                );
+            }
         }
 
-        const existingConsolidated = product.consolidated && typeof product.consolidated === 'object'
-            ? (product.consolidated as Record<string, unknown>)
+        const currentConsolidated = (products.consolidated && typeof products.consolidated === 'object')
+            ? (products.consolidated as Record<string, unknown>)
             : {};
 
         const updatedConsolidated = {
-            ...existingConsolidated,
+            ...currentConsolidated,
             images: selectedImages,
         };
 
@@ -110,8 +126,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        return NextResponse.json({ success: true, sku, selectedImages });
-    } catch {
+        return NextResponse.json({ success: true });
+    } catch (err) {
+        console.error('Error parsing request:', err);
         return NextResponse.json(
             { error: 'Invalid request body' },
             { status: 400 }

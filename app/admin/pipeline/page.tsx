@@ -13,7 +13,7 @@ export default async function PipelinePage() {
             <PipelineClient
                 initialProducts={products}
                 initialCounts={counts}
-                initialStatus="staging"
+                initialTab="staging"
                 initialFilteredCount={count}
             />
         </div>

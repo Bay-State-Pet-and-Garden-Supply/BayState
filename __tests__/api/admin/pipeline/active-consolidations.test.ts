@@ -1,171 +1,243 @@
-jest.mock('next/server', () => ({
-  NextRequest: class MockNextRequest {
-    headers: Headers;
-    url: string;
+import { TextEncoder, TextDecoder } from 'util';
 
-    constructor(input: string | Request | URL, init?: RequestInit) {
-      this.url = typeof input === 'string' ? input : 'http://localhost';
-      this.headers = new Headers(init?.headers || {});
-    }
-  },
-  NextResponse: {
-    json: (data: unknown, init?: ResponseInit) => {
-      const status = init?.status || 200;
-      return {
-        status,
-        json: async () => data,
-      };
-    },
-  },
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
+
+if (typeof ReadableStream === 'undefined') {
+    const { ReadableStream } = require('stream/web');
+    global.ReadableStream = ReadableStream;
+}
+
+jest.mock('next/server', () => {
+    return {
+        NextRequest: class {
+            nextUrl: URL;
+            constructor(url: string) {
+                this.nextUrl = new URL(url);
+            }
+        },
+        NextResponse: class {
+            body: any;
+            headers: any;
+            status: number;
+            constructor(body: any, init: any) {
+                this.body = body;
+                this.headers = new Map(Object.entries(init?.headers || {}));
+                this.status = init?.status || 200;
+            }
+            static json(body: any, init?: any) {
+                return new (this as any)(body, { ...init, headers: { 'Content-Type': 'application/json' } });
+            }
+            json() {
+                return Promise.resolve(this.body);
+            }
+        }
+    };
+});
+
+jest.mock('@/lib/supabase/server', () => ({
+    createClient: jest.fn(),
 }));
 
 jest.mock('@/lib/admin/api-auth', () => ({
-  requireAdminAuth: jest.fn(),
+    requireAdminAuth: jest.fn(),
 }));
 
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn(),
-}));
+const { GET } = require('@/app/api/admin/pipeline/active-consolidations/route');
+const { NextRequest } = require('next/server');
+const { createClient } = require('@/lib/supabase/server');
+const { requireAdminAuth } = require('@/lib/admin/api-auth');
 
-import { GET } from '@/app/api/admin/pipeline/active-consolidations/route';
-import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { createClient } from '@/lib/supabase/server';
+describe('Active Consolidations API', () => {
+    let mockSupabase: any;
 
-describe('active-consolidations route', () => {
-  let mockSupabase: ReturnType<typeof jest.fn>;
+    beforeEach(() => {
+        jest.clearAllMocks();
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockSupabase = {
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          not: jest.fn().mockReturnValue({
-            order: jest.fn().mockResolvedValue({ data: [], error: null }),
-          }),
-        }),
-      }),
-    } as unknown as ReturnType<typeof createClient>;
-    (createClient as jest.Mock).mockResolvedValue(mockSupabase);
-  });
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: false,
+            response: { status: 401 },
+        });
 
-  it('returns 401 if not authenticated', async () => {
-    (requireAdminAuth as jest.Mock).mockResolvedValue({
-      authorized: false,
-      response: { status: 401, json: async () => ({ error: 'Unauthorized' }) },
+        mockSupabase = {
+            from: jest.fn().mockReturnThis(),
+            select: jest.fn().mockReturnThis(),
+            not: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+        };
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
-    const res = await GET();
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 403 if user is not admin or staff', async () => {
-    (requireAdminAuth as jest.Mock).mockResolvedValue({
-      authorized: false,
-      response: { status: 403, json: async () => ({ error: 'Forbidden' }) },
+    it('should return 401 if not authorized', async () => {
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
+        const res = await GET(req);
+        expect(res.status).toBe(401);
     });
 
-    const res = await GET();
-    expect(res.status).toBe(403);
-  });
+    it('should return active consolidation jobs', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
 
-  it('returns active consolidation jobs with correct fields', async () => {
-    (requireAdminAuth as jest.Mock).mockResolvedValue({
-      authorized: true,
-      user: { id: 'user-1', email: 'admin@test.com' },
-      role: 'admin',
+        const mockJobs = [
+            {
+                id: 'batch-1',
+                status: 'in_progress',
+                created_at: '2024-01-15T10:00:00Z',
+                total_requests: 100,
+                completed_requests: 50,
+                failed_requests: 5,
+            },
+            {
+                id: 'batch-2',
+                status: 'validating',
+                created_at: '2024-01-15T09:00:00Z',
+                total_requests: 200,
+                completed_requests: 0,
+                failed_requests: 0,
+            },
+        ];
+
+        mockSupabase.order.mockReturnValueOnce({
+            data: mockJobs,
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
+        const res = await GET(req);
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.jobs).toHaveLength(2);
+
+        expect(json.jobs[0]).toEqual({
+            id: 'batch-1',
+            status: 'in_progress',
+            totalProducts: 100,
+            processedCount: 55,
+            successCount: 50,
+            errorCount: 5,
+            createdAt: '2024-01-15T10:00:00Z',
+            progress: 55,
+        });
+
+        expect(json.jobs[1]).toEqual({
+            id: 'batch-2',
+            status: 'validating',
+            totalProducts: 200,
+            processedCount: 0,
+            successCount: 0,
+            errorCount: 0,
+            createdAt: '2024-01-15T09:00:00Z',
+            progress: 0,
+        });
     });
 
-    const mockBatchJobs = [
-      {
-        id: 'batch-1',
-        status: 'in_progress',
-        total_requests: 100,
-        completed_requests: 50,
-        failed_requests: 5,
-        created_at: '2026-01-15T10:00:00Z',
-      },
-      {
-        id: 'batch-2',
-        status: 'pending',
-        total_requests: 200,
-        completed_requests: 0,
-        failed_requests: 0,
-        created_at: '2026-01-16T10:00:00Z',
-      },
-      {
-        id: 'batch-3',
-        status: 'validating',
-        total_requests: 50,
-        completed_requests: 10,
-        failed_requests: 2,
-        created_at: '2026-01-17T10:00:00Z',
-      },
-    ];
+    it('should filter out completed, failed, and expired jobs', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
 
-    mockSupabase.from = jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        not: jest.fn().mockReturnValue({
-          order: jest.fn().mockResolvedValue({ data: mockBatchJobs, error: null }),
-        }),
-      }),
-    }) as unknown as typeof mockSupabase.from;
+        mockSupabase.order.mockReturnValueOnce({
+            data: [],
+            error: null,
+        });
 
-    const res = await GET();
-    expect(res.status).toBe(200);
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
+        await GET(req);
 
-    const body = await res.json();
-    expect(body).toHaveProperty('consolidations');
-    expect(Array.isArray(body.consolidations)).toBe(true);
-    expect(body.consolidations.length).toBe(3);
-
-    const first = body.consolidations[0];
-    expect(first).toHaveProperty('id');
-    expect(first).toHaveProperty('status');
-    expect(first).toHaveProperty('totalProducts');
-    expect(first).toHaveProperty('processedCount');
-    expect(first).toHaveProperty('successCount');
-    expect(first).toHaveProperty('errorCount');
-    expect(first).toHaveProperty('createdAt');
-    expect(first).toHaveProperty('progress');
-
-    expect(first.progress).toBe(55);
-  });
-
-  it('excludes completed, failed, and expired jobs', async () => {
-    (requireAdminAuth as jest.Mock).mockResolvedValue({
-      authorized: true,
-      user: { id: 'user-1', email: 'admin@test.com' },
-      role: 'admin',
+        expect(mockSupabase.not).toHaveBeenCalledWith('status', 'in', ['completed', 'failed', 'expired']);
     });
 
-    await GET();
+    it('should order by created_at DESC', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('batch_jobs');
-  });
+        mockSupabase.order.mockReturnValueOnce({
+            data: [],
+            error: null,
+        });
 
-  it('returns empty array when no active jobs', async () => {
-    (requireAdminAuth as jest.Mock).mockResolvedValue({
-      authorized: true,
-      user: { id: 'user-1', email: 'admin@test.com' },
-      role: 'admin',
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
+        await GET(req);
+
+        expect(mockSupabase.order).toHaveBeenCalledWith('created_at', { ascending: false });
     });
 
-    const res = await GET();
-    expect(res.status).toBe(200);
+    it('should return empty array when no active jobs', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
 
-    const body = await res.json();
-    expect(body.consolidations).toEqual([]);
-  });
+        mockSupabase.order.mockReturnValueOnce({
+            data: [],
+            error: null,
+        });
 
-  it('orders by created_at descending', async () => {
-    (requireAdminAuth as jest.Mock).mockResolvedValue({
-      authorized: true,
-      user: { id: 'user-1', email: 'admin@test.com' },
-      role: 'admin',
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
+        const res = await GET(req);
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.jobs).toEqual([]);
     });
 
-    await GET();
+    it('should handle errors gracefully', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('batch_jobs');
-  });
+        mockSupabase.order.mockReturnValueOnce({
+            data: null,
+            error: { message: 'Database error' },
+        });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
+        const res = await GET(req);
+
+        expect(res.status).toBe(500);
+    });
+
+    it('should calculate progress correctly with zero total', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({
+            authorized: true,
+            user: { id: 'user-123' },
+            role: 'admin',
+        });
+
+        const mockJobs = [
+            {
+                id: 'batch-edge',
+                status: 'in_progress',
+                created_at: '2024-01-15T10:00:00Z',
+                total_requests: 0,
+                completed_requests: 0,
+                failed_requests: 0,
+            },
+        ];
+
+        mockSupabase.order.mockReturnValueOnce({
+            data: mockJobs,
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
+        const res = await GET(req);
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.jobs[0].progress).toBe(0);
+        expect(json.jobs[0].processedCount).toBe(0);
+    });
 });

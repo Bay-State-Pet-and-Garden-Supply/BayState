@@ -474,11 +474,12 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
             >
               Cancel
             </button>
-            {!hasScrapedData ? (
+            {hasScrapedData && (
               <button
                 onClick={handleRunEnhancement}
                 disabled={isRunningEnhancement || enabledSourceIds.length === 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-[#008850] rounded-lg hover:bg-[#2a7034] transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                title="New scraper data will be merged with existing sources"
               >
                 {isRunningEnhancement ? (
                   <>
@@ -488,20 +489,19 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                 ) : (
                   <>
                     <Play className="h-4 w-4" />
-                    Run Enhancement
+                    Re-Run Enhancement
                   </>
                 )}
               </button>
-            ) : (
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-4 py-2 text-sm font-medium text-white bg-[#008850] rounded-lg hover:bg-[#2a7034] transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save Changes
-              </button>
             )}
+            <button
+              onClick={hasScrapedData ? handleSave : handleRunEnhancement}
+              disabled={hasScrapedData ? isSaving : isRunningEnhancement || enabledSourceIds.length === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-[#008850] rounded-lg hover:bg-[#2a7034] transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {(hasScrapedData ? isSaving : isRunningEnhancement) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {hasScrapedData ? 'Save Changes' : 'Run Enhancement'}
+            </button>
           </div>
         </div>
 

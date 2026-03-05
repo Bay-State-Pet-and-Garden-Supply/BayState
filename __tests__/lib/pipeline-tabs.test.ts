@@ -1,36 +1,15 @@
-/**
- * @jest-environment node
- */
-import { 
-    PipelineTab, 
-    TAB_CONFIG, 
-    getTabOrder, 
-    isStatusTab, 
-    isMonitoringTab, 
-    isActionTab 
+import {
+    PipelineTab,
+    TAB_CONFIG,
+    getTabOrder,
+    isStatusTab,
+    isMonitoringTab,
+    isActionTab,
 } from '@/lib/pipeline-tabs';
 
 describe('pipeline-tabs', () => {
     describe('PipelineTab type', () => {
-        it('should accept all 10 pipeline tab values', () => {
-            const tabs: PipelineTab[] = [
-                'staging',
-                'active-runs',
-                'scraped',
-                'active-consolidations',
-                'consolidated',
-                'approved',
-                'images',
-                'export',
-                'published',
-                'failed'
-            ];
-            expect(tabs).toHaveLength(10);
-        });
-    });
-
-    describe('TAB_CONFIG', () => {
-        it('should have configuration for all 10 tabs', () => {
+        it('should include all 10 required tabs', () => {
             const expectedTabs: PipelineTab[] = [
                 'staging',
                 'active-runs',
@@ -41,64 +20,97 @@ describe('pipeline-tabs', () => {
                 'images',
                 'export',
                 'published',
-                'failed'
+                'failed',
             ];
-            
+
             expectedTabs.forEach(tab => {
                 expect(TAB_CONFIG[tab]).toBeDefined();
             });
         });
+    });
 
-        it('should have correct order values for each tab', () => {
-            // Verify order matches expected sequence
-            expect(TAB_CONFIG['staging'].order).toBe(0);
-            expect(TAB_CONFIG['active-runs'].order).toBe(1);
-            expect(TAB_CONFIG['scraped'].order).toBe(2);
-            expect(TAB_CONFIG['active-consolidations'].order).toBe(3);
-            expect(TAB_CONFIG['consolidated'].order).toBe(4);
-            expect(TAB_CONFIG['approved'].order).toBe(5);
-            expect(TAB_CONFIG['images'].order).toBe(6);
-            expect(TAB_CONFIG['export'].order).toBe(7);
-            expect(TAB_CONFIG['published'].order).toBe(8);
-            expect(TAB_CONFIG['failed'].order).toBe(9);
-        });
-
-        it('should have required properties for each tab config', () => {
-            const requiredProps = ['label', 'icon', 'description', 'color', 'bgColor', 'isStatusTab', 'order'] as const;
-            
+    describe('TAB_CONFIG', () => {
+        it('should have label for each tab', () => {
             (Object.keys(TAB_CONFIG) as PipelineTab[]).forEach(tab => {
-                requiredProps.forEach(prop => {
-                    expect(TAB_CONFIG[tab][prop]).toBeDefined();
-                });
+                expect(typeof TAB_CONFIG[tab].label).toBe('string');
+                expect(TAB_CONFIG[tab].label.length).toBeGreaterThan(0);
             });
         });
 
-        it('should identify status tabs correctly', () => {
-            const statusTabs: PipelineTab[] = ['staging', 'scraped', 'consolidated', 'approved', 'published', 'failed'];
-            
-            statusTabs.forEach(tab => {
-                expect(TAB_CONFIG[tab].isStatusTab).toBe(true);
+        it('should have icon string (not component) for each tab', () => {
+            (Object.keys(TAB_CONFIG) as PipelineTab[]).forEach(tab => {
+                expect(typeof TAB_CONFIG[tab].icon).toBe('string');
             });
+        });
 
-            const nonStatusTabs: PipelineTab[] = ['active-runs', 'active-consolidations', 'images', 'export'];
-            nonStatusTabs.forEach(tab => {
-                expect(TAB_CONFIG[tab].isStatusTab).toBe(false);
+        it('should have description for each tab', () => {
+            (Object.keys(TAB_CONFIG) as PipelineTab[]).forEach(tab => {
+                expect(typeof TAB_CONFIG[tab].description).toBe('string');
+                expect(TAB_CONFIG[tab].description.length).toBeGreaterThan(0);
             });
+        });
+
+        it('should have color for each tab', () => {
+            (Object.keys(TAB_CONFIG) as PipelineTab[]).forEach(tab => {
+                expect(typeof TAB_CONFIG[tab].color).toBe('string');
+            });
+        });
+
+        it('should have bgColor for each tab', () => {
+            (Object.keys(TAB_CONFIG) as PipelineTab[]).forEach(tab => {
+                expect(typeof TAB_CONFIG[tab].bgColor).toBe('string');
+            });
+        });
+
+        it('should have isStatusTab boolean for each tab', () => {
+            (Object.keys(TAB_CONFIG) as PipelineTab[]).forEach(tab => {
+                expect(typeof TAB_CONFIG[tab].isStatusTab).toBe('boolean');
+            });
+        });
+
+        it('should have order number for each tab', () => {
+            (Object.keys(TAB_CONFIG) as PipelineTab[]).forEach(tab => {
+                expect(typeof TAB_CONFIG[tab].order).toBe('number');
+            });
+        });
+
+        it('should have correct isStatusTab values', () => {
+            expect(TAB_CONFIG['staging'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['active-runs'].isStatusTab).toBe(false);
+            expect(TAB_CONFIG['scraped'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['active-consolidations'].isStatusTab).toBe(false);
+            expect(TAB_CONFIG['consolidated'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['approved'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['images'].isStatusTab).toBe(false);
+            expect(TAB_CONFIG['export'].isStatusTab).toBe(false);
+            expect(TAB_CONFIG['published'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['failed'].isStatusTab).toBe(true);
         });
     });
 
     describe('getTabOrder', () => {
-        it('should return correct order for each tab', () => {
-            expect(getTabOrder('staging')).toBe(0);
-            expect(getTabOrder('active-runs')).toBe(1);
-            expect(getTabOrder('scraped')).toBe(2);
-            expect(getTabOrder('active-consolidations')).toBe(3);
-            expect(getTabOrder('consolidated')).toBe(4);
-            expect(getTabOrder('approved')).toBe(5);
-            expect(getTabOrder('images')).toBe(6);
-            expect(getTabOrder('export')).toBe(7);
-            expect(getTabOrder('published')).toBe(8);
-            expect(getTabOrder('failed')).toBe(9);
+        it('should return tabs in correct display order', () => {
+            const order = getTabOrder();
+
+            expect(order).toHaveLength(10);
+            expect(order[0]).toBe('staging');
+            expect(order[1]).toBe('active-runs');
+            expect(order[2]).toBe('scraped');
+            expect(order[3]).toBe('active-consolidations');
+            expect(order[4]).toBe('consolidated');
+            expect(order[5]).toBe('approved');
+            expect(order[6]).toBe('images');
+            expect(order[7]).toBe('export');
+            expect(order[8]).toBe('published');
+            expect(order[9]).toBe('failed');
+        });
+
+        it('should return tabs sorted by order property', () => {
+            const order = getTabOrder();
+
+            for (let i = 1; i < order.length; i++) {
+                expect(TAB_CONFIG[order[i - 1]].order).toBeLessThan(TAB_CONFIG[order[i]].order);
+            }
         });
     });
 
@@ -112,7 +124,7 @@ describe('pipeline-tabs', () => {
             expect(isStatusTab('failed')).toBe(true);
         });
 
-        it('should return false for monitoring/action tabs', () => {
+        it('should return false for non-status tabs', () => {
             expect(isStatusTab('active-runs')).toBe(false);
             expect(isStatusTab('active-consolidations')).toBe(false);
             expect(isStatusTab('images')).toBe(false);
@@ -131,10 +143,10 @@ describe('pipeline-tabs', () => {
             expect(isMonitoringTab('scraped')).toBe(false);
             expect(isMonitoringTab('consolidated')).toBe(false);
             expect(isMonitoringTab('approved')).toBe(false);
-            expect(isMonitoringTab('published')).toBe(false);
-            expect(isMonitoringTab('failed')).toBe(false);
             expect(isMonitoringTab('images')).toBe(false);
             expect(isMonitoringTab('export')).toBe(false);
+            expect(isMonitoringTab('published')).toBe(false);
+            expect(isMonitoringTab('failed')).toBe(false);
         });
     });
 
