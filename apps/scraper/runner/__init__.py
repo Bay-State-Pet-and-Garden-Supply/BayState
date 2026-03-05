@@ -10,11 +10,7 @@ from ..infra import JobConfig
 from ..infra import ScraperEvent, create_emitter, event_bus
 from ..infra import settings
 
-try:
-    # Prefer new location
-    from ..ai.discovery import AIDiscoveryScraper  # type: ignore
-except Exception:
-    from ..scrapers.ai_discovery import AIDiscoveryScraper  # type: ignore
+from ..scrapers.ai_discovery import AIDiscoveryScraper
 from ..scrapers.executor.workflow_executor import WorkflowExecutor
 from ..scrapers.parser import ScraperConfigParser
 from ..scrapers.result_collector import ResultCollector

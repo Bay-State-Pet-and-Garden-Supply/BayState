@@ -5,7 +5,7 @@ import time
 from unittest.mock import MagicMock, patch
 from collections import deque
 
-from src.crawl4ai_engine.retry import (
+from engine.retry import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitState,
