@@ -25,11 +25,19 @@ from infra.failure_classifier import $$$
 from infra.retry_executor import $$$
 from infra.settings_manager import $$$
 
-try:
-    # Prefer new location
-    from actions import ActionRegistry
-except Exception:
-    from scrapers.actions import ActionRegistry
+import importlib
+
+# Resolve ActionRegistry from either new or old package locations using importlib
+def _resolve_action_registry():
+    for mod_name in ("apps.scraper.actions", "actions", "scrapers.actions"):
+        try:
+            mod = importlib.import_module(mod_name)
+            return getattr(mod, "ActionRegistry")
+        except Exception:
+            continue
+    raise ImportError("Could not import ActionRegistry from known locations")
+
+ActionRegistry = _resolve_action_registry()
 from scrapers.exceptions import (
     BrowserError,
     CircuitBreakerOpenError,

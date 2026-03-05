@@ -1,9 +1,6 @@
 import pytest
 
-try:
-    from apps.scraper.ai.discovery import AIDiscoveryScraper  # type: ignore
-except Exception:
-    from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_discovery import AIDiscoveryScraper
 
 
 @pytest.fixture

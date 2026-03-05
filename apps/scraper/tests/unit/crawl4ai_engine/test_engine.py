@@ -24,12 +24,12 @@ class TestCrawl4AIEngine:
     def test_init_with_config(self, basic_config):
         """Test engine initialization with config dict."""
         with (
-            patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
-            patch("src.crawl4ai_engine.engine.BrowserConfig") as mock_browser_config,
-            patch("src.crawl4ai_engine.engine.CrawlerRunConfig"),
+            patch("engine.engine.AsyncWebCrawler"),
+            patch("engine.engine.BrowserConfig") as mock_browser_config,
+            patch("engine.engine.CrawlerRunConfig"),
         ):
             mock_browser_config.return_value = MagicMock()
-            from src.crawl4ai_engine.engine import Crawl4AIEngine
+            from engine.engine import Crawl4AIEngine
 
             engine = Crawl4AIEngine(basic_config)
             assert engine.config == basic_config

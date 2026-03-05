@@ -5,8 +5,8 @@ import uuid
 from pathlib import Path
 from typing_extensions import override
 
-from scrapers.actions.base import BaseAction
-from scrapers.actions.registry import ActionRegistry
+from actions.base import BaseAction
+from actions.registry import ActionRegistry
 
 
 def test_auto_discover_actions_finds_all_handler_modules() -> None:

@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-try:
-    from apps.scraper.ai.discovery import AIDiscoveryScraper  # type: ignore
-except Exception:
-    from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_discovery import AIDiscoveryScraper
 
 
 def test_build_search_query_includes_category_when_present() -> None:

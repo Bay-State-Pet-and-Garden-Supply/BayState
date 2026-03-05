@@ -4,13 +4,13 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from src.crawl4ai_engine.transpiler.yaml_parser import (
+from engine.transpiler.yaml_parser import (
     YAMLConfigParser,
     ParsedYAMLConfig,
     SelectorField,
     UnsupportedFeature,
 )
-from src.crawl4ai_engine.transpiler.schema_generator import YAMLToCrawl4AI
+from engine.transpiler.schema_generator import YAMLToCrawl4AI
 
 
 class TestYAMLConfigParser:

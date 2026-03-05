@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from scrapers.actions.base import BaseAction
-from scrapers.actions.registry import ActionRegistry
+from actions.base import BaseAction
+from actions.registry import ActionRegistry
 from scrapers.exceptions import WorkflowExecutionError
 
 logger = logging.getLogger(__name__)

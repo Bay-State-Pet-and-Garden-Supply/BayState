@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from typing_extensions import override
 
-from scrapers.actions.base import BaseAction
+from actions.base import BaseAction
 
 from scrapers.models.config import ScraperConfig, SelectorConfig, WorkflowStep
 

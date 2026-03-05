@@ -11,10 +11,7 @@ from typing import Union
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-try:
-    from apps.scraper.ai.discovery import AIDiscoveryScraper  # type: ignore
-except Exception:
-    from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_discovery import AIDiscoveryScraper
 
 
 logging.basicConfig(

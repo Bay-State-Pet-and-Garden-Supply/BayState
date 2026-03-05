@@ -133,12 +133,11 @@ except Exception:
         start_metrics_server = getattr(metrics_mod, "start_metrics_server")
         stop_metrics_server = getattr(metrics_mod, "stop_metrics_server")
     except Exception:
-        from typing import Optional
-
-        def start_metrics_server(port=None):
+        # Provide typed no-op fallbacks when metrics endpoint isn't available.
+        def start_metrics_server(port: int | None = None):
             return (None, None)
 
-        def stop_metrics_server(httpd=None):
+        def stop_metrics_server(httpd: object | None = None) -> None:
             return None
 
 
