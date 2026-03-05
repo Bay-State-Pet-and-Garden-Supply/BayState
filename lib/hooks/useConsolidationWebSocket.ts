@@ -8,8 +8,11 @@ export interface ConsolidationProgressEvent {
     progress: number; // 0-100
     totalProducts: number;
     processedProducts: number;
+    processedCount: number; // Alias for processedProducts
     successfulProducts: number;
     failedProducts: number;
+    errors?: string[];
+    results?: unknown[];
     estimatedTimeRemaining?: number; // seconds
     timestamp: number;
 }
