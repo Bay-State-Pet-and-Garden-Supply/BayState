@@ -71,8 +71,8 @@ const [isRefreshing, setIsRefreshing] = useState(false);
     { status: 'published', color: 'bg-emerald-600' },
   ];
 
-  const getRequestStatus = (): PipelineStatus => {
-    return statusFilter === 'all' ? 'staging' : statusFilter;
+  const getRequestStatus = (): PipelineStatus | null => {
+    return statusFilter === 'all' ? null : statusFilter;
   };
 
   const handleRefresh = async (showSuccessToast = false) => {
@@ -80,7 +80,10 @@ const [isRefreshing, setIsRefreshing] = useState(false);
 
     try {
       const params = new URLSearchParams();
-      params.set('status', getRequestStatus());
+      const requestStatus = getRequestStatus();
+      if (requestStatus) {
+        params.set('status', requestStatus);
+      }
       if (searchQuery.trim()) {
         params.set('search', searchQuery.trim());
       }
@@ -138,7 +141,9 @@ const [isRefreshing, setIsRefreshing] = useState(false);
   };
 
   const openExportDialog = () => {
-    setExportStatus(getRequestStatus());
+    // If getRequestStatus() returns null (meaning 'all'), fall back to 'staging'
+    // so export dialog always has a valid PipelineStatus selected.
+    setExportStatus(getRequestStatus() ?? 'staging');
     setExportSearch(searchQuery);
     setShowExportDialog(true);
   };
