@@ -10,6 +10,7 @@ import { PipelineProductCard } from './PipelineProductCard';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
+import { ConsolidationDetailsModal } from './ConsolidationDetailsModal';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
 import { MethodSelection, EnrichmentMethod } from '@/components/admin/enrichment/MethodSelection';
 import { ChunkConfig } from '@/components/admin/enrichment/ChunkConfig';
@@ -84,6 +85,7 @@ export function PipelineClient({
     const [consolidationBatchId, setConsolidationBatchId] = useState<string | null>(null);
     const [consolidationProgress, setConsolidationProgress] = useState(0);
     const [isBannerDismissed, setIsBannerDismissed] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     // Clear scrape results state
     const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
