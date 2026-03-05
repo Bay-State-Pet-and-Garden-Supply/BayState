@@ -1,10 +1,11 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/pipeline-ui-overhaul.md",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\pipeline-ui-overhaul.md",
   "started_at": "2026-03-05T09:50:59.266Z",
   "session_ids": [
-    "ses_342a2bcfcffe9lwlh4KWcVcrAi"
+    "ses_342a2bcfcffe9lwlh4KWcVcrAi",
+    "ses_340ebd1dcffesELT4redSa0mVV"
   ],
   "plan_name": "pipeline-ui-overhaul",
   "agent": "atlas",
-  "worktree_path": "/Users/nickborrello/Desktop/Projects/BayState"
+  "worktree_path": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState"
 }

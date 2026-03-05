@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Package, Search, RefreshCw, Filter, Upload, Download } from 'lucide-react';
+import { PipelineProductCard } from './PipelineProductCard';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +46,9 @@ export function UnifiedPipelineClient({
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PipelineStatus | 'all'>('all');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -106,6 +109,32 @@ export function UnifiedPipelineClient({
     } finally {
       setIsRefreshing(false);
     }
+};
+
+  const handleSelect = (sku: string, index: number, isShiftClick: boolean) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev);
+      if (isShiftClick && lastSelectedIndex !== null) {
+        const [start, end] = [lastSelectedIndex, index].sort((a, b) => a - b);
+        for (let i = start; i <= end; i++) {
+          if (products[i]) {
+            newSet.add(products[i].sku);
+          }
+        }
+      } else {
+        if (newSet.has(sku)) {
+          newSet.delete(sku);
+        } else {
+          newSet.add(sku);
+        }
+        setLastSelectedIndex(index);
+      }
+      return newSet;
+    });
+  };
+
+  const handleView = (sku: string) => {
+    console.log('View product:', sku);
   };
 
   const openExportDialog = () => {
@@ -240,15 +269,32 @@ export function UnifiedPipelineClient({
         </Button>
       </div>
 
-      <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12 text-center min-h-[400px] flex items-center justify-center">
-        <div>
-          <Package className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-4 text-lg font-semibold text-gray-900">Product Grid</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            Product cards will be displayed here ({products.length} loaded, {totalProducts} total products)
-          </p>
+      {products.length === 0 ? (
+        <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12 text-center min-h-[400px] flex items-center justify-center">
+          <div>
+            <Package className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-4 text-lg font-semibold text-gray-900">No Products Found</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              No products to display ({products.length} loaded, {totalProducts} total products)
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {products.map((product, index) => (
+            <PipelineProductCard
+              key={product.sku}
+              product={product}
+              index={index}
+              isSelected={selectedProducts.has(product.sku)}
+              onSelect={handleSelect}
+              onView={handleView}
+              showBatchSelect
+              currentStage={product.pipeline_status}
+            />
+          ))}
+        </div>
+      )}
 
       <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
         <DialogContent aria-labelledby="export-dialog-title">
