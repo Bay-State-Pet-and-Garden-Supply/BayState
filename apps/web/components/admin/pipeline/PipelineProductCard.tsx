@@ -94,8 +94,9 @@ export function PipelineProductCard({
     showBatchSelect = false,
     currentStage
 }: PipelineProductCardProps) {
-    const handleCheckboxChange = (e: React.MouseEvent<HTMLInputElement>) => {
-        const isShiftClick = e.shiftKey;
+    const handleCheckboxChange = (e: React.FormEvent<HTMLInputElement>) => {
+        const nativeEvent = e.nativeEvent as unknown as MouseEvent;
+        const isShiftClick = nativeEvent.shiftKey;
         onSelect(product.sku, index, isShiftClick);
     };
     const registerName = product.input?.name || product.sku;
@@ -131,10 +132,9 @@ export function PipelineProductCard({
                         <input
                             type="checkbox"
                             checked={isSelected}
-                            readOnly
-                            onClick={handleCheckboxChange}
+                            onChange={handleCheckboxChange}
                             aria-label={`Select product ${product.sku}`}
-                            className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer"
+                            className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         />
                     )}
                     <div className="flex-1 min-w-0">
@@ -187,13 +187,12 @@ export function PipelineProductCard({
                     <input
                         type="checkbox"
                         checked={isSelected}
-                        readOnly
-                        onClick={(e) => {
+                        onChange={(e) => {
                             e.stopPropagation();
                             handleCheckboxChange(e);
                         }}
                         aria-label={`Select product ${product.sku}`}
-                        className="h-5 w-5 rounded border-gray-300 shadow-sm cursor-pointer"
+                        className="h-5 w-5 rounded border-gray-300 shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     />
                 </div>
 
@@ -293,10 +292,9 @@ export function PipelineProductCard({
                 <input
                     type="checkbox"
                     checked={isSelected}
-                    readOnly
-                    onClick={handleCheckboxChange}
+                    onChange={handleCheckboxChange}
                     aria-label={`Select product ${product.sku}`}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 />
 
                 <div className="flex-1 min-w-0">
