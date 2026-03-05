@@ -14,9 +14,22 @@ Complete configuration reference for the crawl4ai extraction engine.
 3. [Configuration Schema](#configuration-schema)
 4. [Extraction Modes](#extraction-modes)
 5. [Anti-Detection](#anti-detection)
-6. [Schema Definition](#schema-definition)
+6. [Anti-Detection](#anti-detection)
+7. [Schema Definition](#schema-definition)
+8. [Actions](#actions)
+9. [Advanced Configuration](#advanced-configuration)
+10. [Proxy Configuration](#proxy-configuration)
+11. [Data Validation](#data-validation)
+12. [Troubleshooting](#troubleshooting)
+13. [Examples](#examples)
+11. [Troubleshooting](#troubleshooting)
+12. [Examples](#examples)
 7. [Actions](#actions)
 8. [Advanced Configuration](#advanced-configuration)
+9. [Proxy Configuration](#proxy-configuration)
+10. [Data Validation](#data-validation)
+11. [Troubleshooting](#troubleshooting)
+12. [Examples](#examples)
 9. [Troubleshooting](#troubleshooting)
 10. [Examples](#examples)
 
@@ -504,17 +517,404 @@ crawl4ai_config:
       - "anti_bot_detected"
 ```
 
-### Proxy Configuration
+## Proxy Configuration
+
+The scraper supports proxy configuration for outbound requests and Playwright browser automation. Use proxies to distribute requests across multiple IP addresses, avoid rate limiting, and access geo-restricted content.
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `proxy_url` | string | `null` | Single proxy URL (`http://host:port` or `https://host:port`) |
+| `proxy_username` | string | `null` | Username for proxy authentication |
+| `proxy_password` | string | `null` | Password for proxy authentication |
+| `rotation_strategy` | string | `"off"` | Rotation strategy: `per_request`, `per_site`, or `off` |
+| `proxy_list` | array | `null` | List of proxy URLs to rotate through |
+
+### Proxy URL Format
+
+Proxy URLs must include the protocol prefix:
+
+```
+http://proxy.example.com:8080
+https://proxy.example.com:8080
+http://user:pass@proxy.example.com:8080
+```
+
+### Rotation Strategies
+
+#### `off` - No Rotation
+
+Uses the first available proxy for all requests. Best for single proxy setups or when session persistence is critical.
+
+**When to use:**
+- Single proxy configuration
+- Session-based scraping requiring IP consistency
+- Testing and development
 
 ```yaml
-crawl4ai_config:
-  proxy:
-    enabled: true
-    rotation: "per_request"           # per_request | per_site | off
-    proxies:
-      - "http://proxy1:8080"
-      - "http://proxy2:8080"
+proxy_config:
+  proxy_url: "http://proxy.example.com:8080"
+  rotation_strategy: "off"
 ```
+
+#### `per_request` - Rotate Per Request
+
+Cycles through the proxy list for each request. Best for distributing load and avoiding rate limits.
+
+**When to use:**
+- High-volume scraping
+- Load balancing across multiple proxies
+- Avoiding IP-based rate limits
+- Multiple proxy providers
+
+```yaml
+proxy_config:
+  proxy_list:
+    - "http://proxy1.example.com:8080"
+    - "http://proxy2.example.com:8080"
+    - "http://proxy3.example.com:8080"
+  rotation_strategy: "per_request"
+```
+
+#### `per_site` - Same Proxy Per Site
+
+Returns the same proxy for requests to the same site (based on hostname hash). Best for maintaining session state across multiple requests to the same domain.
+
+**When to use:**
+- Session-based authentication
+- Shopping cart workflows
+- Multi-step forms
+- Sites tracking sessions by IP
+
+```yaml
+proxy_config:
+  proxy_list:
+    - "http://proxy1.example.com:8080"
+    - "http://proxy2.example.com:8080"
+  rotation_strategy: "per_site"
+```
+
+### Provider Examples
+
+#### Bright Data
+
+Bright Data (formerly Luminati) provides residential and datacenter proxies.
+
+```yaml
+proxy_config:
+  proxy_url: "http://user:pass@proxy.brightdata.io:22225"
+  rotation_strategy: "per_request"
+```
+
+**Format**: `http://{customer_id}:{password}@proxy.brightdata.io:22225`
+
+**Common ports:**
+- 22225: Residential rotating
+- 24000: Datacenter rotating
+
+#### Oxylabs
+
+Oxylabs provides residential and datacenter proxy solutions.
+
+```yaml
+proxy_config:
+  proxy_url: "http://user:pass@pr.oxylabs.io:7777"
+  rotation_strategy: "per_request"
+```
+
+**Format**: `http://{username}:{password}@pr.oxylabs.io:7777`
+
+**Common ports:**
+- 7777: Residential rotating
+- 10000: Datacenter rotating
+
+#### Multiple Proxy Rotation
+
+Rotate through a list of proxies from any provider:
+
+```yaml
+proxy_config:
+  proxy_list:
+    - "http://user1:pass1@proxy1.brightdata.io:22225"
+    - "http://user2:pass2@proxy2.brightdata.io:22225"
+    - "http://user:pass@pr.oxylabs.io:7777"
+  rotation_strategy: "per_request"
+```
+
+#### Separate Credentials
+
+If your proxy provider gives you credentials separately:
+
+```yaml
+proxy_config:
+  proxy_url: "http://proxy.example.com:8080"
+  proxy_username: "my_username"
+  proxy_password: "my_password"
+  rotation_strategy: "per_request"
+```
+
+### Integration with Scrapers
+
+Add `proxy_config` to your scraper configuration:
+
+```yaml
+name: "proxied-scraper"
+scraper_type: "crawl4ai"
+base_url: "https://example.com"
+
+proxy_config:
+  proxy_list:
+    - "http://user:pass@proxy.brightdata.io:22225"
+  rotation_strategy: "per_request"
+
+crawl4ai_config:
+  extraction_mode: "auto"
+  anti_detection:
+    enabled: true
+
+workflows:
+  - action: "crawl4ai_extract"
+    params:
+      url: "{base_url}/product/{sku}"
+      schema:
+        name:
+          type: "string"
+        price:
+          type: "number"
+```
+
+### Troubleshooting Proxies
+
+#### Connection Errors
+
+**Symptom**: `Proxy connection timeout` or `Cannot connect to proxy`
+
+**Solutions:**
+1. Verify proxy URL format includes protocol (`http://` or `https://`)
+2. Check firewall rules allow outbound connections to proxy port
+3. Test proxy connectivity with curl:
+
+```bash
+curl -x http://user:pass@proxy.example.com:8080 http://httpbin.org/ip
+```
+
+#### Authentication Failures
+
+**Symptom**: `Proxy authentication required` or `407 Proxy Authentication Required`
+
+**Solutions:**
+1. Verify username and password are correct
+2. URL-encode special characters in credentials
+3. Use separate `proxy_username` and `proxy_password` fields instead of embedding in URL
+
+```yaml
+# Instead of:
+proxy_url: "http://user:p@ss@proxy.example.com:8080"
+
+# Use:
+proxy_url: "http://proxy.example.com:8080"
+proxy_username: "user"
+proxy_password: "p@ss"
+```
+
+#### Rotation Not Working
+
+**Symptom**: All requests use the same proxy
+
+**Solutions:**
+1. Verify `rotation_strategy` is set to `per_request` or `per_site`
+2. Ensure `proxy_list` has multiple entries
+3. Check that proxy URLs are valid and unique
+
+```yaml
+proxy_config:
+  proxy_list:
+    - "http://proxy1.example.com:8080"
+    - "http://proxy2.example.com:8080"  # Must have multiple
+  rotation_strategy: "per_request"     # Must not be "off"
+```
+
+---
+
+## Data Validation
+
+The scraper uses Pandera to validate extracted data before sending results to the coordinator. Validation runs automatically at the callback boundary to catch malformed payloads early and prevent bad data from entering the system.
+
+### Overview
+
+Validation ensures scraped results meet minimum quality standards:
+
+- **Required fields** are present (name or title)
+- **Price values** are numeric and non-negative
+- **URLs** follow proper http/https format
+- **SKUs** contain only alphanumeric characters
+
+When validation fails, the scraper reports detailed errors back to the coordinator so you can identify and fix data issues quickly.
+
+### Validation Rules
+
+| Field | Rule | Example Valid | Example Invalid |
+|-------|------|---------------|-----------------|
+| price | Positive number or null | `29.99`, `0`, `null` | `"free"`, `"N/A"`, `-5` |
+| name | Required string (or title as fallback) | `"Dog Food"`, `"Premium Cat Litter"` | `""`, `null` (when title also null) |
+| url | Valid URL with http/https scheme | `https://example.com/product/123` | `"not-a-url"`, `"ftp://files.example.com"` |
+| sku | Alphanumeric characters only | `"ABC123"`, `"PROD456"` | `"ABC-123!"`, `"SKU 789"` |
+
+**Notes:**
+- The `name` field accepts either `name` or `title` from extracted data. If both are missing, validation fails.
+- Price can be `null` for out-of-stock or unavailable items, but cannot be negative.
+- URLs must have a valid scheme (`http` or `https`) and a network location (domain).
+- SKUs must pass `isalnum()` check, meaning only letters and digits, no spaces or special characters.
+
+### Configuration
+
+Control validation behavior with environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_PANDERA_VALIDATION` | `true` | Enable or disable Pandera validation |
+
+To disable validation (not recommended for production):
+
+```bash
+ENABLE_PANDERA_VALIDATION=false
+```
+
+Disabling validation may allow malformed data to reach the coordinator, causing downstream processing errors. Only disable temporarily during development or debugging.
+
+### Validation Examples
+
+#### Valid Data
+
+```json
+{
+  "name": "Premium Dog Food - Chicken Flavor",
+  "price": 29.99,
+  "url": "https://example.com/products/ABC123",
+  "sku": "ABC123"
+}
+```
+
+```json
+{
+  "title": "Cat Litter Box",
+  "price": null,
+  "url": "https://example.com/products/DEF456",
+  "sku": "DEF456"
+}
+```
+
+#### Invalid Data with Error Messages
+
+**Missing name/title:**
+```json
+{
+  "price": 15.99,
+  "url": "https://example.com/products/GHI789",
+  "sku": "GHI789"
+}
+```
+*Error:* `Missing required field: name or title`
+
+**Invalid price format:**
+```json
+{
+  "name": "Bird Seed",
+  "price": "Out of stock",
+  "url": "https://example.com/products/JKL012",
+  "sku": "JKL012"
+}
+```
+*Error:* `Column price must have type Float`
+
+**Negative price:**
+```json
+{
+  "name": "Fish Tank",
+  "price": -10.00,
+  "url": "https://example.com/products/MNO345",
+  "sku": "MNO345"
+}
+```
+*Error:* `Column price failed check greater_than_or_equal_to(0)`
+
+**Invalid URL scheme:**
+```json
+{
+  "name": "Hamster Wheel",
+  "price": 12.99,
+  "url": "ftp://files.example.com/products/PQR678",
+  "sku": "PQR678"
+}
+```
+*Error:* `Invalid url: ftp://files.example.com/products/PQR678`
+
+**Invalid SKU with special characters:**
+```json
+{
+  "name": "Rabbit Hutch",
+  "price": 89.99,
+  "url": "https://example.com/products/STU-901",
+  "sku": "STU-901!"
+}
+```
+*Error:* `Invalid sku (must be alphanumeric): STU-901!`
+
+### Troubleshooting Validation Errors
+
+#### Common Validation Failures
+
+**"Missing required field: name or title"**
+- The scraper could not extract a product name from the page
+- Check that your schema includes a `name` or `title` field
+- Verify CSS selectors are correct and match the page structure
+- Try adding fallback selectors for different page layouts
+
+**"Column price must have type Float"**
+- Price was extracted as text instead of a number
+- Use the `parse_price` transform in your schema:
+  ```yaml
+  price:
+    type: "number"
+    selector: ".price"
+    transform: "parse_price"
+  ```
+
+**"Invalid url"**
+- The URL field contains an invalid value
+- Ensure the URL includes `http://` or `https://`
+- Check for relative URLs (should be absolute)
+
+**"Invalid sku (must be alphanumeric)"**
+- SKU contains spaces, dashes, or special characters
+- Clean the SKU in your extraction schema if needed
+- Contact the site administrator if SKUs should contain special characters
+
+#### Debugging Validation Issues
+
+1. **Enable verbose logging** to see the exact data being validated:
+   ```bash
+   LOG_LEVEL=debug python daemon.py
+   ```
+
+2. **Test extraction locally** to inspect raw output:
+   ```bash
+   python -m scraper_backend.test_extraction --config my-scraper.yaml --sku TEST123
+   ```
+
+3. **Check the callback payload** in the coordinator logs to see what data was sent
+
+4. **Temporarily disable validation** only for debugging (do not use in production):
+   ```bash
+   ENABLE_PANDERA_VALIDATION=false
+   ```
+
+---
+
+## Troubleshooting
+
+## Troubleshooting
 
 ### Custom Headers
 
