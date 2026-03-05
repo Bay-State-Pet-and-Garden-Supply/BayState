@@ -16,8 +16,6 @@
     "scraper": "cd apps/scraper && python",
     "vercel-build": "cd apps/web && next build"
   },
-  "dependencies": {
-    "exceljs": "^4.4.0"
-  },
+  "dependencies": {},
   "devDependencies": {}
 }
