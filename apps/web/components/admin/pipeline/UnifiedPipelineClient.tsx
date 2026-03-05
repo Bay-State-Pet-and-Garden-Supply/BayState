@@ -381,7 +381,13 @@ export function UnifiedPipelineClient({
       const res = await fetch('/api/admin/pipeline/clear-scrape-results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skus: Array.from(selectedProducts) }),
+        body: JSON.stringify({
+          skus: Array.from(selectedProducts),
+          method: 'scrapers',
+          config: { scrapers: [] },
+          chunkSize: 10,
+          maxWorkers: 3,
+        }),
       });
 
       if (res.ok) {
@@ -406,10 +412,16 @@ export function UnifiedPipelineClient({
     
     setIsBulkEnriching(true);
     try {
-      const res = await fetch('/api/admin/pipeline/enrich', {
+      const res = await fetch('/api/admin/enrichment/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skus: Array.from(selectedProducts) }),
+        body: JSON.stringify({
+          skus: Array.from(selectedProducts),
+          method: 'scrapers',
+          config: { scrapers: [] },
+          chunkSize: 10,
+          maxWorkers: 3,
+        }),
       });
       
       if (res.ok) {
@@ -429,10 +441,16 @@ export function UnifiedPipelineClient({
 
   const handleEnrich = async (sku: string) => {
     try {
-      const res = await fetch('/api/admin/pipeline/enrich', {
+      const res = await fetch('/api/admin/enrichment/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skus: [sku] }),
+        body: JSON.stringify({
+          skus: [sku],
+          method: 'scrapers',
+          config: { scrapers: [] },
+          chunkSize: 10,
+          maxWorkers: 3,
+        }),
       });
 
       if (res.ok) {
