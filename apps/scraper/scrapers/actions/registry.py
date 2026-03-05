@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scrapers.actions.base import BaseAction
+from actions.base import BaseAction
 
 
 class ActionRegistry:
