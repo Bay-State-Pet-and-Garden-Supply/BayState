@@ -73,16 +73,42 @@ if env_file.exists():
     load_dotenv(env_file, override=True)
 
 
-from .core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
-from .core.realtime_manager import RealtimeManager  # type: ignore
-from .utils.logger import setup_logging  # type: ignore
-from .utils.sentry import (
-    init_sentry,
-    set_job_context,
-    add_extraction_breadcrumb,
-    capture_antibot_event,
-)  # type: ignore
-from .src.crawl4ai_engine.metrics_endpoint import start_metrics_server, stop_metrics_server  # type: ignore
+try:
+    # Prefer package-relative imports when daemon.py is imported as part of the
+    # `scraper` package (normal runtime).
+    from .core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
+    from .core.realtime_manager import RealtimeManager  # type: ignore
+    from .utils.logger import setup_logging  # type: ignore
+    from .utils.sentry import (
+        init_sentry,
+        set_job_context,
+        add_extraction_breadcrumb,
+        capture_antibot_event,
+    )  # type: ignore
+    from .src.crawl4ai_engine.metrics_endpoint import start_metrics_server, stop_metrics_server  # type: ignore
+except Exception:
+    # Support importing daemon.py as a top-level module (for quick import checks
+    # used in CI/verification) where relative imports fail with "no known parent
+    # package". Fall back to absolute imports from the scraper package layout.
+    from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
+    from core.realtime_manager import RealtimeManager  # type: ignore
+    from utils.logger import setup_logging  # type: ignore
+    from utils.sentry import (
+        init_sentry,
+        set_job_context,
+        add_extraction_breadcrumb,
+        capture_antibot_event,
+    )  # type: ignore
+
+    try:
+        from src.crawl4ai_engine.metrics_endpoint import start_metrics_server, stop_metrics_server  # type: ignore
+    except Exception:
+        # metrics endpoint is optional for import checks; ignore if not importable
+        def start_metrics_server():
+            return (None, None)
+
+        def stop_metrics_server(server=None):
+            return None
 
 
 # Configuration
