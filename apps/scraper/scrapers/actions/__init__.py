@@ -4,10 +4,6 @@ from scrapers.actions.base import BaseAction
 
 # Import handlers to ensure they are registered
 from scrapers.actions.handlers import (
-    ai_base,
-    ai_extract,
-    ai_search,
-    ai_validate,
     anti_detection,
     browser,
     click,
