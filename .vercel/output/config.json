@@ -1,0 +1,3498 @@
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$",
+      "headers": {
+        "Location": "/$1"
+      },
+      "status": 308,
+      "continue": true
+    },
+    {
+      "src": "/_next/__private/trace",
+      "dest": "/404",
+      "status": 404,
+      "continue": true
+    },
+    {
+      "src": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      "headers": {
+        "X-DNS-Prefetch-Control": "on",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+      },
+      "continue": true
+    },
+    {
+      "src": "/404/?",
+      "status": 404,
+      "continue": true,
+      "missing": [
+        {
+          "type": "header",
+          "key": "x-prerender-revalidate"
+        }
+      ]
+    },
+    {
+      "src": "/500",
+      "status": 500,
+      "continue": true
+    },
+    {
+      "src": "^(?!/_next)/admin/scrapers/lab(?:/)?$",
+      "headers": {
+        "Location": "/admin/scrapers/test-lab"
+      },
+      "status": 307
+    },
+    {
+      "src": "^(?!/_next)/admin/scrapers/lab(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      "headers": {
+        "Location": "/admin/scrapers/test-lab"
+      },
+      "status": 307
+    },
+    {
+      "src": "^(?!/_next)/admin/scraper-network(?:/)?$",
+      "headers": {
+        "Location": "/admin/scrapers/network"
+      },
+      "status": 307
+    },
+    {
+      "src": "^(?!/_next)/admin/scraper-network(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      "headers": {
+        "Location": "/admin/scrapers/network"
+      },
+      "status": 307
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "406298c1bd1741445f6d20d29b7fef4c30b31091eb"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/auth/actions.ts#resetPassword"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60e26c709d214de914d59a480b631d914d7ced2f6b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/auth/actions.ts#loginAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60e8890c8764c984ad1d3bf84e7a7f73d9605fd97a"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/auth/actions.ts#loginWithOAuth"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40969d1fcba08abcc5c3dcaa69b62183163b0f0f8d"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/auth/actions.ts#signupAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40686138286920894daddc2071a5bf6d30a8587c19"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/auth/actions.ts#updatePassword"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "005e1f9a7efa218ebdaab7366269e3e8a21698d777"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/auth/actions.ts#signOutAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40f10ab16b7608b86a1a05731257c7e9b880665252"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/actions.ts#toggleWishlistAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "002aafa8c2d74b53fabc5f4282e109f1af3435ab44"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/pages/actions.ts#getPages"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "403cc5e741377d4e81833b2904f7bcca3f9df4bb00"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/pages/actions.ts#createPage"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40c58fbcca63ffd5def7eb932a7a8196f99f9622bf"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/pages/actions.ts#getPage"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40e93bd3959f217c41a056659012c4e247316aad15"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/pages/actions.ts#getPageBySlug"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40e95a013b35c556f8165adf6dbddc0f0d6a97a216"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/pages/actions.ts#deletePage"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60720a170abc5dc1208831d36860b9282f3dda36c5"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/pages/actions.ts#updatePage"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40478e028035a6f49d42f03954c162e385980f4702"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/reorder.ts#getRecentOrders"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40b8139db432b5727d233cec11c22e78ca950f1146"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/reorder.ts#getFrequentlyBoughtProducts"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "005237a5436deecf26f2038aa7d5f16a9aa18c7185"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/pets.ts#getUserPets"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "00df06827859542ffa47bc779e18b242495178f152"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/pets.ts#getPetTypes"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4082419962c901ed3383986bb3d6c420a804b008ac"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/pets.ts#getPetById"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40b0b3f5cc774ca3d457072a960e90f32a51806348"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/pets.ts#createPet"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40dd6eeb4c0f96bdc8570b9c0ac4727ff6b710561e"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/pets.ts#deletePet"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60cf984030e568396796c4ddcf467c0e7f6eb04237"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/pets.ts#updatePet"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4022cbc61ef27194b2e2f390eb4e951a91cbab8f1e"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/actions.ts#addAddressAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "406167f7d54981c914830398da0e36aabf32a9b9ad"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/actions.ts#deleteAddressAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "402e85cedd8d062cf85052a3c034821bd367900a67"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/actions.ts#setDefaultAddressAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "407f9034bb0403ddc65898839fefa60ff41b3b8c09"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/actions.ts#updateProfileAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "001adc10b43daacb0debf296bcaab33aaeec12904a"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/account/actions.ts#createMissingProfileAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60208637d6fcabf14fa96ce441c49ab07bba6bee0b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/products/actions.ts#updateProduct"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "402b31f4db3990da127dbaec64f485da3a265bab56"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/reviews.ts#submitReview"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "70c00efbfe86513779bbf025b02a18a3b160e1c000"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/questions.ts#submitQuestion"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "403685a25558b3035700736ab455812611e4bf6591"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/recently-viewed.ts#trackProductView"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "400a30e1ac11c1b1ed8b5495573ddaa95292c8b970"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/reviews.ts#getProductReviewStats"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4025dd5f66f810334324701d12a754693fd10e7794"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/reviews.ts#hasUserReviewedProduct"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40f33ebf8485f2af7fadd91c8eafd178602fd95d2b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/reviews.ts#getApprovedReviews"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "400de41af4d4fe09c20ea79a2a1e69c8e23bdf2b10"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/questions.ts#getProductQuestions"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "6053cd0f26b05d2f0e553837083366b7ac10002cde"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/storefront/recently-viewed.ts#getRecentlyViewedProducts"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "00eedba3888b6edf6489f081b351a981e9baeecea4"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/b2b/sync-service.ts#getB2BFeeds"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "406c0d5d39039a887af99864797124417f303046ec"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/b2b/sync-service.ts#getB2BFeed"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40d1de7d682fd1b1176c7bfd7e80c816e7b34fabd6"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/b2b/sync-service.ts#getCredentials"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40ec886d078da9dc61bcd112cf98905e48308318bf"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/b2b/sync-service.ts#testFeedConnection"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "6070d78553ee8030c8b4cc5c5badf64969e409635b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/b2b/sync-service.ts#getSyncJobs"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "608954172d6f2e463db9fb642cc124923023a6c6e2"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/b2b/sync-service.ts#triggerSync"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60e72a5e1016f167cf12828c14a4964f1a4a4f42bf"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/b2b/sync-service.ts#updateFeedConfig"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40c069bf9a324e1bbcccf979bf120b731b62411b66"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/brands/actions.ts#deleteBrand"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40aa39eee998328a95a06770b1e2809575301b03fa"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/brands/actions.ts#createBrand"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "602af417a9f8887916ccd2c34411b35a80b41e6081"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/brands/actions.ts#updateBrand"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40be9dff863923e143e56f301f2e4e1475ab3fa536"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/categories/actions.ts#deleteCategory"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40a2d8b06f0b7aef0b64b37ae180cea9ef0262c499"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/categories/actions.ts#createCategory"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "6027588a86a7f53334b53371ed3b6fb64778633297"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/categories/actions.ts#updateCategory"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4068f9f77469701310aae2889aa6dc64eef9a416d3"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/design/actions.ts#updateCampaignBannerAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "405482a43d8470c58fb31aaa1f03044a315c0c2aa6"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/design/actions.ts#updateHomepageSettingsAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40df4e9dc8ac1bf058d623dfdd32e08e813504325f"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/login/actions.ts#login"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "003eb967f219dcebd14dee7a2f118916231069c377"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#syncOrdersAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "005290e6a440b2643e84254d53206619f64542d551"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#syncProductsAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "0055126f3ab54f765f85622d5f2e13ffe53f92e91e"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#getCredentials"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "008bdc98ebe8a8e9ca95cf86e7e4486c88d07bf05b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#syncOrdersFormAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "0096a0c58ddaa7d91828f432565cc30dd2fd97b997"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#testConnectionAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "00baabb95e44b86f545274ee4a4ff3de4a88e6e9de"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#syncCustomersAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "00ddb46d9a7df3899404d615410767ee63a4eb35da"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#syncCustomersFormAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "00e8c3817ed259eb4c765bd3287e03ff3437c8d7ef"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#syncProductsFormAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4059442cba41fede23b756ab8573cf70af719b3244"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#saveCredentialsAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40e7d046e3c59950dca0e8843b25b39f8805d3d082"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/migration/actions.ts#syncUploadedXmlAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60a1689b0270014261c0cc0497181496cb52747fbc"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/orders/actions.ts#updateOrderStatusAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40c5bbe7c03aa0299f10a298e4cf6bb39bab5b7905"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/orders/actions.ts#deleteOrder"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40cd4f6cc20f55b92ab8a2e29d90a30b590a65e014"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/pages/page.tsx#anonymous_fn"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "609dff4453bb800f2b1d086fb4886773085ccd2d4f"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/pipeline-scraping.ts#scrapeProducts"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40279b16608719a43f31eebafd7b0dc8b095b57ea4"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/tools/integra-sync/actions.ts#analyzeIntegraAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4055f6e021c90af7defdfd8bf545c1283df884c63f"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/tools/integra-sync/actions.ts#processOnboardingAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40400f26950d65a6c3a747bce743d7f8806b86dbcc"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/product-groups/[id]/page.tsx#anonymous_fn"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "409d9f92c685a7092927d89a80c36f03d686e7c11f"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/product-groups/[id]/page.tsx#$$RSC_SERVER_ACTION_2"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40cb5d6fa657d031368f0744c595f0cff547cbc670"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/product-groups/[id]/page.tsx#$$RSC_SERVER_ACTION_1"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60ef8ae42c412e8152a5b150a671d5d5aefb471e5c"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/products/[id]/edit/actions.ts#updateProduct"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4051e0ff7d9ba49f56187b3debdfdea77461730a3a"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/images.ts#getProductImages"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40b1d72aefb0e6f696f39cd80d8b3e46fcce0274a9"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/images.ts#deleteProductImage"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "600be61accde19657e437f19758456e07108a0baa2"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/images.ts#createProductImage"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60649cd3ab99195585662748d9f1fc847fafb02d51"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/images.ts#setImageAsPrimary"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "609600a55f8130851b0f47fe5e07c8a47bdc6e5554"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/images.ts#updateProductImage"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "400c68546f34fcc30c960c3519487c1ef23347677b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#deleteOptionValue"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4045d2933175f7812f5117f88e5d81286319f794e5"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#deleteProductOption"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "404f534cd6a50f7a8942b067071137b3a8e2092515"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#getProductVariants"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40737cea019afe9ff8102ba415fb7c68857b4ce095"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#getProductOptions"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4098bdc6c069f168e6c2e810137fd88e478c19f962"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#deleteProductVariant"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "6028b9c5806703a6b0c3b51f4ebaf5712f68610871"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#updateProductOption"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60565da4d6c9187c2b6842b91e2cb7450957c8fc65"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#createProductOption"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60929809aa47dd39a2526357d705c16adfb9d121ae"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#createProductVariant"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "609a54c550bd4899a120d094be4621b3287df6d9d1"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#updateProductVariant"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "70aacc72d66221d1aff52de248b5a876c02a06de1d"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/variants.ts#createOptionValue"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40860a1f6968fcb66d33efa6a1d7b39924709129e1"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/products/new/actions.ts#createProduct"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40c5a490acb4dc46dddb7c52f4062d542240a7871c"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/promotions/actions.ts#createPromoCodeAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60c722e1278538d2cd9663060a315805882dd0b5c0"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/promotions/actions.ts#updatePromoCodeAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40b246e441be2710dbd25eca9d7f70a3ee4b7a0abb"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/promotions/actions.ts#deletePromoCodeAction"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4090dcb6948ba5be532e1327a8a130b8cb3a6103df"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/quality/actions.ts#titleCaseProductName"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "000951d2d1be2e35992df68f775712ffa7bf080a3b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/quality/actions.ts#bulkTitleCaseNames"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "0081f03c53a4f4e18c32f1e3be21b588382c70c3e7"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/reviews.ts#getReviewStats"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40044e34293f5a31d7794c0f33542bb840c84e04ec"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/reviews.ts#deleteReview"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "408e6fec991caa5852b218b1981b0e821d7462f105"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/reviews.ts#getReviews"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "603b6ad587537d79041e76509469c2b949d5d24a28"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/reviews.ts#updateReviewStatus"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "403a6ac760074594edd6415d95d87704d90eb2278e"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/actions-workbench.ts#getScraperBySlug"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40048f1a8d5ee4cb4c4fe86d9adc979041b1884dd3"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/[slug]/configuration/page.tsx#$$RSC_SERVER_ACTION_1"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40293b049b63be64b71d4cd0ea5b17825c0fa7cce0"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/[slug]/configuration/page.tsx#anonymous_fn"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40e4b3578b4847ca35e0b19890e787802c73ab780f"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/[slug]/configuration/page.tsx#$$RSC_SERVER_ACTION_2"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "606180272be7396be69ca005d4f9977d636cb29a62"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#addSelector"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "6018130a6a1ec26dfc97755c08c60aac4878dbefab"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#updateSelector"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4089b3f16b792f9dcb42ffea1a22abcafdbe0b3c44"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#deleteSelector"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60bdc79c5b6a4c6bd74ee4253924bbce5ae3cdc19a"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#reorderSelectors"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "404f26803534e8bd62d74fe44621a70ca98f2777dd"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#publishVersion"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "405551ad88bdaf718b488d03c1dee08c8567698018"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#removeTestSku"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "406baf62249456f3a5c7d18ab29b2d816b5066246c"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#createNewVersion"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "409427923322a610119aab1402b5b4155385b8df7c"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#deleteWorkflowStep"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60435a09989565f49cca5bb5dd956fb840faad4470"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#reorderWorkflowSteps"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60c4ecedcbf1d31c505e8b97b79d0eb70c5eca3b7b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#updateWorkflowStep"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60dbd72e0567d9643cdc45215fb358ea9c8a4b8d1e"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#addWorkflowStep"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "70d9168a47fdb09399d14d4e77a603921ac11f2868"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/scraper-configs/actions-normalized.ts#addTestSku"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40091b66888e66a7d0a915a553bc2fa6fe7ddf442d"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/runs/actions.ts#cancelScraperRun"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40953da4c7c4cff897f7b699285a640b03d8351f8b"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/runs/actions.ts#retryScraperRun"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "401d1a6cb13d88b2836bbf58ba40b6b57592618cd3"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/runs/actions.ts#getScraperRunLogs"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "4055d96abafc03525e9a046cf3debcf9214b25b54f"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/runs/actions.ts#getScraperRunById"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40fc965883f1da02258229505506171f19a981d638"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/runs/actions.ts#getScraperRuns"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40c38579168f83f186b24cd9a9619aa46335613d32"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/network/[id]/actions.ts#deleteRunner"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "604fcb103dca184d18f2276d1d9ea56139a18050cd"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/network/[id]/actions.ts#renameRunner"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40b2c25f63b28b69e00acca06a14e4a57272ba0a49"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/network/[id]/actions.ts#pauseRunner"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40a1f70033242bceef9c8510655fc4fe24e3bf3e2a"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/network/[id]/actions.ts#resumeRunner"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "602b060be89b8865496c5ec74da5b117071aa5e441"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/network/[id]/actions.ts#updateRunnerMetadata"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "7058e95b49dfbd25ff6129d252f363bf9fb7b00646"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/scrapers/actions.ts#createScraper"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "400dabfed8edbf9d2eab25e6e6547f0cca6a33ce20"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/services/actions.ts#deleteService"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "602483704f1473723d6d36f65be02e26e28798df66"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/services/actions.ts#toggleServiceStatus"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "40b99e6fe81b64b986d984c2f51be6e42b9a584bc3"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/services/actions.ts#createService"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "60126f05488908402dd5dafe524d9e768c99776df1"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/app/admin/services/actions.ts#updateService"
+        }
+      ]
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "next-action",
+          "value": "606ca747070fc578e9bacc3e4c828a19a3cbab7401"
+        }
+      ],
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "append",
+          "target": {
+            "key": "x-server-action-name"
+          },
+          "args": "BayStateApp/lib/admin/actions.ts#updateRoleAction"
+        }
+      ]
+    },
+    {
+      "continue": true,
+      "src": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/((?!_next\\/static|_next\\/image|favicon.ico|.*.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*))(\\\\.json)?[\\/#\\?]?$",
+      "missing": [
+        {
+          "type": "header",
+          "key": "x-prerender-revalidate",
+          "value": "b6e7f84212eeb128c75a4f14619fea56"
+        }
+      ],
+      "middlewarePath": "middleware",
+      "middlewareRawSrc": [
+        "/((?!_next/static|_next/image|favicon.ico|.*.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)"
+      ],
+      "override": true
+    },
+    {
+      "src": "/(?<path>.+?)(?:/)?$",
+      "dest": "/$path.segments/$segmentPath.segment.rsc",
+      "has": [
+        {
+          "type": "header",
+          "key": "rsc",
+          "value": "1"
+        },
+        {
+          "type": "header",
+          "key": "next-router-prefetch",
+          "value": "1"
+        },
+        {
+          "type": "header",
+          "key": "next-router-segment-prefetch",
+          "value": "/(?<segmentPath>.+)"
+        }
+      ],
+      "continue": true,
+      "override": true
+    },
+    {
+      "src": "^/?$",
+      "dest": "/index.segments/$segmentPath.segment.rsc",
+      "has": [
+        {
+          "type": "header",
+          "key": "rsc",
+          "value": "1"
+        },
+        {
+          "type": "header",
+          "key": "next-router-prefetch",
+          "value": "1"
+        },
+        {
+          "type": "header",
+          "key": "next-router-segment-prefetch",
+          "value": "/(?<segmentPath>.+)"
+        }
+      ],
+      "continue": true,
+      "override": true
+    },
+    {
+      "src": "^/?",
+      "has": [
+        {
+          "type": "header",
+          "key": "rsc",
+          "value": "1"
+        }
+      ],
+      "dest": "/index.rsc",
+      "headers": {
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+      },
+      "continue": true,
+      "override": true
+    },
+    {
+      "src": "^/((?!.+\\.rsc).+?)(?:/)?$",
+      "has": [
+        {
+          "type": "header",
+          "key": "rsc",
+          "value": "1"
+        }
+      ],
+      "dest": "/$1.rsc",
+      "headers": {
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+      },
+      "continue": true,
+      "override": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/index(\\.action|\\.rsc)",
+      "dest": "/",
+      "continue": true
+    },
+    {
+      "src": "/\\.prefetch\\.rsc$",
+      "dest": "/__index.prefetch.rsc",
+      "check": true
+    },
+    {
+      "src": "/(.+)/\\.prefetch\\.rsc$",
+      "dest": "/$1.prefetch.rsc",
+      "check": true
+    },
+    {
+      "src": "/\\.rsc$",
+      "dest": "/index.rsc",
+      "check": true
+    },
+    {
+      "src": "/(.+)/\\.rsc$",
+      "dest": "/$1.rsc",
+      "check": true
+    },
+    {
+      "handle": "resource"
+    },
+    {
+      "src": "/.*",
+      "status": 404
+    },
+    {
+      "handle": "miss"
+    },
+    {
+      "src": "/_next/static/.+",
+      "status": 404,
+      "check": true,
+      "dest": "/_next/static/not-found.txt",
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      }
+    },
+    {
+      "src": "^/(?<path>.+)(?<rscSuffix>\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/$path.rsc",
+      "check": true
+    },
+    {
+      "handle": "rewrite"
+    },
+    {
+      "src": "^/(?<path>.+)(?<rscSuffix>\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/$path.rsc",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/account/autoship/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/account/autoship/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/account/autoship/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/account/autoship/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/account/orders/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/account/orders/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/account/orders/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/account/orders/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/pages/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/pages/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/pages/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/admin/pages/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/preorder\\-groups/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/preorder-groups/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/preorder\\-groups/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/admin/preorder-groups/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/product\\-groups/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/product-groups/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/product\\-groups/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/admin/product-groups/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/products/(?<nxtPid>[^/]+?)/edit(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/products/[id]/edit$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/products/(?<nxtPid>[^/]+?)/edit(?:/)?$",
+      "dest": "/admin/products/[id]/edit?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/products/(?<nxtPid>[^/]+?)/images(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/products/[id]/images$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/products/(?<nxtPid>[^/]+?)/images(?:/)?$",
+      "dest": "/admin/products/[id]/images?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/products/(?<nxtPid>[^/]+?)/variants(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/products/[id]/variants$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/products/(?<nxtPid>[^/]+?)/variants(?:/)?$",
+      "dest": "/admin/products/[id]/variants?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/configs/(?<nxtPid>[^/]+?)/edit(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/configs/[id]/edit$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/configs/(?<nxtPid>[^/]+?)/edit(?:/)?$",
+      "dest": "/admin/scrapers/configs/[id]/edit?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/configs/(?<nxtPid>[^/]+?)/history(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/configs/[id]/history$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/configs/(?<nxtPid>[^/]+?)/history(?:/)?$",
+      "dest": "/admin/scrapers/configs/[id]/history?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/network/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/network/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/network/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/admin/scrapers/network/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/runs/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/runs/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/runs/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/admin/scrapers/runs/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/test\\-lab/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/test-lab/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/test\\-lab/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/admin/scrapers/test-lab/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/[slug]$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)(?:/)?$",
+      "dest": "/admin/scrapers/[slug]?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/configuration(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/configuration$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/configuration(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/configuration?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/history(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/history$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/history(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/history?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/test\\-lab(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/test-lab$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/test\\-lab(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/test-lab?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/workflows(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/workflows$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/admin/scrapers/(?<nxtPslug>[^/]+?)/workflows(?:/)?$",
+      "dest": "/admin/scrapers/[slug]/workflows?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/brands/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/brands/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/brands/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/brands/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/categories/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/categories/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/categories/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/categories/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/consolidation/(?<nxtPbatchId>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/consolidation/[batchId]$rscSuffix?nxtPbatchId=$nxtPbatchId",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/consolidation/(?<nxtPbatchId>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/consolidation/[batchId]?nxtPbatchId=$nxtPbatchId",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/consolidation/(?<nxtPbatchId>[^/]+?)/apply(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/consolidation/[batchId]/apply$rscSuffix?nxtPbatchId=$nxtPbatchId",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/consolidation/(?<nxtPbatchId>[^/]+?)/apply(?:/)?$",
+      "dest": "/api/admin/consolidation/[batchId]/apply?nxtPbatchId=$nxtPbatchId",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]$rscSuffix?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/conflicts/(?<nxtPfield>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/conflicts/[field]$rscSuffix?nxtPsku=$nxtPsku&nxtPfield=$nxtPfield",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/conflicts/(?<nxtPfield>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/conflicts/[field]?nxtPsku=$nxtPsku&nxtPfield=$nxtPfield",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/override(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/override$rscSuffix?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/override(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/override?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/scrape(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/scrape$rscSuffix?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/scrape(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/scrape?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/sources(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/sources$rscSuffix?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/enrichment/(?<nxtPsku>[^/]+?)/sources(?:/)?$",
+      "dest": "/api/admin/enrichment/[sku]/sources?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/pipeline/(?<nxtPsku>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/pipeline/[sku]$rscSuffix?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/pipeline/(?<nxtPsku>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/pipeline/[sku]?nxtPsku=$nxtPsku",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/products/(?<nxtPid>[^/]+?)/pet\\-types(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/products/[id]/pet-types$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/products/(?<nxtPid>[^/]+?)/pet\\-types(?:/)?$",
+      "dest": "/api/admin/products/[id]/pet-types?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/draft(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/draft$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/draft(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/draft?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/publish(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/publish$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/publish(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/publish?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/rollback(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/rollback$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/rollback(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/rollback?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/validate(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/validate$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/validate(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/validate?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/versions(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/versions$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-configs/(?<nxtPid>[^/]+?)/versions(?:/)?$",
+      "dest": "/api/admin/scraper-configs/[id]/versions?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-network/runners/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scraper-network/runners/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scraper\\-network/runners/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/scraper-network/runners/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/configs/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scrapers/configs/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/configs/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/scrapers/configs/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)/selectors(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]/selectors$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)/selectors(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]/selectors?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)/steps/(?<nxtPstepId>[^/]+?)/retry(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]/steps/[stepId]/retry$rscSuffix?nxtPid=$nxtPid&nxtPstepId=$nxtPstepId",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)/steps/(?<nxtPstepId>[^/]+?)/retry(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]/steps/[stepId]/retry?nxtPid=$nxtPid&nxtPstepId=$nxtPstepId",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)/timeline(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]/timeline$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/scrapers/studio/test/(?<nxtPid>[^/]+?)/timeline(?:/)?$",
+      "dest": "/api/admin/scrapers/studio/test/[id]/timeline?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/services/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/admin/services/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/admin/services/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/api/admin/services/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/internal/scraper\\-configs/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/internal/scraper-configs/[slug]$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/internal/scraper\\-configs/(?<nxtPslug>[^/]+?)(?:/)?$",
+      "dest": "/api/internal/scraper-configs/[slug]?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/orders/(?<nxtPid>[^/]+?)/payment\\-complete(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/api/orders/[id]/payment-complete$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/api/orders/(?<nxtPid>[^/]+?)/payment\\-complete(?:/)?$",
+      "dest": "/api/orders/[id]/payment-complete?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/order\\-confirmation/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/order-confirmation/[id]$rscSuffix?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/order\\-confirmation/(?<nxtPid>[^/]+?)(?:/)?$",
+      "dest": "/order-confirmation/[id]?nxtPid=$nxtPid",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/products/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/products/[slug]$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/products/(?<nxtPslug>[^/]+?)(?:/)?$",
+      "dest": "/products/[slug]?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/services/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/services/[slug]$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/services/(?<nxtPslug>[^/]+?)(?:/)?$",
+      "dest": "/services/[slug]?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.prefetch\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      "dest": "/[slug]$rscSuffix?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "src": "^/(?<nxtPslug>[^/]+?)(?:/)?$",
+      "dest": "/[slug]?nxtPslug=$nxtPslug",
+      "check": true,
+      "override": true
+    },
+    {
+      "handle": "hit"
+    },
+    {
+      "src": "/_next/static/(?:[^/]+/pages|pages|chunks|runtime|css|image|media|Bs7_tnNau6EdfMfKoVFoM)/.+",
+      "headers": {
+        "cache-control": "public,max-age=31536000,immutable"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "src": "/index(?:/)?",
+      "headers": {
+        "x-matched-path": "/"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "src": "/((?!index$).*?)(?:/)?",
+      "headers": {
+        "x-matched-path": "/$1"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "handle": "error"
+    },
+    {
+      "src": "/.*",
+      "dest": "/404",
+      "status": 404
+    },
+    {
+      "src": "/.*",
+      "dest": "/500",
+      "status": 500
+    }
+  ],
+  "images": {
+    "domains": [],
+    "sizes": [
+      640,
+      750,
+      828,
+      1080,
+      1200,
+      1920,
+      2048,
+      3840,
+      16,
+      32,
+      48,
+      64,
+      96,
+      128,
+      256,
+      384
+    ],
+    "qualities": [
+      50,
+      75
+    ],
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "^(?:^(?:placehold\\.co)$)$",
+        "pathname": "^(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?)\\/?)$"
+      },
+      {
+        "protocol": "https",
+        "hostname": "^(?:(?!\\.)(?=.)[^/]*?\\.supabase\\.co\\/?)$",
+        "pathname": "^(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?)\\/?)$"
+      },
+      {
+        "protocol": "https",
+        "hostname": "^(?:(?!\\.)(?:(?:(?!(?:^|\\/)\\.).)*?)\\/?)$",
+        "pathname": "^(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?)\\/?)$"
+      }
+    ],
+    "localPatterns": [
+      {
+        "pathname": "^(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?)\\/?)$",
+        "search": ""
+      }
+    ],
+    "minimumCacheTTL": 60,
+    "formats": [
+      "image/avif",
+      "image/webp"
+    ],
+    "dangerouslyAllowSVG": false,
+    "contentSecurityPolicy": "default-src 'self'; script-src 'none'; sandbox;",
+    "contentDispositionType": "attachment"
+  },
+  "overrides": {
+    "404.html": {
+      "path": "404",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "500.html": {
+      "path": "500",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "favicon.ico": {
+      "contentType": "image/x-icon"
+    },
+    "404.rsc.json": {
+      "path": "404.rsc",
+      "contentType": "application/json"
+    },
+    "404.segments/_tree.segment.rsc.json": {
+      "path": "404.segments/_tree.segment.rsc",
+      "contentType": "application/json"
+    },
+    "500.rsc.json": {
+      "path": "500.rsc",
+      "contentType": "application/json"
+    },
+    "500.segments/_tree.segment.rsc.json": {
+      "path": "500.segments/_tree.segment.rsc",
+      "contentType": "application/json"
+    },
+    "_next/static/not-found.txt": {
+      "contentType": "text/plain"
+    }
+  },
+  "framework": {
+    "version": "16.1.1"
+  },
+  "crons": []
+}

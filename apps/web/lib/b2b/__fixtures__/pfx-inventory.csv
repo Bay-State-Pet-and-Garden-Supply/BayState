@@ -1,0 +1,6 @@
+Item #,UPC,Description,Brand,Category,Retail Price,Net Cost,Qty Avail,Weight
+PFX-001,123456789001,"Premium Dog Food, Chicken 25lb",HealthyPet,Dog Food,45.99,28.50,100,25.5
+PFX-002,123456789002,"Organic Cat Food, Fish 15lb",NaturalChoice,Cat Food,38.99,24.20,75,15.2
+PFX-003,123456789003,"Puppy Training Pads 100ct",PetEssentials,Supplies,29.99,18.75,200,3.5
+PFX-004,123456789004,"Interactive Dog Toy - Ball",PlayTime,Toys,15.99,9.99,150,0.8
+PFX-005,123456789005,"Cat Scratching Post - Tall",FelineFun,Furniture,79.99,49.99,50,12.0

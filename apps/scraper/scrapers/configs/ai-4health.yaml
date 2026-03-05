@@ -1,0 +1,84 @@
+# AI Scraper Config: 4health (Tractor Supply)
+# Migrated from legacy static scraper to Crawl4AI
+name: "ai-4health"
+display_name: "AI 4health Product Extractor"
+base_url: "https://www.tractorsupply.com"
+scraper_type: "agentic"
+
+ai_config:
+  provider: "crawl4ai"
+  task: "Find 4health brand pet products on Tractor Supply and extract product name, brand, price, description, images, and specifications. 4health is Tractor Supply's exclusive pet food brand."
+  max_steps: 12
+  confidence_threshold: 0.7
+  llm_model: "gpt-4o-mini"
+  use_vision: true
+  headless: true
+
+workflows:
+  - action: "navigate"
+    name: "search_4health_products"
+    params:
+      url: "https://www.tractorsupply.com/tsc/search/{sku}"
+
+  - action: "ai_extract"
+    name: "extract_4health_product"
+    params:
+      task: "Find and extract 4health pet product information including Name, Brand, Price, Description, Images, Weight, and Specifications. Look for product tiles or search results."
+      visit_top_n: 3
+      max_steps: 14
+      confidence_threshold: 0.7
+      schema:
+        name: str
+        brand: str
+        price: str
+        description: str
+        images: list
+        weight: str
+        specifications: str
+
+  - action: "ai_validate"
+    name: "validate_4health_extraction"
+    params:
+      required_fields:
+        - name
+        - brand
+        - images
+      sku_must_match: false
+      min_confidence: 0.65
+
+test_skus:
+  - "4health"
+  - "4health dog food"
+  - "4health cat food"
+
+fake_skus:
+  - "xyzabc123notexist456"
+  - "NOTAPRODUCT123"
+
+edge_case_skus:
+  - "4"
+  - "health"
+
+timeout: 60
+retries: 0
+
+anti_detection:
+  enable_captcha_detection: true
+  enable_rate_limiting: true
+  enable_human_simulation: true
+  enable_session_rotation: true
+  enable_blocking_handling: true
+  rate_limit_min_delay: 2.0
+  rate_limit_max_delay: 5.0
+  session_rotation_interval: 25
+  max_retries_on_detection: 2
+
+validation:
+  no_results_selectors:
+    - ".no-results"
+    - ".search-no-results"
+    - "[data-testid='no-results']"
+  no_results_text_patterns:
+    - "no results"
+    - "0 results"
+    - "we couldn't find"

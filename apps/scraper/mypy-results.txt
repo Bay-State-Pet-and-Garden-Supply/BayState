@@ -1,0 +1,89 @@
+core/field_mapping.py:63: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+core/local_storage/request_queue.py:47: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+core/local_storage/request_queue.py:58: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/events/emitter.py:101: error: Argument 1 to "emit" of "EventEmitter" has incompatible type "LoginStatusEvent"; expected "TestLabEvent"  [arg-type]
+scrapers/events/emitter.py:101: note: Protocol member TestLabEvent.to_dict expected settable variable, got read-only attribute
+scrapers/events/emitter.py:123: error: Argument 1 to "emit" of "EventEmitter" has incompatible type "SelectorValidationEvent"; expected "TestLabEvent"  [arg-type]
+scrapers/events/emitter.py:123: note: Protocol member TestLabEvent.to_dict expected settable variable, got read-only attribute
+scrapers/events/emitter.py:145: error: Argument 1 to "emit" of "EventEmitter" has incompatible type "ExtractionResultEvent"; expected "TestLabEvent"  [arg-type]
+scrapers/events/emitter.py:145: note: Protocol member TestLabEvent.to_dict expected settable variable, got read-only attribute
+scrapers/selector_storage.py:106: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_metrics.py:55: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_metrics.py:65: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_metrics.py:68: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_metrics.py:69: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_metrics.py:72: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_metrics.py:73: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_cost_tracker.py:67: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_cost_tracker.py:68: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_cost_tracker.py:69: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+core/scraper_health_monitor.py:193: error: Library stubs not installed for "yaml"  [import-untyped]
+core/captcha_solver.py:315: error: Name "cast" is not defined  [name-defined]
+core/captcha_solver.py:315: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
+core/captcha_solver.py:340: error: Name "cast" is not defined  [name-defined]
+core/captcha_solver.py:340: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
+core/captcha_solver.py:397: error: Name "cast" is not defined  [name-defined]
+core/captcha_solver.py:397: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
+core/captcha_solver.py:460: error: Name "cast" is not defined  [name-defined]
+core/captcha_solver.py:460: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
+core/captcha_solver.py:480: error: Name "cast" is not defined  [name-defined]
+core/captcha_solver.py:480: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
+core/captcha_solver.py:503: error: Name "cast" is not defined  [name-defined]
+core/captcha_solver.py:503: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
+core/concurrent_scraper.py:775: error: Name "OperationType" is not defined  [name-defined]
+core/realtime_manager.py:234: error: "None" has no attribute "on_presence_sync"  [attr-defined]
+core/realtime_manager.py:235: error: "None" has no attribute "on_presence_join"  [attr-defined]
+core/realtime_manager.py:236: error: "None" has no attribute "on_presence_leave"  [attr-defined]
+core/realtime_manager.py:244: error: "None" has no attribute "subscribe"  [attr-defined]
+core/realtime_manager.py:247: error: "None" has no attribute "track"  [attr-defined]
+core/realtime_manager.py:324: error: "None" has no attribute "subscribe"  [attr-defined]
+scrapers/ai_discovery.py:1010: error: Argument "params" to "get" of "AsyncClient" has incompatible type "dict[str, object]"; expected "QueryParams | Mapping[str, str | int | float | bool | None | Sequence[str | int | float | bool | None]] | list[tuple[str, str | int | float | bool | None]] | tuple[tuple[str, str | int | float | bool | None], ...] | str | bytes | None"  [arg-type]
+core/anti_detection_manager.py:24: error: Module "utils.scraping.playwright_browser" has no attribute "SyncPlaywrightScraperBrowser"; maybe "PlaywrightScraperBrowser"?  [attr-defined]
+core/anti_detection_manager.py:27: error: Module "utils.scraping.playwright_browser" has no attribute "create_sync_playwright_browser"; maybe "create_playwright_browser"?  [attr-defined]
+core/anti_detection_manager.py:692: error: Module "utils.scraping.playwright_browser" has no attribute "create_sync_playwright_browser"; maybe "create_playwright_browser"?  [attr-defined]
+scrapers/executor/browser_manager.py:74: error: Item "None" of "Page | None" has no attribute "url"  [union-attr]
+scrapers/actions/handlers/table.py:38: error: "Coroutine[Any, Any, list[Any]]" has no attribute "__iter__" (not iterable)  [attr-defined]
+scrapers/actions/handlers/table.py:38: note: Maybe you forgot to use "await"?
+scrapers/actions/handlers/sponsored.py:27: error: Argument 1 to "len" has incompatible type "Coroutine[Any, Any, list[Any]]"; expected "Sized"  [arg-type]
+scrapers/actions/handlers/sponsored.py:27: note: Maybe you forgot to use "await"?
+scrapers/actions/handlers/script.py:33: error: "Coroutine[Any, Any, list[Any]]" has no attribute "__iter__" (not iterable)  [attr-defined]
+scrapers/actions/handlers/script.py:33: note: Maybe you forgot to use "await"?
+scrapers/actions/handlers/script.py:43: error: Value of type "Coroutine[Any, Any, list[Any]]" is not indexable  [index]
+scrapers/actions/handlers/script.py:43: note: Maybe you forgot to use "await"?
+scrapers/actions/handlers/login.py:92: error: "ScraperContext" has no attribute "_execute_step"  [attr-defined]
+scrapers/actions/handlers/login.py:92: error: Missing named argument "name" for "WorkflowStep"  [call-arg]
+scrapers/actions/handlers/login.py:96: error: Value of type "Coroutine[Any, Any, None]" must be used  [unused-coroutine]
+scrapers/actions/handlers/login.py:96: note: Are you missing an await?
+scrapers/actions/handlers/login.py:103: error: "ScraperContext" has no attribute "_execute_step"  [attr-defined]
+scrapers/actions/handlers/login.py:104: error: Missing named argument "name" for "WorkflowStep"  [call-arg]
+scrapers/actions/handlers/login.py:135: error: "ScraperContext" has no attribute "_execute_step"  [attr-defined]
+scrapers/actions/handlers/login.py:136: error: Missing named argument "name" for "WorkflowStep"  [call-arg]
+scrapers/actions/handlers/login.py:142: error: "ScraperContext" has no attribute "_execute_step"  [attr-defined]
+scrapers/actions/handlers/login.py:142: error: Missing named argument "name" for "WorkflowStep"  [call-arg]
+scrapers/actions/handlers/login.py:147: error: "ScraperContext" has no attribute "_execute_step"  [attr-defined]
+scrapers/actions/handlers/login.py:147: error: Missing named argument "name" for "WorkflowStep"  [call-arg]
+scrapers/actions/handlers/login.py:152: error: "ScraperContext" has no attribute "_execute_step"  [attr-defined]
+scrapers/actions/handlers/login.py:152: error: Missing named argument "name" for "WorkflowStep"  [call-arg]
+scrapers/actions/handlers/login.py:157: error: "ScraperContext" has no attribute "_execute_step"  [attr-defined]
+scrapers/actions/handlers/login.py:158: error: Missing named argument "name" for "WorkflowStep"  [call-arg]
+scrapers/actions/handlers/extract_transform.py:126: error: Incompatible types in assignment (expression has type "str | None", variable has type "list[str]")  [assignment]
+scrapers/actions/handlers/conditional.py:68: error: "ScraperContext" has no attribute "execute_steps"  [attr-defined]
+scrapers/actions/archive/ai_search.py:113: error: Argument "params" to "get" of "AsyncClient" has incompatible type "dict[str, object]"; expected "QueryParams | Mapping[str, str | int | float | bool | None | Sequence[str | int | float | bool | None]] | list[tuple[str, str | int | float | bool | None]] | tuple[tuple[str, str | int | float | bool | None], ...] | str | bytes | None"  [arg-type]
+scrapers/executor/step_executor.py:97: error: Argument 1 to "BaseAction" has incompatible type "Any | StepExecutor"; expected "ScraperContext"  [arg-type]
+core/scraper_testing_client.py:129: error: "SupabaseSyncStub" has no attribute "get_scraper"; maybe "get_all_scrapers", "save_scraper", or "get_scraper_config"?  [attr-defined]
+scrapers/runtime.py:705: error: Argument 1 to "calculate_is_passing" has incompatible type "str"; expected "Literal['test', 'fake']"  [arg-type]
+scrapers/runtime.py:705: error: Argument 2 to "calculate_is_passing" has incompatible type "str"; expected "Literal['success', 'no_results', 'not_found', 'error']"  [arg-type]
+scrapers/runtime.py:1109: error: Value of type "Collection[str]" is not indexable  [index]
+scrapers/ai_fallback.py:53: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_fallback.py:54: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+scrapers/ai_fallback.py:106: error: "WorkflowExecutor" has no attribute "execute"  [attr-defined]
+scrapers/ai_fallback.py:128: error: "WorkflowExecutor" has no attribute "execute"  [attr-defined]
+scrapers/ai_fallback.py:179: error: Need type annotation for "by_tier" (hint: "by_tier: dict[<type>, <type>] = ...")  [var-annotated]
+scrapers/ai_fallback.py:180: error: Need type annotation for "by_scraper" (hint: "by_scraper: dict[<type>, <type>] = ...")  [var-annotated]
+core/scraper_testing_integration.py:51: error: "SupabaseSyncStub" has no attribute "get_scraper"; maybe "get_all_scrapers", "save_scraper", or "get_scraper_config"?  [attr-defined]
+scrapers/__main__.py:17: error: Library stubs not installed for "yaml"  [import-untyped]
+scrapers/__main__.py:17: note: Hint: "python3 -m pip install types-PyYAML"
+scrapers/__main__.py:17: note: (or run "mypy --install-types" to install all missing stub packages)
+scrapers/__main__.py:17: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+scrapers/tests/test_e2e.py:42: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+Found 55 errors in 21 files (checked 104 source files)
