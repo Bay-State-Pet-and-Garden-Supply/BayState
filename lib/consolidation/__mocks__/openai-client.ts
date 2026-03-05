@@ -5,7 +5,7 @@
  * Returns predictable consolidation results based on input SKUs.
  */
 
-import type { BatchStatus, ConsolidationResult, SubmitBatchResponse } from './types';
+import type { BatchStatus, ConsolidationResult, SubmitBatchResponse } from '../types';
 
 // =============================================================================
 // Mock Data
@@ -146,7 +146,7 @@ function createMockClient() {
                         failed: 0,
                     },
                     output_file_id: `mock-output-file-${Date.now()}`,
-                    error_file_id: null,
+                    error_file_id: undefined,
                     created_at: Math.floor(Date.now() / 1000) - 60,
                     completed_at: Math.floor(Date.now() / 1000),
                     metadata: {},

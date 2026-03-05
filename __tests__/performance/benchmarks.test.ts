@@ -1,5 +1,5 @@
 import { bulkUpdateStatus } from '@/lib/pipeline';
-import { generateCSVExport } from '@/app/api/admin/pipeline/export/route';
+// import { generateCSVExport } from '@/app/api/admin/pipeline/export/route';
 
 // Mock dependencies
 jest.mock('@/lib/supabase/server', () => ({

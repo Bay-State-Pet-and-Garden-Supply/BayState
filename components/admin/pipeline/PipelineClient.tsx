@@ -508,6 +508,22 @@ export function PipelineClient({
                 />
             )}
 
+            <ConsolidationDetailsModal
+                isOpen={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                batchId={consolidationBatchId}
+                status={ws.lastProgressEvent ? {
+                    batchId: consolidationBatchId || '',
+                    status: (ws.lastProgressEvent.status as string) === 'processing' ? 'in_progress' : ws.lastProgressEvent.status,
+                    totalProducts: ws.lastProgressEvent.totalProducts || 0,
+                    processedCount: ws.lastProgressEvent.processedProducts || 0,
+                    successCount: ws.lastProgressEvent.successfulProducts || 0,
+                    errorCount: ws.lastProgressEvent.failedProducts || 0,
+                    errors: [],
+                    results: []
+                } : null}
+            />
+
             {/* Search and Actions Bar */}
             <div className="flex items-center gap-4">
                 <div className="relative flex-1 max-w-md">
