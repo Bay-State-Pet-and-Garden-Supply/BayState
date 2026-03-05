@@ -251,9 +251,9 @@ export function UnifiedPipelineClient({
       </div>
 
       <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-        <DialogContent>
+        <DialogContent aria-labelledby="export-dialog-title">
           <DialogHeader>
-            <DialogTitle>Export pipeline data</DialogTitle>
+            <DialogTitle id="export-dialog-title">Export pipeline data</DialogTitle>
             <DialogDescription>
               Export products to CSV using the existing pipeline export endpoint.
             </DialogDescription>
@@ -303,11 +303,11 @@ export function UnifiedPipelineClient({
       </Dialog>
 
       {showIntegraImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title" aria-describedby="import-dialog-desc">
           <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="border-b border-gray-200 p-6">
-              <h2 className="text-xl font-bold">Import from Integra</h2>
-              <p className="text-sm text-gray-600">
+              <h2 id="import-dialog-title" className="text-xl font-bold">Import from Integra</h2>
+              <p id="import-dialog-desc" className="text-sm text-gray-600">
                 Upload your Integra register export to import products
               </p>
             </div>
@@ -316,11 +316,12 @@ export function UnifiedPipelineClient({
             </div>
             <div className="flex justify-end border-t border-gray-200 p-4">
               <button
+                type="button"
                 onClick={() => {
                   setShowIntegraImport(false);
                   void handleRefresh(true);
                 }}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
                 Close
               </button>
