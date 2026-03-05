@@ -10,7 +10,7 @@ BOLD='\033[1m'
 
 IMAGE="ghcr.io/bay-state-pet-and-garden-supply/baystatescraper:latest"
 CONTAINER_NAME="baystate-scraper"
-INSTALL_COMMAND="curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash"
+INSTALL_COMMAND="curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash"
 CONFIG_DIR="$HOME/.baystate-scraper"
 CONFIG_FILE="$CONFIG_DIR/runner.env"
 UPDATE_SCRIPT="$CONFIG_DIR/update-runner.sh"
