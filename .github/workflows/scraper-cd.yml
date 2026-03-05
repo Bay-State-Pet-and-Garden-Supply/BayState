@@ -3,7 +3,7 @@ name: Scraper CD
 on:
   workflow_dispatch:
   push:
-    branches: [main, develop, dev]
+    branches: [main, master, develop, dev]
     tags: ["v*"]
     paths:
       - 'apps/scraper/**'
@@ -44,7 +44,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=sha,format=short
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/dev' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/dev' }}
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
 
