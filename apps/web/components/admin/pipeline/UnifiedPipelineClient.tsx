@@ -1,9 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Package, Search, RefreshCw, Filter, ChevronDown } from 'lucide-react';
+import { Package, Search, RefreshCw, Filter, Upload, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
 
 const statusLabels: Record<PipelineStatus, string> = {
@@ -24,10 +41,17 @@ export function UnifiedPipelineClient({
   initialProducts,
   initialCounts,
 }: UnifiedPipelineClientProps) {
-  const [products] = useState<PipelineProduct[]>(initialProducts);
-  const [counts] = useState<StatusCount[]>(initialCounts);
+  const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
+  const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PipelineStatus | 'all'>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [showIntegraImport, setShowIntegraImport] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportStatus, setExportStatus] = useState<PipelineStatus>('staging');
+  const [exportSearch, setExportSearch] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const getCount = (status: PipelineStatus): number => {
     const found = counts.find(c => c.status === status);
@@ -44,6 +68,91 @@ export function UnifiedPipelineClient({
     { status: 'published', color: 'bg-emerald-600' },
   ];
 
+  const getRequestStatus = (): PipelineStatus => {
+    return statusFilter === 'all' ? 'staging' : statusFilter;
+  };
+
+  const handleRefresh = async (showSuccessToast = false) => {
+    setIsRefreshing(true);
+
+    try {
+      const params = new URLSearchParams();
+      params.set('status', getRequestStatus());
+      if (searchQuery.trim()) {
+        params.set('search', searchQuery.trim());
+      }
+
+      const [productsRes, countsRes] = await Promise.all([
+        fetch(`/api/admin/pipeline?${params.toString()}`),
+        fetch('/api/admin/pipeline/counts'),
+      ]);
+
+      if (!productsRes.ok || !countsRes.ok) {
+        throw new Error('Failed to refresh pipeline data');
+      }
+
+      const productsData = await productsRes.json();
+      const countsData = await countsRes.json();
+
+      setProducts(productsData.products ?? []);
+      setCounts(countsData.counts ?? []);
+
+      if (showSuccessToast) {
+        toast.success('Pipeline data refreshed');
+      }
+    } catch (error) {
+      console.error('Refresh failed:', error);
+      toast.error('Failed to refresh pipeline data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const openExportDialog = () => {
+    setExportStatus(getRequestStatus());
+    setExportSearch(searchQuery);
+    setShowExportDialog(true);
+  };
+
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+
+    try {
+      const params = new URLSearchParams();
+      params.set('status', exportStatus);
+      params.set('format', 'csv');
+      if (exportSearch.trim()) {
+        params.set('search', exportSearch.trim());
+      }
+
+      const response = await fetch(`/api/admin/pipeline/export?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Export request failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute(
+        'download',
+        `pipeline-export-${exportStatus}-${new Date().toISOString().split('T')[0]}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('CSV export downloaded');
+      setShowExportDialog(false);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export pipeline CSV');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -55,6 +164,21 @@ export function UnifiedPipelineClient({
               Manage products from import to publication
             </p>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowIntegraImport(true)}
+            className="border-[#008850] text-[#008850] hover:bg-[#008850] hover:text-white"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          <Button variant="outline" onClick={openExportDialog}>
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
         </div>
       </div>
 
@@ -87,21 +211,32 @@ export function UnifiedPipelineClient({
           />
         </div>
 
-        <div className="relative">
-          <Button variant="outline" className="min-w-[180px] justify-between">
-            <span>{statusFilter === 'all' ? 'All Statuses' : statusLabels[statusFilter]}</span>
-            <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => setStatusFilter(value as PipelineStatus | 'all')}
+        >
+          <SelectTrigger className="min-w-[180px]">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="staging">{statusLabels.staging}</SelectItem>
+            <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
+            <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
+            <SelectItem value="approved">{statusLabels.approved}</SelectItem>
+            <SelectItem value="published">{statusLabels.published}</SelectItem>
+            <SelectItem value="failed">{statusLabels.failed}</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Button variant="outline">
           <Filter className="mr-2 h-4 w-4" />
           Filters
         </Button>
 
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => void handleRefresh(true)} disabled={isRefreshing}>
           <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
 
@@ -110,10 +245,89 @@ export function UnifiedPipelineClient({
           <Package className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-4 text-lg font-semibold text-gray-900">Product Grid</h3>
           <p className="mt-2 text-sm text-gray-600">
-            Product cards will be displayed here ({totalProducts} products available)
+            Product cards will be displayed here ({products.length} loaded, {totalProducts} total products)
           </p>
         </div>
       </div>
+
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export pipeline data</DialogTitle>
+            <DialogDescription>
+              Export products to CSV using the existing pipeline export endpoint.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Status</label>
+              <Select
+                value={exportStatus}
+                onValueChange={(value) => setExportStatus(value as PipelineStatus)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="staging">{statusLabels.staging}</SelectItem>
+                  <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
+                  <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
+                  <SelectItem value="approved">{statusLabels.approved}</SelectItem>
+                  <SelectItem value="published">{statusLabels.published}</SelectItem>
+                  <SelectItem value="failed">{statusLabels.failed}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Search filter (optional)</label>
+              <Input
+                value={exportSearch}
+                onChange={(e) => setExportSearch(e.target.value)}
+                placeholder="Filter by SKU or name"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExportDialog(false)} disabled={isExporting}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleExportCsv()} disabled={isExporting}>
+              <Download className="mr-2 h-4 w-4" />
+              {isExporting ? 'Exporting...' : 'Download CSV'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {showIntegraImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="border-b border-gray-200 p-6">
+              <h2 className="text-xl font-bold">Import from Integra</h2>
+              <p className="text-sm text-gray-600">
+                Upload your Integra register export to import products
+              </p>
+            </div>
+            <div className="max-h-[70vh] overflow-auto p-6">
+              <SyncClient />
+            </div>
+            <div className="flex justify-end border-t border-gray-200 p-4">
+              <button
+                onClick={() => {
+                  setShowIntegraImport(false);
+                  void handleRefresh(true);
+                }}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
