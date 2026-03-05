@@ -129,6 +129,10 @@ export default async function ConfigurationPage({ params, searchParams }: Config
           {isDraft ? (
             <form action={async () => {
               'use server';
+              if (!version?.id) {
+                redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent('Version ID is required')}`);
+                return;
+              }
               const result = await publishVersion(version.id);
               if (!result.success) {
                 redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to publish')}`);
@@ -143,7 +147,10 @@ export default async function ConfigurationPage({ params, searchParams }: Config
           ) : scraper.current_version_id ? (
             <form action={async () => {
               'use server';
-              if (!scraper.id) return;
+              if (!scraper.id) {
+                redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent('Scraper ID is required')}`);
+                return;
+              }
               const result = await createNewVersion(scraper.id);
               if (!result.success) {
                 redirect(`/admin/scrapers/${slug}/configuration?error=${encodeURIComponent(result.error || 'Failed to create version')}`);

@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+export interface ConsolidatedProduct {
+    id: string;
+    name: string;
+    brand: string;
+    weight: string;
+    images: string[];
+}
+
 // Event Types for Consolidation
 export interface ConsolidationProgressEvent {
     batchId: string;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
     progress: number; // 0-100
     totalProducts: number;
     processedProducts: number;
+    processedCount: number; // Alias for processedProducts
     successfulProducts: number;
     failedProducts: number;
+    errors?: string[];
+    results?: ConsolidatedProduct[];
     estimatedTimeRemaining?: number; // seconds
     timestamp: number;
 }

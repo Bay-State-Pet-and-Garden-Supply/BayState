@@ -537,7 +537,7 @@ export function PipelineClient({
 
             {/* OpenAI Config Warning */}
             {!isOpenAIReady && (
-                <Alert variant="warning" className="mb-4">
+                <Alert variant="destructive" className="mb-4">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>AI Consolidation Disabled</AlertTitle>
                     <AlertDescription className="flex items-center gap-2">
