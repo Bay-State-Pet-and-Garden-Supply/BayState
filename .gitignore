@@ -10,8 +10,7 @@ tmp/
 .vscode/
 *.log
 
-# Workspace / stray files (ignored in parent repo)
-package.json
+# Workspace / stray files
 test-coastal.js
 # ignore everything in .opencode except `opencode.json`
 .opencode/*
