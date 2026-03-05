@@ -4,6 +4,14 @@ import json
 import logging
 from typing import Any
 
+from crawl4ai_engine.login_detection import is_login_page
+
+logger = logging.getLogger(__name__)
+
+import json
+import logging
+from typing import Any
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +72,59 @@ class LLMExtractionStrategyWrapper:
         return result["data"]
 
     def extract_with_metadata(self, html: str, url: str = "") -> dict[str, Any]:
+        """Extract data and return metadata (confidence, usage, source).
+
+        Performs login page detection before extraction to prevent
+        misclassification of login screens as product data.
+        """
+        # Check if this is a login page before attempting extraction
+        if is_login_page(html, url):
+            logger.warning("LLM extraction aborted: login page detected for %s", url or "unknown URL")
+            return {
+                "success": False,
+                "data": [],
+                "confidence": 0.0,
+                "strategy": "llm",
+                "error": "Login page detected - cannot extract product data",
+                "metadata": {"login_page_detected": True, "provider": self.provider},
+            }
+
+        try:
+            strategy = self._get_strategy()
+            raw = self._run_strategy(strategy=strategy, html=html, url=url)
+            records = self._normalize_records(raw)
+            confidences = [self._record_confidence(record) for record in records]
+            accepted = [record for record, confidence in zip(records, confidences, strict=False) if confidence >= self.confidence_threshold]
+            best_confidence = max(confidences, default=0.0)
+
+            input_tokens, output_tokens = self._extract_usage_tokens(strategy)
+            if input_tokens <= 0 and output_tokens <= 0:
+                input_tokens = max(1, len(html) // 4)
+                output_tokens = max(1, len(json.dumps(records)) // 4)
+
+            self._track_cost(input_tokens=input_tokens, output_tokens=output_tokens)
+
+            return {
+                "success": bool(accepted),
+                "data": accepted,
+                "confidence": best_confidence,
+                "strategy": "llm",
+                "metadata": {
+                    "provider": self.provider,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                },
+            }
+        except Exception as exc:
+            logger.warning("LLM extraction failed (%s): %s", self.provider, exc)
+            return {
+                "success": False,
+                "data": [],
+                "confidence": 0.0,
+                "strategy": "llm",
+                "error": str(exc),
+                "metadata": {"provider": self.provider},
+            }
         """Extract data and return metadata (confidence, usage, source)."""
         try:
             strategy = self._get_strategy()
