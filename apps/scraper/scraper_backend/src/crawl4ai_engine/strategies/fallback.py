@@ -3,6 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from crawl4ai_engine.login_detection import is_login_page
+from crawl4ai_engine.strategies.css import CssExtractionStrategyWrapper
+from crawl4ai_engine.strategies.llm import LLMExtractionStrategyWrapper
+from crawl4ai_engine.strategies.xpath import XPathExtractionStrategyWrapper
+
+from dataclasses import dataclass, field
+from typing import Any
+
 from crawl4ai_engine.strategies.css import CssExtractionStrategyWrapper
 from crawl4ai_engine.strategies.llm import LLMExtractionStrategyWrapper
 from crawl4ai_engine.strategies.xpath import XPathExtractionStrategyWrapper
@@ -79,6 +87,51 @@ class ExtractionFallbackChain:
         )
 
     def extract(self, html: str, url: str = "") -> FallbackExtractionResult:
+        """Extract data using fallback chain: CSS -> XPath -> LLM.
+
+        Performs login page detection before LLM extraction to prevent
+        misclassification of login screens as product data.
+        """
+        errors: list[dict[str, str]] = []
+
+        # Try CSS extraction first
+        css_result = self._run_structured_strategy("css", self.css_strategy, html)
+        if css_result is not None:
+            if css_result.success:
+                return css_result
+            if css_result.error:
+                errors.append({"strategy": "css", "error": css_result.error})
+
+        # Try XPath extraction
+        xpath_result = self._run_structured_strategy("xpath", self.xpath_strategy, html)
+        if xpath_result is not None:
+            if xpath_result.success:
+                return xpath_result
+            if xpath_result.error:
+                errors.append({"strategy": "xpath", "error": xpath_result.error})
+
+        # Before LLM extraction, check if this is a login page
+        if is_login_page(html, url):
+            return FallbackExtractionResult(
+                success=False,
+                strategy="none",
+                data=[],
+                confidence=0.0,
+                metadata={"errors": errors, "login_page_detected": True},
+                error="Login page detected - cannot extract product data",
+            )
+
+        # Try LLM extraction as final fallback
+        llm_result = self._run_llm_strategy(html=html, url=url)
+        if llm_result is not None:
+            if llm_result.success:
+                return llm_result
+            if llm_result.error:
+                errors.append({"strategy": "llm", "error": llm_result.error})
+
+        return FallbackExtractionResult(
+            success=False, strategy="none", data=[], confidence=0.0, metadata={"errors": errors}, error="All extraction strategies failed"
+        )
         errors: list[dict[str, str]] = []
 
         css_result = self._run_structured_strategy("css", self.css_strategy, html)
