@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Package, Search, RefreshCw, Filter, Upload, Download } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
@@ -67,6 +67,11 @@ export function UnifiedPipelineClient({
   const [exportSearch, setExportSearch] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<PipelineFiltersState>({});
+
+  // Refresh products when status filter changes
+  useEffect(() => {
+    void handleRefresh();
+  }, [statusFilter]);
 
   const getCount = (status: PipelineStatus): number => {
     const found = counts.find(c => c.status === status);
@@ -544,9 +549,10 @@ export function UnifiedPipelineClient({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {pipelineStages.map(({ status, color }) => (
-          <div
+          <button
             key={status}
-            className="rounded-lg border bg-white p-4"
+            onClick={() => setStatusFilter(status)}
+            className="text-left rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <div className={`h-3 w-3 rounded-full ${color}`} />
@@ -555,7 +561,7 @@ export function UnifiedPipelineClient({
             <p className="mt-2 text-3xl font-bold text-gray-900">
               {getCount(status)}
             </p>
-          </div>
+          </button>
         ))}
       </div>
 
