@@ -91,24 +91,71 @@ const SCRAPER_SOURCES: Omit<EnrichmentSource, 'status' | 'enabled' | 'lastFetchA
 export async function getScraperSources(): Promise<EnrichmentSource[]> {
   const supabase = await createClient();
 
-  // Fetch scraper status from scrapers table
-  const { data: scrapers } = await supabase
-    .from('scrapers')
-    .select('name, status, disabled, last_tested');
+  // Fetch published configs from the new scraper_configs table
+  const { data: configs } = await supabase
+    .from('scraper_configs')
+    .select(`
+      id,
+      slug,
+      display_name,
+      scraper_type,
+      scraper_config_versions!fk_current_version (
+        status
+      )
+    `);
 
-  const scraperStatusMap = new Map(
-    scrapers?.map((s) => [s.name, { status: s.status, disabled: s.disabled, lastTested: s.last_tested }]) ?? []
-  );
+  const publishedConfigs = new Map();
+  if (configs) {
+    for (const config of configs) {
+      const versionStatus = (config.scraper_config_versions as any)?.status;
+      // Consider published or active configs as eligible
+      if (versionStatus === 'published' || versionStatus === 'active') {
+        publishedConfigs.set(config.slug, {
+          displayName: config.display_name,
+          scraperType: config.scraper_type,
+        });
+      }
+    }
+  }
 
-  return SCRAPER_SOURCES.map((source) => {
-    const dbStatus = scraperStatusMap.get(source.id);
-    return {
+  const result: EnrichmentSource[] = [];
+  const handledSlugs = new Set<string>();
+
+  // 1. Process known static sources
+  for (const source of SCRAPER_SOURCES) {
+    const dbConfig = publishedConfigs.get(source.id);
+    handledSlugs.add(source.id);
+    
+    result.push({
       ...source,
-      status: (dbStatus?.status as EnrichmentSource['status']) ?? 'unknown',
-      enabled: !dbStatus?.disabled,
-      lastFetchAt: dbStatus?.lastTested ?? undefined,
-    };
-  });
+      displayName: dbConfig?.displayName || source.displayName,
+      // Default to healthy if published in new DB, otherwise fallback
+      status: dbConfig ? 'healthy' : 'unknown',
+      enabled: !!dbConfig,
+      lastFetchAt: undefined,
+    });
+  }
+
+  // 2. Append any dynamic sources from DB not in the hardcoded list (e.g. AI scrapers)
+  for (const [slug, dbConfig] of publishedConfigs.entries()) {
+    if (!handledSlugs.has(slug)) {
+      const isAgentic = dbConfig.scraperType === 'agentic';
+      result.push({
+        id: slug,
+        displayName: dbConfig.displayName || slug,
+        type: 'scraper',
+        requiresAuth: false,
+        status: 'healthy',
+        enabled: true,
+        // Provide standard fields; agentic scrapers typically can extract many fields
+        providesFields: isAgentic 
+          ? ['name', 'brand', 'images', 'weight', 'description', 'specifications'] 
+          : ['name', 'brand', 'images'],
+      });
+    }
+  }
+
+  return result;
 }
 
 /**
