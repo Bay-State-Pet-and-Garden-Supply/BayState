@@ -8,6 +8,51 @@ export interface RunnerAuthResult {
     allowedScrapers: string[] | null;
 }
 
+function normalizeScraperSlug(value: string): string {
+    return value.trim().toLowerCase().replace(/[\s_]+/g, '-');
+}
+
+function normalizeAllowedScrapers(raw: unknown): string[] | null {
+    if (raw === null || raw === undefined) {
+        return null;
+    }
+
+    let candidates: unknown[] = [];
+
+    if (Array.isArray(raw)) {
+        candidates = raw;
+    } else if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (!trimmed) {
+            return [];
+        }
+
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                    candidates = parsed;
+                } else {
+                    candidates = [trimmed];
+                }
+            } catch {
+                candidates = trimmed.split(',');
+            }
+        } else {
+            candidates = trimmed.split(',');
+        }
+    } else {
+        return [];
+    }
+
+    const normalized = candidates
+        .filter((item): item is string => typeof item === 'string')
+        .map(normalizeScraperSlug)
+        .filter((item) => item.length > 0);
+
+    return Array.from(new Set(normalized));
+}
+
 function getSupabaseAdmin() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,7 +112,7 @@ export async function validateAPIKey(
                 runnerName: runner.name,
                 keyId: runner.id,
                 authMethod: 'api_key',
-                allowedScrapers: runner.allowed_scrapers ?? null,
+                allowedScrapers: normalizeAllowedScrapers(runner.allowed_scrapers),
             };
         }
 
@@ -81,7 +126,7 @@ export async function validateAPIKey(
             runnerName: result.runner_name,
             keyId: result.key_id,
             authMethod: 'api_key',
-            allowedScrapers: result.allowed_scrapers ?? null,
+            allowedScrapers: normalizeAllowedScrapers(result.allowed_scrapers),
         };
     } catch (error) {
         console.error('[Runner Auth] Validation error:', error);
