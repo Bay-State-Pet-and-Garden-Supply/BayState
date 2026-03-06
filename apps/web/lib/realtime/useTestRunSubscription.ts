@@ -168,13 +168,29 @@ export function useTestRunSubscription(
     setState((prev) => ({ ...prev, isConnected: false }));
   }, [getSupabase, processPendingUpdates]);
 
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (autoConnect && testRunId) {
-      connect();
+      // Use a small delay or just wait for next tick to avoid sync setState in effect
+      const connectionTimeout = setTimeout(() => {
+        if (mountedRef.current) {
+          connect();
+        }
+      }, 0);
+
+      return () => {
+        clearTimeout(connectionTimeout);
+        disconnect();
+      };
     }
-    return () => {
-      disconnect();
-    };
   }, [autoConnect, testRunId, connect, disconnect]);
 
   return {
