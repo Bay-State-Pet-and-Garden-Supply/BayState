@@ -19,10 +19,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Results Panel Transformation' (Protocol in workflow.md) [929b07e]
 
 ## Phase 3: Sidebar & Controls Consolidation
-- [ ] Task: Implement Collapsible SKU Sidebar.
-    - [ ] Update `TestLabClient` to use a `ResizablePanelGroup` with a sidebar on the left.
-    - [ ] Add "Bulk Delete" and "Bulk Type Change" to the SKU sidebar.
-- [ ] Task: Consolidate Run Controls & History.
+- [x] Task: Implement Collapsible SKU Sidebar. [c63e3b1]
+    - [x] Update `TestLabClient` to use a `ResizablePanelGroup` with a sidebar on the left.
+    - [x] Add "Bulk Delete" and "Bulk Type Change" to the SKU sidebar.
+- [~] Task: Consolidate Run Controls & History.
     - [ ] Merge `TestRunControls` and the local controls in `TestLabClient` into a unified header or sidebar area.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Sidebar & Controls Consolidation' (Protocol in workflow.md)
 
