@@ -42,7 +42,7 @@ const SCRAPER_SOURCES: Omit<EnrichmentSource, 'status' | 'enabled' | 'lastFetchA
     providesFields: ['name', 'brand', 'weight', 'images'],
   },
   {
-    id: 'central_pet',
+    id: 'central-pet',
     displayName: 'Central Pet',
     type: 'scraper',
     requiresAuth: false,

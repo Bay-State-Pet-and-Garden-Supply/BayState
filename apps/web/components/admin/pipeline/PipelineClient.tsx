@@ -10,7 +10,6 @@ import { PipelineProductDetail } from './PipelineProductDetail';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
 import { ConsolidationDetailsModal } from './ConsolidationDetailsModal';
-import { BatchEnhanceDialog } from './BatchEnhanceDialog';
 import { EnrichmentWorkspace } from './enrichment/EnrichmentWorkspace';
 import { MethodSelection, EnrichmentMethod } from '@/components/admin/enrichment/MethodSelection';
 import { ChunkConfig } from '@/components/admin/enrichment/ChunkConfig';
@@ -91,10 +90,6 @@ export function PipelineClient({
     const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
 
     const [enrichingSku, setEnrichingSku] = useState<string | null>(null);
-
-    // Batch enhance workspace state
-    const [showBatchEnhanceWorkspace, setShowBatchEnhanceWorkspace] = useState(false);
-    const [isBatchEnhancing, setIsBatchEnhancing] = useState(false);
 
     // Enrichment wizard state (multi-step flow)
     const [enrichmentStep, setEnrichmentStep] = useState<1 | 2 | 3 | null>(null);
@@ -464,32 +459,6 @@ export function PipelineClient({
         }
     };
 
-    const handleBatchEnhanceConfirm = async (scrapers: string[]) => {
-        if (selectedSkus.size === 0) return;
-
-        setIsBatchEnhancing(true);
-
-        try {
-            const result = await scrapeProducts(Array.from(selectedSkus), { scrapers });
-
-            if (!result.success) {
-                toast.error(result.error || 'Failed to start batch enhancement');
-                return;
-            }
-
-            toast.success(`Queued enhancement for ${selectedSkus.size} product${selectedSkus.size > 1 ? 's' : ''}`);
-            setShowBatchEnhanceWorkspace(false);
-            setSelectedSkus(new Set());
-            setIsSelectingAllMatching(false);
-            handleRefresh();
-        } catch (error) {
-            console.error('Failed to run batch enhancement:', error);
-            toast.error('Failed to start batch enhancement');
-        } finally {
-            setIsBatchEnhancing(false);
-        }
-    };
-
     const handleView = (sku: string) => {
         setViewingSku(sku);
     };
@@ -640,7 +609,7 @@ export function PipelineClient({
                         </p>
                     </div>
                     <button
-                        onClick={() => setShowBatchEnhanceWorkspace(true)}
+                        onClick={() => setEnrichmentStep(1)}
                         className="flex items-center gap-2 rounded-lg bg-[#008850] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a7034] transition-colors"
                     >
                         Enhance Products
@@ -753,15 +722,6 @@ export function PipelineClient({
                     sku={enrichingSku}
                     onClose={() => setEnrichingSku(null)}
                     onSave={handleRefresh}
-                />
-            )}
-
-            {showBatchEnhanceWorkspace && (
-                <BatchEnhanceDialog
-                    selectedCount={selectedSkus.size}
-                    onConfirm={handleBatchEnhanceConfirm}
-                    onCancel={() => setShowBatchEnhanceWorkspace(false)}
-                    isEnhancing={isBatchEnhancing}
                 />
             )}
 

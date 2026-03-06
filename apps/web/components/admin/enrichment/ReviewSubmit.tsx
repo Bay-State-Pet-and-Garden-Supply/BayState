@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface ReviewSubmitProps {
     selectedSkus: string[];
-    method: 'scrapers' | 'discovery' | 'crawl4ai';
+    method: 'scrapers' | 'discovery' | 'crawl4ai' | 'consolidation';
     methodConfig: unknown;
     chunkConfig: {
         chunkSize: number;
@@ -33,6 +33,24 @@ export function ReviewSubmit({
         setError(null);
 
         try {
+            if (method === 'consolidation') {
+                const response = await fetch('/api/admin/consolidation/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skus: selectedSkus }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Failed to start consolidation: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const batchId = data.batch_id || data.jobId;
+                window.location.href = `/admin/pipeline?batchId=${batchId}`;
+                return;
+            }
+
             const configPayload = method === 'discovery' 
                 ? { discovery: methodConfig }
                 : method === 'crawl4ai'
@@ -106,7 +124,9 @@ export function ReviewSubmit({
                         <div className="flex justify-between items-center p-3 rounded-lg bg-background border border-border/40">
                             <span className="text-muted-foreground font-medium">Enrichment Method</span>
                             <Badge className="capitalize text-sm font-semibold">
-                                {method === 'scrapers' ? 'Static Scrapers' : method === 'discovery' ? 'AI Discovery' : 'Crawl4AI Engine'}
+                                {method === 'scrapers' ? 'Static Scrapers' : 
+                                 method === 'discovery' ? 'AI Discovery' : 
+                                 method === 'crawl4ai' ? 'Crawl4AI Engine' : 'AI Consolidation'}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center p-3 rounded-lg bg-background border border-border/40">
@@ -158,7 +178,7 @@ export function ReviewSubmit({
                                         </div>
                                     )}
                                 </div>
-                            ) : (
+                            ) : method === 'crawl4ai' ? (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Strategy:</span>
@@ -176,6 +196,15 @@ export function ReviewSubmit({
                                         <span className="text-muted-foreground">Timeout:</span>
                                         <span className="font-medium">{(methodConfig as any).timeout}ms</span>
                                     </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 p-3 rounded-lg bg-purple-50 border border-purple-100">
+                                    <p className="text-sm text-purple-800">
+                                        Running AI Consolidation on {selectedSkus.length} products.
+                                    </p>
+                                    <p className="text-xs text-purple-600 mt-1">
+                                        This will use GPT-4o to merge multiple scraper results into optimal product records.
+                                    </p>
                                 </div>
                             )}
                         </div>

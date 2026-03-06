@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 
 interface DiscoveryConfig {
     max_search_results: number; // 1-10, default 5
@@ -28,11 +28,11 @@ interface ScrapersConfig {
     scrapers: string[]; // Array of scraper names
 }
 
-export type EnrichmentMethod = 'scrapers' | 'discovery' | 'crawl4ai';
+export type EnrichmentMethod = 'scrapers' | 'discovery' | 'crawl4ai' | 'consolidation';
 
 export interface MethodSelectionProps {
     selectedSkus: string[];
-    onNext: (data: { method: EnrichmentMethod; config: DiscoveryConfig | ScrapersConfig | Crawl4AIConfig }) => void;
+    onNext: (data: { method: EnrichmentMethod; config: DiscoveryConfig | ScrapersConfig | Crawl4AIConfig | {} }) => void;
     onBack?: () => void;
 }
 
@@ -99,8 +99,10 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
             onNext({ method, config: { scrapers: selectedScraperNames } });
         } else if (method === 'discovery') {
             onNext({ method, config: discoveryConfig });
-        } else {
+        } else if (method === 'crawl4ai') {
             onNext({ method, config: crawl4aiConfig });
+        } else {
+            onNext({ method, config: {} });
         }
     };
 
@@ -178,6 +180,24 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                         <span className="font-semibold">Crawl4AI Engine</span>
                         <span className="text-sm text-muted-foreground font-normal">
                             High-performance universal extraction engine. Best for fast, direct extraction from official sources.
+                        </span>
+                    </Label>
+                </div>
+
+                <div className="relative">
+                    <RadioGroupItem 
+                        value="consolidation" 
+                        id="method-consolidation" 
+                        className="peer sr-only"
+                        data-testid="enrichment-method-consolidation"
+                    />
+                    <Label
+                        htmlFor="method-consolidation"
+                        className="flex flex-col items-start gap-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                        <span className="font-semibold text-purple-600">AI Consolidation</span>
+                        <span className="text-sm text-muted-foreground font-normal">
+                            Merge multiple data sources into a single optimized product record using AI. Best for cleaning up scraped data.
                         </span>
                     </Label>
                 </div>
@@ -312,7 +332,7 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                             </div>
                         </div>
                     </div>
-                ) : (
+                ) : method === 'crawl4ai' ? (
                     <div className="space-y-6" data-testid="crawl4ai-config-panel">
                         <div>
                             <h4 className="font-medium">Crawl4AI Configuration</h4>
@@ -394,6 +414,24 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                                     data-testid="config-crawl4ai-timeout"
                                 />
                             </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-6" data-testid="consolidation-config-panel">
+                        <div className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-100 rounded-lg">
+                            <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+                                <Sparkles className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-purple-900">AI Consolidation Mode</h4>
+                                <p className="text-sm text-purple-700">
+                                    This will skip scraping and run AI consolidation on current products.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg text-sm text-amber-800">
+                            <strong>Note:</strong> This method is best used after you have already gathered data from multiple scrapers. It will merge existing results into a clean product record.
                         </div>
                     </div>
                 )}
