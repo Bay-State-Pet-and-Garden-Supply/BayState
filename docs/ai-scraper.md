@@ -1,29 +1,29 @@
 # AI Scraper Documentation
 
-This guide covers the implementation, configuration, and maintenance of AI-powered scrapers within the BayState network.
+This guide covers the implementation, configuration, and maintenance of AI-powered scrapers within the BayState network, specifically focusing on the **Crawl4AI** engine.
 
 ## Overview
 
-AI Scrapers use Large Language Models (LLMs) and agentic browser control to extract product information without relying solely on fragile CSS selectors. They can navigate complex websites, solve minor interaction challenges, and identify official manufacturer sources automatically.
+AI Scrapers use Large Language Models (LLMs) and the high-performance **Crawl4AI** library to extract product information. Unlike legacy methods, they leverage "agentic" browser control and structured AI extraction to handle complex sites and bypass bot detection.
 
 ### Key Components
 
-- **AIDiscoveryScraper**: A universal scraper that searches the web (via Brave Search) and identifies official product pages to extract data.
-- **Agentic Workflows**: YAML-defined scrapers that use the `ai_extract`, `ai_search`, and `ai_validate` actions.
-- **Cost Tracker**: Monitors token usage and enforces USD budgets per extraction.
-- **Metrics & Alerts**: Tracks success rates and circuit breaker status for AI operations.
+- **Crawl4AIEngine**: The centralized core that manages browser sessions, anti-bot "Magic Mode," and concurrent crawling.
+- **AIDiscoveryScraper**: A universal scraper that searches the web (via Brave Search) and uses parallel crawling to identify official sources.
+- **Extraction Strategies**: Supports a fallback chain (CSS -> XPath -> LLM) to balance speed and data quality.
+- **Cost Tracker**: Monitors OpenAI token usage and enforces USD budgets per extraction.
 
 ---
 
 ## Installation
 
-The AI scraper features are built into the `BayStateScraper` runner but require additional environment variables for API access.
+The AI scraper features are built into the `BayStateScraper` runner.
 
 ### 1. API Keys
 Ensure the following keys are set in your runner's `.env` file:
 
 ```bash
-# Required for agentic extraction and source identification
+# Required for AI extraction
 OPENAI_API_KEY=sk-...
 
 # Required for AI Discovery search functionality
@@ -31,170 +31,73 @@ BRAVE_API_KEY=bs-...
 ```
 
 ### 2. Dependencies
-AI features require the `browser-use` library and its dependencies (installed automatically via `get.sh` or `requirements.txt`).
+Ensure `crawl4ai` is installed and the Playwright browsers are initialized:
 
 ```bash
-pip install browser-use
-playwright install chromium
+pip install crawl4ai
+python -m playwright install chromium
 ```
+
+---
+
+## Core Engine Features (v0.4+)
+
+Our implementation leverages advanced **Crawl4AI** tools to ensure the best quality data:
+
+### Advanced Anti-Bot ("Magic Mode")
+The engine defaults to `magic=True`, which automatically handles:
+- **User Simulation**: Mimics human mouse movements and scroll patterns.
+- **Fingerprint Masking**: Bypasses browser detection walls (Cloudflare, etc.).
+- **Overlay Removal**: Automatically strips newsletter popups and cookie banners.
+
+### Content Filtering & Cost Optimization
+To reduce LLM token costs by up to 40%, the engine prunes the HTML before processing:
+- **CSS Selectors**: Focuses extraction on the product container (e.g., `#main`).
+- **Excluded Tags**: Strips noise like `nav`, `footer`, `aside`, and `header`.
+- **Markdown Output**: Converts pages to clean Markdown for faster AI analysis.
+
+### Domain-Persistent Sessions
+The engine manages `session_id` dynamically based on the target domain. This allows for session reuse across multiple product pages from the same supplier, improving speed and avoiding detection.
+
+---
+
+## AI Discovery (Brand-Less Scraping)
+
+When a brand is unknown at the start, the **AIDiscoveryScraper** performs **Parallel Candidate Discovery**:
+1. **Search**: Queries Brave Search for the SKU and Product Name.
+2. **Parallel Crawl**: Uses `arun_many` to crawl the top 3-5 candidates simultaneously.
+3. **AI Inference**: The LLM analyzes all candidates at once to identify the correct manufacturer and extract the official brand.
 
 ---
 
 ## Configuration
 
-AI scrapers are defined in YAML with the `scraper_type: "agentic"` attribute.
-
-### Global AI Settings
-Defined under the `ai_config` block:
+AI features are configured via the `crawler` block in YAML or Python configs.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `tool` | `browser-use` | The underlying agentic library. |
-| `llm_model` | `gpt-4o-mini` | Model to use (`gpt-4o-mini`, `gpt-4o`, `gpt-4`). |
-| `max_steps` | `10` | Maximum actions an agent can take per step. |
-| `confidence_threshold` | `0.7` | Minimum score to accept extracted data (0.0 to 1.0). |
-| `use_vision` | `true` | Enable GPT-4 Vision for analyzing complex UI elements. |
-
-### AI Actions
-
-#### `ai_search`
-Searches for product pages using templates.
-```yaml
-- action: "ai_search"
-  params:
-    query: "{sku} {brand} product page"
-    max_results: 5
-```
-
-#### `ai_extract`
-The core extraction engine.
-```yaml
-- action: "ai_extract"
-  params:
-    task: "Extract price, name, and availability"
-    schema:  # Optional custom schema
-      price: str
-      name: str
-    visit_top_n: 1
-```
-
-#### `ai_validate`
-Verifies extracted data against constraints.
-```yaml
-- action: "ai_validate"
-  params:
-    required_fields: ["name", "price"]
-    sku_must_match: true
-```
+| `magic` | `true` | Enable advanced stealth and user simulation. |
+| `simulate_user` | `true` | Mimics human browser interactions. |
+| `cache_mode` | `ENABLED` | Caches raw HTML and LLM extractions. |
+| `concurrency_limit` | `3` | Maximum parallel tabs for bulk crawling. |
+| `css_selector` | `null` | Target specific HTML elements for extraction. |
 
 ---
 
-## Cost Tracking & Optimization
+## Best Practices for Cost Savings
 
-AI scraping is significantly more expensive than static scraping. The system includes protections to prevent runaway costs.
-
-### Budget Limits
-- **Hard Limit**: $0.15 per page extraction.
-- **Warning Threshold**: $0.10 per page.
-- **Circuit Breaker**: After 3 consecutive overruns, AI features are disabled for that scraper, triggering fallback to static methods.
-
-### Best Practices for Cost Savings
-1. **Use `gpt-4o-mini`**: It handles 90% of product pages at 1/50th the cost of GPT-4.
-2. **Limit `max_steps`**: Set to 5-10 for simple extraction; only use 15+ for multi-step navigation.
-3. **Minimize Vision usage**: Set `use_vision: false` for text-heavy sites.
-4. **Cache Search Results**: The system automatically caches Brave search results to prevent duplicate API calls for the same query.
-
----
-
-## Monitoring & Metrics
-
-AI performance is monitored via the `AIMetricsCollector`.
-
-- **Success Rate**: Monitored over a 1-hour sliding window.
-- **Alerts**: Triggered for low success rates (<70%), high costs, or circuit breaker activation.
-- **Prometheus**: Metrics are exported for visualization in the Admin Dashboard.
+1. **Use `gpt-4o-mini`**: Default model for structured extraction; highly cost-effective.
+2. **Target Content**: Always provide a `css_selector` for known sites to minimize LLM input.
+3. **Enable Caching**: Ensure `cache_mode: ENABLED` is used during testing to avoid redundant AI costs.
+4. **Prune HTML**: Use `excluded_tags` to remove non-product content.
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
-
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| **Cost budget exceeded** | Complex page or high `max_steps`. | Switch to `gpt-4o-mini` or reduce `max_steps`. |
-| **Low confidence results** | Ambiguous page or vague `task`. | Improve the natural language `task` description in YAML. |
-| **Anti-bot blocks** | Site detected agentic patterns. | Enable `anti_detection` in YAML and use `user_agent_rotation`. |
-| **Search returns 0 results** | Poor query template. | Update `ai_search` query to be more specific (e.g., add "official site"). |
-
-### Circuit Breaker Reset
-If a scraper's AI features are disabled by the circuit breaker, they can be manually reset via the Admin Portal or by restarting the runner process.
-
----
-
-## Migration Guide: Static to AI
-
-Converting a static scraper to an AI scraper is a three-step process:
-
-1. **Change Scraper Type**: Set `scraper_type: "agentic"` in the YAML header.
-2. **Add `ai_config`**: Define your preferred model and task.
-3. **Replace Workflow**: Swap `navigate` and `extract` actions with `ai_extract`.
-
-**Example Migration:**
-
-*Before (Static):*
-```yaml
-workflows:
-  - action: "navigate"
-    params: { url: "https://site.com/p/{sku}" }
-  - action: "extract"
-    params: { fields: ["product_name", "price"] }
-```
-
-*After (AI):*
-```yaml
-workflows:
-  - action: "ai_extract"
-    params:
-      task: "Go to site.com, find SKU {sku}, and extract details"
-```
-
----
-
-## Examples
-
-### 1. Simple Product Page Extraction
-Used when you already have the product URL.
-```yaml
-workflows:
-  - action: "ai_extract"
-    params:
-      task: "Extract the current price and stock status from this page."
-      confidence_threshold: 0.8
-```
-
-### 2. Universal Discovery (No URL)
-Used for new products where the manufacturer site is unknown.
-```yaml
-workflows:
-  - action: "ai_search"
-    params:
-      query: "{brand} {sku} official site"
-  - action: "ai_extract"
-    params:
-      task: "Find the official product page and extract specs."
-      visit_top_n: 1
-```
-
-### 3. Hybrid Workflow
-Uses static navigation with AI extraction for robustness.
-```yaml
-workflows:
-  - action: "navigate"
-    params: { url: "https://retailer.com/search?q={sku}" }
-  - action: "click"
-    params: { selector: ".first-result" }
-  - action: "ai_extract"
-    params:
-      task: "Extract the full product description and ingredients list."
-```
+| **403 Forbidden** | Anti-bot detection. | Ensure `magic: true` is enabled in configuration. |
+| **Token limit reached** | Page too large for LLM. | Use `css_selector` to narrow the scope or `excluded_tags` to prune noise. |
+| **Missing Brand** | Discovery failed to infer. | Update search query template or use parallel discovery mode. |
+| **SSL Errors** | Certificate validation. | Set `ignore_https_errors: true` in `browser_config`. |
