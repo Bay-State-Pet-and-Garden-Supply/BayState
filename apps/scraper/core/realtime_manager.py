@@ -60,7 +60,17 @@ class RealtimeManager:
             runner_name: Unique identifier for this runner instance
             runner_id: Optional runner ID for presence tracking
         """
-        self.supabase_url = supabase_url
+        # Normalize URL: convert http(s) to ws(s) and append realtime path if needed
+        normalized_url = supabase_url
+        if normalized_url.startswith("https://"):
+            normalized_url = normalized_url.replace("https://", "wss://")
+        elif normalized_url.startswith("http://"):
+            normalized_url = normalized_url.replace("http://", "ws://")
+
+        if "/realtime/v1" not in normalized_url:
+            normalized_url = normalized_url.rstrip("/") + "/realtime/v1"
+
+        self.supabase_url = normalized_url
         self.service_key = service_key
         self.runner_name = runner_name
         self.runner_id = runner_id or runner_name
