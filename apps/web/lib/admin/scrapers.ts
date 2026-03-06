@@ -82,8 +82,10 @@ export async function testScraper(name: string, sku: string) {
     return { error: 'Scraper not found' };
   }
 
-  // 2. Create a scrape job in pending status
-  // Daemon runners will poll and claim this job
+  // 2. Create a scrape job with test_mode=true
+  const TEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  const timeoutAt = new Date(Date.now() + TEST_TIMEOUT_MS).toISOString();
+
   const { data: job, error: jobError } = await supabase
     .from('scrape_jobs')
     .insert({
@@ -92,6 +94,11 @@ export async function testScraper(name: string, sku: string) {
       test_mode: true,
       max_workers: 1,
       status: 'pending',
+      timeout_at: timeoutAt,
+      test_metadata: {
+        test_type: 'manual',
+        scraper_name: scraper.name,
+      },
     })
     .select('id')
     .single();
@@ -101,32 +108,10 @@ export async function testScraper(name: string, sku: string) {
     return { error: 'Failed to create test job' };
   }
 
-  // 3. Create test run record for tracking
-  const testRun = {
-    scraper_id: scraper.id,
-    test_type: 'manual',
-    skus_tested: [sku],
-    results: [],
-    status: 'pending',
-    started_at: new Date().toISOString(),
-  };
-
-  const { data: insertedRun, error: insertError } = await supabase
-    .from('scraper_test_runs')
-    .insert(testRun)
-    .select()
-    .single();
-
-  if (insertError) {
-    console.error('Failed to create test run:', insertError);
-    // Job was created, continue even if test run tracking fails
-  }
-
   console.log(`[testScraper] Created test job ${job.id} for ${scraper.name} with SKU: ${sku}`);
 
   return {
     success: true,
     jobId: job.id,
-    testRunId: insertedRun?.id,
   };
 }

@@ -31,7 +31,7 @@ import { LogTerminal } from '@/components/admin/scrapers/test-lab/log-terminal';
 import { TestLabErrorBoundary } from '@/components/admin/scrapers/test-lab/TestLabErrorBoundary';
 import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
-import type { ScraperTestSku, TestRunRecord } from '@/lib/admin/scrapers/types';
+import type { ScraperTestSku, ScrapeJobTestRecord } from '@/lib/admin/scrapers/types';
 import type { ScrapeJobLog } from '@/lib/realtime/types';
 
 type RunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'error';
@@ -52,7 +52,7 @@ interface ActiveRunDetails {
 interface TestLabClientProps {
   configId: string;
   versionId: string | null;
-  testRuns: TestRunRecord[];
+  testRuns: ScrapeJobTestRecord[];
   testSkus: ScraperTestSku[];
   scraperName: string;
   disabled?: boolean;
@@ -65,7 +65,7 @@ interface TestRunControlsProps {
   isPolling: boolean;
   selectedRunId: string | null;
   onRunSelect: (runId: string) => void;
-  testRuns: TestRunRecord[];
+  testRuns: ScrapeJobTestRecord[];
   activeRunDetails: ActiveRunDetails | null;
   totalSkus: number;
 }

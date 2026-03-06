@@ -642,13 +642,18 @@ export async function runTest(
 
     // Store test result in Supabase for history
     try {
-      await supabase.from('scraper_test_runs').insert({
-        scraper_id: configId,
-        scraper_slug: scraperName,
-        status: testResult.success ? 'passed' : 'failed',
-        execution_time_seconds: testResult.execution_time_seconds,
-        result_data: testResult,
-        created_by: user.id,
+      await supabase.from('scrape_jobs').insert({
+        scrapers: [scraperName],
+        skus: skus || [],
+        test_mode: true,
+        status: testResult.success ? 'completed' : 'failed',
+        test_metadata: {
+          test_type: 'direct',
+          config_id: configId,
+          scraper_slug: scraperName,
+          result_data: testResult,
+          execution_time_seconds: testResult.execution_time_seconds,
+        },
       });
 
       // Update health status based on test result
@@ -696,21 +701,23 @@ export async function getTestResults(
     }
 
     // Get the most recent test result
-    const { data: testResult, error: testError } = await supabase
-      .from('scraper_test_runs')
+    const { data: testJob, error: testError } = await supabase
+      .from('scrape_jobs')
       .select('*')
-      .eq('scraper_id', configId)
+      .eq('test_mode', true)
+      .contains('scrapers', [config.slug])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
-    if (testError || !testResult) {
+    if (testError || !testJob) {
       return { success: true, testResult: undefined };
     }
 
+    const testMetadata = (testJob.test_metadata as Record<string, unknown>) || {};
     return {
       success: true,
-      testResult: testResult.result_data as TestResult,
+      testResult: (testMetadata.result_data as TestResult) || undefined,
     };
   } catch (error) {
     console.error('Get test results error:', error);

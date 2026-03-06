@@ -12,10 +12,23 @@ interface ScraperOverviewProps {
 
 async function getRecentTestRuns(scraperId: string) {
   const supabase = await createClient();
+
+  // Get the scraper slug to filter test jobs
+  const { data: config } = await supabase
+    .from('scraper_configs')
+    .select('slug')
+    .eq('id', scraperId)
+    .single();
+
+  if (!config?.slug) {
+    return [];
+  }
+
   const { data, error } = await supabase
-    .from('scraper_test_runs')
-    .select('id, status, created_at')
-    .eq('scraper_id', scraperId)
+    .from('scrape_jobs')
+    .select('id, status, created_at, test_metadata')
+    .eq('test_mode', true)
+    .contains('scrapers', [config.slug])
     .order('created_at', { ascending: false })
     .limit(5);
     

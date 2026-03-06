@@ -15,6 +15,11 @@ import {
     checkIdempotency,
     recordCallbackProcessed,
 } from '@/lib/scraper-callback/idempotency';
+import {
+    finalizeTestJob,
+    persistChunkTelemetry,
+} from '@/lib/scraper-callback/test-job-utils';
+import type { ChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,37 +30,7 @@ function getSupabaseAdmin(): SupabaseClient {
     return createClient(url, key);
 }
 
-type TelemetryStepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
-interface TelemetryStep {
-    step_index: number;
-    action_type: string;
-    status: TelemetryStepStatus;
-    started_at?: string;
-    completed_at?: string;
-    duration_ms?: number;
-    error_message?: string;
-    extracted_data?: Record<string, unknown>;
-    sku?: string;
-}
-
-interface TelemetrySelector {
-    sku?: string;
-    selector_name: string;
-    selector_value: string;
-    status: 'FOUND' | 'MISSING' | 'ERROR' | 'SKIPPED';
-    error_message?: string;
-    duration_ms?: number;
-}
-
-interface TelemetryExtraction {
-    sku?: string;
-    field_name: string;
-    field_value?: string;
-    status: 'SUCCESS' | 'EMPTY' | 'ERROR' | 'NOT_FOUND';
-    error_message?: string;
-    duration_ms?: number;
-}
 
 type ExtractionStrategy = 'css' | 'xpath' | 'llm';
 
@@ -131,82 +106,7 @@ function extractCrawl4AiMetadata(payload: ScraperCallbackPayload): Crawl4AiMetad
     };
 }
 
-async function persistTestRunTelemetry(
-    supabase: SupabaseClient,
-    params: {
-        testRunId: string;
-        scraperId: string | null;
-        steps?: TelemetryStep[];
-        selectors?: TelemetrySelector[];
-        extractions?: TelemetryExtraction[];
-    }
-): Promise<void> {
-    const { testRunId, scraperId, steps, selectors, extractions } = params;
 
-    if (steps && steps.length > 0) {
-        const stepRows = steps.map((step) => ({
-            test_run_id: testRunId,
-            step_index: step.step_index,
-            action_type: step.action_type,
-            status: step.status,
-            started_at: step.started_at ?? null,
-            completed_at: step.completed_at ?? null,
-            duration_ms: step.duration_ms ?? null,
-            error_message: step.error_message ?? null,
-            extracted_data: step.extracted_data ?? {},
-        }));
-
-        const { error: stepsError } = await supabase
-            .from('scraper_test_run_steps')
-            .upsert(stepRows, { onConflict: 'test_run_id,step_index' });
-
-        if (stepsError) {
-            console.warn(`[Callback] Failed to persist test telemetry steps for run ${testRunId}:`, stepsError.message);
-        }
-    }
-
-    if (scraperId && selectors && selectors.length > 0) {
-        const selectorRows = selectors.map((selector) => ({
-            test_run_id: testRunId,
-            scraper_id: scraperId,
-            sku: selector.sku ?? '',
-            selector_name: selector.selector_name,
-            selector_value: selector.selector_value,
-            status: selector.status,
-            error_message: selector.error_message ?? null,
-            duration_ms: selector.duration_ms ?? null,
-        }));
-
-        const { error: selectorError } = await supabase
-            .from('scraper_selector_results')
-            .insert(selectorRows);
-
-        if (selectorError) {
-            console.warn(`[Callback] Failed to persist selector telemetry for run ${testRunId}:`, selectorError.message);
-        }
-    }
-
-    if (scraperId && extractions && extractions.length > 0) {
-        const extractionRows = extractions.map((extraction) => ({
-            test_run_id: testRunId,
-            scraper_id: scraperId,
-            sku: extraction.sku ?? '',
-            field_name: extraction.field_name,
-            field_value: extraction.field_value ?? null,
-            status: extraction.status,
-            error_message: extraction.error_message ?? null,
-            duration_ms: extraction.duration_ms ?? null,
-        }));
-
-        const { error: extractionError } = await supabase
-            .from('scraper_extraction_results')
-            .insert(extractionRows);
-
-        if (extractionError) {
-            console.warn(`[Callback] Failed to persist extraction telemetry for run ${testRunId}:`, extractionError.message);
-        }
-    }
-}
 
 async function persistJobLogs(
     supabase: SupabaseClient,
@@ -564,84 +464,37 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Callback] Job ${payload.job_id} updated to ${payload.status} by ${runnerName}`);
 
-        // Update scraper_test_runs if this is a test job with a test_run_id
-        if ((payload.status === 'completed' || payload.status === 'failed') && testRunId) {
-            console.log(`[Callback] Updating test run ${testRunId} for job ${payload.job_id}`);
+        // Finalize test job if this is a test job that has reached a terminal state
+        if ((payload.status === 'completed' || payload.status === 'failed') && isTestJob) {
+            console.log(`[Callback] Finalizing test job ${payload.job_id}`);
 
-            // Calculate test results from the scrape results
-            let testStatus: 'passed' | 'failed' | 'partial' = 'failed';
-            let results: Array<{
-                sku: string;
-                status: 'success' | 'no_results' | 'error' | 'timeout';
-                data?: Record<string, unknown>;
-                error_message?: string;
-                duration_ms?: number;
-            }> = [];
+            // Persist telemetry on the job's chunks if available
+            const telemetry = payload.results?.telemetry as ChunkTelemetry | undefined;
+            if (telemetry) {
+                // Find the chunk(s) for this job and persist telemetry
+                const { data: chunks } = await supabase
+                    .from('scrape_job_chunks')
+                    .select('id')
+                    .eq('job_id', payload.job_id);
 
-            if (payload.results?.data) {
-                const skus = Object.keys(payload.results.data);
-                results = skus.map(sku => {
-                    const scraperData = payload.results?.data?.[sku];
-                    const hasData = scraperData && Object.keys(scraperData).some(k => k !== 'scraped_at');
-                    return {
-                        sku,
-                        status: hasData ? 'success' : 'no_results',
-                        data: scraperData,
-                    };
-                });
-
-                const allSuccess = results.every(r => r.status === 'success' || r.status === 'no_results');
-                testStatus = allSuccess ? 'passed' : 'partial';
-            }
-
-            // Only update test runs that exist and are still pending
-            if (testRunId) {
-                // First check if test run exists and is pending
-                const { data: existingRun, error: checkError } = await supabase
-                    .from('scraper_test_runs')
-                    .select('id, status, scraper_id')
-                    .eq('id', testRunId)
-                    .single();
-
-                if (checkError) {
-                    console.warn(`[Callback] Test run ${testRunId} not found or error checking:`, checkError.message);
-                } else if (existingRun?.status === 'pending') {
-                    // Update test run with error handling
-                    const { error: testRunError } = await supabase
-                        .from('scraper_test_runs')
-                        .update({
-                            status: testStatus,
-                            results,
-                            completed_at: new Date().toISOString(),
-                        })
-                        .eq('id', testRunId);
-                    if (testRunError) {
-                        console.error(`[Callback] Failed to update test run ${testRunId}:`, testRunError.message);
-                    } else {
-                        console.log(`[Callback] Successfully updated test run ${testRunId} with status: ${testStatus}`);
-                    }
-
-                    // Persist telemetry and logs for test runs
-                    const telemetry = payload.results?.telemetry;
-                    const logs = payload.results?.logs;
-
-                    if (telemetry || logs) {
-                        await persistTestRunTelemetry(supabase, {
-                            testRunId,
-                            scraperId: existingRun?.scraper_id ?? null,
-                            steps: telemetry?.steps,
-                            selectors: telemetry?.selectors,
-                            extractions: telemetry?.extractions,
-                        });
-
-                        if (logs && Array.isArray(logs)) {
-                            await persistJobLogs(supabase, payload.job_id, logs);
-                        }
-                    }
-                } else {
-                    console.log(`[Callback] Test run ${testRunId} already processed with status: ${existingRun?.status}`);
+                if (chunks && chunks.length > 0) {
+                    // For non-chunked jobs, persist all telemetry on the first chunk
+                    await persistChunkTelemetry(supabase, chunks[0].id, telemetry);
                 }
             }
+
+            // Persist logs
+            const logs = payload.results?.logs;
+            if (logs && Array.isArray(logs)) {
+                await persistJobLogs(supabase, payload.job_id, logs);
+            }
+
+            // Compute final test status and update test_metadata
+            await finalizeTestJob(
+                supabase,
+                payload.job_id,
+                payload.status as 'completed' | 'failed',
+            );
         }
 
         return NextResponse.json({ success: true });

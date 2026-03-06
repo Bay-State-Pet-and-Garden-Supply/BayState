@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   scraperConfigSchema,
   scraperRecordSchema,
-  testRunRecordSchema,
   selectorSuggestionSchema,
   workflowStepSchema,
   selectorConfigSchema,
@@ -110,7 +109,29 @@ export type AISearchParams = z.infer<typeof aiSearchParamsSchema>;
 export type AIExtractParams = z.infer<typeof aiExtractParamsSchema>;
 export type AIValidateParams = z.infer<typeof aiValidateParamsSchema>;
 export type ScraperRecord = z.infer<typeof scraperRecordSchema>;
-export type TestRunRecord = z.infer<typeof testRunRecordSchema>;
+export interface ScrapeJobTestRecord {
+  id: string;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+  test_metadata: {
+    summary?: {
+      passed: number;
+      failed: number;
+      total: number;
+    };
+    duration_ms?: number;
+    sku_results?: Array<{
+      sku: string;
+      status: string;
+    }>;
+    [key: string]: any;
+  } | null;
+  skus: string[] | null;
+  error_message: string | null;
+  started_at?: string; // mapped from created_at
+  duration_ms?: number; // mapped from metadata
+}
 export type SelectorSuggestion = z.infer<typeof selectorSuggestionSchema>;
 export type ActionType = z.infer<typeof actionTypeSchema>;
 export type ScraperStatus = 'draft' | 'active' | 'disabled' | 'archived';
