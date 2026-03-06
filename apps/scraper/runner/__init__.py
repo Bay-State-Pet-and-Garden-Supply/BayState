@@ -6,15 +6,15 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from ..core.api_client import JobConfig
-from ..core.events import ScraperEvent, create_emitter, event_bus
-from ..core.settings_manager import settings
+from core.api_client import JobConfig
+from core.events import ScraperEvent, create_emitter, event_bus
+from core.settings_manager import settings
 
-from ..scrapers.ai_discovery import AIDiscoveryScraper
-from ..scrapers.executor.workflow_executor import WorkflowExecutor
-from ..scrapers.parser import ScraperConfigParser
-from ..scrapers.result_collector import ResultCollector
-from ..scrapers.models.config import ScraperConfig as ScraperConfigModel
+from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.executor.workflow_executor import WorkflowExecutor
+from scrapers.parser import ScraperConfigParser
+from scrapers.result_collector import ResultCollector
+from scrapers.models.config import ScraperConfig as ScraperConfigModel
 from typing import cast
 
 logger = logging.getLogger(__name__)
@@ -560,7 +560,7 @@ def _run_discovery_job(
 
 
 # Execution engine imports
-from .execution import (
+from runner.execution import (
     ExecutionResult,
     WorkerConfig,
     create_work_stealing_queues,
