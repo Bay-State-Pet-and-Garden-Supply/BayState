@@ -1,10 +1,8 @@
-from engine.config import load_config
+from .config import load_config
 
-try:
-    from engine.engine import Crawl4AIEngine
-except ModuleNotFoundError:
-    Crawl4AIEngine = None
-from engine.metrics import (
+from . import engine
+from .engine import Crawl4AIEngine
+from .metrics import (
     Crawl4AIMetricsCollector,
     ErrorType,
     ExtractionMode,
@@ -13,6 +11,7 @@ from engine.metrics import (
 )
 
 __all__ = [
+    "engine",
     "Crawl4AIEngine",
     "load_config",
     "Crawl4AIMetricsCollector",
