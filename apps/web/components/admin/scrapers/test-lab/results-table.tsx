@@ -88,6 +88,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setStatusFilter(null)}
             role="button"
+            data-testid="filter-status-all"
           >
             All
           </Badge>
@@ -96,6 +97,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setStatusFilter('success')}
             role="button"
+            data-testid="filter-status-success"
           >
             Success
           </Badge>
@@ -104,6 +106,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setStatusFilter('failed')}
             role="button"
+            data-testid="filter-status-failed"
           >
             Failed
           </Badge>
@@ -112,6 +115,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setStatusFilter('no_results')}
             role="button"
+            data-testid="filter-status-no_results"
           >
             No Results
           </Badge>
@@ -123,6 +127,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setTypeFilter(null)}
             role="button"
+            data-testid="filter-type-all"
           >
             All Types
           </Badge>
@@ -131,6 +136,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setTypeFilter('golden')}
             role="button"
+            data-testid="filter-type-golden"
           >
             Golden
           </Badge>
@@ -139,6 +145,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setTypeFilter('fake')}
             role="button"
+            data-testid="filter-type-fake"
           >
             Fake
           </Badge>
@@ -147,6 +154,7 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
             className="cursor-pointer text-[10px] h-5 px-2"
             onClick={() => setTypeFilter('edge')}
             role="button"
+            data-testid="filter-type-edge"
           >
             Edge
           </Badge>
@@ -183,34 +191,49 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
               return (
                 <React.Fragment key={result.sku}>
                   <TableRow 
-                    className="cursor-pointer hover:bg-muted/30 transition-colors"
+                    className="cursor-pointer hover:bg-muted/30 transition-colors focus-visible:bg-muted/50 outline-none"
                     onClick={() => toggleRow(result.sku)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleRow(result.sku);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-expanded={isExpanded}
                   >
-                    <TableCell>
-                      {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <TableCell className="w-10 text-center">
+                      {isExpanded ? (
+                        <ChevronDown className="h-3.5 w-3.5 text-primary animate-in zoom-in-50 duration-200" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
                     </TableCell>
-                    <TableCell className="font-mono text-sm font-medium">{result.sku}</TableCell>
+                    <TableCell className="font-mono text-[13px] font-semibold">{result.sku}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(result.status)}
-                        <span className="capitalize text-xs">{result.status.replace('_', ' ')}</span>
+                        <span className="capitalize text-[11px] font-medium">{result.status.replace('_', ' ')}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-[11px] text-muted-foreground font-mono">
                       {result.duration_ms ? `${result.duration_ms}ms` : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Sparkline data={sparkData} color={health > 80 ? '#16a34a' : health > 50 ? '#ca8a04' : '#dc2626'} />
-                        <span className="text-[10px] font-medium w-8">{health}%</span>
+                        <span className="text-[10px] font-bold w-8 text-right">{health}%</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="outline" className="text-[10px] h-5 px-1.5">Details</Badge>
+                      <Badge variant="secondary" className="text-[9px] h-4 px-1.5 uppercase font-bold tracking-tight">
+                        {isExpanded ? 'Hide' : 'Details'}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
-                    <TableRow className="bg-muted/10">
+                    <TableRow className="bg-muted/5 border-l-2 border-l-primary/50">
                       <TableCell colSpan={6} className="p-0">
                         <div className="p-4 border-t space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
