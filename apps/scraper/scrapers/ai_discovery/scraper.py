@@ -16,6 +16,8 @@ from scrapers.ai_discovery.extraction import ExtractionUtils
 from scrapers.ai_discovery.search import BraveSearchClient
 from scrapers.ai_discovery.query_builder import QueryBuilder
 from scrapers.ai_discovery.validation import ExtractionValidator
+# Using centralized engine
+from crawl4ai_engine.engine import Crawl4AIEngine
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +144,35 @@ class AIDiscoveryScraper:
                 error_msg = search_error or "No search results found"
                 return DiscoveryResult(success=False, sku=sku, error=error_msg)
 
-            # Step 3-5: Try extracting from each source with fallback
+            # Step 3: Optimization - If brand is missing, use PARALLEL discovery
+            # We crawl the top 3 results simultaneously using arun_many
+            if not brand:
+                logger.info("[AI Discovery] Brand missing - initiating parallel candidate discovery")
+                top_candidates = search_results[:3]
+                candidate_urls = [str(r.get("url")) for r in top_candidates if r.get("url")]
+                
+                parallel_results = await self._extract_candidates_parallel(candidate_urls, sku, product_name, brand)
+                
+                # Pick the best result from the parallel set
+                accepted_result = None
+                target_url = None
+                for res in parallel_results:
+                    is_acceptable, _ = self._validator.validate_extraction_match(
+                        extraction_result=res,
+                        sku=sku,
+                        product_name=product_name,
+                        brand=brand,
+                        source_url=res.get("url", ""),
+                    )
+                    if is_acceptable:
+                        accepted_result = res
+                        target_url = res.get("url")
+                        break
+                
+                if accepted_result:
+                    return self._build_discovery_result(accepted_result, sku, product_name, brand, target_url)
+
+            # Step 4: Serial fallback / brand-aware discovery (existing logic)
             max_attempts = 3
             extraction_result: Optional[dict[str, Any]] = None
             accepted_result: Optional[dict[str, Any]] = None
@@ -171,23 +201,17 @@ class AIDiscoveryScraper:
                     if attempt < max_attempts - 1:
                         search_results = [r for r in search_results if r.get("url") != target_url]
                         continue
-                    return DiscoveryResult(success=False, sku=sku, error="Could not identify suitable product page")
+                    break
 
                 logger.info(f"[AI Discovery] Selected source (attempt {attempt + 1}): {target_url}")
 
                 selected_result = next((result for result in search_results if result.get("url") == target_url), None)
                 if selected_result and self._scoring.is_low_quality_result(selected_result):
                     last_rejection_reason = "Selected source appears to be a non-product/review/aggregator page"
-                    logger.info(f"[AI Discovery] Attempt {attempt + 1} rejected source before extraction: {target_url} ({last_rejection_reason})")
                     search_results = [r for r in search_results if r.get("url") != target_url]
-                    if not search_results:
-                        logger.warning("[AI Discovery] No more search results to try")
-                        break
                     continue
 
                 tried_urls.add(target_url)
-
-                # Step 4: Extract product data from the selected page
                 extraction_result = await self._extract_product_data(target_url, sku, product_name, brand)
 
                 is_acceptable, rejection_reason = self._validator.validate_extraction_match(
@@ -202,164 +226,103 @@ class AIDiscoveryScraper:
                     break
 
                 last_rejection_reason = rejection_reason
-                logger.info(f"[AI Discovery] Attempt {attempt + 1} rejected extracted data from {target_url}: {rejection_reason}. Trying next source...")
-
-                # Remove tried URL from results and try next
                 search_results = [r for r in search_results if r.get("url") != target_url]
-                if not search_results:
-                    logger.warning("[AI Discovery] No more search results to try")
-                    break
 
             if not accepted_result:
-                if extraction_result and extraction_result.get("error"):
-                    error_msg = str(extraction_result.get("error"))
-                elif last_rejection_reason:
-                    error_msg = f"All extraction attempts rejected: {last_rejection_reason}"
-                else:
-                    error_msg = "All extraction attempts failed"
+                error_msg = extraction_result.get("error") if extraction_result else last_rejection_reason or "Extraction failed"
                 return DiscoveryResult(success=False, sku=sku, error=error_msg)
 
-            # Step 5: Record metrics
-            cost_summary = self._cost_tracker.get_cost_summary()
-            record_ai_extraction(
-                scraper_name=f"ai_discovery_{brand or 'unknown'}",
-                success=bool(accepted_result.get("success", False)),
-                cost_usd=cost_summary.get("total_cost_usd", 0),
-                duration_seconds=0.0,
-                anti_bot_detected=bool(accepted_result.get("anti_bot_detected", False)),
-            )
-
-            # Build result
-            if accepted_result.get("success"):
-                return DiscoveryResult(
-                    success=True,
-                    sku=sku,
-                    product_name=accepted_result.get("product_name") or product_name,
-                    brand=accepted_result.get("brand") or brand,
-                    description=accepted_result.get("description"),
-                    size_metrics=accepted_result.get("size_metrics"),
-                    images=accepted_result.get("images", []),
-                    categories=accepted_result.get("categories", []),
-                    url=target_url,
-                    source_website=str(__import__("urllib.parse", fromlist=["urlparse"]).urlparse(target_url).netloc),
-                    confidence=float(accepted_result.get("confidence", 0) or 0),
-                    cost_usd=cost_summary.get("total_cost_usd", 0),
-                )
-            else:
-                return DiscoveryResult(
-                    success=False,
-                    sku=sku,
-                    error=str(accepted_result.get("error", "Extraction failed")),
-                    cost_usd=cost_summary.get("total_cost_usd", 0),
-                )
+            return self._build_discovery_result(accepted_result, sku, product_name, brand, target_url)
 
         except Exception as e:
             logger.error(f"[AI Discovery] Error scraping {sku}: {e}")
             return DiscoveryResult(success=False, sku=sku, error=str(e))
 
-    async def _identify_best_source(
-        self,
-        search_results: list[dict[str, Any]],
-        sku: str,
-        brand: Optional[str],
-        product_name: Optional[str],
-    ) -> Optional[str]:
-        """Use AI to identify the best product page from search results."""
-        try:
-            api_key = os.environ.get("OPENAI_API_KEY")
-            if not api_key:
-                logger.error("OPENAI_API_KEY not set")
-                return self._heuristic_source_selection(search_results, brand)
-
-            browser_llm_module = __import__("browser_use.llm", fromlist=["ChatOpenAI"])
-            ChatOpenAI = getattr(browser_llm_module, "ChatOpenAI")
-
-            llm = ChatOpenAI(
-                model=self.llm_model,
-                api_key=api_key,
-                temperature=0,
-            )
-
-            results_text = "\n\n".join(
-                [
-                    f"{i + 1}. URL: {r['url']}\nTitle: {r['title']}\nDescription: {r['description']}"
-                    for i, r in enumerate(search_results[: self.max_search_results])
-                ]
-            )
-
-            prompt = f"""You are ranking search results to select the single best product page for structured extraction.
-
-INPUT PRODUCT CONTEXT
-- SKU: {sku or "Unknown"}
-- Brand (may be null): {brand or "Unknown"}
-- Product Name: {product_name or "Unknown"}
-
-SEARCH RESULTS
-{results_text}
-
-INSTRUCTIONS
-1) Infer the likely canonical brand when Brand is Unknown by using Product Name tokens and search result titles/descriptions.
-2) Score each result using this weighted rubric (0-100 total):
-   - Domain authority & source tier (0-45)
-      - 45: official manufacturer / official brand domain for inferred brand
-     - 30: major trusted retailer PDP (Home Depot, Lowe's, Walmart, Target, Chewy, Tractor Supply, Ace)
-     - 10: marketplace / affiliate / review / aggregator pages
-   - SKU/variant relevance (0-30)
-     - Explicit SKU match or exact variant tokens (size/color/form) in title/snippet/url
-   - Content quality signals (0-25)
-     - Strong signals: explicit price mention, stock/availability hint, product detail depth, image-rich PDP indicators
-     - Penalize thin pages, category pages, blog/review pages, comparison pages, or "best X" roundups
-
-REQUIRED DECISION POLICY
-- Prefer manufacturer page if it is plausibly the exact SKU/variant.
-- If no viable manufacturer result exists, choose best major retailer PDP.
-- NEVER select category pages, listicles, review roundups, or social/video pages when any PDP is available.
-- A valid candidate should usually include product-level URL patterns (/product, /products, /p/) or explicit PDP cues in title/snippet.
-- If all results are low quality or likely non-PDP, return 0.
-
-OUTPUT FORMAT (STRICT)
-- Return ONLY one integer from 1 to {len(search_results[: self.max_search_results])} for the best result.
-- Return 0 only if none are suitable product pages."""
-
-            import re
-
-            response = await llm.ainvoke(prompt)
-            response_text = response.content if hasattr(response, "content") else str(response)
-
-            try:
-                match = re.search(r"-?\d+", response_text)
-                selection = int(match.group(0)) if match else 0
-                if 1 <= selection <= len(search_results):
-                    return search_results[selection - 1]["url"]
-            except ValueError:
-                logger.warning(f"[AI Discovery] Could not parse AI selection: {response_text}")
-
-            return self._heuristic_source_selection(search_results, brand)
-
-        except Exception as e:
-            logger.error(f"[AI Discovery] Source identification failed: {e}")
-            return self._heuristic_source_selection(search_results, brand)
-
-    def _heuristic_source_selection(
-        self,
-        search_results: list[dict[str, Any]],
-        brand: Optional[str],
-    ) -> Optional[str]:
-        """Fallback heuristic to select best source without AI."""
-        if not search_results:
-            return None
-
-        scored = sorted(
-            search_results,
-            key=lambda result: self._scoring.score_search_result(result, "", brand, None, None),
-            reverse=True,
+    def _build_discovery_result(self, result: dict[str, Any], sku: str, product_name: Optional[str], brand: Optional[str], url: Optional[str]) -> DiscoveryResult:
+        """Build a finalized DiscoveryResult from raw extraction."""
+        cost_summary = self._cost_tracker.get_cost_summary()
+        record_ai_extraction(
+            scraper_name=f"ai_discovery_{brand or 'unknown'}",
+            success=True,
+            cost_usd=cost_summary.get("total_cost_usd", 0),
+            duration_seconds=0.0,
+            anti_bot_detected=bool(result.get("anti_bot_detected", False)),
+        )
+        
+        return DiscoveryResult(
+            success=True,
+            sku=sku,
+            product_name=result.get("product_name") or product_name,
+            brand=result.get("brand") or brand,
+            description=result.get("description"),
+            size_metrics=result.get("size_metrics"),
+            images=result.get("images", []),
+            categories=result.get("categories", []),
+            url=url,
+            source_website=str(__import__("urllib.parse", fromlist=["urlparse"]).urlparse(url).netloc if url else "unknown"),
+            confidence=float(result.get("confidence", 0) or 0),
+            cost_usd=cost_summary.get("total_cost_usd", 0),
         )
 
-        for result in scored:
-            if not self._scoring.is_low_quality_result(result):
-                return str(result.get("url") or "")
+    async def _extract_candidates_parallel(self, urls: list[str], sku: str, product_name: Optional[str], brand: Optional[str]) -> list[dict[str, Any]]:
+        """Extract product data from multiple URLs in parallel using arun_many."""
+        try:
+            from pydantic import BaseModel, Field
+            from crawl4ai.extraction_strategy import LLMExtractionStrategy
+            from crawl4ai import LLMConfig
 
-        return str(scored[0].get("url") or "")
+            class ProductData(BaseModel):
+                product_name: str = Field(description="The exact product name")
+                brand: str = Field(description="The brand name")
+                description: str = Field(description="Full product description")
+                size_metrics: str = Field(description="Size, weight, volume, or dimensions")
+                images: list[str] = Field(description="List of product image URLs")
+                categories: list[str] = Field(description="Product types, categories, or tags")
+
+            api_key = os.environ.get("OPENAI_API_KEY")
+            if not api_key:
+                return []
+
+            instruction = self._build_extraction_instruction(sku, brand, product_name)
+            llm_strategy = LLMExtractionStrategy(
+                llm_config=LLMConfig(provider=f"openai/{self.llm_model}", api_token=api_key),
+                schema=ProductData.model_json_schema(),
+                extraction_type="schema",
+                instruction=instruction,
+            )
+
+            engine_config = {
+                "browser": {"headless": self.headless},
+                "crawler": {
+                    "magic": True,
+                    "simulate_user": True,
+                    "remove_overlay_elements": True,
+                    "js_code": self._get_scroll_javascript(),
+                    "extraction_strategy": llm_strategy,
+                    "concurrency_limit": len(urls),
+                }
+            }
+
+            async with Crawl4AIEngine(engine_config) as engine:
+                raw_results = await engine.crawl_many(urls)
+                
+                final_results = []
+                for r in raw_results:
+                    if r.get("success") and r.get("extracted_content"):
+                        try:
+                            data = json.loads(r["extracted_content"])
+                            if data and isinstance(data, list):
+                                product_data = data[0]
+                                product_data["success"] = True
+                                product_data["url"] = r.get("url")
+                                final_results.append(product_data)
+                        except json.JSONDecodeError:
+                            continue
+                return final_results
+
+        except Exception as e:
+            logger.error(f"[AI Discovery] Parallel extraction failed: {e}")
+            return []
 
     async def _extract_product_data(
         self,
@@ -368,27 +331,11 @@ OUTPUT FORMAT (STRICT)
         product_name: Optional[str],
         brand: Optional[str],
     ) -> dict[str, Any]:
-        """Extract product data from the selected URL using crawl4ai."""
+        """Extract product data from the selected URL using centralized Crawl4AIEngine."""
         try:
             from pydantic import BaseModel, Field
-
-            try:
-                crawl4ai_module = importlib.import_module("crawl4ai")
-                extraction_module = importlib.import_module("crawl4ai.extraction_strategy")
-            except ModuleNotFoundError:
-                return await self._extract_product_data_fallback(
-                    url=url,
-                    sku=sku,
-                    product_name=product_name,
-                    brand=brand,
-                )
-
-            AsyncWebCrawler = getattr(crawl4ai_module, "AsyncWebCrawler")
-            BrowserConfig = getattr(crawl4ai_module, "BrowserConfig")
-            CrawlerRunConfig = getattr(crawl4ai_module, "CrawlerRunConfig")
-            CacheMode = getattr(crawl4ai_module, "CacheMode")
-            LLMConfig = getattr(crawl4ai_module, "LLMConfig")
-            LLMExtractionStrategy = getattr(extraction_module, "LLMExtractionStrategy")
+            from crawl4ai.extraction_strategy import LLMExtractionStrategy
+            from crawl4ai import LLMConfig
 
             class ProductData(BaseModel):
                 product_name: str = Field(description="The exact product name")
@@ -402,11 +349,6 @@ OUTPUT FORMAT (STRICT)
             if not api_key:
                 return {"success": False, "error": "OPENAI_API_KEY not set"}
 
-            browser_config = BrowserConfig(
-                headless=self.headless,
-                viewport={"width": 1920, "height": 1080},
-            )
-
             instruction = self._build_extraction_instruction(sku, brand, product_name)
 
             llm_strategy = LLMExtractionStrategy(
@@ -419,22 +361,30 @@ OUTPUT FORMAT (STRICT)
                 instruction=instruction,
             )
 
-            scroll_js = self._get_scroll_javascript()
+            # Centralized engine configuration leveraging new features
+            engine_config = {
+                "browser": {
+                    "headless": self.headless,
+                    "viewport": {"width": 1920, "height": 1080},
+                },
+                "crawler": {
+                    "magic": True,
+                    "simulate_user": True,
+                    "remove_overlay_elements": True,
+                    "cache_mode": "BYPASS", # Discovery usually wants fresh data
+                    "js_code": self._get_scroll_javascript(),
+                    "extraction_strategy": llm_strategy,
+                    "timeout": 30000,
+                }
+            }
 
-            crawl_config = CrawlerRunConfig(
-                extraction_strategy=llm_strategy,
-                cache_mode=CacheMode.BYPASS,
-                js_code=scroll_js,
-                delay_before_return_html=2.0,
-                word_count_threshold=1,
-            )
+            async with Crawl4AIEngine(engine_config) as engine:
+                result = await engine.crawl(url)
 
-            async with AsyncWebCrawler(config=browser_config) as crawler:
-                result = await crawler.arun(url=url, config=crawl_config)
-
-                if result.success and result.extracted_content:
-                    if isinstance(result.extracted_content, str):
-                        raw_content = result.extracted_content.strip()
+                if result.get("success") and result.get("extracted_content"):
+                    extracted_content = result["extracted_content"]
+                    if isinstance(extracted_content, str):
+                        raw_content = extracted_content.strip()
                         if raw_content.startswith("[") and '"error"' in raw_content.lower() and "auth" in raw_content.lower():
                             return await self._extract_product_data_fallback(
                                 url=url,
@@ -444,12 +394,13 @@ OUTPUT FORMAT (STRICT)
                             )
 
                     try:
-                        data = json.loads(result.extracted_content)
+                        data = json.loads(extracted_content)
                         if data and isinstance(data, list):
                             product_data = data[0]
                             product_data["success"] = True
                             product_data["url"] = url
 
+                            # Calculate confidence based on filled fields
                             required_fields = ["product_name", "brand", "description", "size_metrics", "images", "categories"]
                             filled = sum(1 for f in required_fields if product_data.get(f))
                             product_data["confidence"] = filled / len(required_fields)
@@ -459,19 +410,23 @@ OUTPUT FORMAT (STRICT)
                         return {
                             "success": False,
                             "error": "Could not parse extraction result",
-                            "raw_response": result.extracted_content[:500],
+                            "raw_response": extracted_content[:500],
                         }
+                
                 return {
                     "success": False,
-                    "error": result.error_message or "Extraction failed or returned no content",
+                    "error": result.get("error") or "Extraction failed or returned no content",
                 }
 
         except Exception as e:
             logger.error(f"[AI Discovery] Extraction failed: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-            }
+            # Fallback to manual HTTP extraction if crawl4ai fails completely
+            return await self._extract_product_data_fallback(
+                url=url,
+                sku=sku,
+                product_name=product_name,
+                brand=brand,
+            )
 
     def _build_extraction_instruction(self, sku: str, brand: Optional[str], product_name: Optional[str]) -> str:
         """Build the LLM extraction instruction prompt."""
@@ -496,7 +451,7 @@ CRITICAL EXTRACTION RULES
    - product_name: required
    - images: at least 1 required
    - brand, description, size_metrics, categories: strongly preferred
-   - If a required field cannot be found, keep searching the same page context before giving up.
+   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
 
 4) SIZE METRICS EXTRACTION
    - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
@@ -512,7 +467,7 @@ CRITICAL EXTRACTION RULES
      - Do not just grab the first image. Return absolute URLs only (https://...).
      - Put primary hero image first, then additional product angles, variants, and detail shots.
      - Exclude sprites, icons, logos, and unrelated recommendation images.
-     - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list.
+     - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list rather than `example.com` or placeholder URLs.
 
 7) DESCRIPTION QUALITY
    - Extract meaningful product description/spec text for the exact variant, not generic category copy.
