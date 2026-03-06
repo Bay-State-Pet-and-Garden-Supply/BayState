@@ -213,6 +213,8 @@ export const normalizationRuleSchema = z.object({
   params: z.record(z.string(), z.unknown()).default({}),
 });
 
+export type NormalizationRule = z.infer<typeof normalizationRuleSchema>;
+
 // Full scraper config schema
 export const scraperConfigSchema = z.object({
   schema_version: schemaVersionSchema,

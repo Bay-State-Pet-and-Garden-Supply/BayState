@@ -52,7 +52,7 @@ describe('AI scraping credentials admin route', () => {
       getUser: jest.fn(),
     },
     from: jest.fn(),
-  } as unknown as ReturnType<typeof createClient>;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -87,9 +87,9 @@ describe('AI scraping credentials admin route', () => {
     });
 
     const res = await GET();
-    expect(res.status).toBe(200);
+    expect(res?.status).toBe(200);
 
-    const body = await res.json();
+    const body = await res!.json();
     expect(body.statuses.openai.configured).toBe(true);
     expect(body.defaults.max_steps).toBe(15);
   });
@@ -124,8 +124,8 @@ describe('AI scraping credentials admin route', () => {
       },
     };
 
-    const res = await POST(req as unknown as Request);
-    expect(res.status).toBe(200);
+    const res = await POST(req as any);
+    expect(res?.status).toBe(200);
 
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('openai', 'sk-test', 'user-1');
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('brave', 'brave-test', 'user-1');

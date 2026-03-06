@@ -18,8 +18,8 @@ async function getScrapers() {
   const { data: scrapers, error } = await supabase
     .from('scraper_configs')
     .select(`
-      id, slug, display_name, domain, scraper_type, status, 
-      health_status, health_score, last_test_at
+      id, slug, display_name, name, base_url, domain, scraper_type, status, 
+      health_status, health_score, last_test_at, schema_version
     `)
     .order('display_name', { ascending: true, nullsFirst: false });
     
