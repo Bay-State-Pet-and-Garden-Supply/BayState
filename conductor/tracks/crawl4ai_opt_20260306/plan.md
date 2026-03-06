@@ -16,24 +16,24 @@ Refactor the core `Crawl4AIEngine` to support v0.4+ parameters and parallelism.
 - [x] Task: Add failing tests for `Crawl4AIEngine` v0.4+ features. a9f3424
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Engine Refactoring' (Protocol in workflow.md) a9f3424
 
-## Phase 2: Extraction Strategy & Content Filtering [checkpoint: acbb2f8]
+## Phase 2: Extraction Strategy & Content Filtering [checkpoint: f1695a4]
 Implement the fallback chain and CSS-based pruning to optimize quality and cost.
 
-- [x] Task: Update `Crawl4AIEngine` to support `css_selector` and the Extraction Strategy chain.
+- [x] Task: Update `Crawl4AIEngine` to support `css_selector` and the Extraction Strategy chain. f1695a4
     - [x] Add `css_selector` to `CrawlerRunConfig` to target specific product containers.
     - [x] Integrate the `StrategyFactory` / `build_fallback_chain` logic into the engine's crawl flow.
-- [x] Task: Refactor `ai_discovery` modules to use `Crawl4AIEngine`.
+- [x] Task: Refactor `ai_discovery` modules to use `Crawl4AIEngine`. f1695a4
     - [x] Replace manual `crawl4ai` imports/logic in `ai_discovery.py` with `Crawl4AIEngine`.
     - [x] Migrate `crawl4ai_extractor.py` to use the centralized engine.
-- [x] Task: Add failing tests for fallback chain and content filtering.
-- [x] Task: Conductor - User Manual Verification 'Phase 2: Extraction Strategy & Content Filtering' (Protocol in workflow.md)
+- [x] Task: Add failing tests for fallback chain and content filtering. f1695a4
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Extraction Strategy & Content Filtering' (Protocol in workflow.md) f1695a4
 
 ## Phase 3: Integration & Validation
 Verify full integration and ensure performance/cost goals are met.
 
-- [~] Task: Perform end-to-end (E2E) testing with live product URLs.
-    - [ ] Verify `magic=True` avoids 403s on a known-protected site.
-    - [ ] Measure LLM token usage reduction from `css_selector` pruning.
-    - [ ] Confirm concurrency speedup using `arun_many`.
-- [ ] Task: Update documentation and finalize code style compliance.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration & Validation' (Protocol in workflow.md)
+- [x] Task: Perform end-to-end (E2E) testing with live product URLs.
+    - [x] Verify `magic=True` avoids 403s on a known-protected site.
+    - [x] Measure LLM token usage reduction from `css_selector` pruning.
+    - [x] Confirm concurrency speedup using `arun_many`.
+- [x] Task: Update documentation and finalize code style compliance.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Integration & Validation' (Protocol in workflow.md)
