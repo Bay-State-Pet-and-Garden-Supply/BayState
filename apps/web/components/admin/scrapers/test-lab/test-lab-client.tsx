@@ -368,7 +368,7 @@ export function TestLabClient({
 
               <ResizableHandle withHandle />
 
-              <ResizablePanel defaultSize={30} minSize={10} collapsible onCollapse={() => setIsTerminalCollapsed(true)} onExpand={() => setIsTerminalCollapsed(false)}>
+              <ResizablePanel defaultSize={30} minSize={10} collapsible>
                 <LogTerminal 
                   logs={logs} 
                   isConnected={Boolean(jobId)} 
