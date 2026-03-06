@@ -247,6 +247,58 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.llm_model).toBe('gpt-4o');
     });
 
+    it('falls back to ai_discovery scraper when discovery job has empty scraper list', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+
+        const mockScrapers = [
+            {
+                slug: 'ai_discovery',
+                scraper_config_versions: {
+                    status: 'published',
+                    config: {
+                        base_url: 'https://example.com',
+                        selectors: [],
+                        workflows: [],
+                    },
+                },
+            },
+        ];
+
+        mockSupabase.eq.mockImplementation(function(this: any) {
+            return this;
+        });
+        mockSupabase.in.mockResolvedValue({ data: mockScrapers, error: null });
+
+        mockSupabase.rpc.mockResolvedValue({
+            data: [
+                {
+                    job_id: 'job-discovery-empty',
+                    skus: ['SKU-1'],
+                    scrapers: [],
+                    type: 'discovery',
+                    config: {},
+                    test_mode: false,
+                    max_workers: 3,
+                },
+            ],
+            error: null,
+        });
+
+        const req = createRequest({});
+        const res = await POST(req);
+
+        expect(res.status).toBe(200);
+        expect(mockSupabase.in).toHaveBeenCalledWith('slug', ['ai_discovery']);
+
+        const data = await res.json();
+        expect(data.job.scrapers).toHaveLength(1);
+        expect(data.job.scrapers[0].name).toBe('ai_discovery');
+        expect(data.job.job_type).toBe('discovery');
+    });
+
     it('preserves selectors arrays and validation in scraper payload', async () => {
         (validateRunnerAuth as jest.Mock).mockResolvedValue({
             runnerName: 'test-runner',
