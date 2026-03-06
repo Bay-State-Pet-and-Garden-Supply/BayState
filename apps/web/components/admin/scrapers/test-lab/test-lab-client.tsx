@@ -368,7 +368,7 @@ export function TestLabClient({
               />
             </div>
           </div>
-        </div>>
+        </div>
       </div>
     </TestLabErrorBoundary>
   );
