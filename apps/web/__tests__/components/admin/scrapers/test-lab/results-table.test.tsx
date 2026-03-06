@@ -5,6 +5,7 @@ import { SkuResult } from '@/components/admin/scrapers/test-lab/results-panel';
 const mockResults: SkuResult[] = [
   {
     sku: 'TEST-SKU-1',
+    sku_type: 'golden',
     status: 'success',
     duration_ms: 1200,
     telemetry: {
@@ -19,6 +20,7 @@ const mockResults: SkuResult[] = [
   },
   {
     sku: 'TEST-SKU-2',
+    sku_type: 'edge',
     status: 'failed',
     error: 'Selector not found',
     telemetry: {
@@ -41,7 +43,6 @@ describe('ResultsTable', () => {
 
   it('shows sparklines for health', () => {
     render(<ResultsTable results={mockResults} />);
-    // We expect some element representing a sparkline
     expect(screen.getAllByTestId('sparkline').length).toBeGreaterThan(0);
   });
 
@@ -53,8 +54,37 @@ describe('ResultsTable', () => {
     
     fireEvent.click(firstRow);
     
-    // Check for detail content (this might be in a drawer or expanded row)
     expect(screen.getByText('Extraction Results')).toBeInTheDocument();
     expect(screen.getByText('Selector Health')).toBeInTheDocument();
+  });
+
+  it('filters results by status', () => {
+    render(<ResultsTable results={mockResults} />);
+    
+    const successFilter = screen.getByRole('button', { name: /success/i });
+    const failedFilter = screen.getByRole('button', { name: /failed/i });
+    
+    expect(successFilter).toBeInTheDocument();
+    expect(failedFilter).toBeInTheDocument();
+    
+    fireEvent.click(failedFilter);
+    
+    expect(screen.queryByText('TEST-SKU-1')).not.toBeInTheDocument();
+    expect(screen.getByText('TEST-SKU-2')).toBeInTheDocument();
+  });
+
+  it('filters results by sku_type', () => {
+    render(<ResultsTable results={mockResults} />);
+
+    const goldenFilter = screen.getByRole('button', { name: /golden/i });
+    const edgeFilter = screen.getByRole('button', { name: /edge/i });
+
+    expect(goldenFilter).toBeInTheDocument();
+    expect(edgeFilter).toBeInTheDocument();
+
+    fireEvent.click(goldenFilter);
+
+    expect(screen.getByText('TEST-SKU-1')).toBeInTheDocument();
+    expect(screen.queryByText('TEST-SKU-2')).not.toBeInTheDocument();
   });
 });

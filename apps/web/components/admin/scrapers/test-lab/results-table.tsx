@@ -51,6 +51,8 @@ function getSelectorHealth(result: SkuResult): number {
 
 export function ResultsTable({ results, isLoading }: ResultsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const toggleRow = (sku: string) => {
     const next = new Set(expandedRows);
@@ -62,6 +64,12 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
     setExpandedRows(next);
   };
 
+  const filteredResults = results.filter(r => {
+    const matchesStatus = statusFilter ? r.status === statusFilter : true;
+    const matchesType = typeFilter ? r.sku_type === typeFilter : true;
+    return matchesStatus && matchesType;
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48 border rounded-md bg-muted/20">
@@ -71,27 +79,102 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
   }
 
   return (
-    <div className="border rounded-md overflow-hidden bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="w-12"></TableHead>
-            <TableHead>SKU</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Duration</TableHead>
-            <TableHead>Health</TableHead>
-            <TableHead className="text-right">Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {results.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                No results yet. Run a test to populate this table.
-              </TableCell>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 p-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-16">Status:</span>
+          <Badge 
+            variant={statusFilter === null ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setStatusFilter(null)}
+            role="button"
+          >
+            All
+          </Badge>
+          <Badge 
+            variant={statusFilter === 'success' ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setStatusFilter('success')}
+            role="button"
+          >
+            Success
+          </Badge>
+          <Badge 
+            variant={statusFilter === 'failed' ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setStatusFilter('failed')}
+            role="button"
+          >
+            Failed
+          </Badge>
+          <Badge 
+            variant={statusFilter === 'no_results' ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setStatusFilter('no_results')}
+            role="button"
+          >
+            No Results
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-16">Type:</span>
+          <Badge 
+            variant={typeFilter === null ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setTypeFilter(null)}
+            role="button"
+          >
+            All Types
+          </Badge>
+          <Badge 
+            variant={typeFilter === 'golden' ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setTypeFilter('golden')}
+            role="button"
+          >
+            Golden
+          </Badge>
+          <Badge 
+            variant={typeFilter === 'fake' ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setTypeFilter('fake')}
+            role="button"
+          >
+            Fake
+          </Badge>
+          <Badge 
+            variant={typeFilter === 'edge' ? 'default' : 'outline'} 
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setTypeFilter('edge')}
+            role="button"
+          >
+            Edge
+          </Badge>
+        </div>
+      </div>
+      <div className="border rounded-md overflow-hidden bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-12"></TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Duration</TableHead>
+              <TableHead>Health</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
-          ) : (
-            results.map((result) => {
+          </TableHeader>
+          <TableBody>
+            {filteredResults.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  {results.length === 0 
+                    ? "No results yet. Run a test to populate this table."
+                    : "No results match the selected filter."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredResults.map((result) => {
               const isExpanded = expandedRows.has(result.sku);
               const health = getSelectorHealth(result);
               // Mock data for sparkline based on selector status if available, or just random-ish for visual
@@ -200,5 +283,6 @@ export function ResultsTable({ results, isLoading }: ResultsTableProps) {
         </TableBody>
       </Table>
     </div>
+  </div>
   );
 }
