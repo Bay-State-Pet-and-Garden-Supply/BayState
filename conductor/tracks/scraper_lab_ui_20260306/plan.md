@@ -22,8 +22,8 @@
 - [x] Task: Implement Collapsible SKU Sidebar. [c63e3b1]
     - [x] Update `TestLabClient` to use a `ResizablePanelGroup` with a sidebar on the left.
     - [x] Add "Bulk Delete" and "Bulk Type Change" to the SKU sidebar.
-- [~] Task: Consolidate Run Controls & History.
-    - [ ] Merge `TestRunControls` and the local controls in `TestLabClient` into a unified header or sidebar area.
+- [x] Task: Consolidate Run Controls & History. [5b8f69f]
+    - [x] Merge `TestRunControls` and the local controls in `TestLabClient` into a unified header or sidebar area.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Sidebar & Controls Consolidation' (Protocol in workflow.md)
 
 ## Phase 4: Peek Terminal & Final Polishing
