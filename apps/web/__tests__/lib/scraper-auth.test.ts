@@ -79,6 +79,52 @@ describe('scraper-auth', () => {
             });
         });
 
+        it('normalizes allowed_scrapers array values from RPC', async () => {
+            const mockRpc = jest.fn().mockResolvedValue({
+                data: [{
+                    runner_name: 'test-runner',
+                    key_id: 'key-123',
+                    is_valid: true,
+                    allowed_scrapers: [' Phillips ', 'petfoodex', 'central_pet', '']
+                }],
+                error: null,
+            });
+
+            mockCreateClient.mockReturnValue({ rpc: mockRpc } as never);
+
+            const result = await validateAPIKey('bsr_valid-test-key');
+
+            expect(result).toEqual({
+                runnerName: 'test-runner',
+                keyId: 'key-123',
+                authMethod: 'api_key',
+                allowedScrapers: ['phillips', 'petfoodex', 'central-pet'],
+            });
+        });
+
+        it('parses comma-separated allowed_scrapers strings from RPC', async () => {
+            const mockRpc = jest.fn().mockResolvedValue({
+                data: [{
+                    runner_name: 'test-runner',
+                    key_id: 'key-123',
+                    is_valid: true,
+                    allowed_scrapers: 'Phillips, petfoodex , orgill'
+                }],
+                error: null,
+            });
+
+            mockCreateClient.mockReturnValue({ rpc: mockRpc } as never);
+
+            const result = await validateAPIKey('bsr_valid-test-key');
+
+            expect(result).toEqual({
+                runnerName: 'test-runner',
+                keyId: 'key-123',
+                authMethod: 'api_key',
+                allowedScrapers: ['phillips', 'petfoodex', 'orgill'],
+            });
+        });
+
         it('returns null for invalid key', async () => {
             const mockRpc = jest.fn().mockResolvedValue({
                 data: [{ is_valid: false }],

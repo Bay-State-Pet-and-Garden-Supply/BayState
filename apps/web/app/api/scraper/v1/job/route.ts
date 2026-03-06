@@ -54,6 +54,67 @@ interface JobConfigResponse {
     lease_expires_at?: string;
 }
 
+const DISCOVERY_CONFIG_KEYS = new Set([
+    'product_name',
+    'brand',
+    'max_search_results',
+    'max_steps',
+    'confidence_threshold',
+    'prefer_manufacturer',
+    'fallback_to_static',
+    'max_concurrency',
+]);
+
+const CRAWL4AI_CONFIG_KEYS = new Set([
+    'extraction_strategy',
+    'cache_enabled',
+    'max_retries',
+    'timeout',
+]);
+
+function hasKnownConfigKeys(
+    config: Record<string, unknown> | undefined,
+    keys: Set<string>
+): boolean {
+    if (!config) {
+        return false;
+    }
+
+    return Object.keys(config).some((key) => keys.has(key));
+}
+
+function deriveRequestedScrapers(job: {
+    type?: string | null;
+    scrapers?: string[] | null;
+    config?: unknown;
+}): string[] {
+    if (Array.isArray(job.scrapers) && job.scrapers.length > 0) {
+        return job.scrapers;
+    }
+
+    if (job.type === 'discovery') {
+        return ['ai_discovery'];
+    }
+
+    if (job.type === 'crawl4ai') {
+        return ['crawl4ai_discovery'];
+    }
+
+    const config = (job.config && typeof job.config === 'object' && !Array.isArray(job.config))
+        ? (job.config as Record<string, unknown>)
+        : undefined;
+
+    if (hasKnownConfigKeys(config, DISCOVERY_CONFIG_KEYS)) {
+        return ['ai_discovery'];
+    }
+
+    if (hasKnownConfigKeys(config, CRAWL4AI_CONFIG_KEYS)) {
+        return ['crawl4ai_discovery'];
+    }
+
+    return [];
+}
+
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
@@ -117,7 +178,7 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const requestedScrapers = job.scrapers || [];
+        const requestedScrapers = deriveRequestedScrapers(job);
         
         // Filter to only requested scrapers (or all if none specified)
         const filteredConfigs = (scraperConfigs || []).filter((row: { slug: string; display_name: string | null }) => {
@@ -192,7 +253,7 @@ export async function GET(request: NextRequest) {
             lease_expires_at: job.lease_expires_at || undefined,
         };
 
-        const isDiscovery = job.type === 'discovery' || (job.scrapers || []).includes('ai_discovery');
+        const isDiscovery = job.type === 'discovery' || requestedScrapers.includes('ai_discovery');
         if (isDiscovery) {
             const rawConfig = (job.config || {}) as Record<string, unknown>;
             const maxSearchResults = pickNumber(rawConfig.max_search_results, aiDefaults.max_search_results);

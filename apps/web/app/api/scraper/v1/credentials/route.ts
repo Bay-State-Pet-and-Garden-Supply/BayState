@@ -18,6 +18,10 @@ const CREDENTIAL_KEYS: Record<string, { username: string; password: string }> = 
     shopsite: { username: 'shopsite_username', password: 'shopsite_password' },
 };
 
+function normalizeScraperSlug(value: string): string {
+    return value.trim().toLowerCase().replace(/[\s_]+/g, '-');
+}
+
 export async function GET(request: NextRequest) {
     try {
         const runner = await validateRunnerAuth({
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
         }
 
         const { searchParams } = new URL(request.url);
-        const scraperName = searchParams.get('scraper')?.toLowerCase();
+        const scraperName = searchParams.get('scraper');
 
         if (!scraperName) {
             return NextResponse.json(
@@ -42,20 +46,22 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        const normalizedScraperName = normalizeScraperSlug(scraperName);
+
         if (runner.allowedScrapers !== null && runner.allowedScrapers !== undefined) {
-            if (!runner.allowedScrapers.includes(scraperName)) {
-                console.warn(`[Credentials] Runner ${runner.runnerName} not allowed to access ${scraperName}`);
+            if (!runner.allowedScrapers.includes(normalizedScraperName)) {
+                console.warn(`[Credentials] Runner ${runner.runnerName} not allowed to access ${normalizedScraperName}`);
                 return NextResponse.json(
-                    { error: `Runner not authorized for scraper: ${scraperName}` },
+                    { error: `Runner not authorized for scraper: ${normalizedScraperName}` },
                     { status: 403 }
                 );
             }
         }
 
-        const credentialMapping = CREDENTIAL_KEYS[scraperName];
+        const credentialMapping = CREDENTIAL_KEYS[normalizedScraperName];
         if (!credentialMapping) {
             return NextResponse.json(
-                { error: `No credentials configured for scraper: ${scraperName}` },
+                { error: `No credentials configured for scraper: ${normalizedScraperName}` },
                 { status: 404 }
             );
         }
@@ -68,7 +74,7 @@ export async function GET(request: NextRequest) {
             .in('key', [credentialMapping.username, credentialMapping.password]);
 
         if (error) {
-            console.error(`[Credentials] Failed to fetch for ${scraperName}:`, error);
+            console.error(`[Credentials] Failed to fetch for ${normalizedScraperName}:`, error);
             return NextResponse.json(
                 { error: 'Failed to fetch credentials' },
                 { status: 500 }
@@ -80,14 +86,14 @@ export async function GET(request: NextRequest) {
         const password = settingsMap.get(credentialMapping.password) as string | undefined;
 
         if (!username || !password) {
-            console.warn(`[Credentials] Missing credentials for ${scraperName}`);
+            console.warn(`[Credentials] Missing credentials for ${normalizedScraperName}`);
             return NextResponse.json(
-                { error: `Credentials not configured for ${scraperName}` },
+                { error: `Credentials not configured for ${normalizedScraperName}` },
                 { status: 404 }
             );
         }
 
-        console.log(`[Credentials] Providing ${scraperName} credentials to runner ${runner.runnerName}`);
+        console.log(`[Credentials] Providing ${normalizedScraperName} credentials to runner ${runner.runnerName}`);
 
         return NextResponse.json({
             username,

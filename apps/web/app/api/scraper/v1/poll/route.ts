@@ -55,6 +55,64 @@ interface PollResponse {
     } | null;
 }
 
+const DISCOVERY_CONFIG_KEYS = new Set([
+    'product_name',
+    'brand',
+    'max_search_results',
+    'max_steps',
+    'confidence_threshold',
+    'prefer_manufacturer',
+    'fallback_to_static',
+    'max_concurrency',
+]);
+
+const CRAWL4AI_CONFIG_KEYS = new Set([
+    'extraction_strategy',
+    'cache_enabled',
+    'max_retries',
+    'timeout',
+]);
+
+function hasKnownConfigKeys(
+    config: Record<string, unknown> | undefined,
+    keys: Set<string>
+): boolean {
+    if (!config) {
+        return false;
+    }
+
+    return Object.keys(config).some((key) => keys.has(key));
+}
+
+function deriveRequestedScrapers(job: {
+    type?: string | null;
+    scrapers?: string[] | null;
+    config?: unknown;
+}): string[] {
+    if (Array.isArray(job.scrapers) && job.scrapers.length > 0) {
+        return job.scrapers;
+    }
+
+    if (job.type === 'discovery') {
+        return ['ai_discovery'];
+    }
+
+    if (job.type === 'crawl4ai') {
+        return ['crawl4ai_discovery'];
+    }
+
+    const config = toRecord(job.config);
+    if (hasKnownConfigKeys(config, DISCOVERY_CONFIG_KEYS)) {
+        return ['ai_discovery'];
+    }
+
+    if (hasKnownConfigKeys(config, CRAWL4AI_CONFIG_KEYS)) {
+        return ['crawl4ai_discovery'];
+    }
+
+    return [];
+}
+
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
@@ -138,6 +196,8 @@ export async function POST(request: NextRequest) {
 
         const job = claimedJobs[0];
 
+        const requestedScrapers = deriveRequestedScrapers(job);
+
         // Query scraper configs from canonical versioned schema
         let scraperQuery = supabase
             .from('scraper_configs')
@@ -150,8 +210,8 @@ export async function POST(request: NextRequest) {
             `)
             .eq('scraper_config_versions.status', 'published');
 
-        if (job.scrapers && job.scrapers.length > 0) {
-            scraperQuery = scraperQuery.in('slug', job.scrapers);
+        if (requestedScrapers.length > 0) {
+            scraperQuery = scraperQuery.in('slug', requestedScrapers);
         }
 
         const { data: scraperRows, error: scraperError } = await scraperQuery;
@@ -245,7 +305,7 @@ export async function POST(request: NextRequest) {
         };
 
         if (response.job) {
-            const isDiscovery = job.type === 'discovery' || (job.scrapers || []).includes('ai_discovery');
+            const isDiscovery = job.type === 'discovery' || requestedScrapers.includes('ai_discovery');
             if (isDiscovery) {
                 const rawConfig = (job.config || {}) as Record<string, unknown>;
                 const maxSearchResults = pickNumber(rawConfig.max_search_results, aiDefaults.max_search_results);

@@ -210,3 +210,4 @@ cd BayStateScraper/ui && npm run tauri dev
 - **ESLint**: App uses ESLint 9 flat config, ignores `__tests__/`
 - **Python Linting**: Ruff with permissive ignores (F401, E501, E722)
 - **Supabase Types**: Regenerate with `npx supabase gen types typescript --local`
+- **Current Admin Panel**: `https://www.baystatepet.com/cgi-baystatepet/bo/start.cgi`
