@@ -262,17 +262,9 @@ async def main_async():
     try:
         supabase_config = client.get_supabase_config()
         if supabase_config:
-            # Convert HTTP URL to WebSocket URL format
             supabase_url = supabase_config["supabase_url"]
-            if supabase_url.startswith("https://"):
-                ws_url = supabase_url.replace("https://", "wss://") + "/realtime/v1"
-            elif supabase_url.startswith("http://"):
-                ws_url = supabase_url.replace("http://", "ws://") + "/realtime/v1"
-            else:
-                ws_url = supabase_url
-
-            logger.info(f"[Daemon] Connecting to Realtime at {ws_url}")
-            rm = RealtimeManager(ws_url, supabase_config["supabase_realtime_key"], client.runner_name)
+            logger.info(f"[Daemon] Connecting to Realtime at {supabase_url}")
+            rm = RealtimeManager(supabase_url, supabase_config["supabase_realtime_key"], client.runner_name)
             connected = await rm.connect()
             if connected:
                 await rm.enable_presence()

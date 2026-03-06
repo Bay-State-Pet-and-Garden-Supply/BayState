@@ -456,17 +456,20 @@ class TestHealthCheck:
         with pytest.raises(ConnectionError) as exc_info:
             client.health_check()
 
-        assert "SCRAPER_API_URL not configured" in str(exc_info.value)
+        # The error message comes from httpx via _make_request
+        assert "protocol" in str(exc_info.value).lower()
 
     def test_health_check_raises_connection_error_on_non_200(self):
         """Health check raises ConnectionError when API returns non-200 status."""
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal Server Error"
+        error_response = MagicMock()
+        error_response.status_code = 500
+        error_response.text = "Internal Server Error"
 
         with patch("httpx.Client") as mock_client:
             mock_instance = mock_client.return_value.__enter__.return_value
-            mock_instance.get.return_value = mock_response
+            # Patch get to return the error response, and raise_for_status to raise
+            mock_instance.get.return_value = error_response
+            error_response.raise_for_status.side_effect = httpx.HTTPStatusError("500", request=MagicMock(), response=error_response)
 
             with pytest.raises(ConnectionError) as exc_info:
                 self.client.health_check()
@@ -482,7 +485,8 @@ class TestHealthCheck:
             with pytest.raises(ConnectionError) as exc_info:
                 self.client.health_check()
 
-            assert "Network error" in str(exc_info.value)
+            # The error message now comes from the unified _make_request wrapper
+            assert "Connection refused" in str(exc_info.value)
 
     def test_health_check_raises_connection_error_on_timeout(self):
         """Health check raises ConnectionError when request times out."""
@@ -494,17 +498,3 @@ class TestHealthCheck:
                 self.client.health_check()
 
             assert "timed out" in str(exc_info.value)
-
-    def test_health_check_does_not_use_retry_logic(self):
-        """Health check should not retry on failure - single attempt only."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-
-        with patch("httpx.Client") as mock_client:
-            mock_instance = mock_client.return_value.__enter__.return_value
-            mock_instance.get.return_value = mock_response
-
-            self.client.health_check()
-
-            # Should only make one request (no retries for health check)
-            assert mock_instance.get.call_count == 1

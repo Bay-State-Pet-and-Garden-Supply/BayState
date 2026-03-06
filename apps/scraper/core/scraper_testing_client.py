@@ -15,55 +15,20 @@ from core.api_client import *
 logger = logging.getLogger(__name__)
 
 
-class TestingMode(Enum):
-    """Testing mode enumeration."""
-
-    LOCAL = "local"
-
-
-class ScraperTestingError(Exception):
-    """Base exception for scraper testing errors."""
-
-    pass
-
-
-class ScraperTestingAuthError(ScraperTestingError):
-    """Authentication error."""
-
-    pass
-
-
-class ScraperTestingTimeoutError(ScraperTestingError):
-    """Timeout error."""
-
-    pass
-
-
-class ScraperTestingJobError(ScraperTestingError):
-    """Job execution error."""
-
-    pass
-
-
 class ScraperTestingClient:
     """
     Local scraper testing client.
     Provides interface for local scraper testing only.
     """
 
-    def __init__(self, mode: TestingMode = TestingMode.LOCAL, headless: bool = True, **kwargs):
+    def __init__(self, headless: bool = True, **kwargs):
         """
         Initialize the testing client.
 
         Args:
-            mode: Testing mode (only LOCAL supported)
             headless: Whether to run browser in headless mode
-            **kwargs: Additional arguments (ignored)
+            **kwargs: Additional arguments
         """
-        if mode != TestingMode.LOCAL:
-            raise ValueError("Only LOCAL testing mode is supported")
-
-        self.mode = mode
         self.headless = headless
         self.event_emitter: Callable[..., Any] | None = None
         self.context: dict[str, Any] = {}
@@ -150,14 +115,11 @@ class ScraperTestingClient:
                         if result.get("success"):
                             if result.get("no_results_found"):
                                 # Track no results as a valid outcome but no product data
-                                # But we MUST include the no_results_found flag in the products list
-                                # for tests to verify it.
                                 products.append({"SKU": sku, "no_results_found": True})
                             else:
                                 # Add product data
                                 extracted_data = result.get("results", {})
                                 if extracted_data:
-                                    # Ensure SKU is in the data
                                     data = extracted_data.copy()
                                     if "SKU" not in data:
                                         data["SKU"] = sku
@@ -179,7 +141,6 @@ class ScraperTestingClient:
 
             execution_time = time.time() - start_time
 
-            # Convert to unified format
             results = {
                 "scraper": scraper_name,
                 "skus": skus,
@@ -209,16 +170,11 @@ class ScraperTestingClient:
             }
 
         finally:
-            # Clean up the event loop
             loop.close()
 
         return results
 
-    @property
-    def testing_mode(self) -> TestingMode:
-        """Get current testing mode."""
-        return self.mode
-
     def is_local_mode(self) -> bool:
         """Check if running in local mode."""
         return True
+
