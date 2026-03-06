@@ -166,6 +166,7 @@ export function TestLabClient({
   const [isPolling, setIsPolling] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [logs, setLogs] = useState<ScrapeJobLog[]>([]);
+  const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(true);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const jobIdRef = useRef<string | null>(jobId);
@@ -274,6 +275,8 @@ export function TestLabClient({
         return;
       }
       setLogs((previousLogs) => [...previousLogs, incomingLog].slice(-500));
+      // Auto-expand on new logs if collapsed
+      setIsTerminalCollapsed(false);
     },
   });
 
@@ -365,8 +368,15 @@ export function TestLabClient({
 
               <ResizableHandle withHandle />
 
-              <ResizablePanel defaultSize={30} minSize={10} collapsible>
-                <LogTerminal logs={logs} isConnected={Boolean(jobId)} onClearLogs={() => setLogs([])} />
+              <ResizablePanel defaultSize={30} minSize={10} collapsible onCollapse={() => setIsTerminalCollapsed(true)} onExpand={() => setIsTerminalCollapsed(false)}>
+                <LogTerminal 
+                  logs={logs} 
+                  isConnected={Boolean(jobId)} 
+                  onClearLogs={() => setLogs([])}
+                  isCollapsed={isTerminalCollapsed}
+                  onCollapse={() => setIsTerminalCollapsed(true)}
+                  onExpand={() => setIsTerminalCollapsed(false)}
+                />
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>
