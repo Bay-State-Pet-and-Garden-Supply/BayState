@@ -14,8 +14,8 @@
     - [x] Write tests for `ResultsTable` row expansion/drawer trigger.
     - [x] Implement row expansion in `ResultsTable` to show detailed extraction results.
     - [x] Add quick-filters (Status, Type) to the table header.
-- [ ] Task: Integrate Health Sparklines.
-    - [ ] Map telemetry data to sparkline visualizations in table rows.
+- [x] Task: Integrate Health Sparklines. [1a514b7]
+    - [x] Map telemetry data to sparkline visualizations in table rows.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Results Panel Transformation' (Protocol in workflow.md)
 
 ## Phase 3: Sidebar & Controls Consolidation
