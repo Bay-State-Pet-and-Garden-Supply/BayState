@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable';
+
 import {
   Select,
   SelectContent,
@@ -332,55 +328,47 @@ export function TestLabClient({
   return (
     <TestLabErrorBoundary componentName={`Test Lab: ${scraperName}`}>
       <div data-testid="test-lab-client" className="h-[calc(100vh-200px)] min-h-[700px]">
-        <ResizablePanelGroup orientation="horizontal" className="h-full border rounded-lg overflow-hidden">
+        <div className="flex h-full gap-4">
           {/* Left Sidebar: SKU Management */}
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible>
+          <div className="w-[320px] shrink-0 border rounded-lg bg-background overflow-hidden flex flex-col shadow-sm relative z-10">
             <SkuSidebar configId={configId} testSkus={testSkus} />
-          </ResizablePanel>
-
-          <ResizableHandle withHandle />
+          </div>
 
           {/* Right Content: Results and Terminal */}
-          <ResizablePanel defaultSize={80}>
-            <ResizablePanelGroup orientation="vertical">
-              <ResizablePanel defaultSize={70} minSize={30}>
-                <div className="h-full flex flex-col p-4 space-y-4 overflow-hidden">
-                  <TestRunControls
-                    onRunAllTests={handleRunAllTests}
-                    disabled={disabled}
-                    isRunning={isRunning}
-                    isPolling={isPolling}
-                    selectedRunId={selectedRunId}
-                    onRunSelect={(id) => setSelectedRunId(id)}
-                    testRuns={testRuns}
-                    activeRunDetails={activeRunDetails}
-                    totalSkus={testSkusForRun.length}
-                  />
-                  
-                  <div className="flex-1 overflow-y-auto min-h-0">
-                    <ResultsTable
-                      results={activeRunDetails?.sku_results ?? []}
-                      isLoading={Boolean(selectedRunId) && activeRunDetails === null}
-                    />
-                  </div>
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle withHandle />
-
-              <ResizablePanel defaultSize={30} minSize={10} collapsible>
-                <LogTerminal 
-                  logs={logs} 
-                  isConnected={Boolean(jobId)} 
-                  onClearLogs={() => setLogs([])}
-                  isCollapsed={isTerminalCollapsed}
-                  onCollapse={() => setIsTerminalCollapsed(true)}
-                  onExpand={() => setIsTerminalCollapsed(false)}
+          <div className="flex-1 flex flex-col min-w-0 gap-4">
+            <div className="flex-1 min-h-0 border rounded-lg bg-background p-4 flex flex-col space-y-4 shadow-sm">
+              <TestRunControls
+                onRunAllTests={handleRunAllTests}
+                disabled={disabled}
+                isRunning={isRunning}
+                isPolling={isPolling}
+                selectedRunId={selectedRunId}
+                onRunSelect={(id) => setSelectedRunId(id)}
+                testRuns={testRuns}
+                activeRunDetails={activeRunDetails}
+                totalSkus={testSkusForRun.length}
+              />
+              
+              <div className="flex-1 overflow-y-auto min-h-0 rounded-md border">
+                <ResultsTable
+                  results={activeRunDetails?.sku_results ?? []}
+                  isLoading={Boolean(selectedRunId) && activeRunDetails === null}
                 />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+              </div>
+            </div>
+
+            <div className={`shrink-0 border rounded-lg overflow-hidden transition-all duration-300 ease-in-out shadow-sm ${isTerminalCollapsed ? 'opacity-90 bg-gray-900' : 'h-[350px] bg-gray-900'}`}>
+              <LogTerminal 
+                logs={logs} 
+                isConnected={Boolean(jobId)} 
+                onClearLogs={() => setLogs([])}
+                isCollapsed={isTerminalCollapsed}
+                onCollapse={() => setIsTerminalCollapsed(true)}
+                onExpand={() => setIsTerminalCollapsed(false)}
+              />
+            </div>
+          </div>
+        </div>>
       </div>
     </TestLabErrorBoundary>
   );
