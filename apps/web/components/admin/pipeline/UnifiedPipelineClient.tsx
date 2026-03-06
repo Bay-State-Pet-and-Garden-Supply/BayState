@@ -5,6 +5,7 @@ import { Package, Search, RefreshCw, Filter, Upload, Download } from 'lucide-rea
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { PipelineProductDetail } from './PipelineProductDetail';
+import { BatchEnhanceDialog } from './BatchEnhanceDialog';
 import { UndoToast } from './UndoToast';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,8 @@ export function UnifiedPipelineClient({
   const [isClearingScrapeResults, setIsClearingScrapeResults] = useState(false);
   const [isBulkEnriching, setIsBulkEnriching] = useState(false);
   const [showProductDetail, setShowProductDetail] = useState(false);
+  const [showBatchEnhanceDialog, setShowBatchEnhanceDialog] = useState(false);
+  const [enrichingSkus, setEnrichingSkus] = useState<string[]>([]);
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -412,8 +415,8 @@ export function UnifiedPipelineClient({
     }
   };
 
-  const handleBulkEnrich = async () => {
-    if (selectedProducts.size === 0) return;
+  const handleBatchEnhanceConfirm = async (scrapers: string[]) => {
+    if (enrichingSkus.length === 0) return;
     
     setIsBulkEnriching(true);
     try {
@@ -421,16 +424,18 @@ export function UnifiedPipelineClient({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          skus: Array.from(selectedProducts),
+          skus: enrichingSkus,
           method: 'scrapers',
-          config: { scrapers: [] },
+          config: { scrapers },
           chunkSize: 10,
           maxWorkers: 3,
         }),
       });
       
       if (res.ok) {
-        toast.success(`Started enrichment for ${selectedProducts.size} products`);
+        toast.success(`Started enrichment for ${enrichingSkus.length} product${enrichingSkus.length === 1 ? '' : 's'}`);
+        setShowBatchEnhanceDialog(false);
+        setEnrichingSkus([]);
         setSelectedProducts(new Set());
         await handleRefresh();
       } else {
@@ -438,37 +443,22 @@ export function UnifiedPipelineClient({
         toast.error(error?.error || 'Failed to start enrichment');
       }
     } catch (error) {
+      console.error('Enrichment failed:', error);
       toast.error('Failed to start enrichment');
     } finally {
       setIsBulkEnriching(false);
     }
   };
 
-  const handleEnrich = async (sku: string) => {
-    try {
-      const res = await fetch('/api/admin/enrichment/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          skus: [sku],
-          method: 'scrapers',
-          config: { scrapers: [] },
-          chunkSize: 10,
-          maxWorkers: 3,
-        }),
-      });
+  const handleBulkEnrich = () => {
+    if (selectedProducts.size === 0) return;
+    setEnrichingSkus(Array.from(selectedProducts));
+    setShowBatchEnhanceDialog(true);
+  };
 
-      if (res.ok) {
-        toast.success(`Started enrichment for ${sku}`);
-        await handleRefresh();
-      } else {
-        const error = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(error?.error || 'Failed to start enrichment');
-      }
-    } catch (error) {
-      console.error('Enrichment trigger failed:', error);
-      toast.error('Failed to start enrichment');
-    }
+  const handleEnrich = (sku: string) => {
+    setEnrichingSkus([sku]);
+    setShowBatchEnhanceDialog(true);
   };
 
   const openExportDialog = () => {
@@ -686,12 +676,23 @@ export function UnifiedPipelineClient({
         </div>
       )}
 
-      {/* Product Detail Modal */}
       {showProductDetail && viewingSku && (
         <PipelineProductDetail
           sku={viewingSku}
           onClose={handleCloseModal}
           onSave={handleSaveModal}
+        />
+      )}
+
+      {showBatchEnhanceDialog && (
+        <BatchEnhanceDialog
+          selectedCount={enrichingSkus.length}
+          onConfirm={handleBatchEnhanceConfirm}
+          onCancel={() => {
+            setShowBatchEnhanceDialog(false);
+            setEnrichingSkus([]);
+          }}
+          isEnhancing={isBulkEnriching}
         />
       )}
 
