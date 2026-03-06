@@ -9,14 +9,14 @@
     - [x] Refactor `TestSkuPanel` to fit a narrow sidebar format.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Scaffolding & High-Density Components' (Protocol in workflow.md) [58e555b]
 
-## Phase 2: Results Panel Transformation
+## Phase 2: Results Panel Transformation [checkpoint: 929b07e]
 - [x] Task: Implement Table-centric Results with Detail Drawers. [065965a]
     - [x] Write tests for `ResultsTable` row expansion/drawer trigger.
     - [x] Implement row expansion in `ResultsTable` to show detailed extraction results.
     - [x] Add quick-filters (Status, Type) to the table header.
 - [x] Task: Integrate Health Sparklines. [1a514b7]
     - [x] Map telemetry data to sparkline visualizations in table rows.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Results Panel Transformation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Results Panel Transformation' (Protocol in workflow.md) [929b07e]
 
 ## Phase 3: Sidebar & Controls Consolidation
 - [ ] Task: Implement Collapsible SKU Sidebar.
