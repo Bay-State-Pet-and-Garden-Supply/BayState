@@ -30,7 +30,7 @@
 - [x] Task: Implement Peek Terminal behavior. [2e34310]
     - [x] Modify `LogTerminal` to be collapsed by default.
     - [x] Add logic to auto-expand the terminal on active streaming or errors.
-- [~] Task: Final UX Polishing & Accessibility Audit.
-    - [ ] Ensure keyboard navigation for table rows and sidebar.
-    - [ ] Apply final "High-Density Dashboard" styling across all panels.
+- [x] Task: Final UX Polishing & Accessibility Audit. [1ffb222]
+    - [x] Ensure keyboard navigation for table rows and sidebar.
+    - [x] Apply final \"High-Density Dashboard\" styling across all panels.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Peek Terminal & Final Polishing' (Protocol in workflow.md)
