@@ -7,7 +7,7 @@ import { SourceSelectorPanel } from './enrichment/SourceSelectorPanel';
 interface Source {
     id: string;
     displayName: string;
-    type: 'scraper';
+    type: 'scraper' | 'ai_discovery';
     status: 'healthy' | 'degraded' | 'offline' | 'unknown';
     enabled: boolean;
     requiresAuth: boolean;

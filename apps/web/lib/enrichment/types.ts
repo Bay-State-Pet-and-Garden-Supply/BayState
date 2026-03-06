@@ -36,7 +36,7 @@ export type EnrichableField = (typeof ENRICHABLE_FIELDS)[number];
 /**
  * Source types for enrichment data.
  */
-export type SourceType = 'scraper';
+export type SourceType = 'scraper' | 'ai_discovery';
 
 /**
  * Represents an enrichment source (web scraper).
