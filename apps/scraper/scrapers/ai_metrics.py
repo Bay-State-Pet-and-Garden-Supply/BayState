@@ -62,11 +62,13 @@ class AIMetricsCollector:
         self._extraction_count = 0
         self._extraction_success_count = 0
         self._extraction_failure_count = 0
+        self._fallback_count = 0
         self._total_cost_usd = 0.0
         self._anti_bot_count = 0
 
         # Performance tracking
         self._scraper_stats: dict[str, dict[str, Any]] = {}
+        self._circuit_breakers: dict[str, bool] = {}
 
         self._initialized = True
         logger.info("AI Metrics Collector initialized")
@@ -112,6 +114,8 @@ class AIMetricsCollector:
                     "success": 0,
                     "cost": 0.0,
                     "avg_duration": 0.0,
+                    "fallbacks": 0,
+                    "circuit_breaker_active": False,
                 }
 
             stats = self._scraper_stats[scraper_name]
@@ -123,6 +127,31 @@ class AIMetricsCollector:
             # Running average for duration
             n = stats["count"]
             stats["avg_duration"] = ((stats["avg_duration"] * (n - 1)) + duration_seconds) / n
+
+    def record_fallback(self, scraper_name: str, reason: str) -> None:
+        """Record an AI to traditional fallback event."""
+        with self._lock:
+            self._fallback_count += 1
+            if scraper_name in self._scraper_stats:
+                self._scraper_stats[scraper_name]["fallbacks"] += 1
+            else:
+                self._scraper_stats[scraper_name] = {
+                    "count": 0,
+                    "success": 0,
+                    "cost": 0.0,
+                    "avg_duration": 0.0,
+                    "fallbacks": 1,
+                    "circuit_breaker_active": False,
+                }
+            logger.info(f"AI Fallback recorded for {scraper_name}: {reason}")
+
+    def set_circuit_breaker(self, scraper_name: str, active: bool) -> None:
+        """Set circuit breaker status for a scraper."""
+        with self._lock:
+            self._circuit_breakers[scraper_name] = active
+            if scraper_name in self._scraper_stats:
+                self._scraper_stats[scraper_name]["circuit_breaker_active"] = active
+            logger.warning(f"AI Circuit Breaker for {scraper_name} set to {active}")
 
     def get_summary(self) -> dict[str, Any]:
         """Get a high-level summary of AI operations."""
@@ -136,6 +165,7 @@ class AIMetricsCollector:
                 "success_rate": round(success_rate, 2),
                 "total_cost_usd": round(self._total_cost_usd, 4),
                 "anti_bot_detections": self._anti_bot_count,
+                "fallback_count": self._fallback_count,
                 "scrapers": self._scraper_stats,
             }
 
@@ -159,6 +189,11 @@ class AIMetricsCollector:
             lines.append("# TYPE ai_extraction_failure counter")
             lines.append(f"ai_extraction_failure {{}} {self._extraction_failure_count}")
 
+            # Fallback Count
+            lines.append("# HELP ai_fallback_count Total number of AI fallbacks to traditional extraction")
+            lines.append("# TYPE ai_fallback_count counter")
+            lines.append(f"ai_fallback_count {{}} {self._fallback_count}")
+
             # Cost
             lines.append("# HELP ai_cost_usd_total Total cost of AI operations in USD")
             lines.append("# TYPE ai_cost_usd_total counter")
@@ -169,6 +204,11 @@ class AIMetricsCollector:
             lines.append("# TYPE ai_anti_bot_detected_total counter")
             lines.append(f"ai_anti_bot_detected_total {{}} {self._anti_bot_count}")
 
+            # Circuit Breakers
+            for scraper_name, active in self._circuit_breakers.items():
+                status = 1 if active else 0
+                lines.append(f"ai_circuit_breaker_active{{scraper=\"{scraper_name}\"}} {status}")
+
             return lines
 
     def reset(self) -> None:
@@ -178,9 +218,11 @@ class AIMetricsCollector:
             self._extraction_count = 0
             self._extraction_success_count = 0
             self._extraction_failure_count = 0
+            self._fallback_count = 0
             self._total_cost_usd = 0.0
             self._anti_bot_count = 0
             self._scraper_stats = {}
+            self._circuit_breakers = {}
             self._start_time = time.time()
 
 
@@ -205,6 +247,16 @@ def record_ai_extraction(
         anti_bot_detected=anti_bot_detected,
         details=kwargs,
     )
+
+
+def record_ai_fallback(scraper_name: str, reason: str) -> None:
+    """Global helper to record AI fallback events."""
+    _collector.record_fallback(scraper_name, reason)
+
+
+def set_circuit_breaker(scraper_name: str, active: bool) -> None:
+    """Global helper to set circuit breaker status."""
+    _collector.set_circuit_breaker(scraper_name, active)
 
 
 def get_ai_metrics_summary() -> dict[str, Any]:
