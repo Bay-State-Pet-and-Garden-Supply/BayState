@@ -178,6 +178,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Studio Test API] Created test job ${job.id} for config ${config.slug} (${skus.length} SKUs, timeout: ${timeoutAt})`);
 
     return NextResponse.json({
+      test_run_id: job.id,
       job_id: job.id,
       status: 'pending',
       config_id: validatedData.config_id,
