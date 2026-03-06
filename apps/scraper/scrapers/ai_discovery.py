@@ -34,6 +34,8 @@ from difflib import SequenceMatcher
 from scrapers.ai_cost_tracker import AICostTracker
 from scrapers.ai_metrics import record_ai_extraction
 
+from pydantic import BaseModel, Field
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,6 +62,17 @@ class DiscoveryResult:
             self.images = []
         if self.categories is None:
             self.categories = []
+
+
+class ProductData(BaseModel):
+    """Pydantic model for structured product data extraction."""
+
+    product_name: str = Field(description="The exact product name")
+    brand: str = Field(description="The brand name")
+    description: str = Field(description="Full product description")
+    size_metrics: str = Field(description="Size, weight, volume, or dimensions (e.g., '5 lb bag', '12oz bottle')")
+    images: list[str] = Field(description="List of product image URLs")
+    categories: list[str] = Field(description="Product types, categories, or tags (e.g., ['Dog Food', 'Dog Treats', 'Grain-Free'])")
 
 
 class AIDiscoveryScraper:
@@ -1206,8 +1219,6 @@ OUTPUT FORMAT (STRICT)
     ) -> dict[str, Any]:
         """Extract product data from the selected URL using crawl4ai."""
         try:
-            from pydantic import BaseModel, Field
-
             try:
                 crawl4ai_module = importlib.import_module("crawl4ai")
                 extraction_module = importlib.import_module("crawl4ai.extraction_strategy")
@@ -1225,14 +1236,6 @@ OUTPUT FORMAT (STRICT)
             CacheMode = getattr(crawl4ai_module, "CacheMode")
             LLMConfig = getattr(crawl4ai_module, "LLMConfig")
             LLMExtractionStrategy = getattr(extraction_module, "LLMExtractionStrategy")
-
-            class ProductData(BaseModel):
-                product_name: str = Field(description="The exact product name")
-                brand: str = Field(description="The brand name")
-                description: str = Field(description="Full product description")
-                size_metrics: str = Field(description="Size, weight, volume, or dimensions (e.g., '5 lb bag', '12oz bottle')")
-                images: list[str] = Field(description="List of product image URLs")
-                categories: list[str] = Field(description="Product types, categories, or tags (e.g., ['Dog Food', 'Dry Food', 'Grain-Free'])")
 
             api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:

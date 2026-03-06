@@ -20,20 +20,6 @@ function getSupabaseAdmin(): SupabaseClient {
     return createClient(url, key);
 }
 
-interface ChunkCallbackRequest {
-    chunk_id: string;
-    job_id?: string;
-    status: 'completed' | 'failed';
-    runner_name?: string;
-    results?: {
-        skus_processed?: number;
-        skus_successful?: number;
-        skus_failed?: number;
-        data?: Record<string, unknown>;
-    };
-    error_message?: string;
-}
-
 type ScrapedDataBySku = Record<string, Record<string, unknown>>;
 
 export function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedDataBySku {
@@ -89,16 +75,16 @@ export async function persistChunkResultsToPipeline(
 }
 
 async function triggerConsolidationForSkus(
-    _supabase: SupabaseClient,
+    supabase: SupabaseClient,
     jobId: string,
-    _skus: string[]
+    skus: string[]
 ): Promise<void> {
-    if (_skus.length === 0) return;
+    if (skus.length === 0) return;
 
-    const { data: products, error: productsError } = await _supabase
+    const { data: products, error: productsError } = await supabase
         .from('products_ingestion')
         .select('sku, sources')
-        .in('sku', _skus)
+        .in('sku', skus)
         .eq('pipeline_status', 'scraped');
 
     if (productsError) {
@@ -210,18 +196,39 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Chunk Callback] Chunk ${chunk.chunk_index} for job ${chunk.job_id} marked as ${status}`);
 
-        // Check if all chunks for this job are complete
+        // HR-S-003: Persist chunk results immediately to reduce memory pressure
         const jobId = chunk.job_id;
-        const { data: chunkStats, error: statsError } = await supabase
+        const { data: updatedJobRecord } = await supabase
+            .from('scrape_jobs')
+            .select('test_mode')
+            .eq('id', jobId)
+            .single();
+        
+        const isTestJob = updatedJobRecord?.test_mode === true;
+
+        if (status === 'completed' && results?.data) {
+            const chunkResultsBySku = mergeChunkResults([{ results: results.data }]);
+            if (Object.keys(chunkResultsBySku).length > 0) {
+                try {
+                    await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob);
+                    console.log(`[Chunk Callback] Persisted ${Object.keys(chunkResultsBySku).length} SKUs from chunk ${chunk.chunk_index}`);
+                } catch (persistError) {
+                    console.error(`[Chunk Callback] Failed to persist chunk results for job ${jobId}:`, persistError);
+                }
+            }
+        }
+
+        // Check if all chunks for this job are complete
+        const { data: allChunksForJob, error: statsError } = await supabase
             .from('scrape_job_chunks')
-            .select('status')
+            .select('status, skus_processed, skus_successful, skus_failed, results')
             .eq('job_id', jobId);
 
-        if (!statsError && chunkStats) {
-            const totalChunks = chunkStats.length;
-            const completedChunks = chunkStats.filter((c) => c.status === 'completed').length;
-            const failedChunks = chunkStats.filter((c) => c.status === 'failed').length;
-            const pendingOrRunning = chunkStats.filter((c) => c.status === 'pending' || c.status === 'running').length;
+        if (!statsError && allChunksForJob) {
+            const totalChunks = allChunksForJob.length;
+            const completedChunks = allChunksForJob.filter((c) => c.status === 'completed').length;
+            const failedChunks = allChunksForJob.filter((c) => c.status === 'failed').length;
+            const pendingOrRunning = allChunksForJob.filter((c) => c.status === 'pending' || c.status === 'running').length;
 
             console.log(
                 `[Chunk Callback] Job ${jobId} progress: ${completedChunks + failedChunks}/${totalChunks} chunks done (${pendingOrRunning} in progress)`
@@ -230,18 +237,13 @@ export async function POST(request: NextRequest) {
             if (pendingOrRunning === 0) {
                 const jobStatus = failedChunks > 0 && completedChunks === 0 ? 'failed' : 'completed';
 
-                const { data: allChunks } = await supabase
-                    .from('scrape_job_chunks')
-                    .select('results, skus_processed, skus_successful, skus_failed')
-                    .eq('job_id', jobId);
-
                 const aggregatedResults = {
                     chunks_total: totalChunks,
                     chunks_completed: completedChunks,
                     chunks_failed: failedChunks,
-                    skus_processed: allChunks?.reduce((sum, c) => sum + (c.skus_processed || 0), 0) || 0,
-                    skus_successful: allChunks?.reduce((sum, c) => sum + (c.skus_successful || 0), 0) || 0,
-                    skus_failed: allChunks?.reduce((sum, c) => sum + (c.skus_failed || 0), 0) || 0,
+                    skus_processed: allChunksForJob?.reduce((sum, c) => sum + (c.skus_processed || 0), 0) || 0,
+                    skus_successful: allChunksForJob?.reduce((sum, c) => sum + (c.skus_successful || 0), 0) || 0,
+                    skus_failed: allChunksForJob?.reduce((sum, c) => sum + (c.skus_failed || 0), 0) || 0,
                 };
 
                 const { data: updatedJob, error: jobUpdateError } = await supabase
@@ -258,55 +260,28 @@ export async function POST(request: NextRequest) {
                     console.error(`[Chunk Callback] Failed to update job ${jobId}:`, jobUpdateError);
                 }
 
-                const isTestJob = updatedJob?.test_mode === true;
-
-                if (jobStatus === 'completed' && updatedJob) {
-                    const aggregatedResultsBySku = mergeChunkResults(allChunks || []);
-                    const aggregatedSkuCount = Object.keys(aggregatedResultsBySku).length;
-
-                    if (aggregatedSkuCount > 0) {
-                        const idempotencyCheck = await checkIdempotency(
-                            supabase,
-                            jobId,
-                            'chunk',
-                            aggregatedResultsBySku
-                        );
-
-                        if (idempotencyCheck.isDuplicate) {
-                            console.log(`[Chunk Callback] Duplicate callback detected for job ${jobId}. Skipping side effects.`);
-                            return NextResponse.json({
-                                success: true,
-                                idempotent: true,
-                                message: 'Callback already processed',
-                            });
+                // HR-S-005: Trigger automated consolidation if job completed successfully
+                if (jobStatus === 'completed' && updatedJob && !isTestJob) {
+                    // Collect SKUs that were updated in this job to trigger consolidation
+                    const { data: jobChunks } = await supabase
+                        .from('scrape_job_chunks')
+                        .select('results')
+                        .eq('job_id', jobId);
+                    
+                    const skusInJob = new Set<string>();
+                    for (const c of jobChunks || []) {
+                        if (c.results && typeof c.results === 'object') {
+                            Object.keys(c.results).forEach(sku => skusInJob.add(sku));
                         }
+                    }
 
+                    if (skusInJob.size > 0) {
+                        console.log(`[Chunk Callback] Triggering auto-consolidation for ${skusInJob.size} SKUs from job ${jobId}`);
                         try {
-                            await persistChunkResultsToPipeline(supabase, jobId, aggregatedResultsBySku, isTestJob);
-
-                            console.log(`[Chunk Callback] Job ${jobId} completed - consolidation must be triggered manually`);
-
-                            const recordResult = await recordCallbackProcessed(
-                                supabase,
-                                jobId,
-                                runner.runnerName,
-                                idempotencyCheck.key,
-                                {
-                                    skus_processed: aggregatedResults.skus_processed,
-                                    skus_successful: aggregatedResults.skus_successful,
-                                    skus_failed: aggregatedResults.skus_failed,
-                                    data: aggregatedResultsBySku,
-                                }
-                            );
-
-                            if (!recordResult.success) {
-                                console.warn(`[Chunk Callback] Failed to record idempotency marker: ${recordResult.error}`);
-                            }
-                        } catch (persistError) {
-                            console.error(`[Chunk Callback] Failed to persist aggregated results for job ${jobId}:`, persistError);
+                            await triggerConsolidationForSkus(supabase, jobId, Array.from(skusInJob));
+                        } catch (consolidationError) {
+                            console.error(`[Chunk Callback] Auto-consolidation trigger failed for job ${jobId}:`, consolidationError);
                         }
-                    } else {
-                        console.log(`[Chunk Callback] Job ${jobId} completed with no aggregated SKU data to persist`);
                     }
                 }
 
@@ -317,11 +292,10 @@ export async function POST(request: NextRequest) {
                 if (isTestJob && testRunId) {
                     const { data: allChunks } = await supabase
                         .from('scrape_job_chunks')
-                        .select('results, skus_processed, skus_successful, skus_failed')
+                        .select('results, skus_successful, skus_failed')
                         .eq('job_id', jobId);
 
                     // Calculate test run metrics from chunk results
-                    const totalProcessed = allChunks?.reduce((sum, c) => sum + (c.skus_processed || 0), 0) || 0;
                     const totalSuccessful = allChunks?.reduce((sum, c) => sum + (c.skus_successful || 0), 0) || 0;
                     const totalFailed = allChunks?.reduce((sum, c) => sum + (c.skus_failed || 0), 0) || 0;
 

@@ -6,9 +6,9 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from ..infra import JobConfig
-from ..infra import ScraperEvent, create_emitter, event_bus
-from ..infra import settings
+from ..core.api_client import JobConfig
+from ..core.events import ScraperEvent, create_emitter, event_bus
+from ..core.settings_manager import settings
 
 from ..scrapers.ai_discovery import AIDiscoveryScraper
 from ..scrapers.executor.workflow_executor import WorkflowExecutor

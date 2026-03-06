@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 
-from infra.api_client import $$$
+from core.api_client import *
 from utils.structured_logging import setup_structured_logging
 
 from runner.chunk_mode import run_chunk_worker_mode

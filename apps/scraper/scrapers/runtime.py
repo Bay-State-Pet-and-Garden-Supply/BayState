@@ -30,9 +30,9 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from infra.events import $$$
-from infra.api_client import $$$
-from infra.settings_manager import $$$
+from core.events import *
+from core.api_client import *
+from core.settings_manager import *
 from utils.logger import setup_logging
 
 if TYPE_CHECKING:

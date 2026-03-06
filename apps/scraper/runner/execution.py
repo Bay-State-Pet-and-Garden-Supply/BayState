@@ -26,8 +26,8 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from infra.events import $$$
-from infra.settings_manager import $$$
+from core.events import *
+from core.settings_manager import *
 from scrapers.sku_loader import SKULoader
 
 logger = logging.getLogger(__name__)

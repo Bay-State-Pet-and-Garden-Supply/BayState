@@ -12,6 +12,8 @@ import json
 import logging
 import os
 import time
+import hmac
+import hashlib
 from dataclasses import dataclass
 from typing import Any
 
@@ -231,15 +233,27 @@ class ScraperAPIClient:
             logger.error(f"[API Client] {error_msg}")
             raise ConnectionError(error_msg)
 
-    def _get_headers(self) -> dict[str, str]:
+    def _get_headers(self, payload: str | None = None) -> dict[str, str]:
         """Get headers for authenticated requests."""
         if not self.api_key:
             raise AuthenticationError("SCRAPER_API_KEY not configured")
 
-        return {
+        headers = {
             "Content-Type": "application/json",
             "X-API-Key": self.api_key,
         }
+
+        # Add HMAC signature if WEBHOOK_SECRET is configured and payload is present
+        webhook_secret = os.environ.get("WEBHOOK_SECRET")
+        if webhook_secret and payload:
+            signature = hmac.new(
+                webhook_secret.encode("utf-8"),
+                payload.encode("utf-8"),
+                hashlib.sha256
+            ).hexdigest()
+            headers["X-Payload-Signature"] = signature
+
+        return headers
 
     def _make_request(
         self,
@@ -254,13 +268,14 @@ class ScraperAPIClient:
         Fails immediately on non-retryable errors (4xx client errors, auth failures).
         """
         url = f"{self.api_url.rstrip('/')}{endpoint}"
-        headers = self._get_headers()
 
         last_exception: Exception | None = None
         delay = RETRY_INITIAL_DELAY
 
         for attempt in range(self.max_retries + 1):
             try:
+                # Refresh headers in each attempt to ensure consistent state
+                headers = self._get_headers(payload)
                 with httpx.Client(timeout=self.timeout) as client:
                     if method.upper() == "GET":
                         response = client.get(url, headers=headers)

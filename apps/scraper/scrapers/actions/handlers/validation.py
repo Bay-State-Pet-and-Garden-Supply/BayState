@@ -4,9 +4,9 @@ import asyncio
 import logging
 from typing import Any
 
-from infra.failure_classifier import $$$
-from actions.base import BaseAction
-from actions.registry import ActionRegistry
+from core.failure_classifier import *
+from scrapers.actions.base import BaseAction
+from scrapers.actions.registry import ActionRegistry
 from scrapers.exceptions import WorkflowExecutionError
 from scrapers.utils.locators import convert_to_playwright_locator
 

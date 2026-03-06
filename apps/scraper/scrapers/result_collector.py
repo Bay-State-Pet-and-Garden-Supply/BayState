@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from infra.models import $$$
+    from core.models import *
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class ResultCollector:
         result_data: dict[str, Any] | RawScrapedProduct,
         image_quality: int = 50,
     ) -> None:
-        from infra.models import $$$
+        from core.models import RawScrapedProduct
 
         try:
             timestamp = datetime.now().isoformat()

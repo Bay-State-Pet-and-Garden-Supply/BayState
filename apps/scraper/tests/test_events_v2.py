@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from infra.events import $$$
+from core.events import *
 
 
 class TestScraperEventV2:

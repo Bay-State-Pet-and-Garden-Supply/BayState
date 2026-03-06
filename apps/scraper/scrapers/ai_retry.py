@@ -21,8 +21,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, TypeVar
 
-from infra.adaptive_retry_strategy import $$$
-from infra.failure_classifier import $$$
+from core.adaptive_retry_strategy import *
+from core.failure_classifier import *
 from scrapers.exceptions import (
     CircuitBreakerOpenError,
     MaxRetriesExceededError,

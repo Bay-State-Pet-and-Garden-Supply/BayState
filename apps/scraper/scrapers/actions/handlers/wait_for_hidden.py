@@ -4,8 +4,8 @@ import logging
 import time
 from typing import Any
 
-from actions.base import BaseAction
-from actions.registry import ActionRegistry
+from scrapers.actions.base import BaseAction
+from scrapers.actions.registry import ActionRegistry
 from scrapers.exceptions import TimeoutError, WorkflowExecutionError
 from scrapers.utils.locators import convert_to_playwright_locator
 

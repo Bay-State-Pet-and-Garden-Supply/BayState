@@ -45,6 +45,12 @@ const RELEVANT_FIELDS = [
     'Price',
     'Unit',
     'Quantity',
+    'Ingredients',
+    'Material',
+    'Dimensions',
+    'Specifications',
+    'PetType',
+    'Lifestage',
 ];
 
 function hasRelevantKeyName(key: string): boolean {
@@ -72,6 +78,15 @@ function hasRelevantKeyName(key: string): boolean {
         'confidence',
         'categories',
         'product_type',
+        'pet',
+        'age',
+        'life',
+        'stage',
+        'animal',
+        'breed',
+        'feature',
+        'value',
+        'data',
     ];
     return relevantFragments.some((fragment) => normalized.includes(fragment));
 }
@@ -689,6 +704,8 @@ export async function applyConsolidationResults(
         }
     }
 
+    const upsertRows = [];
+
     for (const result of results) {
         if (result.error) {
             errorCount++;
@@ -745,33 +762,31 @@ export async function applyConsolidationResults(
                 ...nextFields,
             };
 
-            const newStatus: PipelineStatus = 'consolidated';
-
-            const { error } = await supabase
-                .from('products_ingestion')
-                .update({
-                    consolidated,
-                    pipeline_status: newStatus,
-                    confidence_score: result.confidence_score ?? null,
-                    error_message: null,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('sku', result.sku);
-
-            if (error) {
-                errorCount++;
-                if (errors.length < 10) {
-                    errors.push(`${result.sku}: Database error - ${error.message}`);
-                }
-            } else {
-                successCount++;
-            }
+            upsertRows.push({
+                sku: result.sku,
+                consolidated,
+                pipeline_status: 'consolidated' as PipelineStatus,
+                confidence_score: result.confidence_score ?? null,
+                error_message: null,
+                updated_at: new Date().toISOString(),
+            });
         } catch (e: unknown) {
             errorCount++;
             if (errors.length < 10) {
                 errors.push(`${result.sku}: ${e instanceof Error ? e.message : 'Unknown error'}`);
             }
         }
+    }
+
+    if (upsertRows.length > 0) {
+        const { error: bulkError } = await supabase
+            .from('products_ingestion')
+            .upsert(upsertRows, { onConflict: 'sku' });
+
+        if (bulkError) {
+            return { success: false, error: `Bulk update failed: ${bulkError.message}` };
+        }
+        successCount = upsertRows.length;
     }
 
     if (batchJobRow) {

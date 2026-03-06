@@ -8,8 +8,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from infra.events import $$$
-from infra.retry_executor import $$$
+from core.events import ScraperEvent, EventEmitter
+from core.retry_executor import RetryExecutor
 
 try:
     from actions import ActionRegistry
@@ -101,12 +101,8 @@ class StepExecutor:
         action_instance = action_class(self.context if self.context else self)
 
         try:
-            # Execute the action (support both sync and async actions)
-            import inspect
-
-            result = action_instance.execute(substituted_params)
-            if inspect.isawaitable(result):
-                result = await result
+            # Execute the action (all actions are now async)
+            result = await action_instance.execute(substituted_params)
 
             # Capture debug artifacts on success if in debug mode
             if self.debug_mode and self.debug_callback:

@@ -76,20 +76,15 @@ if env_file.exists():
 try:
     # Prefer package-relative imports when daemon.py is imported as part of the
     # `scraper` package (normal runtime).
-    # Prefer new location `infra` (migration bridge) but fall back to `core`.
-    try:
-        from .infra.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
-        from .infra.realtime_manager import RealtimeManager  # type: ignore
-    except Exception:
-        from .infra.api_client import $$$  # type: ignore
-        from .infra.realtime_manager import $$$  # type: ignore
-    from .utils.logger import setup_logging  # type: ignore
-    from .utils.sentry import (
+    from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig
+    from core.realtime_manager import RealtimeManager
+    from utils.logger import setup_logging
+    from utils.sentry import (
         init_sentry,
         set_job_context,
         add_extraction_breadcrumb,
         capture_antibot_event,
-    )  # type: ignore
+    )
 
     # Defer metrics endpoint import to runtime branch below to avoid static
     # assignment/signature mismatches when providing fallbacks for import checks.
@@ -144,8 +139,8 @@ except Exception:
 if TYPE_CHECKING:
     # Provide types for static analysis without importing at runtime
     # Provide typed references; prefer infra but allow core for compatibility.
-    from .infra.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
-    from .infra.realtime_manager import RealtimeManager  # type: ignore
+    from .core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
+    from .core.realtime_manager import RealtimeManager  # type: ignore
 
 
 # Configuration

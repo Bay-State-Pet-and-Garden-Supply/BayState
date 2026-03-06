@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from infra.scraper_testing_integration import $$$
+from core.scraper_testing_integration import *
 
 
 async def run_all():

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from infra.api_client import $$$
+from core.api_client import *
 
 from runner import run_job
 

@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from scrapers.models.config import ScraperConfig
 
 if TYPE_CHECKING:
-    from infra.api_client import $$$
+    from core.api_client import *
 
 logger = logging.getLogger(__name__)
 

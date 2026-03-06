@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from infra.api_client import $$$
+from core.api_client import *
 from runner.chunk_mode import run_chunk_worker_mode
 
 
