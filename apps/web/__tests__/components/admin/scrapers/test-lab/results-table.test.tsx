@@ -61,8 +61,8 @@ describe('ResultsTable', () => {
   it('filters results by status', () => {
     render(<ResultsTable results={mockResults} />);
     
-    const successFilter = screen.getByRole('button', { name: /success/i });
-    const failedFilter = screen.getByRole('button', { name: /failed/i });
+    const successFilter = screen.getByTestId('filter-status-success');
+    const failedFilter = screen.getByTestId('filter-status-failed');
     
     expect(successFilter).toBeInTheDocument();
     expect(failedFilter).toBeInTheDocument();
@@ -76,8 +76,8 @@ describe('ResultsTable', () => {
   it('filters results by sku_type', () => {
     render(<ResultsTable results={mockResults} />);
 
-    const goldenFilter = screen.getByRole('button', { name: /golden/i });
-    const edgeFilter = screen.getByRole('button', { name: /edge/i });
+    const goldenFilter = screen.getByTestId('filter-type-golden');
+    const edgeFilter = screen.getByTestId('filter-type-edge');
 
     expect(goldenFilter).toBeInTheDocument();
     expect(edgeFilter).toBeInTheDocument();
