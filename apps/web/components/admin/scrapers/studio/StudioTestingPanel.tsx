@@ -107,7 +107,7 @@ export function StudioTestingPanel() {
     hydrateRun();
   }, [currentRun?.id]);
 
-  // Poll for step progress while job is running (results only populated at end)
+  // Poll for progress while job is running (results only populated at end)
   useEffect(() => {
     if (!currentRun?.id || (currentRun.status !== 'pending' && currentRun.status !== 'running')) {
       return;
@@ -115,18 +115,16 @@ export function StudioTestingPanel() {
 
     const fetchProgress = async () => {
       try {
-        const response = await fetch(`/api/admin/scrapers/studio/test/${currentRun.id}/timeline`);
+        // The /timeline endpoint was removed — poll the test status endpoint instead
+        const response = await fetch(`/api/admin/scrapers/studio/test/${currentRun.id}`);
         if (!response.ok) return;
         
         const data = await response.json();
-        const steps = data.steps || [];
-        const completedSteps = steps.filter((s: { status: string }) => s.status === 'completed').length;
-        const failedSteps = steps.filter((s: { status: string }) => s.status === 'failed').length;
         
         setCurrentRun((prev) => {
           if (!prev || prev.id !== currentRun.id) return prev;
           
-          // If we have actual results from callback, use those; otherwise use step progress
+          // If we have actual results from callback, use those
           const runResults = Array.isArray((runRealtime.run as any)?.test_metadata?.sku_results) ? (runRealtime.run as any).test_metadata.sku_results : [];
           if (runResults.length > 0) {
             const passed = runResults.filter((r: any) => {
@@ -139,15 +137,18 @@ export function StudioTestingPanel() {
             };
           }
           
-          // Show step progress while running
-          return {
-            ...prev,
-            summary: { 
-              passed: completedSteps, 
-              failed: failedSteps, 
-              total: steps.length 
-            },
-          };
+          // Use summary from the status endpoint
+          if (data.summary) {
+            return {
+              ...prev,
+              status: data.status,
+              job_status: data.job_status,
+              summary: data.summary,
+              duration_ms: data.duration_ms ?? prev.duration_ms,
+            };
+          }
+          
+          return prev;
         });
       } catch {
         // Best effort
@@ -270,7 +271,7 @@ export function StudioTestingPanel() {
       }
 
       setCurrentRun({
-        id: data.test_run_id,
+        id: data.job_id ?? data.test_run_id,
         status: 'pending',
         skus_tested: skus,
       });

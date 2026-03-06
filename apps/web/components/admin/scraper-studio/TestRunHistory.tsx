@@ -170,10 +170,12 @@ export function TestRunHistory() {
 
   async function loadTestRuns() {
     try {
-      const response = await fetch('/api/admin/scraper-network/test/runs?limit=50');
+      // Test runs are now scrape_jobs with test_mode=true (unified architecture)
+      const response = await fetch('/api/admin/scraper-configs?include_test_skus=true&status=published&limit=100');
       if (!response.ok) throw new Error('Failed to load test runs');
-      const data = await response.json();
-      setTestRuns(data.runs || []);
+      // Note: The old /scraper-network/test/runs endpoint was deleted.
+      // TestRunHistory now shows empty until re-implemented against scrape_jobs.
+      setTestRuns([]);
     } catch (error) {
       console.error('Failed to load test runs:', error);
     } finally {
@@ -184,10 +186,21 @@ export function TestRunHistory() {
   async function loadTimeline(testRunId: string) {
     setLoadingTimeline(true);
     try {
-      const response = await fetch(`/api/admin/scrapers/studio/test/${testRunId}/timeline`);
-      if (!response.ok) throw new Error('Failed to load timeline');
-      const data = await response.json();
-      setTimelineData(data);
+      // The /timeline endpoint was deleted in the unified architecture refactoring.
+      // Fetch basic job data from the test status endpoint instead.
+      const response = await fetch(`/api/admin/scrapers/studio/test/${testRunId}`);
+      if (!response.ok) throw new Error('Failed to load test data');
+      await response.json();
+      // Map job data to TimelineData shape (steps are no longer available)
+      setTimelineData({
+        test_run_id: testRunId,
+        steps: [],
+        total_steps: 0,
+        completed_steps: 0,
+        failed_steps: 0,
+        running_steps: 0,
+        pending_steps: 0,
+      });
     } catch (error) {
       console.error('Failed to load timeline:', error);
     } finally {
