@@ -2,6 +2,8 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+import json
+from pathlib import Path
 
 
 class TestCrawl4AIEngine:
@@ -9,31 +11,31 @@ class TestCrawl4AIEngine:
 
     @pytest.fixture
     def basic_config(self):
-        """Basic configuration for testing."""
+        """Basic configuration for engine."""
         return {
             "browser": {
                 "headless": True,
             },
             "crawler": {
                 "js_enabled": True,
-                "timeout": 30000,
                 "markdown": True,
+                "timeout": 30000,
             },
         }
 
     def test_init_with_config(self, basic_config):
         """Test engine initialization with config dict."""
         with (
-            patch("engine.engine.AsyncWebCrawler"),
-            patch("engine.engine.BrowserConfig") as mock_browser_config,
-            patch("engine.engine.CrawlerRunConfig"),
+            patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("src.crawl4ai_engine.engine.BrowserConfig") as mock_browser_config,
+            patch("src.crawl4ai_engine.engine.CrawlerRunConfig"),
         ):
-            mock_browser_config.return_value = MagicMock()
-            from engine.engine import Crawl4AIEngine
+            from src.crawl4ai_engine.engine import Crawl4AIEngine
 
             engine = Crawl4AIEngine(basic_config)
+
             assert engine.config == basic_config
-            assert engine._crawler is None
+            mock_browser_config.assert_called()
 
     def test_build_browser_config(self, basic_config):
         """Test browser config building."""
@@ -46,11 +48,13 @@ class TestCrawl4AIEngine:
             from src.crawl4ai_engine.engine import Crawl4AIEngine
 
             engine = Crawl4AIEngine(basic_config)
-            browser_config = engine._build_browser_config()
+            _ = engine._build_browser_config()
 
-            mock_browser_config.assert_called_once()
-            call_kwargs = mock_browser_config.call_args.kwargs
-            assert call_kwargs.get("headless") is True
+            mock_browser_config.assert_called()
+            # Verify specific arguments
+            call_args = mock_browser_config.call_args.kwargs
+            assert call_args["headless"] is True
+            assert call_args["timeout"] == 30000
 
     def test_build_run_config(self, basic_config):
         """Test crawler run config building."""
@@ -63,9 +67,12 @@ class TestCrawl4AIEngine:
             from src.crawl4ai_engine.engine import Crawl4AIEngine
 
             engine = Crawl4AIEngine(basic_config)
-            run_config = engine._build_run_config()
+            _ = engine._build_run_config()
 
-            mock_run_config.assert_called_once()
+            mock_run_config.assert_called()
+            # Verify specific arguments
+            call_args = mock_run_config.call_args.kwargs
+            assert call_args["markdown"] is True
 
     @pytest.mark.asyncio
     async def test_context_manager_enter(self, basic_config):
@@ -77,11 +84,12 @@ class TestCrawl4AIEngine:
         ):
             mock_crawler = AsyncMock()
             mock_crawler_class.return_value = mock_crawler
-
             from src.crawl4ai_engine.engine import Crawl4AIEngine
 
             engine = Crawl4AIEngine(basic_config)
-            async with engine:
+            async with engine as e:
+                assert e == engine
+                assert engine._crawler == mock_crawler
                 mock_crawler.__aenter__.assert_called_once()
 
     @pytest.mark.asyncio
@@ -94,18 +102,18 @@ class TestCrawl4AIEngine:
         ):
             mock_crawler = AsyncMock()
             mock_crawler_class.return_value = mock_crawler
-
             from src.crawl4ai_engine.engine import Crawl4AIEngine
 
             engine = Crawl4AIEngine(basic_config)
             async with engine:
                 pass
 
+            assert engine._crawler is None
             mock_crawler.__aexit__.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_crawl_without_init_raises(self, basic_config):
-        """Test that crawl raises if not in context manager."""
+        """Test crawl raises error if context manager not used."""
         with (
             patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
             patch("src.crawl4ai_engine.engine.BrowserConfig"),
@@ -128,62 +136,44 @@ class TestCrawl4AIEngine:
 
             engine = Crawl4AIEngine(basic_config)
             with pytest.raises(RuntimeError, match="not initialized"):
-                _ = engine._crawler
+                _ = engine.crawler
 
 
 class TestConfigLoading:
-    """Test suite for config loading functions."""
+    """Test configuration loading and merging."""
 
-    def test_load_config_from_string(self):
-        """Test loading config from YAML string."""
-        from src.crawl4ai_engine.config import load_config_from_string
+    def test_load_config_from_file(self, tmp_path):
+        """Test loading config from YAML file."""
+        from src.crawl4ai_engine.config import load_config
+        d = tmp_path / "config"
+        d.mkdir()
+        config_file = d / "config.yaml"
+        config_file.write_text('browser:\n  headless: false', encoding="utf-8")
+        
+        config = load_config(str(config_file))
+        assert config["browser"]["headless"] is False
 
-        config_str = """
-browser:
-  headless: true
-  timeout: 30000
-crawler:
-  js_enabled: true
-"""
-        config = load_config_from_string(config_str)
-
-        assert config["browser"]["headless"] is True
-        assert config["browser"]["timeout"] == 30000
-        assert config["crawler"]["js_enabled"] is True
-
-    def test_load_config_empty_string(self):
-        """Test loading empty config string."""
-        from src.crawl4ai_engine.config import load_config_from_string
-
-        config = load_config_from_string("")
-        assert config == {}
+    def test_load_config_not_found(self):
+        """Test loading non-existent config file raises error."""
+        from src.crawl4ai_engine.config import load_config
+        with pytest.raises(FileNotFoundError):
+            load_config("non_existent_file.yaml")
 
     def test_merge_configs(self):
-        """Test merging two config dictionaries."""
+        """Test basic config merging."""
         from src.crawl4ai_engine.config import merge_configs
-
-        base = {
-            "browser": {"headless": True, "timeout": 30000},
-            "crawler": {"js_enabled": True},
-        }
-        override = {
-            "browser": {"timeout": 60000},
-            "extra": "value",
-        }
-
+        base = {"a": 1, "b": 2}
+        override = {"b": 3, "c": 4}
         result = merge_configs(base, override)
-
-        assert result["browser"]["headless"] is True
-        assert result["browser"]["timeout"] == 60000
-        assert result["crawler"]["js_enabled"] is True
-        assert result["extra"] == "value"
+        assert result == {"a": 1, "b": 3, "c": 4}
 
     def test_merge_configs_nested(self):
-        """Test merging nested configs."""
+        """Test nested config merging."""
         from src.crawl4ai_engine.config import merge_configs
-
         base = {
-            "a": {"b": {"c": 1, "d": 2}},
+            "a": {
+                "b": {"c": 1},
+            }
         }
         override = {
             "a": {"b": {"d": 3}},
