@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 interface EnrichmentJobRequest {
     skus: string[];
-    method: 'scrapers' | 'discovery';
+    method: 'scrapers' | 'discovery' | 'crawl4ai';
     config?: {
         scrapers?: string[];
         discovery?: {
@@ -19,6 +19,13 @@ interface EnrichmentJobRequest {
             prefer_manufacturer?: boolean;
             fallback_to_static?: boolean;
             max_concurrency?: number;
+        };
+        crawl4ai?: {
+            extraction_strategy?: 'llm' | 'llm_free' | 'auto';
+            cache_enabled?: boolean;
+            llm_model?: 'gpt-4o-mini' | 'gpt-4o';
+            max_retries?: number;
+            timeout?: number;
         };
     };
     chunkSize?: number;
@@ -41,9 +48,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (!body.method || (body.method !== 'scrapers' && body.method !== 'discovery')) {
+        const validMethods = ['scrapers', 'discovery', 'crawl4ai'];
+        if (!body.method || !validMethods.includes(body.method)) {
             return NextResponse.json(
-                { error: 'method must be either "scrapers" or "discovery"' },
+                { error: `method must be one of: ${validMethods.join(', ')}` },
                 { status: 400 }
             );
         }
@@ -60,6 +68,10 @@ export async function POST(request: NextRequest) {
 
         if (body.method === 'discovery' && body.config?.discovery) {
             scrapeOptions.discoveryConfig = body.config.discovery;
+        }
+
+        if (body.method === 'crawl4ai' && body.config?.crawl4ai) {
+            scrapeOptions.crawl4aiConfig = body.config.crawl4ai;
         }
 
         const result = await scrapeProducts(body.skus, scrapeOptions);
@@ -80,10 +92,10 @@ export async function POST(request: NextRequest) {
             chunkCount,
             statusUrl: `/admin/scrapers/runs/${jobId}`,
         });
-    } catch (error) {
-        console.error('[Enrichment Jobs API] Error:', error);
-        
-        if (error instanceof SyntaxError) {
+    } catch (error: unknown) {
+        console.error('[Enrichment Jobs API] Request failed:', error);
+
+        if (error instanceof Error && error.message.includes('JSON')) {
             return NextResponse.json(
                 { error: 'Invalid JSON in request body' },
                 { status: 400 }
@@ -95,4 +107,5 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+    }
+

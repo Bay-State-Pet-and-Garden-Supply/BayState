@@ -241,7 +241,9 @@ def run_job(
         return results
 
     is_discovery_job = job_config.job_type == "discovery" or any(s.name == "ai_discovery" for s in job_config.scrapers)
-    if is_discovery_job:
+    is_crawl4ai_job = job_config.job_type == "crawl4ai" or any(s.name == "crawl4ai_discovery" for s in job_config.scrapers)
+    
+    if is_discovery_job or is_crawl4ai_job:
         return _run_discovery_job(job_config, skus, results, log_buffer)
 
     configs: list[Any] = []
@@ -429,12 +431,16 @@ def _run_discovery_job(
     log_buffer: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     discovery_cfg = job_config.job_config or {}
-    scraper_name = "ai_discovery"
+    is_crawl4ai = job_config.job_type == "crawl4ai" or any(s.name == "crawl4ai_discovery" for s in job_config.scrapers)
+    scraper_name = "crawl4ai_discovery" if is_crawl4ai else "ai_discovery"
+    
     max_concurrency = int(discovery_cfg.get("max_concurrency", job_config.max_workers) or job_config.max_workers)
     max_search_results = int(discovery_cfg.get("max_search_results", 5) or 5)
     max_steps = int(discovery_cfg.get("max_steps", 15) or 15)
     confidence_threshold = float(discovery_cfg.get("confidence_threshold", 0.7) or 0.7)
     llm_model = str(discovery_cfg.get("llm_model", "gpt-4o-mini") or "gpt-4o-mini")
+    cache_enabled = bool(discovery_cfg.get("cache_enabled", True))
+    extraction_strategy = str(discovery_cfg.get("extraction_strategy", "llm") or "llm")
 
     previous_openai = os.environ.get("OPENAI_API_KEY")
     previous_brave = os.environ.get("BRAVE_API_KEY")
@@ -493,6 +499,8 @@ def _run_discovery_job(
             max_steps=max_steps,
             confidence_threshold=confidence_threshold,
             llm_model=llm_model,
+            cache_enabled=cache_enabled,
+            extraction_strategy=extraction_strategy,
         )
         return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
 
