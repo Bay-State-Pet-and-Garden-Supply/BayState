@@ -47,6 +47,11 @@ PROJECT_ROOT = Path(__file__).parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# Also add src to path to support crawl4ai_engine imports
+src_path = PROJECT_ROOT / "src"
+if src_path.exists() and str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
 parser = argparse.ArgumentParser(description="Bay State Scraper Daemon")
 parser.add_argument(
     "--env",
@@ -139,8 +144,8 @@ except Exception:
 if TYPE_CHECKING:
     # Provide types for static analysis without importing at runtime
     # Provide typed references; prefer infra but allow core for compatibility.
-    from .core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
-    from .core.realtime_manager import RealtimeManager  # type: ignore
+    from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
+    from core.realtime_manager import RealtimeManager  # type: ignore
 
 
 # Configuration
@@ -179,7 +184,7 @@ def run_job(job_config, client, log_buffer=None) -> dict[str, Any]:
     This imports and calls the run_job function from runner.py,
     but fetches credentials from the coordinator instead of local storage.
     """
-    from .runner import run_job  # type: ignore
+    from runner import run_job  # type: ignore
 
     # Fetch credentials for any scrapers that require login
     for scraper in job_config.scrapers:
