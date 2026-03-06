@@ -27,10 +27,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Sidebar & Controls Consolidation' (Protocol in workflow.md) [d89c909]
 
 ## Phase 4: Peek Terminal & Final Polishing
-- [ ] Task: Implement Peek Terminal behavior.
-    - [ ] Modify `LogTerminal` to be collapsed by default.
-    - [ ] Add logic to auto-expand the terminal on active streaming or errors.
-- [ ] Task: Final UX Polishing & Accessibility Audit.
+- [x] Task: Implement Peek Terminal behavior. [2e34310]
+    - [x] Modify `LogTerminal` to be collapsed by default.
+    - [x] Add logic to auto-expand the terminal on active streaming or errors.
+- [~] Task: Final UX Polishing & Accessibility Audit.
     - [ ] Ensure keyboard navigation for table rows and sidebar.
     - [ ] Apply final "High-Density Dashboard" styling across all panels.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Peek Terminal & Final Polishing' (Protocol in workflow.md)
