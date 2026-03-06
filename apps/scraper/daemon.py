@@ -222,6 +222,22 @@ def needs_credentials(scraper_name: str) -> bool:
     return scraper_name.lower() in LOGIN_SCRAPERS
 
 
+def validate_runtime_dependencies() -> None:
+    """Fail fast when the container has an incompatible scraper runtime."""
+    metrics_module = __import__("scrapers.ai_metrics", fromlist=["record_ai_extraction", "record_ai_fallback"])
+    missing_symbols = [
+        symbol
+        for symbol in ("record_ai_extraction", "record_ai_fallback")
+        if not hasattr(metrics_module, symbol)
+    ]
+    if missing_symbols:
+        raise ImportError(
+            "scrapers.ai_metrics is missing required symbols: "
+            + ", ".join(sorted(missing_symbols))
+            + ". Rebuild/update the scraper image so daemon and scraper modules are in sync."
+        )
+
+
 async def main_async():
     """Main async daemon loop."""
     global _shutdown_requested
@@ -248,6 +264,13 @@ async def main_async():
 
     if not client.api_url or not client.api_key:
         logger.error("Missing SCRAPER_API_URL or SCRAPER_API_KEY. Cannot start daemon.")
+        sys.exit(1)
+
+    try:
+        validate_runtime_dependencies()
+    except Exception as e:
+        logger.error(f"Runtime dependency check failed: {e}")
+        logger.error("Refusing to claim chunks with an incompatible runtime. Restart with updated image/code.")
         sys.exit(1)
 
     logger.info("=" * 60)
