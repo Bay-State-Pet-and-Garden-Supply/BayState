@@ -435,3 +435,47 @@ export async function removeTestSku(skuId: string): Promise<ActionState> {
     return { success: false, error: 'Failed to remove test SKU' };
   }
 }
+
+
+/** Bulk remove test SKUs */
+export async function bulkRemoveTestSkus(skuIds: string[]): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+    
+    const { error } = await supabase
+      .from('scraper_config_test_skus')
+      .delete()
+      .in('id', skuIds);
+
+    if (error) throw error;
+    
+    revalidatePath('/admin/scrapers');
+    return { success: true };
+  } catch (error) {
+    console.error('Bulk remove test SKUs error:', error);
+    return { success: false, error: 'Failed to remove test SKUs' };
+  }
+}
+
+/** Bulk update test SKU type */
+export async function bulkUpdateTestSkuType(
+  skuIds: string[],
+  skuType: 'test' | 'fake' | 'edge_case'
+): Promise<ActionState> {
+  try {
+    const supabase = await createClient();
+    
+    const { error } = await supabase
+      .from('scraper_config_test_skus')
+      .update({ sku_type: skuType })
+      .in('id', skuIds);
+
+    if (error) throw error;
+    
+    revalidatePath('/admin/scrapers');
+    return { success: true };
+  } catch (error) {
+    console.error('Bulk update test SKU type error:', error);
+    return { success: false, error: 'Failed to update test SKU types' };
+  }
+}
