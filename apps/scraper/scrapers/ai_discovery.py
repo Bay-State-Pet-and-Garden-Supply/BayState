@@ -92,6 +92,8 @@ class AIDiscoveryScraper:
         max_steps: int = 15,
         confidence_threshold: float = 0.7,
         llm_model: str = "gpt-4o-mini",
+        cache_enabled: bool = True,
+        extraction_strategy: str = "llm",
     ):
         """Initialize the AI discovery scraper.
 
@@ -101,12 +103,16 @@ class AIDiscoveryScraper:
             max_steps: Maximum browser actions per extraction
             confidence_threshold: Minimum confidence score to accept result
             llm_model: LLM model to use for AI extraction
+            cache_enabled: Whether to enable content caching
+            extraction_strategy: Strategy for extraction (llm, llm_free, auto)
         """
         self.headless = headless
         self.max_search_results = max_search_results
         self.max_steps = max_steps
         self.confidence_threshold = confidence_threshold
         self.llm_model = llm_model
+        self.cache_enabled = cache_enabled
+        self.extraction_strategy = extraction_strategy
         self.use_ai_source_selection = os.getenv("AI_DISCOVERY_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
         self._cost_tracker = AICostTracker()
         self._browser: Any = None
@@ -1236,6 +1242,7 @@ OUTPUT FORMAT (STRICT)
             CacheMode = getattr(crawl4ai_module, "CacheMode")
             LLMConfig = getattr(crawl4ai_module, "LLMConfig")
             LLMExtractionStrategy = getattr(extraction_module, "LLMExtractionStrategy")
+            NoExtractionStrategy = getattr(extraction_module, "NoExtractionStrategy")
 
             api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:
@@ -1246,8 +1253,80 @@ OUTPUT FORMAT (STRICT)
                 viewport={"width": 1920, "height": 1080},
             )
 
-            # Prompt v2 - Optimized for manufacturer site detection and exact variant extraction
-            instruction = f"""Extract structured product data for a single SKU-locked product page.
+            # Build extraction strategy based on config
+            if self.extraction_strategy == "llm_free":
+                extraction_strategy = NoExtractionStrategy()
+            else:
+                extraction_strategy = LLMExtractionStrategy(
+                    llm_config=LLMConfig(
+                        provider=f"openai/{self.llm_model}",
+                        api_token=api_key,
+                    ),
+                    schema=ProductData.model_json_schema(),
+                    extraction_type="schema",
+                    instruction=self._build_extraction_instruction(sku, brand, product_name),
+                )
+
+            # JavaScript to scroll the page to trigger lazy loading of carousel images
+            scroll_js = self._get_scroll_js()
+
+            cache_mode = CacheMode.ENABLED if self.cache_enabled else CacheMode.BYPASS
+
+            crawl_config = CrawlerRunConfig(
+                extraction_strategy=extraction_strategy,
+                cache_mode=cache_mode,
+                js_code=scroll_js,
+                delay_before_return_html=2.0,
+                word_count_threshold=1,
+            )
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+                result = await crawler.arun(url=url, config=crawl_config)
+
+                if result.success and result.extracted_content:
+                    if isinstance(result.extracted_content, str):
+                        raw_content = result.extracted_content.strip()
+                        if raw_content.startswith("[") and '"error"' in raw_content.lower() and "auth" in raw_content.lower():
+                            return await self._extract_product_data_fallback(
+                                url=url,
+                                sku=sku,
+                                product_name=product_name,
+                                brand=brand,
+                            )
+
+                    try:
+                        data = json.loads(result.extracted_content)
+                        if data and isinstance(data, list):
+                            product_data = data[0]
+                            product_data["success"] = True
+                            product_data["url"] = url
+
+                            # Calculate confidence based on filled fields
+                            required_fields = ["product_name", "brand", "description", "size_metrics", "images", "categories"]
+                            filled = sum(1 for f in required_fields if product_data.get(f))
+                            product_data["confidence"] = filled / len(required_fields)
+
+                            return product_data
+                    except json.JSONDecodeError:
+                        return {
+                            "success": False,
+                            "error": "Could not parse extraction result",
+                            "raw_response": result.extracted_content[:500],
+                        }
+                return {
+                    "success": False,
+                    "error": result.error_message or "Extraction failed or returned no content",
+                }
+
+        except Exception as e:
+            logger.error(f"[AI Discovery] Extraction failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
+    def _build_extraction_instruction(self, sku: str, brand: Optional[str], product_name: Optional[str]) -> str:
+        return f"""Extract structured product data for a single SKU-locked product page.
 
 TARGET CONTEXT
 - SKU: {sku}
@@ -1293,88 +1372,25 @@ OUTPUT QUALITY BAR
 - Return the most complete, variant-accurate record possible.
 - Do not hallucinate missing values."""
 
-            llm_strategy = LLMExtractionStrategy(
-                llm_config=LLMConfig(
-                    provider=f"openai/{self.llm_model}",
-                    api_token=api_key,
-                ),
-                schema=ProductData.model_json_schema(),
-                extraction_type="schema",
-                instruction=instruction,
-            )
-
-            # JavaScript to scroll the page to trigger lazy loading of carousel images
-            scroll_js = """
-            async () => {
-                // Scroll down to bottom to trigger lazy loading
-                window.scrollTo(0, document.body.scrollHeight);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Scroll back up
-                window.scrollTo(0, 0);
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Try to find and interact with carousel elements
-                const carousels = document.querySelectorAll('[class*="carousel"], [class*="gallery"], [data-carousel], [role="carousel"]');
-                for (const carousel of carousels) {
-                    carousel.scrollLeft += 200;
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
+    def _get_scroll_js(self) -> str:
+        return """
+        async () => {
+            // Scroll down to bottom to trigger lazy loading
+            window.scrollTo(0, document.body.scrollHeight);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Scroll back up
+            window.scrollTo(0, 0);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Try to find and interact with carousel elements
+            const carousels = document.querySelectorAll('[class*="carousel"], [class*="gallery"], [data-carousel], [role="carousel"]');
+            for (const carousel of carousels) {
+                carousel.scrollLeft += 200;
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
-            """
-
-            crawl_config = CrawlerRunConfig(
-                extraction_strategy=llm_strategy,
-                cache_mode=CacheMode.BYPASS,
-                js_code=scroll_js,
-                delay_before_return_html=2.0,
-                word_count_threshold=1,
-            )
-
-            async with AsyncWebCrawler(config=browser_config) as crawler:
-                result = await crawler.arun(url=url, config=crawl_config)
-
-                if result.success and result.extracted_content:
-                    if isinstance(result.extracted_content, str):
-                        raw_content = result.extracted_content.strip()
-                        if raw_content.startswith("[") and '"error"' in raw_content.lower() and "auth" in raw_content.lower():
-                            return await self._extract_product_data_fallback(
-                                url=url,
-                                sku=sku,
-                                product_name=product_name,
-                                brand=brand,
-                            )
-
-                    try:
-                        data = json.loads(result.extracted_content)
-                        if data and isinstance(data, list):
-                            product_data = data[0]
-                            product_data["success"] = True
-                            product_data["url"] = url
-
-                            # Calculate confidence based on filled fields
-                            required_fields = ["product_name", "brand", "description", "size_metrics", "images", "categories"]
-                            filled = sum(1 for f in required_fields if product_data.get(f))
-                            product_data["confidence"] = filled / len(required_fields)
-
-                            return product_data
-                    except json.JSONDecodeError:
-                        return {
-                            "success": False,
-                            "error": "Could not parse extraction result",
-                            "raw_response": result.extracted_content[:500],
-                        }
-                return {
-                    "success": False,
-                    "error": result.error_message or "Extraction failed or returned no content",
-                }
-
-        except Exception as e:
-            logger.error(f"[AI Discovery] Extraction failed: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-            }
+        }
+        """
 
 
 # Convenience function for direct usage

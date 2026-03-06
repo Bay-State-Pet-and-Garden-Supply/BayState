@@ -17,9 +17,9 @@ export interface ScrapeOptions {
     maxAttempts?: number;
     /** Number of SKUs per chunk (default: 50) */
     chunkSize?: number;
-    jobType?: 'standard' | 'discovery';
+    jobType?: 'standard' | 'discovery' | 'crawl4ai';
     /** Explicit enrichment method - takes precedence over jobType */
-    enrichment_method?: 'scrapers' | 'discovery';
+    enrichment_method?: 'scrapers' | 'discovery' | 'crawl4ai';
     discoveryConfig?: {
         product_name?: string;
         brand?: string;
@@ -30,6 +30,13 @@ export interface ScrapeOptions {
         prefer_manufacturer?: boolean;
         fallback_to_static?: boolean;
         max_concurrency?: number;
+    };
+    crawl4aiConfig?: {
+        extraction_strategy?: 'llm' | 'llm_free' | 'auto';
+        cache_enabled?: boolean;
+        llm_model?: 'gpt-4o-mini' | 'gpt-4o';
+        max_retries?: number;
+        timeout?: number;
     };
     /** Maximum cost in USD for Discovery jobs (default: 5.00, max: 10.00) */
     maxDiscoveryCostUsd?: number;
@@ -54,16 +61,17 @@ export async function scrapeProducts(
     const scrapers = options?.scrapers ?? [];
     const maxAttempts = options?.maxAttempts ?? 3;
     const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
-    const enrichmentMethod = options?.enrichment_method ?? (options?.jobType === 'discovery' ? 'discovery' : 'scrapers');
+    const enrichmentMethod = options?.enrichment_method ?? (options?.jobType === 'discovery' ? 'discovery' : options?.jobType === 'crawl4ai' ? 'crawl4ai' : 'scrapers');
     const isDiscovery = enrichmentMethod === 'discovery';
-    const effectiveScrapersRaw = isDiscovery ? ['ai_discovery'] : scrapers;
-    const jobType = isDiscovery ? 'discovery' : 'standard';
+    const isCrawl4AI = enrichmentMethod === 'crawl4ai';
+    const effectiveScrapersRaw = isDiscovery ? ['ai_discovery'] : (isCrawl4AI ? ['crawl4ai_discovery'] : scrapers);
+    const jobType = isDiscovery ? 'discovery' : (isCrawl4AI ? 'crawl4ai' : 'standard');
 
     const supabase = await createClient();
 
     // Resolve scraper display names to slugs if possible
     let effectiveScrapers = effectiveScrapersRaw;
-    if (scrapers.length > 0 && !isDiscovery) {
+    if (scrapers.length > 0 && !isDiscovery && !isCrawl4AI) {
         const { data: configRows } = await supabase
             .from('scraper_configs')
             .select('slug, display_name');
@@ -108,8 +116,10 @@ export async function scrapeProducts(
             config: isDiscovery ? {
                 ...(options?.discoveryConfig ?? {}),
                 max_cost_usd: maxDiscoveryCostUsd,
+            } : isCrawl4AI ? {
+                ...(options?.crawl4aiConfig ?? {}),
             } : null,
-            metadata: isDiscovery ? { source: 'pipeline', mode: 'discovery' } : null,
+            metadata: isDiscovery ? { source: 'pipeline', mode: 'discovery' } : isCrawl4AI ? { source: 'pipeline', mode: 'crawl4ai' } : null,
             updated_at: nowIso,
         })
         .select('id')
