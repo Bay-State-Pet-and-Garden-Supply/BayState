@@ -368,12 +368,17 @@ export function useJobBroadcasts(
   useEffect(() => {
     mountedRef.current = true;
 
-    if (autoConnect) {
-      connect();
-    }
+    // Use a small delay or just wait for next tick to avoid sync setState in effect
+    const connectionTimeout = setTimeout(() => {
+      if (autoConnect && mountedRef.current) {
+        connect();
+      }
+    }, 0);
 
     // Cleanup on unmount
     return () => {
+      mountedRef.current = false;
+      clearTimeout(connectionTimeout);
       disconnect();
     };
   }, [autoConnect, connect, disconnect]);
