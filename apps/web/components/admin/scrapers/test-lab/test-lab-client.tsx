@@ -247,9 +247,9 @@ export function TestLabClient({
         throw new Error('Failed to start test run');
       }
 
-      const data = (await response.json()) as { test_run_id: string; job_id?: string };
-      const nextRunId = data.test_run_id;
-      const nextJobId = data.job_id ?? null;
+      const data = (await response.json()) as { job_id: string; test_run_id?: string };
+      const nextRunId = data.job_id ?? data.test_run_id;
+      const nextJobId = data.job_id;
 
       setSelectedRunId(nextRunId);
       setJobId(nextJobId);
