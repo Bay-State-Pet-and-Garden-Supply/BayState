@@ -117,38 +117,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create test run record for tracking
-    const testRunData = {
-      scraper_id: config.id, // Note: This references scraper_configs.id via mapping
-      test_type: 'studio' as const,
-      skus_tested: skus,
-      results: [],
-      status: 'pending' as const,
-      started_at: new Date().toISOString(),
-      metadata: {
-        config_id: validatedData.config_id,
-        version_id: versionId,
-        triggered_by: user.id,
-        priority: validatedData.options?.priority || 'normal',
-      },
-    };
+    // Create a scrape job with test_mode=true — no separate test_run record needed
+    const TEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const timeoutAt = new Date(Date.now() + TEST_TIMEOUT_MS).toISOString();
 
-    const { data: testRun, error: testRunError } = await adminClient
-      .from('scraper_test_runs')
-      .insert(testRunData)
-      .select()
-      .single();
-
-    if (testRunError) {
-      console.error('[Studio Test API] Failed to create test run:', testRunError);
-      return NextResponse.json(
-        { error: 'Failed to create test run' },
-        { status: 500 }
-      );
-    }
-
-    // Create a scrape job using the existing runner infrastructure
-    // We call the scraper-network/test endpoint internally
     const { data: job, error: jobError } = await adminClient
       .from('scrape_jobs')
       .insert({
@@ -157,8 +129,17 @@ export async function POST(request: NextRequest) {
         test_mode: true,
         max_workers: 1,
         status: 'pending',
+        timeout_at: timeoutAt,
+        test_metadata: {
+          config_id: validatedData.config_id,
+          version_id: versionId,
+          triggered_by: user.id,
+          test_type: 'studio',
+          priority: validatedData.options?.priority || 'normal',
+          scraper_slug: config.slug,
+          scraper_display_name: config.display_name || config.slug,
+        },
         metadata: {
-          test_run_id: testRun.id,
           config_id: validatedData.config_id,
           version_id: versionId,
           studio_test: true,
@@ -170,14 +151,8 @@ export async function POST(request: NextRequest) {
 
     if (jobError || !job) {
       console.error('[Studio Test API] Failed to create scrape job:', jobError);
-      // Update test run to failed status
-      await adminClient
-        .from('scraper_test_runs')
-        .update({ status: 'failed', completed_at: new Date().toISOString() })
-        .eq('id', testRun.id);
-
       return NextResponse.json(
-        { error: 'Failed to create scrape job' },
+        { error: 'Failed to create test job' },
         { status: 500 }
       );
     }
@@ -197,30 +172,19 @@ export async function POST(request: NextRequest) {
 
     if (chunkError) {
       console.error('[Studio Test API] Failed to create chunks:', chunkError);
-      // Non-fatal: job was created, chunks can be created separately
+      // Non-fatal: job was created, runner will still pick it up
     }
 
-    // Update test run with job reference
-    await adminClient
-      .from('scraper_test_runs')
-      .update({
-        metadata: {
-          ...testRunData.metadata,
-          job_id: job.id,
-        },
-      })
-      .eq('id', testRun.id);
-
-    console.log(`[Studio Test API] Created test run ${testRun.id} with job ${job.id} for config ${config.slug}`);
+    console.log(`[Studio Test API] Created test job ${job.id} for config ${config.slug} (${skus.length} SKUs, timeout: ${timeoutAt})`);
 
     return NextResponse.json({
-      test_run_id: testRun.id,
-      status: 'pending',
       job_id: job.id,
+      status: 'pending',
       config_id: validatedData.config_id,
       version_id: versionId,
       skus_count: skus.length,
-      message: 'Test run created. A runner will pick it up and process it.',
+      timeout_at: timeoutAt,
+      message: 'Test job created. A runner will pick it up and process it.',
     }, { status: 201 });
 
   } catch (error) {

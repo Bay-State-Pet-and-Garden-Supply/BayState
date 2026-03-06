@@ -253,30 +253,7 @@ export const scraperRecordSchema = z.object({
   created_by: z.string().uuid().nullable(),
 });
 
-export const testRunResultSchema = z.object({
-  sku: z.string(),
-  sku_type: z.enum(['test', 'fake', 'edge_case']),
-  status: z.enum(['success', 'no_results', 'error', 'timeout']),
-  data: z.record(z.string(), z.unknown()).optional(),
-  error_message: z.string().optional(),
-  duration_ms: z.number().optional(),
-});
-
-export const testRunRecordSchema = z.object({
-  id: z.string().uuid(),
-  scraper_id: z.string().uuid(),
-  test_type: z.enum(['manual', 'scheduled', 'health_check', 'validation']),
-  skus_tested: z.array(z.string()),
-  results: z.array(testRunResultSchema),
-  status: z.enum(['pending', 'running', 'passed', 'failed', 'partial', 'cancelled']),
-  started_at: z.string().nullable(),
-  completed_at: z.string().nullable(),
-  duration_ms: z.number().nullable(),
-  runner_name: z.string().nullable(),
-  error_message: z.string().nullable(),
-  created_at: z.string(),
-  triggered_by: z.string().uuid().nullable(),
-});
+// Legacy test run schemas removed
 
 export const selectorSuggestionSchema = z.object({
   id: z.string().uuid(),

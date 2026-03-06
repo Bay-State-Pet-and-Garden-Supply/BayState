@@ -18,6 +18,12 @@ export interface FailingStep {
   affected_config: string;
 }
 
+/**
+ * Gets selector health stats from chunk telemetry on test jobs.
+ *
+ * Unified architecture: reads from scrape_job_chunks.telemetry
+ * instead of the legacy scraper_test_runs.selector_health.
+ */
 export async function getSelectorHealthStats(days = 30, useCache = true): Promise<SelectorHealth[]> {
   const cacheKey = getCacheKey('selector-health', days);
 
@@ -32,14 +38,17 @@ export async function getSelectorHealthStats(days = 30, useCache = true): Promis
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
+  // Query chunk telemetry from test jobs
   const { data, error } = await supabase
-    .from('scraper_test_runs')
+    .from('scrape_job_chunks')
     .select(`
-      selector_health,
-      created_at
+      telemetry,
+      created_at,
+      scrape_jobs!inner(test_mode)
     `)
+    .eq('scrape_jobs.test_mode', true)
     .gte('created_at', startDate.toISOString())
-    .not('selector_health', 'is', null);
+    .not('telemetry', 'is', null);
 
   if (error) {
     console.error('Error fetching selector health:', error);
@@ -48,22 +57,26 @@ export async function getSelectorHealthStats(days = 30, useCache = true): Promis
 
   const stats: Record<string, { found: number; missed: number; lastMissed: string | null }> = {};
 
-  data.forEach((run: any) => {
-    const health = run.selector_health as Record<string, string>;
-    if (!health) return;
+  data.forEach((chunk: { telemetry: Record<string, unknown>; created_at: string }) => {
+    const telemetry = chunk.telemetry;
+    if (!telemetry) return;
 
-    Object.entries(health).forEach(([selector, status]) => {
-      if (!stats[selector]) {
-        stats[selector] = { found: 0, missed: 0, lastMissed: null };
+    // Extract selector results from chunk telemetry
+    const selectors = (telemetry.selectors as Array<{ selector_name: string; status: string }>) || [];
+
+    selectors.forEach((sel) => {
+      const key = sel.selector_name;
+      if (!stats[key]) {
+        stats[key] = { found: 0, missed: 0, lastMissed: null };
       }
 
-      if (status === 'found') {
-        stats[selector].found++;
+      if (sel.status === 'FOUND') {
+        stats[key].found++;
       } else {
-        stats[selector].missed++;
+        stats[key].missed++;
 
-        if (!stats[selector].lastMissed || new Date(run.created_at) > new Date(stats[selector].lastMissed!)) {
-          stats[selector].lastMissed = run.created_at;
+        if (!stats[key].lastMissed || new Date(chunk.created_at) > new Date(stats[key].lastMissed!)) {
+          stats[key].lastMissed = chunk.created_at;
         }
       }
     });
@@ -87,6 +100,12 @@ export async function getSelectorHealthStats(days = 30, useCache = true): Promis
   return result;
 }
 
+/**
+ * Gets the top failing steps from test job error messages.
+ *
+ * Unified architecture: reads from scrape_jobs.error_message
+ * WHERE test_mode=true instead of scraper_test_runs.
+ */
 export async function getTopFailingSteps(days = 30, useCache = true): Promise<FailingStep[]> {
   const cacheKey = getCacheKey('failing-steps', days);
 
@@ -102,14 +121,13 @@ export async function getTopFailingSteps(days = 30, useCache = true): Promise<Fa
   startDate.setDate(startDate.getDate() - days);
 
   const { data, error } = await supabase
-    .from('scraper_test_runs')
+    .from('scrape_jobs')
     .select(`
       error_message,
       created_at,
-      scraper_configs (
-        display_name
-      )
+      test_metadata
     `)
+    .eq('test_mode', true)
     .eq('status', 'failed')
     .gte('created_at', startDate.toISOString())
     .not('error_message', 'is', null)
@@ -122,18 +140,22 @@ export async function getTopFailingSteps(days = 30, useCache = true): Promise<Fa
 
   const stepFailures: Record<string, FailingStep> = {};
 
-  data.forEach((run: any) => {
-    const match = run.error_message?.match(/Step '([^']+)' failed/i);
+  data.forEach((job: { error_message: string | null; created_at: string; test_metadata: Record<string, unknown> | null }) => {
+    const match = job.error_message?.match(/Step '([^']+)' failed/i);
     const stepName = match ? match[1] : 'Unknown Step';
 
-    const key = `${stepName}-${run.scraper_configs?.display_name}`;
+    const displayName = (job.test_metadata?.scraper_display_name as string)
+      || (job.test_metadata?.scraper_slug as string)
+      || 'Unknown Config';
+
+    const key = `${stepName}-${displayName}`;
 
     if (!stepFailures[key]) {
       stepFailures[key] = {
         step_name: stepName,
         failure_count: 0,
-        last_failed_at: run.created_at,
-        affected_config: run.scraper_configs?.display_name || 'Unknown Config'
+        last_failed_at: job.created_at,
+        affected_config: displayName,
       };
     }
 

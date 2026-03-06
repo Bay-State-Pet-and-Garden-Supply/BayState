@@ -16,11 +16,11 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { TestRunHistory } from '@/components/admin/scraper-studio/TestRunHistory';
-import { useTestRunRecordSubscription } from '@/lib/realtime/useTestRunRecordSubscription';
+import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 
 interface TestRunStatus {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'passed' | 'partial';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'passed' | 'partial' | 'cancelled';
   skus_tested?: string[];
   summary?: {
     passed: number;
@@ -54,10 +54,15 @@ export function StudioTestingPanel() {
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentRun, setCurrentRun] = useState<TestRunStatus | null>(null);
-  const runRealtime = useTestRunRecordSubscription({
-    testRunId: currentRun?.id || '',
+  const { isConnected, getJob } = useJobSubscription({
     autoConnect: !!currentRun,
+    testModeOnly: true,
   });
+
+  const runRealtime = {
+    isConnected,
+    run: currentRun ? getJob(currentRun.id) : null,
+  };
 
   // Debug logging
   useEffect(() => {
@@ -122,9 +127,9 @@ export function StudioTestingPanel() {
           if (!prev || prev.id !== currentRun.id) return prev;
           
           // If we have actual results from callback, use those; otherwise use step progress
-          const runResults = Array.isArray(runRealtime.run?.results) ? runRealtime.run.results : [];
+          const runResults = Array.isArray((runRealtime.run as any)?.test_metadata?.sku_results) ? (runRealtime.run as any).test_metadata.sku_results : [];
           if (runResults.length > 0) {
-            const passed = runResults.filter((r) => {
+            const passed = runResults.filter((r: any) => {
               const status = typeof r.status === 'string' ? r.status : '';
               return status === 'success' || status === 'completed' || status === 'no_results';
             }).length;
@@ -161,11 +166,11 @@ export function StudioTestingPanel() {
     }
 
     const nextStatus = runRealtime.run.status;
-    const runResults = Array.isArray(runRealtime.run.results) ? runRealtime.run.results : [];
+    const runResults = Array.isArray((runRealtime.run as any)?.test_metadata?.sku_results) ? (runRealtime.run as any).test_metadata.sku_results : [];
     
     // Only update summary if we have actual results
     if (runResults.length > 0) {
-      const passed = runResults.filter((r) => {
+      const passed = runResults.filter((r: any) => {
         const status = typeof r.status === 'string' ? r.status : '';
         return status === 'success' || status === 'completed' || status === 'no_results';
       }).length;
@@ -183,7 +188,7 @@ export function StudioTestingPanel() {
             failed: Math.max(runResults.length - passed, 0),
             total: runResults.length,
           },
-          duration_ms: runRealtime.run.duration_ms ?? prev.duration_ms,
+          duration_ms: (runRealtime.run as any)?.test_metadata?.duration_ms ?? prev.duration_ms,
         };
       });
     } else {
@@ -195,7 +200,7 @@ export function StudioTestingPanel() {
         return {
           ...prev,
           status: nextStatus,
-          duration_ms: runRealtime.run.duration_ms ?? prev.duration_ms,
+          duration_ms: (runRealtime.run as any)?.test_metadata?.duration_ms ?? prev.duration_ms,
         };
       });
     }

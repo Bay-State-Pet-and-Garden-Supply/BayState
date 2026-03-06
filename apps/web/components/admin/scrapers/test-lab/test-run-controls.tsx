@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/utils';
-import type { ScraperTestSku, TestRunRecord } from '@/lib/admin/scrapers/types';
+import type { ScraperTestSku, ScrapeJobTestRecord } from '@/lib/admin/scrapers/types';
 import { Beaker, CheckCircle2, Clock, Loader2, Play, XCircle, AlertCircle } from 'lucide-react';
 
 interface RunSummary {
@@ -13,7 +13,7 @@ interface RunSummary {
   failed?: number;
 }
 
-export type TestRunHistoryItem = TestRunRecord & {
+export type TestRunHistoryItem = ScrapeJobTestRecord & {
   summary?: RunSummary | null;
   metadata?: Record<string, unknown> | null;
 };
@@ -107,7 +107,7 @@ function formatDuration(ms: number | null): string {
 }
 
 function getRunCounts(run: TestRunHistoryItem): { passed: number; failed: number } {
-  const summary = run.summary;
+  const summary = run.test_metadata?.summary || run.summary;
   const hasSummaryCounts =
     typeof summary?.passed === 'number' && Number.isFinite(summary.passed) &&
     typeof summary?.failed === 'number' && Number.isFinite(summary.failed);
@@ -122,7 +122,8 @@ function getRunCounts(run: TestRunHistoryItem): { passed: number; failed: number
   let passed = 0;
   let failed = 0;
 
-  for (const result of run.results) {
+  const results = run.test_metadata?.sku_results || (run as any).results || [];
+  for (const result of results) {
     if (PASS_RESULT_STATUSES.has(result.status)) {
       passed += 1;
       continue;
@@ -233,7 +234,7 @@ export function TestRunControls({
                       <span>
                         {getRunLabel(status)} • {counts.passed} passed / {counts.failed} failed
                       </span>
-                      <span>{formatDuration(run.duration_ms)}</span>
+                      <span>{formatDuration(run.test_metadata?.duration_ms ?? run.duration_ms ?? null)}</span>
                     </div>
                   </button>
                 );

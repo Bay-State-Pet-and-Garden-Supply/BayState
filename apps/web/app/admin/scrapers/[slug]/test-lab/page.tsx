@@ -4,7 +4,7 @@ import { getScraperBySlug } from '../../actions-workbench';
 import { TestLabClient } from '@/components/admin/scrapers/test-lab';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InfoIcon } from 'lucide-react';
-import { ScraperTestSku, TestRunRecord } from '@/lib/admin/scrapers/types';
+import { ScraperTestSku } from '@/lib/admin/scrapers/types';
 
 interface TestLabPageProps {
   params: Promise<{ slug: string }>;
@@ -41,20 +41,21 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
     console.error('Error fetching test SKUs:', skusError);
   }
 
-  // Fetch recent test runs
-  const { data: testRuns, error: runsError } = await supabase
-    .from('scraper_test_runs')
-    .select('*, scrape_jobs(status)')
-    .eq('scraper_id', scraper.id)
+  // Fetch recent test runs from scrape_jobs (unified architecture)
+  const { data: testJobs, error: jobsError } = await supabase
+    .from('scrape_jobs')
+    .select('id, status, created_at, completed_at, test_metadata, skus, error_message')
+    .eq('test_mode', true)
+    .contains('scrapers', [scraper.slug])
     .order('created_at', { ascending: false })
     .limit(10);
 
-  if (runsError) {
-    console.error('Error fetching test runs:', runsError);
+  if (jobsError) {
+    console.error('Error fetching test jobs:', jobsError);
   }
 
   const typedSkus = (testSkus || []) as ScraperTestSku[];
-  const typedRuns = (testRuns || []) as TestRunRecord[];
+  const testRuns = testJobs || [];
 
   return (
     <div className="space-y-6" data-testid="tab-content-test-lab">
@@ -72,7 +73,7 @@ export default async function TestLabPage({ params }: TestLabPageProps) {
         configId={scraper.id}
         versionId={version?.id || null}
         scraperName={scraper.display_name || scraper.slug || 'Unknown Scraper'}
-        testRuns={typedRuns}
+        testRuns={testRuns}
         testSkus={typedSkus}
         disabled={!version}
       />
