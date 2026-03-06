@@ -11,6 +11,8 @@ import {
     checkIdempotency,
     recordCallbackProcessed,
 } from '@/lib/scraper-callback/idempotency';
+import { finalizeTestJob, persistChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
+import type { ChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -286,93 +288,22 @@ export async function POST(request: NextRequest) {
                 }
 
                 const metadata = (updatedJob?.metadata ?? null) as Record<string, unknown> | null;
-                const testRunId = typeof metadata?.test_run_id === 'string' ? metadata.test_run_id : undefined;
 
-                // Update test run status if this is a test job
-                if (isTestJob && testRunId) {
-                    const { data: allChunks } = await supabase
-                        .from('scrape_job_chunks')
-                        .select('results, skus_successful, skus_failed')
-                        .eq('job_id', jobId);
+                // Finalize test job if this is a test job
+                if (isTestJob) {
+                    console.log(`[Chunk Callback] Finalizing test job ${jobId}`);
 
-                    // Calculate test run metrics from chunk results
-                    const totalSuccessful = allChunks?.reduce((sum, c) => sum + (c.skus_successful || 0), 0) || 0;
-                    const totalFailed = allChunks?.reduce((sum, c) => sum + (c.skus_failed || 0), 0) || 0;
-
-                    // Determine test run status
-                    let testRunStatus: 'passed' | 'failed' | 'partial' = 'failed';
-                    if (jobStatus === 'completed') {
-                        testRunStatus = totalFailed === 0 ? 'passed' : totalSuccessful > 0 ? 'partial' : 'failed';
+                    // Persist telemetry from the last chunk if available
+                    if (results?.telemetry) {
+                        await persistChunkTelemetry(supabase, chunk_id, results.telemetry as ChunkTelemetry);
                     }
 
-                    // Calculate duration from job start to completion
-                    const { data: jobData } = await supabase
-                        .from('scrape_jobs')
-                        .select('created_at')
-                        .eq('id', jobId)
-                        .single();
-
-                    const startedAt = jobData?.created_at ? new Date(jobData.created_at).getTime() : Date.now();
-                    const completedAt = Date.now();
-                    const durationMs = completedAt - startedAt;
-
-                    // Build results array from chunk data
-                    const testResults: Array<{ sku: string; status: string; data?: unknown }> = [];
-                    for (const chunk of allChunks || []) {
-                        const chunkResults = chunk.results as Record<string, { status?: string; data?: unknown }> || {};
-                        for (const [sku, result] of Object.entries(chunkResults)) {
-                            testResults.push({
-                                sku,
-                                status: result.status || 'unknown',
-                                data: result.data,
-                            });
-                        }
-                    }
-
-                    // Update the test run record
-                    const { error: testRunUpdateError } = await supabase
-                        .from('scraper_test_runs')
-                        .update({
-                            status: testRunStatus,
-                            results: testResults,
-                            passed_count: totalSuccessful,
-                            failed_count: totalFailed,
-                            duration_ms: durationMs,
-                            completed_at: new Date().toISOString(),
-                        })
-                        .eq('id', testRunId);
-
-                    if (testRunUpdateError) {
-                        console.error(`[Chunk Callback] Failed to update test run ${testRunId}:`, testRunUpdateError);
-                    } else {
-                        console.log(`[Chunk Callback] Updated test run ${testRunId} to status: ${testRunStatus}`);
-                    }
-
-                    // Insert step telemetry if available
-                    if (results?.telemetry?.steps && results.telemetry.steps.length > 0) {
-                        const stepRows = results.telemetry.steps.map((step) => ({
-                            test_run_id: testRunId,
-                            step_index: step.step_index,
-                            action_type: step.action_type,
-                            status: step.status,
-                            started_at: step.started_at ?? null,
-                            completed_at: step.completed_at ?? null,
-                            duration_ms: step.duration_ms ?? null,
-                            error_message: step.error_message ?? null,
-                            extracted_data: step.extracted_data ?? {},
-                        }));
-
-                        const { error: stepsError } = await supabase
-                            .from('scraper_test_run_steps')
-                            .upsert(stepRows, { onConflict: 'test_run_id,step_index' });
-
-                        if (stepsError) {
-                            console.warn(
-                                `[Chunk Callback] Failed to persist test telemetry steps for run ${testRunId}:`,
-                                stepsError.message
-                            );
-                        }
-                    }
+                    // Compute final test status and update test_metadata
+                    await finalizeTestJob(
+                        supabase,
+                        jobId,
+                        jobStatus as 'completed' | 'failed',
+                    );
                 }
 
                 console.log(`[Chunk Callback] Job ${jobId} completed with status: ${jobStatus}`, aggregatedResults);
