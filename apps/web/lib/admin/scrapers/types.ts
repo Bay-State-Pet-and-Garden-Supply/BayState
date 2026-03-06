@@ -33,7 +33,7 @@ export interface ScraperConfig {
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
-  name: string;
+  name?: string;
   selectors?: SelectorConfig[];
   workflows?: WorkflowStep[];
   normalization?: NormalizationRule[];
