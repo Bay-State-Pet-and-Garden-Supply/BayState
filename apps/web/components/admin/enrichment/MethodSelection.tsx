@@ -16,15 +16,23 @@ interface DiscoveryConfig {
     confidence_threshold: number; // 0-1, default 0.7
 }
 
+interface Crawl4AIConfig {
+    extraction_strategy: 'llm' | 'llm_free' | 'auto';
+    cache_enabled: boolean;
+    llm_model: 'gpt-4o-mini' | 'gpt-4o';
+    max_retries: number;
+    timeout: number;
+}
+
 interface ScrapersConfig {
     scrapers: string[]; // Array of scraper names
 }
 
-export type EnrichmentMethod = 'scrapers' | 'discovery';
+export type EnrichmentMethod = 'scrapers' | 'discovery' | 'crawl4ai';
 
 export interface MethodSelectionProps {
     selectedSkus: string[];
-    onNext: (data: { method: EnrichmentMethod; config: DiscoveryConfig | ScrapersConfig }) => void;
+    onNext: (data: { method: EnrichmentMethod; config: DiscoveryConfig | ScrapersConfig | Crawl4AIConfig }) => void;
     onBack?: () => void;
 }
 
@@ -49,11 +57,19 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
         confidence_threshold: 0.7
     });
 
+    const [crawl4aiConfig, setCrawl4aiConfig] = useState<Crawl4AIConfig>({
+        extraction_strategy: 'llm',
+        cache_enabled: true,
+        llm_model: 'gpt-4o-mini',
+        max_retries: 3,
+        timeout: 30000
+    });
+
     useEffect(() => {
         if (method === 'scrapers' && scrapers.length === 0 && !loadingScrapers && !scrapersError) {
             fetchScrapers();
         }
-    }, [method]);
+    }, [method, scrapers.length, loadingScrapers, scrapersError]);
 
     const fetchScrapers = async () => {
         setLoadingScrapers(true);
@@ -81,8 +97,10 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                 .filter(s => selectedScrapers.includes(s.id))
                 .map(s => s.name);
             onNext({ method, config: { scrapers: selectedScraperNames } });
-        } else {
+        } else if (method === 'discovery') {
             onNext({ method, config: discoveryConfig });
+        } else {
+            onNext({ method, config: crawl4aiConfig });
         }
     };
 
@@ -145,6 +163,24 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                         </span>
                     </Label>
                 </div>
+
+                <div className="relative">
+                    <RadioGroupItem 
+                        value="crawl4ai" 
+                        id="method-crawl4ai" 
+                        className="peer sr-only"
+                        data-testid="enrichment-method-crawl4ai"
+                    />
+                    <Label
+                        htmlFor="method-crawl4ai"
+                        className="flex flex-col items-start gap-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                        <span className="font-semibold">Crawl4AI Engine</span>
+                        <span className="text-sm text-muted-foreground font-normal">
+                            High-performance universal extraction engine. Best for fast, direct extraction from official sources.
+                        </span>
+                    </Label>
+                </div>
             </RadioGroup>
 
             <div className="border rounded-md p-6 bg-card">
@@ -198,7 +234,7 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                             </div>
                         )}
                     </div>
-                ) : (
+                ) : method === 'discovery' ? (
                     <div className="space-y-6" data-testid="discovery-config-panel">
                         <div>
                             <h4 className="font-medium">Discovery Configuration</h4>
@@ -273,6 +309,90 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                                     data-testid="config-confidence"
                                 />
                                 <p className="text-xs text-muted-foreground">Minimum certainty required to save found data</p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-6" data-testid="crawl4ai-config-panel">
+                        <div>
+                            <h4 className="font-medium">Crawl4AI Configuration</h4>
+                            <p className="text-sm text-muted-foreground">Configure the high-performance extraction engine.</p>
+                        </div>
+                        
+                        <div className="grid gap-6 sm:grid-cols-2">
+                            <div className="space-y-3">
+                                <Label htmlFor="crawl4ai-strategy">Extraction Strategy</Label>
+                                <Select 
+                                    value={crawl4aiConfig.extraction_strategy} 
+                                    onValueChange={(val: 'llm' | 'llm_free' | 'auto') => 
+                                        setCrawl4aiConfig(prev => ({ ...prev, extraction_strategy: val }))
+                                    }
+                                >
+                                    <SelectTrigger id="crawl4ai-strategy" data-testid="config-crawl4ai-strategy">
+                                        <SelectValue placeholder="Select a strategy" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="llm">LLM-Based (Best Quality)</SelectItem>
+                                        <SelectItem value="llm_free">LLM-Free (Fastest, Cheapest)</SelectItem>
+                                        <SelectItem value="auto">Auto (Hybrid Approach)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label htmlFor="crawl4ai-model">LLM Model</Label>
+                                <Select 
+                                    value={crawl4aiConfig.llm_model} 
+                                    onValueChange={(val: 'gpt-4o-mini' | 'gpt-4o') => 
+                                        setCrawl4aiConfig(prev => ({ ...prev, llm_model: val }))
+                                    }
+                                    disabled={crawl4aiConfig.extraction_strategy === 'llm_free'}
+                                >
+                                    <SelectTrigger id="crawl4ai-model" data-testid="config-crawl4ai-model">
+                                        <SelectValue placeholder="Select a model" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                                        <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="flex items-center space-x-2 pt-4">
+                                <Checkbox 
+                                    id="crawl4ai-cache" 
+                                    checked={crawl4aiConfig.cache_enabled}
+                                    onCheckedChange={(checked) => setCrawl4aiConfig(prev => ({ ...prev, cache_enabled: !!checked }))}
+                                    data-testid="config-crawl4ai-cache"
+                                />
+                                <div className="grid gap-1.5 leading-none">
+                                    <label
+                                        htmlFor="crawl4ai-cache"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                        Enable Caching
+                                    </label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Reuse previously scraped content if available.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label htmlFor="crawl4ai-timeout">Timeout (ms)</Label>
+                                <Input 
+                                    id="crawl4ai-timeout"
+                                    type="number" 
+                                    min={5000} 
+                                    max={120000} 
+                                    step={5000}
+                                    value={crawl4aiConfig.timeout}
+                                    onChange={(e) => setCrawl4aiConfig(prev => ({ 
+                                        ...prev, 
+                                        timeout: Math.min(120000, Math.max(5000, parseInt(e.target.value) || 30000)) 
+                                    }))}
+                                    data-testid="config-crawl4ai-timeout"
+                                />
                             </div>
                         </div>
                     </div>
