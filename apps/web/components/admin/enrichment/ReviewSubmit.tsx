@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 interface ReviewSubmitProps {
     selectedSkus: string[];
     method: 'scrapers' | 'discovery' | 'crawl4ai';
-    methodConfig: any;
+    methodConfig: unknown;
     chunkConfig: {
         chunkSize: number;
         maxWorkers: number;
@@ -37,7 +37,7 @@ export function ReviewSubmit({
                 ? { discovery: methodConfig }
                 : method === 'crawl4ai'
                 ? { crawl4ai: methodConfig }
-                : { scrapers: methodConfig.scrapers };
+                : { scrapers: (methodConfig as { scrapers: string[] }).scrapers };
 
             const response = await fetch('/api/admin/enrichment/jobs', {
                 method: 'POST',
@@ -59,9 +59,9 @@ export function ReviewSubmit({
 
             const data = await response.json();
             window.location.href = `/admin/scrapers/runs/${data.jobId}`;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Submit error:', err);
-            setError(err.message || 'An unexpected error occurred while creating the job.');
+            setError((err as Error).message || 'An unexpected error occurred while creating the job.');
             setIsSubmitting(false);
         }
     };
@@ -132,7 +132,7 @@ export function ReviewSubmit({
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">Selected Scrapers:</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {methodConfig.scrapers?.map((scraper: string) => (
+                                        {(methodConfig as { scrapers: string[] }).scrapers?.map((scraper: string) => (
                                             <Badge key={scraper} variant="outline" className="bg-background">
                                                 {scraper}
                                             </Badge>
@@ -143,17 +143,17 @@ export function ReviewSubmit({
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Providers:</span>
-                                        <span className="font-medium">{methodConfig.providers?.join(', ') || 'N/A'}</span>
+                                        <span className="font-medium">{(methodConfig as any).providers?.join(', ') || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Model:</span>
-                                        <span className="font-medium">{methodConfig.model || methodConfig.llm_model || 'N/A'}</span>
+                                        <span className="font-medium">{(methodConfig as any).model || (methodConfig as any).llm_model || 'N/A'}</span>
                                     </div>
-                                    {methodConfig.costEstimate && (
+                                    {(methodConfig as any).costEstimate && (
                                         <div className="mt-4 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
                                             <div className="flex justify-between items-center text-sm font-semibold">
                                                 <span>Estimated Cost:</span>
-                                                <span>${methodConfig.costEstimate}</span>
+                                                <span>${(methodConfig as any).costEstimate}</span>
                                             </div>
                                         </div>
                                     )}
@@ -162,19 +162,19 @@ export function ReviewSubmit({
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Strategy:</span>
-                                        <span className="font-medium uppercase">{methodConfig.extraction_strategy}</span>
+                                        <span className="font-medium uppercase">{(methodConfig as any).extraction_strategy}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Model:</span>
-                                        <span className="font-medium">{methodConfig.llm_model}</span>
+                                        <span className="font-medium">{(methodConfig as any).llm_model}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Caching:</span>
-                                        <span className="font-medium">{methodConfig.cache_enabled ? 'Enabled' : 'Disabled'}</span>
+                                        <span className="font-medium">{(methodConfig as any).cache_enabled ? 'Enabled' : 'Disabled'}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Timeout:</span>
-                                        <span className="font-medium">{methodConfig.timeout}ms</span>
+                                        <span className="font-medium">{(methodConfig as any).timeout}ms</span>
                                     </div>
                                 </div>
                             )}

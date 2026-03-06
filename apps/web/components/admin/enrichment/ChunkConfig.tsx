@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, DollarSign, Server, Settings2, Users } from "lucide-react";
+import { EnrichmentMethod } from "./MethodSelection";
 
 export interface ChunkConfigProps {
-  method: "scrapers" | "discovery";
-  config: any;
+  method: EnrichmentMethod;
+  config: unknown;
   selectedSkus: string[];
   onNext: (data: {
     chunkSize: number;
@@ -40,12 +41,26 @@ export function ChunkConfig({
   const skuCount = selectedSkus.length;
 
   const calculateCostEstimate = () => {
-    if (method !== "discovery") return null;
+    if (method === "scrapers") return null;
 
-    const maxCost = config?.maxDiscoveryCostUsd || 5.0;
-    const estimatedCost = Math.min(skuCount * 0.05, maxCost);
+    if (method === "discovery") {
+      const discoveryConfig = config as { maxDiscoveryCostUsd?: number };
+      const maxCost = discoveryConfig?.maxDiscoveryCostUsd || 5.0;
+      const estimatedCost = Math.min(skuCount * 0.05, maxCost);
+      return estimatedCost;
+    }
 
-    return estimatedCost;
+    if (method === "crawl4ai") {
+      const crawlConfig = config as { extraction_strategy?: string; llm_model?: string };
+      // crawl4ai can be llm-free or llm-based
+      if (crawlConfig?.extraction_strategy === "llm_free") return 0.0;
+      
+      // llm-based extraction is cheaper than discovery because it's usually 1 page
+      const perProductCost = crawlConfig?.llm_model === "gpt-4o" ? 0.02 : 0.005;
+      return skuCount * perProductCost;
+    }
+
+    return null;
   };
 
   const handleNext = () => {
@@ -78,18 +93,19 @@ export function ChunkConfig({
       </CardHeader>
 
       <CardContent className="space-y-8">
-        {method === "discovery" && estimatedCost !== null && (
+        {(method === "discovery" || method === "crawl4ai") && estimatedCost !== null && (
           <Alert className="bg-primary/5 border-primary/20">
             <DollarSign className="h-4 w-4 text-primary" />
             <AlertDescription
               className="font-medium text-primary"
               data-testid="cost-estimate"
             >
-              ~${estimatedCost.toFixed(2)} estimated cost for {skuCount}{" "}
+              ~${estimatedCost.toFixed(3)} estimated cost for {skuCount}{" "}
               products
             </AlertDescription>
           </Alert>
         )}
+
 
         <div className="space-y-6">
           <div className="space-y-4">
