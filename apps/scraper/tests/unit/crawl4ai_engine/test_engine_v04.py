@@ -70,6 +70,26 @@ class TestCrawl4AIEngineV04:
             from crawl4ai import CacheMode
             assert last_call_args.get("cache_mode") == CacheMode.BYPASS
 
+    def test_content_filtering_defaults(self):
+        """Test default content filtering settings."""
+        with (
+            patch("crawl4ai_engine.engine.BrowserConfig"),
+            patch("crawl4ai_engine.engine.CrawlerRunConfig") as mock_run_config,
+        ):
+            from crawl4ai_engine.engine import Crawl4AIEngine
+            engine = Crawl4AIEngine({})
+            _ = engine._build_run_config()
+            
+            assert mock_run_config.call_count >= 1
+            last_call = mock_run_config.call_args
+            assert last_call.kwargs.get("css_selector") is None
+            # Default excluded tags should be present
+            excluded = last_call.kwargs.get("excluded_tags")
+            assert "nav" in excluded
+            assert "footer" in excluded
+            assert "header" in excluded
+            assert last_call.kwargs.get("remove_overlay_elements") is True
+
     def test_domain_session_id_logic(self):
         """Test that domain session ID is correctly extracted."""
         with (
@@ -187,3 +207,53 @@ class TestCrawl4AIEngineV04:
             mock_crawler.arun_many.assert_called_once()
             call_args = mock_crawler.arun_many.call_args
             assert call_args.kwargs.get("concurrency_limit") == 3
+
+    def test_build_fallback_strategy_chain(self):
+        """Test building of extraction strategy fallback chain."""
+        config = {
+            "crawler": {
+                "extraction_chain": {
+                    "css_selectors": {"name": "h1"},
+                    "llm_schema": {"type": "object", "properties": {"name": {"type": "string"}}},
+                }
+            }
+        }
+        
+        with (
+            patch("crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("crawl4ai_engine.engine.BrowserConfig"),
+            patch("crawl4ai_engine.engine.CrawlerRunConfig"),
+            patch("crawl4ai_engine.engine.build_fallback_chain") as mock_build_chain,
+        ):
+            mock_build_chain.return_value = ["strategy1", "strategy2"]
+            
+            from crawl4ai_engine.engine import Crawl4AIEngine
+            engine = Crawl4AIEngine(config)
+            _ = engine._build_run_config()
+            
+            assert mock_build_chain.call_count >= 1
+            kwargs = mock_build_chain.call_args.kwargs
+            assert kwargs.get("css_selectors") == {"name": "h1"}
+            assert "llm_schema" in kwargs
+
+    def test_explicit_extraction_strategy(self):
+        """Test that explicit extraction strategy is used."""
+        mock_strategy = MagicMock()
+        config = {
+            "crawler": {
+                "extraction_strategy": mock_strategy
+            }
+        }
+        
+        with (
+            patch("crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("crawl4ai_engine.engine.BrowserConfig"),
+            patch("crawl4ai_engine.engine.CrawlerRunConfig") as mock_run_config,
+        ):
+            from crawl4ai_engine.engine import Crawl4AIEngine
+            engine = Crawl4AIEngine(config)
+            _ = engine._build_run_config()
+            
+            assert mock_run_config.call_count >= 1
+            last_call = mock_run_config.call_args
+            assert last_call.kwargs.get("extraction_strategy") == mock_strategy
