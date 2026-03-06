@@ -1,9 +1,9 @@
 # Implementation Plan: Scraper Lab UI High-Density Overhaul
 
 ## Phase 1: Scaffolding & High-Density Components
-- [ ] Task: Create high-density table components and sparkline primitives.
-    - [ ] Create `@/components/admin/scrapers/test-lab/results-table.tsx` based on `ResultsPanel`.
-    - [ ] Implement `Sparkline` component for selector/extraction health.
+- [x] Task: Create high-density table components and sparkline primitives. [1141e0d]
+    - [x] Create `@/components/admin/scrapers/test-lab/results-table.tsx` based on `ResultsPanel`.
+    - [x] Implement `Sparkline` component for selector/extraction health.
 - [ ] Task: Design the Sidebar SKU Management layout.
     - [ ] Create `@/components/admin/scrapers/test-lab/sku-sidebar.tsx`.
     - [ ] Refactor `TestSkuPanel` to fit a narrow sidebar format.
