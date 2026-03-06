@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Loader2, X, Radio, Play, CheckCircle2, AlertCircle, Package } from 'lucide-react';
+import { RefreshCw, Loader2, X, Radio, Play, CheckCircle2, AlertCircle, Package, Sparkles } from 'lucide-react';
 import { SourceSelectorPanel } from './SourceSelectorPanel';
 import { EnrichmentDataPreview } from './EnrichmentDataPreview';
 import { ConflictResolutionCard } from './ConflictResolutionCard';
@@ -12,7 +12,7 @@ import { formatCurrency } from '@/lib/utils';
 interface EnrichmentSource {
   id: string;
   displayName: string;
-  type: 'scraper';
+  type: 'scraper' | 'ai_discovery';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -178,46 +178,89 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
 
     setIsRunningEnhancement(true);
     try {
-      // Get selected source IDs (scrapers)
-      const selectedSources = sources
-        .filter((s) => enabledSourceIds.includes(s.id))
+      // Separate selected sources into scrapers and AI discovery
+      const selectedScrapers = sources
+        .filter((s) => s.type === 'scraper' && enabledSourceIds.includes(s.id))
         .map((s) => s.id);
+      const hasAIDiscovery = sources.some(
+        (s) => s.type === 'ai_discovery' && enabledSourceIds.includes(s.id)
+      );
 
       if (isBatchMode && skus) {
-        // Batch mode: use scrapeProducts for all selected SKUs
-        const result = await scrapeProducts(skus, {
-          scrapers: selectedSources,
-        });
+        // Batch mode: dispatch jobs via scrapeProducts
+        const allJobIds: string[] = [];
 
-        if (result.success && result.jobIds && result.jobIds.length > 0) {
-          setEnhancementJobId(result.jobIds[0]);
-          // Trigger run batch callback with job IDs
-          onRunBatch?.(result.jobIds);
-          // Close and trigger save callback
+        // Dispatch scraper job if scrapers are selected
+        if (selectedScrapers.length > 0) {
+          const scraperResult = await scrapeProducts(skus, {
+            scrapers: selectedScrapers,
+            enrichment_method: 'scrapers',
+          });
+          if (scraperResult.success && scraperResult.jobIds) {
+            allJobIds.push(...scraperResult.jobIds);
+          } else {
+            console.error('Failed to start scraper enhancement:', scraperResult.error);
+          }
+        }
+
+        // Dispatch AI discovery job if selected
+        if (hasAIDiscovery) {
+          const discoveryResult = await scrapeProducts(skus, {
+            enrichment_method: 'discovery',
+          });
+          if (discoveryResult.success && discoveryResult.jobIds) {
+            allJobIds.push(...discoveryResult.jobIds);
+          } else {
+            console.error('Failed to start AI discovery enhancement:', discoveryResult.error);
+          }
+        }
+
+        if (allJobIds.length > 0) {
+          setEnhancementJobId(allJobIds[0]);
+          onRunBatch?.(allJobIds);
           onSave?.();
           onClose();
         } else {
-          console.error('Failed to start batch enhancement:', result.error);
+          console.error('Failed to start any enhancement jobs');
           setIsRunningEnhancement(false);
         }
       } else {
-        // Single SKU mode: use per-SKU endpoint
-        const res = await fetch(`/api/admin/enrichment/${effectiveSku}/scrape`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sources: enabledSourceIds }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setEnhancementJobId(data.jobId || 'running');
-          setTimeout(() => {
-            fetchEnrichmentData();
+        // Single SKU mode
+        if (hasAIDiscovery) {
+          // Use scrapeProducts with discovery method for single SKU too
+          const result = await scrapeProducts([effectiveSku], {
+            enrichment_method: 'discovery',
+            scrapers: selectedScrapers.length > 0 ? selectedScrapers : undefined,
+          });
+          if (result.success) {
+            setEnhancementJobId(result.jobIds?.[0] || 'running');
+            setTimeout(() => {
+              fetchEnrichmentData();
+              setIsRunningEnhancement(false);
+              setEnhancementJobId(null);
+            }, 3000);
+          } else {
             setIsRunningEnhancement(false);
-            setEnhancementJobId(null);
-          }, 3000);
+          }
         } else {
-          setIsRunningEnhancement(false);
+          // Standard scraper-only per-SKU endpoint
+          const res = await fetch(`/api/admin/enrichment/${effectiveSku}/scrape`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sources: enabledSourceIds }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            setEnhancementJobId(data.jobId || 'running');
+            setTimeout(() => {
+              fetchEnrichmentData();
+              setIsRunningEnhancement(false);
+              setEnhancementJobId(null);
+            }, 3000);
+          } else {
+            setIsRunningEnhancement(false);
+          }
         }
       }
     } catch (error) {
@@ -291,8 +334,10 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
     );
   }
 
-  const scraperSources = sources;
+  const scraperSources = sources.filter((s) => s.type === 'scraper');
+  const aiDiscoverySources = sources.filter((s) => s.type === 'ai_discovery');
   const enabledScrapers = scraperSources.filter((s) => enabledSourceIds.includes(s.id));
+  const enabledAI = aiDiscoverySources.filter((s) => enabledSourceIds.includes(s.id));
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -450,8 +495,16 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                         <div>
                           <h4 className="font-medium text-blue-900">Ready to Enhance</h4>
                           <p className="text-sm text-blue-700 mt-1">
-                            {enabledScrapers.length} scraper{enabledScrapers.length !== 1 ? 's' : ''} selected.
-                            Click &quot;Run Enhancement&quot; to fetch data.
+                            {enabledScrapers.length > 0 && (
+                              <>{enabledScrapers.length} scraper{enabledScrapers.length !== 1 ? 's' : ''}</>)}
+                            {enabledScrapers.length > 0 && enabledAI.length > 0 && ' + '}
+                            {enabledAI.length > 0 && (
+                              <span className="inline-flex items-center gap-1">
+                                <Sparkles className="inline h-3.5 w-3.5 text-purple-500" />
+                                AI Discovery
+                              </span>
+                            )}
+                            {' '}selected. Click &quot;Run Enhancement&quot; to fetch data.
                           </p>
                         </div>
                       </div>
