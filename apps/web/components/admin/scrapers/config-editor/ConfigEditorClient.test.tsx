@@ -19,7 +19,7 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-const mockConfig: ScraperConfig = {
+const mockConfig: any = {
   schema_version: '1.0',
   name: 'test-scraper',
   base_url: 'https://example.com',

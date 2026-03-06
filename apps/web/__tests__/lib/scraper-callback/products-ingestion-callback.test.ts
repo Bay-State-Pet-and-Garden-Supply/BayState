@@ -61,7 +61,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
         updated_at: nowIso,
       })
     );
-    expect(update.mock.calls[0][0]).toMatchObject({
+    expect((update.mock.calls as any)[0][0]).toMatchObject({
       sources: {
         legacy: { price: 10 },
         amazon: { price: 12 },
