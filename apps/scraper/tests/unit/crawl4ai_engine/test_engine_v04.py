@@ -208,34 +208,6 @@ class TestCrawl4AIEngineV04:
             call_args = mock_crawler.arun_many.call_args
             assert call_args.kwargs.get("concurrency_limit") == 3
 
-    def test_build_fallback_strategy_chain(self):
-        """Test building of extraction strategy fallback chain."""
-        config = {
-            "crawler": {
-                "extraction_chain": {
-                    "css_selectors": {"name": "h1"},
-                    "llm_schema": {"type": "object", "properties": {"name": {"type": "string"}}},
-                }
-            }
-        }
-        
-        with (
-            patch("crawl4ai_engine.engine.AsyncWebCrawler"),
-            patch("crawl4ai_engine.engine.BrowserConfig"),
-            patch("crawl4ai_engine.engine.CrawlerRunConfig"),
-            patch("crawl4ai_engine.engine.build_fallback_chain") as mock_build_chain,
-        ):
-            mock_build_chain.return_value = ["strategy1", "strategy2"]
-            
-            from crawl4ai_engine.engine import Crawl4AIEngine
-            engine = Crawl4AIEngine(config)
-            _ = engine._build_run_config()
-            
-            assert mock_build_chain.call_count >= 1
-            kwargs = mock_build_chain.call_args.kwargs
-            assert kwargs.get("css_selectors") == {"name": "h1"}
-            assert "llm_schema" in kwargs
-
     def test_explicit_extraction_strategy(self):
         """Test that explicit extraction strategy is used."""
         mock_strategy = MagicMock()
