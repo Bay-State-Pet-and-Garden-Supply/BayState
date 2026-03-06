@@ -14,7 +14,7 @@ class BaseAction(ABC):
         self.ctx = ctx
 
     @abstractmethod
-    def execute(self, params: dict[str, Any]) -> Any:
+    async def execute(self, params: dict[str, Any]) -> Any:
         """
         Execute the action with the given parameters.
 

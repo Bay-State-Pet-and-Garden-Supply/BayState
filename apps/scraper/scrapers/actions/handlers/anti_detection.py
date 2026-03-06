@@ -5,8 +5,8 @@ import logging
 import time
 from typing import Any
 
-from actions.base import BaseAction
-from actions.registry import ActionRegistry
+from scrapers.actions.base import BaseAction
+from scrapers.actions.registry import ActionRegistry
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import httpx
 
-from infra.api_client import $$$
+from core.api_client import *
 
 
 class TestScraperAPIClient:

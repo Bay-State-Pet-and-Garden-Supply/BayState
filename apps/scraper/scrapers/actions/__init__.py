@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from __future__ import annotations
 
-from actions.base import BaseAction
+from scrapers.actions.base import BaseAction
 
 # Keep importing handlers to ensure registration (backwards compatible)
 from scrapers.actions.handlers import (
@@ -29,6 +29,6 @@ from scrapers.actions.handlers import (
     weight,
 )
 
-from actions.registry import ActionRegistry
+from scrapers.actions.registry import ActionRegistry
 
 __all__ = ["ActionRegistry", "BaseAction"]

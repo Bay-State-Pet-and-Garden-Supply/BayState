@@ -720,7 +720,7 @@ def create_scraper_cache(
         Configured ScraperCache instance
     """
     if cache_dir is None:
-        from infra.settings_manager import $$$
+        from core.settings_manager import PROJECT_ROOT
 
         cache_dir = Path(PROJECT_ROOT) / "data" / "cache"
 

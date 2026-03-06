@@ -7,7 +7,7 @@ that mimic cloud storage APIs for testing.
 from __future__ import annotations
 
 
-from infra.settings_manager import $$$
+from core.settings_manager import *
 
 from .dataset import LocalDataset
 from .key_value_store import LocalKeyValueStore

@@ -20,10 +20,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, TypeVar
 
-from infra.adaptive_retry_strategy import $$$
-from infra.adaptive_retry_strategy import $$$
-from infra.failure_analytics import $$$
-from infra.failure_classifier import $$$
+from core.adaptive_retry_strategy import *
+from core.failure_analytics import *
+from core.failure_classifier import *
 
 # Import directly from exceptions module to avoid circular import
 # (scrapers.__init__ -> executor -> retry_executor -> scrapers.exceptions)

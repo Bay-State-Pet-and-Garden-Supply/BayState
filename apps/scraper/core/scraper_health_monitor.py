@@ -22,10 +22,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from infra.failure_analytics import $$$
-from infra.failure_classifier import $$$
-from infra.api_client import $$$
-from infra.settings_manager import $$$
+from core.failure_analytics import *
+from core.failure_classifier import *
+from core.api_client import *
+from core.settings_manager import *
 
 logger = logging.getLogger(__name__)
 
@@ -492,7 +492,7 @@ class ScraperHealthMonitor:
         Get comprehensive statistics for all scrapers.
         Used by ReportGenerator.
         """
-        from infra.failure_analytics import $$$
+        from core.failure_analytics import get_failure_analytics
 
         analytics = get_failure_analytics()
         metrics = analytics.get_all_site_metrics()

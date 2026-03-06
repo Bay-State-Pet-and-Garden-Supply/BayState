@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from infra.api_client import $$$
+from core.api_client import *
 from utils.testing.scraper_validator import ScraperValidator
 
 from .scraper_testing_client import ScraperTestingClient, TestingMode

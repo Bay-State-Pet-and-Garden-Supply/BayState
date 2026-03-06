@@ -39,7 +39,7 @@ from playwright.sync_api import (
 from playwright.sync_api import (
     sync_playwright,
 )
-from playwright_stealth import Stealth
+from playwright_stealth import stealth
 
 
 class PlaywrightScraperBrowser:
@@ -76,7 +76,6 @@ class PlaywrightScraperBrowser:
         self.context: BrowserContext | None = None
         self.page: Page | None = None
         self._last_response: Response | None = None
-        self._stealth = Stealth()
 
     async def initialize(self) -> None:
         """Async initialization of Playwright resources."""

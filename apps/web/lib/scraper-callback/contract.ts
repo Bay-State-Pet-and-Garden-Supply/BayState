@@ -238,7 +238,7 @@ function parseCallbackBody<T>(bodyText: string, schema: ZodSchema<T>): CallbackV
         }
 
         return { success: true, payload: result.data };
-    } catch (error) {
+    } catch {
         return {
             success: false,
             error: {

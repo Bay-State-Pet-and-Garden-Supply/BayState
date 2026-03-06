@@ -74,7 +74,7 @@ export async function persistProductsIngestionSourcesStrict(
     throw new MissingProductsIngestionSkusError(missingSkus);
   }
 
-  for (const sku of skus) {
+  const updateRows = skus.map((sku) => {
     const scrapedData = skuData[sku];
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
@@ -83,22 +83,21 @@ export async function persistProductsIngestionSourcesStrict(
       _last_scraped: nowIso,
     };
 
-    // Only mark as 'scraped' if there's meaningful scraped data; otherwise keep current status
-    const statusUpdate = hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {};
+    return {
+      sku,
+      sources: updatedSources,
+      is_test_run: isTestJob,
+      updated_at: nowIso,
+      ...(hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {}),
+    };
+  });
 
-    const { error: updateError } = await supabase
-      .from('products_ingestion')
-      .update({
-        sources: updatedSources,
-        is_test_run: isTestJob,
-        updated_at: nowIso,
-        ...statusUpdate,
-      })
-      .eq('sku', sku);
+  const { error: updateError } = await supabase
+    .from('products_ingestion')
+    .upsert(updateRows, { onConflict: 'sku' });
 
-    if (updateError) {
-      throw new Error(`Failed to update SKU ${sku}: ${updateError.message}`);
-    }
+  if (updateError) {
+    throw new Error(`Bulk update failed: ${updateError.message}`);
   }
 
   return skus;
@@ -122,7 +121,7 @@ export async function persistProductsIngestionSourcesPartial(
   const existingSourcesBySku = await loadProductsIngestionSourcesBySku(supabase, skus);
 
   const missing = skus.filter((sku) => !existingSourcesBySku.has(sku));
-  const toUpdate = skus.filter((sku) => existingSourcesBySku.has(sku));
+  const toUpdateSkus = skus.filter((sku) => existingSourcesBySku.has(sku));
 
   if (missing.length > 0) {
     console.warn(
@@ -130,8 +129,11 @@ export async function persistProductsIngestionSourcesPartial(
     );
   }
 
-  const persisted: string[] = [];
-  for (const sku of toUpdate) {
+  if (toUpdateSkus.length === 0) {
+    return { persisted: [], missing };
+  }
+
+  const updateRows = toUpdateSkus.map((sku) => {
     const scrapedData = skuData[sku];
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
@@ -140,26 +142,24 @@ export async function persistProductsIngestionSourcesPartial(
       _last_scraped: nowIso,
     };
 
-    // Only mark as 'scraped' if there's meaningful scraped data; otherwise keep current status
-    const statusUpdate = hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {};
+    return {
+      sku,
+      sources: updatedSources,
+      is_test_run: isTestJob,
+      updated_at: nowIso,
+      ...(hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {}),
+    };
+  });
 
-    const { error: updateError } = await supabase
-      .from('products_ingestion')
-      .update({
-        sources: updatedSources,
-        is_test_run: isTestJob,
-        updated_at: nowIso,
-        ...statusUpdate,
-      })
-      .eq('sku', sku);
+  const { error: updateError } = await supabase
+    .from('products_ingestion')
+    .upsert(updateRows, { onConflict: 'sku' });
 
-    if (updateError) {
-      console.error(`[Products Ingestion] Failed to update SKU ${sku}: ${updateError.message}`);
-      continue;
-    }
-
-    persisted.push(sku);
+  if (updateError) {
+    console.error(`[Products Ingestion] Bulk update failed: ${updateError.message}`);
+    // Fallback or rethrow depending on desired resilience. For now, we report as total failure for this batch.
+    return { persisted: [], missing: [...missing, ...toUpdateSkus] };
   }
 
-  return { persisted, missing };
+  return { persisted: toUpdateSkus, missing };
 }
