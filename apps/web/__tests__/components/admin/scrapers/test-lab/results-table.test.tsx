@@ -87,4 +87,32 @@ describe('ResultsTable', () => {
     expect(screen.getByText('TEST-SKU-1')).toBeInTheDocument();
     expect(screen.queryByText('TEST-SKU-2')).not.toBeInTheDocument();
   });
+
+  it('maps telemetry selectors to sparkline data', () => {
+    const customResults: SkuResult[] = [
+      {
+        sku: 'SPARK-SKU',
+        status: 'success',
+        telemetry: {
+          selectors: [
+            { selector_name: 's1', selector_value: 'v1', status: 'FOUND' },
+            { selector_name: 's2', selector_value: 'v2', status: 'ERROR' },
+            { selector_name: 's3', selector_value: 'v3', status: 'FOUND' },
+          ],
+          extractions: []
+        }
+      }
+    ];
+    
+    render(<ResultsTable results={customResults} />);
+    
+    const sparkline = screen.getByTestId('sparkline');
+    expect(sparkline).toBeInTheDocument();
+    
+    const polyline = sparkline.querySelector('polyline');
+    expect(polyline).toHaveAttribute('points');
+    const points = polyline?.getAttribute('points');
+    // FOUND -> 1, ERROR -> 0
+    expect(points).toBe('0,0 30,20 60,0');
+  });
 });
