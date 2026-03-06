@@ -11,16 +11,19 @@ import {
   aiSearchParamsSchema,
   aiExtractParamsSchema,
   aiValidateParamsSchema,
+  SchemaVersion,
+  NormalizationRule,
+  AIConfig,
 } from './schema';
 
 export interface ScraperConfig {
   id?: string;
   slug?: string;
-  display_name?: string | null;
+  display_name?: string;
   domain?: string | null;
-  base_url?: string | null;
+  base_url: string;
   scraper_type?: 'static' | 'agentic';
-  schema_version?: string;
+  schema_version: SchemaVersion;
   status?: 'draft' | 'active' | 'disabled' | 'archived';
   health_status?: 'healthy' | 'degraded' | 'broken' | 'unknown';
   health_score?: number;
@@ -30,10 +33,10 @@ export interface ScraperConfig {
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
-  name?: string;
+  name: string;
   selectors?: SelectorConfig[];
   workflows?: WorkflowStep[];
-  normalization?: Record<string, unknown>[];
+  normalization?: NormalizationRule[];
   login?: Record<string, unknown>;
   timeout?: number;
   retries?: number;
@@ -44,7 +47,7 @@ export interface ScraperConfig {
   test_skus?: string[];
   fake_skus?: string[];
   edge_case_skus?: string[];
-  ai_config?: Record<string, unknown>;
+  ai_config?: AIConfig;
 }
 
 export interface ScraperConfigVersion {
@@ -96,7 +99,7 @@ export interface ScraperTestSku {
   config_id: string;
   sku: string;
   sku_type: 'test' | 'fake' | 'edge_case';
-  added_by: string | null;
+  added_by?: string | null;
   created_at: string;
 }
 
@@ -138,6 +141,20 @@ export type ScraperStatus = 'draft' | 'active' | 'disabled' | 'archived';
 export type HealthStatus = 'healthy' | 'degraded' | 'broken' | 'unknown';
 export type TestRunStatus = 'pending' | 'running' | 'passed' | 'failed' | 'partial' | 'cancelled';
 export type TestType = 'manual' | 'scheduled' | 'health_check' | 'validation';
+
+export interface TestRunStep {
+  id: string;
+  test_run_id: string; // Map to job_id or chunk_id
+  step_index: number;
+  action_type: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  started_at: string | null;
+  completed_at: string | null;
+  duration_ms: number | null;
+  error_message: string | null;
+  extracted_data: Record<string, unknown> | null;
+  created_at: string;
+}
 
 export interface ActionParamDefinition {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'selector';

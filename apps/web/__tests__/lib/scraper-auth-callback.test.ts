@@ -203,7 +203,7 @@ describe('scraper-callback-auth', () => {
         it('returns null for invalid key regardless of environment', async () => {
             // Test with NODE_ENV = development
             const prevNodeEnv = process.env.NODE_ENV;
-            process.env.NODE_ENV = 'development';
+            (process.env as any).NODE_ENV = 'development';
 
             const result = await validateRunnerAuth({
                 apiKey: 'invalid-key',
@@ -212,7 +212,7 @@ describe('scraper-callback-auth', () => {
             expect(result).toBeNull();
 
             // Test with NODE_ENV = production
-            process.env.NODE_ENV = 'production';
+            (process.env as any).NODE_ENV = 'production';
 
             const resultProd = await validateRunnerAuth({
                 apiKey: 'invalid-key',
@@ -220,7 +220,7 @@ describe('scraper-callback-auth', () => {
 
             expect(resultProd).toBeNull();
 
-            process.env.NODE_ENV = prevNodeEnv;
+            (process.env as any).NODE_ENV = prevNodeEnv;
         });
 
         it('validates key format before checking database', async () => {

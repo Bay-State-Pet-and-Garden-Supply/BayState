@@ -89,7 +89,7 @@ describe('PipelineClient Integration', () => {
             <PipelineClient
                 initialProducts={mockProducts as any}
                 initialCounts={mockCounts as any}
-                initialStatus="staging"
+                initialTab="staging"
                 initialFilteredCount={1}
             />
         );

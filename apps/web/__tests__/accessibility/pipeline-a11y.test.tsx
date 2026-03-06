@@ -45,6 +45,7 @@ describe('Pipeline Accessibility', () => {
       );
       
       const results = await axe(container);
+      // @ts-ignore
       expect(results).toHaveNoViolations();
     });
 
@@ -73,27 +74,27 @@ describe('Pipeline Accessibility', () => {
       const { container } = render(
         <>
             <PipelineStatusTabs
-            counts={mockCounts as any}
-            activeStatus="staging"
-            onStatusChange={() => {}}
+              counts={mockCounts as any}
+              activeTab="staging"
+              onTabChange={() => {}}
             />
             <div id="main-content">Content</div>
         </>
       );
 
       const results = await axe(container);
+      // @ts-ignore
       expect(results).toHaveNoViolations();
     });
 
     it('should use correct ARIA roles', () => {
       render(
-        <PipelineStatusTabs
-          counts={mockCounts as any}
-          activeStatus="staging"
-          onStatusChange={() => {}}
-        />
+          <PipelineStatusTabs
+            counts={mockCounts as any}
+            activeTab="staging"
+            onTabChange={() => {}}
+          />
       );
-
       const tablist = screen.getByRole('tablist');
       expect(tablist).toBeInTheDocument();
 
@@ -129,6 +130,7 @@ describe('Pipeline Accessibility', () => {
         await screen.findByText('Edit Product');
 
         const results = await axe(container);
+        // @ts-ignore
         expect(results).toHaveNoViolations();
         
         const dialog = screen.getByRole('dialog');
