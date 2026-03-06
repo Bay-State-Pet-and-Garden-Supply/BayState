@@ -178,8 +178,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
     const supabase = await createClient();
 
     // Use a single query to get all counts at once
-    // We fetch all pipeline_status values and count them in JavaScript
-    // This is more efficient than 5 separate count queries
+    // We fetch ONLY the pipeline_status column to minimize data transfer
     const { data, error } = await supabase
         .from('products_ingestion')
         .select('pipeline_status');

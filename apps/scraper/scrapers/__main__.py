@@ -15,14 +15,14 @@ import os
 import sys
 from typing import Any
 
-from infra.api_client import $$$
+from core.api_client import *
 
 # Ensure project root is in path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from infra.settings_manager import $$$
+from core.settings_manager import *
 
 
 def _normalize_scraper_identifier(value: str) -> str:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from actions.base import BaseAction
+from scrapers.actions.base import BaseAction
 
 import importlib
 import pkgutil

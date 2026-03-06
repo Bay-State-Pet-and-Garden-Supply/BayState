@@ -18,26 +18,19 @@ import threading
 import time
 from typing import Any, cast
 
-from infra.adaptive_retry_strategy import $$$
-from infra.anti_detection_manager import $$$
-from infra.failure_analytics import $$$
-from infra.failure_classifier import $$$
-from infra.retry_executor import $$$
-from infra.settings_manager import $$$
+from core.adaptive_retry_strategy import AdaptiveRetryStrategy
+from core.anti_detection_manager import AntiDetectionManager
+from core.failure_analytics import FailureAnalytics
+from core.failure_classifier import FailureClassifier
+from core.retry_executor import RetryExecutor
+from core.settings_manager import SettingsManager
 
 import importlib
 
-# Resolve ActionRegistry from either new or old package locations using importlib
-def _resolve_action_registry():
-    for mod_name in ("apps.scraper.actions", "actions", "scrapers.actions"):
-        try:
-            mod = importlib.import_module(mod_name)
-            return getattr(mod, "ActionRegistry")
-        except Exception:
-            continue
-    raise ImportError("Could not import ActionRegistry from known locations")
-
-ActionRegistry = _resolve_action_registry()
+try:
+    from scrapers.actions.registry import ActionRegistry
+except ImportError:
+    from scrapers.actions.registry import ActionRegistry
 from scrapers.exceptions import (
     BrowserError,
     CircuitBreakerOpenError,

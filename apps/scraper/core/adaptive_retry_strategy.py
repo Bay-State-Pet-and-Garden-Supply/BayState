@@ -18,7 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from infra.failure_classifier import $$$
+from core.failure_classifier import *
 
 logger = logging.getLogger(__name__)
 

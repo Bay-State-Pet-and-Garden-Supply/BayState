@@ -20,8 +20,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from infra.memory_manager import $$$
-from infra.performance_profiler import $$$
+from core.memory_manager import *
+from core.performance_profiler import *
 
 logger = logging.getLogger(__name__)
 
