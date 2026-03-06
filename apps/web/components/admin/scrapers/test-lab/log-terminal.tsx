@@ -22,6 +22,9 @@ interface LogTerminalProps {
   logs: ScrapeJobLog[];
   isConnected: boolean;
   onClearLogs?: () => void;
+  isCollapsed?: boolean;
+  onCollapse?: () => void;
+  onExpand?: () => void;
 }
 
 const logLevelConfig = {
@@ -82,11 +85,34 @@ function LogEntryLine({ log }: { log: ScrapeJobLog }) {
   );
 }
 
-export function LogTerminal({ logs, isConnected, onClearLogs }: LogTerminalProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+export function LogTerminal({ 
+  logs, 
+  isConnected, 
+  onClearLogs,
+  isCollapsed: controlledIsCollapsed,
+  onCollapse,
+  onExpand
+}: LogTerminalProps) {
+  const [isExpanded, setIsExpanded] = useState(!controlledIsCollapsed);
   const [filter, setFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (controlledIsCollapsed !== undefined) {
+      setIsExpanded(!controlledIsCollapsed);
+    }
+  }, [controlledIsCollapsed]);
+
+  const handleExpand = () => {
+    setIsExpanded(true);
+    onExpand?.();
+  };
+
+  const handleCollapse = () => {
+    setIsExpanded(false);
+    onCollapse?.();
+  };
 
   useEffect(() => {
     if (isExpanded && logContainerRef.current) {
@@ -129,7 +155,7 @@ export function LogTerminal({ logs, isConnected, onClearLogs }: LogTerminalProps
             <Badge variant="outline" className="text-muted-foreground text-[10px] h-5 px-1.5 ml-2">Offline</Badge>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setIsExpanded(true)} className="h-6 w-6 p-0 hover:bg-gray-800">
+        <Button variant="ghost" size="sm" onClick={handleExpand} className="h-6 w-6 p-0 hover:bg-gray-800">
           <ChevronUp className="h-4 w-4" />
           <span className="sr-only">Expand</span>
         </Button>
@@ -216,7 +242,7 @@ export function LogTerminal({ logs, isConnected, onClearLogs }: LogTerminalProps
             </Button>
           )}
 
-          <Button variant="ghost" size="sm" onClick={() => setIsExpanded(false)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-800">
+          <Button variant="ghost" size="sm" onClick={handleCollapse} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-800">
             <ChevronDown className="h-4 w-4" />
             <span className="sr-only">Collapse</span>
           </Button>
