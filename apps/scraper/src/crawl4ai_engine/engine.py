@@ -5,7 +5,6 @@ import logging
 from urllib.parse import urlparse
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-from .strategies import build_fallback_chain
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +13,7 @@ class Crawl4AIEngine:
     """Async context manager for Crawl4AI web scraping.
 
     Matches existing executor interface patterns in the scraper framework.
+    AI/Agentic features are deprecated for static scrapers.
     """
 
     def __init__(self, config: dict[str, Any]) -> None:
@@ -60,17 +60,8 @@ class Crawl4AIEngine:
             logger.warning(f"Invalid cache mode '{cache_mode_str}', defaulting to ENABLED")
             cache_mode = CacheMode.ENABLED
 
-        # Build extraction strategy if extraction_chain is provided
+        # Extraction strategy handling - exclusively static for the engine
         extraction_strategy = run_settings.get("extraction_strategy")
-        extraction_chain_config = run_settings.get("extraction_chain")
-        
-        if extraction_chain_config:
-            chain = build_fallback_chain(**extraction_chain_config)
-            if chain:
-                # If we have a chain, we use the first one as primary
-                # crawl4ai v0.4+ usually handles complex strategies internally if configured
-                # For now, we take the first available strategy in the chain
-                extraction_strategy = chain[0]
 
         return CrawlerRunConfig(
             # v0.4+ advanced features
@@ -157,7 +148,6 @@ class Crawl4AIEngine:
         concurrency_limit = run_settings.get("concurrency_limit", 3)
         global_session_id = run_settings.get("session_id")
 
-        # If we have a global session ID, use it for all
         if global_session_id:
             results = await self._crawler.arun_many(
                 urls=urls,
@@ -165,7 +155,6 @@ class Crawl4AIEngine:
                 concurrency_limit=concurrency_limit
             )
         else:
-            # Otherwise, use domain-persistent session IDs for each URL
             configs = [
                 self._build_run_config(session_id=self._get_domain_session_id(url))
                 for url in urls

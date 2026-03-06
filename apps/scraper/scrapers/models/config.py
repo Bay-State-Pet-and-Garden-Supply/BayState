@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Literal, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# Avoid importing AntiDetectionConfig here to prevent import resolution errors
-# during static analysis. Use Any for the field type to preserve runtime
-# flexibility and backward compatibility.
-
+# Scraper configuration models.
+# AI/Agentic features are deprecated for static scrapers and reserved for the Discovery agent.
 
 KNOWN_SCHEMA_VERSIONS = {"1.0"}
 
@@ -75,37 +73,6 @@ class NormalizationRule(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict, description="Parameters for the action")
 
 
-class AIConfig(BaseModel):
-    """Configuration for AI-powered scrapers.
-
-    Used when scraper_type is 'agentic' to configure
-    crawl4ai-backed extraction behavior.
-    """
-
-    provider: str = Field(default="crawl4ai", description="AI provider to use")
-    tool: str | None = Field(default=None, description="Legacy alias for provider")
-    task: str = Field(description="Natural language task for the AI agent")
-    max_steps: int = Field(default=10, description="Maximum steps before timeout", ge=1, le=50)
-    confidence_threshold: float = Field(default=0.7, description="Minimum confidence score for acceptance", ge=0.0, le=1.0)
-    llm_model: str = Field(default="gpt-4o-mini", description="OpenAI model to use")
-    use_vision: bool = Field(default=True, description="Enable GPT-4 Vision for better extraction")
-    headless: bool = Field(default=True, description="Run browser in headless mode")
-
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_provider_alias(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        normalized = dict(data)
-        provider = normalized.get("provider")
-        tool = normalized.get("tool")
-        if not provider and isinstance(tool, str) and tool.strip():
-            normalized["provider"] = tool.strip()
-        if not normalized.get("provider"):
-            normalized["provider"] = "crawl4ai"
-        return normalized
-
-
 class ScraperConfig(BaseModel):
     """Main configuration for a scraper."""
 
@@ -127,8 +94,7 @@ class ScraperConfig(BaseModel):
     name: str = Field(..., description="Name of the scraper")
     base_url: str = Field(..., description="Base URL for the scraper")
     display_name: str | None = Field(None, description="Display name for UI")
-    scraper_type: Literal["static", "agentic"] = Field(default="static", description="Type of scraper: static (CSS selectors) or agentic (AI-powered)")
-    ai_config: AIConfig | None = Field(default=None, description="AI configuration when scraper_type is 'agentic'")
+    scraper_type: Literal["static"] = Field(default="static", description="Type of scraper: exclusively static (CSS selectors)")
     selectors: list[SelectorConfig] = Field(default_factory=list, description="List of selectors for data extraction")
     workflows: list[WorkflowStep] = Field(default_factory=list, description="List of workflow steps")
     normalization: list[NormalizationRule] | None = Field(None, description="List of normalization rules")
@@ -139,49 +105,8 @@ class ScraperConfig(BaseModel):
     http_status: HttpStatusConfig | None = Field(None, description="HTTP status monitoring configuration")
     validation: ValidationConfig | None = Field(None, description="Data validation and no-results configuration")
 
-class ProxyConfig(BaseModel):
-    """Optional proxy configuration for scraper runtime.
-
-    All fields are optional to allow partial configs where only a proxy list
-    or single proxy URL is provided.
-    """
-
-    proxy_url: str | None = Field(None, description="Single proxy URL (http://host:port or https://host:port)")
-    proxy_username: str | None = Field(None, description="Username for proxy auth if required")
-    proxy_password: str | None = Field(None, description="Password for proxy auth if required")
-    rotation_strategy: Literal["per_request", "per_site", "off"] = Field("off", description="Strategy for rotating proxies")
-    proxy_list: Optional[List[str]] = Field(None, description="Optional list of proxy URLs to rotate through")
-
-    @field_validator("proxy_url")
-    @classmethod
-    def validate_proxy_url(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if not (v.startswith("http://") or v.startswith("https://")):
-            raise ValueError("proxy_url must start with 'http://' or 'https://'")
-        return v
-
-    @field_validator("proxy_list")
-    @classmethod
-    def validate_proxy_list(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        if v is None:
-            return v
-        if not isinstance(v, list):
-            raise ValueError("proxy_list must be a list of proxy URL strings")
-        for item in v:
-            if not (isinstance(item, str) and (item.startswith("http://") or item.startswith("https://"))):
-                raise ValueError("each proxy in proxy_list must be a URL starting with 'http://' or 'https://'")
-        return v
-
-
-class ScraperConfig(BaseModel):
-    # Optional proxy configuration for outbound requests and Playwright
     class ProxyConfig(BaseModel):
-        """Optional proxy configuration for scraper runtime.
-
-        All fields are optional to allow partial configs where only a proxy list
-        or single proxy URL is provided.
-        """
+        """Optional proxy configuration for scraper runtime."""
 
         proxy_url: str | None = Field(None, description="Single proxy URL (http://host:port or https://host:port)")
         proxy_username: str | None = Field(None, description="Username for proxy auth if required")
@@ -217,23 +142,16 @@ class ScraperConfig(BaseModel):
     image_quality: int = Field(50, description="Quality score for images (0-100)", ge=0, le=100)
 
     def requires_login(self) -> bool:
-        """Check if this scraper requires authentication/login.
-
-        Returns:
-            True if login is required, False otherwise
-        """
-        # Check if login config is explicitly defined
+        """Check if this scraper requires authentication/login."""
         if self.login is not None:
             return True
 
-        # Check workflow steps for login-related actions
         login_keywords = {"login", "authenticate", "sign_in", "signin", "password", "username"}
         for step in self.workflows:
             action_lower = step.action.lower()
             if any(keyword in action_lower for keyword in login_keywords):
                 return True
 
-            # Check params for credential-related fields
             if step.params:
                 param_str = str(step.params).lower()
                 if any(keyword in param_str for keyword in login_keywords):

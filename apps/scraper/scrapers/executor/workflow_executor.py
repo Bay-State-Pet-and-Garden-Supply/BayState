@@ -21,11 +21,9 @@ from typing import Any, cast
 from core.adaptive_retry_strategy import AdaptiveRetryStrategy
 from core.anti_detection_manager import AntiDetectionManager
 from core.failure_analytics import FailureAnalytics
-from core.failure_classifier import FailureClassifier
-from core.retry_executor import RetryExecutor
+from core.failure_classifier import FailureClassifier, FailureType
+from core.retry_executor import RetryExecutor, CircuitBreakerConfig
 from core.settings_manager import SettingsManager
-
-import importlib
 
 try:
     from scrapers.actions.registry import ActionRegistry
@@ -52,9 +50,15 @@ from scrapers.executor.step_executor import StepExecutor
 
 logger = logging.getLogger(__name__)
 
+# Constants
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 class WorkflowExecutor:
-    """Executes scraper workflows defined in YAML configurations using Playwright."""
+    """Executes scraper workflows defined in YAML configurations using Playwright.
+    
+    AI/Agentic features are deprecated for static scrapers. 
+    Use AIDiscoveryScraper for AI-powered tasks.
+    """
 
     def __init__(
         self,
@@ -92,19 +96,9 @@ class WorkflowExecutor:
         self.event_emitter = event_emitter
         self.debug_callback = debug_callback
         self.settings = SettingsManager()
-        self.scraper_type = getattr(config, "scraper_type", "static")
+        self.scraper_type = "static" # Force static type
 
-        # AI-specific execution context shared across agentic steps
-        self.ai_context: dict[str, Any] = {
-            "scraper_type": self.scraper_type,
-            "config_name": config.name,
-            "provider": self._resolve_ai_provider(config),
-            "tool": getattr(getattr(config, "ai_config", None), "tool", None),
-            "llm_model": getattr(getattr(config, "ai_config", None), "llm_model", "gpt-4o-mini"),
-        }
-        self.ai_browser: Any = None
-
-        # Determine if running in CI environment (must be set before timeout logic)
+        # Determine if running in CI environment
         self.is_ci: bool = os.getenv("CI") == "true"
 
         self.timeout = timeout or config.timeout
@@ -143,9 +137,9 @@ class WorkflowExecutor:
 
         # Initialize retry executor with circuit breaker
         circuit_config = CircuitBreakerConfig(
-            failure_threshold=5,  # Open circuit after 5 consecutive failures
-            success_threshold=2,  # Close after 2 successes
-            timeout_seconds=60.0,  # Try again after 60s
+            failure_threshold=5,
+            success_threshold=2,
+            timeout_seconds=60.0,
         )
         self.retry_executor = RetryExecutor(
             adaptive_strategy=self.adaptive_retry_strategy,
@@ -181,44 +175,20 @@ class WorkflowExecutor:
 
     async def initialize(self) -> None:
         """Initialize the browser and all extracted modules asynchronously."""
-        # Initialize browser
         try:
             import uuid
-
-            # Use random UUID for profile path to ensure isolation (Old Setup)
-            # This prevents locking issues at the cost of no persistence
             profile_suffix = f"workflow_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
-            backend = "playwright"
+            from utils.scraping.playwright_browser import create_playwright_browser
+            logger.info(f"Initializing Playwright browser for scraper: {self.config.name}")
+            self.browser = await create_playwright_browser(
+                site_name=self.config.name,
+                headless=self.headless,
+                profile_suffix=profile_suffix,
+                timeout=self.timeout,
+            )
 
-            if backend == "playwright":
-                from utils.scraping.playwright_browser import (
-                    create_playwright_browser,
-                )
-
-                logger.info(f"Initializing Playwright browser for scraper: {self.config.name}")
-                self.browser = await create_playwright_browser(
-                    site_name=self.config.name,
-                    headless=self.headless,
-                    profile_suffix=profile_suffix,
-                    timeout=self.timeout,
-                )
-            else:
-                raise BrowserError("Unsupported browser backend.")
-
-            logger.info(f"Browser initialized for scraper: {self.config.name} (Backend: {backend})")
-
-            if self.scraper_type == "agentic":
-                ai_headless = self.headless
-                if self.config.ai_config and self.config.ai_config.headless is not None:
-                    ai_headless = self.config.ai_config.headless
-                self.ai_context["browser_initialized"] = False
-                self.ai_context["browser_headless"] = ai_headless
-                logger.info(
-                    "Agentic scraper initialized with provider=%s (shared Playwright browser only): %s",
-                    self.ai_context.get("provider"),
-                    self.config.name,
-                )
+            logger.info(f"Browser initialized for scraper: {self.config.name}")
 
         except Exception as e:
             logger.error(f"Failed to initialize browser: {e}")
@@ -241,21 +211,14 @@ class WorkflowExecutor:
 
     def _init_extracted_modules(self) -> None:
         """Initialize all extracted module instances."""
-        # Selector resolver (for element finding and value extraction)
         self.selector_resolver = SelectorResolver(self.browser)
-
-        # Debug artifact capture
         self.debug_capture = DebugArtifactCapture(
             job_id=self.job_id,
             scraper_name=self.config.name,
             debug_mode=self.debug_mode,
             debug_callback=self.debug_callback,
         )
-
-        # Normalization engine
         self.normalization_engine = NormalizationEngine()
-
-        # Step executor - pass self as context for action ScraperContext protocol
         self.step_executor = StepExecutor(
             config_name=self.config.name,
             browser=self.browser,
@@ -277,14 +240,9 @@ class WorkflowExecutor:
         """Register recovery handlers for different failure types."""
         import asyncio
 
-        # CAPTCHA recovery handler
         async def handle_captcha(context: ErrorContext) -> bool:
-            """Attempt to handle CAPTCHA detection."""
             logger.info("Attempting CAPTCHA recovery...")
-            # For now, just wait and hope it resolves
-            # In the future, integrate with CAPTCHA solving service
             await asyncio.sleep(5)
-            # Try refreshing the page
             try:
                 self.browser.page.reload()
                 await asyncio.sleep(2)
@@ -293,20 +251,15 @@ class WorkflowExecutor:
                 logger.warning(f"CAPTCHA recovery failed: {e}")
                 return False
 
-        # Rate limit recovery handler
         async def handle_rate_limit(context: ErrorContext) -> bool:
-            """Handle rate limiting by waiting."""
             logger.info("Handling rate limit - waiting 30 seconds...")
             await asyncio.sleep(30)
             return True
 
-        # Access denied recovery handler
         async def handle_access_denied(context: ErrorContext) -> bool:
-            """Handle access denied by rotating session."""
             logger.info("Attempting session rotation for access denied...")
             if self.anti_detection_manager:
                 try:
-                    # Clear cookies and rotate user agent
                     self.browser.context.clear_cookies()
                     await asyncio.sleep(2)
                     return True
@@ -314,101 +267,38 @@ class WorkflowExecutor:
                     logger.warning(f"Session rotation failed: {e}")
             return False
 
-        # Register handlers
         retry_executor = cast(Any, self.retry_executor)
         retry_executor.register_recovery_handler(FailureType.CAPTCHA_DETECTED, handle_captcha)
         retry_executor.register_recovery_handler(FailureType.RATE_LIMITED, handle_rate_limit)
         retry_executor.register_recovery_handler(FailureType.ACCESS_DENIED, handle_access_denied)
 
     async def execute_workflow(self, context: dict[str, Any] | None = None, quit_browser: bool = True) -> dict[str, Any]:
-        """
-        Execute the complete workflow defined in the configuration.
-
-        Args:
-            context: Dictionary of context variables (e.g. {'sku': '123'})
-            quit_browser: Whether to quit the browser after execution
-
-        Returns:
-            Dict containing execution results and extracted data
-
-        Raises:
-            WorkflowExecutionError: If workflow execution fails critically
-        """
+        """Execute the complete workflow defined in the configuration."""
         try:
             total_steps = len(self.config.workflows)
             logger.info(f"Starting workflow execution for: {self.config.name} ({total_steps} steps)")
 
-            if total_steps == 0:
-                logger.warning(f"No workflow steps defined for {self.config.name} - config may be incomplete")
-
-            self.results = {}  # Reset results for new run
-            self.workflow_stopped = False  # Reset stop flag for new run
-            self.step_errors = []  # Reset error tracking
+            self.results = {}
+            self.workflow_stopped = False
+            self.step_errors = []
             self.current_step_index = 0
 
-            # Check for cancellation at start
             if self.stop_event and self.stop_event.is_set():
-                logger.warning(f"Workflow execution cancelled before starting for: {self.config.name}")
                 raise WorkflowExecutionError("Workflow cancelled", context=ErrorContext(site_name=self.config.name))
 
-            # Merge context into results so they are available
             if context:
-                self.context = context  # Update instance context
+                self.context = context
                 self.results.update(context)
-                logger.debug(f"Workflow context: {context}")
 
             for i, step in enumerate(self.config.workflows, 1):
                 self.current_step_index = i
-
                 if self.workflow_stopped:
-                    logger.info("Workflow stopped due to condition, skipping remaining steps.")
                     break
 
-                logger.info(f"Step {i}/{total_steps}: Executing {step.action}")
-                logger.debug(f"Step {i} params: {step.params}")
+                await self._execute_step_with_retry(step, context, step_index=i)
+                if self.workflow_stopped:
+                    break
 
-                try:
-                    await self._execute_step_with_retry(step, context, step_index=i)
-                    logger.info(f"Step {i}/{total_steps}: Completed {step.action}")
-
-                    # Check for stop flag immediately after execution
-                    if self.workflow_stopped:
-                        logger.info("Workflow stopped during step execution, skipping remaining steps.")
-                        break
-
-                except NonRetryableError as e:
-                    # Non-retryable errors for specific SKUs should not stop the workflow
-                    if isinstance(e, CircuitBreakerOpenError):
-                        logger.error(f"Circuit breaker open for {self.config.name}: {e}")
-                        self.step_errors.append(
-                            {
-                                "step": i,
-                                "action": step.action,
-                                "error_type": "CircuitBreakerOpen",
-                                "message": str(e),
-                                "recoverable": False,
-                            }
-                        )
-                        raise WorkflowExecutionError(f"Circuit breaker open: {e}")
-                    elif isinstance(e, (NoResultsError, PageNotFoundError)):
-                        logger.info(f"Step {i}: {type(e).__name__} - {e.message}")
-                        self.step_errors.append(
-                            {
-                                "step": i,
-                                "action": step.action,
-                                "error_type": type(e).__name__,
-                                "message": e.message,
-                                "recoverable": False,
-                            }
-                        )
-                        # Continue to next step or stop workflow gracefully
-                        self.workflow_stopped = True
-                        break
-                    raise
-
-            logger.info(f"Workflow execution completed for: {self.config.name}")
-
-            # Apply normalization rules
             self.apply_normalization()
 
             return {
@@ -421,255 +311,90 @@ class WorkflowExecutor:
                 "image_quality": self.config.image_quality,
             }
 
-        except WorkflowExecutionError:
-            raise
-        except ScraperError as e:
-            logger.error(f"Workflow execution failed with scraper error: {e}")
-            raise WorkflowExecutionError(str(e), context=e.context, cause=e)
         except Exception as e:
             logger.error(f"Workflow execution failed: {e}")
-            raise WorkflowExecutionError(
-                f"Workflow execution failed: {e}",
-                context=ErrorContext(site_name=self.config.name),
-            )
+            if isinstance(e, (WorkflowExecutionError, ScraperError)):
+                raise
+            raise WorkflowExecutionError(f"Workflow execution failed: {e}", context=ErrorContext(site_name=self.config.name))
         finally:
             if quit_browser and self.browser:
                 self.browser.quit()
-            if quit_browser and self.ai_browser:
-                await self._close_ai_browser()
 
     async def execute_steps(self, steps: list[Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
-        """
-        Execute specific workflow steps.
-
-        Args:
-            steps: List of WorkflowStep objects to execute
-            context: Dictionary of context variables
-
-        Returns:
-            Dict containing execution results and extracted data
-
-        Raises:
-            WorkflowExecutionError: If step execution fails
-        """
+        """Execute specific workflow steps."""
         try:
-            logger.info(f"Starting step execution for: {self.config.name}")
-
             for i, step in enumerate(steps, 1):
                 if self.workflow_stopped:
-                    logger.info("Workflow stopped due to condition, skipping remaining steps.")
                     break
                 await self._execute_step_with_retry(step, context, step_index=i)
 
-            logger.info(f"Step execution completed for: {self.config.name}")
             return {
                 "success": True,
                 "results": self.results,
                 "config_name": self.config.name,
                 "steps_executed": len(steps),
             }
-
         except Exception as e:
-            logger.error(f"Step execution failed: {e}")
-            raise WorkflowExecutionError(
-                f"Step execution failed: {e}",
-                context=ErrorContext(site_name=self.config.name),
-            )
+            raise WorkflowExecutionError(f"Step execution failed: {e}", context=ErrorContext(site_name=self.config.name))
 
-    async def _execute_step_with_retry(
-        self,
-        step: WorkflowStep,
-        context: dict[str, Any] | None = None,
-        step_index: int = 0,
-    ) -> None:
-        """Execute a workflow step with retry logic. Delegates to StepExecutor."""
-        step_executor = self.step_executor
-        if step_executor is None:
+    async def _execute_step_with_retry(self, step: WorkflowStep, context: dict[str, Any] | None = None, step_index: int = 0) -> None:
+        """Execute a workflow step with retry logic."""
+        if self.step_executor is None:
             raise WorkflowExecutionError("Workflow executor not initialized")
-        await step_executor.execute_step_with_retry(step, context, step_index)
+        await self.step_executor.execute_step_with_retry(step, context, step_index)
 
     async def _execute_step(self, step: WorkflowStep, context: dict[str, Any] | None = None) -> Any:
-        """Execute a single workflow step with scraper-type aware routing."""
-        step_executor = self.step_executor
-        if step_executor is None:
+        """Execute a single workflow step."""
+        if self.step_executor is None:
             raise WorkflowExecutionError("Workflow executor not initialized")
-
-        if self.scraper_type == "agentic" and step.action in {"ai_search", "ai_extract", "ai_validate"}:
-            self.ai_context["last_ai_action"] = step.action
-            self.ai_context["current_step"] = step.name or step.action
-            if context:
-                self.ai_context.update({"input_context": context})
-            self.context["ai_context"] = self.ai_context
-            self.context["ai_browser"] = self.ai_browser
-        return await step_executor.execute_step(step, context or {}, self.results)
-
-    # _get_locator_type removed
+        return await self.step_executor.execute_step(step, context or {}, self.results)
 
     async def find_element_safe(self, selector: str, required: bool = True, timeout: int | None = None) -> Any:
-        """Find a single element using Playwright. Delegates to SelectorResolver."""
-        selector_resolver = self.selector_resolver
-        if selector_resolver is None:
+        if self.selector_resolver is None:
             raise WorkflowExecutionError("Workflow executor not initialized")
-        return await selector_resolver.find_element_safe(selector, required, timeout)
+        return await self.selector_resolver.find_element_safe(selector, required, timeout)
 
     async def find_elements_safe(self, selector: str, timeout: int | None = None) -> list[Any]:
-        """Find multiple elements using Playwright. Delegates to SelectorResolver."""
-        selector_resolver = self.selector_resolver
-        if selector_resolver is None:
+        if self.selector_resolver is None:
             raise WorkflowExecutionError("Workflow executor not initialized")
-        return await selector_resolver.find_elements_safe(selector, timeout)
+        return await self.selector_resolver.find_elements_safe(selector, timeout)
 
     async def extract_value_from_element(self, element: Any, attribute: str | None = None) -> Any:
-        """Extract value from element (text, attribute, etc.). Delegates to SelectorResolver."""
-        selector_resolver = self.selector_resolver
-        if selector_resolver is None:
+        if self.selector_resolver is None:
             raise WorkflowExecutionError("Workflow executor not initialized")
-        return await selector_resolver.extract_value_from_element(element, attribute)
+        return await self.selector_resolver.extract_value_from_element(element, attribute)
 
     def _extract_value_from_element(self, element: Any, attribute: str | None = None) -> Any:
-        """Private alias for backward compatibility with existing actions."""
         return self.extract_value_from_element(element, attribute)
 
     def get_results(self) -> dict[str, Any]:
-        """Get the current execution results."""
         return self.results.copy()
 
     def resolve_selector(self, identifier: str) -> SelectorConfig | None:
-        """
-        Resolve a selector by ID first, then by name as fallback.
-
-        Args:
-            identifier: Either a selector ID (e.g., 'sel_abc123') or a selector name
-
-        Returns:
-            SelectorConfig if found, None otherwise
-        """
-        # 1. Try direct ID lookup first (preferred)
         selector = self.selectors_by_id.get(identifier)
         if selector:
             return selector
-
-        # 2. Fallback to name-based lookup
-        selector = self.selectors.get(identifier)
-        if selector:
-            # Log usage of name-based lookup if we have IDs available (indicates old config format)
-            if self.selectors_by_id:
-                logger.debug(f"Using name-based selector lookup for '{identifier}'. Consider migrating to ID-based references.")
-            return selector
-
-        return None
+        return self.selectors.get(identifier)
 
     def is_session_authenticated(self) -> bool:
-        """
-        Check if the current session is authenticated and not expired.
-
-        Returns:
-            True if session is authenticated and valid, False otherwise
-        """
-        if not self.session_authenticated:
+        if not self.session_authenticated or self.session_auth_time is None:
             return False
-
-        if self.session_auth_time is None:
-            return False
-
-        # Check if session has expired
         elapsed = time.time() - self.session_auth_time
         if elapsed > self.session_timeout:
-            logger.info(f"Session expired after {elapsed:.1f}s (timeout: {self.session_timeout}s)")
             self.session_authenticated = False
-            self.session_auth_time = None
             return False
-
         return True
 
     def mark_session_authenticated(self) -> None:
-        """Mark the current session as authenticated."""
         self.session_authenticated = True
         self.session_auth_time = time.time()
-        logger.info(f"Session marked as authenticated for scraper: {self.config.name}")
 
     def reset_session(self) -> None:
-        """Reset the authentication session."""
         self.session_authenticated = False
         self.session_auth_time = None
-        logger.info(f"Session reset for scraper: {self.config.name}")
-
-    def get_session_status(self) -> dict[str, Any]:
-        """Get current session status information."""
-        return {
-            "authenticated": self.session_authenticated,
-            "auth_time": self.session_auth_time,
-            "elapsed": time.time() - self.session_auth_time if self.session_auth_time else None,
-            "timeout": self.session_timeout,
-            "expired": not self.is_session_authenticated() if self.session_authenticated else False,
-        }
-
-    def get_circuit_breaker_status(self) -> dict[str, Any]:
-        """Get the current circuit breaker status for this scraper."""
-        return self.retry_executor.get_circuit_breaker_status(self.config.name)
-
-    def reset_circuit_breaker(self) -> None:
-        """Reset the circuit breaker for this scraper."""
-        self.retry_executor.reset_circuit_breaker(self.config.name)
 
     def apply_normalization(self) -> None:
-        """Apply normalization rules to extracted results. Delegates to NormalizationEngine."""
-        if not self.config.normalization:
+        if not self.config.normalization or self.normalization_engine is None:
             return
-        normalization_engine = self.normalization_engine
-        if normalization_engine is None:
-            raise WorkflowExecutionError("Workflow executor not initialized")
-
-        # Convert NormalizationRule objects to dicts for the engine
-        rule_dicts = []
-        for rule in self.config.normalization:
-            rule_dicts.append(
-                {
-                    "field": rule.field,
-                    "action": rule.action,
-                    "params": rule.params,
-                }
-            )
-
-        normalization_engine.normalize_results(self.results, rule_dicts)
-
-    async def _capture_debug_on_failure(
-        self,
-        action: str,
-        context: dict[str, Any] | None = None,
-    ) -> None:
-        """Capture debug artifacts on failure. Delegates to DebugArtifactCapture."""
-        debug_capture = self.debug_capture
-        if debug_capture is None:
-            raise WorkflowExecutionError("Workflow executor not initialized")
-        page = self.browser.page if hasattr(self.browser, "page") else None
-        await debug_capture.capture_debug_state(
-            step_name=action,
-            page=page,
-            context=context,
-            error=None,
-        )
-
-    async def _close_ai_browser(self) -> None:
-        """Close dedicated agentic browser, when present."""
-        if not self.ai_browser:
-            return
-
-        try:
-            close_result = self.ai_browser.close()
-            if inspect.isawaitable(close_result):
-                await close_result
-        except Exception as e:
-            logger.warning(f"Failed closing agentic browser for {self.config.name}: {e}")
-        finally:
-            self.ai_browser = None
-
-    def _resolve_ai_provider(self, config: ScraperConfig) -> str:
-        ai_config = getattr(config, "ai_config", None)
-        provider = getattr(ai_config, "provider", None)
-        if isinstance(provider, str) and provider.strip():
-            return provider
-        tool_alias = getattr(ai_config, "tool", None)
-        if isinstance(tool_alias, str) and tool_alias.strip():
-            return tool_alias
-        return "crawl4ai"
+        rule_dicts = [{"field": r.field, "action": r.action, "params": r.params} for r in self.config.normalization]
+        self.normalization_engine.normalize_results(self.results, rule_dicts)
