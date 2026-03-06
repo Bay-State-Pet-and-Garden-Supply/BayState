@@ -53,5 +53,9 @@ describe('TestLabClient', () => {
     
     // Check for the terminal
     expect(screen.getByTestId('log-terminal')).toBeInTheDocument();
+    
+    // Check for the unified controls
+    expect(screen.getByTestId('test-run-controls')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /run all tests/i })).toBeInTheDocument();
   });
 });

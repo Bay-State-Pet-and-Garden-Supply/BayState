@@ -10,6 +10,24 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle, 
+  Clock3, 
+  Loader2, 
+  Play, 
+  History,
+  Activity
+} from 'lucide-react';
 import { SkuSidebar } from '@/components/admin/scrapers/test-lab/sku-sidebar';
 import { ResultsTable } from '@/components/admin/scrapers/test-lab/results-table';
 import { ResultsPanel, type SkuResult } from '@/components/admin/scrapers/test-lab/results-panel';
@@ -50,6 +68,8 @@ interface TestRunControlsProps {
   isRunning: boolean;
   isPolling: boolean;
   selectedRunId: string | null;
+  onRunSelect: (runId: string) => void;
+  testRuns: TestRunRecord[];
   activeRunDetails: ActiveRunDetails | null;
   totalSkus: number;
 }
@@ -64,43 +84,70 @@ function TestRunControls({
   isRunning,
   isPolling,
   selectedRunId,
+  onRunSelect,
+  testRuns,
   activeRunDetails,
   totalSkus,
 }: TestRunControlsProps) {
   const statusLabel = activeRunDetails?.status ?? (isPolling ? 'running' : 'idle');
 
   return (
-    <Card data-testid="test-run-controls">
-      <CardHeader>
-        <CardTitle>Run Controls</CardTitle>
-        <CardDescription>Launch test runs and monitor current execution status.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Button
-          className="w-full"
-          onClick={() => {
-            void onRunAllTests();
-          }}
-          disabled={disabled || isRunning || isPolling || totalSkus === 0}
-        >
-          Run All Tests
-        </Button>
-
-        <div className="rounded-md border p-3 text-sm space-y-1">
-          <p>
-            <span className="text-muted-foreground">Current run:</span>{' '}
-            <span className="font-mono">{selectedRunId ?? 'None'}</span>
-          </p>
-          <p>
-            <span className="text-muted-foreground">Status:</span>{' '}
-            <span className="capitalize">{statusLabel}</span>
-          </p>
-          <p>
-            <span className="text-muted-foreground">SKUs queued:</span> {totalSkus}
-          </p>
+    <div className="flex items-center justify-between gap-4 p-2 bg-muted/30 border rounded-lg" data-testid="test-run-controls">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 px-2 py-1 rounded bg-background border shadow-sm">
+          <History className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={selectedRunId ?? undefined} onValueChange={onRunSelect}>
+            <SelectTrigger className="h-7 w-[220px] text-xs border-none shadow-none focus:ring-0">
+              <SelectValue placeholder="Select a previous run" />
+            </SelectTrigger>
+            <SelectContent>
+              {testRuns.length === 0 ? (
+                <div className="p-2 text-xs text-muted-foreground italic">No previous runs</div>
+              ) : (
+                testRuns.map((run) => (
+                  <SelectItem key={run.id} value={run.id} className="text-xs">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-mono">{run.id.slice(0, 8)}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(run.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
         </div>
-      </CardContent>
-    </Card>
+
+        <Separator orientation="vertical" className="h-8" />
+
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</span>
+            <div className="flex items-center gap-1.5">
+              <Activity className={`h-3 w-3 ${isPolling ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
+              <span className="text-xs font-medium capitalize">{statusLabel}</span>
+            </div>
+          </div>
+          <div className="flex flex-col border-l pl-3">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Queue</span>
+            <span className="text-xs font-medium">{totalSkus} SKUs</span>
+          </div>
+        </div>
+      </div>
+
+      <Button
+        size="sm"
+        className="h-8 gap-2 px-4"
+        onClick={() => {
+          void onRunAllTests();
+        }}
+        disabled={disabled || isRunning || isPolling || totalSkus === 0}
+      >
+        {isPolling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+        Run All Tests
+      </Button>
+    </div>
   );
 }
 
@@ -294,25 +341,24 @@ export function TestLabClient({
           <ResizablePanel defaultSize={80}>
             <ResizablePanelGroup orientation="vertical">
               <ResizablePanel defaultSize={70} minSize={30}>
-                <div className="h-full p-4 overflow-y-auto space-y-6">
-                  <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                    <div className="xl:col-span-3">
-                      <ResultsTable
-                        results={activeRunDetails?.sku_results ?? []}
-                        isLoading={Boolean(selectedRunId) && activeRunDetails === null}
-                      />
-                    </div>
-                    <div className="xl:col-span-1">
-                      <TestRunControls
-                        onRunAllTests={handleRunAllTests}
-                        disabled={disabled}
-                        isRunning={isRunning}
-                        isPolling={isPolling}
-                        selectedRunId={selectedRunId}
-                        activeRunDetails={activeRunDetails}
-                        totalSkus={testSkusForRun.length}
-                      />
-                    </div>
+                <div className="h-full flex flex-col p-4 space-y-4 overflow-hidden">
+                  <TestRunControls
+                    onRunAllTests={handleRunAllTests}
+                    disabled={disabled}
+                    isRunning={isRunning}
+                    isPolling={isPolling}
+                    selectedRunId={selectedRunId}
+                    onRunSelect={(id) => setSelectedRunId(id)}
+                    testRuns={testRuns}
+                    activeRunDetails={activeRunDetails}
+                    totalSkus={testSkusForRun.length}
+                  />
+                  
+                  <div className="flex-1 overflow-y-auto min-h-0">
+                    <ResultsTable
+                      results={activeRunDetails?.sku_results ?? []}
+                      isLoading={Boolean(selectedRunId) && activeRunDetails === null}
+                    />
                   </div>
                 </div>
               </ResizablePanel>
