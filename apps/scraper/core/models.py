@@ -134,16 +134,16 @@ class RawScrapedProduct(BaseModel):
     def to_db_dict(self) -> dict[str, Any]:
         """
         Convert to dictionary for database storage.
-        Uses legacy field names for backward compatibility.
+        Uses modern snake_case field names.
         """
         return {
-            "Name": self.name,
-            "Brand": self.brand,
-            "Weight": str(self.weight) if self.weight else None,
-            "Images": self.images,
-            "Description": self.description,
-            "Category": self.category,
-            "ProductType": self.product_type,
-            # Scraped price stored for reference but marked clearly
-            "ScrapedPrice": self.scraped_price,
+            "name": self.name,
+            "brand": self.brand,
+            "weight": self.weight,
+            "images": self.images,
+            "description": self.description,
+            "category": self.category,
+            "product_type": self.product_type,
+            # Scraped price stored for reference
+            "scraped_price": self.scraped_price,
         }

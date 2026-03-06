@@ -13,31 +13,23 @@ from typing import Any
 from core.api_client import *
 from utils.testing.scraper_validator import ScraperValidator
 
-from .scraper_testing_client import ScraperTestingClient, TestingMode
-
-logger = logging.getLogger(__name__)
-
-
 class ScraperIntegrationTester:
     """
-    Extended integration tester that supports scraper testing modes.
+    Extended integration tester that supports scraper testing.
     """
 
     def __init__(
         self,
         test_data_path: str | None = None,
-        mode: TestingMode = TestingMode.LOCAL,
     ):
         """
         Initialize the scraper integration tester.
 
         Args:
             test_data_path: Path to test data JSON file
-            mode: Testing mode (LOCAL supported)
         """
         self.project_root = Path(__file__).parent.parent.parent
         self.test_data_path = test_data_path or "tests/fixtures/scraper_test_data.json"
-        self.mode = mode
 
         # Initialize validator
         self.validator = ScraperValidator()
@@ -45,15 +37,11 @@ class ScraperIntegrationTester:
 
         # Initialize testing client
         # Always use headless mode as per user requirement
-        self.testing_client = ScraperTestingClient(mode=mode, headless=True)
+        self.testing_client = ScraperTestingClient(headless=True)
 
     def get_test_skus(self, scraper_name: str) -> list[str]:
-        if not self.api_client.api_url:
-            logger.warning("SCRAPER_API_URL missing; using default fallback test SKU")
-            return ["035585499741"]
-        if not self.api_client.api_key:
-            logger.warning("SCRAPER_API_KEY missing; using default fallback test SKU")
-            return ["035585499741"]
+        if not self.api_client.api_url or not self.api_client.api_key:
+            raise RuntimeError(f"Cannot fetch test SKUs for '{scraper_name}': API credentials missing")
 
         slug = scraper_name.strip().lower().replace("_", "-").replace(" ", "-")
         response = self.api_client.get_published_config(slug)
@@ -66,7 +54,8 @@ class ScraperIntegrationTester:
             skus = [str(s).strip() for s in test_skus if str(s).strip()]
             if skus:
                 return skus
-        return ["035585499741"]
+        
+        raise RuntimeError(f"No test SKUs configured in API for scraper '{scraper_name}'")
 
     def get_available_scrapers(self) -> list[str]:
         if not self.api_client.api_url:
@@ -92,7 +81,7 @@ class ScraperIntegrationTester:
 
     async def run_scraper_test(self, scraper_name: str, skus: list[str] | None = None) -> dict[str, Any]:
         """
-        Run a scraper test in the configured mode.
+        Run a scraper test.
 
         Args:
             scraper_name: Name of the scraper to test
@@ -105,7 +94,7 @@ class ScraperIntegrationTester:
             logger.warning("Skipping scraper test because API config credentials are missing")
             return {
                 "scraper": scraper_name,
-                "mode": self.mode.value,
+                "mode": "local",
                 "run_results": {
                     "success": True,
                     "products": [],
@@ -124,13 +113,13 @@ class ScraperIntegrationTester:
 
         # Ensure skus is a list
         if not isinstance(skus, list):
-            skus = [str(skus)] if skus else ["035585499741"]
+            skus = [str(skus)] if skus else []
 
         # At this point skus is guaranteed to be List[str]
         assert isinstance(skus, list) and all(isinstance(s, str) for s in skus)
 
         print(f"\n{'=' * 60}")
-        print(f"TESTING SCRAPER: {scraper_name.upper()} ({self.mode.value.upper()} MODE)")
+        print(f"TESTING SCRAPER: {scraper_name.upper()} (LOCAL MODE)")
         print(f"SKUs: {skus}")
         print(f"{'=' * 60}")
 
@@ -146,7 +135,7 @@ class ScraperIntegrationTester:
         # Combine results
         test_results = {
             "scraper": scraper_name,
-            "mode": self.mode.value,
+            "mode": "local",
             "run_results": run_results,
             "validation_results": validation_results,
             "overall_success": run_results["success"] and not validation_results.get("errors", []),
@@ -159,7 +148,7 @@ class ScraperIntegrationTester:
 
     async def run_all_scrapers_test(self, skip_failing: bool = True, scrapers: list[str] | None = None) -> dict[str, Any]:
         """
-        Test all available scrapers in the configured mode.
+        Test all available scrapers.
 
         Args:
             skip_failing: Whether to continue testing other scrapers if one fails
@@ -176,11 +165,11 @@ class ScraperIntegrationTester:
             "failed_scrapers": 0,
             "scraper_results": {},
             "summary": {},
-            "mode": self.mode.value,
+            "mode": "local",
         }
 
         print(f"\n{'=' * 80}")
-        print(f"RUNNING {self.mode.value.upper()} INTEGRATION TESTS FOR ALL {len(scrapers)} SCRAPERS")
+        print(f"RUNNING LOCAL INTEGRATION TESTS FOR ALL {len(scrapers)} SCRAPERS")
         print(f"{'=' * 80}")
 
         for scraper_name in scrapers:
@@ -201,7 +190,7 @@ class ScraperIntegrationTester:
                 print(f"ERROR: Unexpected error testing {scraper_name}: {e}")
                 results["scraper_results"][scraper_name] = {
                     "scraper": scraper_name,
-                    "mode": self.mode.value,
+                    "mode": "local",
                     "overall_success": False,
                     "error": str(e),
                 }
@@ -220,7 +209,7 @@ class ScraperIntegrationTester:
         print(f"Successful: {results['successful_scrapers']}")
         print(f"Failed: {results['failed_scrapers']}")
         print(f"Success Rate: {results['summary']['success_rate']:.1f}%")
-        print(f"Testing Mode: {self.mode.value.upper()}")
+        print(f"Testing Mode: LOCAL")
 
         if results["failed_scrapers"] > 0:
             print("\nFAILED SCRAPERS:")
@@ -228,7 +217,7 @@ class ScraperIntegrationTester:
                 if not result.get("overall_success", False):
                     print(f"  - {name}")
         else:
-            print(f"\nALL SCRAPERS PASSED {self.mode.value.upper()} TESTS")
+            print(f"\nALL SCRAPERS PASSED LOCAL TESTS")
 
         return results
 
