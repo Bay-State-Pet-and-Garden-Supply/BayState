@@ -1,10 +1,11 @@
 """Crawl4AI Engine - Main async crawler engine."""
 
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Sequence
 import logging
 from urllib.parse import urlparse
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from .strategies import build_fallback_chain
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,18 @@ class Crawl4AIEngine:
             logger.warning(f"Invalid cache mode '{cache_mode_str}', defaulting to ENABLED")
             cache_mode = CacheMode.ENABLED
 
+        # Build extraction strategy if extraction_chain is provided
+        extraction_strategy = run_settings.get("extraction_strategy")
+        extraction_chain_config = run_settings.get("extraction_chain")
+        
+        if extraction_chain_config:
+            chain = build_fallback_chain(**extraction_chain_config)
+            if chain:
+                # If we have a chain, we use the first one as primary
+                # crawl4ai v0.4+ usually handles complex strategies internally if configured
+                # For now, we take the first available strategy in the chain
+                extraction_strategy = chain[0]
+
         return CrawlerRunConfig(
             # v0.4+ advanced features
             magic=run_settings.get("magic", True),
@@ -76,7 +89,7 @@ class Crawl4AIEngine:
             wait_for=run_settings.get("wait_for"),
             page_timeout=run_settings.get("timeout", 30000),
             max_retries=run_settings.get("max_retries", 3),
-            extraction_strategy=run_settings.get("extraction_strategy"),
+            extraction_strategy=extraction_strategy,
             markdown=run_settings.get("markdown", True),
         )
 

@@ -33,6 +33,8 @@ from difflib import SequenceMatcher
 
 from scrapers.ai_cost_tracker import AICostTracker
 from scrapers.ai_metrics import record_ai_extraction
+# Using relative import for crawl4ai_engine proxy
+from crawl4ai_engine.engine import Crawl4AIEngine
 
 from pydantic import BaseModel, Field
 
@@ -1223,35 +1225,14 @@ OUTPUT FORMAT (STRICT)
         product_name: Optional[str],
         brand: Optional[str],
     ) -> dict[str, Any]:
-        """Extract product data from the selected URL using crawl4ai."""
+        """Extract product data from the selected URL using centralized Crawl4AIEngine."""
         try:
-            try:
-                crawl4ai_module = importlib.import_module("crawl4ai")
-                extraction_module = importlib.import_module("crawl4ai.extraction_strategy")
-            except ModuleNotFoundError:
-                return await self._extract_product_data_fallback(
-                    url=url,
-                    sku=sku,
-                    product_name=product_name,
-                    brand=brand,
-                )
-
-            AsyncWebCrawler = getattr(crawl4ai_module, "AsyncWebCrawler")
-            BrowserConfig = getattr(crawl4ai_module, "BrowserConfig")
-            CrawlerRunConfig = getattr(crawl4ai_module, "CrawlerRunConfig")
-            CacheMode = getattr(crawl4ai_module, "CacheMode")
-            LLMConfig = getattr(crawl4ai_module, "LLMConfig")
-            LLMExtractionStrategy = getattr(extraction_module, "LLMExtractionStrategy")
-            NoExtractionStrategy = getattr(extraction_module, "NoExtractionStrategy")
+            from crawl4ai.extraction_strategy import LLMExtractionStrategy, NoExtractionStrategy
+            from crawl4ai import LLMConfig
 
             api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:
                 return {"success": False, "error": "OPENAI_API_KEY not set"}
-
-            browser_config = BrowserConfig(
-                headless=self.headless,
-                viewport={"width": 1920, "height": 1080},
-            )
 
             # Build extraction strategy based on config
             if self.extraction_strategy == "llm_free":
@@ -1267,25 +1248,30 @@ OUTPUT FORMAT (STRICT)
                     instruction=self._build_extraction_instruction(sku, brand, product_name),
                 )
 
-            # JavaScript to scroll the page to trigger lazy loading of carousel images
-            scroll_js = self._get_scroll_js()
+            # Centralized engine configuration
+            engine_config = {
+                "browser": {
+                    "headless": self.headless,
+                    "viewport": {"width": 1920, "height": 1080},
+                },
+                "crawler": {
+                    "magic": True,
+                    "simulate_user": True,
+                    "remove_overlay_elements": True,
+                    "cache_mode": "ENABLED" if self.cache_enabled else "BYPASS",
+                    "js_code": self._get_scroll_js(),
+                    "extraction_strategy": extraction_strategy,
+                    "timeout": 30000,
+                }
+            }
 
-            cache_mode = CacheMode.ENABLED if self.cache_enabled else CacheMode.BYPASS
+            async with Crawl4AIEngine(engine_config) as engine:
+                result = await engine.crawl(url)
 
-            crawl_config = CrawlerRunConfig(
-                extraction_strategy=extraction_strategy,
-                cache_mode=cache_mode,
-                js_code=scroll_js,
-                delay_before_return_html=2.0,
-                word_count_threshold=1,
-            )
-
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-                result = await crawler.arun(url=url, config=crawl_config)
-
-                if result.success and result.extracted_content:
-                    if isinstance(result.extracted_content, str):
-                        raw_content = result.extracted_content.strip()
+                if result.get("success") and result.get("extracted_content"):
+                    extracted_content = result["extracted_content"]
+                    if isinstance(extracted_content, str):
+                        raw_content = extracted_content.strip()
                         if raw_content.startswith("[") and '"error"' in raw_content.lower() and "auth" in raw_content.lower():
                             return await self._extract_product_data_fallback(
                                 url=url,
@@ -1295,7 +1281,7 @@ OUTPUT FORMAT (STRICT)
                             )
 
                     try:
-                        data = json.loads(result.extracted_content)
+                        data = json.loads(extracted_content)
                         if data and isinstance(data, list):
                             product_data = data[0]
                             product_data["success"] = True
@@ -1311,19 +1297,23 @@ OUTPUT FORMAT (STRICT)
                         return {
                             "success": False,
                             "error": "Could not parse extraction result",
-                            "raw_response": result.extracted_content[:500],
+                            "raw_response": extracted_content[:500],
                         }
+                
                 return {
                     "success": False,
-                    "error": result.error_message or "Extraction failed or returned no content",
+                    "error": result.get("error") or "Extraction failed or returned no content",
                 }
 
         except Exception as e:
             logger.error(f"[AI Discovery] Extraction failed: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-            }
+            # Fallback to manual HTTP extraction if crawl4ai fails completely
+            return await self._extract_product_data_fallback(
+                url=url,
+                sku=sku,
+                product_name=product_name,
+                brand=brand,
+            )
 
     def _build_extraction_instruction(self, sku: str, brand: Optional[str], product_name: Optional[str]) -> str:
         return f"""Extract structured product data for a single SKU-locked product page.
