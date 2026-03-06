@@ -10,7 +10,8 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
-import { TestSkuPanel } from '@/components/admin/scrapers/test-lab/test-sku-panel';
+import { SkuSidebar } from '@/components/admin/scrapers/test-lab/sku-sidebar';
+import { ResultsTable } from '@/components/admin/scrapers/test-lab/results-table';
 import { ResultsPanel, type SkuResult } from '@/components/admin/scrapers/test-lab/results-panel';
 import { LogTerminal } from '@/components/admin/scrapers/test-lab/log-terminal';
 import { TestLabErrorBoundary } from '@/components/admin/scrapers/test-lab/TestLabErrorBoundary';
@@ -280,32 +281,48 @@ export function TestLabClient({
 
   return (
     <TestLabErrorBoundary componentName={`Test Lab: ${scraperName}`}>
-      <div data-testid="test-lab-client" className="h-full">
-        <ResizablePanelGroup orientation="vertical" className="h-full min-h-[700px] flex flex-col">
-          <ResizablePanel defaultSize={70} minSize={40}>
-            <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-3">
-              <TestSkuPanel configId={configId} testSkus={testSkus} />
-              <ResultsPanel
-                results={activeRunDetails?.sku_results ?? []}
-                isLoading={Boolean(selectedRunId) && activeRunDetails === null}
-                isStreaming={isPolling}
-              />
-              <TestRunControls
-                onRunAllTests={handleRunAllTests}
-                disabled={disabled}
-                isRunning={isRunning}
-                isPolling={isPolling}
-                selectedRunId={selectedRunId}
-                activeRunDetails={activeRunDetails}
-                totalSkus={testSkusForRun.length}
-              />
-            </div>
+      <div data-testid="test-lab-client" className="h-[calc(100vh-200px)] min-h-[700px]">
+        <ResizablePanelGroup orientation="horizontal" className="h-full border rounded-lg overflow-hidden">
+          {/* Left Sidebar: SKU Management */}
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible>
+            <SkuSidebar configId={configId} testSkus={testSkus} />
           </ResizablePanel>
 
           <ResizableHandle withHandle />
 
-          <ResizablePanel defaultSize={30} minSize={15} collapsible>
-            <LogTerminal logs={logs} isConnected={Boolean(jobId)} onClearLogs={() => setLogs([])} />
+          {/* Right Content: Results and Terminal */}
+          <ResizablePanel defaultSize={80}>
+            <ResizablePanelGroup orientation="vertical">
+              <ResizablePanel defaultSize={70} minSize={30}>
+                <div className="h-full p-4 overflow-y-auto space-y-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    <div className="xl:col-span-3">
+                      <ResultsTable
+                        results={activeRunDetails?.sku_results ?? []}
+                        isLoading={Boolean(selectedRunId) && activeRunDetails === null}
+                      />
+                    </div>
+                    <div className="xl:col-span-1">
+                      <TestRunControls
+                        onRunAllTests={handleRunAllTests}
+                        disabled={disabled}
+                        isRunning={isRunning}
+                        isPolling={isPolling}
+                        selectedRunId={selectedRunId}
+                        activeRunDetails={activeRunDetails}
+                        totalSkus={testSkusForRun.length}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              <ResizablePanel defaultSize={30} minSize={10} collapsible>
+                <LogTerminal logs={logs} isConnected={Boolean(jobId)} onClearLogs={() => setLogs([])} />
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
