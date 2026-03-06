@@ -159,10 +159,23 @@ export async function getScraperSources(): Promise<EnrichmentSource[]> {
 }
 
 /**
- * Gets all available enrichment sources (scrapers only).
+ * Gets all available enrichment sources (scrapers + AI discovery).
  */
 export async function getAllSources(): Promise<EnrichmentSource[]> {
-  return getScraperSources();
+  const scraperSources = await getScraperSources();
+
+  // Add AI Discovery as a built-in source
+  const aiDiscoverySource: EnrichmentSource = {
+    id: 'ai_discovery',
+    displayName: 'AI Discovery',
+    type: 'ai_discovery',
+    requiresAuth: false,
+    status: 'healthy',
+    enabled: true,
+    providesFields: ['name', 'brand', 'images', 'weight', 'description', 'specifications', 'upc'],
+  };
+
+  return [...scraperSources, aiDiscoverySource];
 }
 
 /**

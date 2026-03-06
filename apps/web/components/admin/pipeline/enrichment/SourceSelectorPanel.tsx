@@ -1,11 +1,11 @@
 'use client';
 
-import { Check, Lock, RefreshCw, Circle } from 'lucide-react';
+import { Check, Lock, RefreshCw, Circle, Sparkles } from 'lucide-react';
 
 interface Source {
   id: string;
   displayName: string;
-  type: 'scraper';
+  type: 'scraper' | 'ai_discovery';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -32,7 +32,7 @@ const STATUS_COLORS = {
 };
 
 /**
- * A panel showing all available enrichment sources (web scrapers) with toggle checkboxes.
+ * A panel showing all available enrichment sources (web scrapers + AI discovery) with toggle checkboxes.
  * Designed to fit in a sidebar (max-width ~280px).
  */
 export function SourceSelectorPanel({
@@ -42,10 +42,12 @@ export function SourceSelectorPanel({
   onRefreshSource,
   isLoading = false,
 }: SourceSelectorPanelProps) {
-  const scrapers = sources;
+  const scrapers = sources.filter((s) => s.type === 'scraper');
+  const aiSources = sources.filter((s) => s.type === 'ai_discovery');
 
   const renderSourceRow = (source: Source) => {
     const isEnabled = enabledSourceIds.includes(source.id);
+    const isAI = source.type === 'ai_discovery';
 
     return (
       <div
@@ -58,10 +60,16 @@ export function SourceSelectorPanel({
             disabled={isLoading}
             className={`
               flex h-5 w-5 shrink-0 items-center justify-center rounded border
-              transition-colors focus:outline-none focus:ring-2 focus:ring-[#008850] focus:ring-offset-1
-              ${isEnabled 
-                ? 'bg-[#008850] border-[#008850] text-white' 
-                : 'border-gray-300 bg-white hover:border-[#008850]'
+              transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
+              ${isAI
+                ? `focus:ring-purple-500 ${isEnabled
+                  ? 'bg-purple-600 border-purple-600 text-white'
+                  : 'border-gray-300 bg-white hover:border-purple-500'
+                }`
+                : `focus:ring-[#008850] ${isEnabled
+                  ? 'bg-[#008850] border-[#008850] text-white'
+                  : 'border-gray-300 bg-white hover:border-[#008850]'
+                }`
               }
               ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
@@ -74,6 +82,7 @@ export function SourceSelectorPanel({
           
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
+              {isAI && <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0" />}
               <span className="text-sm font-medium text-gray-700 truncate block max-w-[140px]">
                 {source.displayName}
               </span>
@@ -81,6 +90,9 @@ export function SourceSelectorPanel({
                 <Lock className="h-3 w-3 text-gray-600 shrink-0" aria-label="Requires authentication" />
               )}
             </div>
+            {isAI && (
+              <span className="text-[10px] text-purple-500 mt-0.5">Brave Search + crawl4ai</span>
+            )}
           </div>
         </div>
 
@@ -92,7 +104,7 @@ export function SourceSelectorPanel({
             />
           </div>
           
-          {onRefreshSource && (
+          {onRefreshSource && !isAI && (
             <button
               onClick={() => onRefreshSource(source.id)}
               disabled={isLoading}
@@ -127,6 +139,19 @@ export function SourceSelectorPanel({
           </div>
         )}
 
+        {/* AI Discovery Section */}
+        {aiSources.length > 0 && (
+          <div>
+            <h4 className="px-3 py-1 text-xs font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3" />
+              AI Discovery
+            </h4>
+            <div className="mt-1 space-y-0.5">
+              {aiSources.map(renderSourceRow)}
+            </div>
+          </div>
+        )}
+
         {sources.length === 0 && (
           <div className="p-4 text-center text-sm text-gray-600 italic">
             No sources available
@@ -136,3 +161,4 @@ export function SourceSelectorPanel({
     </div>
   );
 }
+
