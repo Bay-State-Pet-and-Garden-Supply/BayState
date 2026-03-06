@@ -1,6 +1,5 @@
 """crawl4ai-based product extraction."""
 
-import importlib
 import json
 import logging
 import os
@@ -9,6 +8,8 @@ from typing import Any, Optional
 from scrapers.ai_discovery.extraction import ExtractionUtils
 from scrapers.ai_discovery.matching import MatchingUtils
 from scrapers.ai_discovery.scoring import SearchScorer
+# Using centralized engine
+from crawl4ai_engine.engine import Crawl4AIEngine
 
 logger = logging.getLogger(__name__)
 
@@ -30,22 +31,11 @@ class Crawl4AIExtractor:
         product_name: Optional[str],
         brand: Optional[str],
     ) -> dict[str, Any]:
-        """Extract product data using crawl4ai."""
+        """Extract product data using centralized Crawl4AIEngine."""
         try:
             from pydantic import BaseModel, Field
-
-            try:
-                crawl4ai_module = importlib.import_module("crawl4ai")
-                extraction_module = importlib.import_module("crawl4ai.extraction_strategy")
-            except ModuleNotFoundError:
-                return None  # Signal to use fallback
-
-            AsyncWebCrawler = getattr(crawl4ai_module, "AsyncWebCrawler")
-            BrowserConfig = getattr(crawl4ai_module, "BrowserConfig")
-            CrawlerRunConfig = getattr(crawl4ai_module, "CrawlerRunConfig")
-            CacheMode = getattr(crawl4ai_module, "CacheMode")
-            LLMConfig = getattr(crawl4ai_module, "LLMConfig")
-            LLMExtractionStrategy = getattr(extraction_module, "LLMExtractionStrategy")
+            from crawl4ai.extraction_strategy import LLMExtractionStrategy
+            from crawl4ai import LLMConfig
 
             class ProductData(BaseModel):
                 product_name: str = Field(description="The exact product name")
@@ -59,11 +49,6 @@ class Crawl4AIExtractor:
             if not api_key:
                 return {"success": False, "error": "OPENAI_API_KEY not set"}
 
-            browser_config = BrowserConfig(
-                headless=self.headless,
-                viewport={"width": 1920, "height": 1080},
-            )
-
             instruction = self._build_instruction(sku, brand, product_name)
 
             llm_strategy = LLMExtractionStrategy(
@@ -76,27 +61,35 @@ class Crawl4AIExtractor:
                 instruction=instruction,
             )
 
-            scroll_js = self._get_scroll_js()
+            # Centralized engine configuration leveraging new features
+            engine_config = {
+                "browser": {
+                    "headless": self.headless,
+                    "viewport": {"width": 1920, "height": 1080},
+                },
+                "crawler": {
+                    "magic": True,
+                    "simulate_user": True,
+                    "remove_overlay_elements": True,
+                    "cache_mode": "BYPASS", # Discovery usually wants fresh data
+                    "js_code": self._get_scroll_js(),
+                    "extraction_strategy": llm_strategy,
+                    "timeout": 30000,
+                }
+            }
 
-            crawl_config = CrawlerRunConfig(
-                extraction_strategy=llm_strategy,
-                cache_mode=CacheMode.BYPASS,
-                js_code=scroll_js,
-                delay_before_return_html=2.0,
-                word_count_threshold=1,
-            )
+            async with Crawl4AIEngine(engine_config) as engine:
+                result = await engine.crawl(url)
 
-            async with AsyncWebCrawler(config=browser_config) as crawler:
-                result = await crawler.arun(url=url, config=crawl_config)
-
-                if result.success and result.extracted_content:
-                    if isinstance(result.extracted_content, str):
-                        raw_content = result.extracted_content.strip()
+                if result.get("success") and result.get("extracted_content"):
+                    extracted_content = result["extracted_content"]
+                    if isinstance(extracted_content, str):
+                        raw_content = extracted_content.strip()
                         if raw_content.startswith("[") and '"error"' in raw_content.lower() and "auth" in raw_content.lower():
                             return None  # Signal to use fallback
 
                     try:
-                        data = json.loads(result.extracted_content)
+                        data = json.loads(extracted_content)
                         if data and isinstance(data, list):
                             product_data = data[0]
                             product_data["success"] = True
@@ -111,11 +104,12 @@ class Crawl4AIExtractor:
                         return {
                             "success": False,
                             "error": "Could not parse extraction result",
-                            "raw_response": result.extracted_content[:500],
+                            "raw_response": extracted_content[:500],
                         }
+                
                 return {
                     "success": False,
-                    "error": result.error_message or "Extraction failed or returned no content",
+                    "error": result.get("error") or "Extraction failed or returned no content",
                 }
 
         except Exception as e:
@@ -148,7 +142,7 @@ CRITICAL EXTRACTION RULES
    - product_name: required
    - images: at least 1 required
    - brand, description, size_metrics, categories: strongly preferred
-   - If a required field cannot be found, keep searching the same page context before giving up.
+   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
 
 4) SIZE METRICS EXTRACTION
    - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
