@@ -75,7 +75,7 @@ export async function scrapeProducts(
         const { data: configRows } = await supabase
             .from('scraper_configs')
             .select('slug, display_name');
-        
+
         if (configRows) {
             const slugMap = new Map<string, string>();
             configRows.forEach(row => {
@@ -127,7 +127,7 @@ export async function scrapeProducts(
 
     if (insertError || !job) {
         console.error('[Pipeline Scraping] Failed to create parent job:', insertError);
-        return { success: false, error: 'Failed to create scraping job' };
+        return { success: false, error: `Failed to create scraping job: ${insertError?.message || JSON.stringify(insertError)}` };
     }
 
     // Create chunks with configurable size (default 50 SKUs per chunk)
@@ -139,7 +139,7 @@ export async function scrapeProducts(
         status: string;
         updated_at: string;
     }> = [];
-    
+
     for (let i = 0; i < skus.length; i += chunkSize) {
         chunks.push({
             job_id: job.id,
@@ -242,19 +242,19 @@ export async function checkRunnersAvailable(): Promise<boolean> {
  */
 export async function getAvailableRunnerCount(): Promise<number> {
     const supabase = await createClient();
-    
+
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    
+
     const { count, error } = await supabase
         .from('scraper_runners')
         .select('*', { count: 'exact', head: true })
         .gt('last_seen_at', fiveMinutesAgo)
         .in('status', ['online', 'polling', 'idle', 'running']);
-        
+
     if (error) {
         console.error('[Pipeline Scraping] Failed to check runners:', error);
         return 0;
     }
-    
+
     return count || 0;
 }
