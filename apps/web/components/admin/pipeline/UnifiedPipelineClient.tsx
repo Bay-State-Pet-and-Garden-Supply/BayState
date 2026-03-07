@@ -415,31 +415,56 @@ export function UnifiedPipelineClient({
     }
   };
 
-  const handleBatchEnhanceConfirm = async (scrapers: string[]) => {
+  const handleBatchEnhanceConfirm = async ({ scrapers, useAiDiscovery }: { scrapers: string[], useAiDiscovery: boolean }) => {
     if (enrichingSkus.length === 0) return;
-    
+
     setIsBulkEnriching(true);
     try {
-      const res = await fetch('/api/admin/enrichment/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          skus: enrichingSkus,
-          method: 'scrapers',
-          config: { scrapers },
-          chunkSize: 10,
-          maxWorkers: 3,
-        }),
-      });
-      
-      if (res.ok) {
+      const requests: Promise<Response>[] = [];
+
+      if (scrapers.length > 0) {
+        requests.push(fetch('/api/admin/enrichment/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            skus: enrichingSkus,
+            method: 'scrapers',
+            config: { scrapers },
+            chunkSize: 10,
+            maxWorkers: 3,
+          }),
+        }));
+      }
+
+      if (useAiDiscovery) {
+        requests.push(fetch('/api/admin/enrichment/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            skus: enrichingSkus,
+            method: 'crawl4ai',
+            chunkSize: 10,
+            maxWorkers: 3,
+          }),
+        }));
+      }
+
+      if (requests.length === 0) {
+        setIsBulkEnriching(false);
+        return;
+      }
+
+      const results = await Promise.all(requests);
+      const failedRes = results.find(res => !res.ok);
+
+      if (!failedRes) {
         toast.success(`Started enrichment for ${enrichingSkus.length} product${enrichingSkus.length === 1 ? '' : 's'}`);
         setShowBatchEnhanceDialog(false);
         setEnrichingSkus([]);
         setSelectedProducts(new Set());
         await handleRefresh();
       } else {
-        const error = await res.json().catch(() => null);
+        const error = await failedRes.json().catch(() => null);
         toast.error(error?.error || 'Failed to start enrichment');
       }
     } catch (error) {

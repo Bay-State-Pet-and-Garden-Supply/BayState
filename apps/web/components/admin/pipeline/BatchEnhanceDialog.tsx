@@ -15,7 +15,7 @@ interface Source {
 
 interface BatchEnhanceDialogProps {
     selectedCount: number;
-    onConfirm: (scrapers: string[]) => void;
+    onConfirm: (options: { scrapers: string[], useAiDiscovery: boolean }) => void;
     onCancel: () => void;
     isEnhancing: boolean;
 }
@@ -60,7 +60,8 @@ export function BatchEnhanceDialog({
         const selectedScrapers = sources
             .filter((source) => source.type === 'scraper' && enabledSourceIds.includes(source.id))
             .map((source) => source.id);
-        onConfirm(selectedScrapers);
+        const useAiDiscovery = enabledSourceIds.includes('ai_discovery');
+        onConfirm({ scrapers: selectedScrapers, useAiDiscovery });
     };
 
     return (
