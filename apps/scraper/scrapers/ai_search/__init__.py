@@ -1,5 +1,5 @@
 """
-AI Discovery Scraper - Universal product extraction.
+AI Search Scraper - Universal product extraction.
 
 This module provides a standalone AI scraper that:
 1. Searches for products using Brave Search API
@@ -8,9 +8,9 @@ This module provides a standalone AI scraper that:
 4. Returns structured results
 
 Usage:
-    from scrapers.ai_discovery import AIDiscoveryScraper, DiscoveryResult
-
-    scraper = AIDiscoveryScraper()
+    from scrapers.ai_search import AISearchScraper, AISearchResult
+    
+    scraper = AISearchScraper()
     result = await scraper.scrape_product(
         sku="12345",
         product_name="Purina Pro Plan",
@@ -18,7 +18,7 @@ Usage:
     )
 """
 
-from scrapers.ai_discovery.models import DiscoveryResult
-from scrapers.ai_discovery.scraper import AIDiscoveryScraper
+from scrapers.ai_search.models import AISearchResult
+from scrapers.ai_search.scraper import AISearchScraper
 
-__all__ = ["AIDiscoveryScraper", "DiscoveryResult"]
+__all__ = ["AISearchScraper", "AISearchResult"]

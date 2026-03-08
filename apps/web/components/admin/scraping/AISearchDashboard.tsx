@@ -4,22 +4,22 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { 
-  Brain, 
-  DollarSign, 
-  Shield, 
+import {
+  Brain,
+  DollarSign,
+  Shield,
   AlertTriangle,
   BarChart3,
   PieChart,
   TrendingUp
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   Cell,
   PieChart as RechartsPie,
@@ -27,7 +27,7 @@ import {
   Legend
 } from 'recharts';
 
-interface Crawl4AIMetrics {
+interface AISearchMetrics {
   summary: {
     total_jobs: number;
     extraction_ratio: {
@@ -67,26 +67,26 @@ interface Crawl4AIMetrics {
   };
 }
 
-interface Crawl4AIDashboardProps {
+interface AISearchDashboardProps {
   days?: number;
 }
 
-export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
-  const [metrics, setMetrics] = useState<Crawl4AIMetrics | null>(null);
+export function AISearchDashboard({ days = 30 }: AISearchDashboardProps) {
+  const [metrics, setMetrics] = useState<AISearchMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadMetrics() {
       try {
-        const response = await fetch(`/api/admin/scrapers/crawl4ai-metrics?days=${days}`);
+        const response = await fetch(`/api/admin/scrapers/ai-search-metrics?days=${days}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch crawl4ai metrics');
+          throw new Error('Failed to fetch AI Search metrics');
         }
         const data = await response.json();
         setMetrics(data);
       } catch (err) {
-        console.error('Failed to load crawl4ai metrics:', err);
+        console.error('Failed to load AI Search metrics:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
@@ -111,12 +111,12 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5" />
-            Crawl4AI Metrics
+            AI Search Metrics
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No crawl4ai metrics available. This is expected if no crawl4ai-enabled scrapers have been run yet.
+            No AI Search metrics available. This is expected if no AI Search-enabled scrapers have been run yet.
           </p>
         </CardContent>
       </Card>
@@ -124,7 +124,7 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
   }
 
   const { summary, daily } = metrics;
-  
+
   // Prepare pie chart data
   const pieData = [
     { name: 'LLM', value: summary.extraction_ratio.llm, color: '#8b5cf6' },
@@ -143,7 +143,7 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
 
   // Top errors
   const topErrors = Object.entries(summary.errors)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
   return (
@@ -152,7 +152,7 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Brain className="h-4 w-4 text-purple-600" />
-            Crawl4AI Metrics (Last {days} days)
+            AI Search Metrics (Last {days} days)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -162,7 +162,7 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
               <span className="text-xs text-muted-foreground">Total Jobs</span>
               <span className="text-2xl font-bold">{summary.total_jobs}</span>
             </div>
-            
+
             {/* LLM Jobs */}
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">LLM Extractions</span>
@@ -173,7 +173,7 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
                 </span>
               </span>
             </div>
-            
+
             {/* Total Cost */}
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">Total Cost</span>
@@ -181,7 +181,7 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
                 ${summary.costs.total_cost.toFixed(4)}
               </span>
             </div>
-            
+
             {/* Anti-Bot Success */}
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">Anti-Bot Success</span>
@@ -328,4 +328,4 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
   );
 }
 
-export default Crawl4AIDashboard;
+export default AISearchDashboard;

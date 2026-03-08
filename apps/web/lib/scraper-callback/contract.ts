@@ -19,7 +19,7 @@ const ScraperResultsSchema = z.object({
         .optional(),
     cost_breakdown: z.record(z.string(), z.unknown()).optional(),
     anti_bot_metrics: z.record(z.string(), z.unknown()).optional(),
-    crawl4ai: z
+    ai_search: z
         .object({
             extraction_strategy: z
                 .union([
@@ -85,11 +85,11 @@ const ScraperResultsSchema = z.object({
                 .optional(),
         })
         .optional(),
-    // Crawl4AI-specific metrics
+    // AI Search-specific metrics
     llm_cost: z.number().optional(),
     total_cost: z.number().optional(),
     anti_bot_success_rate: z.number().min(0).max(1).optional(),
-    crawl4ai_errors: z
+    ai_search_errors: z
         .array(
             z.object({
                 error_type: z.string(),
@@ -158,12 +158,12 @@ const ChunkResultsSchema = z.object({
                 .optional(),
         })
         .optional(),
-    // Crawl4AI-specific metrics
+    // AI Search-specific metrics
     extraction_strategy: z.enum(['llm', 'css', 'xpath']).optional(),
     llm_cost: z.number().optional(),
     total_cost: z.number().optional(),
     anti_bot_success_rate: z.number().min(0).max(1).optional(),
-    crawl4ai_errors: z
+    ai_search_errors: z
         .array(
             z.object({
                 error_type: z.string(),

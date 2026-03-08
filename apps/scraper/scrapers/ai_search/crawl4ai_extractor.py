@@ -5,9 +5,9 @@ import logging
 import os
 from typing import Any, Optional
 
-from scrapers.ai_discovery.extraction import ExtractionUtils
-from scrapers.ai_discovery.matching import MatchingUtils
-from scrapers.ai_discovery.scoring import SearchScorer
+from scrapers.ai_search.extraction import ExtractionUtils
+from scrapers.ai_search.matching import MatchingUtils
+from scrapers.ai_search.scoring import SearchScorer
 # Using centralized engine
 from crawl4ai_engine.engine import Crawl4AIEngine
 
@@ -17,9 +17,19 @@ logger = logging.getLogger(__name__)
 class Crawl4AIExtractor:
     """Handles product extraction using crawl4ai."""
 
-    def __init__(self, headless: bool, llm_model: str, scoring: SearchScorer, matching: MatchingUtils):
+    def __init__(
+        self,
+        headless: bool,
+        llm_model: str,
+        scoring: SearchScorer,
+        matching: MatchingUtils,
+        cache_enabled: bool = True,
+        extraction_strategy: str = "llm",
+    ):
         self.headless = headless
         self.llm_model = llm_model
+        self.cache_enabled = cache_enabled
+        self.extraction_strategy = extraction_strategy
         self._scoring = scoring
         self._matching = matching
         self._extraction = ExtractionUtils(scoring)
@@ -51,15 +61,24 @@ class Crawl4AIExtractor:
 
             instruction = self._build_instruction(sku, brand, product_name)
 
-            llm_strategy = LLMExtractionStrategy(
-                llm_config=LLMConfig(
-                    provider=f"openai/{self.llm_model}",
-                    api_token=api_key,
-                ),
-                schema=ProductData.model_json_schema(),
-                extraction_type="schema",
-                instruction=instruction,
-            )
+            # Support different extraction strategies based on config
+            if self.extraction_strategy == "json_css":
+                from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+                strategy = JsonCssExtractionStrategy(
+                    schema=ProductData.model_json_schema()
+                )
+            else:
+                # Default to LLM strategy
+                llm_strategy = LLMExtractionStrategy(
+                    llm_config=LLMConfig(
+                        provider=f"openai/{self.llm_model}",
+                        api_token=api_key,
+                    ),
+                    schema=ProductData.model_json_schema(),
+                    extraction_type="schema",
+                    instruction=instruction,
+                )
+                strategy = llm_strategy
 
             # Centralized engine configuration leveraging new features
             engine_config = {
@@ -71,9 +90,9 @@ class Crawl4AIExtractor:
                     "magic": True,
                     "simulate_user": True,
                     "remove_overlay_elements": True,
-                    "cache_mode": "BYPASS", # Discovery usually wants fresh data
+                    "cache_mode": "ENABLED" if self.cache_enabled else "BYPASS",
                     "js_code": self._get_scroll_js(),
-                    "extraction_strategy": llm_strategy,
+                    "extraction_strategy": strategy,
                     "timeout": 30000,
                 }
             }
@@ -113,7 +132,7 @@ class Crawl4AIExtractor:
                 }
 
         except Exception as e:
-            logger.error(f"[AI Discovery] Extraction failed: {e}")
+            logger.error(f"[AI Search] Extraction failed: {e}")
             return {
                 "success": False,
                 "error": str(e),

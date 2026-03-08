@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-CLI for AI Discovery Scraper.
+CLI for AI Search Scraper.
 
-Run standalone AI product discovery:
-    python -m scrapers.ai_discovery_cli --sku 12345 --brand "Purina" --name "Pro Plan"
+Run standalone AI product search:
+    python -m scrapers.ai_search_cli --sku 12345 --brand "Purina" --name "Pro Plan"
 
 """
 
@@ -21,15 +21,15 @@ logger = logging.getLogger(__name__)
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="AI Discovery Scraper - Universal product extraction",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+    description="AI Search Scraper - Universal product extraction",
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog="""
 Examples:
   # Scrape a Purina product
-  python -m scrapers.ai_discovery_cli --sku 12345 --brand "Purina" --name "Pro Plan"
+  python -m scrapers.ai_search_cli --sku 12345 --brand "Purina" --name "Pro Plan"
   
   # Scrape with custom options
-  python -m scrapers.ai_discovery_cli --sku 67890 --brand "Blue Buffalo" \
+  python -m scrapers.ai_search_cli --sku 67890 --brand "Blue Buffalo" \
          --max-steps 20 --model gpt-4o
         """,
     )
@@ -53,12 +53,12 @@ Examples:
         logging.getLogger().setLevel(logging.DEBUG)
 
     # Import here to avoid slow imports during arg parsing
-    from scrapers.ai_discovery import AIDiscoveryScraper
+    from scrapers.ai_search import AISearchScraper
 
-    logger.info(f"🔍 Starting AI Discovery Scraper for SKU: {args.sku}")
+    logger.info(f"🔍 Starting AI Search Scraper for SKU: {args.sku}")
 
     # Create scraper
-    scraper = AIDiscoveryScraper(
+    scraper = AISearchScraper(
         headless=not args.visible,
         max_search_results=args.max_results,
         max_steps=args.max_steps,

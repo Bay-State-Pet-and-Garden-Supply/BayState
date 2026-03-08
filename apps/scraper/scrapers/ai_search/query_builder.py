@@ -1,4 +1,4 @@
-"""Query building utilities for AI Discovery."""
+"""Query building utilities for AI Search."""
 
 import os
 import re
@@ -6,7 +6,7 @@ from typing import Optional
 
 
 class QueryBuilder:
-    """Builds search queries for product discovery."""
+    """Builds search queries for product AI Search."""
 
     def build_search_query(
         self,

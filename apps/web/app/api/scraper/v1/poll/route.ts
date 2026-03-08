@@ -117,6 +117,38 @@ function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function sanitizeDiscoveryConfig(
+    config: Record<string, unknown>,
+    defaults: {
+        max_search_results: number;
+        max_steps: number;
+        confidence_threshold: number;
+        llm_model: 'gpt-4o-mini' | 'gpt-4o';
+    }
+): Record<string, unknown> {
+    const normalized: Record<string, unknown> = {};
+
+    if (typeof config.product_name === 'string') {
+        normalized.product_name = config.product_name;
+    }
+    if (typeof config.brand === 'string') {
+        normalized.brand = config.brand;
+    }
+    if (typeof config.prefer_manufacturer === 'boolean') {
+        normalized.prefer_manufacturer = config.prefer_manufacturer;
+    }
+    if (typeof config.fallback_to_static === 'boolean') {
+        normalized.fallback_to_static = config.fallback_to_static;
+    }
+
+    normalized.max_search_results = pickNumber(config.max_search_results, defaults.max_search_results);
+    normalized.max_steps = pickNumber(config.max_steps, defaults.max_steps);
+    normalized.confidence_threshold = pickNumber(config.confidence_threshold, defaults.confidence_threshold);
+    normalized.llm_model = config.llm_model === 'gpt-4o' ? 'gpt-4o' : defaults.llm_model;
+
+    return normalized;
+}
+
 function normalizeCurrentVersion(
     version: ScraperConfigRow['scraper_config_versions']
 ): ScraperConfigVersionRow | null {
@@ -308,10 +340,11 @@ export async function POST(request: NextRequest) {
             const isDiscovery = job.type === 'discovery' || requestedScrapers.includes('ai_discovery');
             if (isDiscovery) {
                 const rawConfig = (job.config || {}) as Record<string, unknown>;
-                const maxSearchResults = pickNumber(rawConfig.max_search_results, aiDefaults.max_search_results);
-                const maxSteps = pickNumber(rawConfig.max_steps, aiDefaults.max_steps);
-                const confidenceThreshold = pickNumber(rawConfig.confidence_threshold, aiDefaults.confidence_threshold);
-                const llmModel = rawConfig.llm_model === 'gpt-4o' ? 'gpt-4o' : aiDefaults.llm_model;
+                const sanitizedDiscoveryConfig = sanitizeDiscoveryConfig(rawConfig, aiDefaults);
+                const maxSearchResults = pickNumber(sanitizedDiscoveryConfig.max_search_results, aiDefaults.max_search_results);
+                const maxSteps = pickNumber(sanitizedDiscoveryConfig.max_steps, aiDefaults.max_steps);
+                const confidenceThreshold = pickNumber(sanitizedDiscoveryConfig.confidence_threshold, aiDefaults.confidence_threshold);
+                const llmModel = sanitizedDiscoveryConfig.llm_model === 'gpt-4o' ? 'gpt-4o' : aiDefaults.llm_model;
 
                 const updatedScrapers = response.job.scrapers.map((scraper) => {
                     if (scraper.name !== 'ai_discovery') {
@@ -333,13 +366,7 @@ export async function POST(request: NextRequest) {
                 });
 
                 response.job.scrapers = updatedScrapers;
-                response.job.job_config = {
-                    ...(response.job.job_config || {}),
-                    max_search_results: maxSearchResults,
-                    max_steps: maxSteps,
-                    confidence_threshold: confidenceThreshold,
-                    llm_model: llmModel,
-                };
+                response.job.job_config = sanitizedDiscoveryConfig;
             }
         }
 

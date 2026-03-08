@@ -81,7 +81,7 @@ class BraveSearchClient:
             return search_results, None
 
         except Exception as e:
-            logger.error(f"[AI Discovery] Search failed: {e}")
+            logger.error(f"[AI Search] Search failed: {e}")
             return [], str(e)
 
     def _cache_get(self, key: str) -> Optional[list[dict[str, Any]]]:
