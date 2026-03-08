@@ -32,6 +32,19 @@ const ScraperResultsSchema = z.object({
             anti_bot_metrics: z.record(z.string(), z.unknown()).optional(),
         })
         .optional(),
+    crawl4ai: z
+        .object({
+            extraction_strategy: z
+                .union([
+                    z.enum(['css', 'xpath', 'llm']),
+                    z.array(z.enum(['css', 'xpath', 'llm'])),
+                    z.record(z.string(), z.enum(['css', 'xpath', 'llm'])),
+                ])
+                .optional(),
+            cost_breakdown: z.record(z.string(), z.unknown()).optional(),
+            anti_bot_metrics: z.record(z.string(), z.unknown()).optional(),
+        })
+        .optional(),
     logs: z
         .array(
             z.object({
