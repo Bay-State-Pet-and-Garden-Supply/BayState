@@ -113,6 +113,14 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' {
+    if (rawType === 'ai_search' || rawType === 'discovery' || rawType === 'crawl4ai') {
+        return 'ai_search';
+    }
+
+    return 'standard';
+}
+
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
@@ -229,6 +237,7 @@ export async function POST(request: NextRequest) {
         const job = claimedJobs[0];
 
         const requestedScrapers = deriveRequestedScrapers(job);
+        const normalizedJobType = normalizeRunnerJobType(job.type);
 
         // Query scraper configs from canonical versioned schema
         let scraperQuery = supabase
@@ -328,7 +337,7 @@ export async function POST(request: NextRequest) {
                 scrapers,
                 test_mode: job.test_mode || false,
                 max_workers: job.max_workers || 3,
-                job_type: job.type || 'standard',
+                job_type: normalizedJobType,
                 job_config: (job.config || undefined) as Record<string, unknown> | undefined,
                 ai_credentials: aiCredentials || undefined,
                 lease_token: job.lease_token || undefined,

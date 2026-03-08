@@ -115,6 +115,14 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' {
+    if (rawType === 'ai_search' || rawType === 'discovery' || rawType === 'crawl4ai') {
+        return 'ai_search';
+    }
+
+    return 'standard';
+}
+
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
@@ -211,6 +219,7 @@ export async function GET(request: NextRequest) {
         }
 
         const requestedScrapers = deriveRequestedScrapers(job);
+        const normalizedJobType = normalizeRunnerJobType(job.type);
         
         // Filter to only requested scrapers (or all if none specified)
         const filteredConfigs = (scraperConfigs || []).filter((row: { slug: string; display_name: string | null }) => {
@@ -278,7 +287,7 @@ export async function GET(request: NextRequest) {
             scrapers,
             test_mode: job.test_mode || false,
             max_workers: job.max_workers || 3,
-            job_type: job.type || 'standard',
+            job_type: normalizedJobType,
             job_config: (job.config || undefined) as Record<string, unknown> | undefined,
             ai_credentials: aiCredentials || undefined,
             lease_token: job.lease_token || undefined,

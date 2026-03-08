@@ -358,7 +358,7 @@ describe('POST /api/scraper/v1/poll', () => {
         const data = await res.json();
         expect(data.job.scrapers).toHaveLength(1);
         expect(data.job.scrapers[0].name).toBe('ai_discovery');
-        expect(data.job.job_type).toBe('discovery');
+        expect(data.job.job_type).toBe('ai_search');
     });
 
     it('preserves selectors arrays and validation in scraper payload', async () => {
