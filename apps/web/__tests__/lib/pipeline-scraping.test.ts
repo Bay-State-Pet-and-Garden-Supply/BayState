@@ -107,6 +107,29 @@ describe('scrapeProducts', () => {
         const result = await scrapeProducts(['SKU-1']);
         
         expect(result.success).toBe(false);
-        expect(result.error).toBe('Failed to create scraping job');
+        expect(result.error).toContain('Failed to create scraping job');
+    });
+
+    it('should retry ai_search job creation with discovery type on legacy constraint', async () => {
+        mockSupabase = makeSupabaseMock();
+        mockSupabase._scrapeJobsBuilder.single
+            .mockResolvedValueOnce({
+                data: null,
+                error: {
+                    code: '23514',
+                    message: 'new row for relation "scrape_jobs" violates check constraint "scrape_jobs_type_check"',
+                },
+            })
+            .mockResolvedValueOnce({ data: { id: 'job-legacy' }, error: null });
+
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+
+        expect(result.success).toBe(true);
+        expect(result.jobIds).toEqual(['job-legacy']);
+        expect(mockSupabase._scrapeJobsBuilder.insert).toHaveBeenCalledTimes(2);
+        expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0].type).toBe('ai_search');
+        expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[1][0].type).toBe('discovery');
     });
 });

@@ -2,6 +2,31 @@
 
 import { createClient } from '@/lib/supabase/server';
 
+interface PostgrestLikeError {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+}
+
+type ScrapeJobInsertType = 'standard' | 'ai_search' | 'discovery';
+
+function isLegacyJobTypeConstraintError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    const maybeError = error as PostgrestLikeError;
+    const code = typeof maybeError.code === 'string' ? maybeError.code : '';
+    const message = typeof maybeError.message === 'string' ? maybeError.message : '';
+    const details = typeof maybeError.details === 'string' ? maybeError.details : '';
+
+    return (
+        code === '23514' &&
+        (message.includes('scrape_jobs_type_check') || details.includes('scrape_jobs_type_check'))
+    );
+}
+
 /**
  * Options for scraping jobs.
  */
@@ -61,7 +86,7 @@ export async function scrapeProducts(
     const enrichmentMethod = options?.enrichment_method ?? (options?.jobType === 'ai_search' ? 'ai_search' : 'scrapers');
     const isAISearch = enrichmentMethod === 'ai_search';
     const effectiveScrapersRaw = isAISearch ? ['ai_search'] : scrapers;
-    const jobType = isAISearch ? 'ai_search' : 'standard';
+    const jobType: ScrapeJobInsertType = isAISearch ? 'ai_search' : 'standard';
 
     const supabase = await createClient();
 
@@ -91,37 +116,62 @@ export async function scrapeProducts(
 
     const nowIso = new Date().toISOString();
 
-    const { data: job, error: insertError } = await supabase
+    const buildJobInsertPayload = (type: ScrapeJobInsertType) => ({
+        skus,
+        scrapers: effectiveScrapers,
+        test_mode: testMode,
+        max_workers: maxWorkers,
+        status: 'pending',
+        attempt_count: 0,
+        max_attempts: maxAttempts,
+        backoff_until: null,
+        lease_token: null,
+        leased_at: null,
+        lease_expires_at: null,
+        heartbeat_at: null,
+        runner_name: null,
+        started_at: null,
+        type,
+        config: isAISearch ? {
+            ...(options?.aiSearchConfig ?? {}),
+            max_cost_usd: maxAISearchCostUsd,
+        } : null,
+        metadata: isAISearch
+            ? {
+                source: 'pipeline',
+                mode: 'ai_search',
+                requested_job_type: 'ai_search',
+                stored_job_type: type,
+            }
+            : null,
+        updated_at: nowIso,
+    });
+
+    let { data: job, error: insertError } = await supabase
         .from('scrape_jobs')
-        .insert({
-            skus,
-            scrapers: effectiveScrapers,
-            test_mode: testMode,
-            max_workers: maxWorkers,
-            status: 'pending',
-            attempt_count: 0,
-            max_attempts: maxAttempts,
-            backoff_until: null,
-            lease_token: null,
-            leased_at: null,
-            lease_expires_at: null,
-            heartbeat_at: null,
-            runner_name: null,
-            started_at: null,
-            type: jobType,
-            config: isAISearch ? {
-                ...(options?.aiSearchConfig ?? {}),
-                max_cost_usd: maxAISearchCostUsd,
-            } : null,
-            metadata: isAISearch ? { source: 'pipeline', mode: 'ai_search' } : null,
-            updated_at: nowIso,
-        })
+        .insert(buildJobInsertPayload(jobType))
         .select('id')
         .single();
 
+    if (insertError && isAISearch && isLegacyJobTypeConstraintError(insertError)) {
+        console.warn('[Pipeline Scraping] Legacy scrape_jobs type constraint detected; retrying AI search insert using discovery type');
+        const retryResult = await supabase
+            .from('scrape_jobs')
+            .insert(buildJobInsertPayload('discovery'))
+            .select('id')
+            .single();
+
+        job = retryResult.data;
+        insertError = retryResult.error;
+    }
+
     if (insertError || !job) {
         console.error('[Pipeline Scraping] Failed to create parent job:', insertError);
-        return { success: false, error: `Failed to create scraping job: ${insertError?.message || JSON.stringify(insertError)}` };
+        const errorMessage =
+            insertError && typeof insertError === 'object' && 'message' in insertError
+                ? String((insertError as { message?: unknown }).message ?? '')
+                : JSON.stringify(insertError);
+        return { success: false, error: `Failed to create scraping job: ${errorMessage}` };
     }
 
     // Create chunks with configurable size (default 50 SKUs per chunk)
