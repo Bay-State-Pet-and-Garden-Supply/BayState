@@ -240,8 +240,10 @@ def run_job(
         results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
         return results
 
-    is_ai_search_job = job_config.job_type == "ai_search" or any(s.name == "ai_search" for s in job_config.scrapers)
-    
+    is_ai_search_job = job_config.job_type in {"ai_search", "discovery", "crawl4ai"} or any(
+        s.name in {"ai_search", "ai_discovery", "crawl4ai_discovery"} for s in job_config.scrapers
+    )
+
     if is_ai_search_job:
         return _run_ai_search_job(job_config, skus, results, log_buffer)
 
@@ -431,7 +433,7 @@ def _run_ai_search_job(
 ) -> Dict[str, Any]:
     search_cfg = job_config.job_config or {}
     scraper_name = "ai_search"
-    
+
     max_concurrency = int(search_cfg.get("max_concurrency", job_config.max_workers) or job_config.max_workers)
     max_search_results = int(search_cfg.get("max_search_results", 5) or 5)
     max_steps = int(search_cfg.get("max_steps", 15) or 15)
