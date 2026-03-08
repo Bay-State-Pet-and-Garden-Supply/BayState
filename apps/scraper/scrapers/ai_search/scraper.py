@@ -16,6 +16,7 @@ from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.search import BraveSearchClient
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.validation import ExtractionValidator
+
 # Using centralized engine
 from crawl4ai_engine.engine import Crawl4AIEngine
 
@@ -72,9 +73,10 @@ class AISearchScraper:
         self._search_client = BraveSearchClient(max_results=max_search_results)
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
-        
+
         # Load unified extractors
         from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor, FallbackExtractor
+
         self._crawl4ai_extractor = Crawl4AIExtractor(
             headless=headless,
             llm_model=llm_model,
@@ -88,7 +90,6 @@ class AISearchScraper:
             matching=self._matching,
         )
 
-
     async def scrape_products_batch(
         self,
         items: list[dict[str, Any]],
@@ -97,7 +98,7 @@ class AISearchScraper:
         """Scrape multiple products in batch."""
         semaphore = asyncio.Semaphore(max(1, max_concurrency))
 
-        async def _run_one(item: dict[str, Any]) -> DiscoveryResult:
+        async def _run_one(item: dict[str, Any]) -> AISearchResult:
             async with semaphore:
                 sku = str(item.get("sku", "")).strip()
                 if not sku:
@@ -172,9 +173,9 @@ class AISearchScraper:
                 logger.info("[AI Search] Brand missing - initiating parallel candidate discovery")
                 top_candidates = search_results[:3]
                 candidate_urls = [str(r.get("url")) for r in top_candidates if r.get("url")]
-                
+
                 parallel_results = await self._extract_candidates_parallel(candidate_urls, sku, product_name, brand)
-                
+
                 # Pick the best result from the parallel set
                 accepted_result = None
                 target_url = None
@@ -190,7 +191,7 @@ class AISearchScraper:
                         accepted_result = res
                         target_url = res.get("url")
                         break
-                
+
                 if accepted_result:
                     return self._build_discovery_result(accepted_result, sku, product_name, brand, target_url)
 
@@ -267,7 +268,9 @@ class AISearchScraper:
             logger.error(f"[AI Search] Error scraping {sku}: {e}")
             return AISearchResult(success=False, sku=sku, error=str(e))
 
-    def _build_discovery_result(self, result: dict[str, Any], sku: str, product_name: Optional[str], brand: Optional[str], url: Optional[str]) -> AISearchResult:
+    def _build_discovery_result(
+        self, result: dict[str, Any], sku: str, product_name: Optional[str], brand: Optional[str], url: Optional[str]
+    ) -> AISearchResult:
         """Build a finalized AISearchResult from raw extraction."""
         cost_summary = self._cost_tracker.get_cost_summary()
         record_ai_extraction(
@@ -277,7 +280,7 @@ class AISearchScraper:
             duration_seconds=0.0,
             anti_bot_detected=bool(result.get("anti_bot_detected", False)),
         )
-        
+
         return AISearchResult(
             success=True,
             sku=sku,
@@ -299,13 +302,13 @@ class AISearchScraper:
         # because the original code parallelizes at the engine level
         # To reuse Crawl4AIExtractor gracefully requires refactoring its signature to support batch,
         # but for safety/minimal disruption, we use asyncio.gather across single extractions
-        
+
         async def _run_extract(url: str) -> Optional[dict[str, Any]]:
             result = await self._extract_product_data(url, sku, product_name, brand)
             if result and result.get("success"):
                 return result
             return None
-            
+
         results = await asyncio.gather(*[_run_extract(url) for url in urls])
         return [r for r in results if r is not None]
 
@@ -318,20 +321,19 @@ class AISearchScraper:
     ) -> dict[str, Any]:
         """Extract product data from the selected URL, delegating to child extractors."""
         result = await self._crawl4ai_extractor.extract(url, sku, product_name, brand)
-        
+
         # Signal to fallback means the result was None
         if result is None:
-             result = await self._fallback_extractor.extract(url, sku, product_name, brand)
-             
+            result = await self._fallback_extractor.extract(url, sku, product_name, brand)
+
         if not result or not result.get("success"):
             # If standard extraction failed completely, try HTTP fallback
             fallback_result = await self._fallback_extractor.extract(url, sku, product_name, brand)
             if fallback_result and fallback_result.get("success"):
                 return fallback_result
             return result or {"success": False, "error": "Extraction returned no content"}
-            
-        return result
 
+        return result
 
 
 # Convenience function for direct usage
