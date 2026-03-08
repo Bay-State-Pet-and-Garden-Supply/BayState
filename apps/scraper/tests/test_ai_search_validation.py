@@ -1,16 +1,16 @@
 import pytest
 
-from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_search import AISearchScraper
 
 
 @pytest.fixture
 def scraper():
-    return AIDiscoveryScraper()
+    return AISearchScraper()
 
 
 class TestSKUValidation:
     def test_accepts_when_sku_on_page(self, scraper):
-        result = scraper._validate_extraction_match(
+        result = scraper._validator.validate_extraction_match(
             extraction_result={
                 "success": True,
                 "product_name": "Test Product",
@@ -26,7 +26,7 @@ class TestSKUValidation:
         assert result == (True, "ok")
 
     def test_accepts_without_sku_when_brand_matches_and_high_confidence(self, scraper):
-        result = scraper._validate_extraction_match(
+        result = scraper._validator.validate_extraction_match(
             extraction_result={
                 "success": True,
                 "product_name": "Pro Plan Chicken",
@@ -42,8 +42,8 @@ class TestSKUValidation:
         assert result[0] == True
 
     def test_rejects_without_sku_when_low_confidence(self, scraper):
-        scraper_low = AIDiscoveryScraper(confidence_threshold=0.5)
-        result = scraper_low._validate_extraction_match(
+        scraper_low = AISearchScraper(confidence_threshold=0.5)
+        result = scraper_low._validator.validate_extraction_match(
             extraction_result={
                 "success": True,
                 "product_name": "Some Product",
@@ -60,7 +60,7 @@ class TestSKUValidation:
         assert "weak match signals" in result[1] or "confidence too low" in result[1].lower()
 
     def test_rejects_without_sku_brand_mismatch_high_confidence(self, scraper):
-        result = scraper._validate_extraction_match(
+        result = scraper._validator.validate_extraction_match(
             extraction_result={
                 "success": True,
                 "product_name": "Premium Dog Food",
@@ -79,26 +79,26 @@ class TestSKUValidation:
 
 class TestQueryVariants:
     def test_sku_only_generates_single_variant(self, scraper):
-        variants = scraper._build_query_variants(sku="12345", product_name=None, brand=None, category=None)
+        variants = scraper._query_builder.build_query_variants(sku="12345", product_name=None, brand=None, category=None)
         assert variants == ["12345 product"]
 
     def test_sku_and_name_generates_two_variants(self, scraper):
-        variants = scraper._build_query_variants(sku="12345", product_name="PURINA CHKN", brand=None, category=None)
+        variants = scraper._query_builder.build_query_variants(sku="12345", product_name="PURINA CHKN", brand=None, category=None)
         assert len(variants) == 2
         assert "12345 product" in variants
         assert "PURINA CHKN 12345" in variants
 
     def test_all_fields_generates_multiple_variants(self, scraper):
-        variants = scraper._build_query_variants(sku="12345", product_name="Pro Plan Chicken", brand="Purina", category="Dog Food")
+        variants = scraper._query_builder.build_query_variants(sku="12345", product_name="Pro Plan Chicken", brand="Purina", category="Dog Food")
         assert len(variants) >= 2
         assert "12345 product" in variants
 
     def test_empty_inputs_returns_empty_list(self, scraper):
-        variants = scraper._build_query_variants(sku=None, product_name=None, brand=None, category=None)
+        variants = scraper._query_builder.build_query_variants(sku=None, product_name=None, brand=None, category=None)
         assert variants == []
 
     def test_duplicates_removed(self, scraper):
-        variants = scraper._build_query_variants(sku="12345 product", product_name="12345", brand=None, category=None)
+        variants = scraper._query_builder.build_query_variants(sku="12345 product", product_name="12345", brand=None, category=None)
         assert len(variants) == len(set(variants))
 
 
@@ -107,5 +107,5 @@ class TestConfidenceThreshold:
         assert scraper.confidence_threshold == 0.7
 
     def test_custom_threshold_respected(self):
-        scraper = AIDiscoveryScraper(confidence_threshold=0.8)
+        scraper = AISearchScraper(confidence_threshold=0.8)
         assert scraper.confidence_threshold == 0.8

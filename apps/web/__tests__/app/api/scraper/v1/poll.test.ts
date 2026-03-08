@@ -247,6 +247,68 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.llm_model).toBe('gpt-4o');
     });
 
+    it('strips crawl4ai-only keys from discovery job config', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+
+        const mockScrapers = [
+            {
+                slug: 'ai_discovery',
+                scraper_config_versions: {
+                    status: 'published',
+                    config: {
+                        base_url: 'https://example.com',
+                        selectors: [],
+                        workflows: [],
+                    },
+                },
+            },
+        ];
+
+        mockSupabase.eq.mockImplementation(function(this: any) {
+            return this;
+        });
+        mockSupabase.in.mockResolvedValue({ data: mockScrapers, error: null });
+
+        mockSupabase.rpc.mockResolvedValue({
+            data: [
+                {
+                    job_id: 'job-discovery-cache',
+                    skus: ['SKU-1'],
+                    scrapers: ['ai_discovery'],
+                    type: 'discovery',
+                    config: {
+                        max_search_results: 6,
+                        max_steps: 12,
+                        confidence_threshold: 0.9,
+                        llm_model: 'gpt-4o',
+                        cache_enabled: false,
+                        extraction_strategy: 'auto',
+                        timeout: 12345,
+                    },
+                    test_mode: false,
+                    max_workers: 3,
+                },
+            ],
+            error: null,
+        });
+
+        const req = createRequest({});
+        const res = await POST(req);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.job.job_config.max_search_results).toBe(6);
+        expect(data.job.job_config.max_steps).toBe(12);
+        expect(data.job.job_config.confidence_threshold).toBe(0.9);
+        expect(data.job.job_config.llm_model).toBe('gpt-4o');
+        expect(data.job.job_config.cache_enabled).toBeUndefined();
+        expect(data.job.job_config.extraction_strategy).toBeUndefined();
+        expect(data.job.job_config.timeout).toBeUndefined();
+    });
+
     it('falls back to ai_discovery scraper when discovery job has empty scraper list', async () => {
         (validateRunnerAuth as jest.Mock).mockResolvedValue({
             runnerName: 'test-runner',

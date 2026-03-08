@@ -1,12 +1,12 @@
-"""Data models for AI Discovery Scraper."""
+"""Data models for AI Search Scraper."""
 
 from dataclasses import dataclass
 from typing import Optional
 
 
 @dataclass
-class DiscoveryResult:
-    """Result from AI discovery scraping."""
+class AISearchResult:
+    """Result from AI search scraping."""
 
     success: bool
     sku: str

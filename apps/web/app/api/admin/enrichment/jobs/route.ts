@@ -6,9 +6,10 @@ export const dynamic = 'force-dynamic';
 
 interface EnrichmentJobRequest {
     skus: string[];
-    method: 'scrapers' | 'discovery' | 'crawl4ai';
+    method: 'scrapers' | 'ai_search' | 'discovery' | 'crawl4ai';
     config?: {
         scrapers?: string[];
+        aiSearch?: ScrapeOptions['aiSearchConfig'];
         discovery?: {
             product_name?: string;
             brand?: string;
@@ -32,6 +33,26 @@ interface EnrichmentJobRequest {
     maxWorkers?: number;
 }
 
+function normalizeAISearchConfig(request: EnrichmentJobRequest): ScrapeOptions['aiSearchConfig'] | undefined {
+    if (!request.config) {
+        return undefined;
+    }
+
+    if (request.method === 'ai_search' && request.config.aiSearch) {
+        return request.config.aiSearch;
+    }
+
+    if (request.method === 'discovery' && request.config.discovery) {
+        return request.config.discovery;
+    }
+
+    if (request.method === 'crawl4ai' && request.config.crawl4ai) {
+        return request.config.crawl4ai;
+    }
+
+    return undefined;
+}
+
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) {
@@ -39,16 +60,13 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const body = await request.json() as EnrichmentJobRequest;
+        const body = (await request.json()) as EnrichmentJobRequest;
 
         if (!body.skus || !Array.isArray(body.skus) || body.skus.length === 0) {
-            return NextResponse.json(
-                { error: 'skus must be a non-empty array' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'skus must be a non-empty array' }, { status: 400 });
         }
 
-        const validMethods = ['scrapers', 'discovery', 'crawl4ai'];
+        const validMethods = ['scrapers', 'ai_search', 'discovery', 'crawl4ai'];
         if (!body.method || !validMethods.includes(body.method)) {
             return NextResponse.json(
                 { error: `method must be one of: ${validMethods.join(', ')}` },
@@ -56,8 +74,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const normalizedMethod: ScrapeOptions['enrichment_method'] =
+            body.method === 'scrapers' ? 'scrapers' : 'ai_search';
+
         const scrapeOptions: ScrapeOptions = {
-            enrichment_method: body.method,
+            enrichment_method: normalizedMethod,
             chunkSize: body.chunkSize,
             maxWorkers: body.maxWorkers,
         };
@@ -66,12 +87,9 @@ export async function POST(request: NextRequest) {
             scrapeOptions.scrapers = body.config.scrapers;
         }
 
-        if (body.method === 'discovery' && body.config?.discovery) {
-            scrapeOptions.discoveryConfig = body.config.discovery;
-        }
-
-        if (body.method === 'crawl4ai' && body.config?.crawl4ai) {
-            scrapeOptions.crawl4aiConfig = body.config.crawl4ai;
+        const aiSearchConfig = normalizeAISearchConfig(body);
+        if (normalizedMethod === 'ai_search' && aiSearchConfig) {
+            scrapeOptions.aiSearchConfig = aiSearchConfig;
         }
 
         const result = await scrapeProducts(body.skus, scrapeOptions);
@@ -96,16 +114,9 @@ export async function POST(request: NextRequest) {
         console.error('[Enrichment Jobs API] Request failed:', error);
 
         if (error instanceof Error && error.message.includes('JSON')) {
-            return NextResponse.json(
-                { error: 'Invalid JSON in request body' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
         }
 
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-    }
-
+}

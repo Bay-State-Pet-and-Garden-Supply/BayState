@@ -43,21 +43,15 @@ export function ChunkConfig({
   const calculateCostEstimate = () => {
     if (method === "scrapers") return null;
 
-    if (method === "discovery") {
-      const discoveryConfig = config as { maxDiscoveryCostUsd?: number };
-      const maxCost = discoveryConfig?.maxDiscoveryCostUsd || 5.0;
-      const estimatedCost = Math.min(skuCount * 0.05, maxCost);
-      return estimatedCost;
-    }
+    if (method === "ai_search") {
+      const aiConfig = config as { maxAISearchCostUsd?: number; extraction_strategy?: string; llm_model?: string };
+      const maxCost = aiConfig?.maxAISearchCostUsd || 10.0;
 
-    if (method === "crawl4ai") {
-      const crawlConfig = config as { extraction_strategy?: string; llm_model?: string };
-      // crawl4ai can be llm-free or llm-based
-      if (crawlConfig?.extraction_strategy === "llm_free") return 0.0;
-      
-      // llm-based extraction is cheaper than discovery because it's usually 1 page
-      const perProductCost = crawlConfig?.llm_model === "gpt-4o" ? 0.02 : 0.005;
-      return skuCount * perProductCost;
+      if (aiConfig?.extraction_strategy === "llm_free") return 0.0;
+
+      const perProductCost = aiConfig?.llm_model === "gpt-4o" ? 0.02 : 0.005;
+      const estimatedCost = Math.min(skuCount * perProductCost, maxCost);
+      return estimatedCost;
     }
 
     return null;
@@ -93,7 +87,7 @@ export function ChunkConfig({
       </CardHeader>
 
       <CardContent className="space-y-8">
-        {(method === "discovery" || method === "crawl4ai") && estimatedCost !== null && (
+        {method === "ai_search" && estimatedCost !== null && (
           <Alert className="bg-primary/5 border-primary/20">
             <DollarSign className="h-4 w-4 text-primary" />
             <AlertDescription

@@ -415,7 +415,7 @@ export function UnifiedPipelineClient({
     }
   };
 
-  const handleBatchEnhanceConfirm = async ({ scrapers, useAiDiscovery }: { scrapers: string[], useAiDiscovery: boolean }) => {
+  const handleBatchEnhanceConfirm = async ({ scrapers, useAiSearch }: { scrapers: string[], useAiSearch: boolean }) => {
     if (enrichingSkus.length === 0) return;
 
     setIsBulkEnriching(true);
@@ -436,13 +436,13 @@ export function UnifiedPipelineClient({
         }));
       }
 
-      if (useAiDiscovery) {
+      if (useAiSearch) {
         requests.push(fetch('/api/admin/enrichment/jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             skus: enrichingSkus,
-            method: 'crawl4ai',
+            method: 'ai_search',
             chunkSize: 10,
             maxWorkers: 3,
           }),

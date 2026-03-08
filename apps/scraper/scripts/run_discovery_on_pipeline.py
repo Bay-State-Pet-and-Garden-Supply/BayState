@@ -27,7 +27,7 @@ from pathlib import Path
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scrapers.ai_discovery import AIDiscoveryScraper, DiscoveryResult
+from scrapers.ai_search import AISearchScraper, AISearchResult
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,10 +75,10 @@ async def fetch_pipeline_products(
 
 
 async def enhance_product(
-    scraper: AIDiscoveryScraper,
+    scraper: AISearchScraper,
     product: dict[str, Any],
     dry_run: bool = False,
-) -> DiscoveryResult:
+) -> AISearchResult:
     """Enhance a single product using AI Discovery."""
     sku = product.get("sku")
     product_name = product.get("product_name")
@@ -88,7 +88,7 @@ async def enhance_product(
 
     if dry_run:
         logger.info(f"[DRY RUN] Would scrape: {sku}")
-        return DiscoveryResult(
+        return AISearchResult(
             success=True,
             sku=sku,
             product_name=product_name,
@@ -107,7 +107,7 @@ async def enhance_product(
 
 async def update_product_in_pipeline(
     sku: str,
-    result: DiscoveryResult,
+    result: AISearchResult,
     dry_run: bool = False,
 ) -> bool:
     """Update the product in the pipeline with discovered data.
@@ -175,7 +175,7 @@ Examples:
         return
 
     # Initialize scraper
-    scraper = AIDiscoveryScraper(
+    scraper = AISearchScraper(
         headless=not args.visible,
         max_steps=args.max_steps,
         llm_model=args.model,

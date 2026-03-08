@@ -4,7 +4,7 @@ import re
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from scrapers.ai_discovery.matching import MatchingUtils
+from scrapers.ai_search.matching import MatchingUtils
 
 
 class SearchScorer:

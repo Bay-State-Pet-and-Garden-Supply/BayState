@@ -155,7 +155,7 @@ class TestRunnerConfigurationErrorHandling:
 def test_discovery_job_uses_per_sku_context_items() -> None:
     scraper_configs = [
         ScraperConfig(
-            name="ai_discovery",
+            name="ai_search",
             base_url="https://example.com",
             selectors=[],
             options={},
@@ -169,7 +169,7 @@ def test_discovery_job_uses_per_sku_context_items() -> None:
         scrapers=scraper_configs,
         test_mode=False,
         max_workers=1,
-        job_type="discovery",
+        job_type="ai_search",
         job_config={
             "items": [
                 {
@@ -190,7 +190,7 @@ def test_discovery_job_uses_per_sku_context_items() -> None:
 
     captured_items: list[dict[str, object]] = []
 
-    class StubDiscoveryScraper:
+    class StubAISearchScraper:
         def __init__(self, **kwargs):
             _ = kwargs
 
@@ -215,7 +215,7 @@ def test_discovery_job_uses_per_sku_context_items() -> None:
                 for item in items
             ]
 
-    with patch("runner.AIDiscoveryScraper", StubDiscoveryScraper):
+    with patch("runner.AISearchScraper", StubAISearchScraper):
         run_job(job_config, runner_name="test-runner")
 
     assert len(captured_items) == 2
