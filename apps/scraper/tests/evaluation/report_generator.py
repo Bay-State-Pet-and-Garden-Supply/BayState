@@ -1,4 +1,4 @@
-# pyright: reportAny=false, reportExplicitAny=false, reportUnusedCallResult=false
+# pyright: reportUnusedCallResult=false
 from __future__ import annotations
 
 import json
@@ -8,15 +8,25 @@ from pathlib import Path
 from statistics import fmean
 from typing import Any
 
+from tests.evaluation.baseline_comparator import BaselineComparison
 from tests.evaluation.types import EvaluationResult, FieldComparison
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_EVIDENCE_BASE = WORKSPACE_ROOT / ".sisyphus" / "evidence" / "evaluation"
+DEFAULT_REGRESSION_EVIDENCE_BASE = WORKSPACE_ROOT / ".sisyphus" / "evidence" / "regression"
 
 
 @dataclass(frozen=True)
 class EvaluationReport:
+    output_dir: Path
+    json_path: Path
+    markdown_path: Path
+    payload: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class RegressionReport:
     output_dir: Path
     json_path: Path
     markdown_path: Path
@@ -283,6 +293,151 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
     return "\n".join(lines)
 
 
+def _format_delta(value: float) -> str:
+    sign = "+" if value > 0 else ""
+    return f"{sign}{value * 100:.1f} pp"
+
+
+def _risk_level(comparison_result: BaselineComparison) -> str:
+    if comparison_result.improvement < 0 or any(delta < -0.05 for delta in comparison_result.per_field_deltas.values()):
+        return "high"
+    if not comparison_result.is_significant or any(delta < 0 for delta in comparison_result.per_field_deltas.values()):
+        return "medium"
+    return "low"
+
+
+def _risk_assessment(comparison_result: BaselineComparison) -> str:
+    risk_level = _risk_level(comparison_result)
+    if risk_level == "high":
+        return "High risk: the challenger regresses overall accuracy or materially degrades at least one field."
+    if risk_level == "medium":
+        return "Medium risk: the challenger shows mixed field movement or lacks strong statistical support."
+    return "Low risk: the challenger improves accuracy without visible field-level regression risk."
+
+
+def _recommendation_rationale(comparison_result: BaselineComparison) -> str:
+    if comparison_result.recommendation == "MERGE":
+        return "Promote the challenger because it improves or maintains quality with acceptable regression risk."
+    if comparison_result.recommendation == "REVIEW":
+        return "Review manually before promotion because the quality gain is not statistically decisive."
+    return "Reject the challenger because available data indicates a likely regression."
+
+
+def _build_regression_field_rows(comparison_result: BaselineComparison) -> list[dict[str, Any]]:
+    all_fields = sorted(set(comparison_result.per_field_deltas) | set(comparison_result.baseline_per_field) | set(comparison_result.challenger_per_field))
+    rows: list[dict[str, Any]] = []
+    for field_name in all_fields:
+        baseline_value = float(comparison_result.baseline_per_field.get(field_name, 0.0))
+        challenger_value = float(comparison_result.challenger_per_field.get(field_name, 0.0))
+        delta_value = float(comparison_result.per_field_deltas.get(field_name, challenger_value - baseline_value))
+        rows.append(
+            {
+                "field_name": field_name,
+                "baseline_accuracy": round(baseline_value, 4),
+                "challenger_accuracy": round(challenger_value, 4),
+                "delta": round(delta_value, 4),
+                "status": "improved" if delta_value > 0 else "regressed" if delta_value < 0 else "unchanged",
+            }
+        )
+    return rows
+
+
+def _build_regression_payload(comparison_result: BaselineComparison, generated_at: datetime) -> dict[str, Any]:
+    field_rows = _build_regression_field_rows(comparison_result)
+    risk_assessment = _risk_assessment(comparison_result)
+    confidence_level = 0.95 if comparison_result.confidence_level is None else float(comparison_result.confidence_level)
+    confidence_percent = round(confidence_level * 100, 1)
+    p_value = None if comparison_result.p_value is None else round(float(comparison_result.p_value), 6)
+
+    return {
+        "generated_at": generated_at.isoformat(),
+        "baseline_version": comparison_result.baseline_version,
+        "challenger_version": comparison_result.challenger_version,
+        "metrics": {
+            "baseline_accuracy": round(float(comparison_result.baseline_accuracy), 4),
+            "challenger_accuracy": round(float(comparison_result.challenger_accuracy), 4),
+            "improvement": round(float(comparison_result.improvement), 4),
+        },
+        "per_field_deltas": {
+            row["field_name"]: {
+                "baseline_accuracy": row["baseline_accuracy"],
+                "challenger_accuracy": row["challenger_accuracy"],
+                "delta": row["delta"],
+                "status": row["status"],
+            }
+            for row in field_rows
+        },
+        "statistical_significance": {
+            "is_significant": comparison_result.is_significant,
+            "confidence_level": confidence_level,
+            "confidence_level_percent": confidence_percent,
+            "p_value": p_value,
+            "wins": int(comparison_result.wins),
+            "losses": int(comparison_result.losses),
+            "ties": int(comparison_result.ties),
+        },
+        "recommendation": {
+            "decision": comparison_result.recommendation,
+            "rationale": _recommendation_rationale(comparison_result),
+        },
+        "risk_assessment": risk_assessment,
+    }
+
+
+def _build_regression_markdown(payload: dict[str, Any], json_path: Path) -> str:
+    metrics = payload["metrics"]
+    significance = payload["statistical_significance"]
+
+    lines = [
+        "# Regression Report",
+        "",
+        f"**Generated At:** {payload['generated_at']}",
+        f"**Baseline Version:** {payload['baseline_version']}",
+        f"**Challenger Version:** {payload['challenger_version']}",
+        "",
+        "## Summary",
+        "",
+        "| Metric | Baseline | Challenger | Delta |",
+        "|--------|----------|------------|-------|",
+        f"| Accuracy | {_format_percent(metrics['baseline_accuracy'])} | {_format_percent(metrics['challenger_accuracy'])} | {_format_delta(metrics['improvement'])} |",
+        "",
+        "## Per-Field Comparison",
+        "",
+        "| Field | Baseline | Challenger | Delta | Status |",
+        "|-------|----------|------------|-------|--------|",
+    ]
+
+    for field_name, field_metrics in payload["per_field_deltas"].items():
+        lines.append(
+            f"| {field_name} | {_format_percent(field_metrics['baseline_accuracy'])} | {_format_percent(field_metrics['challenger_accuracy'])} | {_format_delta(field_metrics['delta'])} | {field_metrics['status']} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Statistical Test Results",
+            "",
+            "| Check | Value |",
+            "|-------|-------|",
+            f"| Significant | {'yes' if significance['is_significant'] else 'no'} |",
+            f"| Confidence Level | {significance['confidence_level_percent']:.1f}% |",
+            f"| P-Value | {'n/a' if significance['p_value'] is None else f'{significance["p_value"]:.6f}'} |",
+            f"| Wins / Losses / Ties | {significance['wins']} / {significance['losses']} / {significance['ties']} |",
+            "",
+            "## Recommendation",
+            "",
+            f"**{payload['recommendation']['decision']}** - {payload['recommendation']['rationale']}",
+            "",
+            "## Risk Assessment",
+            "",
+            payload["risk_assessment"],
+            "",
+            f"Raw JSON: `{json_path.name}`",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def generate_evaluation_report(
     results: list[EvaluationResult],
     prompt_version: str,
@@ -304,6 +459,30 @@ def generate_evaluation_report(
     _ = markdown_path.write_text(_build_markdown(payload, json_path), encoding="utf-8")
 
     return EvaluationReport(
+        output_dir=report_dir,
+        json_path=json_path,
+        markdown_path=markdown_path,
+        payload=payload,
+    )
+
+
+def generate_regression_report(
+    comparison_result: BaselineComparison,
+    output_dir: str | Path | None = None,
+) -> RegressionReport:
+    generated_at = datetime.now(timezone.utc)
+    base_dir = Path(output_dir) if output_dir is not None else DEFAULT_REGRESSION_EVIDENCE_BASE
+    report_dir = base_dir / _timestamp_slug(generated_at)
+    report_dir.mkdir(parents=True, exist_ok=False)
+
+    payload = _build_regression_payload(comparison_result, generated_at=generated_at)
+    json_path = report_dir / "regression-report.json"
+    markdown_path = report_dir / "regression-report.md"
+
+    _ = json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _ = markdown_path.write_text(_build_regression_markdown(payload, json_path), encoding="utf-8")
+
+    return RegressionReport(
         output_dir=report_dir,
         json_path=json_path,
         markdown_path=markdown_path,

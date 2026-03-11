@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from scrapers.ai_search.models import AISearchResult
@@ -25,8 +25,15 @@ class BaselineComparison:
     challenger_accuracy: float
     improvement: float
     is_significant: bool
-    per_field_deltas: dict[str, float]
     recommendation: str
+    per_field_deltas: dict[str, float] = field(default_factory=dict)
+    baseline_per_field: dict[str, float] = field(default_factory=dict)
+    challenger_per_field: dict[str, float] = field(default_factory=dict)
+    p_value: float | None = None
+    confidence_level: float | None = 0.95
+    wins: int = 0
+    losses: int = 0
+    ties: int = 0
 
 
 def _quality_for_version(version: str) -> float:
@@ -254,6 +261,13 @@ def compare(
         challenger_accuracy=challenger_accuracy,
         improvement=improvement,
         is_significant=is_significant,
-        per_field_deltas=per_field_deltas,
         recommendation=recommendation,
+        per_field_deltas=per_field_deltas,
+        baseline_per_field=baseline_per_field,
+        challenger_per_field=challenger_per_field,
+        p_value=p_value,
+        confidence_level=confidence_level,
+        wins=wins,
+        losses=losses,
+        ties=len(deltas) - wins - losses,
     )
