@@ -40,6 +40,11 @@ ai_config:
   # Run browser in headless mode (no visible window)
   headless: true  # Default: true
 
+  # Prompt version to use for AI extraction
+  # Different versions have different extraction instructions
+  # Options: v1 (default), v2 (experimental)
+  prompt_version: "v1"  # Default: v1
+
 # ============================================================================
 # WORKFLOW DEFINITION
 # ============================================================================
