@@ -9,7 +9,7 @@ This module provides a standalone AI scraper that:
 
 Usage:
     from scrapers.ai_search import AISearchScraper, AISearchResult
-    
+
     scraper = AISearchScraper()
     result = await scraper.scrape_product(
         sku="12345",
@@ -19,6 +19,13 @@ Usage:
 """
 
 from scrapers.ai_search.models import AISearchResult
-from scrapers.ai_search.scraper import AISearchScraper
+
+AISearchScraper = None
+try:
+    from scrapers.ai_search.scraper import AISearchScraper as _AISearchScraper
+except ModuleNotFoundError:
+    pass
+else:
+    AISearchScraper = _AISearchScraper
 
 __all__ = ["AISearchScraper", "AISearchResult"]
