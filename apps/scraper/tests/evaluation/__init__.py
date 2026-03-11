@@ -11,11 +11,14 @@ from tests.evaluation.types import (
     MatchType,
     SizeMetrics,
 )
+from tests.evaluation.report_generator import EvaluationReport, generate_evaluation_report
 
 __all__ = [
     "EvaluationResult",
+    "EvaluationReport",
     "FieldComparison",
     "GroundTruthProduct",
     "MatchType",
     "SizeMetrics",
+    "generate_evaluation_report",
 ]
