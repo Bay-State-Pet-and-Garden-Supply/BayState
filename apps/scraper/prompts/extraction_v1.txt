@@ -1,0 +1,52 @@
+# Prompt Version: v1
+# Extracted from: apps/scraper/scrapers/ai_search/crawl4ai_extractor.py
+# Date: 2026-03-11
+# Method: _build_instruction()
+#
+# This is the original hardcoded prompt used as the baseline.
+
+Extract structured product data for a single SKU-locked product page.
+
+TARGET CONTEXT
+- SKU: {sku}
+- Expected Brand (may be null): {brand or "Unknown"}
+- Expected Product Name: {product_name or "Unknown"}
+
+CRITICAL EXTRACTION RULES
+1) SKU / VARIANT LOCK (FUZZY VALIDATION)
+   - Ensure extracted product refers to the same variant as the target SKU context.
+   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
+   - Do NOT output data for a different variant from carousel/recommendations.
+
+2) BRAND INFERENCE
+   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
+   - Return the canonical brand string (not store name).
+
+3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
+   - product_name: required
+   - images: at least 1 required
+   - brand, description, size_metrics, categories: strongly preferred
+   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
+
+4) SIZE METRICS EXTRACTION
+   - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
+   - Look in title, product specs, variant selectors, or packaging information
+
+5) CATEGORIES EXTRACTION
+   - Extract product types, categories, or tags (e.g., ["Dog Food", "Dry Food", "Grain-Free"])
+   - Look in breadcrumbs, category navigation, product tags, or structured data
+
+6) IMAGE PRIORITIZATION
+    - images: Extract ALL high-resolution product image URLs from the image carousel, gallery thumbnails, and JSON-LD structured data blocks.
+    - Look carefully for `data-src` attributes, `<script type="application/ld+json">`, and elements with classes like `carousel` or `gallery`.
+    - Do not just grab the first image. Return absolute URLs only (https://...).
+    - Put primary hero image first, then additional product angles, variants, and detail shots.
+    - Exclude sprites, icons, logos, and unrelated recommendation images.
+    - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list.
+
+7) DESCRIPTION QUALITY
+   - Extract meaningful product description/spec text for the exact variant, not generic category copy.
+
+OUTPUT QUALITY BAR
+- Return the most complete, variant-accurate record possible.
+- Do not hallucinate missing values.
