@@ -42,6 +42,7 @@ class AISearchScraper:
         llm_model: str = "gpt-4o-mini",
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
+        prompt_version: str = "v1",
     ):
         """Initialize the AI discovery scraper.
 
@@ -53,6 +54,7 @@ class AISearchScraper:
             llm_model: LLM model to use for AI extraction
             cache_enabled: Whether to enable/disable Crawl4AI caching
             extraction_strategy: Strategy for data extraction (llm, json_ld, etc)
+            prompt_version: Which prompt version to use (v1, v2, etc)
         """
         self.headless = headless
         self.max_search_results = max_search_results
@@ -61,6 +63,7 @@ class AISearchScraper:
         self.llm_model = llm_model
         self.cache_enabled = cache_enabled
         self.extraction_strategy = extraction_strategy
+        self.prompt_version = prompt_version
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
         self._cost_tracker = AICostTracker()
         self._browser: Any = None
@@ -84,7 +87,9 @@ class AISearchScraper:
             matching=self._matching,
             cache_enabled=cache_enabled,
             extraction_strategy=extraction_strategy,
+            prompt_version=prompt_version,
         )
+        self.extractor = self._crawl4ai_extractor  # Alias for QA
         self._fallback_extractor = FallbackExtractor(
             scoring=self._scoring,
             matching=self._matching,
