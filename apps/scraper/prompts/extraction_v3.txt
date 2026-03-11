@@ -1,0 +1,184 @@
+# Prompt Version: v3
+# Created: 2026-03-11
+# Based on: extraction_v2.txt
+#
+# FOCUS: Product data extraction only (NO price, NO availability)
+# Target improvements:
+# - Description extraction (weak in v2)
+# - Size metrics extraction (removed in v2)
+# - Categories extraction (removed in v2)
+
+Extract structured product data for a single SKU-locked product page.
+
+TARGET CONTEXT
+- SKU: {sku}
+- Expected Brand (may be null): {brand or "Unknown"}
+- Expected Product Name: {product_name or "Unknown"}
+
+CRITICAL EXTRACTION RULES
+1) SKU / VARIANT LOCK (FUZZY VALIDATION)
+   - Ensure extracted product refers to the same variant as the target SKU context.
+   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
+   - Do NOT output data for a different variant from carousel/recommendations.
+
+2) BRAND INFERENCE
+   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
+   - Return the canonical brand string (not store name).
+
+3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
+   - product_name: required
+   - brand: required
+   - description: required (see rule 7 for extraction guidance)
+   - size_metrics: required (see rule 8 for extraction guidance)
+   - images: at least 1 required
+   - categories: strongly preferred (see rule 6)
+   - If a required field cannot be found, keep searching the same page context before giving up.
+
+4) IMAGE PRIORITIZATION
+   - Put primary hero image first.
+   - Prefer URLs for the exact selected variant.
+   - Return absolute URLs only (https://...).
+   - Exclude sprites, icons, logos, and unrelated recommendation images.
+   - Include 3-5 images if available (main + alternate angles).
+
+5) CATEGORIES EXTRACTION (IMPROVED IN V3)
+   - Extract product categories from breadcrumb navigation, category tags, or "Department" fields.
+   - Normalize to standard taxonomy terms:
+     - Input: "Lawn & Garden > Soil & Mulch > Mulch" → Output: ["Mulch", "Garden Care", "Soil Amendment"]
+     - Input: "Pet Supplies > Horse Supplies > Treats" → Output: ["Horse Treats", "Animal Feed"]
+   - Return 2-3 most specific categories (most specific first).
+   - Avoid store-specific category names like "Shop All" or "Deals".
+
+6) DESCRIPTION EXTRACTION (MAJOR IMPROVEMENT IN V3)
+   - Extract meaningful product description/spec text for the exact variant.
+   - SEARCH LOCATIONS (in order of priority):
+     1. Product description paragraph (usually below product title)
+     2. "About this item" or "Product features" bullet points
+     3. Key benefits list (often with checkmarks)
+     4. Product specifications table (convert to descriptive text)
+     5. Meta description tag
+     6. Structured data description field
+   - COMBINE multiple sources if needed to get complete description.
+   - Extract at least 2-3 sentences or key features.
+   - Do NOT use generic category copy or SEO filler text.
+   - PRESERVE important technical details: material, dimensions, weight, usage instructions, key ingredients.
+
+7) SIZE METRICS EXTRACTION (NEW IN V3)
+   - Extract size, weight, volume, count, or coverage metrics from:
+     1. Product title (e.g., "1.5 cu ft", "8 lb", "25 Quart", "5,000 sq ft")
+     2. Size/variant selector dropdown
+     3. Product specifications table
+     4. Structured data
+     5. Product description text
+   - NORMALIZE to standard format:
+     - Volume: "X cu ft" or "X qt" or "X gal"
+     - Weight: "X lb" or "X oz" or "X kg"
+     - Count: "X count" or "X pack"
+     - Area: "X sq ft"
+   - If multiple sizes shown (e.g., dropdown), extract the size matching the target SKU context.
+   - Examples:
+     - "1.5 cu ft" (mulch)
+     - "8 lb" (feed)
+     - "25 Quart" (potting mix)
+     - "5,000 sq ft capacity" (spreader)
+
+OUTPUT QUALITY BAR
+- Return the most complete, variant-accurate product record possible.
+- Do not hallucinate missing values.
+- When extracting from tables or specifications, convert structured data to readable text.
+- Focus on product INFORMATION, not pricing or inventory status.
+
+---
+
+CHANGELOG
+=========
+Changes from v2 to v3:
+
+1. SCOPE CLARIFICATION
+   - REMOVED: Price extraction
+   - REMOVED: Availability extraction
+   - FOCUS: Product data only (name, brand, description, size, images, categories)
+   - Rationale: Product catalog data, not inventory/pricing data
+
+2. DESCRIPTION EXTRACTION (MAJOR IMPROVEMENT)
+   - v2: "Extract meaningful product description/spec text" (vague)
+   - v3: Added explicit SEARCH LOCATIONS with priority order
+   - v3: Added guidance to COMBINE multiple sources
+   - v3: Added length requirement (2-3 sentences minimum)
+   - v3: Added preservation of technical details (material, ingredients, usage)
+   - Rationale: Address extremely low description accuracy (30%)
+
+3. SIZE METRICS EXTRACTION (RE-ADDED WITH GUIDANCE)
+   - v2: REMOVED to reduce token usage
+   - v3: RE-ADDED with detailed extraction locations
+   - v3: Added normalization rules for standard formats
+   - v3: Added variant-matching guidance
+   - v3: Added search in product title, specs, and description
+   - Rationale: Size metrics are critical for product identification
+
+4. CATEGORIES EXTRACTION (RE-ADDED WITH TAXONOMY)
+   - v2: REMOVED to reduce token usage
+   - v3: RE-ADDED with normalization guidance
+   - v3: Added examples of category mapping
+   - v3: Added instruction to avoid store-specific names
+   - Rationale: Categories needed for product organization
+
+5. IMAGE EXTRACTION (EXPANDED)
+   - v2: At least 1 image required
+   - v3: Request 3-5 images if available (main + alternate angles)
+   - Rationale: Richer product data for catalog
+
+6. MUST-FILL CHECKLIST (PRODUCT-FOCUSED)
+   - v2: product_name, price, images, availability required
+   - v3: product_name, brand, description, size_metrics, images required
+   - v3: categories strongly preferred
+   - Rationale: Focus on product information
+
+---
+
+EXPECTED IMPACT ESTIMATES
+=========================
+Based on v2 results and v3 improvements:
+
+1. DESCRIPTION
+   - Baseline (v2): 30% field accuracy
+   - Expected (v3): 80% field accuracy
+   - Impact: +50 percentage points
+
+2. SIZE_METRICS
+   - Baseline (v2): Not extracted (0%)
+   - Expected (v3): 85% field accuracy
+   - Impact: +85 percentage points (new field)
+
+3. CATEGORIES
+   - Baseline (v2): Not extracted (0%)
+   - Expected (v3): 75% field accuracy
+   - Impact: +75 percentage points (new field)
+
+4. IMAGES
+   - Baseline (v2): 85% field accuracy
+   - Expected (v3): 90% field accuracy
+   - Impact: +5 percentage points
+
+5. OVERALL
+   - Expected overall field accuracy: 88-92%
+   - Expected cost change: ~-10% (removed price/availability)
+   - Expected latency change: ~-100ms (fewer instructions)
+
+---
+
+TESTING NOTES
+=============
+Priority test SKUs for v3 validation:
+- 032247886598 (Scotts mulch - "1.5 cu ft" in title)
+- 095668300593 (Manna Pro feed - "8 lb" in title)
+- 032247761215 (Scotts spreader - "5,000 sq ft" in title)
+- 032247278140 (Miracle-Gro potting mix - "25 Quart" in title)
+- 095668001032 (Manna Pro treats - no size, test null handling)
+
+Focus validation on:
+1. Description completeness (2+ sentences? technical details included?)
+2. Size metrics normalization (correct format? from title vs specs?)
+3. Category accuracy (relevant to product? normalized terms?)
+4. Image quantity (3-5 images when available?)
+5. NO price or availability in output
