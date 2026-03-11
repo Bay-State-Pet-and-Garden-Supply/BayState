@@ -9,6 +9,12 @@ from pathlib import Path
 from time import perf_counter
 from typing import cast
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = PROJECT_ROOT / "src"
+for import_root in (PROJECT_ROOT, SRC_ROOT):
+    if str(import_root) not in sys.path:
+        sys.path.insert(0, str(import_root))
+
 from scrapers.ai_search.scraper import AISearchScraper
 from tests.evaluation.cost_tracker import EvaluationCostReport, EvaluationCostTracker
 from tests.evaluation.metrics_calculator import calculate_per_sku_metrics
