@@ -3,15 +3,21 @@
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Optional
 
 from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
+
 # Using centralized engine
 from crawl4ai_engine.engine import Crawl4AIEngine
 
 logger = logging.getLogger(__name__)
+
+
+# Class-level cache for loaded prompts
+_PROMPT_CACHE: dict[str, str] = {}
 
 
 class Crawl4AIExtractor:
@@ -25,14 +31,112 @@ class Crawl4AIExtractor:
         matching: MatchingUtils,
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
+        prompt_version: str = "v1",
     ):
         self.headless = headless
         self.llm_model = llm_model
         self.cache_enabled = cache_enabled
         self.extraction_strategy = extraction_strategy
+        self.prompt_version = prompt_version
         self._scoring = scoring
         self._matching = matching
         self._extraction = ExtractionUtils(scoring)
+
+    def _load_prompt_from_file(self, version: str) -> Optional[str]:
+        """Load prompt template from file with caching."""
+        # Check cache first
+        if version in _PROMPT_CACHE:
+            return _PROMPT_CACHE[version]
+
+        # Try to load from file
+        prompts_dir = Path(__file__).parent.parent.parent / "prompts"
+        prompt_file = prompts_dir / f"extraction_{version}.txt"
+
+        if prompt_file.exists():
+            try:
+                content = prompt_file.read_text(encoding="utf-8")
+                # Remove comment lines (starting with #)
+                lines = [line for line in content.split("\n") if not line.strip().startswith("#")]
+                content = "\n".join(lines).strip()
+                _PROMPT_CACHE[version] = content
+                logger.debug(f"Loaded prompt version {version} from {prompt_file}")
+                return content
+            except Exception as e:
+                logger.warning(f"Failed to load prompt {prompt_file}: {e}")
+
+        return None
+
+    def _get_hardcoded_prompt(self) -> str:
+        """Return the hardcoded prompt as fallback."""
+        return """Extract structured product data for a single SKU-locked product page.
+
+TARGET CONTEXT
+- SKU: {sku}
+- Expected Brand (may be null): {brand}
+- Expected Product Name: {product_name}
+
+CRITICAL EXTRACTION RULES
+1) SKU / VARIANT LOCK (FUZZY VALIDATION)
+   - Ensure extracted product refers to the same variant as the target SKU context.
+   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
+   - Do NOT output data for a different variant from carousel/recommendations.
+
+2) BRAND INFERENCE
+   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
+   - Return the canonical brand string (not store name).
+
+3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
+   - product_name: required
+   - images: at least 1 required
+   - brand, description, size_metrics, categories: strongly preferred
+   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
+
+4) SIZE METRICS EXTRACTION
+   - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
+   - Look in title, product specs, variant selectors, or packaging information
+
+5) CATEGORIES EXTRACTION
+   - Extract product types, categories, or tags (e.g., ["Dog Food", "Dry Food", "Grain-Free"])
+   - Look in breadcrumbs, category navigation, product tags, or structured data
+
+6) IMAGE PRIORITIZATION
+    - images: Extract ALL high-resolution product image URLs from the image carousel, gallery thumbnails, and JSON-LD structured data blocks.
+    - Look carefully for `data-src` attributes, `<script type="application/ld+json">`, and elements with classes like `carousel` or `gallery`.
+    - Do not just grab the first image. Return absolute URLs only (https://...).
+    - Put primary hero image first, then additional product angles, variants, and detail shots.
+    - Exclude sprites, icons, logos, and unrelated recommendation images.
+    - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list.
+
+7) DESCRIPTION QUALITY
+   - Extract meaningful product description/spec text for the exact variant, not generic category copy.
+
+OUTPUT QUALITY BAR
+- Return the most complete, variant-accurate record possible.
+- Do not hallucinate missing values."""
+
+    def _build_instruction(self, sku: str, brand: Optional[str], product_name: Optional[str]) -> str:
+        """Build the LLM extraction instruction."""
+        # Try to load from file first
+        prompt_template = self._load_prompt_from_file(self.prompt_version)
+
+        # Fall back to hardcoded if file not found
+        if prompt_template is None:
+            prompt_template = self._get_hardcoded_prompt()
+        else:
+            # Handle f-string syntax in prompt files: {brand or "Unknown"} -> {brand}
+            # The file uses f-string syntax but we're using .format()
+            prompt_template = prompt_template.replace('{brand or "Unknown"}', '{brand}')
+            prompt_template = prompt_template.replace('{product_name or "Unknown"}', '{product_name}')
+
+        # Substitute variables
+        if prompt_template is None:
+            prompt_template = self._get_hardcoded_prompt()
+
+        # Substitute variables
+        brand_str = brand if brand else "Unknown"
+        product_name_str = product_name if product_name else "Unknown"
+
+        return prompt_template.format(sku=sku, brand=brand_str, product_name=product_name_str)
 
     async def extract(
         self,
@@ -64,9 +168,8 @@ class Crawl4AIExtractor:
             # Support different extraction strategies based on config
             if self.extraction_strategy == "json_css":
                 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-                strategy = JsonCssExtractionStrategy(
-                    schema=ProductData.model_json_schema()
-                )
+
+                strategy = JsonCssExtractionStrategy(schema=ProductData.model_json_schema())
             else:
                 # Default to LLM strategy
                 llm_strategy = LLMExtractionStrategy(
@@ -94,7 +197,7 @@ class Crawl4AIExtractor:
                     "js_code": self._get_scroll_js(),
                     "extraction_strategy": strategy,
                     "timeout": 30000,
-                }
+                },
             }
 
             async with Crawl4AIEngine(engine_config) as engine:
@@ -125,7 +228,7 @@ class Crawl4AIExtractor:
                             "error": "Could not parse extraction result",
                             "raw_response": extracted_content[:500],
                         }
-                
+
                 return {
                     "success": False,
                     "error": result.get("error") or "Extraction failed or returned no content",
@@ -137,54 +240,6 @@ class Crawl4AIExtractor:
                 "success": False,
                 "error": str(e),
             }
-
-    def _build_instruction(self, sku: str, brand: Optional[str], product_name: Optional[str]) -> str:
-        """Build the LLM extraction instruction."""
-        return f"""Extract structured product data for a single SKU-locked product page.
-
-TARGET CONTEXT
-- SKU: {sku}
-- Expected Brand (may be null): {brand or "Unknown"}
-- Expected Product Name: {product_name or "Unknown"}
-
-CRITICAL EXTRACTION RULES
-1) SKU / VARIANT LOCK (FUZZY VALIDATION)
-   - Ensure extracted product refers to the same variant as the target SKU context.
-   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
-   - Do NOT output data for a different variant from carousel/recommendations.
-
-2) BRAND INFERENCE
-   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
-   - Return the canonical brand string (not store name).
-
-3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
-   - product_name: required
-   - images: at least 1 required
-   - brand, description, size_metrics, categories: strongly preferred
-   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
-
-4) SIZE METRICS EXTRACTION
-   - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
-   - Look in title, product specs, variant selectors, or packaging information
-
-5) CATEGORIES EXTRACTION
-   - Extract product types, categories, or tags (e.g., ["Dog Food", "Dry Food", "Grain-Free"])
-   - Look in breadcrumbs, category navigation, product tags, or structured data
-
-6) IMAGE PRIORITIZATION
-     - images: Extract ALL high-resolution product image URLs from the image carousel, gallery thumbnails, and JSON-LD structured data blocks.
-     - Look carefully for `data-src` attributes, `<script type="application/ld+json">`, and elements with classes like `carousel` or `gallery`.
-     - Do not just grab the first image. Return absolute URLs only (https://...).
-     - Put primary hero image first, then additional product angles, variants, and detail shots.
-     - Exclude sprites, icons, logos, and unrelated recommendation images.
-     - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list.
-
-7) DESCRIPTION QUALITY
-   - Extract meaningful product description/spec text for the exact variant, not generic category copy.
-
-OUTPUT QUALITY BAR
-- Return the most complete, variant-accurate record possible.
-- Do not hallucinate missing values."""
 
     def _get_scroll_js(self) -> str:
         """Get JavaScript for lazy loading trigger."""
