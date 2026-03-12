@@ -39,12 +39,10 @@ class QueryBuilder:
         if category_clean:
             query_tokens.append(category_clean)
 
-        # Higher intent keywords than just 'product details'
+        # Higher intent keywords
         query_tokens.extend(
             [
-                "official",
                 "product",
-                "manufacturer",
                 "-review",
                 "-comparison",
                 "-reddit",
@@ -77,14 +75,14 @@ class QueryBuilder:
         # Variant 1: SKU with prefix (most effective for product mapping)
         if sku_clean:
             if sku_clean.isdigit() and len(sku_clean) in (12, 13, 14):
-                variants.append(f"UPC {sku_clean} official")
+                variants.append(f"UPC {sku_clean}")
             else:
-                variants.append(f"SKU {sku_clean} official")
+                variants.append(f"SKU {sku_clean}")
 
         # Variant 2: Brand + Name (classic search)
         tokens = [t for t in [brand_clean, name_clean] if t]
         if len(tokens) >= 2:
-            variants.append(" ".join(tokens) + " manufacturer")
+            variants.append(" ".join(tokens))
 
         # Variant 3: Name + SKU (brand missing)
         if name_clean and sku_clean:
