@@ -1,0 +1,1 @@
+# Removal of scraper_backend\n- Archived original directory to .sisyphus/archive/scraper_backend\n- Adjusted daemon.py imports to support both package-relative and top-level import contexts\n- Verified runner and daemon import without ImportError

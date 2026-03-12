@@ -1,0 +1,3 @@
+- Initialized Sentry only when SENTRY_DSN set.
+- Used before_send to scrub credentials from URLs.
+- Used importlib to avoid hard dependency at import-time in environments without sentry-sdk.

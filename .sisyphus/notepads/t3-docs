@@ -1,0 +1,73 @@
+# Task 3: Monitoring Documentation - Learnings
+
+## Date: 2026-03-05
+
+## What Was Done
+
+Created comprehensive monitoring documentation for the BayStateScraper infrastructure:
+
+1. **monitoring.md** (384 lines) - Complete monitoring guide with:
+   - Overview of Prometheus and Sentry integration
+   - Detailed Prometheus setup instructions
+   - Sentry DSN configuration
+   - All 9 available metrics with descriptions and examples
+   - Example Prometheus scrape configs
+   - Troubleshooting section with common issues
+
+2. **.env.example** (71 lines) - Environment variables template with:
+   - All required vars (SCRAPER_API_URL, SCRAPER_API_KEY)
+   - Optional monitoring vars (SENTRY_DSN, METRICS_PORT)
+   - Organized into logical sections with comments
+
+3. **README.md update** - Added Monitoring section after Environment Variables with:
+   - Table of key Prometheus metrics
+   - Sentry setup snippet
+   - Link to full monitoring guide
+
+## Patterns Discovered
+
+### Metrics Architecture
+- Metrics endpoint runs in background thread (non-blocking)
+- Port configurable via METRICS_PORT env var (default 8000)
+- Prometheus text format v0.0.4 served at `/metrics`
+- All metrics use `crawl4ai_` prefix consistently
+
+### Sentry Integration
+- Located in `utils/sentry.py`
+- Initialized via `init_sentry()` function
+- Uses SENTRY_DSN env var
+- Adds contextual tags: job_id, scraper_name, extraction_mode, request_url
+
+### Error Types in Metrics
+From metrics.py ErrorType enum:
+- network_error
+- timeout
+- rate_limit
+- anti_bot_detected
+- parse_error
+- validation_error
+- llm_error
+- unknown
+
+### Extraction Modes
+- llm_free: DOM parsing, no AI cost
+- llm: AI extraction with cost tracking
+- auto: Automatic selection based on page complexity
+
+## Verification Approach
+
+Created `t3-docs-check.sh` that verifies:
+- File existence for monitoring.md and .env.example
+- README.md contains "## Monitoring" section
+- All 6 required sections in monitoring.md
+- All 7 required env vars in .env.example
+
+This pattern of automated verification ensures documentation stays in sync with requirements.
+
+## Technical Writing Notes
+
+- Used consistent formatting for metric examples (prometheus-style output)
+- Included practical troubleshooting scenarios
+- Avoided Grafana setup (out of scope per requirements)
+- No real credentials or DSNs included
+- Used plain language, avoided AI-sounding phrases

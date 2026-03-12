@@ -1,0 +1,2 @@
+- Decision: Use importlib to import sentry_sdk at runtime to keep test/dev environments without sentry installed working.
+- Decision: Do not replace structured logging; integrate via LoggingIntegration with no event level set.
