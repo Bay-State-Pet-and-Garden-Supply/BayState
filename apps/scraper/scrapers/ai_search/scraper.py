@@ -69,6 +69,7 @@ class AISearchScraper:
         # Telemetry tracking for job-level summary
         self._telemetry: dict[str, Any] = {
             "urls": [],
+            "llm_heuristic_agreement": [],
             "by_stage": {
                 "source_selected": 0,
                 "fetch_attempt": 0,
@@ -109,7 +110,7 @@ class AISearchScraper:
             matching=self._matching,
         )
 
-    def _log_telemetry(self, sku: str, url: str, stage: str, success: bool, details: str = "") -> None:
+    def _log_telemetry(self, sku: str, url: str, stage: str, success: bool, details: str = "", selection_method: Optional[str] = None) -> None:
         """Log structured telemetry for a URL attempt."""
         telemetry_entry = {
             "sku": sku,
@@ -117,6 +118,7 @@ class AISearchScraper:
             "stage": stage,
             "success": success,
             "details": details,
+            "selection_method": selection_method,
         }
         self._telemetry["urls"].append(telemetry_entry)
         if success:
@@ -131,11 +133,18 @@ class AISearchScraper:
         total = len(urls)
         successful = sum(1 for u in urls if u.get("stage") == "validation" and u.get("success"))
         failed = total - successful
+        
+        # Calculate agreement if LLM was used
+        agreement_rate = 0.0
+        if self._telemetry["llm_heuristic_agreement"]:
+            agreement_rate = sum(1 for a in self._telemetry["llm_heuristic_agreement"] if a) / len(self._telemetry["llm_heuristic_agreement"])
+
         summary = {
             "sku": sku,
             "total_urls": total,
             "successful": successful,
             "failed": failed,
+            "llm_heuristic_agreement_rate": agreement_rate,
             "by_stage": self._telemetry["by_stage"],
         }
         logger.info(f"[AI Search] Job telemetry summary: {json.dumps(summary)}")
@@ -176,15 +185,30 @@ class AISearchScraper:
         """
         if self.use_ai_source_selection:
             logger.info(f"[AI Search] Using LLM source selection for SKU {sku}")
+            heuristic_url = self._heuristic_source_selection(
+                search_results=search_results,
+                sku=sku,
+                brand=brand,
+                product_name=product_name,
+            )
+            
             best_url, cost = await self._source_selector.select_best_url(
                 results=search_results,
                 sku=sku,
                 product_name=product_name or "",
             )
+            
+            # Track agreement
+            if best_url and heuristic_url:
+                agreement = best_url == heuristic_url
+                self._telemetry["llm_heuristic_agreement"].append(agreement)
+                logger.info(f"[AI Search] LLM/Heuristic agreement: {agreement}")
+
             if best_url:
                 logger.info(f"[AI Search] LLM selected source: {best_url}")
                 return best_url
             logger.info("[AI Search] LLM failed to select a clear source, falling back to heuristics")
+            return heuristic_url
 
         return self._heuristic_source_selection(
             search_results=search_results,
