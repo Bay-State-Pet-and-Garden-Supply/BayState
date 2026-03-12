@@ -204,6 +204,9 @@ class Crawl4AIExtractor:
                                 llm_time_ms,
                                 None,
                                 float(jsonld_result["confidence"]),
+                                pruning_enabled=True,
+                                fit_markdown_used=False,
+                                fallback_triggered=result.get("fallback_triggered", False)
                             )
                             return jsonld_result
 
@@ -229,6 +232,9 @@ class Crawl4AIExtractor:
                                 llm_time_ms,
                                 None,
                                 float(meta_result["confidence"]),
+                                pruning_enabled=True,
+                                fit_markdown_used=False,
+                                fallback_triggered=result.get("fallback_triggered", False)
                             )
                             return meta_result
 
