@@ -1,13 +1,13 @@
 # Implementation Plan: url_selection_refinement_20260312
 
-## Phase 1: Trusted Retailer Update
+## Phase 1: Trusted Retailer Update [checkpoint: 560dee4]
 Expand the list of boosted domains to include more relevant pet and garden suppliers.
 
 - [x] **Task: Update `SearchScorer.TRUSTED_RETAILERS`** [eb3bbd3]
     - [ ] Add new unit tests in `tests/unit/test_trusted_retailers.py` to verify that the new domains receive the correct boost.
     - [ ] Expand the `TRUSTED_RETAILERS` set in `apps/scraper/scrapers/ai_search/scoring.py`.
     - [ ] Verify all tests pass.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1: Trusted Retailers' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 1: Trusted Retailers' (Protocol in workflow.md)** [560dee4]
 
 ## Phase 2: LLM Source Selector Implementation
 Introduce the LLM-powered pre-ranking component.
