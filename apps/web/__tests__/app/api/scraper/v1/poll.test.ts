@@ -258,7 +258,7 @@ describe('POST /api/scraper/v1/poll', () => {
                 slug: 'ai_discovery',
                 scraper_config_versions: {
                     status: 'published',
-                    config: {
+                    config_legacy: {
                         base_url: 'https://example.com',
                         selectors: [],
                         workflows: [],
@@ -320,7 +320,7 @@ describe('POST /api/scraper/v1/poll', () => {
                 slug: 'ai_discovery',
                 scraper_config_versions: {
                     status: 'published',
-                    config: {
+                    config_legacy: {
                         base_url: 'https://example.com',
                         selectors: [],
                         workflows: [],
@@ -371,7 +371,7 @@ describe('POST /api/scraper/v1/poll', () => {
             slug: 'bradley',
             scraper_config_versions: {
                 status: 'published',
-                config: {
+                config_legacy: {
                     base_url: 'https://www.bradleycaldwell.com',
                     selectors: [
                         { name: 'Name', selector: 'main h1', attribute: 'text' },

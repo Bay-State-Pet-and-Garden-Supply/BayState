@@ -117,6 +117,74 @@ class AISearchScraper:
 
         return await asyncio.gather(*[_run_one(item) for item in items])
 
+    async def _identify_best_source(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+    ) -> Optional[str]:
+        """Select the best source URL.
+
+        We currently use deterministic scoring for reliability. This method remains
+        async so LLM-based ranking can be reintroduced without changing callers.
+        """
+        return self._heuristic_source_selection(
+            search_results=search_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+        )
+
+    def _heuristic_source_selection(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        brand: Optional[str] = None,
+        product_name: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> Optional[str]:
+        """Pick the highest-signal candidate URL using existing scoring logic."""
+        if not search_results:
+            return None
+
+        strong_url = self._scoring.pick_strong_candidate_url(
+            search_results=search_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+        )
+        if strong_url:
+            return strong_url
+
+        ranked_candidates: list[tuple[float, str]] = []
+        for result in search_results:
+            url = str(result.get("url") or "").strip()
+            if not url:
+                continue
+            if self._scoring.is_low_quality_result(result):
+                continue
+            score = self._scoring.score_search_result(
+                result=result,
+                sku=sku,
+                brand=brand,
+                product_name=product_name,
+                category=category,
+            )
+            ranked_candidates.append((score, url))
+
+        if ranked_candidates:
+            ranked_candidates.sort(key=lambda item: item[0], reverse=True)
+            return ranked_candidates[0][1]
+
+        for result in search_results:
+            url = str(result.get("url") or "").strip()
+            if url:
+                return url
+
+        return None
+
     async def scrape_product(
         self,
         sku: str,
@@ -221,7 +289,12 @@ class AISearchScraper:
                         if self.use_ai_source_selection:
                             target_url = await self._identify_best_source(search_results, sku, brand, product_name)
                         else:
-                            target_url = self._heuristic_source_selection(search_results, brand)
+                            target_url = self._heuristic_source_selection(
+                                search_results,
+                                sku,
+                                brand,
+                                product_name,
+                            )
                 else:
                     if not search_results:
                         break

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { assembleScraperConfig } from '@/lib/admin/scraper-configs/assemble-config';
 import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
@@ -28,12 +29,19 @@ interface ScraperConfig {
 }
 
 interface ScraperConfigVersionRow {
+    id?: string;
     status?: string | null;
-    config?: unknown;
+    config_legacy?: unknown;
+    ai_config?: unknown;
+    validation_config?: unknown;
+    timeout?: number | null;
+    retries?: number | null;
 }
 
 interface ScraperConfigRow {
+    id: string;
     slug: string;
+    base_url?: string | null;
     scraper_config_versions: ScraperConfigVersionRow | ScraperConfigVersionRow[] | null;
 }
 
@@ -243,10 +251,16 @@ export async function POST(request: NextRequest) {
         let scraperQuery = supabase
             .from('scraper_configs')
             .select(`
+                id,
                 slug,
+                base_url,
                 scraper_config_versions!fk_current_version (
+                    id,
                     status,
-                    config
+                    ai_config,
+                    validation_config,
+                    timeout,
+                    retries
                 )
             `)
             .eq('scraper_config_versions.status', 'published');
@@ -261,35 +275,130 @@ export async function POST(request: NextRequest) {
             console.error('[Poll] Scraper query error:', scraperError);
         }
 
-        const scrapers: ScraperConfig[] = ((scraperRows || []) as ScraperConfigRow[]).map((row) => {
+        const scraperRowsTyped = (scraperRows || []) as ScraperConfigRow[];
+        const scrapers: ScraperConfig[] = [];
+        for (const row of scraperRowsTyped) {
             const version = normalizeCurrentVersion(row.scraper_config_versions);
-            const config = toRecord(version?.config);
-            const workflows = Array.isArray(config?.workflows) ? config.workflows : undefined;
-            const timeout = typeof config?.timeout === 'number' ? config.timeout : undefined;
+
+            let assembled = null;
+            try {
+                assembled = await assembleScraperConfig(row.id);
+            } catch (assemblyError) {
+                console.warn(`[Poll] Failed to assemble normalized config for ${row.slug}:`, assemblyError);
+            }
 
             const options: Record<string, unknown> = {};
-            if (workflows && workflows.length > 0) {
-                options.workflows = workflows;
-            }
-            if (typeof timeout === 'number') {
-                options.timeout = timeout;
+
+            if (assembled) {
+                if (assembled.workflows.length > 0) {
+                    options.workflows = assembled.workflows;
+                }
+                if (typeof assembled.timeout === 'number') {
+                    options.timeout = assembled.timeout;
+                }
+
+                scrapers.push({
+                    name: row.slug,
+                    disabled: version?.status === 'archived',
+                    base_url: assembled.base_url,
+                    search_url_template:
+                        typeof assembled.ai_config?.task === 'string'
+                            ? assembled.ai_config.task
+                            : undefined,
+                    selectors: toSelectors(assembled.selectors),
+                    options,
+                    test_skus: assembled.test_skus,
+                    retries: assembled.retries,
+                    validation: toRecord(assembled.validation),
+                });
+                continue;
             }
 
-            return {
+            const legacyConfig = toRecord(version?.config_legacy);
+            if (legacyConfig) {
+                const workflows = Array.isArray(legacyConfig.workflows) ? legacyConfig.workflows : undefined;
+                const timeout = typeof legacyConfig.timeout === 'number' ? legacyConfig.timeout : undefined;
+                if (workflows && workflows.length > 0) {
+                    options.workflows = workflows;
+                }
+                if (typeof timeout === 'number') {
+                    options.timeout = timeout;
+                }
+
+                scrapers.push({
+                    name: row.slug,
+                    disabled: version?.status === 'archived',
+                    base_url: typeof legacyConfig.base_url === 'string' ? legacyConfig.base_url : undefined,
+                    search_url_template:
+                        typeof legacyConfig.search_url_template === 'string'
+                            ? legacyConfig.search_url_template
+                            : undefined,
+                    selectors: toSelectors(legacyConfig.selectors),
+                    options,
+                    test_skus: toStringArray(legacyConfig.test_skus),
+                    retries: typeof legacyConfig.retries === 'number' ? legacyConfig.retries : undefined,
+                    validation: toRecord(legacyConfig.validation),
+                });
+                continue;
+            }
+
+            const versionId = typeof version?.id === 'string' ? version.id : null;
+            const aiConfig = toRecord(version?.ai_config);
+
+            let selectors: Record<string, unknown>[] = [];
+            let workflows: Record<string, unknown>[] = [];
+            let testSkus: string[] = [];
+
+            if (versionId) {
+                const { data: selectorRows } = await supabase
+                    .from('scraper_selectors')
+                    .select('name, selector, attribute, multiple, required, sort_order')
+                    .eq('version_id', versionId)
+                    .order('sort_order', { ascending: true });
+
+                selectors = (selectorRows ?? []) as Record<string, unknown>[];
+
+                const { data: workflowRows } = await supabase
+                    .from('scraper_workflow_steps')
+                    .select('action, name, params, sort_order')
+                    .eq('version_id', versionId)
+                    .order('sort_order', { ascending: true });
+
+                workflows = (workflowRows ?? []) as Record<string, unknown>[];
+            }
+
+            const { data: testSkuRows } = await supabase
+                .from('scraper_config_test_skus')
+                .select('sku, sku_type')
+                .eq('config_id', row.id)
+                .eq('sku_type', 'test');
+
+            testSkus = (testSkuRows ?? [])
+                .map((entry) => (typeof entry.sku === 'string' ? entry.sku : null))
+                .filter((entry): entry is string => entry !== null);
+
+            if (workflows.length > 0) {
+                options.workflows = workflows;
+            }
+            if (typeof version?.timeout === 'number') {
+                options.timeout = version.timeout;
+            }
+
+            scrapers.push({
                 name: row.slug,
                 disabled: version?.status === 'archived',
-                base_url: typeof config?.base_url === 'string' ? config.base_url : undefined,
+                base_url: typeof row.base_url === 'string' ? row.base_url : undefined,
                 search_url_template:
-                    typeof config?.search_url_template === 'string'
-                        ? config.search_url_template
+                    typeof aiConfig?.task === 'string'
+                        ? aiConfig.task
                         : undefined,
-                selectors: toSelectors(config?.selectors),
+                selectors: selectors.length > 0 ? selectors : undefined,
                 options,
-                test_skus: toStringArray(config?.test_skus),
-                retries: typeof config?.retries === 'number' ? config.retries : undefined,
-                validation: toRecord(config?.validation),
-            };
-        });
+                test_skus: testSkus.length > 0 ? testSkus : undefined,
+                retries: typeof version?.retries === 'number' ? version.retries : undefined,
+                validation: toRecord(version?.validation_config),
+            });
+        }
 
         console.log('[Poll] Scrapers from DB:', scrapers.length);
 

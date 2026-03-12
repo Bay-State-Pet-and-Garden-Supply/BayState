@@ -150,7 +150,7 @@ describe('Active Consolidations API', () => {
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
         await GET(req);
 
-        expect(mockSupabase.not).toHaveBeenCalledWith('status', 'in', ['completed', 'failed', 'expired']);
+        expect(mockSupabase.not).toHaveBeenCalledWith('status', 'in', '(completed,failed,expired)');
     });
 
     it('should order by created_at DESC', async () => {
