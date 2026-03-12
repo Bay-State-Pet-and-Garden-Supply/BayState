@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "honest-review": {
+      "source": "wyattowalsh/agents",
+      "sourceType": "github",
+      "computedHash": "db994d5097a46cc01de3f84c55bafbb2659762339b82ab0135acff297c55672b"
+    },
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",

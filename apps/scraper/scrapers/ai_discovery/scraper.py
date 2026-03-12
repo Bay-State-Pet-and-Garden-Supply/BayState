@@ -1,7 +1,6 @@
 """Main AI Discovery Scraper implementation."""
 
 import asyncio
-import importlib
 import json
 import logging
 import os
@@ -16,6 +15,12 @@ from scrapers.ai_discovery.extraction import ExtractionUtils
 from scrapers.ai_discovery.search import BraveSearchClient
 from scrapers.ai_discovery.query_builder import QueryBuilder
 from scrapers.ai_discovery.validation import ExtractionValidator
+from scrapers.schemas.product import ProductData
+from scrapers.utils.ai_utils import (
+    build_extraction_instruction,
+    get_scroll_javascript,
+    extract_product_from_meta_tags,
+)
 # Using centralized engine
 from crawl4ai_engine.engine import Crawl4AIEngine
 
@@ -267,23 +272,14 @@ class AIDiscoveryScraper:
     async def _extract_candidates_parallel(self, urls: list[str], sku: str, product_name: Optional[str], brand: Optional[str]) -> list[dict[str, Any]]:
         """Extract product data from multiple URLs in parallel using arun_many."""
         try:
-            from pydantic import BaseModel, Field
             from crawl4ai.extraction_strategy import LLMExtractionStrategy
             from crawl4ai import LLMConfig
-
-            class ProductData(BaseModel):
-                product_name: str = Field(description="The exact product name")
-                brand: str = Field(description="The brand name")
-                description: str = Field(description="Full product description")
-                size_metrics: str = Field(description="Size, weight, volume, or dimensions")
-                images: list[str] = Field(description="List of product image URLs")
-                categories: list[str] = Field(description="Product types, categories, or tags")
 
             api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:
                 return []
 
-            instruction = self._build_extraction_instruction(sku, brand, product_name)
+            instruction = build_extraction_instruction(sku, brand, product_name)
             llm_strategy = LLMExtractionStrategy(
                 llm_config=LLMConfig(provider=f"openai/{self.llm_model}", api_token=api_key),
                 schema=ProductData.model_json_schema(),
@@ -297,7 +293,7 @@ class AIDiscoveryScraper:
                     "magic": True,
                     "simulate_user": True,
                     "remove_overlay_elements": True,
-                    "js_code": self._get_scroll_javascript(),
+                    "js_code": get_scroll_javascript(),
                     "extraction_strategy": llm_strategy,
                     "concurrency_limit": len(urls),
                 }
@@ -333,23 +329,14 @@ class AIDiscoveryScraper:
     ) -> dict[str, Any]:
         """Extract product data from the selected URL using centralized Crawl4AIEngine."""
         try:
-            from pydantic import BaseModel, Field
             from crawl4ai.extraction_strategy import LLMExtractionStrategy
             from crawl4ai import LLMConfig
-
-            class ProductData(BaseModel):
-                product_name: str = Field(description="The exact product name")
-                brand: str = Field(description="The brand name")
-                description: str = Field(description="Full product description")
-                size_metrics: str = Field(description="Size, weight, volume, or dimensions")
-                images: list[str] = Field(description="List of product image URLs")
-                categories: list[str] = Field(description="Product types, categories, or tags")
 
             api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:
                 return {"success": False, "error": "OPENAI_API_KEY not set"}
 
-            instruction = self._build_extraction_instruction(sku, brand, product_name)
+            instruction = build_extraction_instruction(sku, brand, product_name)
 
             llm_strategy = LLMExtractionStrategy(
                 llm_config=LLMConfig(
@@ -372,7 +359,7 @@ class AIDiscoveryScraper:
                     "simulate_user": True,
                     "remove_overlay_elements": True,
                     "cache_mode": "BYPASS", # Discovery usually wants fresh data
-                    "js_code": self._get_scroll_javascript(),
+                    "js_code": get_scroll_javascript(),
                     "extraction_strategy": llm_strategy,
                     "timeout": 30000,
                 }
@@ -428,75 +415,6 @@ class AIDiscoveryScraper:
                 brand=brand,
             )
 
-    def _build_extraction_instruction(self, sku: str, brand: Optional[str], product_name: Optional[str]) -> str:
-        """Build the LLM extraction instruction prompt."""
-        return f"""Extract structured product data for a single SKU-locked product page.
-
-TARGET CONTEXT
-- SKU: {sku}
-- Expected Brand (may be null): {brand or "Unknown"}
-- Expected Product Name: {product_name or "Unknown"}
-
-CRITICAL EXTRACTION RULES
-1) SKU / VARIANT LOCK (FUZZY VALIDATION)
-   - Ensure extracted product refers to the same variant as the target SKU context.
-   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
-   - Do NOT output data for a different variant from carousel/recommendations.
-
-2) BRAND INFERENCE
-   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
-   - Return the canonical brand string (not store name).
-
-3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
-   - product_name: required
-   - images: at least 1 required
-   - brand, description, size_metrics, categories: strongly preferred
-   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
-
-4) SIZE METRICS EXTRACTION
-   - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
-   - Look in title, product specs, variant selectors, or packaging information
-
-5) CATEGORIES EXTRACTION
-   - Extract product types, categories, or tags (e.g., ["Dog Food", "Dry Food", "Grain-Free"])
-   - Look in breadcrumbs, category navigation, product tags, or structured data
-
-6) IMAGE PRIORITIZATION
-     - images: Extract ALL high-resolution product image URLs from the image carousel, gallery thumbnails, and JSON-LD structured data blocks.
-     - Look carefully for `data-src` attributes, `<script type="application/ld+json">`, and elements with classes like `carousel` or `gallery`.
-     - Do not just grab the first image. Return absolute URLs only (https://...).
-     - Put primary hero image first, then additional product angles, variants, and detail shots.
-     - Exclude sprites, icons, logos, and unrelated recommendation images.
-     - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list rather than `example.com` or placeholder URLs.
-
-7) DESCRIPTION QUALITY
-   - Extract meaningful product description/spec text for the exact variant, not generic category copy.
-
-OUTPUT QUALITY BAR
-- Return the most complete, variant-accurate record possible.
-- Do not hallucinate missing values."""
-
-    def _get_scroll_javascript(self) -> str:
-        """Get JavaScript for scrolling to trigger lazy loading."""
-        return """
-        async () => {
-            // Scroll down to bottom to trigger lazy loading
-            window.scrollTo(0, document.body.scrollHeight);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Scroll back up
-            window.scrollTo(0, 0);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Try to find and interact with carousel elements
-            const carousels = document.querySelectorAll('[class*="carousel"], [class*="gallery"], [data-carousel], [role="carousel"]');
-            for (const carousel of carousels) {
-                carousel.scrollLeft += 200;
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-        }
-        """
-
     async def _extract_product_data_fallback(
         self,
         url: str,
@@ -529,56 +447,21 @@ OUTPUT QUALITY BAR
                 jsonld_result["url"] = str(response.url)
                 return jsonld_result
 
-            # Fallback to meta tags
-            import re
-            import html as html_module
-
-            title_match = re.search(r"<title[^>]*>(.*?)</title>", html_text, flags=re.IGNORECASE | re.DOTALL)
-            title_text = html_module.unescape(title_match.group(1)).strip() if title_match else ""
-            og_title = self._extraction.extract_meta_content(html_text, "og:title", property_attr=True) or ""
-            og_description = self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or ""
-            og_image = self._extraction.extract_meta_content(html_text, "og:image", property_attr=True) or ""
-
-            images = self._extraction.normalize_images([og_image], str(response.url)) if og_image else []
-
-            candidate_name = og_title or title_text
-            if candidate_name and product_name and not self._matching.is_name_match(product_name, candidate_name):
-                return {
-                    "success": False,
-                    "error": "Fallback extraction title does not match expected product",
-                }
-
-            if brand and candidate_name and not self._matching.is_brand_match(brand, candidate_name, str(response.url)):
-                return {
-                    "success": False,
-                    "error": "Fallback extraction brand/domain does not match expected context",
-                }
-
-            if not candidate_name or not images:
-                return {
-                    "success": False,
-                    "error": "Fallback extraction found no structured product data",
-                }
-
-            fallback_description = og_description or title_text
-            fallback_size = self._extraction.extract_size_metrics(f"{candidate_name} {fallback_description}")
-            confidence = 0.58
-            if product_name and self._matching.is_name_match(product_name, candidate_name):
-                confidence += 0.1
-            if brand and self._matching.is_brand_match(brand, candidate_name, str(response.url)):
-                confidence += 0.1
-            confidence = min(confidence, 0.78)
+            # Fallback to meta tags using shared utility
+            meta_result = extract_product_from_meta_tags(
+                self._extraction,
+                self._matching,
+                html_text,
+                str(response.url),
+                product_name,
+                brand
+            )
+            if meta_result:
+                return meta_result
 
             return {
-                "success": True,
-                "product_name": candidate_name,
-                "brand": brand,
-                "description": fallback_description,
-                "size_metrics": fallback_size,
-                "images": images,
-                "categories": ["Product"],
-                "confidence": confidence,
-                "url": str(response.url),
+                "success": False,
+                "error": "Fallback extraction found no structured product data",
             }
 
         except Exception as error:

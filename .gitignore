@@ -10,6 +10,8 @@ tmp/
 .vscode/
 *.log
 .agents/
+.agent/
+.claude/
 .sisyphus/
 
 # Workspace / stray files
