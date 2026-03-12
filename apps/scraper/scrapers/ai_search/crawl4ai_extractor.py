@@ -10,6 +10,12 @@ from typing import Any, Optional
 from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
+from scrapers.schemas.product import ProductData
+from scrapers.utils.ai_utils import (
+    build_extraction_instruction,
+    extract_product_from_meta_tags,
+    get_scroll_javascript,
+)
 
 # Using centralized engine
 from src.crawl4ai_engine.engine import Crawl4AIEngine
@@ -23,10 +29,6 @@ try:
     logger.info(f"[AI Search] Crawl4AI version: {getattr(crawl4ai, '__version__', 'unknown')}")
 except ImportError:
     logger.warning("[AI Search] Crawl4AI not installed")
-
-
-# Class-level cache for loaded prompts
-_PROMPT_CACHE: dict[str, str] = {}
 
 
 class Crawl4AIExtractor:
@@ -73,102 +75,6 @@ class Crawl4AIExtractor:
             html=fallback_content,
         )
 
-    def _load_prompt_from_file(self, version: str) -> Optional[str]:
-        """Load prompt template from file with caching."""
-        # Check cache first
-        if version in _PROMPT_CACHE:
-            return _PROMPT_CACHE[version]
-
-        # Try to load from file
-        prompts_dir = Path(__file__).parent.parent.parent / "prompts"
-        prompt_file = prompts_dir / f"extraction_{version}.txt"
-
-        if prompt_file.exists():
-            try:
-                content = prompt_file.read_text(encoding="utf-8")
-                # Remove comment lines (starting with #)
-                lines = [line for line in content.split("\n") if not line.strip().startswith("#")]
-                content = "\n".join(lines).strip()
-                _PROMPT_CACHE[version] = content
-                logger.debug(f"Loaded prompt version {version} from {prompt_file}")
-                return content
-            except Exception as e:
-                logger.warning(f"Failed to load prompt {prompt_file}: {e}")
-
-        return None
-
-    def _get_hardcoded_prompt(self) -> str:
-        """Return the hardcoded prompt as fallback."""
-        return """Extract structured product data for a single SKU-locked product page.
-
-TARGET CONTEXT
-- SKU: {sku}
-- Expected Brand (may be null): {brand}
-- Expected Product Name: {product_name}
-
-CRITICAL EXTRACTION RULES
-1) SKU / VARIANT LOCK (FUZZY VALIDATION)
-   - Ensure extracted product refers to the same variant as the target SKU context.
-   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
-   - Do NOT output data for a different variant from carousel/recommendations.
-
-2) BRAND INFERENCE
-   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
-   - Return the canonical brand string (not store name).
-
-3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
-   - product_name: required
-   - images: at least 1 required
-   - brand, description, size_metrics, categories: strongly preferred
-   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
-
-4) SIZE METRICS EXTRACTION
-   - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
-   - Look in title, product specs, variant selectors, or packaging information
-
-5) CATEGORIES EXTRACTION
-   - Extract product types, categories, or tags (e.g., ["Dog Food", "Dry Food", "Grain-Free"])
-   - Look in breadcrumbs, category navigation, product tags, or structured data
-
-6) IMAGE PRIORITIZATION
-    - images: Extract ALL high-resolution product image URLs from the image carousel, gallery thumbnails, and JSON-LD structured data blocks.
-    - Look carefully for `data-src` attributes, `<script type="application/ld+json">`, and elements with classes like `carousel` or `gallery`.
-    - Do not just grab the first image. Return absolute URLs only (https://...).
-    - Put primary hero image first, then additional product angles, variants, and detail shots.
-    - Exclude sprites, icons, logos, and unrelated recommendation images.
-    - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list.
-
-7) DESCRIPTION QUALITY
-   - Extract meaningful product description/spec text for the exact variant, not generic category copy.
-
-OUTPUT QUALITY BAR
-- Return the most complete, variant-accurate record possible.
-- Do not hallucinate missing values."""
-
-    def _build_instruction(self, sku: str, brand: Optional[str], product_name: Optional[str]) -> str:
-        """Build the LLM extraction instruction."""
-        # Try to load from file first
-        prompt_template = self._load_prompt_from_file(self.prompt_version)
-
-        # Fall back to hardcoded if file not found
-        if prompt_template is None:
-            prompt_template = self._get_hardcoded_prompt()
-        else:
-            # Handle f-string syntax in prompt files: {brand or "Unknown"} -> {brand}
-            # The file uses f-string syntax but we're using .format()
-            prompt_template = prompt_template.replace('{brand or "Unknown"}', "{brand}")
-            prompt_template = prompt_template.replace('{product_name or "Unknown"}', "{product_name}")
-
-        # Substitute variables
-        if prompt_template is None:
-            prompt_template = self._get_hardcoded_prompt()
-
-        # Substitute variables
-        brand_str = brand if brand else "Unknown"
-        product_name_str = product_name if product_name else "Unknown"
-
-        return prompt_template.format(sku=sku, brand=brand_str, product_name=product_name_str)
-
     def _log_telemetry(
         self,
         url: str,
@@ -197,58 +103,6 @@ OUTPUT QUALITY BAR
 
         logger.info(f"[AI Search] Extraction telemetry: {json.dumps(telemetry)}")
 
-    def _extract_product_from_meta_tags(
-        self,
-        html_text: str,
-        source_url: str,
-        product_name: Optional[str],
-        brand: Optional[str],
-    ) -> Optional[dict[str, Any]]:
-        """Extract product data from OpenGraph and Twitter meta tags."""
-        og_title = self._extraction.extract_meta_content(html_text, "og:title", property_attr=True) or ""
-        twitter_title = self._extraction.extract_meta_content(html_text, "twitter:title", property_attr=False) or ""
-        og_description = self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or ""
-        twitter_description = (
-            self._extraction.extract_meta_content(
-                html_text,
-                "twitter:description",
-                property_attr=False,
-            )
-            or ""
-        )
-        og_image = self._extraction.extract_meta_content(html_text, "og:image", property_attr=True) or ""
-        twitter_image = self._extraction.extract_meta_content(html_text, "twitter:image", property_attr=False) or ""
-        meta_brand = self._extraction.extract_meta_content(html_text, "product:brand", property_attr=True) or ""
-
-        candidate_name = og_title or twitter_title
-        if not candidate_name:
-            return None
-        if product_name and not self._matching.is_name_match(product_name, candidate_name):
-            return None
-
-        if brand:
-            brand_candidate = meta_brand or candidate_name
-            if not self._matching.is_brand_match(brand, brand_candidate, source_url):
-                return None
-
-        image_url = og_image or twitter_image
-        images = self._extraction.normalize_images([image_url], source_url) if image_url else []
-        if not images:
-            return None
-
-        candidate_description = og_description or twitter_description
-        return {
-            "success": True,
-            "product_name": candidate_name,
-            "brand": meta_brand or brand,
-            "description": candidate_description,
-            "size_metrics": self._extraction.extract_size_metrics(f"{candidate_name} {candidate_description}"),
-            "images": images,
-            "categories": ["Product"],
-            "confidence": 0.8,
-            "url": source_url,
-        }
-
     async def extract(
         self,
         url: str,
@@ -266,16 +120,6 @@ OUTPUT QUALITY BAR
         method = "llm" if self.extraction_strategy != "json_css" else self.extraction_strategy
 
         try:
-            from pydantic import BaseModel, Field
-
-            class ProductData(BaseModel):
-                product_name: str = Field(description="The exact product name")
-                brand: str = Field(description="The brand name")
-                description: str = Field(description="Full product description")
-                size_metrics: str = Field(description="Size, weight, volume, or dimensions")
-                images: list[str] = Field(description="List of product image URLs")
-                categories: list[str] = Field(description="Product types, categories, or tags")
-
             # Centralized engine configuration leveraging new features
             engine_config = {
                 "browser": {
@@ -287,7 +131,7 @@ OUTPUT QUALITY BAR
                     "simulate_user": True,
                     "remove_overlay_elements": True,
                     "cache_mode": "ENABLED" if self.cache_enabled else "BYPASS",
-                    "js_code": self._get_scroll_js(),
+                    "js_code": get_scroll_javascript(),
                     "timeout": 30000,
                 },
             }
@@ -300,17 +144,27 @@ OUTPUT QUALITY BAR
             )
 
             async with Crawl4AIEngine(engine_config) as engine:
+                # FIRST CRAWL: Fetch raw content for lightweight extraction (JSON-LD/Meta)
                 result = await engine.crawl(url)
-                html = result.get("html", "") or ""
-                markdown = result.get("markdown", "") or ""
+                
+                # Strict validation: ensure html and markdown are strings
+                html_raw = result.get("html")
+                markdown_raw = result.get("markdown")
+                html = html_raw if isinstance(html_raw, str) else ""
+                markdown = markdown_raw if isinstance(markdown_raw, str) else ""
+                
+                if html_raw is not None and not isinstance(html_raw, str):
+                    logger.warning(f"[AI Search] Crawl4AI returned non-string html (type={type(html_raw).__name__}), using empty string")
+                if markdown_raw is not None and not isinstance(markdown_raw, str):
+                    logger.warning(f"[AI Search] Crawl4AI returned non-string markdown (type={type(markdown_raw).__name__}), using empty string")
+                
                 fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
 
                 if result.get("success"):
                     raw_html_len = len(html)
                     raw_markdown_len = len(markdown)
-                    extracted_len = len(result.get("extracted_content") or "")
                     logger.debug(
-                        f"[AI Search] Crawl4AI result: html_length={raw_html_len}, markdown_length={raw_markdown_len}, extracted_length={extracted_len}"
+                        f"[AI Search] Crawl4AI result: html_length={raw_html_len}, markdown_length={raw_markdown_len}"
                     )
 
                     if html or markdown:
@@ -343,7 +197,9 @@ OUTPUT QUALITY BAR
                             return jsonld_result
 
                         parse_start = time.perf_counter()
-                        meta_result = self._extract_product_from_meta_tags(
+                        meta_result = extract_product_from_meta_tags(
+                            extraction_utils=self._extraction,
+                            matching_utils=self._matching,
                             html_text=crawl4ai_content,
                             source_url=url,
                             product_name=product_name,
@@ -375,9 +231,9 @@ OUTPUT QUALITY BAR
                         "error": error,
                     }
 
+                # SECOND PASS: If lightweight extraction failed, use LLM/CSS strategy
                 if self.extraction_strategy == "json_css":
                     from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-
                     strategy = JsonCssExtractionStrategy(schema=ProductData.model_json_schema())
                     method = "json-css"
                 else:
@@ -389,7 +245,7 @@ OUTPUT QUALITY BAR
                         self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, 0, "OPENAI_API_KEY not set")
                         return {"success": False, "error": "OPENAI_API_KEY not set"}
 
-                    instruction = self._build_instruction(sku, brand, product_name)
+                    instruction = build_extraction_instruction(sku, brand, product_name, self.prompt_version)
                     strategy = LLMExtractionStrategy(
                         llm_config=LLMConfig(
                             provider=f"openai/{self.llm_model}",
@@ -404,8 +260,15 @@ OUTPUT QUALITY BAR
                 engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
                 llm_start = time.perf_counter()
                 result = await engine.crawl(url)
-                html = result.get("html", "") or html
-                markdown = result.get("markdown", "") or markdown
+                
+                # Strict validation for second crawl results
+                result_html = result.get("html")
+                result_markdown = result.get("markdown")
+                if isinstance(result_html, str):
+                    html = result_html
+                if isinstance(result_markdown, str):
+                    markdown = result_markdown
+                
                 llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
 
                 if result.get("success") and result.get("extracted_content"):
@@ -451,12 +314,23 @@ OUTPUT QUALITY BAR
 
             # Log actual exception message for debugging before masking
             logger.warning(f"[AI Search] Crawl4AI exception: {error_message}")
-            if "expected string or bytes-like object" in error_message and "NoneType" in error_message:
-                logger.warning("[AI Search] Crawl4AI returned empty content, using fallback extractor")
-                self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, "empty content")
-                if html or markdown:
-                    return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
-                return None
+            
+            # Check for NoneType/empty content errors
+            is_none_error = ("expected string or bytes-like object" in error_message and "NoneType" in error_message)
+            is_type_error = "can only concatenate str" in error_message or "unsupported operand type" in error_message
+            
+            if is_none_error or is_type_error:
+                logger.warning("[AI Search] Crawl4AI content handling error detected, using fallback extractor")
+                self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, "content type error")
+                # Ensure html/markdown are strings before passing to fallback
+                safe_html = html if isinstance(html, str) else ""
+                safe_markdown = markdown if isinstance(markdown, str) else ""
+                if safe_html or safe_markdown:
+                    return await self._extract_with_fallback(url, sku, product_name, brand, safe_html, safe_markdown)
+                return {
+                    "success": False,
+                    "error": "Crawl4AI returned invalid content type",
+                }
 
             logger.error(f"[AI Search] Extraction failed: {e}")
             self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, str(e))
@@ -464,22 +338,6 @@ OUTPUT QUALITY BAR
                 "success": False,
                 "error": str(e),
             }
-
-    def _get_scroll_js(self) -> str:
-        """Get JavaScript for lazy loading trigger."""
-        return """
-        async () => {
-            window.scrollTo(0, document.body.scrollHeight);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            window.scrollTo(0, 0);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const carousels = document.querySelectorAll('[class*="carousel"], [class*="gallery"], [data-carousel], [role="carousel"]');
-            for (const carousel of carousels) {
-                carousel.scrollLeft += 200;
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-        }
-        """
 
 
 class FallbackExtractor:

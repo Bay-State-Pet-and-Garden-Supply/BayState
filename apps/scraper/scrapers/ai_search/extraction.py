@@ -69,6 +69,15 @@ class ExtractionUtils:
 
     def extract_meta_content(self, html_text: str, key: str, *, property_attr: bool = True) -> Optional[str]:
         """Extract meta tag content."""
+        if not isinstance(html_text, str):
+            return None
+        attribute_name = "property" if property_attr else "name"
+        pattern = rf"<meta[^>]+{attribute_name}=[\"']{re.escape(key)}[\"'][^>]+content=[\"']([^\"']+)[\"']"
+        match = re.search(pattern, html_text, flags=re.IGNORECASE)
+        if not match:
+            return None
+        return html_module.unescape(match.group(1)).strip()
+        """Extract meta tag content."""
         attribute_name = "property" if property_attr else "name"
         pattern = rf"<meta[^>]+{attribute_name}=[\"']{re.escape(key)}[\"'][^>]+content=[\"']([^\"']+)[\"']"
         match = re.search(pattern, html_text, flags=re.IGNORECASE)
@@ -77,6 +86,22 @@ class ExtractionUtils:
         return html_module.unescape(match.group(1)).strip()
 
     def extract_product_from_html_jsonld(
+        self,
+        html_text: str,
+        source_url: str,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        matching_utils,
+    ) -> Optional[dict[str, Any]]:
+        """Extract product data from JSON-LD structured data."""
+        if not isinstance(html_text, str):
+            return None
+        script_matches = re.findall(
+            r"<script[^>]*type=[\"']application/ld\+json[\"'][^>]*>(.*?)</script>",
+            html_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         self,
         html_text: str,
         source_url: str,
