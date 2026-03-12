@@ -3,7 +3,7 @@
 ## Phase 1: Trusted Retailer Update
 Expand the list of boosted domains to include more relevant pet and garden suppliers.
 
-- [ ] **Task: Update `SearchScorer.TRUSTED_RETAILERS`**
+- [x] **Task: Update `SearchScorer.TRUSTED_RETAILERS`** [eb3bbd3]
     - [ ] Add new unit tests in `tests/unit/test_trusted_retailers.py` to verify that the new domains receive the correct boost.
     - [ ] Expand the `TRUSTED_RETAILERS` set in `apps/scraper/scrapers/ai_search/scoring.py`.
     - [ ] Verify all tests pass.
