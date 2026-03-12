@@ -442,12 +442,19 @@ def _run_ai_search_job(
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
     extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
 
+    previous_openai = os.environ.get("OPENAI_API_KEY")
+    previous_brave = os.environ.get("BRAVE_API_KEY")
+    runtime_credentials = job_config.ai_credentials or {}
+    runtime_openai = runtime_credentials.get("openai_api_key")
+    runtime_brave = runtime_credentials.get("brave_api_key")
+
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
     if runtime_openai:
         logger.debug(f"Setting OPENAI_API_KEY from job payload: {runtime_openai[:4]}...")
     if runtime_brave:
         logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
+
 
     if runtime_openai:
         os.environ["OPENAI_API_KEY"] = runtime_openai
