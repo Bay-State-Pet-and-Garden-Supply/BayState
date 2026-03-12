@@ -1,9 +1,8 @@
 import json
 import logging
 import sys
-import threading
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import os
 
 # Add project root to path

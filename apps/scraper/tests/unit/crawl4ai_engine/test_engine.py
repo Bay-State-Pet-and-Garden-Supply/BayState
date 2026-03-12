@@ -2,8 +2,6 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-import json
-from pathlib import Path
 
 
 class TestCrawl4AIEngine:

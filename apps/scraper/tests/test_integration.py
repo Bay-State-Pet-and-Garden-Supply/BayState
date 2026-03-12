@@ -7,7 +7,7 @@ Following TDD approach: RED - GREEN - REFACTOR
 
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pytest
 
 # Add project root to path
@@ -62,7 +62,6 @@ class TestWebSocketIntegration:
     def test_server_with_emitter(self):
         """Test WebSocket server receives events from emitter."""
         from scrapers.events.websocket_server import TestLabWebSocketServer
-        from scrapers.events.emitter import EventEmitter
 
         # Create server and mock socket
         server = TestLabWebSocketServer()
@@ -127,7 +126,6 @@ class TestEndToEndEventTypes:
     def test_selector_event_flow(self):
         """Test selector validation event flow."""
         from scrapers.events.selector import SelectorValidationEvent
-        from scrapers.events.emitter import EventEmitter
 
         event = SelectorValidationEvent(scraper="amazon", sku="B001234567", selector_name="price", selector_value=".price", status="FOUND")
 

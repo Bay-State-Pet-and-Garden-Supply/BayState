@@ -7,7 +7,6 @@ from __future__ import annotations
 
 
 import logging
-from enum import Enum
 from typing import Any, Callable
 
 from core.api_client import *

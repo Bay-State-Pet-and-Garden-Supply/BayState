@@ -1,7 +1,7 @@
 """Tests for Crawl4AI Engine Escalation & Fallback features."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from src.crawl4ai_engine.engine import Crawl4AIEngine
 
 

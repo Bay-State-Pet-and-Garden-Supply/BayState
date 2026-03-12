@@ -2,12 +2,10 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
 
 from engine.engine import Crawl4AIEngine
 from engine.strategies.css_strategy import CSSExtractionStrategy
 from engine.strategies.xpath_strategy import XPathExtractionStrategy
-from engine.strategies.llm_fallback import LLMFallbackStrategy
 from engine.callback import CallbackDelivery
 from engine.retry import CircuitBreaker, RetryPolicy, execute_with_retry
 from engine.transpiler.yaml_parser import YAMLConfigParser

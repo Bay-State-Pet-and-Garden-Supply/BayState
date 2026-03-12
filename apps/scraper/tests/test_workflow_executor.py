@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from typing_extensions import override
 
 from scrapers.actions.base import BaseAction

@@ -3,7 +3,6 @@
 import sys
 from pathlib import Path
 
-import pytest
 
 
 def pytest_configure(config):

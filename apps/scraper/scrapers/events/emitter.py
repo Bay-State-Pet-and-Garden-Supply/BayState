@@ -7,7 +7,7 @@ Provides publish-subscribe pattern for event handling.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Protocol, Union
+from typing import Any, Callable, Protocol
 
 from .selector import SelectorValidationEvent
 from .login import LoginStatusEvent

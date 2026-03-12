@@ -9,9 +9,7 @@ Usage:
 from __future__ import annotations
 
 import pytest
-import asyncio
 import time
-from typing import Any
 
 from tests.benchmarks import Timer, MemoryProfiler
 

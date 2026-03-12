@@ -7,7 +7,7 @@ Following TDD approach: RED - GREEN - REFACTOR
 
 import os
 import sys
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock
 import pytest
 
 # Add project root to path

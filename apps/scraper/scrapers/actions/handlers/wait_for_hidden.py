@@ -1,12 +1,11 @@
 from __future__ import annotations
-import asyncio
 import logging
 import time
 from typing import Any
 
 from scrapers.actions.base import BaseAction
 from scrapers.actions.registry import ActionRegistry
-from scrapers.exceptions import TimeoutError, WorkflowExecutionError
+from scrapers.exceptions import WorkflowExecutionError
 from scrapers.utils.locators import convert_to_playwright_locator
 
 logger = logging.getLogger(__name__)
