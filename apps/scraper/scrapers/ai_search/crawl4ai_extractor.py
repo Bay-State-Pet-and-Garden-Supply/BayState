@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -146,6 +147,34 @@ OUTPUT QUALITY BAR
 
         return prompt_template.format(sku=sku, brand=brand_str, product_name=product_name_str)
 
+    def _log_telemetry(
+        self,
+        url: str,
+        sku: str,
+        method: str,
+        success: bool,
+        fetch_time_ms: int,
+        parse_time_ms: int,
+        llm_time_ms: int,
+        error: Optional[str] = None,
+        confidence: float = 0.0,
+    ) -> None:
+        """Log structured extraction telemetry."""
+        telemetry = {
+            "url": url,
+            "sku": sku,
+            "method": method,
+            "success": success,
+            "fetch_time_ms": fetch_time_ms,
+            "parse_time_ms": parse_time_ms,
+            "llm_time_ms": llm_time_ms,
+            "confidence": confidence,
+        }
+        if error:
+            telemetry["error"] = error
+
+        logger.info(f"[AI Search] Extraction telemetry: {json.dumps(telemetry)}")
+
     async def extract(
         self,
         url: str,
@@ -154,6 +183,12 @@ OUTPUT QUALITY BAR
         brand: Optional[str],
     ) -> Optional[dict[str, Any]]:
         """Extract product data using centralized Crawl4AIEngine."""
+        # Initialize timing for telemetry
+        fetch_start = time.perf_counter()
+        parse_start = 0.0
+        llm_time_ms = 0
+        method = "llm" if self.extraction_strategy != "json_css" else self.extraction_strategy
+
         try:
             from pydantic import BaseModel, Field
             from crawl4ai.extraction_strategy import LLMExtractionStrategy
@@ -169,6 +204,7 @@ OUTPUT QUALITY BAR
 
             api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:
+                self._log_telemetry(url, sku, method, False, 0, 0, 0, "OPENAI_API_KEY not set")
                 return {"success": False, "error": "OPENAI_API_KEY not set"}
 
             instruction = self._build_instruction(sku, brand, product_name)
@@ -218,6 +254,10 @@ OUTPUT QUALITY BAR
             async with Crawl4AIEngine(engine_config) as engine:
                 result = await engine.crawl(url)
 
+                # Record fetch time
+                fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
+                parse_start = time.perf_counter()
+
                 # Debug log raw content lengths
                 if result.get("success"):
                     raw_html_len = len(result.get("html", ""))
@@ -232,10 +272,13 @@ OUTPUT QUALITY BAR
                     if isinstance(extracted_content, str):
                         raw_content = extracted_content.strip()
                         if raw_content.startswith("[") and '"error"' in raw_content.lower() and "auth" in raw_content.lower():
+                            self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, "auth error")
                             return None  # Signal to use fallback
 
                     try:
                         data = json.loads(extracted_content)
+                        parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
+
                         if data and isinstance(data, list):
                             product_data = data[0]
                             product_data["success"] = True
@@ -245,14 +288,21 @@ OUTPUT QUALITY BAR
                             filled = sum(1 for f in required_fields if product_data.get(f))
                             product_data["confidence"] = filled / len(required_fields)
 
+                            # Log successful extraction telemetry
+                            self._log_telemetry(url, sku, method, True, fetch_time_ms, parse_time_ms, llm_time_ms, None, product_data["confidence"])
+
                             return product_data
                     except json.JSONDecodeError:
+                        parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
+                        self._log_telemetry(url, sku, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, "JSON parse error")
                         return {
                             "success": False,
                             "error": "Could not parse extraction result",
                             "raw_response": extracted_content[:500],
                         }
 
+                # Log failed extraction
+                self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, result.get("error") or "No content")
                 return {
                     "success": False,
                     "error": result.get("error") or "Extraction failed or returned no content",
@@ -260,13 +310,17 @@ OUTPUT QUALITY BAR
 
         except Exception as e:
             error_message = str(e)
+            fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
+
             # Log actual exception message for debugging before masking
             logger.warning(f"[AI Search] Crawl4AI exception: {error_message}")
             if "expected string or bytes-like object" in error_message and "NoneType" in error_message:
                 logger.warning("[AI Search] Crawl4AI returned empty content, using fallback extractor")
+                self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, "empty content")
                 return None
 
             logger.error(f"[AI Search] Extraction failed: {e}")
+            self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, str(e))
             return {
                 "success": False,
                 "error": str(e),
@@ -297,6 +351,33 @@ class FallbackExtractor:
         self._matching = matching
         self._extraction = ExtractionUtils(scoring)
 
+    def _log_telemetry(
+        self,
+        url: str,
+        sku: str,
+        method: str,
+        success: bool,
+        fetch_time_ms: int,
+        parse_time_ms: int,
+        error: Optional[str] = None,
+        confidence: float = 0.0,
+    ) -> None:
+        """Log structured extraction telemetry."""
+        telemetry = {
+            "url": url,
+            "sku": sku,
+            "method": method,
+            "success": success,
+            "fetch_time_ms": fetch_time_ms,
+            "parse_time_ms": parse_time_ms,
+            "llm_time_ms": 0,
+            "confidence": confidence,
+        }
+        if error:
+            telemetry["error"] = error
+
+        logger.info(f"[AI Search] Extraction telemetry: {json.dumps(telemetry)}")
+
     async def extract(
         self,
         url: str,
@@ -315,6 +396,10 @@ class FallbackExtractor:
             html: Pre-fetched HTML to parse. When empty or omitted, the extractor
                 fetches the page over HTTP as a fallback.
         """
+        # Initialize timing for telemetry
+        fetch_start = time.perf_counter()
+        parse_start = 0.0
+
         try:
             response_url = url
             html_text = html or ""
@@ -335,6 +420,10 @@ class FallbackExtractor:
                     html_text = response.text
                     response_url = str(response.url)
 
+            # Record fetch time
+            fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
+            parse_start = time.perf_counter()
+
             jsonld_result = self._extraction.extract_product_from_html_jsonld(
                 html_text=html_text,
                 source_url=response_url,
@@ -343,8 +432,13 @@ class FallbackExtractor:
                 brand=brand,
                 matching_utils=self._matching,
             )
+
+            parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
+
             if jsonld_result:
                 jsonld_result["url"] = response_url
+                # Log JSON-LD extraction success
+                self._log_telemetry(response_url, sku, "jsonld", True, fetch_time_ms, parse_time_ms, None, jsonld_result.get("confidence", 0.0))
                 return jsonld_result
 
             # Fallback to meta tags
@@ -361,18 +455,21 @@ class FallbackExtractor:
 
             candidate_name = og_title or title_text
             if candidate_name and product_name and not self._matching.is_name_match(product_name, candidate_name):
+                self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "title mismatch")
                 return {
                     "success": False,
                     "error": "Fallback extraction title does not match expected product",
                 }
 
             if brand and candidate_name and not self._matching.is_brand_match(brand, candidate_name, response_url):
+                self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "brand mismatch")
                 return {
                     "success": False,
                     "error": "Fallback extraction brand/domain does not match expected context",
                 }
 
             if not candidate_name or not images:
+                self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "no structured data")
                 return {
                     "success": False,
                     "error": "Fallback extraction found no structured product data",
@@ -387,6 +484,9 @@ class FallbackExtractor:
                 confidence += 0.1
             confidence = min(confidence, 0.78)
 
+            # Log meta extraction success
+            self._log_telemetry(response_url, sku, "meta", True, fetch_time_ms, parse_time_ms, None, confidence)
+
             return {
                 "success": True,
                 "product_name": candidate_name,
@@ -400,6 +500,8 @@ class FallbackExtractor:
             }
 
         except Exception as error:
+            fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
+            self._log_telemetry(url, sku, "fallback", False, fetch_time_ms, 0, str(error))
             return {
                 "success": False,
                 "error": f"Fallback extraction failed: {error}",
