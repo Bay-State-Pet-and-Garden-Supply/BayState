@@ -5,6 +5,7 @@ import logging
 from urllib.parse import urlparse
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai.content_filter_strategy import PruningContentFilter
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,11 @@ class Crawl4AIEngine:
         # Extraction strategy handling - exclusively static for the engine
         extraction_strategy = run_settings.get("extraction_strategy")
 
+        # Content filtering
+        content_filter = None
+        if run_settings.get("pruning_enabled", False):
+            content_filter = PruningContentFilter()
+
         return CrawlerRunConfig(
             # v0.4+ advanced features
             magic=run_settings.get("magic", True),
@@ -77,6 +83,7 @@ class Crawl4AIEngine:
             # Content filtering
             css_selector=run_settings.get("css_selector"),
             excluded_tags=run_settings.get("excluded_tags", ["nav", "footer", "header", "aside"]),
+            content_filter=content_filter,
             
             # Standard settings
             js_code=run_settings.get("js_code"),
