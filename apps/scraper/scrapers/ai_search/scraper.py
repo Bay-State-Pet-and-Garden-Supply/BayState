@@ -15,6 +15,7 @@ from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.search import BraveSearchClient
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.validation import ExtractionValidator
+from scrapers.ai_search.source_selector import LLMSourceSelector
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,7 @@ class AISearchScraper:
         self._search_client = BraveSearchClient(max_results=max_search_results)
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
+        self._source_selector = LLMSourceSelector(model=llm_model)
 
         # Load unified extractors
         from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor, FallbackExtractor
@@ -170,6 +172,18 @@ class AISearchScraper:
         We currently use deterministic scoring for reliability. This method remains
         async so LLM-based ranking can be reintroduced without changing callers.
         """
+        if self.use_ai_source_selection:
+            logger.info(f"[AI Search] Using LLM source selection for SKU {sku}")
+            best_url, cost = await self._source_selector.select_best_url(
+                results=search_results,
+                sku=sku,
+                product_name=product_name or "",
+            )
+            if best_url:
+                logger.info(f"[AI Search] LLM selected source: {best_url}")
+                return best_url
+            logger.info("[AI Search] LLM failed to select a clear source, falling back to heuristics")
+
         return self._heuristic_source_selection(
             search_results=search_results,
             sku=sku,
