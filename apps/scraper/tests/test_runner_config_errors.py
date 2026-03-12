@@ -155,7 +155,7 @@ class TestRunnerConfigurationErrorHandling:
 def test_discovery_job_uses_per_sku_context_items() -> None:
     scraper_configs = [
         ScraperConfig(
-            name="ai_discovery",
+            name="ai_search",
             base_url="https://example.com",
             selectors=[],
             options={},
@@ -169,7 +169,7 @@ def test_discovery_job_uses_per_sku_context_items() -> None:
         scrapers=scraper_configs,
         test_mode=False,
         max_workers=1,
-        job_type="discovery",
+        job_type="ai_search",
         job_config={
             "items": [
                 {
@@ -190,7 +190,7 @@ def test_discovery_job_uses_per_sku_context_items() -> None:
 
     captured_items: list[dict[str, object]] = []
 
-    class StubDiscoveryScraper:
+    class StubAISearchScraper:
         def __init__(self, **kwargs):
             _ = kwargs
 
@@ -215,7 +215,7 @@ def test_discovery_job_uses_per_sku_context_items() -> None:
                 for item in items
             ]
 
-    with patch("runner.AIDiscoveryScraper", StubDiscoveryScraper):
+    with patch("runner.AISearchScraper", StubAISearchScraper):
         run_job(job_config, runner_name="test-runner")
 
     assert len(captured_items) == 2
@@ -264,3 +264,48 @@ def test_empty_object_selectors_payload_does_not_fail_parsing() -> None:
 
     assert results is not None
     assert "bradley" in results["scrapers_run"]
+
+
+def test_discovery_job_type_with_empty_scrapers_runs_ai_path() -> None:
+    job_config = JobConfig(
+        job_id="test-job-discovery-empty-scrapers",
+        skus=["SKU001"],
+        scrapers=[],
+        test_mode=False,
+        max_workers=1,
+        job_type="discovery",
+        job_config={
+            "product_name": "Sample Product",
+            "brand": "Sample Brand",
+        },
+    )
+
+    class StubAISearchScraper:
+        def __init__(self, **kwargs):
+            _ = kwargs
+
+        async def scrape_products_batch(self, items, max_concurrency=1):
+            _ = max_concurrency
+            return [
+                MagicMock(
+                    sku=item["sku"],
+                    success=False,
+                    error="stub",
+                    cost_usd=0.0,
+                    size_metrics=None,
+                    product_name=None,
+                    description=None,
+                    images=[],
+                    categories=[],
+                    url=None,
+                    source_website=None,
+                    confidence=0.0,
+                )
+                for item in items
+            ]
+
+    with patch("runner.AISearchScraper", StubAISearchScraper):
+        results = run_job(job_config, runner_name="test-runner")
+
+    assert results is not None
+    assert "ai_search" in results["scrapers_run"]

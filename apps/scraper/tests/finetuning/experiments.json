@@ -1,0 +1,42 @@
+{
+  "exp_20260311_164337_9da36e49": {
+    "id": "exp_20260311_164337_9da36e49",
+    "hypothesis": "Adding specs table check improves size extraction",
+    "prompt_changes": "Added: Check product specifications table",
+    "test_skus": [
+      "032247886598"
+    ],
+    "baseline_version": "",
+    "challenger_version": "",
+    "results": {
+      "baseline_metrics": {
+        "accuracy": 0.85,
+        "precision": 0.8,
+        "recall": 0.82,
+        "f1_score": 0.0,
+        "error_count": 0,
+        "total_samples": 0
+      },
+      "challenger_metrics": {
+        "accuracy": 0.92,
+        "precision": 0.88,
+        "recall": 0.9,
+        "f1_score": 0.0,
+        "error_count": 0,
+        "total_samples": 0
+      },
+      "improvement_pct": {
+        "accuracy": 8.235294117647067,
+        "precision": 9.999999999999995,
+        "recall": 9.756097560975618
+      },
+      "test_duration_seconds": 0.0,
+      "notes": "Test results"
+    },
+    "conclusion": "accepted",
+    "git_commit": "bae5cdb2488d9273ca20de40a143a24a07335e0f",
+    "created_at": "2026-03-11T16:43:37.496801",
+    "completed_at": "2026-03-11T16:43:43.623482",
+    "status": "completed"
+  }
+}

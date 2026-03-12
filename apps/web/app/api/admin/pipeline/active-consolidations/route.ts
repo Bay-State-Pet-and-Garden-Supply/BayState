@@ -24,7 +24,7 @@ export async function GET() {
     const { data: jobs, error: jobsError } = await supabase
         .from('batch_jobs')
         .select('id, status, created_at, total_requests, completed_requests, failed_requests')
-        .not('status', 'in', ['completed', 'failed', 'expired'])
+        .not('status', 'in', '(completed,failed,expired)')
         .order('created_at', { ascending: false });
 
     if (jobsError) {

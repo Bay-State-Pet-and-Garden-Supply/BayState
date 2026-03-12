@@ -9,7 +9,7 @@ from pathlib import Path
 # Add project root to python path to import scrapers module
 sys.path.append(str(Path(__file__).parent.parent))
 
-from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_search import AISearchScraper
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -39,7 +39,7 @@ async def run_baseline():
 
     # Initialize scraper
     # Set max_steps lower to prevent endless loops
-    scraper = AIDiscoveryScraper(headless=True, max_steps=5)
+    scraper = AISearchScraper(headless=True, max_steps=5)
 
     results = []
 

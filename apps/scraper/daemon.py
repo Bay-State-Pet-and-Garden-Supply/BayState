@@ -36,7 +36,7 @@ import signal
 import sys
 import time
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Tuple, Optional
 
@@ -84,6 +84,7 @@ try:
     from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig
     from core.realtime_manager import RealtimeManager
     from utils.logger import setup_logging
+    from utils.logging_handlers import RealtimeLogHandler
     from utils.sentry import (
         init_sentry,
         set_job_context,
@@ -120,6 +121,9 @@ except Exception:
     utils_logger_mod = importlib.import_module("apps.scraper.utils.logger")
     setup_logging = getattr(utils_logger_mod, "setup_logging")
 
+    utils_handlers_mod = importlib.import_module("apps.scraper.utils.logging_handlers")
+    RealtimeLogHandler = getattr(utils_handlers_mod, "RealtimeLogHandler")
+
     sentry_mod = importlib.import_module("apps.scraper.utils.sentry")
     init_sentry = getattr(sentry_mod, "init_sentry")
     set_job_context = getattr(sentry_mod, "set_job_context")
@@ -146,6 +150,7 @@ if TYPE_CHECKING:
     # Provide typed references; prefer infra but allow core for compatibility.
     from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
     from core.realtime_manager import RealtimeManager  # type: ignore
+    from utils.logging_handlers import RealtimeLogHandler  # type: ignore
 
 
 # Configuration
@@ -173,7 +178,7 @@ def _create_log_entry(level: str, message: str) -> dict[str, str]:
     return {
         "level": level,
         "message": message,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -225,11 +230,7 @@ def needs_credentials(scraper_name: str) -> bool:
 def validate_runtime_dependencies() -> None:
     """Fail fast when the container has an incompatible scraper runtime."""
     metrics_module = __import__("scrapers.ai_metrics", fromlist=["record_ai_extraction", "record_ai_fallback"])
-    missing_symbols = [
-        symbol
-        for symbol in ("record_ai_extraction", "record_ai_fallback")
-        if not hasattr(metrics_module, symbol)
-    ]
+    missing_symbols = [symbol for symbol in ("record_ai_extraction", "record_ai_fallback") if not hasattr(metrics_module, symbol)]
     if missing_symbols:
         raise ImportError(
             "scrapers.ai_metrics is missing required symbols: "
@@ -319,10 +320,19 @@ async def main_async():
             if chunk:
                 logger.info(f"[Chunk {chunk.chunk_id}] Claimed - job={chunk.job_id}, skus={len(chunk.skus)}")
 
+                rt_handler = None
                 try:
                     await asyncio.to_thread(client.heartbeat, current_job_id=chunk.job_id, lease_token=chunk.lease_token, status="busy")
                     if rm and rm.is_connected:
                         await rm.broadcast_job_progress(chunk.job_id, "started", 0, "Chunk processing started")
+                        try:
+                            rt_handler = RealtimeLogHandler(realtime_manager=rm, job_id=chunk.job_id)
+                            rt_handler.setLevel(logging.INFO)
+                            formatter = logging.Formatter("%(message)s")
+                            rt_handler.setFormatter(formatter)
+                            logging.getLogger().addHandler(rt_handler)
+                        except Exception as e:
+                            logger.warning(f"Failed to attach RealtimeLogHandler: {e}")
 
                     chunk_logs: list[dict[str, Any]] = []
                     chunk_logs.append(_create_log_entry("info", f"Daemon claimed chunk {chunk.chunk_id} for job {chunk.job_id}"))
@@ -371,6 +381,9 @@ async def main_async():
                         await asyncio.to_thread(client.post_logs, chunk.job_id, failure_logs)
                     except Exception as log_error:
                         logger.warning(f"[Chunk {chunk.chunk_id}] Failed to send error logs: {log_error}")
+                finally:
+                    if rt_handler:
+                        logging.getLogger().removeHandler(rt_handler)
 
             else:
                 now = time.time()

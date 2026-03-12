@@ -1,0 +1,286 @@
+name: Weekly Validation
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  weekly-validation:
+    name: Weekly Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./apps/scraper
+    env:
+      PYTHONPATH: .
+      BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: apps/scraper/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install PyYAML
+
+      - name: Run weekly validation
+        id: validation
+        continue-on-error: true
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          set -o pipefail
+          python scripts/weekly_validation.py --sample-size 20 --output-dir "$GITHUB_WORKSPACE/artifacts/weekly-validation" 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/weekly-validation.log"
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if [ -d "$GITHUB_WORKSPACE/artifacts/weekly-validation" ]; then
+            latest_run=$(python - <<'PY'
+          from pathlib import Path
+          import os
+
+          root = Path(os.environ["GITHUB_WORKSPACE"]) / "artifacts" / "weekly-validation"
+          dirs = sorted((path for path in root.iterdir() if path.is_dir()), key=lambda path: path.stat().st_mtime)
+          print(dirs[-1] if dirs else "")
+          PY
+            )
+            echo "artifact_dir=$latest_run" >> "$GITHUB_OUTPUT"
+          else
+            echo "artifact_dir=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate review template
+        id: review_template
+        if: always()
+        working-directory: ./
+        env:
+          VALIDATION_STATUS: ${{ steps.validation.outputs.status }}
+          ARTIFACT_DIR: ${{ steps.validation.outputs.artifact_dir }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          from pathlib import Path
+
+          workspace = Path.cwd()
+          artifacts_dir = workspace / "artifacts"
+          artifacts_dir.mkdir(parents=True, exist_ok=True)
+          review_path = artifacts_dir / "weekly-validation-review.md"
+          artifact_dir_raw = os.environ.get("ARTIFACT_DIR", "").strip()
+          artifact_dir = Path(artifact_dir_raw) if artifact_dir_raw else None
+          status = int(os.environ.get("VALIDATION_STATUS") or "1")
+          run_url = os.environ["RUN_URL"]
+
+          summary = {
+              "sample_size": 20,
+              "successful_extractions": 0,
+              "failed_extractions": 0,
+              "success_rate": 0.0,
+              "total_cost_usd": 0.0,
+              "average_elapsed_ms": 0.0,
+              "prompt_version": "unknown",
+              "categories": [],
+          }
+          sampled_products: list[dict[str, str]] = []
+          preliminary_report = "Weekly validation artifacts were not generated. Inspect the workflow logs before manual review.\n"
+
+          if artifact_dir and artifact_dir.exists():
+              raw_results_path = artifact_dir / "raw-results.json"
+              preliminary_report_path = artifact_dir / "preliminary-report.md"
+              if raw_results_path.exists():
+                  payload = json.loads(raw_results_path.read_text(encoding="utf-8"))
+                  summary.update(payload.get("summary") or {})
+                  sampled_products = payload.get("sampled_products") or []
+              if preliminary_report_path.exists():
+                  preliminary_report = preliminary_report_path.read_text(encoding="utf-8").strip() + "\n"
+
+          status_label = "passed" if status == 0 else "failed"
+          status_emoji = ":white_check_mark:" if status == 0 else ":warning:"
+          category_text = ", ".join(summary.get("categories") or []) or "All categories"
+          lines = [
+              "# Weekly Validation Review",
+              "",
+              f"- Status: {status_emoji} {status_label}",
+              f"- Sample size: {summary.get('sample_size', 20)}",
+              f"- Prompt version: `{summary.get('prompt_version', 'unknown')}`",
+              f"- Categories: {category_text}",
+              f"- Success rate: {float(summary.get('success_rate', 0.0)):.1%}",
+              f"- Failed extractions: {summary.get('failed_extractions', 0)}",
+              f"- Total cost: ${float(summary.get('total_cost_usd', 0.0)):.4f}",
+              f"- Average extraction time: {float(summary.get('average_elapsed_ms', 0.0)):.2f} ms",
+              f"- Workflow run: {run_url}",
+              "",
+              "## Manual Review Checklist",
+              "- Confirm the sampled products are representative of current catalog coverage.",
+              "- Review all failed extractions and identify prompt, source, or data quality issues.",
+              "- Spot-check successful extractions in `raw-results.json` for factual accuracy.",
+              "- Capture follow-up remediation tasks before closing this issue.",
+              "",
+              "## Sampled Products",
+          ]
+
+          if sampled_products:
+              for product in sampled_products:
+                  brand = product.get("brand") or "Unknown"
+                  category = product.get("category") or "Uncategorized"
+                  lines.append(f"- `{product.get('sku', 'unknown')}` | {brand} | {product.get('product_name', 'Unknown product')} | {category}")
+          else:
+              lines.append("- No sampled products were recorded. Review the workflow logs.")
+
+          lines.extend([
+              "",
+              "## Preliminary Report",
+              preliminary_report.rstrip(),
+              "",
+              "## Artifact Paths",
+              "- `artifacts/weekly-validation-review.md`",
+              "- `artifacts/weekly-validation.log`",
+              "- `artifacts/weekly-validation/`",
+          ])
+
+          review_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print(f"review_path={review_path}")
+          PY
+
+      - name: Upload weekly validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-validation-results
+          path: |
+            artifacts/weekly-validation/
+            artifacts/weekly-validation.log
+            artifacts/weekly-validation-review.md
+          if-no-files-found: warn
+
+      - name: Create manual review issue
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          VALIDATION_STATUS: ${{ steps.validation.outputs.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs')
+            const reviewPath = 'artifacts/weekly-validation-review.md'
+            const reviewBody = fs.existsSync(reviewPath)
+              ? fs.readFileSync(reviewPath, 'utf8')
+              : '# Weekly Validation Review\n\nArtifacts were not generated. Inspect the workflow logs before manual review.\n'
+            const status = process.env.VALIDATION_STATUS === '0' ? 'passed' : 'failed'
+            const date = new Date().toISOString().slice(0, 10)
+            const title = `Weekly validation review - ${date}`
+            const body = [
+              `Automated weekly validation ${status}.`,
+              '',
+              `Workflow run: ${process.env.RUN_URL}`,
+              '',
+              reviewBody,
+            ].join('\n')
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              creator: 'github-actions[bot]',
+              per_page: 100,
+            })
+            const existing = issues.find((issue) => issue.title === title)
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title,
+                body,
+              })
+              core.notice(`Updated weekly validation review issue #${existing.number}`)
+            } else {
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              })
+              core.notice(`Created weekly validation review issue #${issue.number}`)
+            }
+
+      - name: Publish run summary
+        if: always()
+        working-directory: ./
+        env:
+          VALIDATION_STATUS: ${{ steps.validation.outputs.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## Weekly Validation"
+            echo
+            echo "- Status: $([ \"${VALIDATION_STATUS:-1}\" = \"0\" ] && printf 'passed' || printf 'failed')"
+            echo "- Workflow run: ${RUN_URL}"
+            echo "- Review artifact: \\`artifacts/weekly-validation-review.md\\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post Slack notification
+        if: always()
+        working-directory: ./
+        env:
+          VALIDATION_STATUS: ${{ steps.validation.outputs.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "Slack webhook not configured; notification recorded in GitHub step summary."
+            exit 0
+          fi
+
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          import urllib.request
+
+          payload = {
+              "text": f"Weekly validation {os.environ.get('VALIDATION_STATUS') == '0' and 'passed' or 'failed'} for {os.environ['GITHUB_REPOSITORY']}. Review run: {os.environ['RUN_URL']}"
+          }
+          request = urllib.request.Request(
+              os.environ["SLACK_WEBHOOK_URL"],
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+          )
+          with urllib.request.urlopen(request, timeout=15) as response:
+              if response.status >= 400:
+                  raise RuntimeError(f"Slack notification failed with status {response.status}")
+          PY
+
+      - name: Finalize workflow status
+        if: always()
+        env:
+          VALIDATION_STATUS: ${{ steps.validation.outputs.status }}
+        run: |
+          if [ "${VALIDATION_STATUS:-1}" != "0" ]; then
+            echo "Weekly validation reported failures; see uploaded artifacts and review issue."
+            exit 1
+          fi

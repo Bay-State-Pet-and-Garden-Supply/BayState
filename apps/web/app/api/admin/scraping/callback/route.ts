@@ -10,7 +10,7 @@ import {
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
-import { normalizeProductSources } from '@/lib/product-sources';
+import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
     recordCallbackProcessed,
@@ -385,10 +385,12 @@ export async function POST(request: NextRequest) {
 
                 if (scrapedDataContainer && typeof scrapedDataContainer === 'object') {
                     const normalizedSources = normalizeProductSources(scrapedDataContainer);
-                    if (Object.keys(normalizedSources).length > 0) {
-                        transformedResults[sku] = normalizedSources;
+                    const filteredSources = filterMeaningfulProductSources(normalizedSources);
+
+                    if (Object.keys(filteredSources).length > 0 && hasMeaningfulProductSourceData(filteredSources)) {
+                        transformedResults[sku] = filteredSources;
                     } else {
-                        console.log(`[Callback] No valid scraped data found for SKU ${sku}`);
+                        console.log(`[Callback] No valid scraped data found for SKU ${sku}; skipping persistence`);
                     }
                 }
             }

@@ -136,7 +136,7 @@ export interface ScrapeJob {
   error_message: string | null;
   created_by: string | null;
   metadata?: Record<string, unknown> | null;
-  crawl4ai?: {
+  ai_search?: {
     extraction_strategy: string[];
     cost_breakdown: Record<string, unknown> | null;
     anti_bot_metrics: Record<string, unknown> | null;

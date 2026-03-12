@@ -1,0 +1,33 @@
+# Evaluation Thresholds Configuration
+# ========================================
+# Externalized thresholds for scraper evaluation regression tests.
+# Adjust these values without code changes.
+#
+# All values are floats unless otherwise specified.
+
+# Minimum field-level accuracy required (0-1)
+# At least 80% of fields must match ground truth for a SKU to pass.
+min_field_accuracy: 0.80
+
+# Minimum success rate required (0-1)
+# At least 70% of SKUs must be fully extracted to pass.
+min_success_rate: 0.70
+
+# Maximum cost per successful SKU extraction (USD)
+# $0.10 per SKU - helps catch expensive prompts.
+max_cost_per_sku: 0.10
+
+# Maximum allowed regression percentage (0-1)
+# 2% performance drop allowed before alerting.
+max_regression_pct: 0.02
+
+# Required fields for SKU to be considered successful
+# If any of these are missing, the SKU fails.
+required_fields:
+  - product_name
+  - brand
+  - images
+
+# Statistical confidence level for significance (0-1)
+# 95% confidence required before flagging as regression.
+statistical_confidence: 0.95

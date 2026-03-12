@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface ReviewSubmitProps {
     selectedSkus: string[];
-    method: 'scrapers' | 'discovery' | 'crawl4ai' | 'consolidation';
+    method: 'scrapers' | 'ai_search' | 'consolidation';
     methodConfig: unknown;
     chunkConfig: {
         chunkSize: number;
@@ -51,10 +51,8 @@ export function ReviewSubmit({
                 return;
             }
 
-            const configPayload = method === 'discovery' 
-                ? { discovery: methodConfig }
-                : method === 'crawl4ai'
-                ? { crawl4ai: methodConfig }
+            const configPayload = method === 'ai_search'
+                ? { aiSearchConfig: methodConfig }
                 : { scrapers: (methodConfig as { scrapers: string[] }).scrapers };
 
             const response = await fetch('/api/admin/enrichment/jobs', {
@@ -124,9 +122,8 @@ export function ReviewSubmit({
                         <div className="flex justify-between items-center p-3 rounded-lg bg-background border border-border/40">
                             <span className="text-muted-foreground font-medium">Enrichment Method</span>
                             <Badge className="capitalize text-sm font-semibold">
-                                {method === 'scrapers' ? 'Static Scrapers' : 
-                                 method === 'discovery' ? 'AI Discovery' : 
-                                 method === 'crawl4ai' ? 'Crawl4AI Engine' : 'AI Consolidation'}
+                                {method === 'scrapers' ? 'Static Scrapers' :
+                                    method === 'ai_search' ? 'AI Search' : 'AI Consolidation'}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center p-3 rounded-lg bg-background border border-border/40">
@@ -159,15 +156,19 @@ export function ReviewSubmit({
                                         )) || <span className="text-sm text-muted-foreground italic">None selected</span>}
                                     </div>
                                 </div>
-                            ) : method === 'discovery' ? (
+                            ) : method === 'ai_search' ? (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">Providers:</span>
-                                        <span className="font-medium">{(methodConfig as any).providers?.join(', ') || 'N/A'}</span>
+                                        <span className="text-muted-foreground">Strategy:</span>
+                                        <span className="font-medium uppercase">{(methodConfig as any).extraction_strategy}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Model:</span>
-                                        <span className="font-medium">{(methodConfig as any).model || (methodConfig as any).llm_model || 'N/A'}</span>
+                                        <span className="font-medium">{(methodConfig as any).llm_model || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-muted-foreground">Caching:</span>
+                                        <span className="font-medium">{(methodConfig as any).cache_enabled ? 'Enabled' : 'Disabled'}</span>
                                     </div>
                                     {(methodConfig as any).costEstimate && (
                                         <div className="mt-4 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
@@ -177,25 +178,6 @@ export function ReviewSubmit({
                                             </div>
                                         </div>
                                     )}
-                                </div>
-                            ) : method === 'crawl4ai' ? (
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">Strategy:</span>
-                                        <span className="font-medium uppercase">{(methodConfig as any).extraction_strategy}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">Model:</span>
-                                        <span className="font-medium">{(methodConfig as any).llm_model}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">Caching:</span>
-                                        <span className="font-medium">{(methodConfig as any).cache_enabled ? 'Enabled' : 'Disabled'}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">Timeout:</span>
-                                        <span className="font-medium">{(methodConfig as any).timeout}ms</span>
-                                    </div>
                                 </div>
                             ) : (
                                 <div className="space-y-2 p-3 rounded-lg bg-purple-50 border border-purple-100">
