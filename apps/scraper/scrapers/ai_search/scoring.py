@@ -27,6 +27,14 @@ class SearchScorer:
         "mickeyspetsupplies.com",
         "rachelspetsupply.com",
         "animalproductsshop.com",
+        "petedge.com",
+        "animalsupply.com",
+        "phillipspet.com",
+        "frontiercoop.com",
+        "petsuppliesplus.com",
+        "bradleycaldwell.com",
+        "costco.com",
+        "ebay.com",
     }
 
     # Blocked domains (social media, etc.)
