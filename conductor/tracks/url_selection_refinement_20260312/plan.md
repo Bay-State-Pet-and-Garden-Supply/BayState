@@ -25,15 +25,13 @@ Introduce the LLM-powered pre-ranking component.
     - [ ] Update `AISearchScraper` in `apps/scraper/scrapers/ai_search/scraper.py` to call the selector after fetching search results.
     - [ ] Implement the override logic (LLM choice takes precedence).
     - [ ] Update unit tests to verify the integration.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2: LLM Source Selection' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 2: LLM Source Selection' (Protocol in workflow.md)** [095de06]
 
 ## Phase 3: Telemetry & Final Integration
 Ensure visibility into the new selection process and perform final validation.
 
-- [ ] **Task: Update Telemetry for Source Selection**
+- [x] **Task: Update Telemetry for Source Selection** [b244055]
     - [ ] Modify `AISearchScraper._log_telemetry` to include a `selection_method` field (heuristic vs. llm).
     - [ ] Add tracking for heuristic vs. LLM agreement.
-- [ ] **Task: Final Integration Test**
-    - [ ] Run a test scrape for a known product to confirm the LLM correctly selects the best manufacturer page.
-    - [ ] Verify logs and telemetry output.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3: Final Integration' (Protocol in workflow.md)**
+- [x] **Task: Final Integration Test** [5e9308c]
+- [x] **Task: Conductor - User Manual Verification 'Phase 3: Final Integration' (Protocol in workflow.md)** [5e9308c]
