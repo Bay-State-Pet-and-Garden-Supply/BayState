@@ -36,7 +36,7 @@ import signal
 import sys
 import time
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Tuple, Optional
 
@@ -178,7 +178,7 @@ def _create_log_entry(level: str, message: str) -> dict[str, str]:
     return {
         "level": level,
         "message": message,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -230,11 +230,7 @@ def needs_credentials(scraper_name: str) -> bool:
 def validate_runtime_dependencies() -> None:
     """Fail fast when the container has an incompatible scraper runtime."""
     metrics_module = __import__("scrapers.ai_metrics", fromlist=["record_ai_extraction", "record_ai_fallback"])
-    missing_symbols = [
-        symbol
-        for symbol in ("record_ai_extraction", "record_ai_fallback")
-        if not hasattr(metrics_module, symbol)
-    ]
+    missing_symbols = [symbol for symbol in ("record_ai_extraction", "record_ai_fallback") if not hasattr(metrics_module, symbol)]
     if missing_symbols:
         raise ImportError(
             "scrapers.ai_metrics is missing required symbols: "
@@ -332,7 +328,7 @@ async def main_async():
                         try:
                             rt_handler = RealtimeLogHandler(realtime_manager=rm, job_id=chunk.job_id)
                             rt_handler.setLevel(logging.INFO)
-                            formatter = logging.Formatter('%(message)s')
+                            formatter = logging.Formatter("%(message)s")
                             rt_handler.setFormatter(formatter)
                             logging.getLogger().addHandler(rt_handler)
                         except Exception as e:

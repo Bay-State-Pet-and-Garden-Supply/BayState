@@ -18,6 +18,13 @@ export interface AICredentialStatus {
 }
 
 const AI_DEFAULTS_SETTINGS_KEY = 'ai_scraping_defaults';
+const ENCRYPTION_KEY_ENV_NAME = 'AI_CREDENTIALS_ENCRYPTION_KEY';
+const ENCRYPTION_KEY_HELP =
+  'Set AI_CREDENTIALS_ENCRYPTION_KEY to a 32-byte UTF-8 string or base64-encoded 32-byte key (example: `openssl rand -base64 32`).';
+
+let hasLoggedMissingEncryptionKey = false;
+let hasLoggedInvalidEncryptionKeyLength = false;
+const loggedDecryptFailures = new Set<AIProvider>();
 
 const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
   llm_model: 'gpt-4o-mini',
@@ -41,9 +48,12 @@ function getSupabaseAdmin(): SupabaseClient {
 function resolveEncryptionKey(required: boolean): Buffer | null {
   const raw = process.env.AI_CREDENTIALS_ENCRYPTION_KEY;
   if (!raw || !raw.trim()) {
-    console.error('[Scraper API] AI_CREDENTIALS_ENCRYPTION_KEY is missing or empty in process.env');
+    if (!hasLoggedMissingEncryptionKey) {
+      console.error(`[Scraper API] ${ENCRYPTION_KEY_ENV_NAME} is missing or empty. ${ENCRYPTION_KEY_HELP}`);
+      hasLoggedMissingEncryptionKey = true;
+    }
     if (required) {
-      throw new Error('AI_CREDENTIALS_ENCRYPTION_KEY is not configured');
+      throw new Error(`${ENCRYPTION_KEY_ENV_NAME} is not configured. ${ENCRYPTION_KEY_HELP}`);
     }
     return null;
   }
@@ -59,9 +69,12 @@ function resolveEncryptionKey(required: boolean): Buffer | null {
   }
 
   if (keyBuffer.length !== 32) {
-    console.error(`[Scraper API] AI_CREDENTIALS_ENCRYPTION_KEY length is invalid: ${keyBuffer.length} bytes (expected 32)`);
+    if (!hasLoggedInvalidEncryptionKeyLength) {
+      console.error(`[Scraper API] ${ENCRYPTION_KEY_ENV_NAME} length is invalid: ${keyBuffer.length} bytes (expected 32). ${ENCRYPTION_KEY_HELP}`);
+      hasLoggedInvalidEncryptionKeyLength = true;
+    }
     if (required) {
-      throw new Error('AI_CREDENTIALS_ENCRYPTION_KEY must be 32 bytes (utf8) or base64-encoded 32 bytes');
+      throw new Error(`${ENCRYPTION_KEY_ENV_NAME} must be 32 bytes (utf8) or base64-encoded 32 bytes. ${ENCRYPTION_KEY_HELP}`);
     }
     return null;
   }
@@ -101,6 +114,43 @@ function decryptSecret(payload: { encryptedValue: string; iv: string; authTag: s
   ]);
 
   return decrypted.toString('utf8');
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function isEncryptionKeyMismatchError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('unable to authenticate data')
+    || message.includes('unsupported state')
+    || message.includes('authentication tag')
+  );
+}
+
+function logDecryptFailure(provider: AIProvider, error: unknown): void {
+  if (loggedDecryptFailures.has(provider)) {
+    return;
+  }
+
+  loggedDecryptFailures.add(provider);
+
+  if (isEncryptionKeyMismatchError(error)) {
+    console.error(
+      `[Scraper API] Failed to decrypt ${provider} secret. Stored credential was likely encrypted with a different ${ENCRYPTION_KEY_ENV_NAME}. Re-save the ${provider} API key in Admin -> AI Scraping Credentials to re-encrypt it with the current key.`
+    );
+    return;
+  }
+
+  console.error(`[Scraper API] Failed to decrypt ${provider} secret: ${getErrorMessage(error)}`);
 }
 
 function normalizeDefaults(raw: unknown): AIScrapingDefaults {
@@ -227,7 +277,6 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
 async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string | null> {
   const key = resolveEncryptionKey(false);
   if (!key) {
-    console.error(`[Scraper API] No encryption key for ${provider}`);
     return null;
   }
 
@@ -243,8 +292,6 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
     return null;
   }
 
-  console.log(`[Scraper API] Decrypting ${provider} secret...`);
-
   try {
     return decryptSecret({
       encryptedValue: data.encrypted_value as string,
@@ -252,7 +299,7 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
       authTag: data.auth_tag as string,
     });
   } catch (err) {
-    console.error(`[Scraper API] Failed to decrypt ${provider} secret:`, err);
+    logDecryptFailure(provider, err);
     return null;
   }
 }

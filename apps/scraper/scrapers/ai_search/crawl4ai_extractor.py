@@ -125,8 +125,8 @@ OUTPUT QUALITY BAR
         else:
             # Handle f-string syntax in prompt files: {brand or "Unknown"} -> {brand}
             # The file uses f-string syntax but we're using .format()
-            prompt_template = prompt_template.replace('{brand or "Unknown"}', '{brand}')
-            prompt_template = prompt_template.replace('{product_name or "Unknown"}', '{product_name}')
+            prompt_template = prompt_template.replace('{brand or "Unknown"}', "{brand}")
+            prompt_template = prompt_template.replace('{product_name or "Unknown"}', "{product_name}")
 
         # Substitute variables
         if prompt_template is None:
@@ -144,7 +144,7 @@ OUTPUT QUALITY BAR
         sku: str,
         product_name: Optional[str],
         brand: Optional[str],
-    ) -> dict[str, Any]:
+    ) -> Optional[dict[str, Any]]:
         """Extract product data using centralized Crawl4AIEngine."""
         try:
             from pydantic import BaseModel, Field
@@ -235,6 +235,11 @@ OUTPUT QUALITY BAR
                 }
 
         except Exception as e:
+            error_message = str(e)
+            if "expected string or bytes-like object" in error_message and "NoneType" in error_message:
+                logger.warning("[AI Search] Crawl4AI returned empty content, using fallback extractor")
+                return None
+
             logger.error(f"[AI Search] Extraction failed: {e}")
             return {
                 "success": False,
