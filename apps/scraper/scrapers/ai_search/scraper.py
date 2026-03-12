@@ -315,35 +315,59 @@ class AISearchScraper:
             # Step 3: Targeted Search (Final Pass)
             # Conduct another search using the new consolidated name for better manufacturer targeting
             search_query = self._query_builder.build_search_query(sku, consolidated_name, brand, category)
-            logger.info(f"[AI Search] Phase 2 Targeted Search: {search_query}")
-
+            
             # Step 4: Search for product pages (Targeted)
             search_results: list[dict[str, Any]] = []
             search_error: Optional[str] = None
             best_score_seen = float("-inf")
-            for query_variant in self._query_builder.build_query_variants(
-                sku=sku,
-                product_name=consolidated_name,
-                brand=brand,
-                category=category,
-            ):
-                raw_results, raw_error = await self._search_client.search(query_variant)
+            
+            # Optimization: If the targeted query is identical to reconnaissance, skip the first variant search
+            # as it's already in raw_results from Phase 1.
+            skip_initial_variant = search_query == initial_query
+            if skip_initial_variant:
+                logger.info(f"[AI Search] Phase 2: Query unchanged ('{search_query}'), skipping redundant search.")
                 prepared_results = self._scoring.prepare_search_results(raw_results, sku, brand, consolidated_name, category)
                 if prepared_results:
-                    top_score = self._scoring.score_search_result(
+                    search_results = prepared_results
+                    best_score_seen = self._scoring.score_search_result(
                         result=prepared_results[0],
                         sku=sku,
                         brand=brand,
                         product_name=consolidated_name,
                         category=category,
                     )
-                    if top_score > best_score_seen:
-                        best_score_seen = top_score
-                        search_results = prepared_results
-                        search_error = None
-                    if top_score >= 8.0:
-                        break
-                search_error = raw_error
+            else:
+                logger.info(f"[AI Search] Phase 2 Targeted Search: {search_query}")
+
+            # Try variants if we don't have a strong result yet (score < 8.0)
+            if best_score_seen < 8.0:
+                for query_variant in self._query_builder.build_query_variants(
+                    sku=sku,
+                    product_name=consolidated_name,
+                    brand=brand,
+                    category=category,
+                ):
+                    # Skip if this variant is the same as what we already searched in Phase 1
+                    if skip_initial_variant and query_variant == initial_query:
+                        continue
+                        
+                    raw_results, raw_error = await self._search_client.search(query_variant)
+                    prepared_results = self._scoring.prepare_search_results(raw_results, sku, brand, consolidated_name, category)
+                    if prepared_results:
+                        top_score = self._scoring.score_search_result(
+                            result=prepared_results[0],
+                            sku=sku,
+                            brand=brand,
+                            product_name=consolidated_name,
+                            category=category,
+                        )
+                        if top_score > best_score_seen:
+                            best_score_seen = top_score
+                            search_results = prepared_results
+                            search_error = None
+                        if top_score >= 8.0:
+                            break
+                    search_error = raw_error
 
             if not search_results:
                 error_msg = search_error or "No search results found"

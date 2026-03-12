@@ -25,15 +25,26 @@ class QueryBuilder:
             query_tokens.append(brand_clean)
         if name_clean:
             query_tokens.append(name_clean)
+        
+        # Handle SKUs with specific prefixes for better search engine indexing
         if sku_clean:
-            query_tokens.append(sku_clean)
+            if sku_clean.isdigit():
+                if len(sku_clean) in (12, 13, 14):
+                    query_tokens.append(f"UPC {sku_clean}")
+                else:
+                    query_tokens.append(f"SKU {sku_clean}")
+            else:
+                query_tokens.append(sku_clean)
+
         if category_clean:
             query_tokens.append(category_clean)
 
+        # Higher intent keywords than just 'product details'
         query_tokens.extend(
             [
+                "official",
                 "product",
-                "details",
+                "manufacturer",
                 "-review",
                 "-comparison",
                 "-reddit",
@@ -63,14 +74,17 @@ class QueryBuilder:
 
         variants: list[str] = []
 
-        # Variant 1: SKU only (most effective with minimal data)
+        # Variant 1: SKU with prefix (most effective for product mapping)
         if sku_clean:
-            variants.append(f"{sku_clean} product")
+            if sku_clean.isdigit() and len(sku_clean) in (12, 13, 14):
+                variants.append(f"UPC {sku_clean} official")
+            else:
+                variants.append(f"SKU {sku_clean} official")
 
-        # Variant 2: Brand + Name + SKU (when we have more data)
-        tokens = [t for t in [brand_clean, name_clean, sku_clean] if t]
+        # Variant 2: Brand + Name (classic search)
+        tokens = [t for t in [brand_clean, name_clean] if t]
         if len(tokens) >= 2:
-            variants.append(" ".join(tokens))
+            variants.append(" ".join(tokens) + " manufacturer")
 
         # Variant 3: Name + SKU (brand missing)
         if name_clean and sku_clean:

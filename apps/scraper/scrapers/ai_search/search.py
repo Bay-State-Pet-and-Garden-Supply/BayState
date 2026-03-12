@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class BraveSearchClient:
     """Client for Brave Search API."""
 
-    def __init__(self, max_results: int = 5, cache_max: int = 500):
+    def __init__(self, max_results: int = 15, cache_max: int = 500):
         self.max_results = max_results
         self._cache: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
         self._cache_max = cache_max
@@ -51,7 +51,6 @@ class BraveSearchClient:
                 "ui_lang": f"{search_lang}-{country}",
                 "safesearch": "moderate",
                 "extra_snippets": "true",
-                "freshness": os.environ.get("BRAVE_FRESHNESS", "py"),
             }
 
             async with httpx.AsyncClient(timeout=30.0) as client:
