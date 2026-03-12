@@ -186,6 +186,7 @@ def run_job(
     runner_name: Optional[str] = None,
     log_buffer: Optional[List[Dict[str, Any]]] = None,
     progress_callback: Optional[Callable[[str, str, dict[str, Any]], bool]] = None,
+    api_client: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Execute a scrape job.
 
@@ -196,6 +197,7 @@ def run_job(
         progress_callback: Optional callback function called after each SKU is processed.
                           Signature: callback(sku: str, scraper_name: str, data: dict) -> bool
                           Should return True if progress was saved successfully.
+        api_client: Optional ScraperAPIClient for fetching credentials
 
     Returns:
         Dictionary with job results
@@ -263,6 +265,7 @@ def run_job(
                 "test_skus": scraper_cfg.test_skus if scraper_cfg.test_skus is not None else [],
                 "retries": getattr(scraper_cfg, "retries", 0),
                 "validation": getattr(scraper_cfg, "validation", None),
+                "credential_refs": getattr(scraper_cfg, "credential_refs", None),
             }
 
             config = cast(ScraperConfigModel, parser.load_from_dict(config_dict))
@@ -309,6 +312,7 @@ def run_job(
                 debug_mode=False,
                 job_id=job_id,
                 event_emitter=emitter,
+                api_client=api_client,
             )
 
             # Run all async operations in a single event loop to properly manage

@@ -73,6 +73,7 @@ class WorkflowExecutor:
         job_id: str | None = None,
         event_emitter: Any | None = None,
         debug_callback: Any | None = None,
+        api_client: Any | None = None,
     ) -> None:
         """
         Initialize the workflow executor.
@@ -85,6 +86,7 @@ class WorkflowExecutor:
             max_retries: Override default max retries (uses config.retries if None)
             worker_id: Optional identifier for the worker (used for profile isolation)
             stop_event: Optional threading.Event to check for cancellation
+            api_client: Optional API client for credential resolution
         """
         self.config = config
         self.headless = headless
@@ -95,6 +97,8 @@ class WorkflowExecutor:
         self.job_id = job_id
         self.event_emitter = event_emitter
         self.debug_callback = debug_callback
+        self.api_client = api_client
+        self.credentials: dict[str, dict[str, str]] = {}
         self.settings = SettingsManager()
         self.scraper_type = "static" # Force static type
 
@@ -272,6 +276,25 @@ class WorkflowExecutor:
         retry_executor.register_recovery_handler(FailureType.RATE_LIMITED, handle_rate_limit)
         retry_executor.register_recovery_handler(FailureType.ACCESS_DENIED, handle_access_denied)
 
+
+    def _resolve_credential_refs(self) -> dict[str, dict[str, str]]:
+        """Resolve credential_refs from config using the API client."""
+        if not self.config.credential_refs:
+            return {}
+
+        if not self.api_client:
+            logger.warning(f"Cannot resolve credential_refs: no API client available")
+            return {}
+
+        try:
+            resolved = self.api_client.resolve_credentials(self.config.credential_refs)
+            if resolved:
+                logger.info(f"Resolved {len(resolved)} credential references for {self.config.name}")
+            return resolved
+        except Exception as e:
+            logger.error(f"Failed to resolve credential_refs: {e}")
+            return {}
+
     async def execute_workflow(self, context: dict[str, Any] | None = None, quit_browser: bool = True) -> dict[str, Any]:
         """Execute the complete workflow defined in the configuration."""
         try:
@@ -282,6 +305,11 @@ class WorkflowExecutor:
             self.workflow_stopped = False
             self.step_errors = []
             self.current_step_index = 0
+
+            # Resolve credential_refs before execution
+            self.credentials = self._resolve_credential_refs()
+            if self.config.credential_refs and not self.credentials:
+                logger.warning(f"Failed to resolve any credential_refs for {self.config.name}")
 
             if self.stop_event and self.stop_event.is_set():
                 raise WorkflowExecutionError("Workflow cancelled", context=ErrorContext(site_name=self.config.name))

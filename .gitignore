@@ -12,7 +12,13 @@ tmp/
 .agents/
 .agent/
 .claude/
-.sisyphus/
+# Sisyphus work tracking - keep plans and notepads, ignore evidence and boulder state
+.sisyphus/evidence/*
+!.sisyphus/evidence/.gitkeep
+!.sisyphus/evidence/README.md
+.sisyphus/boulder.json
+.sisyphus/archive/
+.sisyphus/drafts/
 docs/external/
 
 # Workspace / stray files

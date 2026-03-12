@@ -1,0 +1,206 @@
+schema_version: "1.0"
+name: amazon
+display_name: Amazon
+base_url: https://www.amazon.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: "#productTitle"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "#bylineInfo"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Image URLs
+    selector: "#altImages li.imageThumbnail img"
+    attribute: src
+    multiple: true
+    required: true
+  - name: Weight
+    selector: //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] |
+      //li[contains(., 'pounds')]
+    attribute: text
+    multiple: false
+    required: false
+  - name: Rating
+    selector: "#acrPopover, i[data-hook='average-star-rating'] span"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Reviews
+    selector: "#acrCustomerReviewText"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "#productDescription"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Features
+    selector: "#feature-bullets li span"
+    attribute: text
+    multiple: true
+    required: false
+  - name: Availability
+    selector: "#availability"
+    attribute: text
+    multiple: false
+    required: false
+  - name: ASIN
+    selector: div#detailBullets_feature_div li:has(span:contains('ASIN')) span +
+      span, tr:has(th:contains('ASIN')) td
+    attribute: text
+    multiple: false
+    required: false
+  - name: Technical Specs
+    selector: "#prodDetails, #detailBullets_feature_div"
+    attribute: text
+    multiple: false
+    required: false
+workflows:
+  - action: conditional_click
+    name: null
+    params:
+      selector: "#sp-cc-accept"
+  - action: navigate
+    name: null
+    params:
+      url: https://www.amazon.com/s?k={sku}
+  - action: wait
+    name: null
+    params:
+      seconds: 5
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector: ".s-result-item, .s-main-slot, .s-no-results-filler, #noResultsTitle,
+        h2, #search, body"
+  - action: wait
+    name: null
+    params:
+      seconds: 2
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: click
+    name: null
+    params:
+      index: 0
+      selector: div.s-result-item[data-asin] h2 a.a-link-normal,
+        div.s-result-item[data-asin] a.a-link-normal[href*="/dp/"],
+        .s-result-item a[href*="/dp/"]
+      filter_text_exclude: sponsored
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector:
+        - "#productTitle"
+        - "#title"
+        - h1
+  - action: extract_and_transform
+    name: null
+    params:
+      fields:
+        - name: Name
+          selector: "#productTitle"
+          attribute: text
+        - name: Brand
+          selector: "#bylineInfo"
+          attribute: text
+          transform:
+            - type: regex_extract
+              group: 1
+              pattern: Visit the (.+) Store
+        - name: Images
+          multiple: true
+          selector: "#altImages li.imageThumbnail img"
+          attribute: src
+          transform:
+            - type: replace
+              pattern: _AC_US40_
+              replacement: _AC_SL1500_
+        - name: Weight
+          required: false
+          selector: //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] |
+            //li[contains(., 'pounds')]
+          attribute: text
+        - name: Price
+          selector: ".a-price .a-offscreen, #priceblock_ourprice, .a-price"
+          attribute: text
+        - name: Rating
+          selector: "#acrPopover, i[data-hook='average-star-rating'] span"
+          attribute: text
+        - name: Reviews
+          selector: "#acrCustomerReviewText"
+          attribute: text
+        - name: Description
+          selector: "#productDescription"
+          attribute: text
+        - name: Features
+          multiple: true
+          selector: "#feature-bullets li span"
+          attribute: text
+        - name: Availability
+          selector: "#availability"
+          attribute: text
+        - name: ASIN
+          selector: div#detailBullets_feature_div li:has(span:contains('ASIN')) span +
+            span, tr:has(th:contains('ASIN')) td
+          attribute: text
+        - name: Technical Specs
+          selector: "#prodDetails, #detailBullets_feature_div"
+          attribute: text
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - "[widgetId='messaging-messages-no-results']"
+    - .s-no-results-filler
+    - "#noResultsTitle"
+    - .s-desktop-no-results
+    - //h2[contains(text(), 'No results for your search query')]
+  no_results_text_patterns:
+    - no results for
+    - 0 results for
+    - No results for your search query
+    - Try checking your spelling
+login: null
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 100
+test_skus:
+  - "035585499741"
+  - "079105116708"
+  - "029695285400"
+  - "038100174642"
+  - "017800149495"
+  - 852Icons4
+  - B08N5WRWNW
+fake_skus:
+  - xyzabc123notexist456
+  - B00ZZZZZZZ
+  - NOTAPRODUCT
+edge_case_skus:
+  - A1
+  - ABCDEFGHIJKLMNOPQRSTUVWXYZ

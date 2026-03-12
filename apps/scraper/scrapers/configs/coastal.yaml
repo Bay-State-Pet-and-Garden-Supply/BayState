@@ -1,0 +1,135 @@
+schema_version: "1.0"
+name: coastal
+display_name: Coastal Pet
+base_url: https://www.coastalpet.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: h4.product-details__product-name
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: a.gray-bold-link[href*='brand=']
+    attribute: text
+    multiple: false
+    required: true
+  - name: Size
+    selector: .product-details__size-button--active, .product-details__size-button
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: img[src*='salsify'][src*='images.salsify.com']
+    attribute: src
+    multiple: true
+    required: true
+  - name: UPC
+    selector: .sku-upc, [itemprop='sku']
+    attribute: text
+    multiple: false
+    required: false
+  - name: Item Number
+    selector: .item-number
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "#description, .product-description"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Features
+    selector: .features-list li, .product-features li
+    attribute: text
+    multiple: true
+    required: false
+workflows:
+  - action: navigate
+    name: null
+    params:
+      url: https://www.coastalpet.com/products/search/?q={sku}
+  - action: conditional_click
+    name: null
+    params:
+      selector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll,
+        .CybotCookiebotDialogBodyButton, button[aria-label='Allow all']"
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector:
+        - .product-listing__title--text
+        - h3:has-text('Search')
+        - //h3[contains(text(), 'Search')]
+  - action: wait
+    name: null
+    params:
+      duration: 1
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: click
+    name: null
+    params:
+      selector: a.product-listing__title.product-listing__link
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector: .product-details
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - Size
+        - Image URLs
+        - Price
+        - UPC
+        - Item Number
+        - Description
+        - Features
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - //main//*[contains(text(), 'Your search returned no results')]
+    - //main//*[contains(text(), '0 Products Found')]
+  no_results_text_patterns:
+    - Your search returned no results
+    - 0 Products Found
+login: null
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 20
+test_skus:
+  - HSCP2
+  - "06601"
+  - "07001"
+  - "14401"
+  - SCC12
+  - WWAC1
+fake_skus:
+  - xyzabc123notexist456
+  - ZZZZZ
+  - "00000"
+edge_case_skus:
+  - A
+  - ABCDEFGHIJ123456

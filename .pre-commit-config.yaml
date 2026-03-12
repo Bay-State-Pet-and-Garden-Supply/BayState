@@ -1,0 +1,9 @@
+# Pre-commit configuration to run scraper config validation
+repos:
+  - repo: local
+    hooks:
+      - id: validate-scraper-configs
+        name: Validate scraper configs
+        entry: python apps/scraper/scripts/validate_configs.py
+        language: system
+        files: ^apps/scraper/scrapers/configs/.*\.(yml|yaml)$

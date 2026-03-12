@@ -94,7 +94,12 @@ class ScraperConfig(BaseModel):
     name: str = Field(..., description="Name of the scraper")
     base_url: str = Field(..., description="Base URL for the scraper")
     display_name: str | None = Field(None, description="Display name for UI")
-    scraper_type: Literal["static"] = Field(default="static", description="Type of scraper: exclusively static (CSS selectors)")
+    # Support legacy static scrapers plus agentic and crawl4ai AI-driven scrapers.
+    # Default remains 'static' to avoid changing existing behaviour.
+    scraper_type: Literal["static", "agentic", "crawl4ai"] = Field(
+        default="static",
+        description="Type of scraper: 'static' for selector-based, 'agentic' for agent-driven LLM flows, or 'crawl4ai' for the crawl4ai engine",
+    )
     selectors: list[SelectorConfig] = Field(default_factory=list, description="List of selectors for data extraction")
     workflows: list[WorkflowStep] = Field(default_factory=list, description="List of workflow steps")
     normalization: list[NormalizationRule] | None = Field(None, description="List of normalization rules")
@@ -104,6 +109,26 @@ class ScraperConfig(BaseModel):
     anti_detection: Any | None = Field(None, description="Anti-detection configuration")
     http_status: HttpStatusConfig | None = Field(None, description="HTTP status monitoring configuration")
     validation: ValidationConfig | None = Field(None, description="Data validation and no-results configuration")
+
+    class AIConfig(BaseModel):
+        """Configuration for AI-driven scrapers.
+
+        Matches the ai_config block used in YAML configs (provider, task, max_steps,
+        confidence_threshold, llm_model, use_vision, headless).
+        """
+
+        provider: str = Field(..., description="AI provider name (e.g., 'crawl4ai', 'openai')")
+        task: str | None = Field(None, description="Human-readable task/instruction for the agent/LLM")
+        max_steps: int | None = Field(None, description="Max planning/execution steps for an agent or AI flow")
+        confidence_threshold: float | None = Field(None, description="Confidence threshold (0-1) for AI decisions")
+        llm_model: str | None = Field(None, description="LLM model identifier to use (if applicable)")
+        use_vision: bool | None = Field(None, description="Whether to enable vision/vision-augmented features")
+        headless: bool | None = Field(None, description="Run headless browser when AI actions require browsing")
+
+    ai_config: AIConfig | None = Field(None, description="Optional AI configuration for agentic or crawl4ai scrapers")
+
+    # References to credential records (IDs) that should be fetched at runtime.
+    credential_refs: list[str] = Field(default_factory=list, description="List of credential reference IDs to fetch on-demand")
 
     class ProxyConfig(BaseModel):
         """Optional proxy configuration for scraper runtime."""
