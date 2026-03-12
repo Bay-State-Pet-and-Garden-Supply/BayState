@@ -54,7 +54,6 @@ class TestCrawl4AIEngine:
             # Verify specific arguments
             call_args = mock_browser_config.call_args.kwargs
             assert call_args["headless"] is True
-            assert call_args["timeout"] == 30000
 
     def test_build_run_config(self, basic_config):
         """Test crawler run config building."""

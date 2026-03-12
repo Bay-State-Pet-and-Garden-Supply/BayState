@@ -38,10 +38,13 @@ class Crawl4AIEngine:
         """Build browser configuration from config dict."""
         browser_settings = self.config.get("browser", {})
         return BrowserConfig(
+            browser_type=browser_settings.get("browser_type", "chromium"),
             headless=browser_settings.get("headless", True),
             user_agent=browser_settings.get("user_agent"),
             viewport=browser_settings.get("viewport"),
             ignore_https_errors=browser_settings.get("ignore_https_errors", False),
+            enable_stealth=browser_settings.get("enable_stealth", False),
+            use_persistent_context=browser_settings.get("use_persistent_context", False),
         )
 
     def _build_run_config(self, session_id: Optional[str] = None) -> CrawlerRunConfig:
