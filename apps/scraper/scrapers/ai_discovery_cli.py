@@ -12,7 +12,6 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

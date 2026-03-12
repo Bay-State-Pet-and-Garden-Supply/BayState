@@ -38,7 +38,7 @@ import time
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Tuple, Optional
+from typing import Any, TYPE_CHECKING
 
 from dotenv import load_dotenv
 
@@ -106,7 +106,7 @@ except Exception:
     # package". Use importlib to load modules by full package path to avoid
     # implicit-relative-import diagnostics from static checkers.
     import importlib
-    from typing import Any, Tuple
+    from typing import Any
 
     api_mod = importlib.import_module("apps.scraper.infra.api_client")
     ClaimedChunk = getattr(api_mod, "ClaimedChunk")
@@ -148,7 +148,7 @@ except Exception:
 if TYPE_CHECKING:
     # Provide types for static analysis without importing at runtime
     # Provide typed references; prefer infra but allow core for compatibility.
-    from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig  # type: ignore
+    from core.api_client import ScraperAPIClient  # type: ignore
     from core.realtime_manager import RealtimeManager  # type: ignore
     from utils.logging_handlers import RealtimeLogHandler  # type: ignore
 

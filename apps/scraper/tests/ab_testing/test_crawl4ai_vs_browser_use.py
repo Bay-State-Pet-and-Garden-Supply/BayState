@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 

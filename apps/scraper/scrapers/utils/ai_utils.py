@@ -1,8 +1,6 @@
 """AI Scraper utilities for shared prompt building and browser logic."""
 
 import logging
-import os
-import json
 from pathlib import Path
 from typing import Optional, Any
 

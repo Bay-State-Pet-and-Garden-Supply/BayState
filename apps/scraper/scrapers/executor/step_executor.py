@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from core.events import ScraperEvent, EventEmitter
+from core.events import EventEmitter
 from core.retry_executor import RetryExecutor
 
 try:
@@ -138,7 +138,6 @@ class StepExecutor:
         """
         from scrapers.exceptions import (
             CircuitBreakerOpenError,
-            MaxRetriesExceededError,
             NonRetryableError,
             WorkflowExecutionError,
         )

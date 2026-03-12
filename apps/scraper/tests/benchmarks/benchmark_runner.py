@@ -8,12 +8,11 @@ import asyncio
 import json
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from tests.benchmarks.utils import BenchmarkResults, Timer, MemoryProfiler, calculate_percentiles
+from tests.benchmarks.utils import Timer, MemoryProfiler
 
 logger = logging.getLogger(__name__)
 

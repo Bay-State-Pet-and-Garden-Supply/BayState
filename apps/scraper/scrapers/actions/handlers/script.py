@@ -54,7 +54,6 @@ class ExecuteScriptAction(BaseAction):
                 self.ctx.browser.page.evaluate(script)
             logger.info("Successfully executed JavaScript")
 
-            import time
 
             wait_time = params.get("wait_after", 0)
             if wait_time > 0:

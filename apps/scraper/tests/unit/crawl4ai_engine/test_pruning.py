@@ -1,7 +1,7 @@
 """Tests for Crawl4AI Engine Pruning features."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from src.crawl4ai_engine.engine import Crawl4AIEngine
 
 

@@ -1,8 +1,7 @@
 """Tests for crawl4ai transpiler (YAML parser and schema generator)."""
 
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from engine.transpiler.yaml_parser import (
     YAMLConfigParser,

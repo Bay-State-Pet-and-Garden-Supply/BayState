@@ -1,7 +1,6 @@
 """Query building utilities for AI Discovery."""
 
 import os
-import re
 from typing import Optional
 
 

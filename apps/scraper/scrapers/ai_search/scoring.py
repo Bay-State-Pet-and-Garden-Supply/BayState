@@ -1,6 +1,5 @@
 """Search result scoring and filtering logic."""
 
-import re
 from typing import Any, Optional
 from urllib.parse import urlparse
 

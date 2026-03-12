@@ -1,6 +1,6 @@
 """Crawl4AI Engine - Main async crawler engine."""
 
-from typing import Any, Optional, Union, Sequence
+from typing import Any, Optional
 import logging
 from urllib.parse import urlparse
 

@@ -2,7 +2,6 @@
 
 import logging
 from typing import Any, Optional, Tuple
-from urllib.parse import urlparse
 
 from scrapers.ai_discovery.matching import MatchingUtils
 from scrapers.ai_discovery.scoring import SearchScorer

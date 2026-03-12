@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import time
-from pathlib import Path
 from typing import Any, Optional
 
 from scrapers.ai_search.extraction import ExtractionUtils

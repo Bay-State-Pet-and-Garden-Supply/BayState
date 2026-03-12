@@ -3,7 +3,6 @@
 Loads and validates evaluation thresholds from YAML config file.
 """
 
-import os
 from pathlib import Path
 from typing import Any, Dict
 

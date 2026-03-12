@@ -2,8 +2,6 @@
 
 import pytest
 import time
-from unittest.mock import MagicMock, patch
-from collections import deque
 
 from engine.retry import (
     CircuitBreaker,
