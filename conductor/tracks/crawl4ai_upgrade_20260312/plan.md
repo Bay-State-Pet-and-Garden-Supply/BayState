@@ -9,7 +9,7 @@ This phase focuses on upgrading the `Crawl4AIEngine` to support advanced stealth
     - [ ] Verify tests pass and ensure no regressions in existing `crawl` and `crawl_many` methods.
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Core Engine Upgrades' (Protocol in workflow.md)** 2547323
 
-## Phase 2: LLM Efficiency (Pruning & Fit Markdown)
+## Phase 2: LLM Efficiency (Pruning & Fit Markdown) [checkpoint: dd15c17]
 This phase integrates content filtering and markdown optimization to reduce token costs.
 
 - [x] **Task: Implement `PruningContentFilter` in `Crawl4AIEngine`** 8312389
