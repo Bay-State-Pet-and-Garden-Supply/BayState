@@ -86,6 +86,9 @@ class Crawl4AIExtractor:
         llm_time_ms: int,
         error: Optional[str] = None,
         confidence: float = 0.0,
+        pruning_enabled: bool = False,
+        fit_markdown_used: bool = False,
+        fallback_triggered: bool = False,
     ) -> None:
         """Log structured extraction telemetry."""
         telemetry = {
@@ -97,6 +100,9 @@ class Crawl4AIExtractor:
             "parse_time_ms": parse_time_ms,
             "llm_time_ms": llm_time_ms,
             "confidence": confidence,
+            "pruning_enabled": pruning_enabled,
+            "fit_markdown_used": fit_markdown_used,
+            "fallback_triggered": fallback_triggered,
         }
         if error:
             telemetry["error"] = error
@@ -120,6 +126,10 @@ class Crawl4AIExtractor:
         method = "llm" if self.extraction_strategy != "json_css" else self.extraction_strategy
 
         try:
+            async def _fallback_wrapper(failed_url: str):
+                # html and markdown may be populated by the first pass before failure
+                return await self._extract_with_fallback(failed_url, sku, product_name, brand, html, markdown)
+
             # Centralized engine configuration leveraging new features
             engine_config = {
                 "browser": {
@@ -134,6 +144,7 @@ class Crawl4AIExtractor:
                     "js_code": get_scroll_javascript(),
                     "timeout": 30000,
                     "pruning_enabled": True,
+                    "fallback_fetch_function": _fallback_wrapper,
                 },
             }
 
@@ -298,7 +309,20 @@ class Crawl4AIExtractor:
                             product_data["confidence"] = filled / len(required_fields)
 
                             # Log successful extraction telemetry
-                            self._log_telemetry(url, sku, method, True, fetch_time_ms, parse_time_ms, llm_time_ms, None, product_data["confidence"])
+                            self._log_telemetry(
+                                url,
+                                sku,
+                                method,
+                                True,
+                                fetch_time_ms,
+                                parse_time_ms,
+                                llm_time_ms,
+                                None,
+                                product_data["confidence"],
+                                pruning_enabled=True,
+                                fit_markdown_used=(method == "llm"),
+                                fallback_triggered=result.get("fallback_triggered", False)
+                            )
                             logger.info(f"[AI Search] Extraction method used: {method}")
 
                             return product_data
