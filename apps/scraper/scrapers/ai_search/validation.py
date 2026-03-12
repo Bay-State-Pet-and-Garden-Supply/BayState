@@ -27,6 +27,16 @@ class ExtractionValidator:
         source_url: str,
     ) -> Tuple[bool, str]:
         """Validate that extracted data matches expected product context."""
+        # Telemetry context for logging
+        validation_context = {
+            "url": source_url,
+            "sku": sku,
+            "expected_brand": brand,
+            "expected_name": product_name,
+            "confidence": extraction_result.get("confidence", 0),
+            "extracted_brand": extraction_result.get("brand", ""),
+            "extracted_name": extraction_result.get("product_name", ""),
+        }
         logger.info(f"[AI Search Validation] Validating extraction from {source_url}")
         logger.debug(f"  Expected: sku={sku}, brand={brand}, name={product_name}")
 
@@ -38,10 +48,18 @@ class ExtractionValidator:
         if not extraction_result.get("success"):
             error = extraction_result.get("error") or "Extraction failed"
             logger.warning(f"[AI Search Validation] REJECTED: extraction failed - {error}")
+            validation_context["rejection_reason"] = error
+            logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
             return False, error
 
         # Check for images
+        # Check for images
         images = extraction_result.get("images")
+        if not isinstance(images, list) or len(images) == 0:
+            logger.warning(f"[AI Search Validation] REJECTED: missing product images")
+            validation_context["rejection_reason"] = "missing product images"
+            logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
+            return False, "Missing product images"
         if not isinstance(images, list) or len(images) == 0:
             logger.warning(f"[AI Search Validation] REJECTED: missing product images")
             return False, "Missing product images"
@@ -52,9 +70,11 @@ class ExtractionValidator:
             confidence = float(raw_confidence)
         except (TypeError, ValueError):
             confidence = 0.0
-
         if confidence < self.confidence_threshold:
-            logger.warning(f"[AI Search Validation] REJECTED: confidence too low ({confidence:.2f} < {self.confidence_threshold:.2f})")
+            reason = f"confidence too low ({confidence:.2f} < {self.confidence_threshold:.2f})"
+            logger.warning(f"[AI Search Validation] REJECTED: {reason}")
+            validation_context["rejection_reason"] = reason
+            logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
             return (
                 False,
                 f"Confidence below threshold ({confidence:.2f} < {self.confidence_threshold:.2f})",
@@ -68,6 +88,15 @@ class ExtractionValidator:
             or (bool(brand) and self._matching.normalize_token_text(str(brand)) in self._matching.normalize_token_text(source_domain))
         )
         if confidence + 0.005 < minimum_domain_confidence and not is_trusted_domain:
+            reason = f"confidence too low for untrusted domain ({confidence:.2f} < {minimum_domain_confidence:.2f})"
+            logger.warning(f"[AI Search Validation] REJECTED: {reason}")
+            validation_context["rejection_reason"] = reason
+            validation_context["is_trusted_domain"] = is_trusted_domain
+            logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
+            return (
+                False,
+                f"Confidence too low for untrusted domain ({confidence:.2f} < {minimum_domain_confidence:.2f})",
+            )
             logger.warning(
                 f"[AI Search Validation] REJECTED: confidence too low for untrusted domain "
                 f"({confidence:.2f} < {minimum_domain_confidence:.2f}, trusted={is_trusted_domain})"
@@ -83,20 +112,42 @@ class ExtractionValidator:
         if brand and source_domain_normalized and self._matching.normalize_token_text(str(brand)) in source_domain_normalized:
             brand_in_name = self._matching.normalize_token_text(str(brand)) in self._matching.normalize_token_text(extracted_name)
             if not brand_in_name:
+                reason = "Source domain brand does not match extracted product title"
+                validation_context["rejection_reason"] = reason
+                logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
+                return False, reason
+            if not brand_in_name:
                 return False, "Source domain brand does not match extracted product title"
 
         # Brand match validation
         extracted_brand = str(extraction_result.get("brand") or "").strip()
         if not self._matching.is_brand_match(brand, extracted_brand, source_url):
-            logger.warning(f"[AI Search Validation] REJECTED: brand mismatch (expected={brand}, found={extracted_brand})")
+            reason = f"brand mismatch (expected={brand}, found={extracted_brand})"
+            logger.warning(f"[AI Search Validation] REJECTED: {reason}")
+            validation_context["rejection_reason"] = reason
+            logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
             return False, "Brand mismatch with expected product context"
 
         # Name match validation
+        if product_name and not self._matching.is_name_match(product_name, extracted_name):
+            reason = f"product name mismatch (expected={product_name}, found={extracted_name})"
+            logger.warning(f"[AI Search Validation] REJECTED: {reason}")
+            validation_context["rejection_reason"] = reason
+            logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
+            return False, "Product name mismatch with expected product context"
         if product_name and not self._matching.is_name_match(product_name, extracted_name):
             logger.warning(f"[AI Search Validation] REJECTED: product name mismatch (expected={product_name}, found={extracted_name})")
             return False, "Product name mismatch with expected product context"
 
         # Token overlap validation
+        if product_name and brand and not self._matching.has_specific_token_overlap(product_name, extracted_name, brand):
+            if source_domain and self._scoring.is_trusted_retailer(source_domain):
+                return True, "ok"
+            reason = f"product title missing specific expected variant tokens (confidence={confidence:.2f})"
+            logger.warning(f"[AI Search Validation] REJECTED: {reason}")
+            validation_context["rejection_reason"] = reason
+            logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
+            return False, "Product title missing specific expected variant tokens"
         if product_name and brand and not self._matching.has_specific_token_overlap(product_name, extracted_name, brand):
             if source_domain and self._scoring.is_trusted_retailer(source_domain):
                 return True, "ok"
@@ -111,13 +162,13 @@ class ExtractionValidator:
             if sku and sku.lower() not in combined:
                 has_strong_signals = confidence >= 0.8 and extracted_brand and brand and self._matching.is_brand_match(brand, extracted_brand, source_url)
                 if not has_strong_signals:
-                    logger.warning(
-                        f"[AI Search Validation] REJECTED: SKU not found and weak match signals "
-                        f"(confidence={confidence:.2f}, brand_match={self._matching.is_brand_match(brand, extracted_brand, source_url)})"
-                    )
+                    reason = f"SKU not found and weak match signals (confidence={confidence:.2f})"
+                    logger.warning(f"[AI Search Validation] REJECTED: {reason}")
+                    validation_context["rejection_reason"] = reason
                     return False, "SKU not found and weak match signals"
 
-                logger.info(f"[AI Search Validation] Accepting result without SKU match: confidence={confidence:.2f}, brand_match=True, url={source_url}")
-
         logger.info(f"[AI Search Validation] ACCEPTED: confidence={confidence:.2f}, brand={extracted_brand}, source={source_url}")
+        validation_context["rejection_reason"] = None
+        validation_context["accepted"] = True
+        logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
         return True, "ok"
