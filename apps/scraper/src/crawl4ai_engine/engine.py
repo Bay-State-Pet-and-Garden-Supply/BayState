@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +69,10 @@ class Crawl4AIEngine:
         extraction_strategy = run_settings.get("extraction_strategy")
 
         # Content filtering
-        content_filter = None
+        markdown_generator = None
         if run_settings.get("pruning_enabled", False):
             content_filter = PruningContentFilter()
+            markdown_generator = DefaultMarkdownGenerator(content_filter=content_filter)
 
         return CrawlerRunConfig(
             # v0.4+ advanced features
@@ -83,7 +85,7 @@ class Crawl4AIEngine:
             # Content filtering
             css_selector=run_settings.get("css_selector"),
             excluded_tags=run_settings.get("excluded_tags", ["nav", "footer", "header", "aside"]),
-            content_filter=content_filter,
+            markdown_generator=markdown_generator,
             
             # Standard settings
             js_code=run_settings.get("js_code"),
@@ -130,6 +132,19 @@ class Crawl4AIEngine:
         run_config = self._build_run_config(session_id=session_id)
 
         result = await self._crawler.arun(url=url, config=run_config)
+        
+        fallback_fn = self.config.get("crawler", {}).get("fallback_fetch_function")
+        fallback_triggered = False
+        
+        if not result.success and fallback_fn:
+            error_str = str(result.error).lower()
+            if "403" in error_str or "429" in error_str or "forbidden" in error_str or "too many requests" in error_str:
+                logger.info(f"Escalation triggered for {url} due to error: {result.error}")
+                fallback_triggered = True
+                fallback_result = await fallback_fn(url)
+                fallback_result["fallback_triggered"] = True
+                return fallback_result
+
         return {
             "url": url,
             "success": result.success,
@@ -138,6 +153,7 @@ class Crawl4AIEngine:
             "extracted_content": result.extracted_content if result.success else None,
             "error": result.error if not result.success else None,
             "metadata": result.metadata if hasattr(result, "metadata") else {},
+            "fallback_triggered": fallback_triggered,
         }
 
     async def crawl_many(self, urls: list[str]) -> list[dict[str, Any]]:

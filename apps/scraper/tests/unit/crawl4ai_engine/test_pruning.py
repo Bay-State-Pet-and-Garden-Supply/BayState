@@ -21,29 +21,34 @@ class TestCrawl4AIEnginePruning:
         }
 
     def test_build_run_config_with_pruning(self, pruning_config):
-        """Test that PruningContentFilter is applied to run config."""
+        """Test that PruningContentFilter is applied to run config via DefaultMarkdownGenerator."""
         with (
             patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
             patch("src.crawl4ai_engine.engine.BrowserConfig"),
             patch("src.crawl4ai_engine.engine.CrawlerRunConfig") as mock_run_config,
             patch("src.crawl4ai_engine.engine.PruningContentFilter") as mock_pruning_filter,
+            patch("src.crawl4ai_engine.engine.DefaultMarkdownGenerator") as mock_md_generator,
         ):
             mock_run_config.return_value = MagicMock()
             mock_filter_instance = MagicMock()
             mock_pruning_filter.return_value = mock_filter_instance
+            mock_md_instance = MagicMock()
+            mock_md_generator.return_value = mock_md_instance
             
             engine = Crawl4AIEngine(pruning_config)
             
             # Reset mock call count because __init__ already calls _build_run_config
             mock_pruning_filter.reset_mock()
+            mock_md_generator.reset_mock()
             
             _ = engine._build_run_config()
 
             mock_run_config.assert_called()
             call_args = mock_run_config.call_args.kwargs
             
-            assert call_args.get("content_filter") == mock_filter_instance
+            assert call_args.get("markdown_generator") == mock_md_instance
             mock_pruning_filter.assert_called_once()
+            mock_md_generator.assert_called_once_with(content_filter=mock_filter_instance)
 
     def test_pruning_disabled_by_default(self):
         """Test that pruning is NOT applied by default."""
@@ -53,6 +58,7 @@ class TestCrawl4AIEnginePruning:
             patch("src.crawl4ai_engine.engine.BrowserConfig"),
             patch("src.crawl4ai_engine.engine.CrawlerRunConfig") as mock_run_config,
             patch("src.crawl4ai_engine.engine.PruningContentFilter") as mock_pruning_filter,
+            patch("src.crawl4ai_engine.engine.DefaultMarkdownGenerator") as mock_md_generator,
         ):
             mock_run_config.return_value = MagicMock()
             
@@ -62,5 +68,6 @@ class TestCrawl4AIEnginePruning:
             mock_run_config.assert_called()
             call_args = mock_run_config.call_args.kwargs
             
-            assert call_args.get("content_filter") is None
+            assert call_args.get("markdown_generator") is None
             mock_pruning_filter.assert_not_called()
+            mock_md_generator.assert_not_called()
