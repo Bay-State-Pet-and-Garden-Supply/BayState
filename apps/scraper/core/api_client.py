@@ -176,6 +176,12 @@ class ScraperAPIClient:
         self.runner_name = runner_name or os.environ.get("RUNNER_NAME", "unknown-runner")
         self.timeout = timeout
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("SCRAPER_API_MAX_RETRIES", str(DEFAULT_MAX_RETRIES)))
+        self._credential_cache: dict[str, dict[str, str]] = {}
+
+        if not self.api_url:
+            logger.warning("SCRAPER_API_URL not configured")
+        if not self.api_key:
+            logger.warning("SCRAPER_API_KEY not configured")
 
         if not self.api_url:
             logger.warning("SCRAPER_API_URL not configured")
@@ -719,48 +725,89 @@ class ScraperAPIClient:
         except Exception as e:
             raise ConfigFetchError(f"Failed to list scraper configs: {e}", original_error=e) from e
 
-    def get_credentials(self, scraper_name: str) -> dict[str, str] | None:
+    def get_credentials(self, scraper_slug: str) -> dict[str, str] | None:
         """
         Fetch credentials for a specific scraper from the coordinator.
-
-        Credentials are fetched on-demand and should NOT be stored locally.
+        Credentials are fetched on-demand and cached for the duration of the job.
         The coordinator returns credentials over HTTPS to authenticated runners.
 
         Args:
-            scraper_name: Name of the scraper (e.g., "petfoodex", "phillips")
+            scraper_slug: Slug/ID of the scraper (e.g., "petfoodex", "phillips")
 
         Returns:
-            Dict with 'username' and 'password' keys, or None if not available.
+            Dict with 'username', 'password', and 'type' keys, or None if not available.
         """
+        # Check cache first
+        if scraper_slug in self._credential_cache:
+            logger.debug(f"Using cached credentials for {scraper_slug}")
+            return self._credential_cache[scraper_slug]
+
         if not self.api_url:
             logger.error("API client not configured - missing URL")
             return None
 
         try:
-            data = self._make_request("GET", f"/api/scraper/v1/credentials?scraper={scraper_name}")
+            data = self._make_request("GET", f"/api/scraper/v1/credentials/{scraper_slug}")
 
             if data.get("username") and data.get("password"):
-                logger.debug(f"Retrieved credentials for {scraper_name}")
-                return {
+                credentials = {
                     "username": data["username"],
                     "password": data["password"],
+                    "type": data.get("type", "basic"),
                 }
+                # Cache credentials for job duration
+                self._credential_cache[scraper_slug] = credentials
+                logger.debug(f"Retrieved and cached credentials for {scraper_slug}")
+                return credentials
 
-            logger.warning(f"No credentials available for {scraper_name}")
+            logger.warning(f"No credentials available for {scraper_slug}")
             return None
 
         except AuthenticationError as e:
-            logger.error(f"Credentials auth failed: {e}")
+            logger.error(f"Credentials auth failed for {scraper_slug}: {e}")
             return None
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.warning(f"No credentials configured for {scraper_name}")
+                logger.warning(f"No credentials configured for {scraper_slug}")
                 return None
-            logger.error(f"Failed to fetch credentials: {e.response.status_code} - {e.response.text}")
+            elif e.response.status_code == 401:
+                logger.error(f"Unauthorized to fetch credentials for {scraper_slug}")
+                return None
+            elif e.response.status_code == 403:
+                logger.error(f"Forbidden to fetch credentials for {scraper_slug} - scraper may not be allowed")
+                return None
+            logger.error(f"Failed to fetch credentials for {scraper_slug}: {e.response.status_code}")
             return None
         except Exception as e:
-            logger.error(f"Error fetching credentials: {e}")
+            logger.error(f"Error fetching credentials for {scraper_slug}: {e}")
             return None
+
+    def resolve_credentials(self, credential_refs: list[str]) -> dict[str, dict[str, str]]:
+        """
+        Resolve multiple credential references into a credential map.
+
+        Args:
+            credential_refs: List of credential reference IDs (scraper slugs)
+
+        Returns:
+            Dict mapping scraper_slug to credential dict with username/password/type.
+            Failed resolutions are logged but not included in the result.
+        """
+        resolved: dict[str, dict[str, str]] = {}
+
+        for ref in credential_refs:
+            creds = self.get_credentials(ref)
+            if creds:
+                resolved[ref] = creds
+            else:
+                logger.warning(f"Failed to resolve credential reference: {ref}")
+
+        return resolved
+
+    def clear_credential_cache(self) -> None:
+        """Clear the credential cache. Call this when a job completes."""
+        self._credential_cache.clear()
+        logger.debug("Credential cache cleared")
 
     def get_supabase_config(self) -> dict[str, Any] | None:
         try:

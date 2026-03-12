@@ -1,0 +1,111 @@
+schema_version: "1.0"
+name: phillips
+display_name: Phillips Pet
+base_url: https://shop.phillipspet.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: .cc_product_item .cc_product_name
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: .cc_product_item .product-brand .branded
+    attribute: text
+    multiple: false
+    required: false
+  - name: UPC
+    selector: .cc_product_item .product-upc .cc_value
+    attribute: text
+    multiple: false
+    required: false
+  - name: ItemNumber
+    selector: .cc_product_item .product-item-number .cc_value
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: .cc_product_item .cc_product_image img
+    attribute: src
+    multiple: true
+    required: false
+workflows:
+  - action: login
+    name: null
+    params: {}
+  - action: navigate
+    name: null
+    params:
+      url: https://shop.phillipspet.com/ccrz__ProductList?cartID=&operation=quickSearch&searchText={sku}&portalUser=&store=DefaultStore&cclcl=en_US
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector:
+        - .cc_product_item .cc_product_name
+        - .plp-empty-state-message-container h3
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - UPC
+        - ItemNumber
+        - Image URLs
+  - action: transform_value
+    name: null
+    params:
+      field: Image URLs
+      transformations:
+        - type: replace
+          pattern: /thumb/
+          replacement: /large/
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - .plp-empty-state-message-container h3
+  no_results_text_patterns: []
+login:
+  url: https://shop.phillipspet.com/ccrz__CCSiteLogin
+  timeout: 60
+  submit_button: "#send2Dsk"
+  password_field: "#passwordField"
+  username_field: "#emailField"
+  success_indicator: a.doLogout.cc_do_logout
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 20
+test_skus:
+  - "072705115310"
+  - "072705104321"
+  - "072705201234"
+  - "045663012106"
+  - "073893191001"
+  - "038100175489"
+fake_skus:
+  - xyzabc123notexist456
+  - "000000000000"
+  - "999999999999"
+edge_case_skus:
+  - "123"
+  - "1234567890123456789"

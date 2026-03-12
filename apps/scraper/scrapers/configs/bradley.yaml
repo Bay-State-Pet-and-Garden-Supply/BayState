@@ -1,0 +1,168 @@
+schema_version: "1.0"
+name: bradley
+display_name: Bradley Caldwell
+base_url: https://www.bradleycaldwell.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: main h1
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: //main//h1/preceding-sibling::p[1]/a
+    attribute: text
+    multiple: false
+    required: true
+  - name: Weight
+    selector: //main//li[contains(normalize-space(.), 'Weight:')]
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: main img[src*='products/']
+    attribute: src
+    multiple: true
+    required: true
+  - name: BCI Item Number
+    selector: p:has-text('BCI Item Number:')
+    attribute: text
+    multiple: false
+    required: false
+  - name: "Manufacturer #"
+    selector: "p:has-text('Manufacturer #:')"
+    attribute: text
+    multiple: false
+    required: false
+  - name: UPC
+    selector: p:has-text('UPC Code:')
+    attribute: text
+    multiple: false
+    required: false
+  - name: Case Pack
+    selector: li:has-text('Case Pack:')
+    attribute: text
+    multiple: false
+    required: false
+  - name: Unit of Measure
+    selector: li:has-text('Unit of Measure:')
+    attribute: text
+    multiple: false
+    required: false
+  - name: Dimensions
+    selector: li:has-text('Dimensions:')
+    attribute: text
+    multiple: false
+    required: false
+  - name: Ingredients
+    selector: div#ingredients, .ingredients
+    attribute: text
+    multiple: false
+    required: false
+workflows:
+  - action: navigate
+    name: null
+    params:
+      url: https://www.bradleycaldwell.com/search?term={sku}
+  - action: wait_for
+    name: null
+    params:
+      timeout: 10
+      selector:
+        - //h1[contains(text(), 'Search results for')]
+        - //h3[contains(text(), 'Sorry, no results for')]
+  - action: wait
+    name: null
+    params:
+      duration: 3
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: click
+    name: null
+    params:
+      index: 0
+      selector: a[href*='/products/'], a:has-text('View product'), .product-listing__link
+  - action: wait
+    name: null
+    params:
+      duration: 2
+  - action: wait_for
+    name: null
+    params:
+      timeout: 10
+      selector:
+        - main h1
+        - //h2[contains(text(), 'Additional Details')]
+        - //h2[contains(text(), 'Product Details')]
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - Weight
+        - Image URLs
+        - BCI Item Number
+        - "Manufacturer #"
+        - UPC
+        - Case Pack
+        - Unit of Measure
+        - Dimensions
+        - Ingredients
+  - action: transform_value
+    name: null
+    params:
+      field: Image URLs
+      transformations:
+        - type: replace
+          pattern: /small/
+          replacement: /large/
+        - type: replace
+          pattern: _small
+          replacement: _large
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+validation:
+  no_results_selectors:
+    - //h3[contains(text(), 'Sorry, no results for')]
+    - //p[contains(text(), '0 items')]
+    - .no-results
+    - "[data-testid='no-results']"
+  no_results_text_patterns:
+    - Sorry, no results for
+    - (0 items)
+    - 0 items found
+    - no products found
+    - Your search returned no results
+login: null
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 60
+test_skus:
+  - "001135"
+  - "010199"
+  - "010202"
+  - "043205"
+  - "083354"
+  - "269376"
+  - "055353"
+fake_skus:
+  - xyzabc123notexist456
+  - "999999"
+  - NOTEXIST
+edge_case_skus:
+  - "1"
+  - "0000000000000"

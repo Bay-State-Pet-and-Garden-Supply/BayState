@@ -1,0 +1,142 @@
+schema_version: "1.0"
+name: orgill
+display_name: Orgill
+base_url: https://www.orgill.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: "#cphMainContent_ctl00_lblDescription"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "#cphMainContent_ctl00_lblVendorName"
+    attribute: text
+    multiple: false
+    required: false
+  - name: model_number
+    selector: "#cphMainContent_ctl00_lblModelNumber"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Weight
+    selector: //strong[contains(text(),'Weight(lb):')]/parent::div/following-sibling::div
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: "img[id*='imgProductDetail'], #multipleImagesCarousel img"
+    attribute: src
+    multiple: true
+    required: false
+workflows:
+  - action: login
+    name: null
+    params: {}
+  - action: navigate
+    name: null
+    params:
+      url: https://www.orgill.com/SearchResultN.aspx?ddlhQ={sku}
+  - action: wait
+    name: null
+    params:
+      seconds: 5
+  - action: wait_for
+    name: null
+    params:
+      timeout: 10
+      selector:
+        - "#cphMainContent_ctl00_lblDescription"
+        - "#cphMainContent_ctl00_lblErrorMessage"
+        - "#cphMainContent_ctl00_lblSearchSubHeader"
+        - //span[contains(text(), 'Found 0 results')]
+        - .no-results
+        - body
+  - action: wait
+    name: null
+    params:
+      seconds: 5
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: click
+    name: null
+    params:
+      selector: //a[div[contains(text(), 'Ordering Specifications')]]
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector: "#orderSpecificationDiv"
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - model_number
+        - Weight
+        - Image URLs
+  - action: transform_value
+    name: null
+    params:
+      field: Image URLs
+      transformations:
+        - type: replace
+          pattern: /websmall/
+          replacement: /web/
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - //span[contains(text(), 'Found 0 results')]
+    - .no-results
+    - .empty-search
+    - "[data-testid*='no-results']"
+    - .search-no-results
+  no_results_text_patterns:
+    - no results found
+    - no products found
+    - your search returned no results
+    - we couldn't find any results
+    - no items match your search
+    - Found 0 results
+login:
+  url: https://www.orgill.com/index.aspx?tab=8
+  timeout: 60
+  submit_button: "#cphMainContent_ctl00_loginOrgillxs_LoginButton"
+  password_field: "#cphMainContent_ctl00_loginOrgillxs_Password"
+  username_field: "#cphMainContent_ctl00_loginOrgillxs_UserName"
+  success_indicator: a[href='/signOut.aspx']
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 40
+test_skus:
+  - "037193347322"
+  - "032700006105"
+  - "073091023005"
+  - "027773008934"
+  - "032886595189"
+  - "071859975047"
+fake_skus:
+  - zzzzqqqq9999xxxx
+  - "000000000000"
+  - "999999999999"
+edge_case_skus:
+  - "123"
+  - "1234567890123456789"

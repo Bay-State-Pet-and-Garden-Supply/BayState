@@ -1,0 +1,118 @@
+schema_version: "1.0"
+name: petfoodex
+display_name: Pet Food Experts
+base_url: https://www.petfoodexperts.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: h1
+    attribute: text
+    multiple: false
+    required: true
+  - name: Attributes
+    selector: "[data-test-selector='productDetails_specifications'] li"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: img[data-test-selector='productDetails_mainImage']
+    attribute: src
+    multiple: true
+    required: false
+workflows:
+  - action: login
+    name: null
+    params: {}
+  - action: navigate
+    name: null
+    params:
+      url: https://orders.petfoodexperts.com/Search?query={sku}
+  - action: wait
+    name: null
+    params:
+      seconds: 3
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector: h1, h2, [data-test-selector='page_ProductDetailsPage'], body
+  - action: wait
+    name: null
+    params:
+      seconds: 2
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Attributes
+        - Image URLs
+  - action: transform_value
+    name: null
+    params:
+      regex: Brand:\\s*([^\\n]+)
+      source_field: Attributes
+      target_field: Brand
+  - action: transform_value
+    name: null
+    params:
+      regex: Weight:\\s*([^\\n]+)
+      source_field: Attributes
+      target_field: Weight
+  - action: transform_value
+    name: null
+    params:
+      field: Image URLs
+      transformations:
+        - type: replace
+          pattern: _md
+          replacement: _lg
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - //h2[contains(., '0 item')]
+    - //h2[contains(., '0 items')]
+  no_results_text_patterns: []
+login:
+  url: https://orders.petfoodexperts.com/SignIn
+  timeout: 20
+  submit_button: button[data-test-selector='signIn_submit']
+  password_field: "#password"
+  username_field: "#userName"
+  success_indicator: "[data-test-selector='header_userName']"
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 20
+test_skus:
+  - "33011808"
+  - "10158320"
+  - "10132100"
+  - "10012345"
+  - "20456789"
+  - "30987654"
+fake_skus:
+  - xyzabc123notexist456
+  - "00000000"
+  - "99999999"
+edge_case_skus:
+  - "1"
+  - "1234567890123"

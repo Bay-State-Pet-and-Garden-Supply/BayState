@@ -1,0 +1,167 @@
+schema_version: "1.0"
+name: mazuri
+display_name: Mazuri
+base_url: https://www.mazuri.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: h2.product-single__title, .product-single__title
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: h2.product-single__title, .product-single__title
+    attribute: text
+    multiple: false
+    required: true
+  - name: Weight
+    selector: //*[contains(text(), 'Product Size:')] | //*[contains(text(),
+      'Weight:')] | //*[contains(@class, 'product-weight')]
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: ".product-single__photo img, .product__photo img,
+      #carouselExampleControls img, .product-gallery img"
+    attribute: src
+    multiple: true
+    required: true
+  - name: Ingredients
+    selector: "#ingredients-tab-content, .ingredients-section"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Guaranteed Analysis
+    selector: "#analysis-tab-content, .guaranteed-analysis"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Feeding Directions
+    selector: "#feeding-tab-content, .feeding-directions"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Size Options
+    selector: select[name='id'] option, .variant-input
+    attribute: text
+    multiple: true
+    required: false
+workflows:
+  - action: navigate
+    name: null
+    params:
+      url: https://mazuri.com/pages/search-results-page?q={sku}
+  - action: wait
+    name: null
+    params:
+      seconds: 3
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector: ".snize-product, a[href*='/products/'], .snize-no-results,
+        .snize-no-products-found, #search-no-results, .search-results, body"
+  - action: wait
+    name: null
+    params:
+      seconds: 2
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: click
+    name: null
+    params:
+      index: 0
+      selector: a[href*='/products/']:not([href*='gift-card'])
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector:
+        - h2.product-single__title
+        - .product-single
+        - "[data-section-type='product']"
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - Weight
+        - Image URLs
+        - Price
+        - Ingredients
+        - Guaranteed Analysis
+        - Feeding Directions
+        - Size Options
+  - action: transform_value
+    name: null
+    params:
+      field: Image URLs
+      transformations:
+        - type: replace
+          pattern: _small
+          replacement: _large
+  - action: transform_value
+    name: null
+    params:
+      field: Brand
+      transformations:
+        - type: replace
+          pattern: ^.*$
+          replacement: Mazuri
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 1
+  rate_limit_min_delay: 0.5
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - .snize-no-products-found
+    - .snize-no-products-found-text
+    - .no-results
+    - .empty-search
+    - "[data-testid*='no-results']"
+    - .snize-no-results
+    - "#search-no-results"
+    - .snize-no-results-container
+    - .snize-message-no-results
+  no_results_text_patterns:
+    - no results found
+    - no products found
+    - your search returned no results
+    - we couldn't find any results
+    - no items match your search
+    - sorry, nothing found
+    - no matches found
+    - didn't match any results
+login: null
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 20
+test_skus:
+  - 5E5L
+  - 5M30
+  - 5M3N
+  - 5M21
+  - 5MA2
+  - 5M4C
+fake_skus:
+  - xyzabc123notexist456
+  - "9999999"
+  - NOTEXIST
+edge_case_skus:
+  - "1"
+  - "00000000000"
