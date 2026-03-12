@@ -1,7 +1,6 @@
 """Main AI Search Scraper implementation."""
 
 import asyncio
-import importlib
 import json
 import logging
 import os
@@ -16,9 +15,6 @@ from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.search import BraveSearchClient
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.validation import ExtractionValidator
-
-# Using centralized engine
-from crawl4ai_engine.engine import Crawl4AIEngine
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +64,20 @@ class AISearchScraper:
         self._cost_tracker = AICostTracker()
         self._browser: Any = None
         self._llm: Any = None
+        # Telemetry tracking for job-level summary
+        self._telemetry: dict[str, Any] = {
+            "urls": [],
+            "by_stage": {
+                "source_selected": 0,
+                "fetch_attempt": 0,
+                "fetch_ok": 0,
+                "fetch_fail": 0,
+                "extraction": 0,
+                "validation": 0,
+                "validation_pass": 0,
+                "validation_fail": 0,
+            },
+        }
 
         # Initialize submodules
         self._scoring = SearchScorer()
@@ -94,6 +104,37 @@ class AISearchScraper:
             scoring=self._scoring,
             matching=self._matching,
         )
+
+    def _log_telemetry(self, sku: str, url: str, stage: str, success: bool, details: str = "") -> None:
+        """Log structured telemetry for a URL attempt."""
+        telemetry_entry = {
+            "sku": sku,
+            "url": url,
+            "stage": stage,
+            "success": success,
+            "details": details,
+        }
+        self._telemetry["urls"].append(telemetry_entry)
+        if success:
+            self._telemetry["by_stage"][f"{stage}_ok"] = self._telemetry["by_stage"].get(f"{stage}_ok", 0) + 1
+        else:
+            self._telemetry["by_stage"][f"{stage}_fail"] = self._telemetry["by_stage"].get(f"{stage}_fail", 0) + 1
+        logger.info(f"[AI Search] URL telemetry: {json.dumps(telemetry_entry)}")
+
+    def _log_telemetry_summary(self, sku: str) -> None:
+        """Log job-level summary at completion."""
+        urls = self._telemetry["urls"]
+        total = len(urls)
+        successful = sum(1 for u in urls if u.get("stage") == "validation" and u.get("success"))
+        failed = total - successful
+        summary = {
+            "sku": sku,
+            "total_urls": total,
+            "successful": successful,
+            "failed": failed,
+            "by_stage": self._telemetry["by_stage"],
+        }
+        logger.info(f"[AI Search] Job telemetry summary: {json.dumps(summary)}")
 
     async def scrape_products_batch(
         self,
@@ -159,9 +200,22 @@ class AISearchScraper:
             return strong_url
 
         ranked_candidates: list[tuple[float, str]] = []
+        filtered_results: list[dict[str, Any]] = []
         for result in search_results:
             url = str(result.get("url") or "").strip()
             if not url:
+                continue
+
+            domain = self._scoring.domain_from_url(url.lower())
+            if domain and any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self._scoring.BLOCKED_DOMAINS):
+                continue
+
+            filtered_results.append(result)
+
+        for result in filtered_results:
+            url = str(result.get("url") or "").strip()
+            domain = self._scoring.domain_from_url(url.lower())
+            if domain and any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self._scoring.BLOCKED_DOMAINS):
                 continue
             if self._scoring.is_low_quality_result(result):
                 continue
@@ -178,11 +232,7 @@ class AISearchScraper:
             ranked_candidates.sort(key=lambda item: item[0], reverse=True)
             return ranked_candidates[0][1]
 
-        for result in search_results:
-            url = str(result.get("url") or "").strip()
-            if url:
-                return url
-
+        logger.warning("[AI Search] No valid sources found after filtering")
         return None
 
     async def scrape_product(
@@ -304,19 +354,31 @@ class AISearchScraper:
                     if attempt < max_attempts - 1:
                         search_results = [r for r in search_results if r.get("url") != target_url]
                         continue
-                    break
+                # Telemetry: source selected
+                self._log_telemetry(sku, target_url, "source_selected", True, f"attempt {attempt + 1}")
+                logger.info(f"[AI Search] Selected source (attempt {attempt + 1}): {target_url}")
 
                 logger.info(f"[AI Search] Selected source (attempt {attempt + 1}): {target_url}")
 
                 selected_result = next((result for result in search_results if result.get("url") == target_url), None)
                 if selected_result and self._scoring.is_low_quality_result(selected_result):
                     last_rejection_reason = "Selected source appears to be a non-product/review/aggregator page"
+                    self._log_telemetry(sku, target_url, "source_selected", False, last_rejection_reason)
+                    search_results = [r for r in search_results if r.get("url") != target_url]
+                    continue
+                    last_rejection_reason = "Selected source appears to be a non-product/review/aggregator page"
                     search_results = [r for r in search_results if r.get("url") != target_url]
                     continue
 
                 tried_urls.add(target_url)
+                # Telemetry: fetch attempt
+                self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
                 extraction_result = await self._extract_product_data(target_url, sku, product_name, brand)
-
+                # Telemetry: extraction result
+                fetch_ok = extraction_result is not None and extraction_result.get("success")
+                self._log_telemetry(sku, target_url, "fetch_attempt", fetch_ok, extraction_result.get("error") if not fetch_ok else "ok")
+                # Telemetry: validation attempt
+                self._log_telemetry(sku, target_url, "validation", True, "initiated")
                 is_acceptable, rejection_reason = self._validator.validate_extraction_match(
                     extraction_result=extraction_result,
                     sku=sku,
@@ -324,6 +386,8 @@ class AISearchScraper:
                     brand=brand,
                     source_url=target_url,
                 )
+                # Telemetry: validation result
+                self._log_telemetry(sku, target_url, "validation", is_acceptable, rejection_reason if not is_acceptable else "ok")
                 if is_acceptable:
                     accepted_result = extraction_result
                     break
@@ -338,8 +402,12 @@ class AISearchScraper:
                     error_msg = last_rejection_reason
                 else:
                     error_msg = "Extraction failed"
+                # Telemetry: job summary on failure
+                self._log_telemetry_summary(sku)
                 return AISearchResult(success=False, sku=sku, error=str(error_msg))
 
+            # Telemetry: job summary on success
+            self._log_telemetry_summary(sku)
             return self._build_discovery_result(accepted_result, sku, product_name, brand, target_url)
 
         except Exception as e:
