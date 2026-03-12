@@ -303,30 +303,48 @@ class FallbackExtractor:
         sku: str,
         product_name: Optional[str],
         brand: Optional[str],
+        html: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Extract using HTTP fetch and JSON-LD parsing."""
-        try:
-            import httpx
+        """Extract product data using provided HTML or an HTTP fetch fallback.
 
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            }
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                response = await client.get(url, headers=headers)
-                response.raise_for_status()
-                html_text = response.text
+        Args:
+            url: Product page URL.
+            sku: Expected product SKU.
+            product_name: Expected product name, if known.
+            brand: Expected brand, if known.
+            html: Pre-fetched HTML to parse. When empty or omitted, the extractor
+                fetches the page over HTTP as a fallback.
+        """
+        try:
+            response_url = url
+            html_text = html or ""
+
+            if html_text:
+                logger.info("[AI Search] Using pre-fetched HTML for extraction")
+            else:
+                logger.info("[AI Search] Fetching HTML via HTTP")
+                import httpx
+
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                }
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    response = await client.get(url, headers=headers)
+                    response.raise_for_status()
+                    html_text = response.text
+                    response_url = str(response.url)
 
             jsonld_result = self._extraction.extract_product_from_html_jsonld(
                 html_text=html_text,
-                source_url=str(response.url),
+                source_url=response_url,
                 sku=sku,
                 product_name=product_name,
                 brand=brand,
                 matching_utils=self._matching,
             )
             if jsonld_result:
-                jsonld_result["url"] = str(response.url)
+                jsonld_result["url"] = response_url
                 return jsonld_result
 
             # Fallback to meta tags
@@ -339,7 +357,7 @@ class FallbackExtractor:
             og_description = self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or ""
             og_image = self._extraction.extract_meta_content(html_text, "og:image", property_attr=True) or ""
 
-            images = self._extraction.normalize_images([og_image], str(response.url)) if og_image else []
+            images = self._extraction.normalize_images([og_image], response_url) if og_image else []
 
             candidate_name = og_title or title_text
             if candidate_name and product_name and not self._matching.is_name_match(product_name, candidate_name):
@@ -348,7 +366,7 @@ class FallbackExtractor:
                     "error": "Fallback extraction title does not match expected product",
                 }
 
-            if brand and candidate_name and not self._matching.is_brand_match(brand, candidate_name, str(response.url)):
+            if brand and candidate_name and not self._matching.is_brand_match(brand, candidate_name, response_url):
                 return {
                     "success": False,
                     "error": "Fallback extraction brand/domain does not match expected context",
@@ -365,7 +383,7 @@ class FallbackExtractor:
             confidence = 0.58
             if product_name and self._matching.is_name_match(product_name, candidate_name):
                 confidence += 0.1
-            if brand and self._matching.is_brand_match(brand, candidate_name, str(response.url)):
+            if brand and self._matching.is_brand_match(brand, candidate_name, response_url):
                 confidence += 0.1
             confidence = min(confidence, 0.78)
 
@@ -378,7 +396,7 @@ class FallbackExtractor:
                 "images": images,
                 "categories": ["Product"],
                 "confidence": confidence,
-                "url": str(response.url),
+                "url": response_url,
             }
 
         except Exception as error:
