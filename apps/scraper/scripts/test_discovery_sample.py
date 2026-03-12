@@ -11,7 +11,7 @@ from typing import Union
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_search import AISearchScraper
 
 
 logging.basicConfig(
@@ -34,7 +34,7 @@ ResultField = Union[str, bool, float, None]
 
 
 async def main() -> None:
-    scraper = AIDiscoveryScraper()
+    scraper = AISearchScraper()
     results: list[dict[str, ResultField]] = []
 
     os.makedirs("logs", exist_ok=True)

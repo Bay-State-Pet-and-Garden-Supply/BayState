@@ -12,7 +12,7 @@ import { formatCurrency } from '@/lib/utils';
 interface EnrichmentSource {
   id: string;
   displayName: string;
-  type: 'scraper' | 'ai_discovery';
+  type: 'scraper' | 'ai_search';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -182,8 +182,8 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
       const selectedScrapers = sources
         .filter((s) => s.type === 'scraper' && enabledSourceIds.includes(s.id))
         .map((s) => s.id);
-      const hasAIDiscovery = sources.some(
-        (s) => s.type === 'ai_discovery' && enabledSourceIds.includes(s.id)
+      const hasAISearch = sources.some(
+        (s) => s.type === 'ai_search' && enabledSourceIds.includes(s.id)
       );
 
       if (isBatchMode && skus) {
@@ -203,15 +203,15 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
           }
         }
 
-        // Dispatch AI discovery job if selected
-        if (hasAIDiscovery) {
-          const discoveryResult = await scrapeProducts(skus, {
-            enrichment_method: 'discovery',
+        // Dispatch AI Search job if selected
+        if (hasAISearch) {
+          const aiSearchResult = await scrapeProducts(skus, {
+            enrichment_method: 'ai_search',
           });
-          if (discoveryResult.success && discoveryResult.jobIds) {
-            allJobIds.push(...discoveryResult.jobIds);
+          if (aiSearchResult.success && aiSearchResult.jobIds) {
+            allJobIds.push(...aiSearchResult.jobIds);
           } else {
-            console.error('Failed to start AI discovery enhancement:', discoveryResult.error);
+            console.error('Failed to start AI Search enhancement:', aiSearchResult.error);
           }
         }
 
@@ -226,10 +226,10 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
         }
       } else {
         // Single SKU mode
-        if (hasAIDiscovery) {
-          // Use scrapeProducts with discovery method for single SKU too
+        if (hasAISearch) {
+          // Use scrapeProducts with ai_search method for single SKU too
           const result = await scrapeProducts([effectiveSku], {
-            enrichment_method: 'discovery',
+            enrichment_method: 'ai_search',
             scrapers: selectedScrapers.length > 0 ? selectedScrapers : undefined,
           });
           if (result.success) {
@@ -335,9 +335,9 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
   }
 
   const scraperSources = sources.filter((s) => s.type === 'scraper');
-  const aiDiscoverySources = sources.filter((s) => s.type === 'ai_discovery');
+  const aiSearchSources = sources.filter((s) => s.type === 'ai_search');
   const enabledScrapers = scraperSources.filter((s) => enabledSourceIds.includes(s.id));
-  const enabledAI = aiDiscoverySources.filter((s) => enabledSourceIds.includes(s.id));
+  const enabledAI = aiSearchSources.filter((s) => enabledSourceIds.includes(s.id));
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -501,7 +501,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                             {enabledAI.length > 0 && (
                               <span className="inline-flex items-center gap-1">
                                 <Sparkles className="inline h-3.5 w-3.5 text-purple-500" />
-                                AI Discovery
+                                AI Search
                               </span>
                             )}
                             {' '}selected. Click &quot;Run Enhancement&quot; to fetch data.

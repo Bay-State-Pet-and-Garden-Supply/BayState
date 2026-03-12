@@ -13,7 +13,7 @@ import pytest
 from typing_extensions import override
 
 from core.performance_profiler import *
-from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_search import AISearchScraper
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | Mapping[str, "JsonValue"]
@@ -31,7 +31,7 @@ def _patch_metrics_recording(monkeypatch: pytest.MonkeyPatch) -> None:
     ) -> None:
         _ = (scraper_name, success, cost_usd, duration_seconds, anti_bot_detected)
 
-    monkeypatch.setattr("scrapers.ai_discovery.record_ai_extraction", _record_ai_extraction_stub)
+    monkeypatch.setattr("scrapers.ai_search.scraper.record_ai_extraction", _record_ai_extraction_stub)
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def _build_payload(sku: str, index: int) -> JsonObject:
     }
 
 
-class _StubAIDiscoveryScraper(AIDiscoveryScraper):
+class _StubAISearchScraper(AISearchScraper):
     delay_seconds: float
 
     def __init__(self, delay_seconds: float = 0.003) -> None:
@@ -99,7 +99,7 @@ class TestCrawl4AIPerformance:
     def test_single_sku_extraction_time(self, profiler: PerformanceProfiler, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_metrics_recording(monkeypatch)
         runs = 25
-        scraper = _StubAIDiscoveryScraper(delay_seconds=0.002)
+        scraper = _StubAISearchScraper(delay_seconds=0.002)
         durations_ms: list[float] = []
 
         for idx in range(runs):
@@ -134,7 +134,7 @@ class TestCrawl4AIPerformance:
         total_skus = 50
 
         def _run_one(index: int) -> tuple[float, bool]:
-            scraper = _StubAIDiscoveryScraper(delay_seconds=0.004)
+            scraper = _StubAISearchScraper(delay_seconds=0.004)
             sku = f"SKU-C-{index:03d}"
             start = time.perf_counter()
             result = asyncio.run(
@@ -190,7 +190,7 @@ class TestCrawl4AIPerformance:
     ) -> None:
         _patch_metrics_recording(monkeypatch)
         runs = 20
-        scraper = _StubAIDiscoveryScraper(delay_seconds=0.003)
+        scraper = _StubAISearchScraper(delay_seconds=0.003)
 
         tracemalloc.start()
         start = time.perf_counter()

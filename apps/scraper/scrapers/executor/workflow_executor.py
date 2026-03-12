@@ -57,7 +57,7 @@ class WorkflowExecutor:
     """Executes scraper workflows defined in YAML configurations using Playwright.
     
     AI/Agentic features are deprecated for static scrapers. 
-    Use AIDiscoveryScraper for AI-powered tasks.
+    Use AISearchScraper for AI-powered tasks.
     """
 
     def __init__(

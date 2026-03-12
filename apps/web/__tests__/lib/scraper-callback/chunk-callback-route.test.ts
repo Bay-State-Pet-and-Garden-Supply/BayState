@@ -111,4 +111,65 @@ describe('persistChunkResultsToPipeline', () => {
       },
     });
   });
+
+  it('ignores ai_search diagnostic-only payloads when merging chunk results', () => {
+    const merged = mergeChunkResults([
+      {
+        results: {
+          'SKU-1': {
+            ai_search: {
+              error: 'BRAVE_API_KEY not set',
+              cost_usd: 0,
+              scraped_at: '2026-03-11T23:24:53.854779',
+            },
+          },
+        },
+      },
+      {
+        results: {
+          'SKU-2': {
+            ai_search: {
+              title: 'Valid AI Result',
+              price: 21.99,
+            },
+          },
+        },
+      },
+    ]);
+
+    expect(merged['SKU-1']).toBeUndefined();
+    expect(merged['SKU-2']).toEqual({
+      ai_search: {
+        title: 'Valid AI Result',
+        price: 21.99,
+      },
+    });
+  });
+
+  it('keeps valid sources while removing diagnostic-only ai_search on same SKU', () => {
+    const merged = mergeChunkResults([
+      {
+        results: {
+          'SKU-3': {
+            amazon: {
+              name: 'Gas Can 2 Gal',
+              price: 21.99,
+            },
+            ai_search: {
+              error: 'BRAVE_API_KEY not set',
+              cost_usd: 0,
+              scraped_at: '2026-03-11T23:24:53.854779',
+            },
+          },
+        },
+      },
+    ]);
+
+    expect(merged['SKU-3']).toEqual({
+      amazon: {
+        name: 'Gas Can 2 Gal',
+        price: 21.99,
+      },
+    });
+  });
 });

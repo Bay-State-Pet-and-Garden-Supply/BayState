@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
-import { assembleScraperConfigBySlug } from '@/lib/admin/scraper-configs/assemble-config';
+import { assembleScraperConfig } from '@/lib/admin/scraper-configs/assemble-config';
 import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
@@ -18,24 +18,31 @@ function getSupabaseAdmin(): SupabaseClient {
 
 interface ScraperConfig {
     name: string;
-    display_name?: string | null;
     disabled: boolean;
     base_url?: string;
-    scraper_type?: string;
-    selectors?: unknown;
-    options?: unknown;
+    search_url_template?: string;
+    selectors?: Record<string, unknown> | Record<string, unknown>[];
+    options?: Record<string, unknown>;
     test_skus?: string[];
     retries?: number;
-    validation?: unknown;
+    validation?: Record<string, unknown>;
+}
+
+interface ScraperConfigVersionRow {
+    id?: string;
+    status?: string | null;
+    config_legacy?: unknown;
     ai_config?: unknown;
-    anti_detection?: unknown;
-    http_status?: unknown;
-    login?: unknown;
-    workflows?: unknown;
-    normalization?: unknown;
-    image_quality?: number;
-    fake_skus?: string[];
-    edge_case_skus?: string[];
+    validation_config?: unknown;
+    timeout?: number | null;
+    retries?: number | null;
+}
+
+interface ScraperConfigRow {
+    id: string;
+    slug: string;
+    base_url?: string | null;
+    scraper_config_versions: ScraperConfigVersionRow | ScraperConfigVersionRow[] | null;
 }
 
 interface JobConfigResponse {
@@ -115,8 +122,83 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' {
+    if (rawType === 'ai_search' || rawType === 'discovery' || rawType === 'crawl4ai') {
+        return 'ai_search';
+    }
+
+    return 'standard';
+}
+
 function pickNumber(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function sanitizeDiscoveryConfig(
+    config: Record<string, unknown>,
+    defaults: {
+        max_search_results: number;
+        max_steps: number;
+        confidence_threshold: number;
+        llm_model: 'gpt-4o-mini' | 'gpt-4o';
+    }
+): Record<string, unknown> {
+    const normalized: Record<string, unknown> = {};
+
+    if (typeof config.product_name === 'string') {
+        normalized.product_name = config.product_name;
+    }
+    if (typeof config.brand === 'string') {
+        normalized.brand = config.brand;
+    }
+    if (typeof config.prefer_manufacturer === 'boolean') {
+        normalized.prefer_manufacturer = config.prefer_manufacturer;
+    }
+    if (typeof config.fallback_to_static === 'boolean') {
+        normalized.fallback_to_static = config.fallback_to_static;
+    }
+
+    normalized.max_search_results = pickNumber(config.max_search_results, defaults.max_search_results);
+    normalized.max_steps = pickNumber(config.max_steps, defaults.max_steps);
+    normalized.confidence_threshold = pickNumber(config.confidence_threshold, defaults.confidence_threshold);
+    normalized.llm_model = config.llm_model === 'gpt-4o' ? 'gpt-4o' : defaults.llm_model;
+
+    return normalized;
+}
+
+function normalizeCurrentVersion(
+    version: ScraperConfigRow['scraper_config_versions']
+): ScraperConfigVersionRow | null {
+    if (Array.isArray(version)) {
+        return version[0] ?? null;
+    }
+    return version ?? null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return undefined;
+}
+
+function toSelectors(value: unknown): Record<string, unknown> | Record<string, unknown>[] | undefined {
+    if (Array.isArray(value)) {
+        return value.filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item));
+    }
+
+    if (value && typeof value === 'object') {
+        return value as Record<string, unknown>;
+    }
+
+    return undefined;
+}
+
+function toStringArray(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    return value.filter((item): item is string => typeof item === 'string');
 }
 
 export async function GET(request: NextRequest) {
@@ -164,68 +246,159 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Fetch all published scraper configs (for metadata)
-        const { data: scraperConfigs, error: scrapersError } = await supabase
-            .from('scraper_configs')
-            .select('slug, display_name, scraper_type')
-            .eq('status', 'active');
+        const requestedScrapers = deriveRequestedScrapers(job);
+        const normalizedJobType = normalizeRunnerJobType(job.type);
 
-        if (scrapersError) {
-            console.error(`[Scraper API] Failed to fetch scrapers:`, scrapersError);
-            return NextResponse.json(
-                { error: 'Failed to fetch scraper configurations' },
-                { status: 500 }
-            );
+        let scraperQuery = supabase
+            .from('scraper_configs')
+            .select(`
+                id,
+                slug,
+                base_url,
+                scraper_config_versions!fk_current_version (
+                    id,
+                    status,
+                    ai_config,
+                    validation_config,
+                    timeout,
+                    retries
+                )
+            `)
+            .eq('scraper_config_versions.status', 'published');
+
+        if (requestedScrapers.length > 0) {
+            scraperQuery = scraperQuery.in('slug', requestedScrapers);
         }
 
-        const requestedScrapers = deriveRequestedScrapers(job);
-        
-        // Filter to only requested scrapers (or all if none specified)
-        const filteredConfigs = (scraperConfigs || []).filter((row: { slug: string; display_name: string | null }) => {
-            if (requestedScrapers.length === 0) return true;
-            return requestedScrapers.includes(row.slug) || 
-                   (row.display_name && requestedScrapers.includes(row.display_name));
-        });
+        const { data: scraperRows, error: scraperError } = await scraperQuery;
 
-        // Build scraper configs using the new assembly utility
+        if (scraperError) {
+            console.error('[Scraper API] Scraper query error:', scraperError);
+        }
+
+        const scraperRowsTyped = (scraperRows || []) as ScraperConfigRow[];
         const scrapers: ScraperConfig[] = [];
-        
-        for (const configRow of filteredConfigs) {
-            // Use the normalized assembly utility (creates its own admin client)
-            const assembledConfig = await assembleScraperConfigBySlug(configRow.slug);
-            
-            if (assembledConfig) {
-                scrapers.push({
-                    name: assembledConfig.name,
-                    display_name: assembledConfig.display_name,
-                    disabled: false,
-                    base_url: assembledConfig.base_url,
-                    scraper_type: assembledConfig.scraper_type,
-                    selectors: assembledConfig.selectors,
-                    options: {
-                        workflows: assembledConfig.workflows,
-                        timeout: assembledConfig.timeout,
-                        image_quality: assembledConfig.image_quality,
-                        ai_config: assembledConfig.ai_config,
-                        anti_detection: assembledConfig.anti_detection,
-                        http_status: assembledConfig.http_status,
-                        login: assembledConfig.login,
-                        normalization: assembledConfig.normalization,
-                    },
-                    test_skus: assembledConfig.test_skus,
-                    fake_skus: assembledConfig.fake_skus,
-                    edge_case_skus: assembledConfig.edge_case_skus,
-                    retries: assembledConfig.retries,
-                    validation: assembledConfig.validation,
-                    ai_config: assembledConfig.ai_config,
-                    anti_detection: assembledConfig.anti_detection,
-                    http_status: assembledConfig.http_status,
-                    login: assembledConfig.login,
-                    workflows: assembledConfig.workflows,
-                    normalization: assembledConfig.normalization,
-                    image_quality: assembledConfig.image_quality,
-                });
+        for (const row of scraperRowsTyped) {
+            const version = normalizeCurrentVersion(row.scraper_config_versions);
+
+            let assembled = null;
+            try {
+                assembled = await assembleScraperConfig(row.id);
+            } catch (assemblyError) {
+                console.warn(`[Scraper API] Failed to assemble normalized config for ${row.slug}:`, assemblyError);
             }
+
+            const options: Record<string, unknown> = {};
+
+            if (assembled) {
+                if (assembled.workflows.length > 0) {
+                    options.workflows = assembled.workflows;
+                }
+                if (typeof assembled.timeout === 'number') {
+                    options.timeout = assembled.timeout;
+                }
+
+                scrapers.push({
+                    name: row.slug,
+                    disabled: version?.status === 'archived',
+                    base_url: assembled.base_url,
+                    search_url_template:
+                        typeof assembled.ai_config?.task === 'string'
+                            ? assembled.ai_config.task
+                            : undefined,
+                    selectors: toSelectors(assembled.selectors),
+                    options,
+                    test_skus: assembled.test_skus,
+                    retries: assembled.retries,
+                    validation: toRecord(assembled.validation),
+                });
+                continue;
+            }
+
+            const legacyConfig = toRecord(version?.config_legacy);
+            if (legacyConfig) {
+                const workflows = Array.isArray(legacyConfig.workflows) ? legacyConfig.workflows : undefined;
+                const timeout = typeof legacyConfig.timeout === 'number' ? legacyConfig.timeout : undefined;
+                if (workflows && workflows.length > 0) {
+                    options.workflows = workflows;
+                }
+                if (typeof timeout === 'number') {
+                    options.timeout = timeout;
+                }
+
+                scrapers.push({
+                    name: row.slug,
+                    disabled: version?.status === 'archived',
+                    base_url: typeof legacyConfig.base_url === 'string' ? legacyConfig.base_url : undefined,
+                    search_url_template:
+                        typeof legacyConfig.search_url_template === 'string'
+                            ? legacyConfig.search_url_template
+                            : undefined,
+                    selectors: toSelectors(legacyConfig.selectors),
+                    options,
+                    test_skus: toStringArray(legacyConfig.test_skus),
+                    retries: typeof legacyConfig.retries === 'number' ? legacyConfig.retries : undefined,
+                    validation: toRecord(legacyConfig.validation),
+                });
+                continue;
+            }
+
+            const versionId = typeof version?.id === 'string' ? version.id : null;
+            const aiConfig = toRecord(version?.ai_config);
+
+            let selectors: Record<string, unknown>[] = [];
+            let workflows: Record<string, unknown>[] = [];
+            let testSkus: string[] = [];
+
+            if (versionId) {
+                const { data: selectorRows } = await supabase
+                    .from('scraper_selectors')
+                    .select('name, selector, attribute, multiple, required, sort_order')
+                    .eq('version_id', versionId)
+                    .order('sort_order', { ascending: true });
+
+                selectors = (selectorRows ?? []) as Record<string, unknown>[];
+
+                const { data: workflowRows } = await supabase
+                    .from('scraper_workflow_steps')
+                    .select('action, name, params, sort_order')
+                    .eq('version_id', versionId)
+                    .order('sort_order', { ascending: true });
+
+                workflows = (workflowRows ?? []) as Record<string, unknown>[];
+            }
+
+            const { data: testSkuRows } = await supabase
+                .from('scraper_config_test_skus')
+                .select('sku, sku_type')
+                .eq('config_id', row.id)
+                .eq('sku_type', 'test');
+
+            testSkus = (testSkuRows ?? [])
+                .map((entry) => (typeof entry.sku === 'string' ? entry.sku : null))
+                .filter((entry): entry is string => entry !== null);
+
+            if (workflows.length > 0) {
+                options.workflows = workflows;
+            }
+            if (typeof version?.timeout === 'number') {
+                options.timeout = version.timeout;
+            }
+
+            scrapers.push({
+                name: row.slug,
+                disabled: version?.status === 'archived',
+                base_url: typeof row.base_url === 'string' ? row.base_url : undefined,
+                search_url_template:
+                    typeof aiConfig?.task === 'string'
+                        ? aiConfig.task
+                        : undefined,
+                selectors: selectors.length > 0 ? selectors : undefined,
+                options,
+                test_skus: testSkus.length > 0 ? testSkus : undefined,
+                retries: typeof version?.retries === 'number' ? version.retries : undefined,
+                validation: toRecord(version?.validation_config),
+            });
         }
 
         const skus: string[] = job.skus || [];
@@ -246,7 +419,7 @@ export async function GET(request: NextRequest) {
             scrapers,
             test_mode: job.test_mode || false,
             max_workers: job.max_workers || 3,
-            job_type: job.type || 'standard',
+            job_type: normalizedJobType,
             job_config: (job.config || undefined) as Record<string, unknown> | undefined,
             ai_credentials: aiCredentials || undefined,
             lease_token: job.lease_token || undefined,
@@ -256,18 +429,33 @@ export async function GET(request: NextRequest) {
         const isDiscovery = job.type === 'discovery' || requestedScrapers.includes('ai_discovery');
         if (isDiscovery) {
             const rawConfig = (job.config || {}) as Record<string, unknown>;
-            const maxSearchResults = pickNumber(rawConfig.max_search_results, aiDefaults.max_search_results);
-            const maxSteps = pickNumber(rawConfig.max_steps, aiDefaults.max_steps);
-            const confidenceThreshold = pickNumber(rawConfig.confidence_threshold, aiDefaults.confidence_threshold);
-            const llmModel = rawConfig.llm_model === 'gpt-4o' ? 'gpt-4o' : aiDefaults.llm_model;
+            const sanitizedDiscoveryConfig = sanitizeDiscoveryConfig(rawConfig, aiDefaults);
+            const maxSearchResults = pickNumber(sanitizedDiscoveryConfig.max_search_results, aiDefaults.max_search_results);
+            const maxSteps = pickNumber(sanitizedDiscoveryConfig.max_steps, aiDefaults.max_steps);
+            const confidenceThreshold = pickNumber(sanitizedDiscoveryConfig.confidence_threshold, aiDefaults.confidence_threshold);
+            const llmModel = sanitizedDiscoveryConfig.llm_model === 'gpt-4o' ? 'gpt-4o' : aiDefaults.llm_model;
 
-            response.job_config = {
-                ...rawConfig,
-                max_search_results: maxSearchResults,
-                max_steps: maxSteps,
-                confidence_threshold: confidenceThreshold,
-                llm_model: llmModel,
-            };
+            const updatedScrapers = response.scrapers.map((scraper) => {
+                if (scraper.name !== 'ai_discovery') {
+                    return scraper;
+                }
+
+                const nextOptions = {
+                    ...(scraper.options || {}),
+                    max_search_results: maxSearchResults,
+                    max_steps: maxSteps,
+                    confidence_threshold: confidenceThreshold,
+                    llm_model: llmModel,
+                };
+
+                return {
+                    ...scraper,
+                    options: nextOptions,
+                };
+            });
+
+            response.scrapers = updatedScrapers;
+            response.job_config = sanitizedDiscoveryConfig;
         }
 
         console.log(`[Scraper API] Job ${jobId} config sent to ${runner.runnerName}: ${skus.length} SKUs, ${scrapers.length} scrapers`);

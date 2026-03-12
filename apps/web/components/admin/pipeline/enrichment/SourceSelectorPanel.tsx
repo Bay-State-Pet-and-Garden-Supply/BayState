@@ -5,7 +5,7 @@ import { Check, Lock, RefreshCw, Circle, Sparkles } from 'lucide-react';
 interface Source {
   id: string;
   displayName: string;
-  type: 'scraper' | 'ai_discovery';
+  type: 'scraper' | 'ai_search';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -32,7 +32,7 @@ const STATUS_COLORS = {
 };
 
 /**
- * A panel showing all available enrichment sources (web scrapers + AI discovery) with toggle checkboxes.
+ * A panel showing all available enrichment sources (web scrapers + AI Search) with toggle checkboxes.
  * Designed to fit in a sidebar (max-width ~280px).
  */
 export function SourceSelectorPanel({
@@ -43,11 +43,11 @@ export function SourceSelectorPanel({
   isLoading = false,
 }: SourceSelectorPanelProps) {
   const scrapers = sources.filter((s) => s.type === 'scraper');
-  const aiSources = sources.filter((s) => s.type === 'ai_discovery');
+  const aiSources = sources.filter((s) => s.type === 'ai_search');
 
   const renderSourceRow = (source: Source) => {
     const isEnabled = enabledSourceIds.includes(source.id);
-    const isAI = source.type === 'ai_discovery';
+    const isAI = source.type === 'ai_search';
 
     return (
       <div
@@ -79,7 +79,7 @@ export function SourceSelectorPanel({
           >
             {isEnabled && <Check className="h-3.5 w-3.5" />}
           </button>
-          
+
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               {isAI && <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0" />}
@@ -91,19 +91,19 @@ export function SourceSelectorPanel({
               )}
             </div>
             {isAI && (
-              <span className="text-[10px] text-purple-500 mt-0.5">Brave Search + crawl4ai</span>
+              <span className="text-[10px] text-purple-500 mt-0.5">Brave Search + AI Extract</span>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <div className="tooltip-container relative group/tooltip">
-            <Circle 
-              className={`h-2.5 w-2.5 fill-current ${STATUS_COLORS[source.status]}`} 
+            <Circle
+              className={`h-2.5 w-2.5 fill-current ${STATUS_COLORS[source.status]}`}
               aria-label={`Status: ${source.status}`}
             />
           </div>
-          
+
           {onRefreshSource && !isAI && (
             <button
               onClick={() => onRefreshSource(source.id)}
@@ -139,12 +139,12 @@ export function SourceSelectorPanel({
           </div>
         )}
 
-        {/* AI Discovery Section */}
+        {/* AI Search Section */}
         {aiSources.length > 0 && (
           <div>
             <h4 className="px-3 py-1 text-xs font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" />
-              AI Discovery
+              AI Search
             </h4>
             <div className="mt-1 space-y-0.5">
               {aiSources.map(renderSourceRow)}

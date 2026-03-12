@@ -10,7 +10,7 @@ from core.api_client import JobConfig
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
 
-from scrapers.ai_discovery import AIDiscoveryScraper
+from scrapers.ai_search import AISearchScraper
 from scrapers.executor.workflow_executor import WorkflowExecutor
 from scrapers.parser import ScraperConfigParser
 from scrapers.result_collector import ResultCollector
@@ -240,11 +240,12 @@ def run_job(
         results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
         return results
 
-    is_discovery_job = job_config.job_type == "discovery" or any(s.name == "ai_discovery" for s in job_config.scrapers)
-    is_crawl4ai_job = job_config.job_type == "crawl4ai" or any(s.name == "crawl4ai_discovery" for s in job_config.scrapers)
-    
-    if is_discovery_job or is_crawl4ai_job:
-        return _run_discovery_job(job_config, skus, results, log_buffer)
+    is_ai_search_job = job_config.job_type in {"ai_search", "discovery", "crawl4ai"} or any(
+        s.name in {"ai_search", "ai_discovery", "crawl4ai_discovery"} for s in job_config.scrapers
+    )
+
+    if is_ai_search_job:
+        return _run_ai_search_job(job_config, skus, results, log_buffer)
 
     configs: list[Any] = []
     config_errors: list[tuple[str, str]] = []
@@ -424,29 +425,36 @@ def run_job(
     return results
 
 
-def _run_discovery_job(
+def _run_ai_search_job(
     job_config: JobConfig,
     skus: List[str],
     results: Dict[str, Any],
     log_buffer: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    discovery_cfg = job_config.job_config or {}
-    is_crawl4ai = job_config.job_type == "crawl4ai" or any(s.name == "crawl4ai_discovery" for s in job_config.scrapers)
-    scraper_name = "crawl4ai_discovery" if is_crawl4ai else "ai_discovery"
-    
-    max_concurrency = int(discovery_cfg.get("max_concurrency", job_config.max_workers) or job_config.max_workers)
-    max_search_results = int(discovery_cfg.get("max_search_results", 5) or 5)
-    max_steps = int(discovery_cfg.get("max_steps", 15) or 15)
-    confidence_threshold = float(discovery_cfg.get("confidence_threshold", 0.7) or 0.7)
-    llm_model = str(discovery_cfg.get("llm_model", "gpt-4o-mini") or "gpt-4o-mini")
-    cache_enabled = bool(discovery_cfg.get("cache_enabled", True))
-    extraction_strategy = str(discovery_cfg.get("extraction_strategy", "llm") or "llm")
+    search_cfg = job_config.job_config or {}
+    scraper_name = "ai_search"
+
+    max_concurrency = int(search_cfg.get("max_concurrency", job_config.max_workers) or job_config.max_workers)
+    max_search_results = int(search_cfg.get("max_search_results", 5) or 5)
+    max_steps = int(search_cfg.get("max_steps", 15) or 15)
+    confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
+    llm_model = str(search_cfg.get("llm_model", "gpt-4o-mini") or "gpt-4o-mini")
+    cache_enabled = bool(search_cfg.get("cache_enabled", True))
+    extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
 
     previous_openai = os.environ.get("OPENAI_API_KEY")
     previous_brave = os.environ.get("BRAVE_API_KEY")
     runtime_credentials = job_config.ai_credentials or {}
     runtime_openai = runtime_credentials.get("openai_api_key")
     runtime_brave = runtime_credentials.get("brave_api_key")
+
+    # Debug log credential extraction
+    logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
+    if runtime_openai:
+        logger.debug(f"Setting OPENAI_API_KEY from job payload: {runtime_openai[:4]}...")
+    if runtime_brave:
+        logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
+
 
     if runtime_openai:
         os.environ["OPENAI_API_KEY"] = runtime_openai
@@ -455,7 +463,7 @@ def _run_discovery_job(
 
     item_context_by_sku: Dict[str, Dict[str, Any]] = {}
 
-    raw_items = discovery_cfg.get("items")
+    raw_items = search_cfg.get("items")
     if isinstance(raw_items, list):
         for candidate in raw_items:
             if not isinstance(candidate, dict):
@@ -465,7 +473,7 @@ def _run_discovery_job(
                 continue
             item_context_by_sku[candidate_sku] = candidate
 
-    raw_sku_context = discovery_cfg.get("sku_context")
+    raw_sku_context = search_cfg.get("sku_context")
     if isinstance(raw_sku_context, dict):
         for key, value in raw_sku_context.items():
             candidate_sku = str(key).strip()
@@ -482,18 +490,18 @@ def _run_discovery_job(
         items.append(
             {
                 "sku": sku,
-                "product_name": item_context.get("product_name", discovery_cfg.get("product_name")),
-                "brand": item_context.get("brand", discovery_cfg.get("brand")),
-                "category": item_context.get("category", discovery_cfg.get("category")),
+                "product_name": item_context.get("product_name", search_cfg.get("product_name")),
+                "brand": item_context.get("brand", search_cfg.get("brand")),
+                "category": item_context.get("category", search_cfg.get("category")),
             }
         )
 
-    log_buffer.append(create_log_entry("info", f"Starting discovery scraper for {len(items)} SKUs"))
-    logger.info(f"[Runner] Starting discovery job for {len(items)} SKUs")
+    log_buffer.append(create_log_entry("info", f"Starting AI Search scraper for {len(items)} SKUs"))
+    logger.info(f"[Runner] Starting AI Search job for {len(items)} SKUs")
     results["scrapers_run"].append(scraper_name)
 
     async def _run() -> list[Any]:
-        scraper = AIDiscoveryScraper(
+        scraper = AISearchScraper(
             headless=settings.browser_settings["headless"],
             max_search_results=max_search_results,
             max_steps=max_steps,
@@ -519,8 +527,8 @@ def _run_discovery_job(
             else:
                 os.environ["BRAVE_API_KEY"] = previous_brave
 
-    for discovery in batch_results:
-        sku = discovery.sku
+    for search_result in batch_results:
+        sku = search_result.sku
         results["skus_processed"] += 1
         if not sku:
             continue
@@ -528,32 +536,32 @@ def _run_discovery_job(
         if sku not in results["data"]:
             results["data"][sku] = {}
 
-        if discovery.success:
+        if search_result.success:
             results["data"][sku][scraper_name] = {
-                "size_metrics": discovery.size_metrics,
-                "title": discovery.product_name,
-                "description": discovery.description,
-                "images": discovery.images,
-                "categories": discovery.categories,
-                "url": discovery.url,
-                "source_website": discovery.source_website,
-                "confidence": discovery.confidence,
-                "cost_usd": discovery.cost_usd,
+                "size_metrics": search_result.size_metrics,
+                "title": search_result.product_name,
+                "description": search_result.description,
+                "images": search_result.images,
+                "categories": search_result.categories,
+                "url": search_result.url,
+                "source_website": search_result.source_website,
+                "confidence": search_result.confidence,
+                "cost_usd": search_result.cost_usd,
                 "scraped_at": datetime.now().isoformat(),
             }
             log_buffer.append(create_log_entry("info", f"{scraper_name}/{sku}: Found data"))
             logger.info(f"[Runner] {scraper_name}/{sku}: Found data")
         else:
             results["data"][sku][scraper_name] = {
-                "error": discovery.error,
-                "cost_usd": discovery.cost_usd,
+                "error": search_result.error,
+                "cost_usd": search_result.cost_usd,
                 "scraped_at": datetime.now().isoformat(),
             }
-            log_buffer.append(create_log_entry("warning", f"{scraper_name}/{sku}: {discovery.error or 'Failed'}"))
-            logger.warning(f"[Runner] {scraper_name}/{sku}: {discovery.error or 'Failed'}")
+            log_buffer.append(create_log_entry("warning", f"{scraper_name}/{sku}: {search_result.error or 'Failed'}"))
+            logger.warning(f"[Runner] {scraper_name}/{sku}: {search_result.error or 'Failed'}")
 
-    log_buffer.append(create_log_entry("info", f"Discovery job complete. Processed {results['skus_processed']} SKUs"))
-    logger.info(f"[Runner] Discovery job complete. Processed {results['skus_processed']} SKUs")
+    log_buffer.append(create_log_entry("info", f"AI Search job complete. Processed {results['skus_processed']} SKUs"))
+    logger.info(f"[Runner] AI Search job complete. Processed {results['skus_processed']} SKUs")
     results["logs"] = log_buffer
     results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
     return results

@@ -1,0 +1,109 @@
+# Prompt Version: v2
+# Extracted from: apps/scraper/docs/prompt_design_v2.md
+# Date: 2026-03-11
+# Method: Lines 68-118 of prompt_design_v2.md
+#
+# This is the v2 extraction instruction with improvements over v1.
+
+Extract structured product data for a single SKU-locked product page.
+
+TARGET CONTEXT
+- SKU: {sku}
+- Expected Brand (may be null): {brand or "Unknown"}
+- Expected Product Name: {product_name or "Unknown"}
+
+CRITICAL EXTRACTION RULES
+1) SKU / VARIANT LOCK (FUZZY VALIDATION)
+   - Ensure extracted product refers to the same variant as the target SKU context.
+   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
+   - Do NOT output data for a different variant from carousel/recommendations.
+
+2) BRAND INFERENCE
+   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
+   - Return the canonical brand string (not store name).
+
+3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
+   - product_name: required
+   - price: required
+   - images: at least 1 required
+   - availability: required
+   - brand and description: strongly preferred
+   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
+
+4) PRICE NORMALIZATION
+   - Extract current active variant price.
+   - Normalize to a single numeric-like money string (example: "$14.99"), no ranges unless only a range exists.
+   - If a range is shown, choose the active selected variant price when available.
+   - Ignore struck-through MSRP unless it is the only visible current price.
+
+5) IMAGE PRIORITIZATION
+   - Put primary hero image first.
+   - Prefer URLs for the exact selected variant.
+   - Return absolute URLs only (https://...).
+   - Exclude sprites, icons, logos, and unrelated recommendation images.
+
+6) AVAILABILITY NORMALIZATION (STRICT ENUM)
+   - Normalize to one of exactly:
+     - "In Stock"
+     - "Out of Stock"
+     - "Unknown"
+   - Use precedence: explicit stock badge/text > add-to-cart state > structured data availability > Unknown.
+
+7) DESCRIPTION QUALITY
+   - Extract meaningful product description/spec text for the exact variant, not generic category copy.
+
+OUTPUT QUALITY BAR
+- Return the most complete, variant-accurate record possible.
+- Do not hallucinate missing values.
+
+---
+
+CHANGELOG
+=========
+Changes from v1 to v2:
+
+1. MUST-FILL CHECKLIST (v1 line 25-29 -> v2 line 85-91)
+   - v1: "brand, description, size_metrics, categories: strongly preferred"
+   - v2: Explicitly requires product_name, price, images, availability
+   - Rationale: Target baseline silent-partial-extraction issue
+
+2. PRICE NORMALIZATION (NEW in v2)
+   - Added new section (lines 93-97)
+   - Requires single numeric money string, no ranges
+   - Active variant price takes precedence over range
+   - Ignore struck-through MSRP unless it's the only price
+   - Rationale: Address extremely low baseline price accuracy (10%)
+
+3. IMAGE PRIORITIZATION (v1 line 39-45 -> v2 line 99-103)
+   - v1: "Extract ALL high-resolution product image URLs" with detailed carousel guidance
+   - v2: Simplified to hero-first + prefer exact variant URLs + absolute URLs only
+   - Rationale: Improve relevance and downstream usability
+
+4. AVAILABILITY NORMALIZATION (NEW in v2)
+   - Added new strict enum section (lines 105-110)
+   - Enum values: "In Stock", "Out of Stock", "Unknown"
+   - Explicit precedence: explicit badge > add-to-cart > structured data > Unknown
+   - Rationale: Fix inconsistency and normalize output for consumers
+
+5. REMOVED: SIZE METRICS EXTRACTION (v1 line 31-33)
+   - Removed in v2 to focus on core fields
+   - Rationale: Simplify and reduce token usage
+
+6. REMOVED: CATEGORIES EXTRACTION (v1 line 35-37)
+   - Removed in v2 to focus on core fields
+   - Rationale: Simplify and reduce token usage
+
+---
+
+EXPECTED IMPACT ESTIMATES
+=========================
+Based on design-stage expectations (to validate in Prompt v2 test run):
+
+| Field        | Baseline (v1) | Expected v2 | Rationale                                    |
+|--------------|---------------|-------------|----------------------------------------------|
+| Brand        | 100%          | 95-100%     | Maintain with null-brand inference guardrails |
+| Name         | 70%           | 82-90%      | Variant lock + source relevance weighting    |
+| Price        | 10%           | 65-85%      | Must-fill + active-variant normalization     |
+| Description  | 60%           | 70-85%      | Explicit description quality requirement      |
+| Images       | 30%           | 75-92%      | Hero-first + absolute URL + exact variant   |
+| Availability | 30%           | 70-85%      | Strict enum + precedence order               |

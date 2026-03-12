@@ -59,6 +59,8 @@ describe('Middleware Auth Logic', () => {
     let mockSupabase: any;
     let mockGetUser: jest.Mock;
     let mockFrom: jest.Mock;
+    const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -77,6 +79,14 @@ describe('Middleware Auth Logic', () => {
             from: mockFrom,
         };
         mockCreateServerClient.mockReturnValue(mockSupabase);
+
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+    });
+
+    afterAll(() => {
+        process.env.NEXT_PUBLIC_SUPABASE_URL = originalSupabaseUrl;
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalSupabaseAnonKey;
     });
 
     function createReq(path: string) {
@@ -156,5 +166,17 @@ describe('Middleware Auth Logic', () => {
         const location = res.headers.get('location') || '';
         expect(location).toContain('/login');
         expect(location).toContain('next=%2Faccount%2Fprofile');
+    });
+
+    it('redirects to login when Supabase auth fetch throws', async () => {
+        mockGetUser.mockRejectedValue(new Error('fetch failed'));
+
+        const req = createReq('/account/profile');
+        const res = await updateSession(req);
+
+        expect(res.status).toBe(307);
+        const location = new URL(res.headers.get('location') || '');
+        expect(location.pathname).toBe('/login');
+        expect(location.searchParams.get('next')).toBe('/account/profile');
     });
 });

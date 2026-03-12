@@ -1,0 +1,233 @@
+name: Prompt Regression Tests
+
+on:
+  pull_request:
+    paths:
+      - 'apps/scraper/prompts/**'
+      - 'apps/scraper/scrapers/ai_search/**'
+      - '.github/workflows/prompt-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  PYTHON_VERSION: '3.11'
+  REGRESSION_THRESHOLD: '0.02'
+
+jobs:
+  prompt-regression:
+    name: Prompt Regression Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./apps/scraper
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            apps/scraper/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-json-report PyYAML
+
+      - name: Run regression tests for PR head
+        id: current_tests
+        continue-on-error: true
+        env:
+          PYTHONPATH: .
+          BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/current"
+          set -o pipefail
+          pytest tests/evaluation/test_prompt_regression.py -v --junitxml="$GITHUB_WORKSPACE/artifacts/current/junit.xml" 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/current/pytest.log"
+          status=${PIPESTATUS[0]}
+
+          python - <<'PY'
+          import json
+          import pathlib
+          import shutil
+
+          workspace = pathlib.Path.cwd()
+          evidence_root = workspace / ".sisyphus" / "evidence" / "test"
+          artifact_dir = pathlib.Path.cwd().parents[1] / "artifacts" / "current"
+
+          report_paths = sorted(evidence_root.glob("*/evaluation-report.json"), key=lambda path: path.stat().st_mtime)
+          if report_paths:
+              latest = report_paths[-1]
+              shutil.copy2(latest, artifact_dir / "evaluation-report.json")
+              markdown_path = latest.with_suffix(".md")
+              if markdown_path.exists():
+                  shutil.copy2(markdown_path, artifact_dir / "evaluation-report.md")
+              payload = json.loads(latest.read_text(encoding="utf-8"))
+              accuracy = payload.get("aggregate_metrics", {}).get("overall_accuracy")
+              if accuracy is not None:
+                  (artifact_dir / "accuracy.txt").write_text(str(accuracy), encoding="utf-8")
+          PY
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout base branch snapshot
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          fetch-depth: 1
+
+      - name: Run regression tests for PR base
+        if: github.event_name == 'pull_request'
+        id: base_tests
+        continue-on-error: true
+        working-directory: ./base/apps/scraper
+        env:
+          PYTHONPATH: .
+          BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/base"
+          set -o pipefail
+          pytest tests/evaluation/test_prompt_regression.py -v --junitxml="$GITHUB_WORKSPACE/artifacts/base/junit.xml" 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/base/pytest.log"
+          status=${PIPESTATUS[0]}
+
+          python - <<'PY'
+          import json
+          import pathlib
+          import shutil
+
+          workspace = pathlib.Path.cwd()
+          evidence_root = workspace / ".sisyphus" / "evidence" / "test"
+          artifact_dir = pathlib.Path.cwd().parents[2] / "artifacts" / "base"
+
+          report_paths = sorted(evidence_root.glob("*/evaluation-report.json"), key=lambda path: path.stat().st_mtime)
+          if report_paths:
+              latest = report_paths[-1]
+              shutil.copy2(latest, artifact_dir / "evaluation-report.json")
+              markdown_path = latest.with_suffix(".md")
+              if markdown_path.exists():
+                  shutil.copy2(markdown_path, artifact_dir / "evaluation-report.md")
+              payload = json.loads(latest.read_text(encoding="utf-8"))
+              accuracy = payload.get("aggregate_metrics", {}).get("overall_accuracy")
+              if accuracy is not None:
+                  (artifact_dir / "accuracy.txt").write_text(str(accuracy), encoding="utf-8")
+          PY
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate regression threshold
+        id: evaluate
+        working-directory: ./
+        env:
+          CURRENT_STATUS: ${{ steps.current_tests.outputs.status }}
+          BASE_STATUS: ${{ steps.base_tests.outputs.status }}
+          EVENT_NAME: ${{ github.event_name }}
+          REGRESSION_THRESHOLD: ${{ env.REGRESSION_THRESHOLD }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
+
+          workspace = pathlib.Path.cwd()
+          artifacts_dir = workspace / "artifacts"
+          current_dir = artifacts_dir / "current"
+          base_dir = artifacts_dir / "base"
+          threshold = float(os.environ["REGRESSION_THRESHOLD"])
+          event_name = os.environ["EVENT_NAME"]
+
+          def _read_accuracy(directory: pathlib.Path):
+              path = directory / "accuracy.txt"
+              if not path.exists():
+                  return None
+              return float(path.read_text(encoding="utf-8").strip())
+
+          current_status = int(os.environ.get("CURRENT_STATUS") or "1")
+          base_status_raw = os.environ.get("BASE_STATUS")
+          base_status = int(base_status_raw) if base_status_raw else None
+          current_accuracy = _read_accuracy(current_dir)
+          base_accuracy = _read_accuracy(base_dir)
+          regression = None if current_accuracy is None or base_accuracy is None else base_accuracy - current_accuracy
+          should_fail = False
+
+          lines = [
+              "## Prompt Regression Tests",
+              "",
+              f"- Current branch pytest exit code: `{current_status}`",
+          ]
+
+          if current_accuracy is not None:
+              lines.append(f"- Current branch overall accuracy: `{current_accuracy:.2%}`")
+          else:
+              lines.append("- Current branch overall accuracy: `not reported`")
+
+          if event_name == "pull_request":
+              lines.append(f"- Base branch pytest exit code: `{base_status if base_status is not None else 'not-run'}`")
+              if base_accuracy is not None:
+                  lines.append(f"- Base branch overall accuracy: `{base_accuracy:.2%}`")
+              else:
+                  lines.append("- Base branch overall accuracy: `not reported`")
+
+              if regression is not None:
+                  lines.append(f"- Accuracy regression: `{regression:.2%}`")
+                  if regression > threshold:
+                      should_fail = True
+                      lines.append(f"- Result: failed because regression exceeded `{threshold:.2%}`")
+                  else:
+                      lines.append(f"- Result: passed because regression stayed within `{threshold:.2%}`")
+              elif current_status != 0 or (base_status is not None and base_status != 0):
+                  should_fail = True
+                  lines.append("- Result: failed because regression accuracy could not be computed from the generated reports.")
+              else:
+                  lines.append("- Result: passed, but no comparable accuracy report was generated.")
+          else:
+              if current_status != 0:
+                  should_fail = True
+                  lines.append("- Result: failed because the manual run's regression test command returned a non-zero exit code.")
+              else:
+                  lines.append("- Result: passed for manual execution; no base-branch comparison was performed.")
+
+          summary_path = artifacts_dir / "prompt-regression-summary.md"
+          summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          github_output = os.environ.get("GITHUB_OUTPUT")
+          if github_output:
+              with open(github_output, "a", encoding="utf-8") as fh:
+                  fh.write(f"should_fail={'true' if should_fail else 'false'}\n")
+                  fh.write(f"summary_path={summary_path}\n")
+
+          if should_fail:
+              sys.exit(1)
+          PY
+
+      - name: Upload regression results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-regression-results
+          path: |
+            artifacts/current
+            artifacts/base
+            artifacts/prompt-regression-summary.md
+          if-no-files-found: warn
+
+      - name: Post PR results comment
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          path: artifacts/prompt-regression-summary.md

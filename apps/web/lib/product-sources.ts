@@ -3,6 +3,16 @@ type SourceRecord = Record<string, unknown>;
 export type ProductSourceMap = Record<string, SourceRecord>;
 
 const LEGACY_SOURCE_KEY = '_legacy';
+const AI_DIAGNOSTIC_ONLY_KEYS = new Set([
+    'error',
+    'errors',
+    'message',
+    'cost_usd',
+    'llm_cost',
+    'total_cost',
+    'scraped_at',
+    '_scraped_at',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -15,6 +25,40 @@ function isMetadataKey(key: string): boolean {
 function isIgnoredDataKey(key: string): boolean {
     const normalized = key.toLowerCase();
     return normalized === 'scraped_at' || normalized === '_scraped_at';
+}
+
+function isAiSource(sourceName: string): boolean {
+    const normalized = sourceName.toLowerCase();
+    return normalized.startsWith('ai_') || normalized === 'ai-search' || normalized === 'ai';
+}
+
+function sanitizeAiSourcePayload(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map((entry) => sanitizeAiSourcePayload(entry));
+    }
+
+    if (!isRecord(value)) {
+        return value;
+    }
+
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+        const normalizedKey = key.toLowerCase();
+        if (AI_DIAGNOSTIC_ONLY_KEYS.has(normalizedKey)) {
+            continue;
+        }
+        sanitized[key] = sanitizeAiSourcePayload(entry);
+    }
+
+    return sanitized;
+}
+
+function hasMeaningfulSourcePayload(sourceName: string, sourcePayload: unknown): boolean {
+    const payloadToEvaluate = isAiSource(sourceName)
+        ? sanitizeAiSourcePayload(sourcePayload)
+        : sourcePayload;
+
+    return hasMeaningfulValue(payloadToEvaluate);
 }
 
 function hasMeaningfulValue(value: unknown): boolean {
@@ -139,7 +183,19 @@ export function mergeProductSources(
 
 export function hasMeaningfulProductSourceData(rawSources: unknown): boolean {
     const normalized = normalizeProductSources(rawSources);
-    return Object.values(normalized).some((sourcePayload) => hasMeaningfulValue(sourcePayload));
+    return Object.entries(normalized).some(([sourceName, sourcePayload]) =>
+        hasMeaningfulSourcePayload(sourceName, sourcePayload)
+    );
+}
+
+export function filterMeaningfulProductSources(rawSources: unknown): ProductSourceMap {
+    const normalized = normalizeProductSources(rawSources);
+
+    return Object.fromEntries(
+        Object.entries(normalized).filter(([sourceName, sourcePayload]) =>
+            hasMeaningfulSourcePayload(sourceName, sourcePayload)
+        )
+    );
 }
 
 export function buildConsolidationSourcesPayload(

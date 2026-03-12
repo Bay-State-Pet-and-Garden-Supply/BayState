@@ -214,11 +214,7 @@ class ScraperAPIClient:
         # Add HMAC signature if WEBHOOK_SECRET is configured and payload is present
         webhook_secret = os.environ.get("WEBHOOK_SECRET")
         if webhook_secret and payload:
-            signature = hmac.new(
-                webhook_secret.encode("utf-8"),
-                payload.encode("utf-8"),
-                hashlib.sha256
-            ).hexdigest()
+            signature = hmac.new(webhook_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
             headers["X-Payload-Signature"] = signature
 
         return headers
@@ -328,6 +324,8 @@ class ScraperAPIClient:
                 job_type=data.get("job_type", "standard"),
                 job_config=data.get("job_config"),
                 ai_credentials=data.get("ai_credentials"),
+                lease_token=data.get("lease_token"),
+                lease_expires_at=data.get("lease_expires_at"),
             )
 
         except AuthenticationError as e:

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
-import { submitBatch } from '@/lib/consolidation/batch-service';
 import { parseChunkCallbackPayload, ChunkCallbackPayload } from '@/lib/scraper-callback/contract';
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
-import { mergeProductSources, normalizeProductSources } from '@/lib/product-sources';
+import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, mergeProductSources, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
     recordCallbackProcessed,
@@ -37,8 +36,11 @@ export function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedD
             const normalizedSources = normalizeProductSources(value);
             if (Object.keys(normalizedSources).length === 0) continue;
 
+            const filteredSources = filterMeaningfulProductSources(normalizedSources);
+            if (!hasMeaningfulProductSourceData(filteredSources)) continue;
+
             const existing = aggregated[sku] || {};
-            aggregated[sku] = mergeProductSources(existing, normalizedSources);
+            aggregated[sku] = mergeProductSources(existing, filteredSources);
         }
     }
 
@@ -74,49 +76,6 @@ export async function persistChunkResultsToPipeline(
 
     console.log(`[Chunk Callback] Updated ${persisted.length} products_ingestion rows for job ${jobId}`);
     return persisted;
-}
-
-async function triggerConsolidationForSkus(
-    supabase: SupabaseClient,
-    jobId: string,
-    skus: string[]
-): Promise<void> {
-    if (skus.length === 0) return;
-
-    const { data: products, error: productsError } = await supabase
-        .from('products_ingestion')
-        .select('sku, sources')
-        .in('sku', skus)
-        .eq('pipeline_status', 'scraped');
-
-    if (productsError) {
-        throw new Error(`Failed to fetch scraped products for consolidation: ${productsError.message}`);
-    }
-
-    if (!products || products.length === 0) {
-        console.log(`[Chunk Callback] No scraped products to consolidate for job ${jobId}`);
-        return;
-    }
-
-    const productSources = products.map((p) => ({
-        sku: p.sku,
-        sources: (p.sources as Record<string, unknown>) || {},
-    }));
-
-    const consolidationResult = await submitBatch(productSources, {
-        description: `Auto-consolidation for scrape job ${jobId}`,
-        auto_apply: true,
-        scrape_job_id: jobId,
-    });
-
-    if (consolidationResult.success && consolidationResult.batch_id) {
-        console.log(`[Chunk Callback] Consolidation batch ${consolidationResult.batch_id} created for job ${jobId}`);
-        return;
-    }
-
-    if (!consolidationResult.success) {
-        console.error(`[Chunk Callback] Consolidation failed for job ${jobId}:`, consolidationResult.error);
-    }
 }
 
 export async function POST(request: NextRequest) {
@@ -262,29 +221,10 @@ export async function POST(request: NextRequest) {
                     console.error(`[Chunk Callback] Failed to update job ${jobId}:`, jobUpdateError);
                 }
 
-                // HR-S-005: Trigger automated consolidation if job completed successfully
                 if (jobStatus === 'completed' && updatedJob && !isTestJob) {
-                    // Collect SKUs that were updated in this job to trigger consolidation
-                    const { data: jobChunks } = await supabase
-                        .from('scrape_job_chunks')
-                        .select('results')
-                        .eq('job_id', jobId);
-                    
-                    const skusInJob = new Set<string>();
-                    for (const c of jobChunks || []) {
-                        if (c.results && typeof c.results === 'object') {
-                            Object.keys(c.results).forEach(sku => skusInJob.add(sku));
-                        }
-                    }
-
-                    if (skusInJob.size > 0) {
-                        console.log(`[Chunk Callback] Triggering auto-consolidation for ${skusInJob.size} SKUs from job ${jobId}`);
-                        try {
-                            await triggerConsolidationForSkus(supabase, jobId, Array.from(skusInJob));
-                        } catch (consolidationError) {
-                            console.error(`[Chunk Callback] Auto-consolidation trigger failed for job ${jobId}:`, consolidationError);
-                        }
-                    }
+                    console.log(
+                        `[Chunk Callback] Job ${jobId} completed. Consolidation remains manual and must be user-triggered.`
+                    );
                 }
 
                 const metadata = (updatedJob?.metadata ?? null) as Record<string, unknown> | null;

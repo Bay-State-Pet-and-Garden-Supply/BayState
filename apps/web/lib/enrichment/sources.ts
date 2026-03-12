@@ -125,7 +125,7 @@ export async function getScraperSources(): Promise<EnrichmentSource[]> {
   for (const source of SCRAPER_SOURCES) {
     const dbConfig = publishedConfigs.get(source.id);
     handledSlugs.add(source.id);
-    
+
     result.push({
       ...source,
       displayName: dbConfig?.displayName || source.displayName,
@@ -148,8 +148,8 @@ export async function getScraperSources(): Promise<EnrichmentSource[]> {
         status: 'healthy',
         enabled: true,
         // Provide standard fields; agentic scrapers typically can extract many fields
-        providesFields: isAgentic 
-          ? ['name', 'brand', 'images', 'weight', 'description', 'specifications'] 
+        providesFields: isAgentic
+          ? ['name', 'brand', 'images', 'weight', 'description', 'specifications']
           : ['name', 'brand', 'images'],
       });
     }
@@ -164,18 +164,18 @@ export async function getScraperSources(): Promise<EnrichmentSource[]> {
 export async function getAllSources(): Promise<EnrichmentSource[]> {
   const scraperSources = await getScraperSources();
 
-  // Add AI Discovery as a built-in source
-  const aiDiscoverySource: EnrichmentSource = {
-    id: 'ai_discovery',
-    displayName: 'AI Discovery',
-    type: 'ai_discovery',
+  // Add AI Search as a built-in source
+  const aiSearchSource: EnrichmentSource = {
+    id: 'ai_search',
+    displayName: 'AI Search',
+    type: 'ai_search',
     requiresAuth: false,
     status: 'healthy',
     enabled: true,
     providesFields: ['name', 'brand', 'images', 'weight', 'description', 'specifications', 'upc'],
   };
 
-  return [...scraperSources, aiDiscoverySource];
+  return [...scraperSources, aiSearchSource];
 }
 
 /**
