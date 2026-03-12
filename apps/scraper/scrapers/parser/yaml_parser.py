@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml  # type: ignore
 
 from core.anti_detection_manager import *
+from core.config import use_yaml_configs
 from scrapers.models import ScraperConfig, ValidationConfig
 from scrapers.schemas import validate_config_dict
 
@@ -45,6 +46,12 @@ class ScraperConfigParser:
             yaml.YAMLError: If the YAML is malformed
             ValidationError: If the configuration doesn't match the schema
         """
+        # Respect runtime feature-flag: by default the runner uses API-published
+        # configs. Local YAML loading is only allowed when USE_YAML_CONFIGS is
+        # explicitly enabled via environment variable.
+        if not use_yaml_configs():
+            raise RuntimeError("Local YAML config loading is disabled. Set USE_YAML_CONFIGS=true to enable.")
+
         file_path = Path(file_path)
 
         if not file_path.exists():

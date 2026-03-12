@@ -34,7 +34,7 @@ class AISearchScraper:
     def __init__(
         self,
         headless: bool = True,
-        max_search_results: int = 5,
+        max_search_results: int = 15,
         max_steps: int = 15,
         confidence_threshold: float = 0.7,
         llm_model: str = "gpt-4o-mini",

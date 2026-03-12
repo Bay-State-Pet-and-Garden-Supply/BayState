@@ -1,12 +1,9 @@
 {
-  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\git-divergence-resolution.md",
-  "started_at": "2026-03-12T16:15:47.290Z",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-config-migration.md",
+  "started_at": "2026-03-12T21:37:03.381Z",
   "session_ids": [
-    "ses_33fe4ad17ffepchqkQgR6xTTdI",
-    "ses_33e921861ffewSRoECV7URfcLR",
-    "ses_31eb32a4fffeKr9wIP9RYNSWP7",
-    "ses_31d34e7b8ffeNhvhfVWs19mtxy"
+    "ses_31c04b2a2ffeznwMbZfdshaDhk"
   ],
-  "plan_name": "git-divergence-resolution",
+  "plan_name": "scraper-config-migration",
   "agent": "atlas"
 }
