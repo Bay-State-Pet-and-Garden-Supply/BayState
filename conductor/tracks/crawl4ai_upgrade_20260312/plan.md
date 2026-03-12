@@ -22,7 +22,7 @@ This phase integrates content filtering and markdown optimization to reduce toke
     - [ ] Verify tests pass and compare token usage in telemetry logs (simulated or real).
 - [x] **Task: Conductor - User Manual Verification 'Phase 2: LLM Efficiency' (Protocol in workflow.md)** e7f97b3
 
-## Phase 3: Escalation Chain & Fallback Integration
+## Phase 3: Escalation Chain & Fallback Integration [checkpoint: bfcca8d]
 This phase automates the fallback process when primary crawling methods fail.
 
 - [x] **Task: Integrate Built-in Escalation & Fallback** ffd0710
