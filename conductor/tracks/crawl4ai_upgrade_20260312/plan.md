@@ -3,7 +3,7 @@
 ## Phase 1: Core Engine Upgrades (Anti-Bot & Stealth)
 This phase focuses on upgrading the `Crawl4AIEngine` to support advanced stealth and session features.
 
-- [ ] **Task: Update `Crawl4AIEngine` for Stealth & Persistence**
+- [x] **Task: Update `Crawl4AIEngine` for Stealth & Persistence** 6875053
     - [ ] Write unit tests in `tests/unit/crawl4ai_engine/test_engine_stealth.py` to verify `BrowserConfig` receives `enable_stealth=True` and handles `use_persistent_context` based on domain.
     - [ ] Implement `enable_stealth` and domain-specific `use_persistent_context` in `apps/scraper/src/crawl4ai_engine/engine.py`.
     - [ ] Verify tests pass and ensure no regressions in existing `crawl` and `crawl_many` methods.
