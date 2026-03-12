@@ -12,11 +12,16 @@ Expand the list of boosted domains to include more relevant pet and garden suppl
 ## Phase 2: LLM Source Selector Implementation
 Introduce the LLM-powered pre-ranking component.
 
-- [ ] **Task: Create `LLMSourceSelector` Class**
+- [x] **Task: Create `LLMSourceSelector` Class** [e56cb77]
     - [ ] Write unit tests in `tests/unit/test_source_selector.py` mocking OpenAI responses to verify correct ranking logic.
     - [ ] Create `apps/scraper/scrapers/ai_search/source_selector.py`.
     - [ ] Implement the `gpt-4o-mini` prompt logic to analyze search snippets and return the best URL.
-- [ ] **Task: Integrate `LLMSourceSelector` into `AISearchScraper`**
+- [x] **Task: Integrate `LLMSourceSelector` into `AISearchScraper`** [20a702e]
+- [x] **Task: Implement Two-Pass Name Consolidation Discovery** [1f03d56]
+    - [ ] Create `NameConsolidator` component to infer canonical brand/name from initial search results.
+    - [ ] Update `AISearchScraper.scrape_product` to perform an initial "reconnaissance" search.
+    - [ ] Implement a second "targeted" search using the consolidated name.
+    - [ ] Verify that the targeted search surfaces higher quality manufacturer results.
     - [ ] Update `AISearchScraper` in `apps/scraper/scrapers/ai_search/scraper.py` to call the selector after fetching search results.
     - [ ] Implement the override logic (LLM choice takes precedence).
     - [ ] Update unit tests to verify the integration.
