@@ -25,12 +25,12 @@ This phase integrates content filtering and markdown optimization to reduce toke
 ## Phase 3: Escalation Chain & Fallback Integration
 This phase automates the fallback process when primary crawling methods fail.
 
-- [ ] **Task: Integrate Built-in Escalation & Fallback**
+- [x] **Task: Integrate Built-in Escalation & Fallback** ffd0710
     - [ ] Write unit tests in `tests/unit/crawl4ai_engine/test_escalation.py` to verify `fallback_fetch_function` is triggered on 403 errors and correctly returns content.
     - [ ] Implement `fallback_fetch_function` in `apps/scraper/src/crawl4ai_engine/engine.py` by wrapping the existing `FallbackExtractor` logic.
     - [ ] Configure `Immediate Escalation` triggers in `CrawlerRunConfig`.
     - [ ] Verify tests pass by mocking 403 responses.
-- [ ] **Task: Final Integration & Telemetry Update**
+- [x] **Task: Final Integration & Telemetry Update** c6b52ea
     - [ ] Update `Crawl4AIExtractor` telemetry to log new metrics (e.g., `pruning_enabled`, `fit_markdown_used`, `fallback_triggered`).
     - [ ] Run a small-scale integration test against a real supplier (e.g., PetEdge) to verify end-to-end functionality.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3: Escalation Chain' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 3: Escalation Chain' (Protocol in workflow.md)** c6b52ea
