@@ -1,0 +1,2 @@
+- LSP warnings about unknown types for sentry_sdk are expected when package not installed in environment.
+- Ensured no exceptions escape Sentry helpers to avoid interfering with daemon flow.
