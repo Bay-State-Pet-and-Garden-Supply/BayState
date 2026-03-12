@@ -589,6 +589,9 @@ class FallbackExtractor:
             og_title = self._extraction.extract_meta_content(html_text, "og:title", property_attr=True) or ""
             og_description = self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or ""
             og_image = self._extraction.extract_meta_content(html_text, "og:image", property_attr=True) or ""
+            # Check for JSON-LD structured data presence (even if extraction failed)
+            has_jsonld = bool(re.search(r"<script[^>]*type=[\"']application/ld\+json[\"']", html_text, flags=re.IGNORECASE))
+            has_structured_data = has_jsonld or bool(og_title) or bool(og_description)
 
             images = self._extraction.normalize_images([og_image], response_url) if og_image else []
 
@@ -616,12 +619,21 @@ class FallbackExtractor:
 
             fallback_description = og_description or title_text
             fallback_size = self._extraction.extract_size_metrics(f"{candidate_name} {fallback_description}")
-            confidence = 0.58
+            # Confidence formula (FallbackExtractor):
+            # Base: 0.65 (increased from 0.58 for Crawl4AI HTML reuse)
+            # +0.15 if JSON-LD or structured data present
+            # +0.1 if name match (product_name matches candidate_name)
+            # +0.1 if brand match (brand matches domain/title)
+            # Max: 0.85 (was 0.78)
+            # Single match (name OR brand) reaches 0.75 (0.65 + 0.1), passing 0.70 threshold
+            confidence = 0.65
+            if has_structured_data:
+                confidence += 0.15
             if product_name and self._matching.is_name_match(product_name, candidate_name):
                 confidence += 0.1
             if brand and self._matching.is_brand_match(brand, candidate_name, response_url):
                 confidence += 0.1
-            confidence = min(confidence, 0.78)
+            confidence = min(confidence, 0.85)
 
             # Log meta extraction success
             self._log_telemetry(response_url, sku, "meta", True, fetch_time_ms, parse_time_ms, None, confidence)
