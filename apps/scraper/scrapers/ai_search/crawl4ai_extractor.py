@@ -15,6 +15,14 @@ from crawl4ai_engine.engine import Crawl4AIEngine
 
 logger = logging.getLogger(__name__)
 
+# Log Crawl4AI version at module load for diagnostics
+try:
+    import crawl4ai
+
+    logger.info(f"[AI Search] Crawl4AI version: {getattr(crawl4ai, '__version__', 'unknown')}")
+except ImportError:
+    logger.warning("[AI Search] Crawl4AI not installed")
+
 
 # Class-level cache for loaded prompts
 _PROMPT_CACHE: dict[str, str] = {}
@@ -200,8 +208,24 @@ OUTPUT QUALITY BAR
                 },
             }
 
+            # Debug log Crawl4AI configuration (without sensitive data)
+            logger.debug(
+                f"[AI Search] Crawl4AI config: model={self.llm_model}, timeout=30000, "
+                f"strategy={self.extraction_strategy}, headless={self.headless}, "
+                f"cache={self.cache_enabled}"
+            )
+
             async with Crawl4AIEngine(engine_config) as engine:
                 result = await engine.crawl(url)
+
+                # Debug log raw content lengths
+                if result.get("success"):
+                    raw_html_len = len(result.get("html", ""))
+                    raw_markdown_len = len(result.get("markdown", ""))
+                    extracted_len = len(result.get("extracted_content", ""))
+                    logger.debug(
+                        f"[AI Search] Crawl4AI result: html_length={raw_html_len}, markdown_length={raw_markdown_len}, extracted_length={extracted_len}"
+                    )
 
                 if result.get("success") and result.get("extracted_content"):
                     extracted_content = result["extracted_content"]
@@ -236,6 +260,8 @@ OUTPUT QUALITY BAR
 
         except Exception as e:
             error_message = str(e)
+            # Log actual exception message for debugging before masking
+            logger.warning(f"[AI Search] Crawl4AI exception: {error_message}")
             if "expected string or bytes-like object" in error_message and "NoneType" in error_message:
                 logger.warning("[AI Search] Crawl4AI returned empty content, using fallback extractor")
                 return None
