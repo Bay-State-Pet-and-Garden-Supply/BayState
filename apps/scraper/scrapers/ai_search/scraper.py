@@ -16,6 +16,7 @@ from scrapers.ai_search.search import BraveSearchClient
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.validation import ExtractionValidator
 from scrapers.ai_search.source_selector import LLMSourceSelector
+from scrapers.ai_search.name_consolidator import NameConsolidator
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,7 @@ class AISearchScraper:
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
         self._source_selector = LLMSourceSelector(model=llm_model)
+        self._name_consolidator = NameConsolidator(model=llm_model)
 
         # Load unified extractors
         from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor, FallbackExtractor
@@ -268,28 +270,47 @@ class AISearchScraper:
             AISearchResult with extracted data
         """
         try:
-            # Step 1: Build search query
-            search_query = self._query_builder.build_search_query(sku, product_name, brand, category)
-            logger.info(f"[AI Search] Searching for: {search_query}")
+            # Step 1: Reconnaissance Search (Initial Pass)
+            # Use SKU and abbreviated name to gather context
+            initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
+            logger.info(f"[AI Search] Phase 1 Reconnaissance: {initial_query}")
+            
+            raw_results, _ = await self._search_client.search(initial_query)
+            
+            # Step 2: Name Consolidation
+            # Use LLM to infer the canonical "real" name from search snippets
+            consolidated_name = product_name
+            if self.use_ai_source_selection and raw_results:
+                logger.info(f"[AI Search] Consolidating name for '{product_name}'...")
+                consolidated_name, _ = await self._name_consolidator.consolidate_name(
+                    sku=sku,
+                    abbreviated_name=product_name or "",
+                    search_snippets=raw_results
+                )
+            
+            # Step 3: Targeted Search (Final Pass)
+            # Conduct another search using the new consolidated name for better manufacturer targeting
+            search_query = self._query_builder.build_search_query(sku, consolidated_name, brand, category)
+            logger.info(f"[AI Search] Phase 2 Targeted Search: {search_query}")
 
-            # Step 2: Search for product pages
+            # Step 4: Search for product pages (Targeted)
             search_results: list[dict[str, Any]] = []
             search_error: Optional[str] = None
             best_score_seen = float("-inf")
             for query_variant in self._query_builder.build_query_variants(
                 sku=sku,
-                product_name=product_name,
+                product_name=consolidated_name,
                 brand=brand,
                 category=category,
             ):
                 raw_results, raw_error = await self._search_client.search(query_variant)
-                prepared_results = self._scoring.prepare_search_results(raw_results, sku, brand, product_name, category)
+                prepared_results = self._scoring.prepare_search_results(raw_results, sku, brand, consolidated_name, category)
                 if prepared_results:
                     top_score = self._scoring.score_search_result(
                         result=prepared_results[0],
                         sku=sku,
                         brand=brand,
-                        product_name=product_name,
+                        product_name=consolidated_name,
                         category=category,
                     )
                     if top_score > best_score_seen:
@@ -304,7 +325,10 @@ class AISearchScraper:
                 error_msg = search_error or "No search results found"
                 return AISearchResult(success=False, sku=sku, error=error_msg)
 
-            # Step 3: Optimization - If brand is missing, use PARALLEL discovery
+            # Update working name for the rest of the flow
+            product_name = consolidated_name
+
+            # Step 5: Optimization - If brand is missing, use PARALLEL discovery
             # We crawl the top 3 results simultaneously using arun_many
             if not brand:
                 logger.info("[AI Search] Brand missing - initiating parallel candidate discovery")
