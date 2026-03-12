@@ -7,7 +7,7 @@ This phase focuses on upgrading the `Crawl4AIEngine` to support advanced stealth
     - [ ] Write unit tests in `tests/unit/crawl4ai_engine/test_engine_stealth.py` to verify `BrowserConfig` receives `enable_stealth=True` and handles `use_persistent_context` based on domain.
     - [ ] Implement `enable_stealth` and domain-specific `use_persistent_context` in `apps/scraper/src/crawl4ai_engine/engine.py`.
     - [ ] Verify tests pass and ensure no regressions in existing `crawl` and `crawl_many` methods.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1: Core Engine Upgrades' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 1: Core Engine Upgrades' (Protocol in workflow.md)** 2547323
 
 ## Phase 2: LLM Efficiency (Pruning & Fit Markdown)
 This phase integrates content filtering and markdown optimization to reduce token costs.
