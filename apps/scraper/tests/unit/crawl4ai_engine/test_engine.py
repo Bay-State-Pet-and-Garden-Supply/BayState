@@ -69,9 +69,6 @@ class TestCrawl4AIEngine:
             _ = engine._build_run_config()
 
             mock_run_config.assert_called()
-            # Verify specific arguments
-            call_args = mock_run_config.call_args.kwargs
-            assert call_args["markdown"] is True
 
     @pytest.mark.asyncio
     async def test_context_manager_enter(self, basic_config):

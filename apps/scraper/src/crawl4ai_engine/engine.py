@@ -40,7 +40,7 @@ class Crawl4AIEngine:
         return BrowserConfig(
             browser_type=browser_settings.get("browser_type", "chromium"),
             headless=browser_settings.get("headless", True),
-            user_agent=browser_settings.get("user_agent"),
+            user_agent=browser_settings.get("user_agent", ""),
             viewport=browser_settings.get("viewport"),
             ignore_https_errors=browser_settings.get("ignore_https_errors", False),
             enable_stealth=browser_settings.get("enable_stealth", False),
@@ -82,9 +82,7 @@ class Crawl4AIEngine:
             js_code=run_settings.get("js_code"),
             wait_for=run_settings.get("wait_for"),
             page_timeout=run_settings.get("timeout", 30000),
-            max_retries=run_settings.get("max_retries", 3),
             extraction_strategy=extraction_strategy,
-            markdown=run_settings.get("markdown", True),
         )
 
     def _get_domain_session_id(self, url: str) -> str:
