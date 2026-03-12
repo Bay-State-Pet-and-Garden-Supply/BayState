@@ -20,6 +20,7 @@ class AISearchResult:
     source_website: Optional[str] = None
     confidence: float = 0.0
     cost_usd: float = 0.0
+    selection_method: Optional[str] = None  # heuristic or llm
     error: Optional[str] = None
 
     def __post_init__(self):

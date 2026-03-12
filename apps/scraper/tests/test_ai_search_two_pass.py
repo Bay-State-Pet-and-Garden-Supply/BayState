@@ -56,3 +56,6 @@ async def test_scrape_product_performs_two_pass_discovery() -> None:
         args, kwargs = scraper._source_selector.select_best_url.call_args
         assert kwargs["results"] == mock_results_targeted
         assert kwargs["product_name"] == "Full Brand Name"
+        
+        # 5. Telemetry recorded agreement
+        assert len(scraper._telemetry["llm_heuristic_agreement"]) > 0
