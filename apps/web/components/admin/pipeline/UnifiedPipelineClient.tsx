@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Package, Search, RefreshCw, Filter, Upload, Download } from 'lucide-react';
+import { Package, Search, RefreshCw, Filter, Upload, Download, Plus } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BatchEnhanceDialog } from './BatchEnhanceDialog';
+import { ManualAddProductDialog } from './ManualAddProductDialog';
 import { UndoToast } from './UndoToast';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ export function UnifiedPipelineClient({
   const [isBulkEnriching, setIsBulkEnriching] = useState(false);
   const [showProductDetail, setShowProductDetail] = useState(false);
   const [showBatchEnhanceDialog, setShowBatchEnhanceDialog] = useState(false);
+  const [showManualAddDialog, setShowManualAddDialog] = useState(false);
   const [enrichingSkus, setEnrichingSkus] = useState<string[]>([]);
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
@@ -549,6 +551,14 @@ export function UnifiedPipelineClient({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
+            onClick={() => setShowManualAddDialog(true)}
+            className="border-[#008850] text-[#008850] hover:bg-[#008850] hover:text-white"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Manual Add
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setShowIntegraImport(true)}
             className="border-[#008850] text-[#008850] hover:bg-[#008850] hover:text-white"
           >
@@ -718,6 +728,16 @@ export function UnifiedPipelineClient({
             setEnrichingSkus([]);
           }}
           isEnhancing={isBulkEnriching}
+        />
+      )}
+
+      {showManualAddDialog && (
+        <ManualAddProductDialog
+          onSuccess={() => {
+            setShowManualAddDialog(false);
+            void handleRefresh(true);
+          }}
+          onCancel={() => setShowManualAddDialog(false)}
         />
       )}
 
