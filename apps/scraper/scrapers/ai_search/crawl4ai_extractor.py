@@ -133,6 +133,7 @@ class Crawl4AIExtractor:
                     "cache_mode": "ENABLED" if self.cache_enabled else "BYPASS",
                     "js_code": get_scroll_javascript(),
                     "timeout": 30000,
+                    "pruning_enabled": True,
                 },
             }
 
@@ -254,6 +255,9 @@ class Crawl4AIExtractor:
                         schema=ProductData.model_json_schema(),
                         extraction_type="schema",
                         instruction=instruction,
+                        input_format="fit_markdown",
+                        chunk_token_threshold=4000,
+                        overlap_rate=0.1,
                     )
                     method = "llm"
 
