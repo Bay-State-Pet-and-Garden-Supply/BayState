@@ -37,7 +37,7 @@ class SearchScorer:
         "ebay.com",
     }
 
-    # Blocked domains (social media, etc.)
+    # Blocked domains (social media, aggregators, etc.)
     BLOCKED_DOMAINS = {
         "reddit.com",
         "pinterest.com",
@@ -47,6 +47,13 @@ class SearchScorer:
         "tiktok.com",
         "medium.com",
         "quora.com",
+        "upcitemdb.com",
+        "barcodelookup.com",
+        "upcdatabase.org",
+        "buycott.com",
+        "barcode-list.com",
+        "digit-eyes.com",
+        "upcindex.com",
     }
 
     # Low quality terms to penalize
@@ -74,6 +81,10 @@ class SearchScorer:
         "top picks",
         "best toys",
         "best dog toys",
+        "upc database",
+        "barcode search",
+        "gtin search",
+        "product lookup",
     ]
 
     # Category-like URL patterns
