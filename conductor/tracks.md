@@ -9,6 +9,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Implement crawl4ai v0.4+ improvements (stealth, pruning, escalation) for AI Scraper**
-*Link: [./tracks/crawl4ai_upgrade_20260312/](./tracks/crawl4ai_upgrade_20260312/)*
-
