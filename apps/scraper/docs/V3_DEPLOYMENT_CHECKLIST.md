@@ -61,8 +61,8 @@ echo $BRAVE_API_KEY
 echo $OPENAI_API_KEY
 
 # Expected:
-# BRAVE_API_KEY: YOUR_BRAVE_API_KEY_HERE
-# OPENAI_API_KEY: sk-proj-Gtd5tACUtKYC0SrfWBym6Oj8a3kLnvPlHtPk...
+# BRAVE_API_KEY: your_brave_key_here
+# OPENAI_API_KEY: your_openai_key_here
 ```
 
 **Action Required:**
