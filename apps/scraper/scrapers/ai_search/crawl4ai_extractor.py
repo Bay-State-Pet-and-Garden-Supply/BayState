@@ -368,6 +368,8 @@ OUTPUT QUALITY BAR
                 if not result.get("success"):
                     error = result.get("error") or "Extraction failed or returned no content"
                     self._log_telemetry(url, sku, "crawl", False, fetch_time_ms, parse_time_ms, llm_time_ms, error)
+                    if html or markdown:
+                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
                     return {
                         "success": False,
                         "error": error,
@@ -402,6 +404,8 @@ OUTPUT QUALITY BAR
                 engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
                 llm_start = time.perf_counter()
                 result = await engine.crawl(url)
+                html = result.get("html", "") or html
+                markdown = result.get("markdown", "") or markdown
                 llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
 
                 if result.get("success") and result.get("extracted_content"):
