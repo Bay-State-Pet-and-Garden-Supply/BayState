@@ -1,6 +1,6 @@
 # Implementation Plan: crawl4ai_upgrade_20260312
 
-## Phase 1: Core Engine Upgrades (Anti-Bot & Stealth)
+## Phase 1: Core Engine Upgrades (Anti-Bot & Stealth) [checkpoint: ca5ad83]
 This phase focuses on upgrading the `Crawl4AIEngine` to support advanced stealth and session features.
 
 - [x] **Task: Update `Crawl4AIEngine` for Stealth & Persistence** 6875053
