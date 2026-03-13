@@ -1,16 +1,16 @@
 # Implementation Plan: Scraper Admin UI Rebuild (YAML Transition)
 
-## Phase 1: API Layer - YAML Config Provider
+## Phase 1: API Layer - YAML Config Provider [checkpoint: 735d023]
 - [x] Task: Create Next.js API route to list YAML configurations [9912183]
     - [x] Create `apps/web/app/api/admin/scrapers/configs/route.ts`
     - [x] Implement logic to read `apps/scraper/scrapers/configs/*.yaml`
     - [x] Extract metadata (slug, display_name, base_url) from YAML frontmatter or structure
     - [x] Write unit tests for the API route
-- [ ] Task: Create Next.js API route to fetch specific YAML content
-    - [ ] Create `apps/web/app/api/admin/scrapers/configs/[slug]/route.ts`
-    - [ ] Implement logic to read and return the raw YAML string
-    - [ ] Write unit tests for the API route
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: API Layer' (Protocol in workflow.md)
+- [x] Task: Create Next.js API route to fetch specific YAML content [d41bb66]
+    - [x] Create `apps/web/app/api/admin/scrapers/configs/[slug]/route.ts`
+    - [x] Implement logic to read and return the raw YAML string
+    - [x] Write unit tests for the API route
+- [x] Task: Conductor - User Manual Verification 'Phase 1: API Layer' (Protocol in workflow.md) [735d023]
 
 ## Phase 2: Scraper List & Dashboard Rebuild
 - [ ] Task: Update `ScraperListPage` and `ScraperListClient`
