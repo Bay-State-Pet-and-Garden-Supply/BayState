@@ -18,8 +18,8 @@
     - [x] Update `ScraperListClient` to handle the new data structure (YAML-based)
     - [x] Remove "Create Scraper", "Duplicate", and "Delete" buttons from the UI
     - [x] Write unit tests for the updated components
-- [ ] Task: Clean up legacy Supabase fetching in the dashboard
-    - [ ] Remove `getScrapers` Supabase logic from `page.tsx`
+- [x] Task: Clean up legacy Supabase fetching in the dashboard [49864de]
+    - [x] Remove `getScrapers` Supabase logic from `page.tsx`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Scraper List' (Protocol in workflow.md)
 
 ## Phase 3: Scraper Detail & YAML Viewer
