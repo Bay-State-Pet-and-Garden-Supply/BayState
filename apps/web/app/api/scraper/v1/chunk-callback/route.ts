@@ -79,6 +79,7 @@ export async function persistChunkResultsToPipeline(
 }
 
 export async function POST(request: NextRequest) {
+    console.log('[Chunk Callback] POST request received');
     try {
         // Validate authentication
         const runner = await validateRunnerAuth({
@@ -94,10 +95,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        console.log(`[Chunk Callback] Authenticated runner: ${runner.runnerName}`);
+
         const text = await request.text();
+        console.log(`[Chunk Callback] Payload length: ${text.length}`);
+        
         const payloadResult = parseChunkCallbackPayload(text);
 
         if (!payloadResult.success) {
+            console.error('[Chunk Callback] Payload parsing failed:', payloadResult.error.message);
             return NextResponse.json(
                 { error: payloadResult.error.message },
                 { status: 400 }
@@ -106,6 +112,7 @@ export async function POST(request: NextRequest) {
 
         const payload: ChunkCallbackPayload = payloadResult.payload;
         const { chunk_id, status, results, error_message } = payload;
+        console.log(`[Chunk Callback] Processing chunk ${chunk_id}, status: ${status}`);
 
         const supabase = getSupabaseAdmin();
 
