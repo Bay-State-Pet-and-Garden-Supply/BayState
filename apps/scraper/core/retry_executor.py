@@ -300,6 +300,17 @@ class RetryExecutor:
                     except Exception as recovery_exc:
                         logger.warning(f"Recovery failed: {recovery_exc}")
 
+                # Proactive fallback: If access denied or CAPTCHA, try re-initializing browser with stealth
+                if last_failure_type in [FailureType.ACCESS_DENIED, FailureType.CAPTCHA_DETECTED]:
+                    if hasattr(operation, "__self__") and hasattr(operation.__self__, "browser"):
+                        browser = operation.__self__.browser
+                        if hasattr(browser, "reinitialize_with_stealth"):
+                            try:
+                                logger.info(f"Triggering stealth fallback for {last_failure_type.value}")
+                                await browser.reinitialize_with_stealth()
+                            except Exception as stealth_exc:
+                                logger.warning(f"Stealth fallback initialization failed: {stealth_exc}")
+
                 # Calculate delay with adaptive config
                 config = self.adaptive_strategy.get_adaptive_config(last_failure_type, site_name, attempt)
                 delay = self._calculate_delay(config, attempt, effective_base_delay, last_failure_type)

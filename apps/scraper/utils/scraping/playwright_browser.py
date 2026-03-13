@@ -55,6 +55,7 @@ class PlaywrightScraperBrowser:
         custom_options: list[str] | None = None,
         timeout: int = 30,
         block_resources: bool = False,
+        use_stealth: bool = True,
     ) -> None:
         """
         Initialize browser for scraping.
@@ -65,6 +66,8 @@ class PlaywrightScraperBrowser:
             profile_suffix: Optional suffix for profile directory (unused in ephemeral context)
             custom_options: Additional Chrome args to add
             timeout: Default timeout in seconds
+            block_resources: Whether to block images/css/etc.
+            use_stealth: Whether to apply stealth measures
         """
         self.site_name = site_name
         self.headless = headless
@@ -73,6 +76,8 @@ class PlaywrightScraperBrowser:
         self.custom_options = custom_options or []
         # Whether to enable resource blocking (disabled by default)
         self.block_resources = block_resources
+        self.use_stealth = use_stealth
+        self.is_stealth_active = False
 
         self.playwright: Playwright | None = None
         self.browser: Browser | None = None
@@ -132,44 +137,55 @@ class PlaywrightScraperBrowser:
                     print(f"[WARN] [{self.site_name}] Failed to enable resource blocking: {e}")
 
             # Apply stealth (best-effort)
-            try:
-                # Import lazily and call whichever entrypoint exists. Be permissive
-                # because playwright_stealth may expose different callables.
-                import importlib
+            if self.use_stealth:
+                try:
+                    # Import lazily and call whichever entrypoint exists. Be permissive
+                    # because playwright_stealth may expose different callables.
+                    import importlib
 
-                mod = importlib.import_module("playwright_stealth")
-                stealth_async = getattr(mod, "stealth_async", None)
-                stealth_sync = getattr(mod, "stealth", None)
+                    mod = importlib.import_module("playwright_stealth")
+                    stealth_async = getattr(mod, "stealth_async", None)
+                    stealth_sync = getattr(mod, "stealth", None)
 
-                if callable(stealth_async):
-                    # Some implementations return coroutines, others are sync.
-                    res = stealth_async(self.page)
-                    if asyncio.iscoroutine(res):
-                        await res
-                elif callable(stealth_sync):
-                    # sync variant expects a page; call it directly
-                    stealth_sync(self.page)
-                elif hasattr(mod, "stealth") and callable(getattr(mod, "stealth")):
-                    getattr(mod, "stealth")(self.page)
-                else:
-                    # nothing callable found; skip quietly
-                    pass
-            except Exception as e:
-                # If stealth import or call fails, log and continue.
-                print(f"[WARN] [{self.site_name}] playwright_stealth not available or failed: {e}")
+                    if callable(stealth_async):
+                        # Some implementations return coroutines, others are sync.
+                        res = stealth_async(self.page)
+                        if asyncio.iscoroutine(res):
+                            await res
+                    elif callable(stealth_sync):
+                        # sync variant expects a page; call it directly
+                        stealth_sync(self.page)
+                    elif hasattr(mod, "stealth") and callable(getattr(mod, "stealth")):
+                        getattr(mod, "stealth")(self.page)
+                    
+                    self.is_stealth_active = True
+                    print(f"[WEB] [{self.site_name}] Stealth measures applied")
+                except Exception as e:
+                    # If stealth import or call fails, log and continue.
+                    print(f"[WARN] [{self.site_name}] playwright_stealth not available or failed: {e}")
 
             # Set timeouts
             self.page.set_default_timeout(self.timeout)
             self.page.set_default_navigation_timeout(self.timeout)
 
             init_time = time.time() - start_time
-            print(f"[WEB] [{self.site_name}] Playwright initialized in {init_time:.2f}s")
+            print(f"[WEB] [{self.site_name}] Playwright initialized in {init_time:.2f}s (stealth={self.is_stealth_active})")
 
         except Exception as e:
             init_time = time.time() - start_time
             print(f"[WEB] [{self.site_name}] Initialization failed after {init_time:.2f}s: {e}")
             await self.quit()
             raise
+
+    async def reinitialize_with_stealth(self) -> None:
+        """Force a restart with stealth measures enabled."""
+        print(f"[WEB] [{self.site_name}] Re-initializing with full stealth fallback...")
+        await self.quit()
+        self.use_stealth = True
+        # Add some extra "human-like" arguments
+        if "--disable-blink-features=AutomationControlled" not in self.custom_options:
+            self.custom_options.append("--disable-blink-features=AutomationControlled")
+        await self.initialize()
 
     async def get(self, url: str, wait_until: str | list[str] | None = None) -> None:
         """
