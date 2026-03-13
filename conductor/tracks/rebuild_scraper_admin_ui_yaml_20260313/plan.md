@@ -20,7 +20,7 @@
     - [x] Write unit tests for the updated components
 - [x] Task: Clean up legacy Supabase fetching in the dashboard [49864de]
     - [x] Remove `getScrapers` Supabase logic from `page.tsx`
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Scraper List' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 2: Scraper List' (Protocol in workflow.md)
 
 ## Phase 3: Scraper Detail & YAML Viewer
 - [ ] Task: Rebuild Scraper Detail Page (`/admin/scrapers/[slug]`)

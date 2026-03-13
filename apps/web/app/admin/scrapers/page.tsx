@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 export default function ScrapersRootRedirect() {
-  redirect('/admin/scrapers/list');
+  permanentRedirect('/admin/scrapers/list');
 }

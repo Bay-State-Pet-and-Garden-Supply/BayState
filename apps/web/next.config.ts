@@ -116,6 +116,27 @@ const nextConfig: NextConfig = {
         destination: '/admin/scrapers/list',
         permanent: true, // 308 permanent redirect
       },
+      // YAML Transition: Redirect deprecated creation and dashboard routes
+      {
+        source: '/admin/scrapers/new',
+        destination: '/admin/scrapers/list',
+        permanent: true,
+      },
+      {
+        source: '/admin/scrapers/create',
+        destination: '/admin/scrapers/list',
+        permanent: true,
+      },
+      {
+        source: '/admin/scrapers',
+        destination: '/admin/scrapers/list',
+        permanent: true,
+      },
+      {
+        source: '/admin/scrapers/dashboard',
+        destination: '/admin/scrapers/list',
+        permanent: true,
+      },
       // Phase 3: Redirect deprecated test-lab routes to scraper detail
       {
         source: '/admin/scrapers/:slug/test-lab',

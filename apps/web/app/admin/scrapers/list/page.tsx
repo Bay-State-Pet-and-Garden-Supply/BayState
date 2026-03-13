@@ -9,6 +9,8 @@ export const metadata = {
   description: 'View scraper configurations',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function ScraperListPage() {
   const scrapers = await getLocalScraperConfigs();
   
@@ -16,7 +18,7 @@ export default async function ScraperListPage() {
     <div className="flex flex-col gap-6 w-full p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#66161D]">Scrapers</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[#66161D]">Scrapers (VERIFIED)</h1>
           <p className="text-muted-foreground mt-1">
             View scraper configurations. Configs are stored as YAML files in the repository.
           </p>
