@@ -33,6 +33,15 @@ Python-based scraper executing YAML-defined workflows to extract product data. R
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
+| **New Scraper Config** | `scrapers/configs/` | Add YAML file, commit to Git |
+| **Scraper Config API** | `apps/web/app/api/internal/scraper-configs/` | Reads from YAML files |
+| **Add Action Handler** | `scrapers/actions/handlers/` | 27 existing, inherit `BaseAction` |
+| **Fix Retry Logic** | `core/` | Exponential backoff, circuit breaker |
+| **Debug Job** | `api/debug.py` | Job state, browser contexts |
+| **Add CLI Command** | `cli/` | Click commands |
+| **Update Models** | `scrapers/models/` | Pydantic, validation rules |
+| Task | Location | Notes |
+|------|----------|-------|
 | **New Scraper Config** | Publish via BayStateApp UI | API publishes to runners; local YAML deprecated |
 | **Add Action Handler** | `scraper_backend/scrapers/actions/handlers/` | 27 existing, inherit `BaseAction`, use `@ActionRegistry.register()` |
 | **Fix Retry Logic** | `scraper_backend/core/` | Exponential backoff, circuit breaker |
@@ -99,6 +108,17 @@ python cli/scraper_cli.py --help        # CLI commands
 ```
 
 ## ANTI-PATTERNS
+- **NO** Selenium (Playwright only)
+- **NO** direct database access (use API callbacks)
+- **NO** long-running state in containers (ephemeral by design)
+- **NO** hardcoded selectors in Python (YAML configs only)
+- **NO** blocking sleeps (use `asyncio.sleep` with Playwright)
+- **NO** `print()` (use structured logger)
+- **NO** default mutable args in handlers
+- **NO** bare `except:` (classify failures for retry logic)
+- **NO** `SyncPlaywright` in production
+- **NO** credentials in scraper config payloads (use credential_refs)
+- **NO** `USE_YAML_CONFIGS=false` in production (YAML-only mode)
 - **NO** Selenium (Playwright only)
 - **NO** direct database access (use API callbacks)
 - **NO** long-running state in containers (ephemeral by design)

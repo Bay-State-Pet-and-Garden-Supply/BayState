@@ -1,50 +1,53 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * DEPRECATED: Scraper config management via API is no longer supported.
+ * Configs are now managed as YAML files in the repository.
+ * 
+ * @deprecated Use YAML file-based configuration instead
+ */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+  const { id } = await params;
+  return NextResponse.json(
+    { 
+      error: 'Scraper config API is deprecated. Use /api/internal/scraper-configs/{slug}',
+      id: id
+    },
+    { status: 410 } // Gone
+  );
+}
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+/**
+ * DEPRECATED: Config updates via API are no longer supported.
+ * Modify YAML files directly and commit to Git.
+ * 
+ * @deprecated Use YAML file-based configuration instead
+ */
+export async function PUT() {
+  return NextResponse.json(
+    { 
+      error: 'Scraper config updates via API are deprecated. Modify YAML files directly.',
+      documentation: 'https://github.com/Bay-State-Pet-and-Garden-Supply/BayState/blob/master/apps/scraper/scrapers/configs/README.md'
+    },
+    { status: 410 } // Gone
+  );
+}
 
-    const client = await createClient();
-
-    const { data: config, error: configError } = await client
-      .from('scraper_configs')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (configError || !config) {
-      return NextResponse.json({ error: 'Config not found' }, { status: 404 });
-    }
-
-    const { data: version, error: versionError } = await client
-      .from('scraper_config_versions')
-      .select('*')
-      .eq('id', config.current_version_id)
-      .single();
-
-    if (versionError || !version) {
-      return NextResponse.json({ error: 'Configuration version not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      config: version.config,
-      status: version.status,
-      version: version.version_number,
-      versionId: version.id,
-      validationResult: version.validation_result,
-    });
-  } catch (error) {
-    console.error('Request error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+/**
+ * DEPRECATED: Config deletion via API is no longer supported.
+ * Remove YAML files directly and commit to Git.
+ * 
+ * @deprecated Use YAML file-based configuration instead
+ */
+export async function DELETE() {
+  return NextResponse.json(
+    { 
+      error: 'Scraper config deletion via API is deprecated. Remove YAML files directly.',
+      documentation: 'https://github.com/Bay-State-Pet-and-Garden-Supply/BayState/blob/master/apps/scraper/scrapers/configs/README.md'
+    },
+    { status: 410 } // Gone
+  );
 }

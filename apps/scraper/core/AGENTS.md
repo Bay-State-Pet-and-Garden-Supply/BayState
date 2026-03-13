@@ -23,8 +23,7 @@ core/
 │   ├── dataset.py
 │   ├── key_value_store.py
 │   └── request_queue.py
-└── database/                  # DB interfaces (deprecated stubs)
-    └── supabase_sync.py       # Legacy compat stub
+└── database/                  # (empty - deprecated stubs removed)
 ```
 
 ## KEY SERVICES
@@ -64,4 +63,5 @@ core/
 - Scrapers: `../scrapers/AGENTS.md` (scraping domain)
 
 ## DEPRECATED
-`core/database/supabase_sync.py` - Legacy stub, kept for compat. Use APIClient instead.
+
+None - all legacy stubs have been removed. Use APIClient for all data access.

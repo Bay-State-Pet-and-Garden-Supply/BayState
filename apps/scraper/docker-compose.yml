@@ -24,6 +24,8 @@ services:
       - MAX_JOBS_BEFORE_RESTART=${MAX_JOBS_BEFORE_RESTART:-100}
       - HEALTHCHECK_MAX_MEMORY_PERCENT=${HEALTHCHECK_MAX_MEMORY_PERCENT:-90}
       - LOG_LEVEL=DEBUG
+      # YAML-only mode: load configs from local files instead of API
+      - USE_YAML_CONFIGS=true
     healthcheck:
       test: ["CMD", "python", "scripts/health_check.py"]
       interval: 30s

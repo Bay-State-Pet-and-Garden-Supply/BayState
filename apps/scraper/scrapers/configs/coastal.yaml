@@ -5,50 +5,50 @@ base_url: https://www.coastalpet.com
 scraper_type: static
 selectors:
   - name: Name
-    selector: h4.product-details__product-name
+    selector: h1.product-detail__name, h1.product-title, h1
     attribute: text
     multiple: false
     required: true
   - name: Brand
-    selector: a.gray-bold-link[href*='brand=']
+    selector: .product-detail__brand, a.gray-bold-link[href*='brand='], .gray-bold-link
     attribute: text
     multiple: false
     required: true
   - name: Size
-    selector: .product-details__size-button--active, .product-details__size-button
+    selector: .product-details__size-button--active, .product-details__size-button, .active-size
     attribute: text
     multiple: false
     required: false
   - name: Image URLs
-    selector: img[src*='salsify'][src*='images.salsify.com']
+    selector: ".product-details__main-image img, .product-details__preview-images--scrolling-container img, img[src*='salsify']"
     attribute: src
     multiple: true
     required: true
   - name: UPC
-    selector: .sku-upc, [itemprop='sku']
+    selector: ".product-details__info span:has-text('UPC:') + span, .product-details__info span:contains('UPC:') + span, [itemprop='sku']"
     attribute: text
     multiple: false
     required: false
   - name: Item Number
-    selector: .item-number
+    selector: ".product-details__info span:has-text('Item Number:') + span, .product-details__info span:contains('Item Number:') + span, .item-number"
     attribute: text
     multiple: false
     required: false
   - name: Description
-    selector: "#description, .product-description"
+    selector: "#product-details__description-tab-panel, #description, .product-description"
     attribute: text
     multiple: false
     required: false
   - name: Features
-    selector: .features-list li, .product-features li
+    selector: "#product-details__features-tab-panel, .features-list li, .product-features li"
     attribute: text
     multiple: true
     required: false
 workflows:
   - action: navigate
-    name: null
+    name: search_page
     params:
-      url: https://www.coastalpet.com/products/search/?q={sku}
+      url: https://www.coastalpet.com/products/search/?q={{sku}}
   - action: conditional_click
     name: null
     params:

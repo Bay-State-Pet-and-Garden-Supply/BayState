@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getScraperBySlug } from '../../actions-workbench';
-import { SelectorEditor } from '@/components/admin/scrapers/selector-editor';
 import { SettingsForm } from '@/components/admin/scrapers/settings-form';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -89,13 +88,6 @@ export default async function ConfigurationPage({ params, searchParams }: Config
     );
   }
 
-  // Get selectors for this version
-  const { data: selectors = [] } = await supabase
-    .from('scraper_selectors')
-    .select('*')
-    .eq('version_id', version.id)
-    .order('sort_order', { ascending: true });
-
   const isDraft = version.status === 'draft';
 
   return (
@@ -167,18 +159,17 @@ export default async function ConfigurationPage({ params, searchParams }: Config
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Column: Selectors */}
-        <div className="xl:col-span-2 space-y-6">
-          <SelectorEditor 
-            versionId={version.id} 
-            selectors={selectors || []} 
-            isReadOnly={!isDraft}
-            versionStatus={version.status}
-          />
+        {/* Settings Only - Selectors editor deprecated */}
+        <div className="xl:col-span-3 space-y-6">
+          <div className="p-4 bg-muted/20 rounded-lg border">
+            <p className="text-sm text-muted-foreground">
+              The selector editor has been deprecated. Please use the Studio or Create new scraper workflow to manage selectors.
+            </p>
+          </div>
         </div>
 
         {/* Right Column: Settings */}
-        <div className="space-y-6">
+        <div className="xl:col-span-3 space-y-6">
           <SettingsForm 
             version={version} 
             scraperType={scraper.scraper_type || 'static'} 

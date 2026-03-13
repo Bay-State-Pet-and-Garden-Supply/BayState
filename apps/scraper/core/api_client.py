@@ -13,10 +13,13 @@ import os
 import time
 import hmac
 import hashlib
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from scrapers.models.config import ScraperConfig as ScraperYamlConfig
+from scrapers.parser.yaml_parser import ScraperConfigParser
 
 logger = logging.getLogger(__name__)
 
@@ -697,6 +700,34 @@ class ScraperAPIClient:
         return self.post_logs(job_id, logs)
 
     def get_published_config(self, slug: str) -> dict[str, Any]:
+        use_yaml_configs = os.environ.get("USE_YAML_CONFIGS", "false").lower() == "true"
+
+        if use_yaml_configs:
+            configs_dir = Path(__file__).resolve().parent.parent / "scrapers" / "configs"
+            config_file = configs_dir / f"{slug}.yaml"
+
+            if not config_file.exists():
+                raise ConfigFetchError(
+                    f"Config file not found: {config_file}",
+                    config_slug=slug,
+                )
+
+            try:
+                try:
+                    parsed_config = ScraperYamlConfig.parse_file(config_file)
+                except Exception:
+                    parsed_config = ScraperConfigParser().load_from_file(config_file)
+
+                config = parsed_config.model_dump() if hasattr(parsed_config, "model_dump") else parsed_config.dict()
+                config["slug"] = slug
+                return config
+            except Exception as e:
+                raise ConfigFetchError(
+                    f"Failed to load config from YAML for slug '{slug}': {e}",
+                    config_slug=slug,
+                    original_error=e,
+                ) from e
+
         if not self.api_url:
             raise ConfigFetchError(
                 "API client not configured - missing URL",
@@ -713,6 +744,34 @@ class ScraperAPIClient:
             ) from e
 
     def list_published_configs(self) -> list[dict[str, Any]]:
+        use_yaml_configs = os.environ.get("USE_YAML_CONFIGS", "false").lower() == "true"
+
+        if use_yaml_configs:
+            configs_dir = Path(__file__).resolve().parent.parent / "scrapers" / "configs"
+            if not configs_dir.exists():
+                raise ConfigFetchError(f"YAML configs directory not found: {configs_dir}")
+
+            parser = ScraperConfigParser()
+            configs: list[dict[str, Any]] = []
+            for config_file in sorted(configs_dir.glob("*.yaml")):
+                slug = config_file.stem
+                try:
+                    try:
+                        parsed_config = ScraperYamlConfig.parse_file(config_file)
+                    except Exception:
+                        parsed_config = parser.load_from_file(config_file)
+                    configs.append(
+                        {
+                            "slug": slug,
+                            "name": parsed_config.name,
+                            "display_name": parsed_config.display_name,
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(f"Skipping invalid scraper config YAML '{config_file.name}': {e}")
+
+            return configs
+
         if not self.api_url:
             raise ConfigFetchError("API client not configured - missing URL")
 

@@ -110,6 +110,23 @@ const nextConfig: NextConfig = {
         destination: '/admin/scrapers/network',
         permanent: false, // 307 temporary redirect
       },
+      // Phase 3: Redirect deprecated config edit routes to scraper list
+      {
+        source: '/admin/scrapers/configs/:id/edit',
+        destination: '/admin/scrapers/list',
+        permanent: true, // 308 permanent redirect
+      },
+      // Phase 3: Redirect deprecated test-lab routes to scraper detail
+      {
+        source: '/admin/scrapers/:slug/test-lab',
+        destination: '/admin/scrapers/:slug',
+        permanent: true, // 308 permanent redirect
+      },
+      {
+        source: '/admin/scrapers/:slug/test-lab/:path*',
+        destination: '/admin/scrapers/:slug',
+        permanent: true, // 308 permanent redirect
+      },
     ];
   },
 

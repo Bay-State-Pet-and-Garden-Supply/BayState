@@ -23,6 +23,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from core.settings_manager import *
+from core.config import use_yaml_configs
 
 
 def _normalize_scraper_identifier(value: str) -> str:
@@ -39,11 +40,41 @@ def _get_api_client() -> ScraperAPIClient:
 
 
 def _fetch_scraper_configs(scrapers: list[str] | None = None) -> dict[str, dict[str, Any]]:
-    client = _get_api_client()
-    configs_data = client.list_published_configs()
-
     requested = {_normalize_scraper_identifier(s) for s in (scrapers or [])}
     config_map: dict[str, dict[str, Any]] = {}
+
+    if use_yaml_configs():
+        # Load from local YAML files
+        configs_dir = os.path.join(os.path.dirname(__file__), "configs")
+        if not os.path.exists(configs_dir):
+            raise RuntimeError(f"Local configs directory not found: {configs_dir}")
+
+        for filename in os.listdir(configs_dir):
+            if filename.endswith(".yaml"):
+                slug = filename[:-5]
+                normalized_slug = _normalize_scraper_identifier(slug)
+                
+                if requested and normalized_slug not in requested:
+                    continue
+                
+                with open(os.path.join(configs_dir, filename), "r", encoding="utf-8") as f:
+                    import yaml
+                    payload = yaml.safe_load(f)
+                    
+                    if not isinstance(payload, dict):
+                        continue
+                        
+                    name_raw = payload.get("name")
+                    key = _normalize_scraper_identifier(name_raw) if name_raw else normalized_slug
+                    config_map[key] = payload
+        
+        if requested and not config_map:
+            raise RuntimeError(f"No matching local scraper configs found for: {requested}")
+        return config_map
+
+    # Fallback to API logic
+    client = _get_api_client()
+    configs_data = client.list_published_configs()
 
     for item in configs_data:
         if not isinstance(item, dict):
@@ -95,7 +126,7 @@ def get_test_skus_from_configs(scrapers: list[str] | None = None) -> tuple[list[
 def run_test_mode(scrapers: list[str] | None = None, debug_mode: bool = False):
     from scrapers.runtime import run_scraping
 
-    print("\n[TEST] TEST MODE - Using test_skus from API configurations\n")
+    print("\n[TEST] TEST MODE - Using test_skus from configurations\n")
     print("=" * 60)
 
     scraper_test_skus: dict[str, list[str]] = {}
