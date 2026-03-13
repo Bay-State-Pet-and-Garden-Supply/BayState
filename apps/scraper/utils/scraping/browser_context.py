@@ -38,6 +38,9 @@ class ManagedBrowser:
         timeout: int = 30,
         cleanup_timeout: float = 10.0,
     ) -> None:
+        if cleanup_timeout <= 0:
+            raise ValueError("cleanup_timeout must be greater than zero")
+
         self.site_name = site_name
         self.headless = headless
         self.profile_suffix = profile_suffix
@@ -67,6 +70,7 @@ class ManagedBrowser:
         exc_tb: TracebackType | None,
     ) -> bool:
         if not self.browser:
+            logger.warning("[%s] ManagedBrowser exited without an initialized browser", self.site_name)
             return False
 
         had_exception = exc_type is not None
@@ -83,13 +87,13 @@ class ManagedBrowser:
                 self.site_name,
                 self.cleanup_timeout,
             )
-            await self._force_cleanup()
+            await self._run_force_cleanup()
         except Exception:
             logger.exception(
                 "[%s] Browser cleanup failed; running force cleanup",
                 self.site_name,
             )
-            await self._force_cleanup()
+            await self._run_force_cleanup()
         finally:
             self.browser = None
 
@@ -126,6 +130,12 @@ class ManagedBrowser:
         browser_obj.context = None
         browser_obj.browser = None
         browser_obj.playwright = None
+
+    async def _run_force_cleanup(self) -> None:
+        try:
+            await self._force_cleanup()
+        except Exception:
+            logger.exception("[%s] Force cleanup raised an unexpected error", self.site_name)
 
 
 def managed_playwright_browser(
