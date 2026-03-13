@@ -1,6 +1,6 @@
 # Implementation Plan: Scraper Performance Fixes
 
-## Phase 1: Foundation (Wave 1)
+## Phase 1: Foundation (Wave 1) [checkpoint: d1ed390]
 - [x] Task: Create tiered timeout configuration system (`core/timeout_config.py`) [b5a905f]
 - [x] Task: Implement `ManagedBrowser` context manager for guaranteed cleanup (`utils/scraping/browser_context.py`) [60690b7]
 - [x] Task: Add request interception for resource blocking (images, CSS, analytics) [aa2f33f]
