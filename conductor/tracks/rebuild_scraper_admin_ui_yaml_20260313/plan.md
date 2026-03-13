@@ -31,11 +31,11 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Scraper Detail' (Protocol in workflow.md) [89a16c8]
 
 ## Phase 4: Credential Management UI
-- [ ] Task: Create Credentials Management Section
-    - [ ] Add a "Credentials" tab to the scraper detail page
-    - [ ] Implement a form to view/edit credentials stored in `public.scraper_credentials` table
-    - [ ] Ensure this section remains editable in all environments
-    - [ ] Write unit tests for the credentials UI and actions
+- [x] Task: Create Credentials Management Section [8033495]
+    - [x] Add a "Credentials" tab to the scraper detail page
+    - [x] Implement a form to view/edit credentials stored in `public.scraper_credentials` table
+    - [x] Ensure this section remains editable in all environments
+    - [x] Write unit tests for the credentials UI and actions
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Credentials' (Protocol in workflow.md)
 
 ## Phase 5: Cleanup & Final Verification
