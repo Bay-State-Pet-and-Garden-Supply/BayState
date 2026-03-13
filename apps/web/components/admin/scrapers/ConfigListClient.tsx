@@ -27,8 +27,6 @@ import {
   ArrowUpDown, 
   Search, 
   MoreHorizontal, 
-  Play, 
-  Edit, 
   History,
   AlertCircle,
   CheckCircle2,
@@ -138,19 +136,6 @@ export function ConfigListClient({ initialData }: ConfigListClientProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link href={`/admin/scrapers/configs/${config.id}/edit`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Configuration
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/admin/scrapers/test-lab/${config.id}`}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Run Test
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href={`/admin/scrapers/configs/${config.id}/history`}>
                   <History className="mr-2 h-4 w-4" />

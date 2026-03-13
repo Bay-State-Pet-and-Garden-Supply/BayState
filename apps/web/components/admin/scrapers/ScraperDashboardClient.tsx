@@ -11,6 +11,19 @@ import {
   HelpCircle,
   Activity,
   FileCode2,
+  Server,
+  History,
+  Settings2,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
+  BarChart3,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  HelpCircle,
+  Activity,
+  FileCode2,
   Beaker,
   Server,
   History,
@@ -238,7 +251,7 @@ export function ScraperDashboardClient({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link href="/admin/scrapers/configs">
           <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
             <CardContent className="flex flex-col items-center justify-center p-4">
@@ -248,7 +261,17 @@ export function ScraperDashboardClient({
             </CardContent>
           </Card>
         </Link>
-        <Link href="/admin/scrapers/test-lab">
+        <Link href="/admin/scrapers/runs">
+        <Link href="/admin/scrapers/configs">
+          <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
+            <CardContent className="flex flex-col items-center justify-center p-4">
+              <FileCode2 className="h-8 w-8 text-blue-600 mb-2" />
+              <span className="font-medium">Configs</span>
+              <span className="text-xs text-gray-600">Build & Edit</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/scrapers/runs">
           <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
             <CardContent className="flex flex-col items-center justify-center p-4">
               <Beaker className="h-8 w-8 text-purple-600 mb-2" />
@@ -350,7 +373,7 @@ export function ScraperDashboardClient({
               {scrapers.slice(0, 10).map((scraper) => (
                 <Link
                   key={scraper.id}
-                  href={`/admin/scrapers/configs/${scraper.id}/edit`}
+                  href={`/admin/scrapers/${scraper.name}`}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">

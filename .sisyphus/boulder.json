@@ -1,9 +1,10 @@
 {
-  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-config-migration.md",
-  "started_at": "2026-03-12T21:37:03.381Z",
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/scraper-config-migration.md",
+  "started_at": "2026-03-13T00:56:26.861Z",
   "session_ids": [
-    "ses_31c04b2a2ffeznwMbZfdshaDhk"
+    "ses_31b4e2649ffeKIw703nuIU5UX5"
   ],
   "plan_name": "scraper-config-migration",
-  "agent": "atlas"
+  "agent": "atlas",
+  "worktree_path": "/Users/nickborrello/Desktop/Projects/BayState"
 }

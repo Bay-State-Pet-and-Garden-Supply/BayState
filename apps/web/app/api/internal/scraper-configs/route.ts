@@ -1,14 +1,60 @@
 import { validateRunnerAuth } from '@/lib/scraper-auth';
-import { createClient } from '@supabase/supabase-js';
+import { readdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
+import YAML from 'yaml';
 
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error('Missing Supabase configuration');
+type ScraperConfigListItem = {
+  slug: string;
+  display_name: string;
+  domain: string | null;
+  version_number: number | null;
+  published_at: string | null;
+};
+
+type ParsedScraperConfig = {
+  name?: unknown;
+  display_name?: unknown;
+  base_url?: unknown;
+};
+
+const CONFIGS_DIR = path.join(process.cwd(), '..', 'scraper', 'scrapers', 'configs');
+
+function getDomain(baseUrl: unknown): string | null {
+  if (typeof baseUrl !== 'string' || baseUrl.length === 0) {
+    return null;
   }
-  return createClient(url, key);
+
+  try {
+    return new URL(baseUrl).hostname;
+  } catch {
+    return null;
+  }
+}
+
+async function readConfigListItem(fileName: string): Promise<ScraperConfigListItem | null> {
+  const slug = path.basename(fileName, '.yaml');
+
+  try {
+    const rawYaml = await readFile(path.join(CONFIGS_DIR, fileName), 'utf8');
+    const parsed = YAML.parse(rawYaml) as ParsedScraperConfig | null;
+
+    return {
+      slug,
+      display_name:
+        typeof parsed?.display_name === 'string'
+          ? parsed.display_name
+          : typeof parsed?.name === 'string'
+            ? parsed.name
+            : slug,
+      domain: getDomain(parsed?.base_url),
+      version_number: null,
+      published_at: null,
+    };
+  } catch (error) {
+    console.warn(`Skipping invalid scraper config YAML: ${fileName}`, error);
+    return null;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -22,39 +68,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or missing API key' }, { status: 401 });
     }
 
-    const supabase = getSupabaseAdmin();
-
-    const { data: configs, error } = await supabase
-      .from('scraper_configs')
-      .select(`
-        slug,
-        display_name,
-        domain,
-        schema_version,
-        scraper_config_versions!current_version_id (
-          version_number,
-          published_at
-        )
-      `)
-      .order('slug', { ascending: true });
-
-    if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json({ error: 'Failed to fetch configs' }, { status: 500 });
-    }
-
-    const publishedConfigs = (configs || []).filter(
-      (config: Record<string, unknown>) => 
-        (config.scraper_config_versions as Record<string, unknown>)?.status === 'published'
-    );
-
-    const formattedConfigs = publishedConfigs.map((config: Record<string, unknown>) => ({
-      slug: config.slug,
-      display_name: config.display_name,
-      domain: config.domain,
-      version_number: (config.scraper_config_versions as Record<string, number>)?.version_number || null,
-      published_at: (config.scraper_config_versions as Record<string, string>)?.published_at || null,
-    }));
+    const fileNames = (await readdir(CONFIGS_DIR)).filter((fileName) => fileName.endsWith('.yaml'));
+    const configs = await Promise.all(fileNames.map((fileName) => readConfigListItem(fileName)));
+    const formattedConfigs = configs
+      .filter((config): config is ScraperConfigListItem => config !== null)
+      .sort((left, right) => left.slug.localeCompare(right.slug));
 
     return NextResponse.json({
       data: formattedConfigs,
