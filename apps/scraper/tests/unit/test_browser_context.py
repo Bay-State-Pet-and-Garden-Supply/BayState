@@ -8,6 +8,11 @@ import pytest
 from utils.scraping.browser_context import ManagedBrowser
 
 
+def test_cleanup_timeout_must_be_positive() -> None:
+    with pytest.raises(ValueError, match="greater than zero"):
+        ManagedBrowser("coastal", cleanup_timeout=0)
+
+
 @pytest.mark.asyncio
 async def test_managed_browser_returns_playwright_browser() -> None:
     browser = AsyncMock()
@@ -54,6 +59,18 @@ async def test_timeout_triggers_force_cleanup() -> None:
                 pass
 
     force_cleanup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_force_cleanup_errors_are_swallowed_in_exit() -> None:
+    browser = AsyncMock()
+    browser.quit.side_effect = RuntimeError("close failed")
+    manager = ManagedBrowser("coastal")
+
+    with patch("utils.scraping.browser_context._create_playwright_browser", AsyncMock(return_value=browser)):
+        with patch.object(manager, "_force_cleanup", AsyncMock(side_effect=RuntimeError("forced cleanup failure"))):
+            async with manager:
+                pass
 
 
 @pytest.mark.asyncio
