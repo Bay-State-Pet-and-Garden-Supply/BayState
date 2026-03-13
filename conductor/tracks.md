@@ -13,9 +13,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./tracks/url_selection_refinement_20260312/](./tracks/url_selection_refinement_20260312/)*
 
 ---
-
-- [x] **Track: Rebuild Scraper Admin UI to reflect the move from Supabase-based configurations to local YAML files.**
-*Link: [./tracks/rebuild_scraper_admin_ui_yaml_20260313/](./tracks/rebuild_scraper_admin_ui_yaml_20260313/)*
-
-
----
