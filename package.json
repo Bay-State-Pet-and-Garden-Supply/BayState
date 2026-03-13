@@ -17,7 +17,9 @@
     "scraper": "bun --cwd apps/scraper",
     "vercel-build": "cd apps/web && next build"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ansi-styles": "^4.3.0"
+  },
   "devDependencies": {
     "turbo": "^2.5.8"
   }
