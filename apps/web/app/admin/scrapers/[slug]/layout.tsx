@@ -4,6 +4,9 @@ import { getScraperBySlug } from '../actions-workbench';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Metadata } from 'next';
 import { ScraperTabsClient } from './tabs-client';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Globe, Terminal } from 'lucide-react';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Scraper Workbench',
@@ -27,40 +30,54 @@ export default async function ScraperWorkbenchLayout({
   }
 
   return (
-    <div className="flex flex-col h-full space-y-4" data-testid="scraper-workbench">
-      {/* Header section with tabs inline */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between pb-4 border-b">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold tracking-tight" data-testid="scraper-workbench-title">
-              {scraper.display_name || scraper.name || slug}
-            </h1>
-            <StatusBadge 
-              status={scraper.status || 'unknown'} 
-            />
-            <StatusBadge 
-              status={scraper.health_status || 'unknown'} 
-            />
+    <div className="flex flex-col h-full space-y-6" data-testid="scraper-workbench">
+      {/* Redesigned Header with Back Arrow */}
+      <div className="bg-white border-b -mx-8 -mt-8 px-8 py-6 mb-2 shadow-sm">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" asChild className="-ml-2 h-8 w-8 p-0">
+              <Link href="/admin/scrapers/list">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-[#66161D]" data-testid="scraper-workbench-title">
+                  {scraper.display_name || scraper.name || slug}
+                </h1>
+                <StatusBadge 
+                  status={scraper.status || 'unknown'} 
+                />
+                <StatusBadge 
+                  status={scraper.health_status || 'unknown'} 
+                />
+              </div>
+              <div className="flex items-center text-muted-foreground text-xs gap-4">
+                <div className="flex items-center gap-1.5 font-mono">
+                  <Terminal className="h-3 w-3" />
+                  {slug}
+                </div>
+                {scraper.base_url && (
+                  <div className="flex items-center gap-1.5">
+                    <Globe className="h-3 w-3" />
+                    {scraper.base_url}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center text-muted-foreground text-sm gap-2 mt-2">
-            <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">
-              {slug}
-            </span>
-            {scraper.domain && (
-              <>
-                <span>•</span>
-                <span>{scraper.domain}</span>
-              </>
-            )}
+          
+          <div className="pt-2">
+            <ScraperTabsClient slug={slug} />
           </div>
         </div>
-        {/* Tabs navigation - inline with heading */}
-        <ScraperTabsClient slug={slug} />
       </div>
 
       {/* Content area */}
       <div className="flex-1 min-h-0" data-testid="workbench-content">
-        {children}
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
       </div>
     </div>
   );

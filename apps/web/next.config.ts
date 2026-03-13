@@ -137,17 +137,6 @@ const nextConfig: NextConfig = {
         destination: '/admin/scrapers/list',
         permanent: true,
       },
-      // Phase 3: Redirect deprecated test-lab routes to scraper detail
-      {
-        source: '/admin/scrapers/:slug/test-lab',
-        destination: '/admin/scrapers/:slug',
-        permanent: true, // 308 permanent redirect
-      },
-      {
-        source: '/admin/scrapers/:slug/test-lab/:path*',
-        destination: '/admin/scrapers/:slug',
-        permanent: true, // 308 permanent redirect
-      },
     ];
   },
 

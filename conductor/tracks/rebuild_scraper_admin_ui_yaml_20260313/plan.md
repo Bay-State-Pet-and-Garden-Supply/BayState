@@ -38,8 +38,8 @@
     - [x] Write unit tests for the credentials UI and actions
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Credentials' (Protocol in workflow.md) [eb6d098]
 
-## Phase 5: Cleanup & Final Verification
-- [ ] Task: Remove legacy scraper config API routes and actions
-    - [ ] Delete or deprecate legacy server actions related to config editing in Supabase
-- [ ] Task: Perform final E2E verification of the new workflow
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Cleanup' (Protocol in workflow.md)
+## Phase 5: Cleanup & Final Verification [checkpoint: 6b85760]
+- [x] Task: Remove legacy scraper config API routes and actions [6b85760]
+    - [x] Delete or deprecate legacy server actions related to config editing in Supabase
+- [x] Task: Perform final E2E verification of the new workflow [34a2f50]
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Cleanup' (Protocol in workflow.md) [6b85760]
