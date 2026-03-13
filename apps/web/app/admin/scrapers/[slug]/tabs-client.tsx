@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, Beaker, Settings } from 'lucide-react';
+import { Activity, Beaker, Settings, ShieldCheck } from 'lucide-react';
 
 interface ScraperTabsClientProps {
   slug: string;
@@ -31,6 +31,12 @@ export function ScraperTabsClient({ slug }: ScraperTabsClientProps) {
             <Link href={`/admin/scrapers/${slug}/configuration`} data-testid="tab-configuration">
               <Settings className="w-4 h-4 mr-2" />
               Configuration
+            </Link>
+          </TabsTrigger>
+          <TabsTrigger value="credentials" asChild className="min-w-[120px] h-9">
+            <Link href={`/admin/scrapers/${slug}/credentials`} data-testid="tab-credentials">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Credentials
             </Link>
           </TabsTrigger>
           <TabsTrigger value="test-lab" asChild className="min-w-[120px] h-9">
