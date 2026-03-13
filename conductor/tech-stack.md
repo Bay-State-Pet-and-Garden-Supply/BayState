@@ -6,6 +6,7 @@
 - **Styling:** Tailwind CSS v4, shadcn/ui
 - **State Management/Data Fetching:** React Server Components, SWR (or similar for client-side fetching)
 - **Testing:** Jest, React Testing Library, Playwright (E2E)
+- **Utilities:** yaml (parsing), @monaco-editor/react (code viewer)
 
 ## Scraper Backend (BayStateScraper)
 - **Language:** Python 3.10+
