@@ -15,8 +15,7 @@ selectors:
     multiple: false
     required: true
   - name: Weight
-    selector: //*[contains(text(), 'Product Size:')] | //*[contains(text(),
-      'Weight:')] | //*[contains(@class, 'product-weight')]
+    selector: "span.product-weight, div.weight, //*[contains(text(), 'Product Size:')] | //*[contains(text(), 'Weight:')] | //*[contains(@class, 'product-weight')]"
     attribute: text
     multiple: false
     required: false
@@ -76,7 +75,7 @@ workflows:
     name: null
     params:
       index: 0
-      selector: a[href*='/products/']:not([href*='gift-card'])
+      selector: "a.snize-view-link, div.snize-item a, a[href*='/products/']:not([href*='gift-card'])"
   - action: wait_for
     name: null
     params:

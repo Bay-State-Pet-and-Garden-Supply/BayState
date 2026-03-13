@@ -1,5 +1,5 @@
 schema_version: "1.0"
-name: central-pet
+name: central_pet
 display_name: Central Pet
 base_url: https://www.centralpet.com
 scraper_type: static

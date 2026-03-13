@@ -10,7 +10,7 @@ selectors:
     multiple: false
     required: true
   - name: Brand
-    selector: //main//h1/preceding-sibling::p[1]/a
+    selector: ".product-detail__brand, a.brand-link, span.brand, //main//h1/preceding-sibling::p[1]/a"
     attribute: text
     multiple: false
     required: true
@@ -25,7 +25,7 @@ selectors:
     multiple: true
     required: true
   - name: BCI Item Number
-    selector: p:has-text('BCI Item Number:')
+    selector: ".product-detail__sku, span:has-text('SKU:'), div.sku, p:has-text('BCI Item Number:')"
     attribute: text
     multiple: false
     required: false
@@ -61,9 +61,9 @@ selectors:
     required: false
 workflows:
   - action: navigate
-    name: null
+    name: search_page
     params:
-      url: https://www.bradleycaldwell.com/search?term={sku}
+      url: https://www.bradleycaldwell.com/search?term={{sku}}
   - action: wait_for
     name: null
     params:
@@ -86,7 +86,7 @@ workflows:
     name: null
     params:
       index: 0
-      selector: a[href*='/products/'], a:has-text('View product'), .product-listing__link
+      selector: "article a, main article a, .product-card a, article a:has-text('View product'), article a.absolute.inset-0, article a h2, a[href*='/product/']"
   - action: wait
     name: null
     params:
