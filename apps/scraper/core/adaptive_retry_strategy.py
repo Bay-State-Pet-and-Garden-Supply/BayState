@@ -58,7 +58,7 @@ PEAK_HOUR_DELAY_MULTIPLIER = 1.3
 
 
 @dataclass
-class FailureContext:
+class AdaptiveFailureContext:
     """Context information for a failure."""
 
     site_name: str
@@ -73,7 +73,7 @@ class FailureRecord:
     """Record of a single failure occurrence."""
 
     timestamp: float
-    failure_context: FailureContext
+    failure_context: AdaptiveFailureContext
     success_after_retry: bool = False
     final_success: bool = False
 

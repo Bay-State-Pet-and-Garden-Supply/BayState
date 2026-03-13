@@ -34,6 +34,7 @@ class ErrorContext:
     sku: str | None = None
     retry_count: int = 0
     max_retries: int = 1
+    timeout_multiplier: float = 1.0
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -47,6 +48,7 @@ class ErrorContext:
             "sku": self.sku,
             "retry_count": self.retry_count,
             "max_retries": self.max_retries,
+            "timeout_multiplier": self.timeout_multiplier,
             **self.extra,
         }
 

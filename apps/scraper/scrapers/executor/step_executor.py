@@ -316,6 +316,13 @@ class StepExecutor:
     def _on_retry_callback(self, attempt: int, error: Exception, delay: float) -> None:
         """Callback called before each retry attempt."""
         logger.info(f"Retry attempt {attempt + 2} for {self.config_name} after {type(error).__name__}, waiting {delay:.2f}s")
+        
+        # Update timeout multiplier in shared context if available
+        if hasattr(error, "context") and hasattr(error.context, "timeout_multiplier"):
+            multiplier = getattr(error.context, "timeout_multiplier", 1.0)
+            if self.context and hasattr(self.context, "context_data"):
+                self.context.context_data["timeout_multiplier"] = multiplier
+                logger.debug(f"Propagated timeout multiplier {multiplier:.1f}x to scraper context")
 
     async def _capture_debug_artifact(
         self,
