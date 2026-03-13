@@ -151,8 +151,8 @@ class AdaptiveRetryStrategy:
 
         # Default retry configurations for different failure types
         # NOTE: Using environment variable to control retries globally
-        # REDUCED: Minimal retries for fast failure mode
-        global_max_retries_str = os.environ.get("SCRAPER_MAX_RETRIES", "1")
+        # RESTORED: Standard retries (3) instead of minimal (1)
+        global_max_retries_str = os.environ.get("SCRAPER_MAX_RETRIES", "3")
         global_max_retries = int(global_max_retries_str)
 
         self.default_configs = {
@@ -165,7 +165,7 @@ class AdaptiveRetryStrategy:
                 captcha_retry_limit=1,
             ),
             FailureType.RATE_LIMITED: AdaptiveRetryConfig(
-                max_retries=min(1, global_max_retries),
+                max_retries=min(2, global_max_retries),
                 base_delay=2.0,
                 max_delay=10.0,
                 backoff_multiplier=1.5,
@@ -180,7 +180,7 @@ class AdaptiveRetryStrategy:
                 session_rotation_threshold=1,
             ),
             FailureType.ACCESS_DENIED: AdaptiveRetryConfig(
-                max_retries=min(1, global_max_retries),
+                max_retries=0,  # Fail fast on access denied/blocks
                 base_delay=2.0,
                 max_delay=10.0,
                 backoff_multiplier=1.5,
@@ -188,14 +188,14 @@ class AdaptiveRetryStrategy:
                 session_rotation_threshold=1,
             ),
             FailureType.NETWORK_ERROR: AdaptiveRetryConfig(
-                max_retries=min(1, global_max_retries),
+                max_retries=min(3, global_max_retries),
                 base_delay=0.5,
                 max_delay=5.0,
                 backoff_multiplier=1.2,
                 strategy=RetryStrategy.EXPONENTIAL_BACKOFF,
             ),
             FailureType.ELEMENT_MISSING: AdaptiveRetryConfig(
-                max_retries=min(1, global_max_retries),
+                max_retries=min(2, global_max_retries),
                 base_delay=0.2,
                 max_delay=2.0,
                 backoff_multiplier=1.2,
@@ -210,14 +210,14 @@ class AdaptiveRetryStrategy:
                 strategy=RetryStrategy.IMMEDIATE_RETRY,
             ),
             FailureType.NO_RESULTS: AdaptiveRetryConfig(
-                max_retries=min(1, global_max_retries),
+                max_retries=0,  # Do not retry No Results
                 base_delay=0.0,
                 max_delay=0.0,
                 backoff_multiplier=1.0,
                 strategy=RetryStrategy.IMMEDIATE_RETRY,
             ),
             FailureType.TIMEOUT: AdaptiveRetryConfig(
-                max_retries=min(0, global_max_retries),
+                max_retries=min(2, global_max_retries),
                 base_delay=2.0,
                 max_delay=15.0,
                 backoff_multiplier=1.5,
