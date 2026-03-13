@@ -13,3 +13,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./tracks/url_selection_refinement_20260312/](./tracks/url_selection_refinement_20260312/)*
 
 ---
+
+## [ ] **Track: Scraper Performance Fixes**
+*Link: [./tracks/scraper_performance_fixes_20260313/](./tracks/scraper_performance_fixes_20260313/)*
