@@ -31,6 +31,7 @@ if project_root not in sys.path:
 from core.events import *
 from core.api_client import *
 from core.settings_manager import *
+from core.config import use_yaml_configs
 from utils.logger import setup_logging
 
 if TYPE_CHECKING:
@@ -145,49 +146,78 @@ def run_scraping(
             else:
                 scraper_progress_callback(data)
 
-    api_client = ScraperAPIClient()
-    if not api_client.api_url:
-        error_msg = "SCRAPER_API_URL not configured - API-backed scraper configs are required"
-        log(error_msg, "ERROR")
-        raise RuntimeError(error_msg)
-    if not api_client.api_key:
-        error_msg = "SCRAPER_API_KEY not configured - API-backed scraper configs are required"
-        log(error_msg, "ERROR")
-        raise RuntimeError(error_msg)
-
     available_sites: list[str] = []
     remote_scrapers: list[dict[str, Any]] = []
-    try:
-        configs_data = api_client.list_published_configs()
 
-        for config_item in configs_data:
-            if not isinstance(config_item, dict):
-                continue
-            slug_raw = config_item.get("slug")
-            slug = str(slug_raw).strip() if isinstance(slug_raw, str) else ""
-            if not slug:
-                continue
+    if use_yaml_configs():
+        # Load configs from local filesystem instead of API
+        log("USE_YAML_CONFIGS is enabled - loading local configurations", "INFO")
+        configs_dir = os.path.join(os.path.dirname(__file__), "configs")
+        if not os.path.exists(configs_dir):
+            error_msg = f"Local configs directory not found: {configs_dir}"
+            log(error_msg, "ERROR")
+            raise RuntimeError(error_msg)
 
-            try:
-                published_cfg = api_client.get_published_config(slug)
-            except Exception as e:
-                raise RuntimeError(f"Failed to fetch published config '{slug}' from API: {e}") from e
+        for filename in os.listdir(configs_dir):
+            if filename.endswith(".yaml"):
+                slug = filename[:-5]
+                with open(os.path.join(configs_dir, filename), "r", encoding="utf-8") as f:
+                    import yaml
+                    try:
+                        cfg_payload = yaml.safe_load(f)
+                        if isinstance(cfg_payload, dict):
+                            # Ensure name is set
+                            if not cfg_payload.get("name"):
+                                cfg_payload["name"] = slug
+                            remote_scrapers.append(cfg_payload)
+                            available_sites.append(cfg_payload["name"])
+                    except Exception as e:
+                        log(f"Failed to load local config {filename}: {e}", "WARNING")
+        
+        log(f"Found {len(remote_scrapers)} local scrapers", "INFO")
+    else:
+        # standard API client logic
+        api_client = ScraperAPIClient()
+        if not api_client.api_url:
+            error_msg = "SCRAPER_API_URL not configured - API-backed scraper configs are required"
+            log(error_msg, "ERROR")
+            raise RuntimeError(error_msg)
+        if not api_client.api_key:
+            error_msg = "SCRAPER_API_KEY not configured - API-backed scraper configs are required"
+            log(error_msg, "ERROR")
+            raise RuntimeError(error_msg)
 
-            cfg_payload = published_cfg.get("config")
-            if not isinstance(cfg_payload, dict):
-                raise RuntimeError(f"Published config '{slug}' missing valid config payload")
+        try:
+            configs_data = api_client.list_published_configs()
 
-            remote_scrapers.append(cfg_payload)
-            name = cfg_payload.get("name")
-            if isinstance(name, str) and name.strip():
-                available_sites.append(name.strip())
+            for config_item in configs_data:
+                if not isinstance(config_item, dict):
+                    continue
+                slug_raw = config_item.get("slug")
+                slug = str(slug_raw).strip() if isinstance(slug_raw, str) else ""
+                if not slug:
+                    continue
 
-        if not remote_scrapers:
-            raise RuntimeError("No published scraper configs returned by API")
-        log(f"Found {len(remote_scrapers)} scrapers from API", "INFO")
-    except Exception as e:
-        log(f"Failed to fetch scraper configs from API: {e}", "ERROR")
-        raise
+                try:
+                    published_cfg = api_client.get_published_config(slug)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to fetch published config '{slug}' from API: {e}") from e
+
+                cfg_payload = published_cfg.get("config")
+                if not isinstance(cfg_payload, dict):
+                    raise RuntimeError(f"Published config '{slug}' missing valid config payload")
+
+                remote_scrapers.append(cfg_payload)
+                name = cfg_payload.get("name")
+                if isinstance(name, str) and name.strip():
+                    available_sites.append(name.strip())
+
+            if not remote_scrapers:
+                raise RuntimeError("No published scraper configs returned by API")
+            log(f"Found {len(remote_scrapers)} scrapers from API", "INFO")
+        except Exception as e:
+            log(f"Failed to fetch scraper configs from API: {e}", "ERROR")
+            raise
 
     if selected_sites:
         available_sites = selected_sites
