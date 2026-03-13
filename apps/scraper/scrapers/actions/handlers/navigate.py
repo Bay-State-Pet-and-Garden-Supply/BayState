@@ -17,11 +17,13 @@ class NavigateAction(BaseAction):
 
     async def execute(self, params: dict[str, Any]) -> None:
         url = params.get("url")
+        wait_until = params.get("wait_until")
+
         if not url:
             raise WorkflowExecutionError("Navigate action requires 'url' parameter")
 
-        logger.info(f"Navigating to: {url}")
-        await self.ctx.browser.get(url)
+        logger.info(f"Navigating to: {url} (wait_until: {wait_until})")
+        await self.ctx.browser.get(url, wait_until=wait_until)
         
         # Log current URL after navigation/redirects
         try:
