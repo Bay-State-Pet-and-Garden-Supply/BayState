@@ -5,43 +5,63 @@ base_url: https://www.mazuri.com
 scraper_type: static
 selectors:
   - name: Name
-    selector: h2.product-single__title, .product-single__title
+    selector: h2.product-single__title
+    fallback_selectors:
+      - .product-single__title
     attribute: text
     multiple: false
     required: true
   - name: Brand
-    selector: h2.product-single__title, .product-single__title
+    selector: h2.product-single__title
+    fallback_selectors:
+      - .product-single__title
     attribute: text
     multiple: false
     required: true
   - name: Weight
-    selector: "span.product-weight, div.weight, //*[contains(text(), 'Product Size:')] | //*[contains(text(), 'Weight:')] | //*[contains(@class, 'product-weight')]"
+    selector: span.product-weight
+    fallback_selectors:
+      - div.weight
+      - "//*[contains(text(), 'Product Size:')]"
+      - "//*[contains(text(), 'Weight:')]"
+      - "//*[contains(@class, 'product-weight')]"
     attribute: text
     multiple: false
     required: false
   - name: Image URLs
-    selector: ".product-single__photo img, .product__photo img,
-      #carouselExampleControls img, .product-gallery img"
+    selector: ".product-single__photo img"
+    fallback_selectors:
+      - ".product__photo img"
+      - "#carouselExampleControls img"
+      - ".product-gallery img"
     attribute: src
     multiple: true
     required: true
   - name: Ingredients
-    selector: "#ingredients-tab-content, .ingredients-section"
+    selector: "#ingredients-tab-content"
+    fallback_selectors:
+      - ".ingredients-section"
     attribute: text
     multiple: false
     required: false
   - name: Guaranteed Analysis
-    selector: "#analysis-tab-content, .guaranteed-analysis"
+    selector: "#analysis-tab-content"
+    fallback_selectors:
+      - ".guaranteed-analysis"
     attribute: text
     multiple: false
     required: false
   - name: Feeding Directions
-    selector: "#feeding-tab-content, .feeding-directions"
+    selector: "#feeding-tab-content"
+    fallback_selectors:
+      - ".feeding-directions"
     attribute: text
     multiple: false
     required: false
   - name: Size Options
-    selector: select[name='id'] option, .variant-input
+    selector: select[name='id'] option
+    fallback_selectors:
+      - .variant-input
     attribute: text
     multiple: true
     required: false
