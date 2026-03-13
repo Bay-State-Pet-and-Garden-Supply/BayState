@@ -16,6 +16,7 @@ class SelectorConfig(BaseModel):
     id: str | None = Field(None, description="Unique identifier for the selector (e.g., sel_abc123)")
     name: str = Field(..., description="Name of the field to extract")
     selector: str = Field(..., description="CSS selector for the field")
+    fallback_selectors: list[str] = Field(default_factory=list, description="Alternative selectors to try if the primary fails")
     attribute: str | None = Field(None, description="Attribute to extract (e.g., 'text', 'href', 'src')")
     multiple: bool = Field(False, description="Whether to extract multiple elements")
     required: bool = Field(False, description="Whether this field is required for a successful scrape")
