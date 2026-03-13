@@ -84,7 +84,8 @@ def test_extract_action_uses_default_optional_timeout_for_non_required_fields() 
 
     assert len(ctx.single_calls) == 1
     assert ctx.single_calls[0].required is False
-    assert ctx.single_calls[0].timeout == DEFAULT_OPTIONAL_FIELD_TIMEOUT_MS
+    # Now expects None to defer to SelectorResolver's TIER_OPTIONAL
+    assert ctx.single_calls[0].timeout is None
 
 
 def test_extract_multiple_uses_default_optional_timeout_when_not_required() -> None:
@@ -94,7 +95,8 @@ def test_extract_multiple_uses_default_optional_timeout_when_not_required() -> N
     asyncio.run(action.execute({"field": "Images", "selector": "Images"}))
 
     assert len(ctx.multiple_calls) == 1
-    assert ctx.multiple_calls[0].timeout == DEFAULT_OPTIONAL_FIELD_TIMEOUT_MS
+    # Now expects None to defer to SelectorResolver's TIER_OPTIONAL
+    assert ctx.multiple_calls[0].timeout is None
 
 
 def test_extract_and_transform_uses_short_timeout_only_for_optional_fields() -> None:
@@ -112,4 +114,5 @@ def test_extract_and_transform_uses_short_timeout_only_for_optional_fields() -> 
         )
     )
 
-    assert [call.timeout for call in ctx.single_calls] == [None, 1500]
+    # Both should be None to defer to SelectorResolver
+    assert [call.timeout for call in ctx.single_calls] == [None, None]
