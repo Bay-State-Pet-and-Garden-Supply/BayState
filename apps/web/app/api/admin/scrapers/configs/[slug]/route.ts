@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import yaml from 'yaml';
 import { createClient } from '@/lib/supabase/server';
+import { getLocalScraperConfig } from '@/lib/admin/scrapers/configs';
 
 export async function GET(
   req: NextRequest,
@@ -28,34 +26,13 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const configsDir = path.join(process.cwd(), '../scraper/scrapers/configs');
-    const filePath = path.join(configsDir, `${slug}.yaml`);
-    const alternateFilePath = path.join(configsDir, `${slug}.yml`);
+    const result = await getLocalScraperConfig(slug);
 
-    let finalPath = '';
-    if (fs.existsSync(filePath)) {
-      finalPath = filePath;
-    } else if (fs.existsSync(alternateFilePath)) {
-      finalPath = alternateFilePath;
-    }
-
-    if (!finalPath) {
+    if (!result) {
       return NextResponse.json({ error: 'Config not found' }, { status: 404 });
     }
 
-    const yamlContent = fs.readFileSync(finalPath, 'utf8');
-    const config = yaml.parse(yamlContent);
-
-    return NextResponse.json({
-      yaml: yamlContent,
-      config: {
-        id: slug,
-        name: config.name || slug,
-        display_name: config.display_name || config.name || slug,
-        base_url: config.base_url || '',
-        ...config
-      }
-    });
+    return NextResponse.json(result);
   } catch (err) {
     console.error('Error in specific scraper config API:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
