@@ -104,9 +104,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
         <div className="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-xl border border-dashed" data-testid="scraper-list-empty">
           <SearchX className="h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900">No scrapers found</h3>
-          <p className="text-gray-500 mt-1 max-w-sm text-center mb-6">
-            Adjust your filters or create a new scraper to get started.
-          </p>
+
           <Button onClick={() => {
             setStatusFilter('all');
             setHealthFilter('all');
@@ -138,13 +136,15 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-view-details-link">View Details</Link>
-                      </DropdownMenuItem>
+
                       <DropdownMenuItem asChild>
                         <Link href={`/admin/scrapers/${scraper.slug}/test-lab`}>Run Test</Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>Toggle Status</DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href={`https://github.com/Bay-State-Pet-and-Garden-Supply/BayState/blob/master/apps/scraper/${scraper.file_path || `scrapers/configs/${scraper.slug}.yaml`}`} target="_blank" rel="noopener noreferrer">
+                          View on GitHub
+                        </a>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

@@ -620,7 +620,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 2.2. Update scraper backend for file-based loading
+- [x] 2.2. Update scraper backend for file-based loading
 
   **What to do**:
   - Update `ScraperAPIClient.list_published_configs()` to check `USE_YAML_CONFIGS` flag
@@ -670,7 +670,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 2.3. Implement dual-mode config discovery
+- [x] 2.3. Implement dual-mode config discovery
 
   **What to do**:
   - Update scraper to fetch credentials from API endpoint (Task 1.2)
@@ -720,7 +720,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 2.5. Update minimal scraper_configs table
+- [x] 2.5. Update minimal scraper_configs table
 
   **What to do**:
   - Create migration to add `file_path` column to `scraper_configs`
@@ -768,7 +768,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 2.6. Validate YAML configs match DB content
+- [x] 2.6. Validate YAML configs match DB content
 
   **What to do**:
   - Compare exported YAML configs with Supabase content
@@ -820,7 +820,7 @@ Phase 5: Cleanup
 
 ### Phase 3: Frontend Simplification
 
-- [ ] 3.1. Remove test-lab components
+- [x] 3.1. Remove test-lab components
 
   **What to do**:
   - Delete all test-lab related components:
@@ -876,7 +876,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 3.2. Remove config editor components
+- [x] 3.2. Remove config editor components
 
   **What to do**:
   - Delete all config editor components:
@@ -935,7 +935,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 3.3. Update scraper admin to read-only
+- [x] 3.3. Update scraper admin to read-only
 
   **What to do**:
   - Update `/apps/web/app/admin/scrapers/page.tsx` to read-only view
@@ -989,7 +989,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 3.4. Add redirect for edit routes
+- [x] 3.4. Add redirect for edit routes
 
   **What to do**:
   - Create redirects from old edit routes to new read-only view
@@ -1036,7 +1036,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 3.5. Clean up state management stores
+- [x] 3.5. Clean up state management stores
 
   **What to do**:
   - Review and clean up Zustand stores:
@@ -1086,7 +1086,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 3.6. Update navigation and menus
+- [x] 3.6. Update navigation and menus
 
   **What to do**:
   - Remove "Edit" links from navigation
@@ -1136,7 +1136,7 @@ Phase 5: Cleanup
 
 ### Phase 4: Backend Migration
 
-- [ ] 4.1. Switch scraper to YAML-only mode
+- [x] 4.1. Switch scraper to YAML-only mode
 
   **What to do**:
   - Set `USE_YAML_CONFIGS=true` in production environment
@@ -1186,7 +1186,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 4.2. Remove API fallback logic
+- [x] 4.2. Remove API fallback logic
 
   **What to do**:
   - Remove fallback to API when file loading fails
@@ -1234,7 +1234,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 4.3. Update internal API endpoints
+- [x] 4.3. Update internal API endpoints
 
   **What to do**:
   - Update `/api/internal/scraper-configs` to read from YAML files
@@ -1282,7 +1282,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 4.4. Update test run trigger mechanism
+- [x] 4.4. Update test run trigger mechanism
 
   **What to do**:
   - Update test run endpoint to reference YAML configs
@@ -1331,7 +1331,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 4.5. Production validation
+- [x] 4.5. Production validation
 
   **What to do**:
   - Run comprehensive validation in production
@@ -1384,7 +1384,7 @@ Phase 5: Cleanup
 
 ### Phase 5: Cleanup
 
-- [ ] 5.1. Archive scraper_runs data
+- [x] 5.1. Archive scraper_runs data
 
   **What to do**:
   - Export `scraper_runs` table data to NDJSON or Parquet
@@ -1434,7 +1434,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.2. Archive scraper_tests data
+- [x] 5.2. Archive scraper_tests data
 
   **What to do**:
   - Export `scraper_tests` table data to NDJSON or Parquet
@@ -1475,7 +1475,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.3. Drop scraper_config_versions table
+- [x] 5.3. Drop scraper_config_versions table
 
   **What to do**:
   - Create migration to drop `scraper_config_versions` table
@@ -1517,7 +1517,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.4. Drop scraper_selectors table
+- [x] 5.4. Drop scraper_selectors table
 
   **What to do**:
   - Create migration to drop `scraper_selectors` table
@@ -1554,7 +1554,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.5. Drop scraper_workflow_steps table
+- [x] 5.5. Drop scraper_workflow_steps table
 
   **What to do**:
   - Create migration to drop `scraper_workflow_steps` table
@@ -1577,7 +1577,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.6. Drop scraper_config_test_skus table
+- [x] 5.6. Drop scraper_config_test_skus table
 
   **What to do**:
   - Create migration to drop `scraper_config_test_skus` table
@@ -1601,7 +1601,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.7. Simplify scraper_configs table
+- [x] 5.7. Simplify scraper_configs table
 
   **What to do**:
   - Remove columns no longer needed (current_version_id, etc.)
@@ -1627,7 +1627,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.8. Remove deprecated API endpoints
+- [x] 5.8. Remove deprecated API endpoints
 
   **What to do**:
   - Remove endpoints no longer needed:
@@ -1675,7 +1675,7 @@ Phase 5: Cleanup
 
 ---
 
-- [ ] 5.9. Final cleanup and documentation
+- [x] 5.9. Final cleanup and documentation
 
   **What to do**:
   - Update documentation (AGENTS.md, README)

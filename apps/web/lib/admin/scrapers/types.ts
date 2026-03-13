@@ -34,6 +34,7 @@ export interface ScraperConfig {
   updated_at?: string;
   created_by?: string | null;
   name?: string;
+  file_path?: string | null;
   selectors?: SelectorConfig[];
   workflows?: WorkflowStep[];
   normalization?: NormalizationRule[];
