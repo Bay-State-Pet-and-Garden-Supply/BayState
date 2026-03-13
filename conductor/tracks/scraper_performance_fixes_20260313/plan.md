@@ -8,7 +8,7 @@
 - [x] Task: Implement Playwright tracing collection system for failures (`utils/scraping/tracing.py`) [aa2f33f]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
-## Phase 2: Core Reliability (Wave 2)
+## Phase 2: Core Reliability (Wave 2) [checkpoint: aa55871]
 - [x] Task: Update `selector_resolver.py` to use tiered timeouts [9666cbc]
 - [x] Task: Implement tiered timeouts in extract action handlers [ca3fd9a]
 - [x] Task: Implement per-failure-type retry policies in `AdaptiveRetryStrategy` [42164c9]
@@ -18,10 +18,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Reliability' (Protocol in workflow.md)
 
 ## Phase 3: Integration & Observability (Wave 3)
-- [ ] Task: Update major YAML configs (mazuri, coastal, etc.) with fallback selectors
-- [ ] Task: Implement progressive timeout escalation (1.5x per attempt)
-- [ ] Task: Add comprehensive error handling with structured retry hints
-- [ ] Task: Create observability dashboard API and integration with BayStateApp admin
+- [x] Task: Update major YAML configs (mazuri, coastal, etc.) with fallback selectors [88b0ddc]
+- [x] Task: Implement progressive timeout escalation (1.5x per attempt) [2993c1e]
+- [x] Task: Add comprehensive error handling with structured retry hints [c061e20]
+- [x] Task: Create observability dashboard API and integration with BayStateApp admin [14ca4dd]
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration & Observability' (Protocol in workflow.md)
 
 ## Phase 4: Optimization & Polish (Wave 4)
