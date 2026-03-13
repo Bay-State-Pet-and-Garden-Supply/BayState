@@ -1,0 +1,11 @@
+{
+  "records": [],
+  "summaries": {},
+  "alternatives": {},
+  "last_updated": 1773436959.7221937,
+  "metadata": {
+    "retention_days": 30,
+    "alert_threshold": 0.7,
+    "version": "1.0.0"
+  }
+}
