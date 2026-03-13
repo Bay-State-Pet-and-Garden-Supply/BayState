@@ -56,7 +56,7 @@ class ExtractSingleAction(BaseAction):
         timeout_ms = _resolve_timeout_ms(required, params.get("timeout_ms"))
 
         element = await self.ctx.find_element_safe(
-            selector_config.selector,
+            selector_config,
             required=required,
             timeout=timeout_ms,
         )
@@ -95,7 +95,7 @@ class ExtractMultipleAction(BaseAction):
             timeout_ms = _resolve_timeout_ms(required, params.get("timeout_ms"))
 
             elements = await self.ctx.find_elements_safe(
-                selector_config.selector,
+                selector_config,
                 timeout=timeout_ms,
             )
             values = []

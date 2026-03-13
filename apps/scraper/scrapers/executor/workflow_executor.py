@@ -384,14 +384,31 @@ class WorkflowExecutor:
             raise WorkflowExecutionError("Workflow executor not initialized")
         return await self.step_executor.execute_step(step, context or {}, self.results)
 
-    async def find_element_safe(self, selector: str, required: bool = True, timeout: int | None = None) -> Any:
+    async def find_element_safe(
+        self,
+        selector: str | SelectorConfig,
+        required: bool = True,
+        timeout: int | None = None,
+    ) -> Any:
         if self.selector_resolver is None:
             raise WorkflowExecutionError("Workflow executor not initialized")
+
+        if isinstance(selector, SelectorConfig):
+            # Combine primary selector and fallback_selectors
+            selectors = [selector.selector] + selector.fallback_selectors
+            return await self.selector_resolver.find_element_safe(selectors, required, timeout)
+
         return await self.selector_resolver.find_element_safe(selector, required, timeout)
 
-    async def find_elements_safe(self, selector: str, timeout: int | None = None) -> list[Any]:
+    async def find_elements_safe(self, selector: str | SelectorConfig, timeout: int | None = None) -> list[Any]:
         if self.selector_resolver is None:
             raise WorkflowExecutionError("Workflow executor not initialized")
+
+        if isinstance(selector, SelectorConfig):
+            # Combine primary selector and fallback_selectors
+            selectors = [selector.selector] + selector.fallback_selectors
+            return await self.selector_resolver.find_elements_safe(selectors, timeout)
+
         return await self.selector_resolver.find_elements_safe(selector, timeout)
 
     async def extract_value_from_element(self, element: Any, attribute: str | None = None) -> Any:

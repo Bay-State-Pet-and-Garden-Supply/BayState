@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from core.timeout_config import TIER_IMPORTANT, TIER_OPTIONAL, TimeoutConfig
+from core.timeout_config import TIER_FALLBACK, TIER_IMPORTANT, TIER_OPTIONAL, TimeoutConfig
 from scrapers.utils.locators import convert_to_playwright_locator
 
 logger = logging.getLogger(__name__)
@@ -30,70 +30,114 @@ class SelectorResolver:
         self.browser = browser
         self.timeout_config = timeout_config or TimeoutConfig()
 
-    async def find_element_safe(self, selector: str, required: bool = True, timeout: int | None = None) -> Any:
+    async def find_element_safe(
+        self,
+        selector: str | list[str],
+        required: bool = True,
+        timeout: int | None = None,
+    ) -> Any:
         """
         Find a single element using Playwright with retry and error handling.
 
         Args:
-            selector: CSS, XPath, or Playwright text selector string
+            selector: CSS, XPath, or Playwright text selector string, or list of selectors
             required: If True, raises error when element not found
             timeout: Optional timeout in milliseconds for waiting
 
         Returns:
             Playwright ElementHandle or None if not found and not required
         """
-        try:
-            if hasattr(self.browser, "page"):
-                page = self.browser.page
-                locator = convert_to_playwright_locator(page, selector)
-
-                # Use tiered timeouts if not explicitly provided
-                if timeout is None:
-                    tier = TIER_IMPORTANT if required else TIER_OPTIONAL
-                    element_timeout = self.timeout_config.get_timeout(tier)
-                else:
-                    element_timeout = timeout
-
-                try:
-                    return await locator.element_handle(timeout=element_timeout)
-                except Exception:
-                    if required:
-                        raise
-                    return None
-            return None
-        except Exception as e:
-            logger.debug(f"find_element_safe failed for '{selector}': {e}")
-            if required:
-                raise
+        selectors = [selector] if isinstance(selector, str) else selector
+        if not selectors:
             return None
 
-    async def find_elements_safe(self, selector: str, timeout: int | None = None) -> list[Any]:
+        last_exception = None
+        for i, sel in enumerate(selectors):
+            try:
+                if hasattr(self.browser, "page"):
+                    page = self.browser.page
+                    locator = convert_to_playwright_locator(page, sel)
+
+                    # Use tiered timeouts if not explicitly provided
+                    if timeout is None:
+                        # Primary selector uses IMPORTANT/OPTIONAL, fallbacks use FALLBACK tier
+                        tier = (TIER_IMPORTANT if required else TIER_OPTIONAL) if i == 0 else TIER_FALLBACK
+                        element_timeout = self.timeout_config.get_timeout(tier)
+                    else:
+                        element_timeout = timeout
+
+                    try:
+                        element = await locator.element_handle(timeout=element_timeout)
+                        if element:
+                            if i > 0:
+                                logger.info(f"Successfully resolved fallback selector '{sel}' for primary '{selectors[0]}'")
+                            return element
+                    except Exception as e:
+                        last_exception = e
+                        if i < len(selectors) - 1:
+                            logger.debug(f"Primary selector '{sel}' failed, trying fallback...")
+                            continue
+                        if required:
+                            raise
+                        return None
+                return None
+            except Exception as e:
+                last_exception = e
+                logger.debug(f"find_element_safe failed for '{sel}': {e}")
+                if i < len(selectors) - 1:
+                    continue
+                if required:
+                    raise
+                return None
+
+        return None
+
+    async def find_elements_safe(self, selector: str | list[str], timeout: int | None = None) -> list[Any]:
         """
         Find multiple elements using Playwright.
 
         Args:
-            selector: CSS, XPath, or Playwright text selector string
+            selector: CSS, XPath, or Playwright text selector string, or list of selectors
             timeout: Optional timeout in milliseconds for waiting
 
         Returns:
             List of Playwright ElementHandle objects (may be empty)
         """
-        try:
-            if hasattr(self.browser, "page"):
-                page = self.browser.page
-                locator = convert_to_playwright_locator(page, selector)
-
-                # Multiple elements are typically optional, use OPTIONAL tier if not provided
-                if timeout is None:
-                    elements_timeout = self.timeout_config.get_timeout(TIER_OPTIONAL)
-                else:
-                    elements_timeout = timeout
-
-                return await locator.all(timeout=elements_timeout)
+        selectors = [selector] if isinstance(selector, str) else selector
+        if not selectors:
             return []
-        except Exception as e:
-            logger.debug(f"find_elements_safe failed for '{selector}': {e}")
-            return []
+
+        for i, sel in enumerate(selectors):
+            try:
+                if hasattr(self.browser, "page"):
+                    page = self.browser.page
+                    locator = convert_to_playwright_locator(page, sel)
+
+                    # Multiple elements are typically optional, use OPTIONAL tier if not provided
+                    if timeout is None:
+                        tier = TIER_OPTIONAL if i == 0 else TIER_FALLBACK
+                        elements_timeout = self.timeout_config.get_timeout(tier)
+                    else:
+                        elements_timeout = timeout
+
+                    elements = await locator.all(timeout=elements_timeout)
+                    if elements:
+                        if i > 0:
+                            logger.info(f"Successfully resolved fallback selector '{sel}' for primary '{selectors[0]}'")
+                        return elements
+
+                    # If no elements found and we have more selectors, try next
+                    if i < len(selectors) - 1:
+                        continue
+                    return []
+                return []
+            except Exception as e:
+                logger.debug(f"find_elements_safe failed for '{sel}': {e}")
+                if i < len(selectors) - 1:
+                    continue
+                return []
+
+        return []
 
 
     async def extract_value_from_element(self, element: Any, attribute: str | None = None) -> Any:

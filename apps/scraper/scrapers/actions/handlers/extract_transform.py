@@ -101,7 +101,7 @@ class ExtractAndTransformAction(BaseAction):
     async def _process_field(self, field_config: dict[str, Any], default_timeout_ms: int | None) -> None:
         """Process a single field: extract from DOM and apply transforms."""
         name = field_config.get("name")
-        selector = field_config.get("selector")
+        selector_identifier = field_config.get("selector")
         attribute = field_config.get("attribute", "text")
         multiple = field_config.get("multiple", False)
         required = field_config.get("required", True)
@@ -111,18 +111,24 @@ class ExtractAndTransformAction(BaseAction):
         if not name:
             raise WorkflowExecutionError("Field config missing 'name'")
 
-        if not selector:
+        if not selector_identifier:
             raise WorkflowExecutionError(f"Field '{name}' missing 'selector'")
+
+        # Resolve selector config if possible
+        selector_config = self.ctx.resolve_selector(selector_identifier)
+        # Use provided identifier if no config found (backward compatibility for raw selectors)
+        target_selector = selector_config if selector_config else selector_identifier
 
         try:
             if timeout_ms_value is None:
                 timeout_ms = default_timeout_ms
             else:
                 timeout_ms = _coerce_timeout_ms(timeout_ms_value, 1500)
+
             if multiple:
-                value = await self._extract_multiple(selector, attribute, timeout_ms)
+                value = await self._extract_multiple(target_selector, attribute, timeout_ms)
             else:
-                value = await self._extract_single(selector, attribute, required, timeout_ms)
+                value = await self._extract_single(target_selector, attribute, required, timeout_ms)
 
             # Check required constraint
             if required and value is None:
