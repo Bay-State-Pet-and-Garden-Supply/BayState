@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { WorkflowStepEditor } from '@/components/admin/scrapers/workflow-step-editor';
 import { ActionPalette } from '@/components/admin/scrapers/action-palette';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
@@ -81,9 +80,11 @@ export default async function ScraperWorkflowsPage({ params }: ScraperWorkflowsP
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-3">
-          <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
-            <WorkflowStepsLoader versionId={config.current_version_id} isReadOnly={isReadOnly} />
-          </Suspense>
+          <div className="p-4 bg-muted/20 rounded-lg border">
+            <p className="text-sm text-muted-foreground">
+              The workflow step editor has been deprecated. Please use the Studio or Create new scraper workflow to manage workflow steps.
+            </p>
+          </div>
         </div>
         
         <div className="lg:col-span-1 hidden lg:block sticky top-6">
@@ -91,33 +92,5 @@ export default async function ScraperWorkflowsPage({ params }: ScraperWorkflowsP
         </div>
       </div>
     </div>
-  );
-}
-
-async function WorkflowStepsLoader({ versionId, isReadOnly }: { versionId: string, isReadOnly: boolean }) {
-  const supabase = await createClient();
-  
-  const { data: steps, error } = await supabase
-    .from('scraper_workflow_steps')
-    .select('*')
-    .eq('version_id', versionId)
-    .order('sort_order', { ascending: true });
-    
-  if (error) {
-    console.error('Error loading workflow steps:', error);
-    return (
-      <Alert variant="destructive">
-        <AlertTitle>Error loading workflow steps</AlertTitle>
-        <AlertDescription>{error.message}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  return (
-    <WorkflowStepEditor 
-      versionId={versionId} 
-      steps={steps || []} 
-      isReadOnly={isReadOnly} 
-    />
   );
 }

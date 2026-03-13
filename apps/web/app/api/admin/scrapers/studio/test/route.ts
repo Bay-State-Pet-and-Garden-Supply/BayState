@@ -1,12 +1,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import YAML from 'yaml';
 
 // Validation schema for test request
 const testRequestSchema = z.object({
-  config_id: z.string().uuid(),
-  version_id: z.string().uuid().optional(),
+  scraper_slug: z.string().min(1),
   skus: z.array(z.string()).optional(),
   options: z.object({
     timeout: z.number().optional(),
@@ -23,31 +25,20 @@ function getSupabaseAdmin(): SupabaseClient {
   return createSupabaseClient(url, key);
 }
 
-/**
- * POST /api/admin/scrapers/studio/test
- * 
- * Creates a test run for a scraper configuration.
- * Integrates with the existing runner API (scraper-network/test).
- * 
- * Request Body:
- * {
- *   config_id: string;       // Required: UUID of scraper config
- *   version_id?: string;     // Optional: specific version (defaults to current)
- *   skus?: string[];         // Optional: override SKUs to test
- *   options?: {
- *     timeout?: number;      // Optional: timeout in seconds
- *     priority?: 'normal' | 'high';  // Optional: priority level
- *   }
- * }
- * 
- * Response:
- * {
- *   test_run_id: string;
- *   status: 'pending';
- *   job_id: string;
- *   message: string;
- * }
- */
+const SCRAPER_APP_DIR = path.join(process.cwd(), '..', 'scraper');
+
+type ParsedScraperYaml = {
+  test_skus?: unknown;
+};
+
+function getTestSkusFromYaml(parsedYaml: ParsedScraperYaml): string[] {
+  if (!Array.isArray(parsedYaml.test_skus)) {
+    return [];
+  }
+
+  return parsedYaml.test_skus.filter((sku): sku is string => typeof sku === 'string' && sku.length > 0);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -63,11 +54,10 @@ export async function POST(request: NextRequest) {
 
     const adminClient = getSupabaseAdmin();
 
-    // Fetch the config to get the slug for the runner API
     const { data: config, error: configError } = await adminClient
       .from('scraper_configs')
-      .select('*, scraper_config_versions!fk_config_id(*)')
-      .eq('id', validatedData.config_id)
+      .select('id, slug, name, file_path')
+      .eq('slug', validatedData.scraper_slug)
       .single();
 
     if (configError || !config) {
@@ -77,15 +67,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine which version to use
-    const versionId = validatedData.version_id || config.current_version_id;
-    const version = config.scraper_config_versions?.find(
-      (v: { id: string }) => v.id === versionId
-    );
-
-    if (!version) {
+    if (!config.file_path) {
       return NextResponse.json(
-        { error: 'Configuration version not found' },
+        { error: 'Scraper config file path is missing' },
         { status: 404 }
       );
     }
@@ -93,21 +77,28 @@ export async function POST(request: NextRequest) {
     // Get SKUs to test
     let skus: string[] = validatedData.skus || [];
     if (skus.length === 0) {
-      // Query from normalized test_skus table
-      const { data: testSkus, error: skusError } = await adminClient
-        .from('scraper_config_test_skus')
-        .select('sku')
-        .eq('config_id', config.id)
-        .eq('sku_type', 'test');
+      const yamlPath = path.join(SCRAPER_APP_DIR, config.file_path);
 
-      if (skusError) {
+      let parsedYaml: ParsedScraperYaml;
+
+      try {
+        const rawYaml = await readFile(yamlPath, 'utf8');
+        const parsed = YAML.parse(rawYaml) as ParsedScraperYaml | null;
+        parsedYaml = parsed ?? {};
+      } catch (yamlError) {
+        const isMissingFile =
+          typeof yamlError === 'object' &&
+          yamlError !== null &&
+          'code' in yamlError &&
+          yamlError.code === 'ENOENT';
+
         return NextResponse.json(
-          { error: 'Failed to fetch test SKUs' },
-          { status: 500 }
+          { error: isMissingFile ? 'Scraper config YAML not found' : 'Failed to read scraper config YAML' },
+          { status: isMissingFile ? 404 : 500 }
         );
       }
 
-      skus = testSkus?.map((s) => s.sku) || [];
+      skus = getTestSkusFromYaml(parsedYaml);
 
       if (skus.length === 0) {
         return NextResponse.json(
@@ -131,17 +122,16 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         timeout_at: timeoutAt,
         test_metadata: {
-          config_id: validatedData.config_id,
-          version_id: versionId,
+          file_path: config.file_path,
           triggered_by: user.id,
           test_type: 'studio',
           priority: validatedData.options?.priority || 'normal',
           scraper_slug: config.slug,
-          scraper_display_name: config.display_name || config.slug,
+          scraper_display_name: config.name || config.slug,
         },
         metadata: {
-          config_id: validatedData.config_id,
-          version_id: versionId,
+          file_path: config.file_path,
+          scraper_slug: config.slug,
           studio_test: true,
           priority: validatedData.options?.priority || 'normal',
         },
@@ -181,8 +171,7 @@ export async function POST(request: NextRequest) {
       test_run_id: job.id,
       job_id: job.id,
       status: 'pending',
-      config_id: validatedData.config_id,
-      version_id: versionId,
+      scraper_slug: validatedData.scraper_slug,
       skus_count: skus.length,
       timeout_at: timeoutAt,
       message: 'Test job created. A runner will pick it up and process it.',

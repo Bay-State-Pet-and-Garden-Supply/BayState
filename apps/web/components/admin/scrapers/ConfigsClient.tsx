@@ -10,18 +10,13 @@ import {
   Search,
   RefreshCw,
   MoreHorizontal,
-  Edit,
-  Copy,
   Trash2,
-  ExternalLink,
-  Play,
   FileCode2,
   Settings2,
   Eye,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Clock,
   Layers,
 } from 'lucide-react';
 
@@ -152,7 +147,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
             </Link>
           </Button>
           <Button asChild>
-                <Link href="/admin/scraper-configs/new">
+            <Link href="/admin/scraper-configs/new">
               <Plus className="mr-2 h-4 w-4" />
               New Config
             </Link>
@@ -192,7 +187,7 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
             </p>
             {!search && (
               <Button className="mt-4" asChild>
-            <Link href="/admin/scraper-configs/new">
+                <Link href="/admin/scraper-configs/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Config
                 </Link>
@@ -238,12 +233,6 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                         View
                       </Link>
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/scraper-configs/${config.id}/edit`}>
-                        <Edit className="mr-1 h-3 w-3" />
-                        Edit
-                      </Link>
-                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
@@ -255,18 +244,6 @@ export function ConfigsClient({ initialConfigs, totalCount }: ConfigsClientProps
                           <Link href={`/admin/scraper-configs/${config.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/scraper-configs/${config.id}/edit`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Configuration
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/scrapers/test-lab`}>
-                            <Play className="mr-2 h-4 w-4" />
-                            Test Config
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />

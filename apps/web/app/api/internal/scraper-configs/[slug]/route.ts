@@ -1,6 +1,10 @@
 import { validateRunnerAuth } from '@/lib/scraper-auth';
-import { assembleScraperConfigBySlug } from '@/lib/admin/scraper-configs/assemble-config';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
+import YAML from 'yaml';
+
+const CONFIGS_DIR = path.join(process.cwd(), '..', 'scraper', 'scrapers', 'configs');
 
 export async function GET(
   request: NextRequest,
@@ -18,20 +22,42 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid or missing API key' }, { status: 401 });
     }
 
-    // Use the normalized assembly utility
-    const config = await assembleScraperConfigBySlug(slug);
+    const filePath = path.join(CONFIGS_DIR, `${slug}.yaml`);
+    let config: Record<string, unknown>;
 
-    if (!config) {
+    try {
+      const rawYaml = await readFile(filePath, 'utf8');
+      const parsed = YAML.parse(rawYaml);
+
+      config = typeof parsed === 'object' && parsed !== null ? { ...parsed } : {};
+    } catch (error) {
+      const isMissingFile =
+        typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+
+      if (isMissingFile) {
+        return NextResponse.json(
+          { error: 'Scraper config not found or has no published version' },
+          { status: 404 }
+        );
+      }
+
+      throw error;
+    }
+
+    if (Object.keys(config).length === 0) {
       return NextResponse.json(
         { error: 'Scraper config not found or has no published version' },
         { status: 404 }
       );
     }
 
-    // Return the assembled config with debug header
+    if (typeof config.slug !== 'string' || config.slug.length === 0) {
+      config.slug = slug;
+    }
+
     return NextResponse.json(config, {
       headers: {
-        'X-Config-Source': 'normalized',
+        'X-Config-Source': 'yaml',
       },
     });
   } catch (error) {

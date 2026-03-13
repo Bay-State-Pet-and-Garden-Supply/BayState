@@ -1,15 +1,12 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
-import { Plus } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/server';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScraperListClient } from './ScraperListClient';
 
 export const metadata = {
   title: 'Scrapers | Admin',
-  description: 'Manage all scrapers in the system',
+  description: 'View scraper configurations',
 };
 
 async function getScrapers() {
@@ -18,10 +15,10 @@ async function getScrapers() {
   const { data: scrapers, error } = await supabase
     .from('scraper_configs')
     .select(`
-      id, slug, display_name, base_url, domain, scraper_type, status, 
-      health_status, health_score, last_test_at, schema_version
+      id, slug, name, display_name, base_url, domain, scraper_type, status, 
+      health_status, health_score, last_test_at, file_path
     `)
-    .order('display_name', { ascending: true, nullsFirst: false });
+    .order('name', { ascending: true, nullsFirst: false });
     
   if (error) {
     console.error('Error fetching scrapers:', error);
@@ -40,15 +37,9 @@ export default async function ScraperListPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#66161D]">Scrapers</h1>
           <p className="text-muted-foreground mt-1">
-            Manage all active and draft scrapers in the system.
+            View scraper configurations. Configs are stored as YAML files in the repository.
           </p>
         </div>
-        <Button asChild className="bg-[#008850] hover:bg-[#2a7034]">
-          <Link href="/admin/scrapers/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Scraper
-          </Link>
-        </Button>
       </div>
 
       <Suspense fallback={<ScraperListSkeleton />}>
