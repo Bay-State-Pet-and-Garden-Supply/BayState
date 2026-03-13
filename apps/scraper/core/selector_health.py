@@ -529,8 +529,8 @@ class SelectorHealthTracker:
                     },
                 }
 
-            with open(self.history_file, "w") as f:
-                json.dump(data, f, indent=2)
+                with open(self.history_file, "w") as f:
+                    json.dump(data, f, indent=2)
 
         except Exception as e:
             logger.error(f"Failed to save selector health history: {e}")

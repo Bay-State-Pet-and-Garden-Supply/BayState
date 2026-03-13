@@ -88,7 +88,7 @@ class TestSelectorHealthTrackerBasics:
     """Tests for basic SelectorHealthTracker functionality."""
 
     @pytest.fixture
-def temp_tracker(self):
+    def temp_tracker(self):
         """Create a temporary tracker for testing."""
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             temp_file = f.name
@@ -205,7 +205,7 @@ class TestSelectorHealthCalculations:
     """Tests for success rate and duration calculations."""
 
     @pytest.fixture
-def tracker(self):
+    def tracker(self):
         """Create a tracker for calculation tests."""
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             temp_file = f.name
@@ -267,7 +267,7 @@ class TestSelectorHealthAlerts:
     """Tests for alert triggering functionality."""
 
     @pytest.fixture
-def tracker(self):
+    def tracker(self):
         """Create a tracker with low alert threshold for testing."""
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             temp_file = f.name
@@ -353,7 +353,7 @@ class TestUnhealthySelectors:
     """Tests for getting unhealthy selectors."""
 
     @pytest.fixture
-def tracker(self):
+    def tracker(self):
         """Create a tracker with test data."""
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             temp_file = f.name
@@ -403,13 +403,13 @@ def tracker(self):
         """Test getting all unhealthy selectors."""
         unhealthy = tracker.get_unhealthy_selectors()
 
-        # Should return failing and dead selectors
-        assert len(unhealthy) == 2  # .failing (site1), .dead (site1)
+        # Should return dead (0%), failing site2 (30%), failing site1 (50%)
+        assert len(unhealthy) == 3
         selectors = [s.selector for s in unhealthy]
         assert ".failing" in selectors
         assert ".dead" in selectors
         assert ".healthy" not in selectors
-        assert ".degraded" not in selectors  # 70% is not below threshold
+        assert ".degraded" not in selectors
 
     def test_get_unhealthy_by_site(self, tracker):
         """Test getting unhealthy selectors filtered by site."""
@@ -423,11 +423,15 @@ def tracker(self):
         """Test that unhealthy selectors are sorted by success rate (ascending)."""
         unhealthy = tracker.get_unhealthy_selectors()
 
-        # Should be sorted: .dead (0%) then .failing (50%)
+        # Should be sorted: .dead (0%), .failing site2 (30%), then .failing site1 (50%)
         assert unhealthy[0].selector == ".dead"
         assert unhealthy[0].success_rate == 0.0
         assert unhealthy[1].selector == ".failing"
-        assert unhealthy[1].success_rate == 0.5
+        assert unhealthy[1].site == "site2"
+        assert unhealthy[1].success_rate == 0.3
+        assert unhealthy[2].selector == ".failing"
+        assert unhealthy[2].site == "site1"
+        assert unhealthy[2].success_rate == 0.5
 
     def test_get_site_health(self, tracker):
         """Test getting overall health for a site."""
@@ -586,7 +590,7 @@ class TestAlternativeSelectors:
     """Tests for alternative selector registration and recommendations."""
 
     @pytest.fixture
-def tracker(self):
+    def tracker(self):
         """Create a tracker for alternative selector tests."""
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             temp_file = f.name
@@ -655,7 +659,7 @@ class TestIntegrationHooks:
     """Tests for integration hooks that will be used by selector_resolver."""
 
     @pytest.fixture
-def tracker(self):
+    def tracker(self):
         """Create a tracker for integration tests."""
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             temp_file = f.name
@@ -745,7 +749,7 @@ class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
     @pytest.fixture
-def tracker(self):
+    def tracker(self):
         """Create a tracker for edge case tests."""
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             temp_file = f.name
