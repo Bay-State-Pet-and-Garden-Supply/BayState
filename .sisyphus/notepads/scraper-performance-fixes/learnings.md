@@ -6,6 +6,7 @@
 - Kept integration non-breaking by reusing existing `create_playwright_browser(...)` factory and returning the existing browser object type from context enter.
 - Added focused unit coverage in `apps/scraper/tests/unit/test_browser_context.py` for success, exception, timeout fallback, cleanup failure fallback, and partial-force-cleanup-failure scenarios.
 - QA evidence captured in `.sisyphus/evidence/task-2-cleanup-test.log` from `python -m pytest tests/unit/test_browser_context.py -v`.
+- Added guardrails for invalid cleanup configuration (`cleanup_timeout <= 0`) and defensive handling when force cleanup itself raises, so exit paths never mask workflow exceptions.
 
 ## Task 3 - Resource blocking (Playwright)
 
