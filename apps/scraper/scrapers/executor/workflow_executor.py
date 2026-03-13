@@ -117,6 +117,8 @@ class WorkflowExecutor:
         self.browser: Any = None
         self.results: dict[str, Any] = {}
         self.context: dict[str, Any] = {}  # Store execution context
+        # Data shared with extracted modules via context object
+        self.context_data: dict[str, Any] = {"timeout_multiplier": 1.0}
 
         # Build selector lookup dictionaries (ID-based primary, name-based fallback)
         self.selectors_by_id: dict[str, SelectorConfig] = {s.id: s for s in config.selectors if s.id}

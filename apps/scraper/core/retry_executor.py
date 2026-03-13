@@ -197,6 +197,18 @@ class RetryExecutor:
 
         while attempt <= effective_max_retries:
             ctx.retry_count = attempt
+            
+            # Get adaptive config for this attempt (contains timeout_multiplier)
+            current_config = self.adaptive_strategy.get_adaptive_config(
+                last_failure_type or FailureType.NETWORK_ERROR,
+                site_name,
+                current_retry_count=attempt
+            )
+            
+            # Calculate escalated timeout for this attempt
+            # timeout_multiplier typically starts at 1.0 and increases with attempts
+            escalation_factor = current_config.timeout_multiplier ** attempt
+            ctx.timeout_multiplier = escalation_factor
 
             start_time = time.time()
             try:
