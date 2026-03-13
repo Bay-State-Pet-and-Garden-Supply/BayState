@@ -14,91 +14,104 @@ logger = logging.getLogger(__name__)
 
 @ActionRegistry.register("click")
 class ClickAction(BaseAction):
-    """Action to click on an element with proper wait and retry logic."""
+    """Action to click on an element with robust strategies and retry logic."""
 
     async def execute(self, params: dict[str, Any]) -> None:
-        selector = params.get("selector")
+        selector_identifier = params.get("selector")
         filter_text = params.get("filter_text")
         filter_text_exclude = params.get("filter_text_exclude")
         index = params.get("index", 0)
+        wait_after = params.get("wait_after", 0)
 
-        if not selector:
+        if not selector_identifier:
             raise WorkflowExecutionError("Click action requires 'selector' parameter")
 
-        max_retries = params.get("max_retries", 3 if self.ctx.is_ci else 1)
+        # Resolve selector config if possible
+        selector_config = self.ctx.resolve_selector(selector_identifier)
+        target_selector = selector_config if selector_config else selector_identifier
 
-        logger.debug(f"Attempting to click element: {selector} (max_retries: {max_retries})")
-
-        # Find elements and perform filtering and click
-        try:
-            elements = await self.ctx.find_elements_safe(selector)
-
+        # Define the click operation for the retry executor
+        async def _perform_click():
+            # 1. Find elements
+            elements = await self.ctx.find_elements_safe(target_selector)
             if not elements:
-                # Retrying a few times if empty (implicit wait simulation)
-                for _ in range(2):
-                    await asyncio.sleep(1)
-                    elements = await self.ctx.find_elements_safe(selector)
-                    if elements:
-                        break
+                raise WorkflowExecutionError(f"No elements found for selector: {selector_identifier}")
 
-            if not elements:
-                raise WorkflowExecutionError(f"No elements found for selector: {selector}")
-
+            # 2. Filter elements
             filtered_elements = elements
-
-            # Filtering logic (Text extraction abstraction required)
             if filter_text or filter_text_exclude:
                 new_filtered = []
                 for el in elements:
-                    # Abstract text extraction
-                    txt = await self.ctx._extract_value_from_element(el, "text") or ""
-
+                    txt = await self.ctx.extract_value_from_element(el, "text") or ""
+                    
                     include_match = True
-                    if filter_text:
-                        if not re.search(filter_text, txt, re.IGNORECASE):
-                            include_match = False
-
+                    if filter_text and not re.search(filter_text, txt, re.IGNORECASE):
+                        include_match = False
+                    
                     exclude_match = False
-                    if filter_text_exclude:
-                        if re.search(filter_text_exclude, txt, re.IGNORECASE):
-                            exclude_match = True
-
+                    if filter_text_exclude and re.search(filter_text_exclude, txt, re.IGNORECASE):
+                        exclude_match = True
+                        
                     if include_match and not exclude_match:
                         new_filtered.append(el)
                 filtered_elements = new_filtered
 
             if not filtered_elements:
-                raise WorkflowExecutionError(f"No elements remaining after filtering for selector: {selector}")
+                raise WorkflowExecutionError(f"No elements remaining after filtering for selector: {selector_identifier}")
 
             if index >= len(filtered_elements):
-                raise WorkflowExecutionError(f"Index {index} out of bounds for filtered elements (count: {len(filtered_elements)}) for selector: {selector}")
+                raise WorkflowExecutionError(f"Index {index} out of bounds for filtered elements (count: {len(filtered_elements)})")
 
-            element_to_click = filtered_elements[index]
+            element = filtered_elements[index]
 
+            # 3. Robust click strategy
             try:
-                await element_to_click.scroll_into_view_if_needed()
-                await element_to_click.click()
-                logger.info(f"Clicked element: {selector} (index {index})")
-            except Exception as click_err:
-                logger.warning(f"Click failed: {click_err}. Attempting force click.")
+                # Ensure visibility and scroll into view
+                await element.scroll_into_view_if_needed()
+                
+                # Strategy A: Standard click
                 try:
-                    await element_to_click.click(force=True)
-                    logger.info(f"Force clicked element: {selector}")
-                except Exception as force_err:
-                    logger.warning(f"Force click failed: {force_err}. Attempting dispatch_event click.")
-                    try:
-                        await element_to_click.dispatch_event("click")
-                        logger.info(f"Successfully clicked element via dispatch_event: {selector} at index {index}")
-                    except Exception as dispatch_err:
-                        raise WorkflowExecutionError(
-                            f"Failed to click element '{selector}' (standard, force, and dispatch_event): {dispatch_err}"
-                        ) from dispatch_err
+                    await element.click(timeout=5000)
+                    logger.debug(f"Standard click successful for {selector_identifier}")
+                    return True
+                except Exception as e:
+                    logger.debug(f"Standard click failed: {e}. Trying force click.")
+                
+                # Strategy B: Force click (bypasses pointer-events check)
+                try:
+                    await element.click(force=True, timeout=2000)
+                    logger.debug(f"Force click successful for {selector_identifier}")
+                    return True
+                except Exception as e:
+                    logger.debug(f"Force click failed: {e}. Trying JS dispatch.")
 
-            # Optional wait after click
-            wait_time = params.get("wait_after", 0)
-            if wait_time > 0:
-                logger.debug(f"Waiting {wait_time}s after click")
-                await asyncio.sleep(wait_time)
+                # Strategy C: JavaScript dispatch (last resort, bypasses all visibility/interception)
+                await element.dispatch_event("click")
+                logger.debug(f"JS dispatch click successful for {selector_identifier}")
+                return True
 
-        except Exception as e:
-            raise WorkflowExecutionError(f"Failed to click element after waiting: {e}")
+            except Exception as e:
+                logger.warning(f"All click strategies failed for {selector_identifier}: {e}")
+                raise
+
+        # Use system retry executor for the whole operation
+        # This handles backoff and escalated timeouts automatically
+        from core.retry_executor import RetryExecutor
+        
+        # Access the executor from the context
+        if hasattr(self.ctx, "retry_executor") and self.ctx.retry_executor:
+            retry_result = await self.ctx.retry_executor.execute_with_retry(
+                operation=_perform_click,
+                site_name=self.ctx.config_name,
+                action_name="click",
+                max_retries=params.get("max_retries", 2)
+            )
+            if not retry_result.success:
+                raise WorkflowExecutionError(f"Failed to click '{selector_identifier}' after retries", cause=retry_result.error)
+        else:
+            # Fallback for simple contexts without retry executor
+            await _perform_click()
+
+        # Optional wait after successful click
+        if wait_after > 0:
+            await asyncio.sleep(wait_after)
