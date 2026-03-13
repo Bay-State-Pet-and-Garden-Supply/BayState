@@ -28,8 +28,8 @@ def _coerce_timeout_ms(value: Any, default: int) -> int:
 def _resolve_timeout_ms(required: bool, raw_timeout_ms: Any) -> int | None:
     """Resolve timeout behavior for required vs optional selector lookups."""
     if raw_timeout_ms is None:
-        return DEFAULT_OPTIONAL_FIELD_TIMEOUT_MS if not required else None
-    return _coerce_timeout_ms(raw_timeout_ms, DEFAULT_OPTIONAL_FIELD_TIMEOUT_MS)
+        return None
+    return _coerce_timeout_ms(raw_timeout_ms, 1500)
 
 
 @ActionRegistry.register("extract_single")

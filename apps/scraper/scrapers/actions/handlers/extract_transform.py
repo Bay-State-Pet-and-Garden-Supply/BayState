@@ -89,17 +89,16 @@ class ExtractAndTransformAction(BaseAction):
 
         logger.debug(f"Starting extract_and_transform for {len(fields)} fields")
 
-        default_timeout_ms = _coerce_timeout_ms(
-            params.get("field_timeout_ms", DEFAULT_OPTIONAL_FIELD_TIMEOUT_MS),
-            DEFAULT_OPTIONAL_FIELD_TIMEOUT_MS,
-        )
+        # Get explicit override if provided, otherwise default to None to defer to Resolver
+        raw_timeout = params.get("field_timeout_ms")
+        default_timeout_ms = _coerce_timeout_ms(raw_timeout, 1500) if raw_timeout is not None else None
 
         for field_config in fields:
             await self._process_field(field_config, default_timeout_ms)
 
         logger.info(f"extract_and_transform completed. Extracted: {list(self.ctx.results.keys())}")
 
-    async def _process_field(self, field_config: dict[str, Any], default_timeout_ms: int) -> None:
+    async def _process_field(self, field_config: dict[str, Any], default_timeout_ms: int | None) -> None:
         """Process a single field: extract from DOM and apply transforms."""
         name = field_config.get("name")
         selector = field_config.get("selector")
@@ -117,9 +116,9 @@ class ExtractAndTransformAction(BaseAction):
 
         try:
             if timeout_ms_value is None:
-                timeout_ms = None if required else default_timeout_ms
+                timeout_ms = default_timeout_ms
             else:
-                timeout_ms = _coerce_timeout_ms(timeout_ms_value, default_timeout_ms)
+                timeout_ms = _coerce_timeout_ms(timeout_ms_value, 1500)
             if multiple:
                 value = await self._extract_multiple(selector, attribute, timeout_ms)
             else:
