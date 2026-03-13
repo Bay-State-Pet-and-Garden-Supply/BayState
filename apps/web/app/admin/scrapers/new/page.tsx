@@ -1,11 +1,5 @@
-import { Metadata } from 'next';
-import { ScraperWizardClient } from '@/components/admin/scrapers/ScraperWizardClient';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'New Scraper | Admin',
-  description: 'Create a new scraper configuration',
-};
-
-export default function NewScraperPage() {
-  return <ScraperWizardClient />;
+export default function NewScraperRedirect() {
+  redirect('/admin/scrapers/list');
 }
