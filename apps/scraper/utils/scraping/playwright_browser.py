@@ -171,21 +171,44 @@ class PlaywrightScraperBrowser:
             await self.quit()
             raise
 
-    async def get(self, url: str) -> None:
-        """Navigate to URL."""
+    async def get(self, url: str, wait_until: str | list[str] | None = None) -> None:
+        """
+        Navigate to URL with intelligent wait strategies.
+
+        Args:
+            url: The URL to navigate to
+            wait_until: Strategy or list of strategies to try ('networkidle', 'load', 'domcontentloaded', 'commit')
+        """
         if not self.page:
             raise RuntimeError("Browser not initialized")
 
-        try:
-            self._last_response = await self.page.goto(url, wait_until="networkidle")
-        except Exception as e:
-            # Fallback if networkidle fails (sometimes it hangs indefinitely)
+        strategies = []
+        if wait_until:
+            strategies = [wait_until] if isinstance(wait_until, str) else wait_until
+        else:
+            # Default sequence: try to wait for network to settle, then just load
+            strategies = ["networkidle", "load"]
+
+        last_exception = None
+        for strategy in strategies:
             try:
-                print(f"[WARN] [{self.site_name}] networkidle failed, falling back to load: {e}")
-                self._last_response = await self.page.goto(url, wait_until="load")
-            except Exception as e2:
-                print(f"[WARN] [{self.site_name}] Navigation error: {e2}")
-                raise
+                # Use a slightly shorter timeout for intermediate strategies if multiple exist
+                current_timeout = self.timeout if len(strategies) == 1 else self.timeout * 0.7
+                
+                self._last_response = await self.page.goto(
+                    url, 
+                    wait_until=strategy, # type: ignore
+                    timeout=current_timeout
+                )
+                return  # Success
+            except Exception as e:
+                last_exception = e
+                print(f"[WARN] [{self.site_name}] Navigation with '{strategy}' failed: {e}")
+                # Continue to next strategy
+
+        # If we get here, all strategies failed
+        if last_exception:
+            raise last_exception
 
     async def check_http_status(self) -> int | None:
         """Check the HTTP status code of the last response."""
