@@ -10,25 +10,14 @@ interface ScraperOverviewProps {
   params: Promise<{ slug: string }>;
 }
 
-async function getRecentTestRuns(scraperId: string) {
+async function getRecentTestRuns(slug: string) {
   const supabase = await createClient();
-
-  // Get the scraper slug to filter test jobs
-  const { data: config } = await supabase
-    .from('scraper_configs')
-    .select('slug')
-    .eq('id', scraperId)
-    .single();
-
-  if (!config?.slug) {
-    return [];
-  }
 
   const { data, error } = await supabase
     .from('scrape_jobs')
     .select('id, status, created_at, test_metadata')
     .eq('test_mode', true)
-    .contains('scrapers', [config.slug])
+    .contains('scrapers', [slug])
     .order('created_at', { ascending: false })
     .limit(5);
     
@@ -47,7 +36,7 @@ export default async function ScraperOverviewPage({ params }: ScraperOverviewPro
     notFound();
   }
   
-  const testRuns = scraper.id ? await getRecentTestRuns(scraper.id) : [];
+  const testRuns = await getRecentTestRuns(slug);
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="tab-content-overview">
@@ -69,12 +58,6 @@ export default async function ScraperOverviewPage({ params }: ScraperOverviewPro
               <ExternalLink className="mr-2 h-4 w-4" />
               View on GitHub
             </a>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/admin/scrapers/${slug}/workflows`}>
-              <Activity className="mr-2 h-4 w-4" />
-              View Workflows
-            </Link>
           </Button>
         </CardContent>
       </Card>
