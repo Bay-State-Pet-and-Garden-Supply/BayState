@@ -58,16 +58,22 @@ class ScraperError(Exception):
 
     severity: ErrorSeverity = ErrorSeverity.MEDIUM
     retryable: bool = True
+    retry_hint: str | None = None
+    recovery_action: str | None = None
 
     def __init__(
         self,
         message: str,
         context: ErrorContext | None = None,
         cause: Exception | None = None,
+        retry_hint: str | None = None,
+        recovery_action: str | None = None,
     ):
         self.message = message
         self.context = context or ErrorContext()
         self.cause = cause
+        self.retry_hint = retry_hint or self.retry_hint
+        self.recovery_action = recovery_action or self.recovery_action
         super().__init__(self._format_message())
 
     def _format_message(self) -> str:
@@ -81,6 +87,8 @@ class ScraperError(Exception):
             parts.append(f"sku={self.context.sku}")
         if self.context.retry_count > 0:
             parts.append(f"retry={self.context.retry_count}/{self.context.max_retries}")
+        if self.retry_hint:
+            parts.append(f"hint={self.retry_hint}")
         return " | ".join(parts)
 
 
@@ -105,30 +113,35 @@ class NetworkError(RetryableError):
     """Network-related errors (timeout, connection issues)."""
 
     severity = ErrorSeverity.MEDIUM
+    retry_hint = "Check network connectivity and proxy health"
 
 
 class TimeoutError(RetryableError):
     """Operation timed out."""
 
     severity = ErrorSeverity.MEDIUM
+    retry_hint = "Increase timeout multiplier and retry"
 
 
 class ElementNotFoundError(RetryableError):
     """Element not found on page (may appear after wait)."""
 
     severity = ErrorSeverity.LOW
+    retry_hint = "Wait longer or check if site layout changed"
 
 
 class PageLoadError(RetryableError):
     """Page failed to load properly."""
 
     severity = ErrorSeverity.MEDIUM
+    retry_hint = "Check if site is down or blocking requests"
 
 
 class StaleElementError(RetryableError):
     """Element reference became stale."""
 
     severity = ErrorSeverity.LOW
+    retry_hint = "Re-resolve the element from the DOM"
 
 
 # Rate Limiting & Anti-Bot Errors
@@ -139,24 +152,32 @@ class RateLimitError(RetryableError):
 
     severity = ErrorSeverity.HIGH
     # Retryable but needs longer delay
+    retry_hint = "Increase backoff delay and rotate session"
+    recovery_action = "wait_and_rotate"
 
 
 class CaptchaError(RetryableError):
     """CAPTCHA detected and needs solving."""
 
     severity = ErrorSeverity.HIGH
+    retry_hint = "Solve CAPTCHA and retry"
+    recovery_action = "solve_captcha"
 
 
 class AccessDeniedError(RetryableError):
     """Access denied (403, blocked IP, etc.)."""
 
     severity = ErrorSeverity.HIGH
+    retry_hint = "Rotate session or update anti-detection config"
+    recovery_action = "rotate_session"
 
 
 class SessionExpiredError(RetryableError):
     """Session has expired and needs refresh."""
 
     severity = ErrorSeverity.MEDIUM
+    retry_hint = "Re-authenticate and retry"
+    recovery_action = "re-authenticate"
 
 
 # Non-Retryable Errors (permanent issues that won't resolve on retry)
@@ -173,18 +194,21 @@ class ConfigurationError(NonRetryableError):
     """Invalid scraper configuration."""
 
     severity = ErrorSeverity.CRITICAL
+    retry_hint = "Check YAML configuration for syntax or logic errors"
 
 
 class SelectorError(NonRetryableError):
     """Invalid or broken selector in configuration."""
 
     severity = ErrorSeverity.HIGH
+    retry_hint = "Update selector in YAML configuration"
 
 
 class AuthenticationError(NonRetryableError):
     """Login/authentication failed (bad credentials)."""
 
     severity = ErrorSeverity.HIGH
+    retry_hint = "Verify credentials in Supabase"
 
 
 class PageNotFoundError(NonRetryableError):
@@ -192,6 +216,7 @@ class PageNotFoundError(NonRetryableError):
 
     severity = ErrorSeverity.LOW
     # Not retryable, but not critical - just skip this SKU
+    retry_hint = "SKU may be discontinued or incorrect"
 
 
 class NoResultsError(NonRetryableError):
@@ -199,12 +224,15 @@ class NoResultsError(NonRetryableError):
 
     severity = ErrorSeverity.LOW
     # Not retryable - product doesn't exist on this site
+    retry_hint = "Check if SKU format matches site expectations"
 
 
 class BrowserError(NonRetryableError):
     """Browser crashed or became unresponsive."""
 
     severity = ErrorSeverity.CRITICAL
+    retry_hint = "Restart browser process"
+    recovery_action = "restart_browser"
 
 
 # Circuit Breaker Errors
@@ -215,6 +243,7 @@ class CircuitBreakerOpenError(NonRetryableError):
 
     severity = ErrorSeverity.CRITICAL
     retryable = False
+    retry_hint = "Site is currently blocked, wait for cooldown"
 
 
 class MaxRetriesExceededError(NonRetryableError):
@@ -222,6 +251,7 @@ class MaxRetriesExceededError(NonRetryableError):
 
     severity = ErrorSeverity.HIGH
     retryable = False
+    retry_hint = "All attempts failed, check detailed logs for last error"
 
 
 # Utility functions for exception handling
@@ -247,9 +277,11 @@ def classify_exception(
 
     # Generic exception classification by type name and message
     if "Timeout" in exc_type or "timeout" in exc_str:
+        if "selector" in exc_str or "locator" in exc_str or "waiting for" in exc_str:
+            return ElementNotFoundError("Element lookup timed out", context=ctx, cause=exc)
         return TimeoutError("Operation timed out", context=ctx, cause=exc)
 
-    if "NoSuchElement" in exc_type or ("element" in exc_str and "not found" in exc_str):
+    if "NoSuchElement" in exc_type or ("element" in exc_str and "not found" in exc_str) or ("waiting for selector" in exc_str):
         return ElementNotFoundError("Element not found", context=ctx, cause=exc)
 
     if "StaleElement" in exc_type or "stale" in exc_str:
