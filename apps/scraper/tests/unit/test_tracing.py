@@ -302,10 +302,10 @@ class TestTracingContextManager:
             async with collect_traces(collector, mock_context, "test_site"):
                 raise ValueError("Test error")
 
-        # Should have called stop with save=True
+        # Should have called stop with a path (meaning it saved)
         mock_context.tracing.stop.assert_called_once()
-        call_args = mock_context.tracing.stop.call_args
-        assert call_args[1].get("save") is True or call_args[0][0] is True
+        _, kwargs = mock_context.tracing.stop.call_args
+        assert "path" in kwargs
 
     @pytest.mark.asyncio
     async def test_context_manager_discards_on_success(self, temp_traces_dir, mock_context):
@@ -315,10 +315,10 @@ class TestTracingContextManager:
         async with collect_traces(collector, mock_context, "test_site"):
             pass  # No exception
 
-        # Should have called stop with save=False
+        # Should have called stop with no path (discard)
         mock_context.tracing.stop.assert_called_once()
-        call_args = mock_context.tracing.stop.call_args
-        assert call_args[1].get("save") is False or len(call_args[0]) == 0
+        _, kwargs = mock_context.tracing.stop.call_args
+        assert "path" not in kwargs
 
     @pytest.mark.asyncio
     async def test_context_manager_yields_collector(self, temp_traces_dir, mock_context):

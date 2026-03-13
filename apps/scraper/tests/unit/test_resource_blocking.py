@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from apps.scraper.utils.scraping.playwright_browser import PlaywrightScraperBrowser
+from utils.scraping.playwright_browser import PlaywrightScraperBrowser
 
 
 class MockRoute:
