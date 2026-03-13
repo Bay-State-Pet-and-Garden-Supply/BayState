@@ -13,11 +13,11 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: API Layer' (Protocol in workflow.md) [735d023]
 
 ## Phase 2: Scraper List & Dashboard Rebuild
-- [ ] Task: Update `ScraperListPage` and `ScraperListClient`
-    - [ ] Modify `apps/web/app/admin/scrapers/list/page.tsx` to fetch from the new config API
-    - [ ] Update `ScraperListClient` to handle the new data structure (YAML-based)
-    - [ ] Remove "Create Scraper", "Duplicate", and "Delete" buttons from the UI
-    - [ ] Write unit tests for the updated components
+- [x] Task: Update `ScraperListPage` and `ScraperListClient` [49864de]
+    - [x] Modify `apps/web/app/admin/scrapers/list/page.tsx` to fetch from the new config API
+    - [x] Update `ScraperListClient` to handle the new data structure (YAML-based)
+    - [x] Remove "Create Scraper", "Duplicate", and "Delete" buttons from the UI
+    - [x] Write unit tests for the updated components
 - [ ] Task: Clean up legacy Supabase fetching in the dashboard
     - [ ] Remove `getScrapers` Supabase logic from `page.tsx`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Scraper List' (Protocol in workflow.md)
