@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { createClient } from '@/lib/supabase/server';
+import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScraperListClient } from './ScraperListClient';
 
@@ -9,27 +9,8 @@ export const metadata = {
   description: 'View scraper configurations',
 };
 
-async function getScrapers() {
-  const supabase = await createClient();
-  
-  const { data: scrapers, error } = await supabase
-    .from('scraper_configs')
-    .select(`
-      id, slug, name, display_name, base_url, domain, scraper_type, status, 
-      health_status, health_score, last_test_at, file_path
-    `)
-    .order('name', { ascending: true, nullsFirst: false });
-    
-  if (error) {
-    console.error('Error fetching scrapers:', error);
-    return [];
-  }
-  
-  return scrapers || [];
-}
-
 export default async function ScraperListPage() {
-  const scrapers = await getScrapers();
+  const scrapers = await getLocalScraperConfigs();
   
   return (
     <div className="flex flex-col gap-6 w-full p-6">
