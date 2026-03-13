@@ -57,9 +57,9 @@ class CircuitState(Enum):
 class CircuitBreakerConfig:
     """Configuration for circuit breaker behavior."""
 
-    failure_threshold: int = 5  # Failures before opening circuit
+    failure_threshold: int = 10  # Failures before opening circuit (was 5)
     success_threshold: int = 2  # Successes needed to close circuit
-    timeout_seconds: float = 60.0  # Time before trying half-open
+    timeout_seconds: float = 300.0  # Time before trying half-open (was 60s)
     half_open_max_calls: int = 3  # Max calls in half-open state
 
 
