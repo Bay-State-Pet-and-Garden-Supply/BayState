@@ -1,11 +1,11 @@
 # Implementation Plan: Scraper Performance Fixes
 
 ## Phase 1: Foundation (Wave 1)
-- [ ] Task: Create tiered timeout configuration system (`core/timeout_config.py`)
-- [ ] Task: Implement `ManagedBrowser` context manager for guaranteed cleanup (`utils/scraping/browser_context.py`)
-- [ ] Task: Add request interception for resource blocking (images, CSS, analytics)
-- [ ] Task: Create selector health monitoring framework (`core/selector_health.py`)
-- [ ] Task: Implement Playwright tracing collection system for failures (`utils/scraping/tracing.py`)
+- [x] Task: Create tiered timeout configuration system (`core/timeout_config.py`) [b5a905f]
+- [x] Task: Implement `ManagedBrowser` context manager for guaranteed cleanup (`utils/scraping/browser_context.py`) [60690b7]
+- [x] Task: Add request interception for resource blocking (images, CSS, analytics) [aa2f33f]
+- [x] Task: Create selector health monitoring framework (`core/selector_health.py`) [aa2f33f]
+- [x] Task: Implement Playwright tracing collection system for failures (`utils/scraping/tracing.py`) [aa2f33f]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: Core Reliability (Wave 2)
