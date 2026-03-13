@@ -106,6 +106,7 @@ class AntiDetectionConfig(BaseModel):
     rate_limit_max_delay: float = Field(5.0, description="Maximum delay for rate limiting")
     human_simulation_enabled: bool = Field(True, description="Enable human simulation (legacy alias)")
     session_rotation_interval: int = Field(100, description="Requests before session rotation")
+    session_ttl_seconds: int = Field(1800, description="Seconds before session rotation (TTL)")
     max_retries_on_detection: int = Field(3, description="Max retries on detection")
     captcha_solver_config: CaptchaSolverConfig = Field(
         default_factory=lambda: CaptchaSolverConfig(
@@ -680,10 +681,19 @@ class SessionManager:
         self.request_count = 0
 
     def check_session_rotation(self, manager: AntiDetectionManager) -> None:
-        """Check if session should be rotated."""
+        """Check if session should be rotated based on request count or TTL."""
         self.request_count += 1
+        
+        # 1. Check request count
         if self.request_count >= self.config.session_rotation_interval:
             logger.info(f"Session rotation triggered after {self.request_count} requests")
+            self.rotate_session(manager)
+            return
+
+        # 2. Check TTL (proactive refresh at 80% of TTL)
+        elapsed = time.time() - manager.session_start_time
+        if elapsed >= (self.config.session_ttl_seconds * 0.8):
+            logger.info(f"Proactive session rotation triggered at 80% of TTL ({elapsed:.1f}s / {self.config.session_ttl_seconds}s)")
             self.rotate_session(manager)
 
     def rotate_session(self, manager: AntiDetectionManager) -> bool:
