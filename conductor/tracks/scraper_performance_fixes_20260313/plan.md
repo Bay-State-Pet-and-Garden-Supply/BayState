@@ -9,12 +9,12 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: Core Reliability (Wave 2)
-- [ ] Task: Update `selector_resolver.py` to use tiered timeouts
-- [ ] Task: Implement tiered timeouts in extract action handlers
-- [ ] Task: Implement per-failure-type retry policies in `AdaptiveRetryStrategy`
-- [ ] Task: Tune circuit breaker thresholds (failure_threshold=10, timeout=300s)
-- [ ] Task: Implement fallback selector system in resolver and YAML parser
-- [ ] Task: Add intelligent network idle waiting strategies
+- [x] Task: Update `selector_resolver.py` to use tiered timeouts [9666cbc]
+- [x] Task: Implement tiered timeouts in extract action handlers [ca3fd9a]
+- [x] Task: Implement per-failure-type retry policies in `AdaptiveRetryStrategy` [42164c9]
+- [x] Task: Tune circuit breaker thresholds (failure_threshold=10, timeout=300s) [c43b544]
+- [x] Task: Implement fallback selector system in resolver and YAML parser [17fe4a1]
+- [x] Task: Add intelligent network idle waiting strategies [ab3249e]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Reliability' (Protocol in workflow.md)
 
 ## Phase 3: Integration & Observability (Wave 3)
