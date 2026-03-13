@@ -186,8 +186,9 @@ class PlaywrightScraperBrowser:
         if wait_until:
             strategies = [wait_until] if isinstance(wait_until, str) else wait_until
         else:
-            # Default sequence: try to wait for network to settle, then just load
-            strategies = ["networkidle", "load"]
+            # Default sequence: try to wait for network to settle, then load event, 
+            # then finally DOM content loaded as a last resort.
+            strategies = ["networkidle", "load", "domcontentloaded"]
 
         last_exception = None
         for strategy in strategies:
