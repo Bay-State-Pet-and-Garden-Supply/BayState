@@ -1,0 +1,45 @@
+# Implementation Plan: Scraper Admin UI Rebuild (YAML Transition)
+
+## Phase 1: API Layer - YAML Config Provider
+- [ ] Task: Create Next.js API route to list YAML configurations
+    - [ ] Create `apps/web/app/api/admin/scrapers/configs/route.ts`
+    - [ ] Implement logic to read `apps/scraper/scrapers/configs/*.yaml`
+    - [ ] Extract metadata (slug, display_name, base_url) from YAML frontmatter or structure
+    - [ ] Write unit tests for the API route
+- [ ] Task: Create Next.js API route to fetch specific YAML content
+    - [ ] Create `apps/web/app/api/admin/scrapers/configs/[slug]/route.ts`
+    - [ ] Implement logic to read and return the raw YAML string
+    - [ ] Write unit tests for the API route
+- [ ] Task: Conductor - User Manual Verification 'Phase 1: API Layer' (Protocol in workflow.md)
+
+## Phase 2: Scraper List & Dashboard Rebuild
+- [ ] Task: Update `ScraperListPage` and `ScraperListClient`
+    - [ ] Modify `apps/web/app/admin/scrapers/list/page.tsx` to fetch from the new config API
+    - [ ] Update `ScraperListClient` to handle the new data structure (YAML-based)
+    - [ ] Remove "Create Scraper", "Duplicate", and "Delete" buttons from the UI
+    - [ ] Write unit tests for the updated components
+- [ ] Task: Clean up legacy Supabase fetching in the dashboard
+    - [ ] Remove `getScrapers` Supabase logic from `page.tsx`
+- [ ] Task: Conductor - User Manual Verification 'Phase 2: Scraper List' (Protocol in workflow.md)
+
+## Phase 3: Scraper Detail & YAML Viewer
+- [ ] Task: Rebuild Scraper Detail Page (`/admin/scrapers/[slug]`)
+    - [ ] Replace existing configuration tabs with a single "Configuration" tab
+    - [ ] Implement a read-only YAML viewer with syntax highlighting
+    - [ ] Remove all legacy interactive editing components (WorkflowBuilder, SelectorsEditor, etc.)
+    - [ ] Write unit tests for the new detail view
+- [ ] Task: Conductor - User Manual Verification 'Phase 3: Scraper Detail' (Protocol in workflow.md)
+
+## Phase 4: Credential Management UI
+- [ ] Task: Create Credentials Management Section
+    - [ ] Add a "Credentials" tab to the scraper detail page
+    - [ ] Implement a form to view/edit credentials stored in `public.scraper_credentials` table
+    - [ ] Ensure this section remains editable in all environments
+    - [ ] Write unit tests for the credentials UI and actions
+- [ ] Task: Conductor - User Manual Verification 'Phase 4: Credentials' (Protocol in workflow.md)
+
+## Phase 5: Cleanup & Final Verification
+- [ ] Task: Remove legacy scraper config API routes and actions
+    - [ ] Delete or deprecate legacy server actions related to config editing in Supabase
+- [ ] Task: Perform final E2E verification of the new workflow
+- [ ] Task: Conductor - User Manual Verification 'Phase 5: Cleanup' (Protocol in workflow.md)
