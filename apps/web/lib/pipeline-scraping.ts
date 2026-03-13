@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 
+import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
+
 interface PostgrestLikeError {
     code?: string;
     message?: string;
@@ -88,26 +90,24 @@ export async function scrapeProducts(
     const effectiveScrapersRaw = isAISearch ? ['ai_search'] : scrapers;
     const jobType: ScrapeJobInsertType = isAISearch ? 'ai_search' : 'standard';
 
-    const supabase = await createClient();
-
-    // Resolve scraper display names to slugs if possible
+    // Resolve scraper display names to slugs if possible using local YAML configs
     let effectiveScrapers = effectiveScrapersRaw;
     if (scrapers.length > 0 && !isAISearch) {
-        const { data: configRows } = await supabase
-            .from('scraper_configs')
-            .select('slug, display_name');
-
-        if (configRows) {
+        const configs = await getLocalScraperConfigs();
+        
+        if (configs && configs.length > 0) {
             const slugMap = new Map<string, string>();
-            configRows.forEach(row => {
-                slugMap.set(row.slug.toLowerCase(), row.slug);
-                if (row.display_name) {
-                    slugMap.set(row.display_name.toLowerCase(), row.slug);
+            configs.forEach(config => {
+                slugMap.set(config.slug.toLowerCase(), config.slug);
+                if (config.display_name) {
+                    slugMap.set(config.display_name.toLowerCase(), config.slug);
                 }
             });
             effectiveScrapers = effectiveScrapersRaw.map(s => slugMap.get(s.toLowerCase()) || s);
         }
     }
+
+    const supabase = await createClient();
 
     const maxAISearchCostUsd = isAISearch ? (options?.maxAISearchCostUsd ?? 5.00) : undefined;
     if (isAISearch && maxAISearchCostUsd !== undefined && maxAISearchCostUsd > 10.00) {
