@@ -30,13 +30,13 @@
     - [x] Write unit tests for the new detail view
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Scraper Detail' (Protocol in workflow.md) [89a16c8]
 
-## Phase 4: Credential Management UI
+## Phase 4: Credential Management UI [checkpoint: eb6d098]
 - [x] Task: Create Credentials Management Section [8033495]
     - [x] Add a "Credentials" tab to the scraper detail page
     - [x] Implement a form to view/edit credentials stored in `public.scraper_credentials` table
     - [x] Ensure this section remains editable in all environments
     - [x] Write unit tests for the credentials UI and actions
-- [~] Task: Conductor - User Manual Verification 'Phase 4: Credentials' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Credentials' (Protocol in workflow.md) [eb6d098]
 
 ## Phase 5: Cleanup & Final Verification
 - [ ] Task: Remove legacy scraper config API routes and actions
