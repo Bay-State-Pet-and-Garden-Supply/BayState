@@ -17,7 +17,7 @@
 - [x] Task: Add intelligent network idle waiting strategies [ab3249e]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Reliability' (Protocol in workflow.md)
 
-## Phase 3: Integration & Observability (Wave 3)
+## Phase 3: Integration & Observability (Wave 3) [checkpoint: 63cf53b]
 - [x] Task: Update major YAML configs (mazuri, coastal, etc.) with fallback selectors [88b0ddc]
 - [x] Task: Implement progressive timeout escalation (1.5x per attempt) [2993c1e]
 - [x] Task: Add comprehensive error handling with structured retry hints [c061e20]
@@ -25,10 +25,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration & Observability' (Protocol in workflow.md)
 
 ## Phase 4: Optimization & Polish (Wave 4)
-- [ ] Task: Optimize navigation logic with triple fallback (networkidle -> load -> domcontentloaded)
-- [ ] Task: Add anti-detection fallback handling (Stealth mode fallback)
-- [ ] Task: Refactor click action handler to use executor-level retries and visibility checks
-- [ ] Task: Implement proactive session timeout management (refresh at 80% of TTL)
+- [x] Task: Optimize navigation logic with triple fallback (networkidle -> load -> domcontentloaded) [150bc32]
+- [x] Task: Add anti-detection fallback handling (Stealth mode fallback) [e9e5465]
+- [x] Task: Refactor click action handler to use executor-level retries and visibility checks [daf00ce]
+- [x] Task: Implement proactive session timeout management (refresh at 80% of TTL) [40da173]
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Optimization & Polish' (Protocol in workflow.md)
 
 ## Phase 5: Validation & Documentation (Wave 5)
