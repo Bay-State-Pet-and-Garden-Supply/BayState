@@ -652,6 +652,109 @@ async def get_debug_snapshots(
 
 
 # =============================================================================
+# Observability Endpoints
+# =============================================================================
+
+
+class ObservabilitySummary(BaseModel):
+    unhealthy_count: int
+    total_selectors: int
+    sites_analyzed: list[str]
+
+
+class SiteHealthResponse(BaseModel):
+    site: str
+    success_rate: float
+    total_selectors: int
+    healthy: int
+    degraded: int
+    failing: int
+
+
+@app.get("/observability/selector-health")
+async def get_selector_health(
+    site: str | None = Query(None, description="Filter by site name"),
+    status: str | None = Query(None, description="Filter by status (unhealthy, healthy, all)"),
+):
+    """Get selector health metrics for monitoring and alerting."""
+    from core.selector_health import get_selector_health_tracker
+
+    tracker = get_selector_health_tracker()
+
+    if status == "unhealthy":
+        summaries = tracker.get_unhealthy_selectors(site=site)
+    elif status == "healthy":
+        # Filter all summaries for healthy ones
+        all_summaries = tracker.get_all_summaries()
+        summaries = [s for s in all_summaries if s.success_rate >= tracker.alert_threshold]
+        if site:
+            summaries = [s for s in summaries if s.site == site]
+    else:
+        # Default: all summaries
+        summaries = tracker.get_all_summaries()
+        if site:
+            summaries = [s for s in summaries if s.site == site]
+
+    return {
+        "status": "ok",
+        "count": len(summaries),
+        "selectors": [s.to_dict() for s in summaries],
+        "threshold": tracker.alert_threshold,
+    }
+
+
+@app.get("/observability/site-health")
+async def get_site_health():
+    """Get aggregated health metrics per site."""
+    from core.selector_health import get_selector_health_tracker
+
+    tracker = get_selector_health_tracker()
+    all_summaries = tracker.get_all_summaries()
+
+    # Group by site
+    site_data = {}
+    for s in all_summaries:
+        if s.site not in site_data:
+            site_data[s.site] = {
+                "success_sum": 0.0,
+                "count": 0,
+                "healthy": 0,
+                "degraded": 0,
+                "failing": 0,
+            }
+
+        stats = site_data[s.site]
+        stats["success_sum"] += s.success_rate
+        stats["count"] += 1
+
+        if s.success_rate >= 0.9:
+            stats["healthy"] += 1
+        elif s.success_rate >= tracker.alert_threshold:
+            stats["degraded"] += 1
+        else:
+            stats["failing"] += 1
+
+    results = []
+    for site, stats in site_data.items():
+        results.append(
+            {
+                "site": site,
+                "success_rate": round(stats["success_sum"] / stats["count"], 3) if stats["count"] > 0 else 1.0,
+                "total_selectors": stats["count"],
+                "healthy": stats["healthy"],
+                "degraded": stats["degraded"],
+                "failing": stats["failing"],
+            }
+        )
+
+    return {
+        "status": "ok",
+        "sites": results,
+        "total_sites": len(results),
+    }
+
+
+# =============================================================================
 # Entry Point
 # =============================================================================
 
