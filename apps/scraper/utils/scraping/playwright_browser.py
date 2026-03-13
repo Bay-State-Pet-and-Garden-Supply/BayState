@@ -39,7 +39,7 @@ from playwright.sync_api import (
 from playwright.sync_api import (
     sync_playwright,
 )
-from playwright_stealth import stealth
+# playwright_stealth imports are done lazily in initialize() to avoid hard dependency
 
 
 class PlaywrightScraperBrowser:
@@ -54,6 +54,7 @@ class PlaywrightScraperBrowser:
         profile_suffix: str | None = None,
         custom_options: list[str] | None = None,
         timeout: int = 30,
+        block_resources: bool = False,
     ) -> None:
         """
         Initialize browser for scraping.
@@ -70,12 +71,18 @@ class PlaywrightScraperBrowser:
         self.profile_suffix = profile_suffix
         self.timeout = timeout * 1000  # Convert to ms
         self.custom_options = custom_options or []
+        # Whether to enable resource blocking (disabled by default)
+        self.block_resources = block_resources
 
         self.playwright: Playwright | None = None
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.page: Page | None = None
         self._last_response: Response | None = None
+        # Metrics for resource blocking
+        self.blocked_count: int = 0
+        self.allowed_count: int = 0
+        self._requests_total: int = 0
 
     async def initialize(self) -> None:
         """Async initialization of Playwright resources."""
@@ -88,12 +95,14 @@ class PlaywrightScraperBrowser:
             # Construct launch arguments
             args = [
                 "--no-sandbox",
+                "--disable-setuid-sandbox",
                 "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-extensions",
-                "--disable-infobars",
+                "--disable-accelerated-2d-canvas",
                 "--no-first-run",
+                "--no-zygote",
+                "--single-process",  # Use single process for memory efficiency in Docker
+                "--disable-gpu",
+                "--window-size=1920,1080",
             ]
 
             # Add custom options
@@ -115,12 +124,39 @@ class PlaywrightScraperBrowser:
             # Initialize page
             self.page = await self.context.new_page()
 
-            # Apply stealth
+            # Configure resource blocking after page creation if requested
+            if self.block_resources:
+                try:
+                    await self.block_unnecessary_resources()
+                except Exception as e:
+                    print(f"[WARN] [{self.site_name}] Failed to enable resource blocking: {e}")
+
+            # Apply stealth (best-effort)
             try:
-                await self._stealth.apply_stealth_async(self.page)
+                # Import lazily and call whichever entrypoint exists. Be permissive
+                # because playwright_stealth may expose different callables.
+                import importlib
+
+                mod = importlib.import_module("playwright_stealth")
+                stealth_async = getattr(mod, "stealth_async", None)
+                stealth_sync = getattr(mod, "stealth", None)
+
+                if callable(stealth_async):
+                    # Some implementations return coroutines, others are sync.
+                    res = stealth_async(self.page)
+                    if asyncio.iscoroutine(res):
+                        await res
+                elif callable(stealth_sync):
+                    # sync variant expects a page; call it directly
+                    stealth_sync(self.page)
+                elif hasattr(mod, "stealth") and callable(getattr(mod, "stealth")):
+                    getattr(mod, "stealth")(self.page)
+                else:
+                    # nothing callable found; skip quietly
+                    pass
             except Exception as e:
-                # If stealth is not async-compatible or fails
-                print(f"[WARN] [{self.site_name}] Failed to apply stealth (Async): {e}")
+                # If stealth import or call fails, log and continue.
+                print(f"[WARN] [{self.site_name}] playwright_stealth not available or failed: {e}")
 
             # Set timeouts
             self.page.set_default_timeout(self.timeout)
@@ -141,10 +177,15 @@ class PlaywrightScraperBrowser:
             raise RuntimeError("Browser not initialized")
 
         try:
-            self._last_response = await self.page.goto(url, wait_until="domcontentloaded")
+            self._last_response = await self.page.goto(url, wait_until="networkidle")
         except Exception as e:
-            print(f"[WARN] [{self.site_name}] Navigation error: {e}")
-            raise
+            # Fallback if networkidle fails (sometimes it hangs indefinitely)
+            try:
+                print(f"[WARN] [{self.site_name}] networkidle failed, falling back to load: {e}")
+                self._last_response = await self.page.goto(url, wait_until="load")
+            except Exception as e2:
+                print(f"[WARN] [{self.site_name}] Navigation error: {e2}")
+                raise
 
     async def check_http_status(self) -> int | None:
         """Check the HTTP status code of the last response."""
@@ -191,6 +232,117 @@ class PlaywrightScraperBrowser:
             return getattr(self.page, name)
         raise AttributeError(f"'PlaywrightScraperBrowser' object has no attribute '{name}' and page is not initialized")
 
+    async def block_unnecessary_resources(self) -> None:
+        """Block unnecessary resources to improve performance.
+
+        This method is opt-in (self.block_resources must be True). It registers
+        route handlers to abort requests for common static assets and analytics
+        endpoints while whitelisting essential resources such as API calls and
+        main JS bundles.
+        """
+        if not self.page:
+            return
+
+        # Reset metrics
+        self.blocked_count = 0
+        self.allowed_count = 0
+        self._requests_total = 0
+
+        # File extensions to block
+        ext_pattern = "**/*.{png,jpg,jpeg,gif,svg,webp,css,woff,woff2,ttf,otf}"
+
+        analytics_tokens = [
+            "google-analytics",
+            "gtag",
+            "analytics",
+            "amplitude",
+            "segment",
+            "hotjar",
+            "mixpanel",
+            "googlesyndication",
+            "doubleclick",
+            "facebook",
+            "taboola",
+            "ads",
+            "adservice",
+        ]
+
+        async def _abort(route):
+            try:
+                await route.abort()
+            except Exception:
+                # ignore abort errors
+                pass
+
+        async def _conditional(route):
+            req = route.request
+            url = (req.url or "").lower()
+
+            # Whitelist API calls and JS bundles (do not block essential JS)
+            if "/api/" in url or url.endswith(".js"):
+                try:
+                    await route.continue_()
+                except Exception:
+                    pass
+                return
+
+            # Block analytics/tracking by token
+            for token in analytics_tokens:
+                if token in url:
+                    await _abort(route)
+                    return
+
+            # Default: allow
+            try:
+                await route.continue_()
+            except Exception:
+                pass
+
+        # Register routes
+        await self.page.route(ext_pattern, _abort)
+        # Broad catch-all for analytics/tracking/ads
+        await self.page.route("**/*", _conditional)
+
+        # Attach lightweight request listeners for metrics
+        def _on_request(request):
+            try:
+                self._requests_total += 1
+            except Exception:
+                pass
+
+        def _on_request_finished(request):
+            try:
+                self.allowed_count += 1
+            except Exception:
+                pass
+
+        def _on_request_failed(request):
+            try:
+                failure = None
+                try:
+                    failure = request.failure()
+                except Exception:
+                    # Some mock objects may not implement failure()
+                    failure = None
+
+                # Many blocked requests surface as aborted network failures
+                if failure:
+                    # Playwright's failure() often returns a dict-like object
+                    err = getattr(failure, "errorText", None) or (failure.get("errorText") if isinstance(failure, dict) else None)
+                    if err and "aborted" in err.lower():
+                        self.blocked_count += 1
+                        return
+
+                # Fallback: treat as blocked if not finished
+                self.blocked_count += 1
+            except Exception:
+                pass
+
+        # Register events
+        self.page.on("request", _on_request)
+        self.page.on("requestfinished", _on_request_finished)
+        self.page.on("requestfailed", _on_request_failed)
+
 
 async def create_playwright_browser(
     site_name: str,
@@ -198,6 +350,7 @@ async def create_playwright_browser(
     profile_suffix: str | None = None,
     custom_options: list[str] | None = None,
     timeout: int = 30,
+    block_resources: bool = False,
 ) -> PlaywrightScraperBrowser:
     """Factory for Async Browser."""
     browser = PlaywrightScraperBrowser(
@@ -206,8 +359,7 @@ async def create_playwright_browser(
         profile_suffix,
         custom_options,
         timeout,
+        block_resources=block_resources,
     )
     await browser.initialize()
     return browser
-
-

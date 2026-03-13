@@ -315,15 +315,22 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError("Workflow cancelled", context=ErrorContext(site_name=self.config.name))
 
             if context:
-                self.context = context
+                self.context = context.copy()
                 self.results.update(context)
+            else:
+                self.context = {}
+
+            # Add config variables to context for template substitution
+            self.context["base_url"] = self.config.base_url
+            self.context["name"] = self.config.name
+            self.context["display_name"] = self.config.display_name
 
             for i, step in enumerate(self.config.workflows, 1):
                 self.current_step_index = i
                 if self.workflow_stopped:
                     break
 
-                await self._execute_step_with_retry(step, context, step_index=i)
+                await self._execute_step_with_retry(step, self.context, step_index=i)
                 if self.workflow_stopped:
                     break
 
@@ -354,7 +361,7 @@ class WorkflowExecutor:
             for i, step in enumerate(steps, 1):
                 if self.workflow_stopped:
                     break
-                await self._execute_step_with_retry(step, context, step_index=i)
+                await self._execute_step_with_retry(step, self.context, step_index=i)
 
             return {
                 "success": True,

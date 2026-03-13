@@ -296,24 +296,38 @@ def run_scraping(
     collector = ResultCollector(test_mode=test_mode)  # Collect results (skip saving if test_mode)
     configs = []
 
-    # Map name to remote config dict for easy lookup
-    remote_map = {s.get("name"): s for s in remote_scrapers}
+    # Map names and normalized slugs to remote config dict for easy lookup
+    remote_map = {}
+    for s in remote_scrapers:
+        name = s.get("name")
+        if name:
+            remote_map[name] = s
+            # Also map normalized versions
+            remote_map[name.lower().replace(" ", "_").replace("-", "_")] = s
+            remote_map[name.lower().replace(" ", "-").replace("_", "-")] = s
 
     for site_name in available_sites:
-        # Normalize site_name to snake_case for consistent lookup/filename
-        normalized_name = site_name.lower().replace(" ", "_")
+        # Try multiple normalization strategies to find the config
+        search_keys = [
+            site_name,
+            site_name.lower().replace(" ", "_").replace("-", "_"),
+            site_name.lower().replace(" ", "-").replace("_", "-"),
+        ]
+
+        config_payload = None
+        for key in search_keys:
+            if key in remote_map:
+                config_payload = remote_map[key]
+                break
 
         try:
-            if normalized_name in remote_map:
-                config = parser.load_from_dict(remote_map[normalized_name])
+            if config_payload:
+                config = parser.load_from_dict(config_payload)
                 configs.append(config)
-                log(f"Loaded config from API: {config.name}", "INFO")
-            elif site_name in remote_map:
-                config = parser.load_from_dict(remote_map[site_name])
-                configs.append(config)
-                log(f"Loaded config from API: {config.name}", "INFO")
+                source = "Local" if use_yaml_configs() else "API"
+                log(f"Loaded config from {source}: {config.name}", "INFO")
             else:
-                raise RuntimeError(f"Config '{site_name}' not found in API response (API-only mode, no local fallback)")
+                raise RuntimeError(f"Config '{site_name}' not found in loaded configurations")
 
         except Exception as e:
             log(f"Failed to load config for {site_name}: {e}", "WARNING")

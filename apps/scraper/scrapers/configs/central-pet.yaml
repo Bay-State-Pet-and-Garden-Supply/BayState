@@ -1,5 +1,5 @@
 schema_version: "1.0"
-name: central_pet
+name: central-pet
 display_name: Central Pet
 base_url: https://www.centralpet.com
 scraper_type: static
@@ -59,23 +59,33 @@ workflows:
   - action: navigate
     name: null
     params:
-      url: https://www.centralpet.com/Search?criteria={sku}
+      url: "{base_url}/Search?criteria={sku}"
   - action: conditional_click
     name: null
     params:
       selector: //button[contains(text(), 'Accept')]
-  - action: wait_for
-    name: null
-    params:
-      timeout: 5
-      selector: "#tst_productDetail_erpDescription, span.no-results-found, .no-results"
   - action: wait
     name: null
     params:
       duration: 2
+  - action: wait_for
+    name: null
+    params:
+      timeout: 30
+      selector:
+        - "#tst_productDetail_erpDescription"
+        - "span.no-results-found"
+        - ".no-results"
+        - "//h2[contains(text(), 'No results found')]"
+        - ".empty-search"
   - action: check_no_results
     name: null
     params: {}
+  - action: validate_search_result
+    name: null
+    params:
+      required_selectors:
+        - "#tst_productDetail_erpDescription"
   - action: conditional_skip
     name: null
     params:

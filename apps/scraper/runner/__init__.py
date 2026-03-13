@@ -255,17 +255,20 @@ def run_job(
     for scraper_cfg in job_config.scrapers:
         try:
             options = scraper_cfg.options or {}
+            
+            # The coordinator API puts 'workflows' inside the 'options' object.
+            # We map it to the root level expected by ScraperConfigModel.
             config_dict = {
                 "name": scraper_cfg.name,
                 "base_url": scraper_cfg.base_url,
                 "search_url_template": scraper_cfg.search_url_template,
                 "selectors": _normalize_selectors_payload(scraper_cfg.selectors),
                 "workflows": options.get("workflows", []),
-                "timeout": options.get("timeout", 30),
+                "timeout": options.get("timeout", getattr(scraper_cfg, "timeout", 30)),
                 "test_skus": scraper_cfg.test_skus if scraper_cfg.test_skus is not None else [],
-                "retries": getattr(scraper_cfg, "retries", 0),
+                "retries": getattr(scraper_cfg, "retries", 3),
                 "validation": getattr(scraper_cfg, "validation", None),
-                "credential_refs": getattr(scraper_cfg, "credential_refs", None),
+                "credential_refs": getattr(scraper_cfg, "credential_refs", []) or [],
             }
 
             config = cast(ScraperConfigModel, parser.load_from_dict(config_dict))

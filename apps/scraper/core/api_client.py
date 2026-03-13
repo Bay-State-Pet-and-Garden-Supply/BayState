@@ -43,6 +43,7 @@ class ScraperConfig:
     test_skus: list[str] | None = None
     retries: int = 3
     validation: dict[str, Any] | None = None
+    credential_refs: list[str] | None = None
 
 
 @dataclass
@@ -319,6 +320,7 @@ class ScraperAPIClient:
                     test_skus=s.get("test_skus"),
                     retries=s.get("retries", 3),
                     validation=s.get("validation"),
+                    credential_refs=s.get("credential_refs"),
                 )
                 for s in data.get("scrapers", [])
             ]
@@ -589,6 +591,7 @@ class ScraperAPIClient:
                     test_skus=s.get("test_skus"),
                     retries=s.get("retries", 3),
                     validation=s.get("validation"),
+                    credential_refs=s.get("credential_refs"),
                 )
                 for s in job_data.get("scrapers", [])
             ]
