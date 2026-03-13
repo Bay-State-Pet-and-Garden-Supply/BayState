@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS public.scraper_credentials (
   key_version integer NOT NULL DEFAULT 1,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  updated_by uuid REFERENCES auth.users(id)
+  updated_by uuid REFERENCES auth.users(id),
+  UNIQUE(scraper_slug, credential_type)
 );
 
 ALTER TABLE public.scraper_credentials ENABLE ROW LEVEL SECURITY;

@@ -36,7 +36,7 @@
     - [x] Implement a form to view/edit credentials stored in `public.scraper_credentials` table
     - [x] Ensure this section remains editable in all environments
     - [x] Write unit tests for the credentials UI and actions
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Credentials' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 4: Credentials' (Protocol in workflow.md)
 
 ## Phase 5: Cleanup & Final Verification
 - [ ] Task: Remove legacy scraper config API routes and actions
