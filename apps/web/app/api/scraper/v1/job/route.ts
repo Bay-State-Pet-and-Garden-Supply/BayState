@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
-import { getLocalScraperConfigs, getLocalScraperConfig } from '@/lib/admin/scrapers/configs';
+import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
 import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
@@ -209,10 +209,10 @@ export async function GET(request: NextRequest) {
         const requestedScrapers = deriveRequestedScrapers(job);
         const normalizedJobType = normalizeRunnerJobType(job.type);
 
-        const allConfigs = await getLocalScraperConfigs();
+        const allLocalConfigs = await getLocalScraperConfigs();
         const scrapers: ScraperConfig[] = [];
 
-        for (const config of allConfigs) {
+        for (const config of allLocalConfigs) {
             // If specific scrapers are requested, filter by name/slug
             if (requestedScrapers.length > 0 && !requestedScrapers.includes(config.slug)) {
                 continue;
