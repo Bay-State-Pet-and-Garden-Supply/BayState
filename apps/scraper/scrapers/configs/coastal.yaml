@@ -5,42 +5,66 @@ base_url: https://www.coastalpet.com
 scraper_type: static
 selectors:
   - name: Name
-    selector: h1.product-detail__name, h1.product-title, h1
+    selector: h1.product-detail__name
+    fallback_selectors:
+      - h1.product-title
+      - h1
     attribute: text
     multiple: false
     required: true
   - name: Brand
-    selector: .product-detail__brand, a.gray-bold-link[href*='brand='], .gray-bold-link
+    selector: .product-detail__brand
+    fallback_selectors:
+      - a.gray-bold-link[href*='brand=']
+      - .gray-bold-link
     attribute: text
     multiple: false
     required: true
   - name: Size
-    selector: .product-details__size-button--active, .product-details__size-button, .active-size
+    selector: .product-details__size-button--active
+    fallback_selectors:
+      - .product-details__size-button
+      - .active-size
     attribute: text
     multiple: false
     required: false
   - name: Image URLs
-    selector: ".product-details__main-image img, .product-details__preview-images--scrolling-container img, img[src*='salsify']"
+    selector: ".product-details__main-image img"
+    fallback_selectors:
+      - ".product-details__preview-images--scrolling-container img"
+      - "img[src*='salsify']"
     attribute: src
     multiple: true
     required: true
   - name: UPC
-    selector: ".product-details__info span:has-text('UPC:') + span, .product-details__info span:contains('UPC:') + span, [itemprop='sku']"
+    selector: ".product-details__info span:has-text('UPC:') + span"
+    fallback_selectors:
+      - ".product-details__info span:contains('UPC:') + span"
+      - "[itemprop='sku']"
     attribute: text
     multiple: false
     required: false
   - name: Item Number
-    selector: ".product-details__info span:has-text('Item Number:') + span, .product-details__info span:contains('Item Number:') + span, .item-number"
+    selector: ".product-details__info span:has-text('Item Number:') + span"
+    fallback_selectors:
+      - ".product-details__info span:contains('Item Number:') + span"
+      - ".item-number"
     attribute: text
     multiple: false
     required: false
   - name: Description
-    selector: "#product-details__description-tab-panel, #description, .product-description"
+    selector: "#product-details__description-tab-panel"
+    fallback_selectors:
+      - "#description"
+      - ".product-description"
     attribute: text
     multiple: false
     required: false
   - name: Features
-    selector: "#product-details__features-tab-panel, .features-list li, .product-features li"
+    selector: "#product-details__features-tab-panel"
+    fallback_selectors:
+      - ".features-list li"
+      - ".product-features li"
     attribute: text
     multiple: true
     required: false
