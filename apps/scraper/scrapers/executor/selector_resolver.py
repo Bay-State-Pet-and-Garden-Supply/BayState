@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from core.timeout_config import TIER_IMPORTANT, TIER_OPTIONAL, TimeoutConfig
 from scrapers.utils.locators import convert_to_playwright_locator
 
 logger = logging.getLogger(__name__)
@@ -18,14 +19,16 @@ logger = logging.getLogger(__name__)
 class SelectorResolver:
     """Resolves selectors and extracts values from Playwright elements."""
 
-    def __init__(self, browser: Any) -> None:
+    def __init__(self, browser: Any, timeout_config: TimeoutConfig | None = None) -> None:
         """
         Initialize SelectorResolver.
 
         Args:
             browser: Browser instance with a `page` attribute (Playwright page)
+            timeout_config: Optional TimeoutConfig instance for tiered timeouts
         """
         self.browser = browser
+        self.timeout_config = timeout_config or TimeoutConfig()
 
     async def find_element_safe(self, selector: str, required: bool = True, timeout: int | None = None) -> Any:
         """
@@ -44,9 +47,13 @@ class SelectorResolver:
                 page = self.browser.page
                 locator = convert_to_playwright_locator(page, selector)
 
-                # Use a short timeout for element_handle to fail fast on missing elements
-                # Playwright's default is 30s which is too long for optional fields
-                element_timeout = timeout if timeout is not None else 5000
+                # Use tiered timeouts if not explicitly provided
+                if timeout is None:
+                    tier = TIER_IMPORTANT if required else TIER_OPTIONAL
+                    element_timeout = self.timeout_config.get_timeout(tier)
+                else:
+                    element_timeout = timeout
+
                 try:
                     return await locator.element_handle(timeout=element_timeout)
                 except Exception:
@@ -59,6 +66,7 @@ class SelectorResolver:
             if required:
                 raise
             return None
+
     async def find_elements_safe(self, selector: str, timeout: int | None = None) -> list[Any]:
         """
         Find multiple elements using Playwright.
@@ -75,14 +83,18 @@ class SelectorResolver:
                 page = self.browser.page
                 locator = convert_to_playwright_locator(page, selector)
 
-                # Use timeout for all() to prevent long waits on missing optional fields
-                # Playwright's default is 30s which is too long for optional fields
-                elements_timeout = timeout if timeout is not None else 5000
+                # Multiple elements are typically optional, use OPTIONAL tier if not provided
+                if timeout is None:
+                    elements_timeout = self.timeout_config.get_timeout(TIER_OPTIONAL)
+                else:
+                    elements_timeout = timeout
+
                 return await locator.all(timeout=elements_timeout)
             return []
         except Exception as e:
             logger.debug(f"find_elements_safe failed for '{selector}': {e}")
             return []
+
 
     async def extract_value_from_element(self, element: Any, attribute: str | None = None) -> Any:
         """
