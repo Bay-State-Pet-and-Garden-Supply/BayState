@@ -1,10 +1,10 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/scraper-config-migration.md",
-  "started_at": "2026-03-13T00:56:26.861Z",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-performance-fixes.md",
+  "started_at": "2026-03-13T20:37:09.906Z",
   "session_ids": [
-    "ses_31b4e2649ffeKIw703nuIU5UX5"
+    "ses_317351cd0ffenQRa1W68uz6cKV"
   ],
-  "plan_name": "scraper-config-migration",
+  "plan_name": "scraper-performance-fixes",
   "agent": "atlas",
-  "worktree_path": "/Users/nickborrello/Desktop/Projects/BayState"
+  "worktree_path": "C:/Users/thoma/OneDrive/Desktop/scripts/BayState"
 }

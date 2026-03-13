@@ -24,6 +24,7 @@ if project_root not in sys.path:
 
 from core.settings_manager import *
 from core.config import use_yaml_configs
+from utils.logger import setup_logging
 
 
 def _normalize_scraper_identifier(value: str) -> str:
@@ -238,6 +239,9 @@ Examples:
     except Exception as e:
         print(f"[WARN] Failed to load settings: {e}")
         debug_mode = args.debug
+
+    # Initialize logging
+    setup_logging(debug_mode=debug_mode)
 
     if args.test:
         run_test_mode(scrapers=args.scrapers, debug_mode=debug_mode)

@@ -31,49 +31,49 @@ class WaitForAction(BaseAction):
         start_time = time.time()
 
         try:
-            end_time = start_time + timeout
-            found = False
-
-            while time.time() < end_time:
-                # Refresh page reference each iteration to prevent stale references
-                # if navigation occurred during the wait
-                page = self.ctx.browser.page
-
-                for selector in selectors:
-                    try:
-                        # Convert selector to proper Playwright locator using best practices
-                        locator = convert_to_playwright_locator(page, selector)
-
-                        # Quick non-blocking check first
-                        if await locator.first.is_visible():
-                            found = True
-                            break
-
-                        # Short wait for this specific selector
-                        # Using 200ms for high responsiveness in the multi-selector loop
-                        await locator.wait_for(state="visible", timeout=200)
-                        found = True
+            page = self.ctx.browser.page
+            
+            # Initial quick check for visibility before starting concurrent wait
+            found_selector = None
+            for sel in selectors:
+                try:
+                    locator = convert_to_playwright_locator(page, sel)
+                    if await locator.first.is_visible():
+                        found_selector = sel
                         break
-                    except Exception:
-                        # Continue to next selector if this one isn't visible yet
-                        continue
+                except Exception:
+                    continue
+            
+            if not found_selector:
+                async def wait_for_selector(sel: str):
+                    locator = convert_to_playwright_locator(page, sel)
+                    await locator.wait_for(state="visible", timeout=timeout * 1000)
+                    return sel
 
-                if found:
-                    break
-
-                # Sleep slightly to prevent CPU pinning while polling
-                await asyncio.sleep(0.3)
-
-            if not found:
-                raise TimeoutError("Playwright wait timed out")
+                # Use asyncio.wait to return as soon as ANY selector matches
+                if len(selectors) > 1:
+                    tasks = [asyncio.create_task(wait_for_selector(sel)) for sel in selectors]
+                    done, pending = await asyncio.wait(
+                        tasks, 
+                        timeout=timeout, 
+                        return_when=asyncio.FIRST_COMPLETED
+                    )
+                    
+                    # Cancel remaining tasks
+                    for task in pending:
+                        task.cancel()
+                    
+                    if not done:
+                        raise TimeoutError("Playwright wait timed out (concurrent)")
+                    
+                    # Await the completed task to get its result (the selector string)
+                    found_selector = await list(done)[0]
+                else:
+                    # Single selector optimization
+                    found_selector = await wait_for_selector(selectors[0])
 
             wait_duration = time.time() - start_time
-
-            # Performance warning for slow selectors (efficiency check)
-            if wait_duration > (timeout * 0.5) and wait_duration > 2.0:
-                logger.warning(f"Slow selector detected: Found after {wait_duration:.2f}s (>50% of {timeout}s timeout). Consider optimizing: {selectors}")
-            else:
-                logger.info(f"Element found after {wait_duration:.2f}s from selectors: {selectors}")
+            logger.info(f"Element found via '{found_selector}' after {wait_duration:.2f}s")
 
         except (TimeoutError, Exception) as e:
             wait_duration = time.time() - start_time

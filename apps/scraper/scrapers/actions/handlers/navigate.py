@@ -22,10 +22,17 @@ class NavigateAction(BaseAction):
 
         logger.info(f"Navigating to: {url}")
         await self.ctx.browser.get(url)
+        
+        # Log current URL after navigation/redirects
+        try:
+            current_url = self.ctx.browser.page.url
+            logger.info(f"Navigation complete. Current URL: {current_url}")
+        except Exception:
+            pass
 
         # Check HTTP status if monitoring is enabled
         if self.ctx.config.http_status and self.ctx.config.http_status.enabled:
-            status_code = self.ctx.browser.check_http_status()
+            status_code = await self.ctx.browser.check_http_status()
             current_url = self.ctx.browser.current_url
 
             # Store status in results

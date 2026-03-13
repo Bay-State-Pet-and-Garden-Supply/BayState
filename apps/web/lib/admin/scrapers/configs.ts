@@ -34,7 +34,8 @@ export async function getLocalScraperConfigs(): Promise<ScraperConfig[]> {
         health_score: config.health_score ?? null,
         last_test_at: config.last_test_at || null,
         schema_version: config.schema_version || '1.0',
-        file_path: `scrapers/configs/${filename}`
+        file_path: `scrapers/configs/${filename}`,
+        ...config
       } as ScraperConfig;
     } catch (err) {
       console.error(`Error parsing yaml file ${filename}:`, err);

@@ -1,0 +1,16 @@
+services:
+  github-runner:
+    build: .
+    restart: on-failure
+    environment:
+      # Either set RUNNER_REPO (for repo runners) or RUNNER_ORG (for org runners).
+      # See docs below for how to get the token.
+      RUNNER_REPO: "${RUNNER_REPO}"
+      # RUNNER_ORG: "${RUNNER_ORG}"
+      RUNNER_TOKEN: "${RUNNER_TOKEN}"
+      RUNNER_NAME: "${RUNNER_NAME:-${HOSTNAME}}"
+      RUNNER_LABELS: "self-hosted,docker"
+    volumes:
+      - ./_work:/runner/_work
+      # Optional (only needed if you want the runner to spawn sibling containers):
+      - /var/run/docker.sock:/var/run/docker.sock
