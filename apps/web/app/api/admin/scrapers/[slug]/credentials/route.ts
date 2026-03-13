@@ -82,6 +82,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, statuses });
   } catch (error) {
+    console.error('Error in POST scraper credentials:', error);
     return NextResponse.json(
       {
         error: 'Failed to update scraper credential',

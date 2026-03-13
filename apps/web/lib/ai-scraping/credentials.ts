@@ -82,7 +82,7 @@ function resolveEncryptionKey(required: boolean): Buffer | null {
   return keyBuffer;
 }
 
-function encryptSecret(secret: string): { encryptedValue: string; iv: string; authTag: string } {
+export function encryptSecret(secret: string): { encryptedValue: string; iv: string; authTag: string } {
   const key = resolveEncryptionKey(true);
   if (!key) {
     throw new Error('Encryption key unavailable');
@@ -100,7 +100,7 @@ function encryptSecret(secret: string): { encryptedValue: string; iv: string; au
   };
 }
 
-function decryptSecret(payload: { encryptedValue: string; iv: string; authTag: string }): string {
+export function decryptSecret(payload: { encryptedValue: string; iv: string; authTag: string }): string {
   const key = resolveEncryptionKey(true);
   if (!key) {
     throw new Error('Encryption key unavailable');
