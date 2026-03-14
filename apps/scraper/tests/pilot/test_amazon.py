@@ -8,6 +8,7 @@ from scrapers.parser.yaml_parser import ScraperConfigParser
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "scrapers" / "configs" / "crawl4ai" / "amazon.yaml"
+STATIC_CONFIG_PATH = Path(__file__).resolve().parents[2] / "scrapers" / "configs" / "amazon.yaml"
 
 
 def test_amazon_migrated_config_exists() -> None:
@@ -16,7 +17,10 @@ def test_amazon_migrated_config_exists() -> None:
 
 def test_amazon_migrated_config_schema_and_workflow() -> None:
     parser = ScraperConfigParser()
-    config = parser.load_from_file(CONFIG_PATH)
+    with open(CONFIG_PATH, encoding="utf-8") as file:
+        raw = yaml.safe_load(file)
+
+    config = parser.load_from_dict(raw)
 
     assert config.name == "amazon"
     assert config.scraper_type == "static"
@@ -45,3 +49,19 @@ def test_amazon_migrated_config_fields_present() -> None:
         "weight",
     }
     assert expected.issubset(selector_names)
+
+
+def test_amazon_migrated_config_uses_runtime_search_query_placeholder() -> None:
+    with open(STATIC_CONFIG_PATH, encoding="utf-8") as file:
+        raw = yaml.safe_load(file)
+
+    navigate_steps = [
+        step for step in raw.get("workflows", [])
+        if step.get("action") == "navigate"
+    ]
+
+    assert navigate_steps
+    navigate_url = navigate_steps[0]["params"]["url"]
+
+    assert "{search_query_encoded}" in navigate_url
+    assert "{{sku}}" not in navigate_url

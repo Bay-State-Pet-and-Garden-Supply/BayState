@@ -177,4 +177,37 @@ describe('scrapeProducts', () => {
             },
         ]);
     });
+
+    it('should include per-sku input context in standard job config', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    input: {
+                        name: 'BENTLEY SEED BROCCOL I GREEN SPROUTING',
+                        price: 2.49,
+                        brand: 'Bentley Seed',
+                        category: 'Seeds',
+                    },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { scrapers: ['amazon'] });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.type).toBe('standard');
+        expect(insertedPayload.config).toEqual({
+            sku_context: {
+                'SKU-1': {
+                    product_name: 'BENTLEY SEED BROCCOL I GREEN SPROUTING',
+                    price: 2.49,
+                    brand: 'Bentley Seed',
+                    category: 'Seeds',
+                },
+            },
+        });
+    });
 });

@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
+from urllib.parse import quote_plus
 
 from core.api_client import JobConfig
 from core.events import ScraperEvent, create_emitter, event_bus
@@ -54,6 +56,100 @@ def _normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
         return normalized
 
     return []
+
+
+def _to_optional_string(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+
+    trimmed = value.strip()
+    return trimmed if trimmed else None
+
+
+def _normalize_search_text(value: str | None) -> str:
+    return re.sub(r"[^a-z0-9]", "", (value or "").lower())
+
+
+def _normalize_item_context(candidate: dict[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+
+    product_name = _to_optional_string(candidate.get("product_name") or candidate.get("name"))
+    brand = _to_optional_string(candidate.get("brand"))
+    category = _to_optional_string(candidate.get("category"))
+
+    if product_name:
+        normalized["product_name"] = product_name
+    if brand:
+        normalized["brand"] = brand
+    if category:
+        normalized["category"] = category
+    if candidate.get("price") is not None:
+        normalized["price"] = candidate.get("price")
+
+    return normalized
+
+
+def _build_item_context_by_sku(job_config: JobConfig) -> dict[str, dict[str, Any]]:
+    raw_config = job_config.job_config if isinstance(job_config.job_config, dict) else {}
+    item_context_by_sku: dict[str, dict[str, Any]] = {}
+
+    raw_items = raw_config.get("items")
+    if isinstance(raw_items, list):
+        for candidate in raw_items:
+            if not isinstance(candidate, dict):
+                continue
+
+            candidate_sku = _to_optional_string(candidate.get("sku"))
+            if not candidate_sku:
+                continue
+
+            item_context_by_sku[candidate_sku] = _normalize_item_context(candidate)
+
+    raw_sku_context = raw_config.get("sku_context")
+    if isinstance(raw_sku_context, dict):
+        for key, value in raw_sku_context.items():
+            candidate_sku = _to_optional_string(key)
+            if not candidate_sku or not isinstance(value, dict):
+                continue
+
+            merged_context = dict(item_context_by_sku.get(candidate_sku, {}))
+            merged_context.update(_normalize_item_context(value))
+            item_context_by_sku[candidate_sku] = merged_context
+
+    return item_context_by_sku
+
+
+def _build_search_query(sku: str, item_context: dict[str, Any]) -> str:
+    product_name = _to_optional_string(item_context.get("product_name"))
+    brand = _to_optional_string(item_context.get("brand"))
+
+    if product_name:
+        normalized_product_name = _normalize_search_text(product_name)
+        normalized_brand = _normalize_search_text(brand)
+
+        if brand and normalized_brand and normalized_brand not in normalized_product_name:
+            return f"{brand} {product_name}"
+
+        return product_name
+
+    return sku
+
+
+def _build_standard_workflow_context(
+    sku: str,
+    test_mode: bool,
+    item_context_by_sku: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    item_context = dict(item_context_by_sku.get(sku, {}))
+    search_query = _build_search_query(sku, item_context)
+
+    return {
+        "sku": sku,
+        "test_mode": test_mode,
+        **item_context,
+        "search_query": search_query,
+        "search_query_encoded": quote_plus(search_query),
+    }
 
 
 def _build_telemetry_from_events(events: list[ScraperEvent]) -> Dict[str, Any]:
@@ -320,6 +416,8 @@ def run_job(
 
             # Run all async operations in a single event loop to properly manage
             # Playwright browser subprocess lifecycle
+            item_context_by_sku = _build_item_context_by_sku(job_config)
+
             async def run_all_scrapes() -> List[Tuple[str, Any]]:
                 if executor is None:
                     return []
@@ -329,7 +427,11 @@ def run_job(
                     for sku in skus:
                         try:
                             result = await executor.execute_workflow(
-                                context={"sku": sku, "test_mode": job_config.test_mode},
+                                context=_build_standard_workflow_context(
+                                    sku,
+                                    job_config.test_mode,
+                                    item_context_by_sku,
+                                ),
                                 quit_browser=False,
                             )
                             scrape_results.append((sku, result))
@@ -389,17 +491,17 @@ def run_job(
                             except Exception:
                                 pass
 
-                            results["data"][sku][cfg_name] = {
-                                # Note: Price is NOT scraped - we use our own pricing
-                                "title": extracted_data.get("Name"),
-                                "brand": extracted_data.get("Brand"),
-                                "weight": extracted_data.get("Weight"),
-                                "description": extracted_data.get("Description"),
-                                "images": extracted_data.get("Image URLs", []) or extracted_data.get("Images", []),
-                                "availability": extracted_data.get("Availability"),
-                                "url": page_url,
-                                "scraped_at": datetime.now().isoformat(),
-                            }
+                        results["data"][sku][cfg_name] = {
+                            # Note: Price is NOT scraped - we use our own pricing
+                            "title": extracted_data.get("Name"),
+                            "brand": extracted_data.get("Brand"),
+                            "weight": extracted_data.get("Weight"),
+                            "description": extracted_data.get("Description"),
+                            "images": extracted_data.get("Image URLs", []) or extracted_data.get("Images", []),
+                            "availability": extracted_data.get("Availability"),
+                            "url": page_url,
+                            "scraped_at": datetime.now().isoformat(),
+                        }
 
                         collector.add_result(sku, cfg_name, extracted_data)
 
