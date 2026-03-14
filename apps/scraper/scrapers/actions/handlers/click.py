@@ -7,6 +7,7 @@ from typing import Any
 
 from scrapers.actions.base import BaseAction
 from scrapers.actions.registry import ActionRegistry
+from scrapers.ai_search.matching import MatchingUtils
 from scrapers.exceptions import WorkflowExecutionError
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,8 @@ class ClickAction(BaseAction):
         selector_identifier = params.get("selector")
         filter_text = params.get("filter_text")
         filter_text_exclude = params.get("filter_text_exclude")
+        match_context_field = params.get("match_context_field")
+        require_context_match = params.get("require_context_match", False)
         index = params.get("index", 0)
         wait_after = params.get("wait_after", 0)
 
@@ -39,8 +42,15 @@ class ClickAction(BaseAction):
 
             # 2. Filter elements
             filtered_elements = elements
-            if filter_text or filter_text_exclude:
+            expected_match_value = None
+            if match_context_field and hasattr(self.ctx, "context"):
+                expected_match_value = self.ctx.context.get(match_context_field)
+
+            if filter_text or filter_text_exclude or expected_match_value:
                 new_filtered = []
+                context_matched = []
+                matcher = MatchingUtils() if isinstance(expected_match_value, str) and expected_match_value.strip() else None
+
                 for el in elements:
                     txt = await self.ctx.extract_value_from_element(el, "text") or ""
                     
@@ -54,7 +64,17 @@ class ClickAction(BaseAction):
                         
                     if include_match and not exclude_match:
                         new_filtered.append(el)
-                filtered_elements = new_filtered
+                        if matcher and matcher.is_name_match(expected_match_value, txt):
+                            context_matched.append(el)
+
+                if context_matched:
+                    filtered_elements = context_matched
+                else:
+                    filtered_elements = new_filtered
+                    if matcher and require_context_match:
+                        raise WorkflowExecutionError(
+                            f"No elements matched context field '{match_context_field}' for selector: {selector_identifier}"
+                        )
 
             if not filtered_elements:
                 raise WorkflowExecutionError(f"No elements remaining after filtering for selector: {selector_identifier}")
@@ -94,10 +114,6 @@ class ClickAction(BaseAction):
                 logger.warning(f"All click strategies failed for {selector_identifier}: {e}")
                 raise
 
-        # Use system retry executor for the whole operation
-        # This handles backoff and escalated timeouts automatically
-        from core.retry_executor import RetryExecutor
-        
         # Access the executor from the context
         if hasattr(self.ctx, "retry_executor") and self.ctx.retry_executor:
             retry_result = await self.ctx.retry_executor.execute_with_retry(
@@ -107,6 +123,8 @@ class ClickAction(BaseAction):
                 max_retries=params.get("max_retries", 2)
             )
             if not retry_result.success:
+                if isinstance(retry_result.error, WorkflowExecutionError):
+                    raise retry_result.error
                 raise WorkflowExecutionError(f"Failed to click '{selector_identifier}' after retries", cause=retry_result.error)
         else:
             # Fallback for simple contexts without retry executor

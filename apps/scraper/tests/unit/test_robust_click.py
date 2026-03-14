@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -85,3 +86,44 @@ async def test_click_action_tries_dispatch_if_force_fails(mock_context):
     
     assert mock_element.click.call_count == 2
     mock_element.dispatch_event.assert_called_once_with("click")
+
+
+@pytest.mark.asyncio
+async def test_click_action_prefers_context_matching_elements(mock_context):
+    non_matching = AsyncMock()
+    matching = AsyncMock()
+
+    mock_context.context = {"product_name": "BENTLEY SEED BROCCOL I GREEN SPROUTING"}
+    mock_context.find_elements_safe = AsyncMock(return_value=[non_matching, matching])
+    mock_context.extract_value_from_element = AsyncMock(
+        side_effect=[
+            "Nature Jims Sprouts",
+            "Broccoli Seed, Green Sprouting Calabrese, Heirloom, Non GMO, 50 Seeds",
+        ]
+    )
+
+    action = ClickAction(mock_context)
+    await action.execute({"selector": ".btn", "match_context_field": "product_name"})
+
+    non_matching.click.assert_not_called()
+    matching.click.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_click_action_can_require_context_match(mock_context):
+    non_matching = AsyncMock()
+
+    mock_context.context = {"product_name": "BENTLEY SEED BROCCOL I GREEN SPROUTING"}
+    mock_context.find_elements_safe = AsyncMock(return_value=[non_matching])
+    mock_context.extract_value_from_element = AsyncMock(return_value="Nature Jims Sprouts")
+
+    action = ClickAction(mock_context)
+
+    with pytest.raises(WorkflowExecutionError, match="No elements matched context field"):
+        await action.execute(
+            {
+                "selector": ".btn",
+                "match_context_field": "product_name",
+                "require_context_match": True,
+            }
+        )

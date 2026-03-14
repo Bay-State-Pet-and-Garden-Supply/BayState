@@ -109,17 +109,25 @@ function toOptionalNumber(value: unknown): number | undefined {
     return undefined;
 }
 
-async function loadAISearchItems(
+interface ScrapeContextItem {
+    sku: string;
+    product_name?: string;
+    price?: number;
+    brand?: string;
+    category?: string;
+}
+
+async function loadScrapeContextItems(
     supabase: Awaited<ReturnType<typeof createClient>>,
     skus: string[]
-): Promise<Array<{ sku: string; product_name?: string; price?: number; brand?: string; category?: string }>> {
+): Promise<ScrapeContextItem[]> {
     const { data, error } = await supabase
         .from('products_ingestion')
         .select('sku, input')
         .in('sku', skus);
 
     if (error) {
-        console.warn('[Pipeline Scraping] Failed to load AI search context from products_ingestion:', error);
+        console.warn('[Pipeline Scraping] Failed to load scrape context from products_ingestion:', error);
         return skus.map((sku) => ({ sku }));
     }
 
@@ -137,6 +145,28 @@ async function loadAISearchItems(
             category: toOptionalString(input?.category),
         };
     });
+}
+
+function buildStandardSkuContext(items: ScrapeContextItem[]): Record<string, Omit<ScrapeContextItem, 'sku'>> | undefined {
+    const skuContextEntries = items
+        .map((item) => {
+            const context = {
+                product_name: item.product_name,
+                price: item.price,
+                brand: item.brand,
+                category: item.category,
+            };
+
+            const hasContext = Object.values(context).some((value) => value !== undefined);
+            return hasContext ? [item.sku, context] as const : null;
+        })
+        .filter((entry): entry is readonly [string, Omit<ScrapeContextItem, 'sku'>] => entry !== null);
+
+    if (skuContextEntries.length === 0) {
+        return undefined;
+    }
+
+    return Object.fromEntries(skuContextEntries);
 }
 
 export async function scrapeProducts(
@@ -180,7 +210,8 @@ export async function scrapeProducts(
     }
 
     const supabase = await createClient();
-    const aiSearchItems = isAISearch ? await loadAISearchItems(supabase, skus) : undefined;
+    const scrapeContextItems = await loadScrapeContextItems(supabase, skus);
+    const standardSkuContext = isAISearch ? undefined : buildStandardSkuContext(scrapeContextItems);
 
     const maxAISearchCostUsd = isAISearch ? (options?.maxAISearchCostUsd ?? 5.00) : undefined;
     if (isAISearch && maxAISearchCostUsd !== undefined && maxAISearchCostUsd > 10.00) {
@@ -207,9 +238,9 @@ export async function scrapeProducts(
         type,
         config: isAISearch ? {
             ...(options?.aiSearchConfig ?? {}),
-            items: aiSearchItems,
+            items: scrapeContextItems,
             max_cost_usd: maxAISearchCostUsd,
-        } : null,
+        } : (standardSkuContext ? { sku_context: standardSkuContext } : null),
         metadata: isAISearch
             ? {
                 source: 'pipeline',
