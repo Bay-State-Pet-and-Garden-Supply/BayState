@@ -258,7 +258,16 @@ class ConditionalClickAction(BaseAction):
             from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
             page = self.ctx.browser.page
-            selectors_to_try = [s.strip() for s in selector.split(",")]
+            
+            # Smart splitting: don't split if it looks like an XPath or complex selector with commas inside parentheses
+            if isinstance(selector, str):
+                if selector.startswith("//") or selector.startswith(".//") or "(" in selector:
+                    selectors_to_try = [selector]
+                else:
+                    selectors_to_try = [s.strip() for s in selector.split(",")]
+            else:
+                selectors_to_try = selector if isinstance(selector, list) else [selector]
+                
             element_found = False
 
             for sel in selectors_to_try:
@@ -378,6 +387,22 @@ class ValidateSearchResultAction(BaseAction):
         page = self.ctx.browser.page
 
         try:
+            # Check for direct product page landing if required_selectors are provided
+            required_selectors = params.get("required_selectors", [])
+            if isinstance(required_selectors, str):
+                required_selectors = [required_selectors]
+            
+            for sel in required_selectors:
+                try:
+                    locator = convert_to_playwright_locator(page, sel)
+                    if await locator.first.is_visible():
+                        logger.info(f"validate_search_result: Direct product page detected via required_selector '{sel}'")
+                        self.ctx.results["no_results_found"] = False
+                        self.ctx.results["search_result_validated"] = True
+                        return
+                except Exception:
+                    continue
+
             # 1. Get first article
             articles = page.locator("main article")
             # Use a short timeout for the initial count to avoid hanging on rate-limited pages

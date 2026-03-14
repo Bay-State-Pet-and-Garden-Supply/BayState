@@ -179,6 +179,11 @@ class WorkflowExecutor:
         self.normalization_engine: NormalizationEngine | None = None
         self.step_executor: StepExecutor | None = None
 
+    @property
+    def config_name(self) -> str:
+        """Name of the scraper configuration."""
+        return self.config.name
+
     async def initialize(self) -> None:
         """Initialize the browser and all extracted modules asynchronously."""
         try:

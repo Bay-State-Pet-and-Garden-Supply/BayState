@@ -11,6 +11,7 @@ import asyncio
 import os
 import shutil
 import time
+import inspect
 from typing import Any
 
 from playwright.async_api import (
@@ -105,9 +106,9 @@ class PlaywrightScraperBrowser:
                 "--disable-accelerated-2d-canvas",
                 "--no-first-run",
                 "--no-zygote",
-                "--single-process",  # Use single process for memory efficiency in Docker
                 "--disable-gpu",
                 "--window-size=1920,1080",
+                "--disable-blink-features=AutomationControlled",
             ]
 
             # Add custom options
@@ -122,7 +123,7 @@ class PlaywrightScraperBrowser:
             # Create context with standard viewport and user agent
             self.context = await self.browser.new_context(
                 viewport={"width": 1920, "height": 1080},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 device_scale_factor=1,
             )
 
@@ -146,20 +147,39 @@ class PlaywrightScraperBrowser:
                     mod = importlib.import_module("playwright_stealth")
                     stealth_async = getattr(mod, "stealth_async", None)
                     stealth_sync = getattr(mod, "stealth", None)
+                    stealth_class = getattr(mod, "Stealth", None)
 
-                    if callable(stealth_async):
-                        # Some implementations return coroutines, others are sync.
-                        res = stealth_async(self.page)
-                        if asyncio.iscoroutine(res):
-                            await res
-                    elif callable(stealth_sync):
-                        # sync variant expects a page; call it directly
-                        stealth_sync(self.page)
-                    elif hasattr(mod, "stealth") and callable(getattr(mod, "stealth")):
-                        getattr(mod, "stealth")(self.page)
+                    applied = False
+                    if stealth_class and inspect.isclass(stealth_class):
+                        # Version 2.0.2+ uses a Stealth class
+                        instance = stealth_class()
+                        if hasattr(instance, "apply_stealth_async"):
+                            await instance.apply_stealth_async(self.page)
+                            applied = True
+                        elif hasattr(instance, "apply_stealth_sync"):
+                            instance.apply_stealth_sync(self.page)
+                            applied = True
+
+                    if not applied:
+                        if callable(stealth_async):
+                            # Some implementations return coroutines, others are sync.
+                            res = stealth_async(self.page)
+                            if asyncio.iscoroutine(res):
+                                await res
+                            applied = True
+                        elif callable(stealth_sync) and not inspect.ismodule(stealth_sync):
+                            # sync variant expects a page; call it directly
+                            stealth_sync(self.page)
+                            applied = True
+                        elif hasattr(mod, "stealth") and callable(getattr(mod, "stealth")) and not inspect.ismodule(getattr(mod, "stealth")):
+                            getattr(mod, "stealth")(self.page)
+                            applied = True
                     
-                    self.is_stealth_active = True
-                    print(f"[WEB] [{self.site_name}] Stealth measures applied")
+                    if applied:
+                        self.is_stealth_active = True
+                        print(f"[WEB] [{self.site_name}] Stealth measures applied")
+                    else:
+                        print(f"[WARN] [{self.site_name}] No valid stealth method found in playwright_stealth module")
                 except Exception as e:
                     # If stealth import or call fails, log and continue.
                     print(f"[WARN] [{self.site_name}] playwright_stealth not available or failed: {e}")

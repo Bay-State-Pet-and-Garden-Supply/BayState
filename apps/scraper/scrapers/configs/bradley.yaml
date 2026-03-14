@@ -64,35 +64,53 @@ workflows:
     name: search_page
     params:
       url: https://www.bradleycaldwell.com/search?term={{sku}}
+  - action: conditional_click
+    name: null
+    params:
+      selector: "//button[contains(text(), 'Accept')], #accept-cookies, .cookie-accept"
   - action: wait_for
     name: null
     params:
-      timeout: 10
+      timeout: 15
       selector:
+        - main h1
         - //h1[contains(text(), 'Search results for')]
         - //h3[contains(text(), 'Sorry, no results for')]
   - action: wait
     name: null
     params:
-      duration: 3
+      duration: 2
   - action: check_no_results
     name: null
     params: {}
+  - action: validate_search_result
+    name: null
+    params:
+      required_selectors:
+        - main h1
   - action: conditional_skip
     name: null
     params:
       if_flag: no_results_found
+  - action: conditional
+    name: skip_if_on_pdp
+    params:
+      condition:
+        action: wait_for
+        params:
+          timeout: 2
+          selector: main h1
+      if_true:
+        action: conditional_skip
+        params:
+          if_flag: true
   - action: click
-    name: null
+    name: click_first_result
     params:
       index: 0
       selector: "article a, main article a, .product-card a, article a:has-text('View product'), article a.absolute.inset-0, article a h2, a[href*='/product/']"
-  - action: wait
-    name: null
-    params:
-      duration: 2
   - action: wait_for
-    name: null
+    name: wait_for_pdp
     params:
       timeout: 10
       selector:

@@ -102,6 +102,8 @@ normalization: null
 timeout: 15
 retries: 2
 image_quality: 20
+credential_refs:
+  - petfoodex
 test_skus:
   - "33011808"
   - "10158320"

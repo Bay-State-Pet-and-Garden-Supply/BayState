@@ -161,7 +161,9 @@ http_status:
 normalization: null
 timeout: 15
 retries: 2
-image_quality: 80
+image_quality: 20
+credential_refs:
+  - central-pet
 test_skus:
   - "38777520"
   - "43580233"
