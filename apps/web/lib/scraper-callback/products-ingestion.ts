@@ -88,7 +88,7 @@ export async function persistProductsIngestionSourcesStrict(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {}),
+      ...(hasMeaningfulData ? { pipeline_status: 'enriched' as const } : {}),
     };
   });
 
@@ -147,7 +147,7 @@ export async function persistProductsIngestionSourcesPartial(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {}),
+      ...(hasMeaningfulData ? { pipeline_status: 'enriched' as const } : {}),
     };
   });
 
