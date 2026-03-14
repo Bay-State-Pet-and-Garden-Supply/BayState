@@ -81,11 +81,21 @@ workflows:
   - action: check_no_results
     name: null
     params: {}
+  - action: execute_script
+    name: Check URL still on search page
+    params:
+      script: "return window.location.href.includes('/Search?criteria=')"
+  - action: conditional_skip
+    name: Skip if redirected to PDP
+    params:
+      if_flag: no_results_found
   - action: validate_search_result
     name: null
     params:
       required_selectors:
         - "#tst_productDetail_erpDescription"
+        - "h1"
+        - "[data-product-detail]"
   - action: conditional_skip
     name: null
     params:
@@ -125,13 +135,15 @@ anti_detection:
 validation:
   no_results_selectors:
     - //h2[contains(text(), 'No results found')]
+    - //h2[contains(text(), 'No results found for')]
     - span.no-results-found
     - .no-results
     - .empty-search
     - "[data-testid*='no-results']"
     - div.search-results-none
-    - p:contains('Sorry, no products were found')
+    - p:contains('Sorry, no products were found')]
     - h2:contains('No Search Results')
+    - "h2:contains('No results found for')"
   no_results_text_patterns:
     - no results found
     - no products found
@@ -159,7 +171,7 @@ http_status:
     - 307
     - 308
 normalization: null
-timeout: 15
+timeout: 30
 retries: 2
 image_quality: 20
 credential_refs:

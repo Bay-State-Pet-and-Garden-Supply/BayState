@@ -5,7 +5,7 @@ base_url: https://www.bradleycaldwell.com
 scraper_type: static
 selectors:
   - name: Name
-    selector: main h1
+    selector: //main//h1[not(contains(normalize-space(.), 'Search results for'))]
     attribute: text
     multiple: false
     required: true
@@ -71,7 +71,7 @@ workflows:
   - action: wait_for
     name: null
     params:
-      timeout: 15
+      timeout: 30
       selector:
         - main h1
         - //h1[contains(text(), 'Search results for')]
@@ -87,34 +87,22 @@ workflows:
     name: null
     params:
       required_selectors:
-        - main h1
+        - //h2[contains(text(), 'Additional Details')]
+        - //h2[contains(text(), 'Product Details')]
   - action: conditional_skip
     name: null
     params:
       if_flag: no_results_found
-  - action: conditional
-    name: skip_if_on_pdp
-    params:
-      condition:
-        action: wait_for
-        params:
-          timeout: 2
-          selector: main h1
-      if_true:
-        action: conditional_skip
-        params:
-          if_flag: true
   - action: click
     name: click_first_result
     params:
       index: 0
-      selector: "article a, main article a, .product-card a, article a:has-text('View product'), article a.absolute.inset-0, article a h2, a[href*='/product/']"
+      selector: "main article a[href*='{{sku}}'], article a[href*='{{sku}}'], article a[aria-label], main article a, .product-card a, article a:has-text('View product'), article a.absolute.inset-0"
   - action: wait_for
     name: wait_for_pdp
     params:
       timeout: 10
       selector:
-        - main h1
         - //h2[contains(text(), 'Additional Details')]
         - //h2[contains(text(), 'Product Details')]
   - action: extract
@@ -166,7 +154,7 @@ validation:
 login: null
 http_status: null
 normalization: null
-timeout: 15
+timeout: 30
 retries: 2
 image_quality: 60
 test_skus:

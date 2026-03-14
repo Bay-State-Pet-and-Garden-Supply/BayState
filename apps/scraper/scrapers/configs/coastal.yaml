@@ -9,6 +9,7 @@ selectors:
     fallback_selectors:
       - h1.product-title
       - h1
+      - "[data-product-title]"
     attribute: text
     multiple: false
     required: true
@@ -17,6 +18,15 @@ selectors:
     fallback_selectors:
       - a.gray-bold-link[href*='brand=']
       - .gray-bold-link
+    attribute: text
+    multiple: false
+    required: true
+  - name: Price
+    selector: ".product-detail__price"
+    fallback_selectors:
+      - ".price"
+      - "[class*='price']"
+      - "[data-product-price]"
     attribute: text
     multiple: false
     required: true
@@ -33,6 +43,8 @@ selectors:
     fallback_selectors:
       - ".product-details__preview-images--scrolling-container img"
       - "img[src*='salsify']"
+      - "img[src]"
+      - "[data-product-image]"
     attribute: src
     multiple: true
     required: true

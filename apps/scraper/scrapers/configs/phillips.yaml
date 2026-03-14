@@ -9,6 +9,9 @@ selectors:
     attribute: text
     multiple: false
     required: true
+    fallback_selectors:
+      - "h1"
+      - "[data-testid='product-name']"
   - name: Brand
     selector: .cc_product_item .product-brand .branded
     attribute: text
@@ -29,6 +32,9 @@ selectors:
     attribute: src
     multiple: true
     required: false
+    fallback_selectors:
+      - "img[src]"
+      - "[data-testid='product-image']"
 workflows:
   - action: login
     name: null
@@ -82,7 +88,12 @@ anti_detection:
 validation:
   no_results_selectors:
     - .plp-empty-state-message-container h3
-  no_results_text_patterns: []
+  no_results_text_patterns:
+    - no results found
+    - no products found
+    - your search returned no results
+    - no items match your search
+    - 0 items
 login:
   url: https://shop.phillipspet.com/ccrz__CCSiteLogin
   timeout: 60
@@ -92,7 +103,7 @@ login:
   success_indicator: a.doLogout.cc_do_logout
 http_status: null
 normalization: null
-timeout: 15
+timeout: 30
 retries: 2
 image_quality: 20
 credential_refs:

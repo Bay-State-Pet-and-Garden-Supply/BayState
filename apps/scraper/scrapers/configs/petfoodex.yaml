@@ -9,6 +9,9 @@ selectors:
     attribute: text
     multiple: false
     required: true
+    fallback_selectors:
+      - "[data-test-selector='product-name']"
+      - "h1"
   - name: Attributes
     selector: "[data-test-selector='productDetails_specifications'] li"
     attribute: text
@@ -19,6 +22,9 @@ selectors:
     attribute: src
     multiple: true
     required: false
+    fallback_selectors:
+      - "img[src]"
+      - "[data-test-selector='product-image']"
 workflows:
   - action: login
     name: null
@@ -57,13 +63,13 @@ workflows:
   - action: transform_value
     name: null
     params:
-      regex: Brand:\\s*([^\\n]+)
+      regex: Brand:\s*([^\n]+)
       source_field: Attributes
       target_field: Brand
   - action: transform_value
     name: null
     params:
-      regex: Weight:\\s*([^\\n]+)
+      regex: Weight:\s*([^\n]+)
       source_field: Attributes
       target_field: Weight
   - action: transform_value
