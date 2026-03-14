@@ -32,7 +32,7 @@ export function SetupGuide() {
     const [copied, setCopied] = useState<string | null>(null);
     const [showCreateRunnerModal, setShowCreateRunnerModal] = useState(false);
 
-    const installCommand = `curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash`;
+    const installCommand = `curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash`;
 
     const copyToClipboard = async (text: string, id: string) => {
         await navigator.clipboard.writeText(text);

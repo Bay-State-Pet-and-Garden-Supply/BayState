@@ -9,6 +9,7 @@ import {
   deleteRunner,
   updateRunnerMetadata,
 } from '@/app/admin/scrapers/network/[id]/actions';
+import { Check, Copy } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,8 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
   
   // API Key state
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [copiedApiKey, setCopiedApiKey] = useState(false);
   
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -128,10 +131,41 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
 
   const handleApiKeyRegenerate = async () => {
     startTransition(async () => {
-      // Call API to regenerate key
-      toast.success('API key regenerated');
-      setApiKeyDialogOpen(false);
+      try {
+        const res = await fetch('/api/admin/runners/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            runner_name: runner.name,
+            description: 'Rotated API key',
+            rotate_existing: true,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to rotate API key');
+        }
+
+        setNewApiKey(data.api_key);
+        setCopiedApiKey(false);
+        setApiKeyDialogOpen(false);
+        toast.success('API key rotated. Previous active keys were revoked.');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to rotate API key';
+        toast.error(message);
+      }
     });
+  };
+
+  const handleCopyApiKey = async () => {
+    if (!newApiKey) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(newApiKey);
+    setCopiedApiKey(true);
+    setTimeout(() => setCopiedApiKey(false), 1500);
   };
 
   const isPaused = runner.status === 'paused';
@@ -184,12 +218,26 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
                 <label className="text-sm font-medium">Current API Key</label>
                 <Input value="bsr_••••••••••••••••" disabled />
                 <p className="text-xs text-muted-foreground">
-                  API keys are masked for security. Regenerate to get a new key.
+                  API keys are masked for security. Rotate to issue a new key and revoke all previous active keys.
                 </p>
               </div>
               <Button onClick={() => setApiKeyDialogOpen(true)} variant="outline" disabled={isPending}>
-                Regenerate API Key
+                Rotate API Key
               </Button>
+              {newApiKey && (
+                <div className="space-y-2 rounded-md border bg-amber-50 p-3">
+                  <label className="text-sm font-medium">New API Key (shown once)</label>
+                  <div className="flex gap-2">
+                    <Input value={newApiKey} readOnly className="font-mono text-sm" />
+                    <Button variant="outline" size="icon" onClick={handleCopyApiKey} aria-label="Copy API key">
+                      {copiedApiKey ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Update the runner machine with this key in <code className="rounded bg-white px-1">~/.baystate-scraper/runner.env</code> and restart the container.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -307,14 +355,13 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
         </DialogContent>
       </Dialog>
 
-      {/* API Key Regenerate Dialog */}
       <Dialog open={apiKeyDialogOpen} onOpenChange={setApiKeyDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Regenerate API Key</DialogTitle>
+            <DialogTitle>Rotate API Key</DialogTitle>
             <DialogDescription>
-              Are you sure you want to regenerate this runner&apos;s API key?
-              The old key will stop working immediately.
+              This generates a new key and revokes all previous active keys for this runner.
+              You will need to update the key on the runner machine immediately.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -322,7 +369,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
               Cancel
             </Button>
             <Button onClick={handleApiKeyRegenerate} disabled={isPending}>
-              Regenerate
+              Rotate
             </Button>
           </DialogFooter>
         </DialogContent>

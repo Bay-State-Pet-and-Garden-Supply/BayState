@@ -11,7 +11,11 @@ jest.mock('@/lib/supabase/server', () => ({
 describe('scrapeProducts', () => {
     let mockSupabase: any;
 
-    const makeSupabaseMock = (options?: { jobInsertError?: unknown; unitInsertError?: unknown }) => {
+    const makeSupabaseMock = (options?: {
+        jobInsertError?: unknown;
+        unitInsertError?: unknown;
+        pipelineRows?: Array<{ sku: string; input?: Record<string, unknown> | null }>;
+    }) => {
         const scrapeJobsBuilder = {
             insert: jest.fn().mockReturnThis(),
             select: jest.fn().mockReturnThis(),
@@ -28,14 +32,21 @@ describe('scrapeProducts', () => {
             insert: jest.fn().mockResolvedValue({ error: options?.unitInsertError ?? null }),
         };
 
+        const productsIngestionBuilder = {
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ data: options?.pipelineRows ?? [], error: null }),
+        };
+
         return {
             from: jest.fn().mockImplementation((table: string) => {
                 if (table === 'scrape_jobs') return scrapeJobsBuilder;
                 if (table === 'scrape_job_chunks') return scrapeUnitsBuilder;
+                if (table === 'products_ingestion') return productsIngestionBuilder;
                 return scrapeJobsBuilder;
             }),
             _scrapeJobsBuilder: scrapeJobsBuilder,
             _scrapeUnitsBuilder: scrapeUnitsBuilder,
+            _productsIngestionBuilder: productsIngestionBuilder,
         };
     };
 
@@ -131,5 +142,39 @@ describe('scrapeProducts', () => {
         expect(mockSupabase._scrapeJobsBuilder.insert).toHaveBeenCalledTimes(2);
         expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0].type).toBe('ai_search');
         expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[1][0].type).toBe('discovery');
+    });
+
+    it('should include per-sku input context in ai_search job config', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    input: {
+                        name: 'BENTLEY SEED BROCCOL I GREEN SPROUTING',
+                        price: 2.49,
+                        brand: 'Bentley Seed',
+                        category: 'Seeds',
+                    },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+
+        expect(result.success).toBe(true);
+        expect(mockSupabase._productsIngestionBuilder.select).toHaveBeenCalledWith('sku, input');
+        expect(mockSupabase._productsIngestionBuilder.in).toHaveBeenCalledWith('sku', ['SKU-1']);
+
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.config.items).toEqual([
+            {
+                sku: 'SKU-1',
+                product_name: 'BENTLEY SEED BROCCOL I GREEN SPROUTING',
+                price: 2.49,
+                brand: 'Bentley Seed',
+                category: 'Seeds',
+            },
+        ]);
     });
 });

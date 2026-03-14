@@ -36,6 +36,7 @@ interface CreateKeyRequest {
     runner_name: string;
     description?: string;
     expires_in_days?: number;
+    rotate_existing?: boolean;
 }
 
 /**
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert the key
-    const { error: insertError } = await admin
+    const { data: insertedKey, error: insertError } = await admin
         .from('runner_api_keys')
         .insert({
             runner_name: runnerName,
@@ -161,11 +162,31 @@ export async function POST(request: NextRequest) {
             description: body.description || 'API Key',
             expires_at: expiresAt,
             created_by: user.id,
-        });
+        })
+        .select('id')
+        .single();
 
     if (insertError) {
         console.error('[Runner Accounts] Failed to create API key:', insertError);
         return NextResponse.json({ error: 'Failed to create API key' }, { status: 500 });
+    }
+
+    let rotatedCount = 0;
+    if (body.rotate_existing && insertedKey?.id) {
+        const { error: revokeError, count } = await admin
+            .from('runner_api_keys')
+            .update({ revoked_at: new Date().toISOString() })
+            .eq('runner_name', runnerName)
+            .neq('id', insertedKey.id)
+            .is('revoked_at', null);
+
+        if (revokeError) {
+            console.error('[Runner Accounts] Failed to rotate existing API keys:', revokeError);
+            return NextResponse.json({ error: 'Created key but failed to revoke previous keys' }, { status: 500 });
+        }
+
+        rotatedCount = count || 0;
+        console.log(`[Runner Accounts] Rotated API keys for runner: ${runnerName} (revoked: ${rotatedCount})`);
     }
 
     console.log(`[Runner Accounts] Created API key for runner: ${runnerName} (prefix: ${prefix})`);
@@ -175,6 +196,7 @@ export async function POST(request: NextRequest) {
         api_key: key,
         key_prefix: prefix,
         expires_at: expiresAt,
+        rotated_key_count: rotatedCount,
         message: 'Save this API key now. It cannot be retrieved again.',
     });
 }

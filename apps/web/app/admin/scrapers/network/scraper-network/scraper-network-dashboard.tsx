@@ -71,7 +71,7 @@ export function ScraperNetworkDashboard() {
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [createdRunnerName, setCreatedRunnerName] = useState<string | null>(null);
   const installCommand =
-    "curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash";
+    "curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash";
 
   const handleCreateRunner = async () => {
     if (!newRunnerName.trim()) {

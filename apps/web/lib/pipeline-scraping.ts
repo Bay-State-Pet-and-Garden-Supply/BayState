@@ -4,6 +4,16 @@ import { createClient } from '@/lib/supabase/server';
 
 import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
 
+interface PipelineInputRow {
+    sku: string;
+    input?: {
+        name?: unknown;
+        price?: unknown;
+        brand?: unknown;
+        category?: unknown;
+    } | null;
+}
+
 interface PostgrestLikeError {
     code?: string;
     message?: string;
@@ -72,6 +82,63 @@ export interface ScrapeResult {
     error?: string;
 }
 
+function toOptionalString(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+        return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.trim().replace(/[$,]/g, '');
+        if (!normalized) {
+            return undefined;
+        }
+
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    return undefined;
+}
+
+async function loadAISearchItems(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    skus: string[]
+): Promise<Array<{ sku: string; product_name?: string; price?: number; brand?: string; category?: string }>> {
+    const { data, error } = await supabase
+        .from('products_ingestion')
+        .select('sku, input')
+        .in('sku', skus);
+
+    if (error) {
+        console.warn('[Pipeline Scraping] Failed to load AI search context from products_ingestion:', error);
+        return skus.map((sku) => ({ sku }));
+    }
+
+    const rows = Array.isArray(data) ? (data as PipelineInputRow[]) : [];
+    const contextBySku = new Map(rows.map((row) => [row.sku, row.input ?? null]));
+
+    return skus.map((sku) => {
+        const input = contextBySku.get(sku);
+
+        return {
+            sku,
+            product_name: toOptionalString(input?.name),
+            price: toOptionalNumber(input?.price),
+            brand: toOptionalString(input?.brand),
+            category: toOptionalString(input?.category),
+        };
+    });
+}
+
 export async function scrapeProducts(
     skus: string[],
     options?: ScrapeOptions
@@ -113,6 +180,7 @@ export async function scrapeProducts(
     }
 
     const supabase = await createClient();
+    const aiSearchItems = isAISearch ? await loadAISearchItems(supabase, skus) : undefined;
 
     const maxAISearchCostUsd = isAISearch ? (options?.maxAISearchCostUsd ?? 5.00) : undefined;
     if (isAISearch && maxAISearchCostUsd !== undefined && maxAISearchCostUsd > 10.00) {
@@ -139,6 +207,7 @@ export async function scrapeProducts(
         type,
         config: isAISearch ? {
             ...(options?.aiSearchConfig ?? {}),
+            items: aiSearchItems,
             max_cost_usd: maxAISearchCostUsd,
         } : null,
         metadata: isAISearch

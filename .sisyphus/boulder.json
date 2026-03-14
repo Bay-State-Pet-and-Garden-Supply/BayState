@@ -1,10 +1,18 @@
 {
-  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-performance-fixes.md",
-  "started_at": "2026-03-13T20:37:09.906Z",
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/pipeline-redesign.md",
+  "started_at": "2026-03-14T10:17:38.838Z",
   "session_ids": [
-    "ses_317351cd0ffenQRa1W68uz6cKV"
+    "ses_314650479ffemDVxWwt17ysWW7"
   ],
-  "plan_name": "scraper-performance-fixes",
+  "plan_name": "pipeline-redesign",
   "agent": "atlas",
-  "worktree_path": "C:/Users/thoma/OneDrive/Desktop/scripts/BayState"
+  "worktree_path": "/Users/nickborrello/Desktop/Projects/BayState-worktrees/pipeline-redesign"
+}
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/pipeline-redesign.md",
+  "started_at": "2026-03-14T10:17:38.838Z",
+  "session_ids": [
+    "ses_314650479ffemDVxWwt17ysWW7"
+  ],
+  "plan_name": "pipeline-redesign",
+  "agent": "atlas"
 }

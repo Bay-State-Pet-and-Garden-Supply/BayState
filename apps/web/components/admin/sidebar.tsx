@@ -14,6 +14,8 @@ import {
   Activity,
   LayoutGrid,
   Wrench,
+  Image,
+  Download,
 } from 'lucide-react';
 
 interface NavItem {
@@ -39,7 +41,9 @@ const navSections: NavSection[] = [
     title: 'Pipeline',
     adminOnly: true,
     items: [
-      { href: '/admin/pipeline', label: 'Overview', icon: <LayoutGrid className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/pipeline', label: 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/pipeline/image-selection', label: 'Image Selection', icon: <Image className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/pipeline/export', label: 'Export', icon: <Download className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/pipeline/monitoring', label: 'Monitoring', icon: <Activity className="h-5 w-5" />, adminOnly: true },
       { href: '/admin/pipeline/tools', label: 'Tools', icon: <Wrench className="h-5 w-5" />, adminOnly: true },
     ],

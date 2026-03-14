@@ -19,7 +19,7 @@ interface CreatedCredentials {
 }
 
 const INSTALL_COMMAND =
-    'curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash';
+    'curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash';
 
 export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: RunnerAccountModalProps) {
     const [runnerName, setRunnerName] = useState(initialRunnerName || '');
