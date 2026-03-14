@@ -158,8 +158,7 @@ describe('consolidation batch integration behavior', () => {
                 error: null,
             }),
         };
-        const productsIngestionUpdateEq = jest.fn().mockResolvedValue({ error: null });
-        const productsIngestionUpdate = jest.fn(() => ({ eq: productsIngestionUpdateEq }));
+        const productsIngestionUpsert = jest.fn().mockResolvedValue({ error: null });
 
         const batchJobsSelectQuery = {
             eq: jest.fn().mockReturnThis(),
@@ -182,7 +181,7 @@ describe('consolidation batch integration behavior', () => {
                 if (table === 'products_ingestion') {
                     return {
                         select: jest.fn(() => productsIngestionSelect),
-                        update: productsIngestionUpdate,
+                        upsert: productsIngestionUpsert,
                     };
                 }
                 if (table === 'brands') {

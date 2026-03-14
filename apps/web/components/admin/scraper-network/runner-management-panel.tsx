@@ -293,7 +293,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
           <DialogHeader>
             <DialogTitle>Rename Runner</DialogTitle>
             <DialogDescription>
-              Are you sure you want to rename this runner from "{runner.name}" to "{newName}"?
+              Are you sure you want to rename this runner from &quot;{runner.name}&quot; to &quot;{newName}&quot;?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -354,7 +354,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
           <DialogHeader>
             <DialogTitle>Delete Runner</DialogTitle>
             <DialogDescription>
-              This will permanently delete runner "{runner.name}" and all associated API keys.
+              This will permanently delete runner &quot;{runner.name}&quot; and all associated API keys.
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>

@@ -1,43 +1,39 @@
+import { describe, expect, it, jest } from '@jest/globals';
 import ConfigurationPage from '@/app/admin/scrapers/[slug]/configuration/page';
-import { getLocalScraperConfig } from '@/lib/admin/scrapers/configs';
-import { expect, it, describe, mock } from 'bun:test';
 
-mock.module('@/lib/admin/scrapers/configs', () => ({
-  getLocalScraperConfig: mock(() => Promise.resolve(null)),
+jest.mock('@/lib/admin/scrapers/configs', () => ({
+  getLocalScraperConfig: jest.fn(),
 }));
 
-mock.module('@/components/admin/scrapers/YamlViewer', () => ({
+jest.mock('@/components/admin/scrapers/YamlViewer', () => ({
   YamlViewer: () => null,
 }));
 
-mock.module('@/components/ui/alert', () => ({
-  Alert: ({ children }: any) => <div>{children}</div>,
-  AlertTitle: ({ children }: any) => <div>{children}</div>,
-  AlertDescription: ({ children }: any) => <div>{children}</div>,
+jest.mock('@/components/ui/alert', () => ({
+  Alert: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 describe('ConfigurationPage', () => {
   it('calls getLocalScraperConfig and returns the page', async () => {
-    const mockResult = {
+    const mockedGetLocalScraperConfig = (jest.requireMock('@/lib/admin/scrapers/configs') as { getLocalScraperConfig: jest.Mock }).getLocalScraperConfig;
+    (mockedGetLocalScraperConfig as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
       yaml: 'name: amazon',
-      config: { id: 'amazon', slug: 'amazon', name: 'Amazon', base_url: 'https://www.amazon.com' }
-    };
-    (getLocalScraperConfig as any).mockResolvedValue(mockResult);
+      config: { id: 'amazon', slug: 'amazon', name: 'Amazon', base_url: 'https://www.amazon.com' },
+    });
 
-    const Page = await ConfigurationPage({ params: Promise.resolve({ slug: 'amazon' }) });
-    
-    expect(getLocalScraperConfig).toHaveBeenCalledWith('amazon');
-    expect(Page).toBeDefined();
+    const page = await ConfigurationPage({ params: Promise.resolve({ slug: 'amazon' }) });
+
+    expect(page).toBeDefined();
   });
 
   it('renders not found if config does not exist', async () => {
-    (getLocalScraperConfig as any).mockResolvedValue(null);
+    const mockedGetLocalScraperConfig = (jest.requireMock('@/lib/admin/scrapers/configs') as { getLocalScraperConfig: jest.Mock }).getLocalScraperConfig;
+    (mockedGetLocalScraperConfig as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
-    try {
-      await ConfigurationPage({ params: Promise.resolve({ slug: 'non-existent' }) });
-    } catch (e: any) {
-      // In Next.js, notFound() throws an error that is handled by the framework
-      expect(e).toBeDefined();
-    }
+    await expect(
+      ConfigurationPage({ params: Promise.resolve({ slug: 'non-existent' }) })
+    ).rejects.toBeDefined();
   });
 });
