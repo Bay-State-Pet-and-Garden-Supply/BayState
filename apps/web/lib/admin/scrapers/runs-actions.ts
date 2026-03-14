@@ -115,15 +115,37 @@ export async function getScraperRunById(id: string): Promise<ScraperRunRecord | 
 
 export async function cancelScraperRun(jobId: string) {
   const supabase = await createClient();
+  const nowIso = new Date().toISOString();
 
-  const { error } = await supabase
+  // 1. Update the job status
+  const { error: jobError } = await supabase
     .from('scrape_jobs')
-    .update({ status: 'cancelled' })
+    .update({ 
+      status: 'cancelled',
+      completed_at: nowIso,
+      updated_at: nowIso
+    })
     .eq('id', jobId);
 
-  if (error) {
-    console.error(`Error cancelling scraper run ${jobId}:`, error);
+  if (jobError) {
+    console.error(`Error cancelling scraper run ${jobId}:`, jobError);
     return { error: 'Failed to cancel scraper run' };
+  }
+
+  // 2. Update all chunks for this job that are not in a terminal state
+  const { error: chunkError } = await supabase
+    .from('scrape_job_chunks')
+    .update({ 
+      status: 'failed',
+      error_message: 'Job was cancelled',
+      completed_at: nowIso,
+      updated_at: nowIso
+    })
+    .eq('job_id', jobId)
+    .in('status', ['pending', 'running']);
+
+  if (chunkError) {
+    console.warn(`Warning: Failed to update chunks for cancelled job ${jobId}:`, chunkError);
   }
 
   revalidatePath('/admin/scrapers/runs');

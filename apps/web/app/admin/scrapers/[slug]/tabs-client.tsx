@@ -51,16 +51,6 @@ export function ScraperTabsClient({ slug }: ScraperTabsClientProps) {
               Credentials
             </Link>
           </TabsTrigger>
-          <TabsTrigger 
-            value="test-lab" 
-            asChild 
-            className="inline-flex items-center justify-center whitespace-nowrap py-2 pl-4 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:border-[#66161D] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none bg-transparent"
-          >
-            <Link href={`/admin/scrapers/${slug}/test-lab`} data-testid="tab-test-lab">
-              <Beaker className="w-4 h-4 mr-2" />
-              Test Lab
-            </Link>
-          </TabsTrigger>
         </TabsList>
       </div>
     </Tabs>

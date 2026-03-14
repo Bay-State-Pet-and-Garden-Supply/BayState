@@ -44,15 +44,6 @@ interface ScraperSummary {
   last_test_at: string | null;
 }
 
-interface TestRun {
-  id: string;
-  scraper_id: string;
-  test_type: string;
-  status: string;
-  created_at: string;
-  duration_ms: number | null;
-}
-
 interface RecentJob {
   id: string;
   scraper_name: string;
@@ -92,7 +83,6 @@ interface DisplayJob {
 
 interface ScraperDashboardClientProps {
   scrapers: ScraperSummary[];
-  recentTests: TestRun[];
   recentJobs: RecentJob[];
   healthCounts: {
     healthy: number;
@@ -110,7 +100,6 @@ interface ScraperDashboardClientProps {
 
 export function ScraperDashboardClient({
   scrapers,
-  recentTests,
   recentJobs: initialJobs,
   healthCounts,
   statusCounts,
@@ -239,21 +228,12 @@ export function ScraperDashboardClient({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link href="/admin/scrapers/configs">
+        <Link href="/admin/scrapers/list">
           <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
             <CardContent className="flex flex-col items-center justify-center p-4">
               <FileCode2 className="h-8 w-8 text-blue-600 mb-2" />
-              <span className="font-medium">Configs</span>
-              <span className="text-xs text-gray-600">Build & Edit</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/admin/scrapers/runs">
-          <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
-            <CardContent className="flex flex-col items-center justify-center p-4">
-              <Beaker className="h-8 w-8 text-purple-600 mb-2" />
-              <span className="font-medium">Test Lab</span>
-              <span className="text-xs text-gray-600">Validate & Test</span>
+              <span className="font-medium">Scrapers</span>
+              <span className="text-xs text-gray-600">List & Edit</span>
             </CardContent>
           </Card>
         </Link>
@@ -369,118 +349,79 @@ export function ScraperDashboardClient({
           </CardContent>
         </Card>
 
+        {/* Recent Jobs - Now with Realtime Updates */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="base flex items-center gap-2">
               <Activity className="h-4 w-4" />
-              Recent Test Runs
+              Recent Jobs
+              {isJobsConnected && (
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Live
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Duration</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentTests.slice(0, 8).map((test) => (
-                  <TableRow key={test.id}>
-                    <TableCell className="text-sm">
-                      {format(new Date(test.created_at), 'MMM d, h:mm a')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {test.test_type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(test.status)}</TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {test.duration_ms ? `${(test.duration_ms / 1000).toFixed(1)}s` : '-'}
-                    </TableCell>
+            {displayJobs.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Scraper</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead>Started</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {displayJobs.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell className="font-medium">
+                        {Array.isArray(job.scrapers) ? job.scrapers[0] : 'Unknown'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            job.status === 'completed'
+                              ? 'success'
+                              : job.status === 'failed'
+                                ? 'destructive'
+                                : job.status === 'running'
+                                  ? 'warning'
+                                  : 'secondary'
+                          }
+                        >
+                          {job.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {(job.total_skus ?? 0) > 0 ? (
+                          <>
+                            {(job.completed_skus ?? 0)}/{job.total_skus}
+                            {(job.failed_skus ?? 0) > 0 && (
+                              <span className="text-red-600 ml-1">({job.failed_skus} failed)</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {format(new Date(job.created_at), 'MMM d, h:mm a')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-gray-600 text-center py-8">
+                No recent jobs. Start a new scrape job to see activity here.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Jobs - Now with Realtime Updates */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="base flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Recent Jobs
-            {isJobsConnected && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                Live
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {displayJobs.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Scraper</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Started</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayJobs.map((job) => (
-                  <TableRow key={job.id}>
-                    <TableCell className="font-medium">
-                      {Array.isArray(job.scrapers) ? job.scrapers[0] : 'Unknown'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          job.status === 'completed'
-                            ? 'success'
-                            : job.status === 'failed'
-                              ? 'destructive'
-                              : job.status === 'running'
-                                ? 'warning'
-                                : 'secondary'
-                        }
-                      >
-                        {job.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {(job.total_skus ?? 0) > 0 ? (
-                        <>
-                          {(job.completed_skus ?? 0)}/{job.total_skus}
-                          {(job.failed_skus ?? 0) > 0 && (
-                            <span className="text-red-600 ml-1">({job.failed_skus} failed)</span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {format(new Date(job.created_at), 'MMM d, h:mm a')}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-gray-600 text-center py-8">
-              No recent jobs. Start a new scrape job to see activity here.
-            </p>
-          )}
-        </CardContent>
-      </Card>
 
       {/* AI Search Metrics Dashboard */}
       <AISearchDashboard days={30} />

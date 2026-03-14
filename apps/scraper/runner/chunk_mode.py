@@ -120,7 +120,8 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                 "data": partial_results,
             }
 
-            client.submit_chunk_results(chunk_id, "completed", results=chunk_results)
+            if not client.submit_chunk_results(chunk_id, "completed", results=chunk_results):
+                raise RuntimeError(f"Failed to submit results for chunk {chunk_id}")
 
             chunks_processed += 1
             total_skus_processed += skus_processed
@@ -138,9 +139,13 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                     "skus_failed": len(skus) - skus_successful,
                     "data": partial_results,
                 }
-                client.submit_chunk_results(chunk_id, "failed", results=partial_chunk_results, error_message=str(e))
+                if not client.submit_chunk_results(chunk_id, "failed", results=partial_chunk_results, error_message=str(e)):
+                     logger.error(f"[Chunk Worker] CRITICAL: Failed to submit failure results for chunk {chunk_id}")
             else:
-                client.submit_chunk_results(chunk_id, "failed", error_message=str(e))
-            chunks_processed += 1
+                if not client.submit_chunk_results(chunk_id, "failed", error_message=str(e)):
+                    logger.error(f"[Chunk Worker] CRITICAL: Failed to submit failure status for chunk {chunk_id}")
+            
+            # Re-raise to stop the worker from claiming more chunks if we can't report status
+            raise
 
     logger.info(f"[Chunk Worker] Finished. Total: {chunks_processed} chunks, {total_successful}/{total_skus_processed} successful")
