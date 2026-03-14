@@ -11,3 +11,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] **Track: Refine URL selection: expand trusted retailers and implement LLM pre-ranking of search results**
 *Link: [./tracks/url_selection_refinement_20260312/](./tracks/url_selection_refinement_20260312/)*
+
+---
+
+- [ ] **Track: Pipeline Workflow Redesign & Enrichment Enhancements**
+*Link: [./tracks/pipeline_workflow_redesign_20260314/](./tracks/pipeline_workflow_redesign_20260314/)*
