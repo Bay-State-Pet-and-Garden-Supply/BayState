@@ -81,7 +81,7 @@ describe('Consolidation Schemas', () => {
 
     describe('PipelineStatusSchema', () => {
         it('should accept valid pipeline statuses', () => {
-            const validStatuses = ['staging', 'scraped', 'consolidated', 'approved', 'published'];
+            const validStatuses = ['registered', 'enriched', 'finalized', 'failed'];
             for (const status of validStatuses) {
                 expect(PipelineStatusSchema.parse(status)).toBe(status);
             }
@@ -116,7 +116,7 @@ describe('Consolidation Schemas', () => {
                 stock_status: 'in_stock',
                 is_featured: false,
             },
-            pipeline_status: 'scraped',
+            pipeline_status: 'enriched',
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-02T00:00:00Z',
         };
@@ -124,7 +124,7 @@ describe('Consolidation Schemas', () => {
         it('should parse valid pipeline product', () => {
             const result = PipelineProductSchema.parse(validPipelineProduct);
             expect(result.sku).toBe('PROD-001');
-            expect(result.pipeline_status).toBe('scraped');
+            expect(result.pipeline_status).toBe('enriched');
         });
 
         it('should parse pipeline product with optional fields missing', () => {
@@ -133,7 +133,7 @@ describe('Consolidation Schemas', () => {
                 input: {},
                 sources: {},
                 consolidated: {},
-                pipeline_status: 'staging',
+                pipeline_status: 'registered',
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
             };

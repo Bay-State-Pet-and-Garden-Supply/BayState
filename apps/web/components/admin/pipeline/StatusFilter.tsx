@@ -14,26 +14,22 @@ import {
 // Technical name → Friendly display label
 const STATUS_LABELS: Record<string, string> = {
     '': 'All',
-    staging: 'Imported',
-    scraped: 'Enhanced',
-    consolidated: 'Ready for Review',
-    approved: 'Verified',
-    published: 'Live',
+    registered: 'Registered',
+    enriched: 'Enriched',
+    finalized: 'Finalized',
     failed: 'Failed',
 };
 
 // Display order: empty string = All
 const STATUS_OPTIONS = [
     { value: '', label: 'All' },
-    { value: 'staging', label: 'Imported' },
-    { value: 'scraped', label: 'Enhanced' },
-    { value: 'consolidated', label: 'Ready for Review' },
-    { value: 'approved', label: 'Verified' },
-    { value: 'published', label: 'Live' },
+    { value: 'registered', label: 'Registered' },
+    { value: 'enriched', label: 'Enriched' },
+    { value: 'finalized', label: 'Finalized' },
     { value: 'failed', label: 'Failed' },
 ] as const;
 
-export type StatusFilterValue = '' | 'staging' | 'scraped' | 'consolidated' | 'approved' | 'published' | 'failed';
+export type StatusFilterValue = '' | 'registered' | 'enriched' | 'finalized' | 'failed';
 
 export interface StatusCount {
     total: number;
@@ -68,7 +64,6 @@ export function StatusFilter({ counts, className }: StatusFilterProps) {
     };
 
     const currentLabel = STATUS_LABELS[currentStatus] || 'All';
-    const currentCount = getCountForStatus(currentStatus);
 
     return (
         <DropdownMenu>

@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import MagicMock, patch
 
 from core.api_client import *
@@ -65,7 +66,8 @@ def test_chunk_worker_fails_chunk_when_filter_resolves_to_zero_scrapers() -> Non
     ]
 
     with patch("runner.chunk_mode.run_job") as mocked_run_job:
-        run_chunk_worker_mode(client, "job-123", "runner-1")
+        with pytest.raises(RuntimeError, match="resolved to zero scrapers"):
+            run_chunk_worker_mode(client, "job-123", "runner-1")
 
     mocked_run_job.assert_not_called()
     assert client.submit_chunk_results.call_count == 1
@@ -73,3 +75,43 @@ def test_chunk_worker_fails_chunk_when_filter_resolves_to_zero_scrapers() -> Non
     assert args[0] == "chunk-1"
     assert args[1] == "failed"
     assert "resolved to zero scrapers" in str(client.submit_chunk_results.call_args.kwargs.get("error_message", ""))
+
+
+def test_chunk_worker_counts_successful_skus_once_even_with_multiple_scrapers() -> None:
+    client = MagicMock()
+    client.get_job_config.return_value = _make_job_config()
+    client.claim_chunk.side_effect = [
+        ClaimedChunk(
+            chunk_id="chunk-1",
+            job_id="job-123",
+            chunk_index=0,
+            skus=["SKU-1"],
+            scrapers=["amazon", "target"],
+        ),
+        None,
+    ]
+
+    def fake_run_job(job_config, runner_name=None, progress_callback=None):
+        _ = runner_name
+        assert progress_callback is not None
+        progress_callback("SKU-1", "amazon", {"Name": "Product 1"})
+        progress_callback("SKU-1", "target", {"Name": "Product 1"})
+        return {
+            "data": {
+                "SKU-1": {
+                    "amazon": {"Name": "Product 1"},
+                    "target": {"Name": "Product 1"},
+                }
+            }
+        }
+
+    with patch("runner.chunk_mode.run_job", side_effect=fake_run_job):
+        run_chunk_worker_mode(client, "job-123", "runner-1")
+
+    args = client.submit_chunk_results.call_args.args
+    assert args[0] == "chunk-1"
+    assert args[1] == "completed"
+    chunk_results = client.submit_chunk_results.call_args.kwargs["results"]
+    assert chunk_results["skus_processed"] == 1
+    assert chunk_results["skus_successful"] == 1
+    assert chunk_results["skus_failed"] == 0

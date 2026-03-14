@@ -156,9 +156,7 @@ export async function persistProductsIngestionSourcesPartial(
     .upsert(updateRows, { onConflict: 'sku' });
 
   if (updateError) {
-    console.error(`[Products Ingestion] Bulk update failed: ${updateError.message}`);
-    // Fallback or rethrow depending on desired resilience. For now, we report as total failure for this batch.
-    return { persisted: [], missing: [...missing, ...toUpdateSkus] };
+    throw new Error(`Bulk update failed: ${updateError.message}`);
   }
 
   return { persisted: toUpdateSkus, missing };

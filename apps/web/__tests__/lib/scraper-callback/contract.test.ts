@@ -142,6 +142,41 @@ describe('chunk callback contract validation', () => {
         }
     });
 
+    it('accepts in-progress chunk callbacks with progress payloads', () => {
+        const payload = {
+            chunk_id: 'chunk-progress',
+            status: 'in_progress',
+            progress: {
+                sku: 'SKU-1',
+                scraper_name: 'amazon',
+                data: {
+                    Name: 'Progress Product',
+                    Price: '$12.99',
+                },
+            },
+        };
+
+        const result = parseChunkCallbackPayload(JSON.stringify(payload));
+        expect(result.success).toBe(true);
+        if (result.success) {
+            expect(result.payload.progress?.sku).toBe('SKU-1');
+            expect(result.payload.progress?.scraper_name).toBe('amazon');
+        }
+    });
+
+    it('rejects in-progress chunk callbacks without progress payloads', () => {
+        const payload = {
+            chunk_id: 'chunk-progress',
+            status: 'in_progress',
+        };
+
+        const result = parseChunkCallbackPayload(JSON.stringify(payload));
+        expect(result.success).toBe(false);
+        if (!result.success) {
+            expect(result.error.message).toBe('In-progress callbacks must include progress data');
+        }
+    });
+
     it('accepts chunk callbacks with logs and telemetry', () => {
         const payload = {
             chunk_id: 'chunk-telemetry',

@@ -49,11 +49,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Only allow 'approved' status products to be published
-        // (interpreting 'finalized' as approved based on current pipeline)
-        if (ingestionProduct.pipeline_status !== 'approved') {
+        const publishableStatuses = new Set(['finalized', 'approved']);
+        if (!publishableStatuses.has(ingestionProduct.pipeline_status)) {
             return NextResponse.json(
-                { error: `Product must be in 'approved' status to publish. Current status: ${ingestionProduct.pipeline_status}` },
+                { error: `Product must be in 'finalized' status to publish. Current status: ${ingestionProduct.pipeline_status}` },
                 { status: 409 }
             );
         }

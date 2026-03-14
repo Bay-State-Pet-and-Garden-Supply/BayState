@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { Download, FileSpreadsheet, FileText, AlertTriangle, Check, Loader2 } from 'lucide-react';
 
 const PIPELINE_STATUSES = [
-    { value: 'staging', label: 'Staging' },
-    { value: 'scraped', label: 'Enhanced' },
-    { value: 'consolidated', label: 'Consolidated' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'published', label: 'Published' },
+    { value: 'registered', label: 'Registered' },
+    { value: 'enriched', label: 'Enriched' },
+    { value: 'finalized', label: 'Finalized' },
+    { value: 'failed', label: 'Failed' },
 ];
 
 interface ExportTabProps {
@@ -17,13 +16,13 @@ interface ExportTabProps {
 }
 
 export function ExportTab({ className, productCounts = {} }: ExportTabProps) {
-    const [status, setStatus] = useState('approved');
+    const [status, setStatus] = useState('finalized');
     const [format, setFormat] = useState<'xlsx' | 'csv'>('xlsx');
     const [downloading, setDownloading] = useState(false);
     const [success, setSuccess] = useState(false);
 
     const count = productCounts[status] || 0;
-    const needsImages = status === 'approved' && count > 0 && productCounts['needs-images'] > 0;
+    const needsImages = status === 'finalized' && count > 0 && productCounts['needs-images'] > 0;
 
     const handleExport = async () => {
         setDownloading(true);

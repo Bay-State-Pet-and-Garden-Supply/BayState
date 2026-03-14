@@ -1,7 +1,5 @@
 import { ZodIssue, ZodSchema, z } from 'zod';
 
-type JsonObject = Record<string, unknown>;
-
 const SkuSourceSchema = z.record(z.string(), z.unknown());
 const ScraperPayloadEntrySchema = z
     .record(z.string().min(1, 'scraper name is required'), SkuSourceSchema);
@@ -187,6 +185,12 @@ const ChunkResultsSchema = z.object({
         .optional(),
 });
 
+const ChunkProgressSchema = z.object({
+    sku: z.string().min(1, 'sku is required'),
+    scraper_name: z.string().min(1, 'scraper_name is required'),
+    data: z.record(z.string(), z.unknown()),
+});
+
 const ScraperCallbackPayloadSchema = z.object({
     job_id: z.string().min(1, 'job_id is required'),
     status: z.enum(['running', 'completed', 'failed']),
@@ -199,8 +203,9 @@ const ScraperCallbackPayloadSchema = z.object({
 const ChunkCallbackPayloadSchema = z.object({
     chunk_id: z.string().min(1, 'chunk_id is required'),
     job_id: z.string().optional(),
-    status: z.enum(['completed', 'failed']),
+    status: z.enum(['in_progress', 'completed', 'failed']),
     runner_name: z.string().min(1).optional(),
+    progress: ChunkProgressSchema.optional(),
     results: ChunkResultsSchema.optional(),
     error_message: z.string().min(1).optional(),
 });
@@ -282,9 +287,27 @@ export const parseScraperCallbackPayload = (bodyText: string): CallbackValidatio
     return decoded;
 };
 
-export const parseChunkCallbackPayload = (bodyText: string): CallbackValidationResult<ChunkCallbackPayload> =>
-    parseCallbackBody(bodyText, ChunkCallbackPayloadSchema);
+export const parseChunkCallbackPayload = (bodyText: string): CallbackValidationResult<ChunkCallbackPayload> => {
+    const decoded = parseCallbackBody(bodyText, ChunkCallbackPayloadSchema);
+    if (!decoded.success) {
+        return decoded;
+    }
+
+    if (decoded.payload.status === 'in_progress' && !decoded.payload.progress) {
+        return {
+            success: false,
+            error: {
+                type: 'schema',
+                message: 'In-progress callbacks must include progress data',
+                issues: [],
+            },
+        };
+    }
+
+    return decoded;
+};
 
 export type ScraperCallbackPayload = z.infer<typeof ScraperCallbackPayloadSchema>;
 export type ChunkCallbackPayload = z.infer<typeof ChunkCallbackPayloadSchema>;
+export type ChunkProgressPayload = z.infer<typeof ChunkProgressSchema>;
 export type ScraperResults = z.infer<typeof ScraperResultsSchema>;

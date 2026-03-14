@@ -410,6 +410,18 @@ describe('callback validation - chunk payloads', () => {
   });
 
   describe('nested malformed structures', () => {
+    it('rejects in-progress callbacks without progress data', () => {
+      const payload = JSON.stringify({
+        chunk_id: 'chunk-1',
+        status: 'in_progress'
+      });
+      const result = parseChunkCallbackPayload(payload);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toBe('In-progress callbacks must include progress data');
+      }
+    });
+
     it('rejects invalid skus_processed type', () => {
       const payload = JSON.stringify({
         chunk_id: 'chunk-1',
@@ -508,6 +520,22 @@ describe('callback validation - chunk payloads', () => {
         chunk_id: 'chunk-1',
         status: 'failed',
         error_message: 'Chunk processing failed'
+      });
+      const result = parseChunkCallbackPayload(payload);
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts in-progress status with progress payload', () => {
+      const payload = JSON.stringify({
+        chunk_id: 'chunk-1',
+        status: 'in_progress',
+        progress: {
+          sku: 'sku-1',
+          scraper_name: 'amazon',
+          data: {
+            Name: 'Test Product',
+          }
+        }
       });
       const result = parseChunkCallbackPayload(payload);
       expect(result.success).toBe(true);
