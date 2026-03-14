@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
             .update({
                 status: 'busy',
                 last_seen_at: new Date().toISOString(),
+                current_job_id: chunk.job_id,
             })
             .eq('name', claimingRunner);
 

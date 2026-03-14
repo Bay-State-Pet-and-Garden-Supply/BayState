@@ -136,10 +136,6 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/scrapers/${scraper.slug}/test-lab`}>Run Test</Link>
-                      </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <a href={`https://github.com/Bay-State-Pet-and-Garden-Supply/BayState/blob/master/apps/scraper/${scraper.file_path || `scrapers/configs/${scraper.slug}.yaml`}`} target="_blank" rel="noopener noreferrer">
                           View on GitHub
@@ -177,12 +173,6 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                   <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-view-link">
                     <ExternalLink className="mr-2 h-3.5 w-3.5" />
                     View
-                  </Link>
-                </Button>
-                <Button size="sm" className="flex-1 bg-[#008850] hover:bg-[#2a7034] text-white" asChild>
-                  <Link href={`/admin/scrapers/${scraper.slug}/test-lab`}>
-                    <Play className="mr-2 h-3.5 w-3.5" />
-                    Test
                   </Link>
                 </Button>
               </CardFooter>
