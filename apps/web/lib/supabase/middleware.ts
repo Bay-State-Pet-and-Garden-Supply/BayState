@@ -50,7 +50,7 @@ function normalizeRole(value: unknown): AppRole | null {
 }
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
@@ -69,6 +69,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/cart') ||
     request.nextUrl.pathname.startsWith('/checkout') ||
     request.nextUrl.pathname.startsWith('/api/scraper/') ||
+    request.nextUrl.pathname === '/api/health' ||
+    request.nextUrl.pathname.startsWith('/api/internal/scraper-configs/') ||
+    request.nextUrl.pathname.startsWith('/api/internal/scraper-configs') ||
     request.nextUrl.pathname.startsWith('/api/cron/') ||
     request.nextUrl.pathname.startsWith('/api/admin/scraper-network/') ||
     request.nextUrl.pathname.startsWith('/api/admin/scraper-configs/') ||

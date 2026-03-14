@@ -9,17 +9,15 @@ import {
 
 describe('pipeline-tabs', () => {
     describe('PipelineTab type', () => {
-        it('should include all 10 required tabs', () => {
+        it('should include all required tabs', () => {
             const expectedTabs: PipelineTab[] = [
-                'staging',
+                'registered',
                 'active-runs',
-                'scraped',
+                'enriched',
                 'active-consolidations',
-                'consolidated',
-                'approved',
                 'images',
                 'export',
-                'published',
+                'finalized',
                 'failed',
             ];
 
@@ -75,15 +73,13 @@ describe('pipeline-tabs', () => {
         });
 
         it('should have correct isStatusTab values', () => {
-            expect(TAB_CONFIG['staging'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['registered'].isStatusTab).toBe(true);
             expect(TAB_CONFIG['active-runs'].isStatusTab).toBe(false);
-            expect(TAB_CONFIG['scraped'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['enriched'].isStatusTab).toBe(true);
             expect(TAB_CONFIG['active-consolidations'].isStatusTab).toBe(false);
-            expect(TAB_CONFIG['consolidated'].isStatusTab).toBe(true);
-            expect(TAB_CONFIG['approved'].isStatusTab).toBe(true);
             expect(TAB_CONFIG['images'].isStatusTab).toBe(false);
             expect(TAB_CONFIG['export'].isStatusTab).toBe(false);
-            expect(TAB_CONFIG['published'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['finalized'].isStatusTab).toBe(true);
             expect(TAB_CONFIG['failed'].isStatusTab).toBe(true);
         });
     });
@@ -92,17 +88,15 @@ describe('pipeline-tabs', () => {
         it('should return tabs in correct display order', () => {
             const order = getTabOrder();
 
-            expect(order).toHaveLength(10);
-            expect(order[0]).toBe('staging');
+            expect(order).toHaveLength(8);
+            expect(order[0]).toBe('registered');
             expect(order[1]).toBe('active-runs');
-            expect(order[2]).toBe('scraped');
+            expect(order[2]).toBe('enriched');
             expect(order[3]).toBe('active-consolidations');
-            expect(order[4]).toBe('consolidated');
-            expect(order[5]).toBe('approved');
-            expect(order[6]).toBe('images');
-            expect(order[7]).toBe('export');
-            expect(order[8]).toBe('published');
-            expect(order[9]).toBe('failed');
+            expect(order[4]).toBe('images');
+            expect(order[5]).toBe('export');
+            expect(order[6]).toBe('finalized');
+            expect(order[7]).toBe('failed');
         });
 
         it('should return tabs sorted by order property', () => {
@@ -116,11 +110,9 @@ describe('pipeline-tabs', () => {
 
     describe('isStatusTab', () => {
         it('should return true for status tabs', () => {
-            expect(isStatusTab('staging')).toBe(true);
-            expect(isStatusTab('scraped')).toBe(true);
-            expect(isStatusTab('consolidated')).toBe(true);
-            expect(isStatusTab('approved')).toBe(true);
-            expect(isStatusTab('published')).toBe(true);
+            expect(isStatusTab('registered')).toBe(true);
+            expect(isStatusTab('enriched')).toBe(true);
+            expect(isStatusTab('finalized')).toBe(true);
             expect(isStatusTab('failed')).toBe(true);
         });
 
@@ -139,13 +131,11 @@ describe('pipeline-tabs', () => {
         });
 
         it('should return false for other tabs', () => {
-            expect(isMonitoringTab('staging')).toBe(false);
-            expect(isMonitoringTab('scraped')).toBe(false);
-            expect(isMonitoringTab('consolidated')).toBe(false);
-            expect(isMonitoringTab('approved')).toBe(false);
+            expect(isMonitoringTab('registered')).toBe(false);
+            expect(isMonitoringTab('enriched')).toBe(false);
             expect(isMonitoringTab('images')).toBe(false);
             expect(isMonitoringTab('export')).toBe(false);
-            expect(isMonitoringTab('published')).toBe(false);
+            expect(isMonitoringTab('finalized')).toBe(false);
             expect(isMonitoringTab('failed')).toBe(false);
         });
     });
@@ -157,13 +147,11 @@ describe('pipeline-tabs', () => {
         });
 
         it('should return false for other tabs', () => {
-            expect(isActionTab('staging')).toBe(false);
+            expect(isActionTab('registered')).toBe(false);
             expect(isActionTab('active-runs')).toBe(false);
-            expect(isActionTab('scraped')).toBe(false);
+            expect(isActionTab('enriched')).toBe(false);
             expect(isActionTab('active-consolidations')).toBe(false);
-            expect(isActionTab('consolidated')).toBe(false);
-            expect(isActionTab('approved')).toBe(false);
-            expect(isActionTab('published')).toBe(false);
+            expect(isActionTab('finalized')).toBe(false);
             expect(isActionTab('failed')).toBe(false);
         });
     });

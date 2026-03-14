@@ -43,7 +43,7 @@ describe('Performance Benchmarks', () => {
             });
 
             const startTime = Date.now();
-            const result = await bulkUpdateStatus(skus, 'approved', 'consolidated');
+            const result = await bulkUpdateStatus(skus, 'finalized', 'test-user');
             const endTime = Date.now();
             
             const duration = (endTime - startTime) / 1000;
@@ -63,7 +63,7 @@ describe('Performance Benchmarks', () => {
             });
 
             const startTime = Date.now();
-            const result = await bulkUpdateStatus(skus, 'published', 'approved');
+            const result = await bulkUpdateStatus(skus, 'finalized', 'test-user');
             const endTime = Date.now();
             
             const duration = (endTime - startTime) / 1000;
@@ -78,7 +78,7 @@ describe('Performance Benchmarks', () => {
         it.skip('should execute filtered queries in under 1 second', async () => {
             const mockData = Array.from({ length: 50 }, (_, i) => ({
                 sku: `SKU-${i}`,
-                pipeline_status: 'staging',
+                pipeline_status: 'registered',
                 input: { name: `Product ${i}` },
                 updated_at: new Date().toISOString(),
             }));
@@ -91,7 +91,7 @@ describe('Performance Benchmarks', () => {
             const { getProductsByStatus } = require('@/lib/pipeline');
             
             const startTime = Date.now();
-            const result = await getProductsByStatus('staging', '', 0, 50);
+            const result = await getProductsByStatus('registered', { limit: 50, offset: 0 });
             const endTime = Date.now();
             
             const duration = endTime - startTime;
@@ -108,7 +108,7 @@ describe('Performance Benchmarks', () => {
                 sku: `SKU-${i.toString().padStart(4, '0')}`,
                 input: { name: `Product ${i}`, price: 10.99 + i },
                 consolidated: { name: `Consolidated Product ${i}`, price: 12.99 + i },
-                pipeline_status: 'staging',
+                pipeline_status: 'registered',
                 confidence_score: 0.85,
                 updated_at: new Date().toISOString(),
             }));

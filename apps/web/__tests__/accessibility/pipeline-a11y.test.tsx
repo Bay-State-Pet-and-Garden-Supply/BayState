@@ -19,15 +19,14 @@ const mockProduct = {
     price: 10.99,
     stock_status: 'in_stock',
   },
-  pipeline_status: 'staging',
+  pipeline_status: 'registered',
 };
 
 const mockCounts = [
-  { status: 'staging', count: 10 },
-  { status: 'scraped', count: 5 },
-  { status: 'consolidated', count: 2 },
-  { status: 'approved', count: 1 },
-  { status: 'published', count: 0 },
+  { status: 'registered', count: 10 },
+  { status: 'enriched', count: 5 },
+  { status: 'finalized', count: 2 },
+  { status: 'failed', count: 1 },
 ];
 
 describe('Pipeline Accessibility', () => {
@@ -75,7 +74,7 @@ describe('Pipeline Accessibility', () => {
         <>
             <PipelineStatusTabs
               counts={mockCounts as any}
-              activeTab="staging"
+              activeTab="registered"
               onTabChange={() => {}}
             />
             <div id="main-content">Content</div>
@@ -91,7 +90,7 @@ describe('Pipeline Accessibility', () => {
       render(
           <PipelineStatusTabs
             counts={mockCounts as any}
-            activeTab="staging"
+            activeTab="registered"
             onTabChange={() => {}}
           />
       );
@@ -99,7 +98,7 @@ describe('Pipeline Accessibility', () => {
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs).toHaveLength(5);
+      expect(tabs).toHaveLength(4);
       expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
       expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
     });

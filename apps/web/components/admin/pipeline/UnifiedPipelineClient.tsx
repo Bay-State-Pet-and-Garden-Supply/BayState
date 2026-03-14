@@ -32,11 +32,9 @@ import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipelin
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 
 const statusLabels: Record<PipelineStatus, string> = {
-  staging: 'Imported',
-  scraped: 'Enhanced',
-  consolidated: 'Ready for Review',
-  approved: 'Verified',
-  published: 'Live',
+  registered: 'Registered',
+  enriched: 'Enriched',
+  finalized: 'Finalized',
   failed: 'Failed',
 };
 
@@ -68,7 +66,7 @@ export function UnifiedPipelineClient({
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportStatus, setExportStatus] = useState<PipelineStatus>('staging');
+  const [exportStatus, setExportStatus] = useState<PipelineStatus>('registered');
   const [exportSearch, setExportSearch] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<PipelineFiltersState>({});
@@ -86,11 +84,10 @@ export function UnifiedPipelineClient({
   const totalProducts = counts.reduce((sum, c) => sum + c.count, 0);
 
   const pipelineStages: Array<{ status: PipelineStatus; color: string }> = [
-    { status: 'staging', color: 'bg-orange-500' },
-    { status: 'scraped', color: 'bg-blue-500' },
-    { status: 'consolidated', color: 'bg-purple-500' },
-    { status: 'approved', color: 'bg-green-500' },
-    { status: 'published', color: 'bg-emerald-600' },
+    { status: 'registered', color: 'bg-orange-500' },
+    { status: 'enriched', color: 'bg-blue-500' },
+    { status: 'finalized', color: 'bg-green-500' },
+    { status: 'failed', color: 'bg-red-500' },
   ];
 
   const getRequestStatus = (): PipelineStatus | null => {
@@ -244,17 +241,17 @@ export function UnifiedPipelineClient({
     }
   };
 
-  const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
+  const handleBulkAction = async (action: 'enrich' | 'finalize' | 'reject' | 'retry' | 'delete') => {
     if (selectedProducts.size === 0) return;
 
     const selectedSkus = Array.from(selectedProducts);
     const selectedCount = selectedSkus.length;
-    const currentStatus = getRequestStatus() || 'staging';
-    const actionLabels: Record<'approve' | 'publish' | 'reject' | 'consolidate' | 'delete', string> = {
-      approve: 'Approved',
-      publish: 'Published',
+    const currentStatus = getRequestStatus() || 'registered';
+    const actionLabels: Record<'enrich' | 'finalize' | 'reject' | 'retry' | 'delete', string> = {
+      enrich: 'Enriched',
+      finalize: 'Finalized',
       reject: 'Rejected',
-      consolidate: 'Consolidated',
+      retry: 'Retried',
       delete: 'Deleted',
     };
 
@@ -280,38 +277,30 @@ export function UnifiedPipelineClient({
         return;
       }
 
-      const statusMap: Record<'approve' | 'publish' | 'reject' | 'consolidate', Record<PipelineStatus, PipelineStatus>> = {
-        approve: {
-          staging: 'staging',
-          scraped: 'scraped',
-          consolidated: 'approved',
-          approved: 'approved',
-          published: 'published',
+      const statusMap: Record<'enrich' | 'finalize' | 'reject' | 'retry', Record<PipelineStatus, PipelineStatus>> = {
+        enrich: {
+          registered: 'enriched',
+          enriched: 'enriched',
+          finalized: 'finalized',
           failed: 'failed',
         },
-        publish: {
-          staging: 'staging',
-          scraped: 'scraped',
-          consolidated: 'consolidated',
-          approved: 'published',
-          published: 'published',
+        finalize: {
+          registered: 'registered',
+          enriched: 'finalized',
+          finalized: 'finalized',
           failed: 'failed',
         },
         reject: {
-          staging: 'staging',
-          scraped: 'staging',
-          consolidated: 'staging',
-          approved: 'consolidated',
-          published: 'approved',
+          registered: 'failed',
+          enriched: 'registered',
+          finalized: 'enriched',
           failed: 'failed',
         },
-        consolidate: {
-          staging: 'consolidated',
-          scraped: 'consolidated',
-          consolidated: 'consolidated',
-          approved: 'approved',
-          published: 'published',
-          failed: 'failed',
+        retry: {
+          registered: 'registered',
+          enriched: 'enriched',
+          finalized: 'finalized',
+          failed: 'registered',
         },
       };
 
@@ -489,9 +478,9 @@ export function UnifiedPipelineClient({
   };
 
   const openExportDialog = () => {
-    // If getRequestStatus() returns null (meaning 'all'), fall back to 'staging'
+    // If getRequestStatus() returns null (meaning 'all'), fall back to 'registered'
     // so export dialog always has a valid PipelineStatus selected.
-    setExportStatus(getRequestStatus() ?? 'staging');
+    setExportStatus(getRequestStatus() ?? 'registered');
     setExportSearch(searchQuery);
     setShowExportDialog(true);
   };
@@ -611,11 +600,9 @@ export function UnifiedPipelineClient({
           </SelectTrigger>
           <SelectContent align="end">
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="staging">{statusLabels.staging}</SelectItem>
-            <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
-            <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
-            <SelectItem value="approved">{statusLabels.approved}</SelectItem>
-            <SelectItem value="published">{statusLabels.published}</SelectItem>
+            <SelectItem value="registered">{statusLabels.registered}</SelectItem>
+            <SelectItem value="enriched">{statusLabels.enriched}</SelectItem>
+            <SelectItem value="finalized">{statusLabels.finalized}</SelectItem>
             <SelectItem value="failed">{statusLabels.failed}</SelectItem>
           </SelectContent>
         </Select>
@@ -664,13 +651,13 @@ export function UnifiedPipelineClient({
 
       {/* Bulk Actions Toolbar */}
       {selectedProducts.size > 0 && (
-        <BulkActionsToolbar
-          selectedCount={selectedProducts.size}
-          currentStatus={getRequestStatus() || 'staging'}
-          searchQuery={searchQuery}
-          onAction={(action) => void handleBulkAction(action)}
-          onConsolidate={() => void handleBulkAction('consolidate')}
-          isConsolidating={isBulkActionPending}
+          <BulkActionsToolbar
+            selectedCount={selectedProducts.size}
+            currentStatus={getRequestStatus() || 'registered'}
+            searchQuery={searchQuery}
+            onAction={handleBulkAction}
+            onEnrich={() => void handleBulkAction('enrich')}
+            isEnriching={isBulkActionPending}
           onBulkEnrich={handleBulkEnrich}
           isBulkEnriching={isBulkEnriching}
           onClearSelection={() => {
@@ -703,7 +690,7 @@ export function UnifiedPipelineClient({
               onSelect={handleSelect}
               onView={handleView}
               onEnrich={handleEnrich}
-              showEnrichButton={product.pipeline_status === 'staging'}
+              showEnrichButton={product.pipeline_status === 'registered'}
               showBatchSelect
               currentStage={product.pipeline_status}
             />
@@ -761,11 +748,9 @@ export function UnifiedPipelineClient({
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="staging">{statusLabels.staging}</SelectItem>
-                  <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
-                  <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
-                  <SelectItem value="approved">{statusLabels.approved}</SelectItem>
-                  <SelectItem value="published">{statusLabels.published}</SelectItem>
+                  <SelectItem value="registered">{statusLabels.registered}</SelectItem>
+                  <SelectItem value="enriched">{statusLabels.enriched}</SelectItem>
+                  <SelectItem value="finalized">{statusLabels.finalized}</SelectItem>
                   <SelectItem value="failed">{statusLabels.failed}</SelectItem>
                 </SelectContent>
               </Select>

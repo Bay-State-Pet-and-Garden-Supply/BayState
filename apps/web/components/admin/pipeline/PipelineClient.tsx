@@ -29,11 +29,9 @@ import { scrapeProducts } from '@/lib/pipeline-scraping';
 import { SkipLink } from '@/components/ui/skip-link';
 
 const statusLabels: Record<PipelineStatus, string> = {
-    staging: 'Imported',
-    scraped: 'Enhanced',
-    consolidated: 'Ready for Review',
-    approved: 'Verified',
-    published: 'Live',
+    registered: 'Registered',
+    enriched: 'Enriched',
+    finalized: 'Finalized',
     failed: 'Failed',
 };
 
@@ -55,7 +53,7 @@ export function PipelineClient({
     const searchParams = useSearchParams();
 
     const [activeTab, setActiveTab] = useState<PipelineTab>(initialTab);
-    const activeStatus = isStatusTab(activeTab) ? activeTab : 'staging';
+    const activeStatus = isStatusTab(activeTab) ? activeTab : 'registered';
     const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
     const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
     const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
@@ -288,7 +286,7 @@ export function PipelineClient({
         });
     };
 
-    const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
+    const handleBulkAction = async (action: 'enrich' | 'finalize' | 'reject' | 'retry' | 'delete') => {
         if (action === 'delete') {
             // Delete is handled separately via DeleteConfirmationDialog
             return;
@@ -297,11 +295,31 @@ export function PipelineClient({
         if (!isStatusTab(activeTab)) return;
         const status = activeTab as PipelineStatus;
 
-        const statusMap: Record<string, Record<PipelineStatus, PipelineStatus>> = {
-            approve: { consolidated: 'approved', staging: 'staging', scraped: 'scraped', approved: 'approved', published: 'published', failed: 'failed' },
-            publish: { approved: 'published', staging: 'staging', scraped: 'scraped', consolidated: 'consolidated', published: 'published', failed: 'failed' },
-            reject: { consolidated: 'staging', approved: 'consolidated', staging: 'staging', scraped: 'staging', published: 'approved', failed: 'failed' },
-            consolidate: { staging: 'consolidated', scraped: 'scraped', consolidated: 'consolidated', approved: 'approved', published: 'published', failed: 'failed' },
+        const statusMap: Record<'enrich' | 'finalize' | 'reject' | 'retry', Record<PipelineStatus, PipelineStatus>> = {
+            enrich: {
+                registered: 'enriched',
+                enriched: 'enriched',
+                finalized: 'finalized',
+                failed: 'failed',
+            },
+            finalize: {
+                registered: 'registered',
+                enriched: 'finalized',
+                finalized: 'finalized',
+                failed: 'failed',
+            },
+            reject: {
+                registered: 'failed',
+                enriched: 'registered',
+                finalized: 'enriched',
+                failed: 'failed',
+            },
+            retry: {
+                registered: 'registered',
+                enriched: 'enriched',
+                finalized: 'finalized',
+                failed: 'registered',
+            },
         };
 
         const newStatus = statusMap[action][status];
@@ -413,7 +431,7 @@ export function PipelineClient({
         if (selectedSkus.size === 0) return;
 
         const confirmed = window.confirm(
-            `Are you sure you want to clear scrape results for ${selectedSkus.size} product${selectedSkus.size > 1 ? 's' : ''}? This will move them back to the Imported tab.`
+            `Are you sure you want to clear scrape results for ${selectedSkus.size} product${selectedSkus.size > 1 ? 's' : ''}? This will move them back to the Registered tab.`
         );
 
         if (!confirmed) return;
@@ -563,8 +581,8 @@ export function PipelineClient({
                 )}
             </div>
 
-            {/* Import CTA for staging tab - always visible */}
-            {activeStatus === 'staging' && (
+            {/* Import CTA for registered tab - always visible */}
+            {activeStatus === 'registered' && (
                 <div className="flex items-center justify-between rounded-lg bg-orange-50 border border-orange-200 px-4 py-3">
                     <div>
                         <p className="text-sm text-orange-900 font-medium">
@@ -601,7 +619,7 @@ export function PipelineClient({
                 </div>
             )}
 
-            {(activeStatus === 'staging' || activeStatus === 'scraped') && selectedSkus.size > 0 && (
+            {(activeStatus === 'registered' || activeStatus === 'enriched') && selectedSkus.size > 0 && (
                 <div className="flex items-center gap-4 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
                     <div className="flex-1">
                         <p className="text-sm text-purple-900">
@@ -626,15 +644,15 @@ export function PipelineClient({
                 </div>
             )}
 
-            {/* Bulk Actions - hidden on Imported (staging) tab */}
-            {isStatusTab(activeTab) && activeTab !== 'staging' && (
+            {/* Bulk Actions - hidden on Registered tab */}
+            {isStatusTab(activeTab) && activeTab !== 'registered' && (
                 <BulkActionsToolbar
                     selectedCount={selectedSkus.size}
                     currentStatus={activeTab as PipelineStatus}
                     searchQuery={search}
                     onAction={handleBulkAction}
-                    onConsolidate={handleConsolidate}
-                    isConsolidating={isConsolidating}
+                    onBulkEnrich={() => setEnrichmentStep(1)}
+                    isBulkEnriching={isPending}
                     onClearSelection={() => setSelectedSkus(new Set())}
                     onClearScrapeResults={handleClearScrapeResults}
                     isClearingScrapeResults={isClearingScrapeResults}
@@ -668,9 +686,9 @@ export function PipelineClient({
                                     onSelect={handleSelect}
                                     onView={handleView}
                                     onEnrich={setEnrichingSku}
-                                    showEnrichButton={activeTab === 'scraped'}
-                                    readOnly={activeTab === 'staging'}
-                                    showBatchSelect={activeTab === 'staging'}
+                                    showEnrichButton={activeTab === 'registered'}
+                                    readOnly={activeTab === 'registered'}
+                                    showBatchSelect={activeTab === 'registered'}
                                     currentStage={activeTab as PipelineStatus}
                                 />
                             ))}

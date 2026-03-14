@@ -145,6 +145,7 @@ def _build_standard_workflow_context(
 
     return {
         "sku": sku,
+        "sku_encoded": quote_plus(sku),
         "test_mode": test_mode,
         **item_context,
         "search_query": search_query,

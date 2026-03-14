@@ -6,14 +6,12 @@ import {
     Package,
     Settings2,
     Sparkles,
-    Upload,
-    Brain,
     CheckCircle2,
-    Globe,
     AlertCircle,
     TrendingUp,
     Database,
-    ImageIcon
+    ImageIcon,
+    Activity
 } from 'lucide-react';
 import Image from 'next/image';
 import { formatCurrency } from '@/lib/utils';
@@ -38,40 +36,26 @@ const stageConfig: Record<PipelineStatus, {
     bgColor: string;
     description: string;
 }> = {
-    staging: {
-        icon: Upload,
-        label: 'Imported',
+    registered: {
+        icon: Package,
+        label: 'Registered',
         color: 'text-gray-600',
         bgColor: 'bg-gray-100',
         description: 'Needs enhancement'
     },
-    scraped: {
+    enriched: {
         icon: Sparkles,
-        label: 'Enhanced',
+        label: 'Enriched',
         color: 'text-blue-600',
         bgColor: 'bg-blue-100',
-        description: 'Scraped & enriched'
+        description: 'Data enriched'
     },
-    consolidated: {
-        icon: Brain,
-        label: 'AI Ready',
-        color: 'text-yellow-600',
-        bgColor: 'bg-yellow-100',
-        description: 'Ready for review'
-    },
-    approved: {
+    finalized: {
         icon: CheckCircle2,
-        label: 'Verified',
+        label: 'Finalized',
         color: 'text-green-600',
         bgColor: 'bg-green-100',
-        description: 'Human approved'
-    },
-    published: {
-        icon: Globe,
-        label: 'Live',
-        color: 'text-emerald-600',
-        bgColor: 'bg-emerald-100',
-        description: 'Published'
+        description: 'Finalized'
     },
     failed: {
         icon: AlertCircle,
@@ -158,8 +142,8 @@ export function PipelineProductCard({
         );
     }
 
-    // Storefront-style view for consolidated and later stages
-    if (stage === 'consolidated' || stage === 'approved' || stage === 'published') {
+    // Storefront-style view for finalized stage
+    if (stage === 'finalized') {
         const imageSrc = product.consolidated?.images?.[0]?.trim();
         const hasValidImage = Boolean(imageSrc) && (imageSrc?.startsWith('/') || imageSrc?.startsWith('http'));
 
@@ -351,8 +335,8 @@ export function PipelineProductCard({
                     {/* Processing Status Bar */}
                     <div className="mt-3 flex items-center gap-2">
                         <div className="flex-1 flex items-center gap-1">
-                            {(['staging', 'scraped', 'consolidated', 'approved', 'published'] as PipelineStatus[]).map((s, idx) => {
-                                const isStageDone = ['staging', 'scraped', 'consolidated', 'approved', 'published'].indexOf(stage) >= idx;
+                            {(['registered', 'enriched', 'finalized', 'failed'] as PipelineStatus[]).map((s, idx) => {
+                                const isStageDone = ['registered', 'enriched', 'finalized', 'failed'].indexOf(stage) >= idx;
                                 const isCurrentStage = stage === s;
                                 return (
                                     <div

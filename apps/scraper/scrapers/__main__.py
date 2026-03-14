@@ -90,7 +90,7 @@ def _fetch_scraper_configs(scrapers: list[str] | None = None) -> dict[str, dict[
             continue
 
         published = client.get_published_config(slug)
-        payload = published.get("config")
+        payload = published.get("config") if isinstance(published.get("config"), dict) else published
         if not isinstance(payload, dict):
             raise RuntimeError(f"Invalid published config payload for slug '{slug}'")
 

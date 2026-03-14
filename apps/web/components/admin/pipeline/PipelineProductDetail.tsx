@@ -37,11 +37,10 @@ const stockStatusOptions = [
 ];
 
 const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
-  { value: 'staging', label: 'Imported' },
-  { value: 'scraped', label: 'Enhanced' },
-  { value: 'consolidated', label: 'Ready for Review' },
-  { value: 'approved', label: 'Verified' },
-  { value: 'published', label: 'Live' },
+  { value: 'registered', label: 'Registered' },
+  { value: 'enriched', label: 'Enriched' },
+  { value: 'finalized', label: 'Finalized' },
+  { value: 'failed', label: 'Failed' },
 ];
 
 export function PipelineProductDetail({
@@ -62,7 +61,7 @@ export function PipelineProductDetail({
   const [brandId, setBrandId] = useState('none');
   const [stockStatus, setStockStatus] = useState('in_stock');
   const [isFeatured, setIsFeatured] = useState(false);
-  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('staging');
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('registered');
   const [imageCandidates, setImageCandidates] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
@@ -102,7 +101,7 @@ export function PipelineProductDetail({
         setBrandId(consolidated.brand_id || 'none');
         setStockStatus(consolidated.stock_status || 'in_stock');
         setIsFeatured(consolidated.is_featured || false);
-        setPipelineStatus(productData.product?.pipeline_status || 'staging');
+        setPipelineStatus(productData.product?.pipeline_status || 'registered');
         setImageCandidates(candidates);
         setSelectedImages(currentImages);
       } catch (err) {
@@ -193,7 +192,7 @@ export function PipelineProductDetail({
           .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/')),
       };
 
-      const newStatus = andApprove ? 'approved' : pipelineStatus;
+      const newStatus: PipelineStatus = andApprove ? 'finalized' : pipelineStatus;
 
       const res = await fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
         method: 'PATCH',
@@ -457,10 +456,10 @@ export function PipelineProductDetail({
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Saving...' : 'Save'}
             </Button>
-            {pipelineStatus !== 'approved' && pipelineStatus !== 'published' && (
+            {pipelineStatus !== 'finalized' && (
               <Button onClick={() => handleSave(true)} disabled={saving}>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                {saving ? 'Saving...' : 'Save & Verify'}
+                {saving ? 'Saving...' : 'Save & Finalize'}
               </Button>
             )}
           </div>

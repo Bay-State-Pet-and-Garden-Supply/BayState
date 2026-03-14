@@ -16,8 +16,8 @@ describe('UndoQueue', () => {
         const action = {
             type: 'status_change' as const,
             skus: ['SKU-123'],
-            fromStatus: 'staging' as const,
-            toStatus: 'scraped' as const,
+            fromStatus: 'registered' as const,
+            toStatus: 'enriched' as const,
             revert: jest.fn().mockResolvedValue(undefined),
         };
 
@@ -32,8 +32,8 @@ describe('UndoQueue', () => {
         const action = {
             type: 'status_change' as const,
             skus: ['SKU-123'],
-            fromStatus: 'staging' as const,
-            toStatus: 'scraped' as const,
+            fromStatus: 'registered' as const,
+            toStatus: 'enriched' as const,
             revert: jest.fn().mockResolvedValue(undefined),
         };
 
@@ -52,8 +52,8 @@ describe('UndoQueue', () => {
         const action = {
             type: 'status_change' as const,
             skus: ['SKU-123'],
-            fromStatus: 'staging' as const,
-            toStatus: 'scraped' as const,
+            fromStatus: 'registered' as const,
+            toStatus: 'enriched' as const,
             revert: jest.fn().mockResolvedValue(undefined),
         };
 

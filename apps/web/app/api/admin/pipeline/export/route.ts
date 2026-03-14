@@ -1,182 +1,88 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { PipelineStatus } from '@/lib/pipeline';
-import * as ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 
-export const runtime = 'nodejs';
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status') || 'finalized';
+    const format = searchParams.get('format') || 'xlsx';
+    const search = searchParams.get('search');
 
-export async function GET(request: NextRequest) {
-    const auth = await requireAdminAuth();
-    if (!auth.authorized) return auth.response;
+    try {
+        const supabase = await createClient();
 
-    const searchParams = request.nextUrl.searchParams;
-    const status = (searchParams.get('status') || 'staging') as PipelineStatus;
-    const search = searchParams.get('search') || '';
-    const format = searchParams.get('format') || 'csv';
+        let query = supabase
+            .from('products_ingestion')
+            .select('*')
+            .eq('pipeline_status', status);
 
-    const supabase = await createClient();
-
-    if (format === 'xlsx') {
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Products');
-
-        worksheet.columns = [
-            { header: 'SKU', key: 'sku', width: 20 },
-            { header: 'Name', key: 'name', width: 40 },
-            { header: 'Description', key: 'description', width: 60 },
-            { header: 'Price', key: 'price', width: 12 },
-            { header: 'Brand', key: 'brand', width: 20 },
-            { header: 'Stock Status', key: 'stock_status', width: 15 },
-            { header: 'Images', key: 'images', width: 50 },
-            { header: 'Sources', key: 'sources', width: 40 },
-            { header: 'Confidence Score', key: 'confidence_score', width: 18 },
-            { header: 'Pipeline Status', key: 'pipeline_status', width: 18 },
-            { header: 'Created At', key: 'created_at', width: 20 },
-            { header: 'Updated At', key: 'updated_at', width: 20 },
-        ];
-
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFE0E0E0' }
-        };
-
-        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-        const pageSize = 500;
-        let page = 0;
-        let hasMore = true;
-
-        while (hasMore) {
-            let pageQuery = supabase
-                .from('products_ingestion')
-                .select('sku, input, consolidated, pipeline_status, confidence_score, created_at, updated_at')
-                .eq('pipeline_status', status)
-                .order('updated_at', { ascending: false });
-
-            if (search) {
-                pageQuery = pageQuery.or(`sku.ilike.%${search}%,input->>name.ilike.%${search}%`);
-            }
-
-            const { data, error } = await pageQuery.range(page * pageSize, (page + 1) * pageSize - 1);
-
-            if (error) {
-                console.error('Export error:', error);
-                return NextResponse.json({ error: 'Export failed' }, { status: 500 });
-            }
-
-            if (!data || data.length === 0) {
-                hasMore = false;
-                break;
-            }
-
-            for (const item of data) {
-                const consolidated = item.consolidated || {};
-                const input = item.input || {};
-
-                const sources = consolidated.sources
-                    ? Object.keys(consolidated.sources).join(', ')
-                    : '';
-
-                const images = Array.isArray(consolidated.images)
-                    ? consolidated.images.join(', ')
-                    : '';
-
-                worksheet.addRow({
-                    sku: item.sku,
-                    name: consolidated.name || input.name || '',
-                    description: consolidated.description || '',
-                    price: consolidated.price ?? input.price ?? 0,
-                    brand: consolidated.brand || '',
-                    stock_status: consolidated.stock_status || '',
-                    images: images,
-                    sources: sources,
-                    confidence_score: item.confidence_score ?? '',
-                    pipeline_status: item.pipeline_status,
-                    created_at: item.created_at,
-                    updated_at: item.updated_at,
-                });
-            }
-
-            if (data.length < pageSize) {
-                hasMore = false;
-            }
-            page++;
+        if (search) {
+            query = query.or(`sku.ilike.%${search}%,input->>name.ilike.%${search}%`);
         }
 
-        const buffer = await workbook.xlsx.writeBuffer();
+        // Limit to 1000 for reasonable memory usage
+        const { data, error } = await query.limit(1000);
 
-        return new NextResponse(buffer, {
-            headers: {
-                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition': `attachment; filename="pipeline-export-${status}-${new Date().toISOString().split('T')[0]}.xlsx"`,
-            },
-        });
+        if (error) {
+            console.error('Error fetching data for export:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        if (!data || data.length === 0) {
+            return NextResponse.json({ error: 'No data found to export' }, { status: 404 });
+        }
+
+        // Flatten data
+        const flattenedData = data.map((item) => ({
+            SKU: item.sku,
+            Name: item.consolidated?.name || item.input?.name || '',
+            Description: item.consolidated?.description || '',
+            Price: item.consolidated?.price || item.input?.price || '',
+            Brand: item.consolidated?.brand_id || '',
+            StockStatus: item.consolidated?.stock_status || '',
+            PipelineStatus: item.pipeline_status,
+            CreatedAt: item.created_at,
+            UpdatedAt: item.updated_at,
+        }));
+
+        if (format === 'csv') {
+            const headers = Object.keys(flattenedData[0]);
+            const csvContent = [
+                headers.join(','),
+                ...flattenedData.map(row => 
+                    headers.map(header => {
+                        const val = row[header as keyof typeof row] || '';
+                        return `"${String(val).replace(/"/g, '""')}"`;
+                    }).join(',')
+                )
+            ].join('\n');
+
+            return new NextResponse(csvContent, {
+                headers: {
+                    'Content-Type': 'text/csv',
+                    'Content-Disposition': `attachment; filename="export-${status}.csv"`,
+                },
+            });
+        } else {
+            // XLSX format
+            const worksheet = XLSX.utils.json_to_sheet(flattenedData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+            
+            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+            return new NextResponse(buffer, {
+                headers: {
+                    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'Content-Disposition': `attachment; filename="export-${status}.xlsx"`,
+                },
+            });
+        }
+    } catch (error) {
+        console.error('Error in export GET route:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
     }
-
-    const encoder = new TextEncoder();
-
-    const customReadable = new ReadableStream({
-        async start(controller) {
-            controller.enqueue(encoder.encode('sku,name,price,status,confidence_score,updated_at\n'));
-
-            const pageSize = 500;
-            let page = 0;
-            let hasMore = true;
-
-            try {
-                while (hasMore) {
-                    let pageQuery = supabase
-                        .from('products_ingestion')
-                        .select('sku, input, consolidated, pipeline_status, confidence_score, updated_at')
-                        .eq('pipeline_status', status)
-                        .order('updated_at', { ascending: false });
-
-                    if (search) {
-                        pageQuery = pageQuery.or(`sku.ilike.%${search}%,input->>name.ilike.%${search}%`);
-                    }
-
-                    const { data, error } = await pageQuery.range(page * pageSize, (page + 1) * pageSize - 1);
-
-                    if (error) {
-                        console.error('Export error:', error);
-                        controller.error(error);
-                        break;
-                    }
-
-                    if (!data || data.length === 0) {
-                        hasMore = false;
-                        break;
-                    }
-
-                    for (const item of data) {
-                        const name = (item.consolidated?.name || item.input?.name || '').replace(/"/g, '""');
-                        const price = item.consolidated?.price ?? item.input?.price ?? 0;
-                        const conf = item.confidence_score ?? '';
-
-                        const row = `"${item.sku}","${name}",${price},${item.pipeline_status},${conf},${item.updated_at}\n`;
-                        controller.enqueue(encoder.encode(row));
-                    }
-
-                    if (data.length < pageSize) {
-                        hasMore = false;
-                    }
-                    page++;
-                }
-                controller.close();
-            } catch (e) {
-                console.error('Export stream error:', e);
-                controller.error(e);
-            }
-        }
-    });
-
-    return new NextResponse(customReadable, {
-        headers: {
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': `attachment; filename="pipeline-export-${status}-${new Date().toISOString().split('T')[0]}.csv"`,
-        },
-    });
 }

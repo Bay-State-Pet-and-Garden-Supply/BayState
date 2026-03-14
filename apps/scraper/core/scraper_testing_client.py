@@ -6,12 +6,17 @@ Provides interface for local scraper testing only.
 from __future__ import annotations
 
 
+import inspect
 import logging
 from typing import Any, Callable
 
 from core.api_client import *
 
 logger = logging.getLogger(__name__)
+
+
+class ScraperTestingError(RuntimeError):
+    """Raised when local scraper test setup or execution cannot proceed."""
 
 
 class ScraperTestingClient:
@@ -92,7 +97,7 @@ class ScraperTestingClient:
 
             slug = scraper_name.strip().lower().replace("_", "-").replace(" ", "-")
             response = api_client.get_published_config(slug)
-            config_dict = response.get("config")
+            config_dict = response.get("config") if isinstance(response.get("config"), dict) else response
             if not isinstance(config_dict, dict):
                 raise ScraperTestingError(f"Invalid published config payload for scraper '{scraper_name}'")
 
@@ -100,7 +105,7 @@ class ScraperTestingClient:
             logger.info(f"Loaded config from API for test: {scraper_name}")
 
             # Initialize executor
-            executor = WorkflowExecutor(config, headless=self.headless)
+            executor = WorkflowExecutor(config, headless=self.headless, api_client=api_client)
 
             try:
                 # Initialize the executor (async initialization)
@@ -112,12 +117,12 @@ class ScraperTestingClient:
                         result = loop.run_until_complete(executor.execute_workflow(context={"sku": sku}, quit_browser=False))
 
                         if result.get("success"):
-                            if result.get("no_results_found"):
+                            extracted_data = result.get("results", {})
+                            if extracted_data.get("no_results_found"):
                                 # Track no results as a valid outcome but no product data
                                 products.append({"SKU": sku, "no_results_found": True})
                             else:
                                 # Add product data
-                                extracted_data = result.get("results", {})
                                 if extracted_data:
                                     data = extracted_data.copy()
                                     if "SKU" not in data:
@@ -134,7 +139,9 @@ class ScraperTestingClient:
             finally:
                 if getattr(executor, "browser", None):
                     try:
-                        executor.browser.quit()
+                        quit_result = executor.browser.quit()
+                        if inspect.isawaitable(quit_result):
+                            loop.run_until_complete(quit_result)
                     except Exception:
                         pass
 

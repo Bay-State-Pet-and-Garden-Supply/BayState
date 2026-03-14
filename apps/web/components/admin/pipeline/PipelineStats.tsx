@@ -1,6 +1,6 @@
 'use client';
 
-import { Package, Search, FileCheck, CheckCircle, Globe } from 'lucide-react';
+import { Package, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 import { StatCard } from '@/components/admin/dashboard/stat-card';
 import type { StatusCount, PipelineStatus } from '@/lib/pipeline';
 
@@ -16,11 +16,10 @@ const STATUS_CONFIG: Array<{
   icon: typeof Package;
   variant: 'default' | 'warning' | 'success' | 'info';
 }> = [
-  { status: 'staging', label: 'Imported', icon: Package, variant: 'warning' },
-  { status: 'scraped', label: 'Enhanced', icon: Search, variant: 'info' },
-  { status: 'consolidated', label: 'Ready for Review', icon: FileCheck, variant: 'default' },
-  { status: 'approved', label: 'Verified', icon: CheckCircle, variant: 'success' },
-  { status: 'published', label: 'Live', icon: Globe, variant: 'success' },
+  { status: 'registered', label: 'Registered', icon: Package, variant: 'warning' },
+  { status: 'enriched', label: 'Enriched', icon: Sparkles, variant: 'info' },
+  { status: 'finalized', label: 'Finalized', icon: CheckCircle, variant: 'success' },
+  { status: 'failed', label: 'Failed', icon: AlertCircle, variant: 'default' },
 ];
 
 function getCountForStatus(counts: StatusCount[], status: PipelineStatus): number {
@@ -36,7 +35,7 @@ export function PipelineStats({ counts, activeStatus = 'all', onStatusChange }: 
   };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {STATUS_CONFIG.map(({ status, label, icon: Icon, variant }) => {
         const count = getCountForStatus(counts, status);
         const isActive = activeStatus === status;

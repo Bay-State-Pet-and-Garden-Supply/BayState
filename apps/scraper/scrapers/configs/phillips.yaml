@@ -46,7 +46,7 @@ workflows:
   - action: wait_for
     name: null
     params:
-      timeout: 5
+      timeout: 10
       selector:
         - .cc_product_item .cc_product_name
         - .plp-empty-state-message-container h3

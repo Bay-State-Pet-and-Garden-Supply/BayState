@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import {
-    NewPipelineStatus,
+    PipelineStatus,
     STATUS_TRANSITIONS,
     validateStatusTransition,
 } from '@/lib/pipeline';
@@ -50,29 +50,34 @@ describe('validateStatusTransition', () => {
 
     describe('STATUS_TRANSITIONS constant', () => {
         it('has correct transitions for registered', () => {
-            expect(STATUS_TRANSITIONS.registered).toEqual(['enriched']);
+            expect(STATUS_TRANSITIONS.registered).toEqual(['enriched', 'failed']);
         });
 
         it('has correct transitions for enriched', () => {
-            expect(STATUS_TRANSITIONS.enriched).toEqual(['finalized']);
+            expect(STATUS_TRANSITIONS.enriched).toEqual(['finalized', 'failed']);
+        });
+
+        it('has correct transitions for failed', () => {
+            expect(STATUS_TRANSITIONS.failed).toEqual(['registered', 'enriched']);
         });
 
         it('has no transitions for finalized (terminal state)', () => {
             expect(STATUS_TRANSITIONS.finalized).toEqual([]);
         });
 
-        it('has exactly 3 statuses', () => {
+        it('has exactly 4 statuses', () => {
             const statuses = Object.keys(STATUS_TRANSITIONS);
-            expect(statuses).toHaveLength(3);
+            expect(statuses).toHaveLength(4);
             expect(statuses).toContain('registered');
             expect(statuses).toContain('enriched');
             expect(statuses).toContain('finalized');
+            expect(statuses).toContain('failed');
         });
     });
 
-    describe('NewPipelineStatus type', () => {
+    describe('PipelineStatus type', () => {
         it('accepts all valid status values', () => {
-            const validStatuses: NewPipelineStatus[] = ['registered', 'enriched', 'finalized'];
+            const validStatuses: PipelineStatus[] = ['registered', 'enriched', 'finalized', 'failed'];
             
             // TypeScript compile-time check - if this compiles, the type is correct
             validStatuses.forEach((status) => {

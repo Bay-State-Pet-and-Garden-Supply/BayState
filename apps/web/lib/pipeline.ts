@@ -3,7 +3,29 @@ import { createClient } from '@/lib/supabase/server';
 /**
  * Pipeline status types matching the database constraint.
  */
-export type PipelineStatus = 'staging' | 'scraped' | 'consolidated' | 'approved' | 'published' | 'failed';
+export type PipelineStatus = 'registered' | 'enriched' | 'finalized' | 'failed';
+
+/**
+ * Valid state transitions for the pipeline flow.
+ */
+export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
+    registered: ['enriched', 'failed'],
+    enriched: ['finalized', 'failed'],
+    finalized: [], // terminal state
+    failed: ['registered', 'enriched'], // can be retried
+};
+
+/**
+ * Validates if a transition between two statuses is allowed.
+ */
+export function validateStatusTransition(from: PipelineStatus, to: PipelineStatus): boolean {
+    return STATUS_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+export interface SelectedImage {
+    url: string;
+    selectedAt: string; // ISO timestamp
+}
 
 /**
  * Represents a product in the ingestion pipeline.
@@ -16,6 +38,7 @@ export interface PipelineProduct {
     };
     sources: Record<string, unknown>;
     image_candidates?: string[];
+    selected_images?: SelectedImage[];
     consolidated: {
         name?: string;
         description?: string;
@@ -183,16 +206,16 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         .from('products_ingestion')
         .select('pipeline_status');
 
+    const statuses: PipelineStatus[] = ['registered', 'enriched', 'finalized', 'failed'];
+
     if (error) {
         console.error('Error fetching status counts:', error);
         // Return zero counts for all statuses on error
-        const statuses: PipelineStatus[] = ['staging', 'scraped', 'consolidated', 'approved', 'published'];
         return statuses.map(status => ({ status, count: 0 }));
     }
 
     // Count occurrences of each status
     const countMap: Record<string, number> = {};
-    const statuses: PipelineStatus[] = ['staging', 'scraped', 'consolidated', 'approved', 'published'];
     
     // Initialize all statuses with 0
     statuses.forEach(status => {
@@ -360,7 +383,7 @@ export async function bulkDeleteProducts(
 }
 
 /**
- * Clears scrape results and resets products back to staging (imported) status.
+ * Clears scrape results and resets products back to registered status.
  * This removes all scraped source data and consolidated data, allowing products
  * to be re-enhanced from scratch.
  */
@@ -371,12 +394,12 @@ export async function clearScrapeResultsAndResetStatus(
     const supabase = await createClient();
 
     try {
-        // Clear sources (scraped data) and consolidated fields, reset to staging
+        // Clear sources (scraped data) and consolidated fields, reset to registered
         // Only update fields that are known to exist in the schema
         const { error, count } = await supabase
             .from('products_ingestion')
             .update({
-                pipeline_status: 'staging',
+                pipeline_status: 'registered',
                 sources: {},
                 consolidated: {},
                 updated_at: new Date().toISOString(),
@@ -392,8 +415,8 @@ export async function clearScrapeResultsAndResetStatus(
         const auditPayload = {
             job_type: 'clear_scrape_results',
             job_id: crypto.randomUUID(),
-            from_state: 'scraped',
-            to_state: 'staging',
+            from_state: 'enriched',
+            to_state: 'registered',
             actor_id: userId || null,
             actor_type: userId ? 'user' : 'system',
             metadata: {
