@@ -3,6 +3,16 @@ import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supab
 import { createClient } from '@/lib/supabase/client';
 import { TestRunStep } from '@/lib/admin/scrapers/types';
 
+type TestRunTelemetryPayload = {
+  telemetry?: {
+    steps?: TestRunStep[];
+  };
+};
+
+function hasTelemetryPayload(value: unknown): value is TestRunTelemetryPayload {
+  return typeof value === 'object' && value !== null && 'telemetry' in value;
+}
+
 export type { TestRunStep };
 
 export interface TestRunSubscriptionState {
@@ -45,16 +55,20 @@ export function useTestRunSubscription(
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);  
-  const pendingUpdatesRef = useRef<RealtimePostgresChangesPayload<any>[]>([]);
+  const pendingUpdatesRef = useRef<RealtimePostgresChangesPayload<TestRunTelemetryPayload>[]>([]);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialStepsRef = useRef(initialSteps);
 
   useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      steps: initialSteps
-    }));
+    const syncTimeout = setTimeout(() => {
+      setState((prev) => ({
+        ...prev,
+        steps: initialSteps,
+      }));
+    }, 0);
+
     initialStepsRef.current = initialSteps;
+    return () => clearTimeout(syncTimeout);
   }, [testRunId, initialSteps]);
 
   const getSupabase = useCallback(() => {
@@ -71,15 +85,14 @@ export function useTestRunSubscription(
     if (updates.length === 0) return;
 
     setState((prev) => {
-      let currentSteps = [...prev.steps];
-      const stepMap = new Map(currentSteps.map(s => [s.id, s]));
+      const stepMap = new Map(prev.steps.map((step) => [step.id, step]));
 
       updates.forEach((payload) => {
-        const { eventType, new: newRecord } = payload;
+        const { new: newRecord } = payload;
         
         // In the new architecture, telemetry is on scrape_job_chunks
         // It contains a 'steps' array
-        if (newRecord && newRecord.telemetry && Array.isArray(newRecord.telemetry.steps)) {
+        if (hasTelemetryPayload(newRecord) && newRecord.telemetry && Array.isArray(newRecord.telemetry.steps)) {
           const telemetrySteps = newRecord.telemetry.steps as TestRunStep[];
           telemetrySteps.forEach(step => {
             stepMap.set(step.id, step);
@@ -92,9 +105,9 @@ export function useTestRunSubscription(
         steps: Array.from(stepMap.values()).sort((a, b) => a.step_index - b.step_index),
       };
     });
-  }, [testRunId]);
+  }, []);
 
-  const handleRealtimeUpdate = useCallback((payload: RealtimePostgresChangesPayload<any>) => {
+  const handleRealtimeUpdate = useCallback((payload: RealtimePostgresChangesPayload<TestRunTelemetryPayload>) => {
     pendingUpdatesRef.current.push(payload);
 
     if (debounceTimeoutRef.current) {

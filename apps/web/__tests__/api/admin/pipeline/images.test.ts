@@ -269,14 +269,13 @@ describe('Images Pipeline API', () => {
             };
 
             const selectMock = {
+                eq: jest.fn().mockReturnThis(),
                 single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
             };
             mockSupabase.select.mockReturnValue(selectMock);
             
-            const eqMock = {
-                single: jest.fn().mockResolvedValue({ error: null }),
-            };
-            mockSupabase.eq.mockReturnValue(eqMock);
+            const updateEqMock = jest.fn().mockResolvedValue({ error: null });
+            mockSupabase.update.mockReturnValue({ eq: updateEqMock });
 
             const testReq = class extends NextRequest {
                 async json() {
@@ -307,14 +306,13 @@ describe('Images Pipeline API', () => {
             };
 
             const selectMock = {
+                eq: jest.fn().mockReturnThis(),
                 single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
             };
             mockSupabase.select.mockReturnValue(selectMock);
             
-            const eqMock = {
-                single: jest.fn().mockResolvedValue({ error: { message: 'Update failed' } }),
-            };
-            mockSupabase.eq.mockReturnValue(eqMock);
+            const updateEqMock = jest.fn().mockResolvedValue({ error: { message: 'Update failed' } });
+            mockSupabase.update.mockReturnValue({ eq: updateEqMock });
 
             const testReq = class extends NextRequest {
                 async json() {

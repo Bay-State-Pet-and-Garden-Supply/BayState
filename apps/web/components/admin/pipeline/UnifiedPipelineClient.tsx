@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Package, Search, RefreshCw, Filter, Upload, Download, Plus } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
@@ -28,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { undoQueue } from '@/lib/pipeline/undo';
-import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus, StatusCount, NewPipelineStatus } from '@/lib/pipeline';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 
 const statusLabels: Record<PipelineStatus, string> = {
@@ -38,6 +39,12 @@ const statusLabels: Record<PipelineStatus, string> = {
   approved: 'Verified',
   published: 'Live',
   failed: 'Failed',
+};
+
+const newStatusLabels: Record<NewPipelineStatus, string> = {
+  registered: 'Registered',
+  enriched: 'Enriched',
+  finalized: 'Finalized',
 };
 
 interface UnifiedPipelineClientProps {
@@ -52,7 +59,7 @@ export function UnifiedPipelineClient({
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PipelineStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<NewPipelineStatus | 'all'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
@@ -68,7 +75,7 @@ export function UnifiedPipelineClient({
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportStatus, setExportStatus] = useState<PipelineStatus>('staging');
+  const [exportStatus, setExportStatus] = useState<NewPipelineStatus>('registered');
   const [exportSearch, setExportSearch] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<PipelineFiltersState>({});
@@ -78,22 +85,20 @@ export function UnifiedPipelineClient({
     void handleRefresh();
   }, [statusFilter]);
 
-  const getCount = (status: PipelineStatus): number => {
+  const getCount = (status: NewPipelineStatus): number => {
     const found = counts.find(c => c.status === status);
     return found ? found.count : 0;
   };
 
   const totalProducts = counts.reduce((sum, c) => sum + c.count, 0);
 
-  const pipelineStages: Array<{ status: PipelineStatus; color: string }> = [
-    { status: 'staging', color: 'bg-orange-500' },
-    { status: 'scraped', color: 'bg-blue-500' },
-    { status: 'consolidated', color: 'bg-purple-500' },
-    { status: 'approved', color: 'bg-green-500' },
-    { status: 'published', color: 'bg-emerald-600' },
+  const newPipelineStages: Array<{ status: NewPipelineStatus; color: string; label: string }> = [
+    { status: 'registered', color: 'bg-orange-500', label: 'Registered' },
+    { status: 'enriched', color: 'bg-blue-500', label: 'Enriched' },
+    { status: 'finalized', color: 'bg-green-500', label: 'Finalized' },
   ];
 
-  const getRequestStatus = (): PipelineStatus | null => {
+  const getRequestStatus = (): NewPipelineStatus | null => {
     return statusFilter === 'all' ? null : statusFilter;
   };
 
@@ -244,17 +249,15 @@ export function UnifiedPipelineClient({
     }
   };
 
-  const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
+  const handleBulkAction = async (action: 'moveToEnriched' | 'moveToFinalized' | 'delete') => {
     if (selectedProducts.size === 0) return;
 
     const selectedSkus = Array.from(selectedProducts);
     const selectedCount = selectedSkus.length;
-    const currentStatus = getRequestStatus() || 'staging';
-    const actionLabels: Record<'approve' | 'publish' | 'reject' | 'consolidate' | 'delete', string> = {
-      approve: 'Approved',
-      publish: 'Published',
-      reject: 'Rejected',
-      consolidate: 'Consolidated',
+    const currentStatus = getRequestStatus() || 'registered';
+    const actionLabels: Record<'moveToEnriched' | 'moveToFinalized' | 'delete', string> = {
+      moveToEnriched: 'Moved to Enriched',
+      moveToFinalized: 'Moved to Finalized',
       delete: 'Deleted',
     };
 
@@ -280,42 +283,13 @@ export function UnifiedPipelineClient({
         return;
       }
 
-      const statusMap: Record<'approve' | 'publish' | 'reject' | 'consolidate', Record<PipelineStatus, PipelineStatus>> = {
-        approve: {
-          staging: 'staging',
-          scraped: 'scraped',
-          consolidated: 'approved',
-          approved: 'approved',
-          published: 'published',
-          failed: 'failed',
-        },
-        publish: {
-          staging: 'staging',
-          scraped: 'scraped',
-          consolidated: 'consolidated',
-          approved: 'published',
-          published: 'published',
-          failed: 'failed',
-        },
-        reject: {
-          staging: 'staging',
-          scraped: 'staging',
-          consolidated: 'staging',
-          approved: 'consolidated',
-          published: 'approved',
-          failed: 'failed',
-        },
-        consolidate: {
-          staging: 'consolidated',
-          scraped: 'consolidated',
-          consolidated: 'consolidated',
-          approved: 'approved',
-          published: 'published',
-          failed: 'failed',
-        },
+      // Map actions to new status values
+      const newStatusMap: Record<'moveToEnriched' | 'moveToFinalized', NewPipelineStatus> = {
+        moveToEnriched: 'enriched',
+        moveToFinalized: 'finalized',
       };
 
-      const newStatus = statusMap[action][currentStatus];
+      const newStatus = newStatusMap[action];
       const res = await fetch('/api/admin/pipeline/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -327,7 +301,7 @@ export function UnifiedPipelineClient({
 
       if (!res.ok) {
         const error = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(error?.error || `Failed to ${action} products`);
+        toast.error(error?.error || `Failed to ${action}`);
         return;
       }
 
@@ -361,7 +335,7 @@ export function UnifiedPipelineClient({
           <UndoToast
             id={toastId}
             count={selectedCount}
-            toStatus={statusLabels[newStatus]}
+            toStatus={newStatusLabels[newStatus]}
             onUndo={revert}
           />
         ), { duration: 30000 });
@@ -373,7 +347,7 @@ export function UnifiedPipelineClient({
       await handleRefresh();
     } catch (error) {
       console.error('Bulk action failed:', error);
-      toast.error(`Failed to ${action} products`);
+      toast.error(`Failed to ${action}`);
     } finally {
       setIsBulkActionPending(false);
     }
@@ -488,10 +462,17 @@ export function UnifiedPipelineClient({
     setShowBatchEnhanceDialog(true);
   };
 
+  const router = useRouter();
+
+  const handleImageSelection = (sku: string) => {
+    // Navigate to the image selection page
+    router.push(`/admin/pipeline/image-selection?sku=${sku}`);
+  };
+
   const openExportDialog = () => {
-    // If getRequestStatus() returns null (meaning 'all'), fall back to 'staging'
-    // so export dialog always has a valid PipelineStatus selected.
-    setExportStatus(getRequestStatus() ?? 'staging');
+    // If getRequestStatus() returns null (meaning 'all'), fall back to 'registered'
+    // so export dialog always has a valid NewPipelineStatus selected.
+    setExportStatus(getRequestStatus() ?? 'registered');
     setExportSearch(searchQuery);
     setShowExportDialog(true);
   };
@@ -572,16 +553,16 @@ export function UnifiedPipelineClient({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {pipelineStages.map(({ status, color }) => (
+      <div className="grid gap-4 sm:grid-cols-3">
+        {newPipelineStages.map(({ status, color, label }) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className="text-left rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
+            className={`text-left rounded-lg border p-4 transition-colors ${statusFilter === status ? 'border-[#008850] bg-[#008850]/5 ring-1 ring-[#008850]' : 'bg-white hover:bg-gray-50'}`}
           >
             <div className="flex items-center gap-2">
               <div className={`h-3 w-3 rounded-full ${color}`} />
-              <span className="text-sm text-gray-600">{statusLabels[status]}</span>
+              <span className="text-sm text-gray-600">{label}</span>
             </div>
             <p className="mt-2 text-3xl font-bold text-gray-900">
               {getCount(status)}
@@ -604,19 +585,16 @@ export function UnifiedPipelineClient({
 
         <Select
           value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value as PipelineStatus | 'all')}
+          onValueChange={(value) => setStatusFilter(value as NewPipelineStatus | 'all')}
         >
           <SelectTrigger className="min-w-[180px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent align="end">
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="staging">{statusLabels.staging}</SelectItem>
-            <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
-            <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
-            <SelectItem value="approved">{statusLabels.approved}</SelectItem>
-            <SelectItem value="published">{statusLabels.published}</SelectItem>
-            <SelectItem value="failed">{statusLabels.failed}</SelectItem>
+            <SelectItem value="registered">{newStatusLabels.registered}</SelectItem>
+            <SelectItem value="enriched">{newStatusLabels.enriched}</SelectItem>
+            <SelectItem value="finalized">{newStatusLabels.finalized}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -666,19 +644,21 @@ export function UnifiedPipelineClient({
       {selectedProducts.size > 0 && (
         <BulkActionsToolbar
           selectedCount={selectedProducts.size}
-          currentStatus={getRequestStatus() || 'staging'}
+          currentStatus={getRequestStatus() || 'registered'}
           searchQuery={searchQuery}
-          onAction={(action) => void handleBulkAction(action)}
-          onConsolidate={() => void handleBulkAction('consolidate')}
-          isConsolidating={isBulkActionPending}
-          onBulkEnrich={handleBulkEnrich}
-          isBulkEnriching={isBulkEnriching}
+          onAction={(action) => {
+            if (action === 'approve' || action === 'publish' || action === 'reject' || action === 'consolidate') {
+              return;
+            }
+
+            void handleBulkAction(action);
+          }}
+          onMoveToEnriched={() => void handleBulkAction('moveToEnriched')}
+          isMovingToEnriched={isBulkActionPending}
           onClearSelection={() => {
             setSelectedProducts(new Set());
             setIsSelectingAllMatching(false);
           }}
-          onClearScrapeResults={() => void handleClearScrapeResults()}
-          isClearingScrapeResults={isClearingScrapeResults}
         />
       )}
 
@@ -703,9 +683,11 @@ export function UnifiedPipelineClient({
               onSelect={handleSelect}
               onView={handleView}
               onEnrich={handleEnrich}
-              showEnrichButton={product.pipeline_status === 'staging'}
+              onImageSelection={handleImageSelection}
+              showEnrichButton={product.pipeline_status === 'staging' || product.pipeline_status_new === 'registered'}
+              showImageSelectionButton={product.pipeline_status_new === 'enriched'}
               showBatchSelect
-              currentStage={product.pipeline_status}
+              currentStage={product.pipeline_status_new || product.pipeline_status}
             />
           ))}
         </div>
@@ -755,18 +737,15 @@ export function UnifiedPipelineClient({
               <label className="text-sm font-medium text-gray-700">Status</label>
               <Select
                 value={exportStatus}
-                onValueChange={(value) => setExportStatus(value as PipelineStatus)}
+                onValueChange={(value) => setExportStatus(value as NewPipelineStatus)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="staging">{statusLabels.staging}</SelectItem>
-                  <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
-                  <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
-                  <SelectItem value="approved">{statusLabels.approved}</SelectItem>
-                  <SelectItem value="published">{statusLabels.published}</SelectItem>
-                  <SelectItem value="failed">{statusLabels.failed}</SelectItem>
+                  <SelectItem value="registered">{newStatusLabels.registered}</SelectItem>
+                  <SelectItem value="enriched">{newStatusLabels.enriched}</SelectItem>
+                  <SelectItem value="finalized">{newStatusLabels.finalized}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

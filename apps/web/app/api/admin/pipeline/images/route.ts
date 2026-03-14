@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
+interface ProductImageRow {
+    sku: string;
+    image_candidates: string[] | null;
+    consolidated: Record<string, unknown> | null;
+    pipeline_status: string | null;
+}
+
 export async function GET(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
@@ -34,7 +41,7 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const products = (data || []).map((row: any) => ({
+    const products = ((data || []) as ProductImageRow[]).map((row) => ({
         sku: row.sku,
         image_candidates: row.image_candidates,
         consolidated: row.consolidated,

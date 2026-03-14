@@ -1,6 +1,6 @@
 'use client';
 
-import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus, NewPipelineStatus } from '@/lib/pipeline';
 import {
     ChevronRight,
     Package,
@@ -25,10 +25,12 @@ interface PipelineProductCardProps {
     onSelect: (sku: string, index: number, isShiftClick: boolean) => void;
     onView: (sku: string) => void;
     onEnrich?: (sku: string) => void;
+    onImageSelection?: (sku: string) => void;
     showEnrichButton?: boolean;
+    showImageSelectionButton?: boolean;
     readOnly?: boolean;
     showBatchSelect?: boolean;
-    currentStage?: PipelineStatus;
+    currentStage?: PipelineStatus | NewPipelineStatus;
 }
 
 const stageConfig: Record<PipelineStatus, {
@@ -82,6 +84,36 @@ const stageConfig: Record<PipelineStatus, {
     },
 };
 
+const newStageConfig: Record<NewPipelineStatus, {
+    icon: React.ElementType;
+    label: string;
+    color: string;
+    bgColor: string;
+    description: string;
+}> = {
+    registered: {
+        icon: Upload,
+        label: 'Registered',
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-100',
+        description: 'Imported & registered'
+    },
+    enriched: {
+        icon: Sparkles,
+        label: 'Enriched',
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100',
+        description: 'Data enriched'
+    },
+    finalized: {
+        icon: CheckCircle2,
+        label: 'Finalized',
+        color: 'text-green-600',
+        bgColor: 'bg-green-100',
+        description: 'Ready for export'
+    },
+};
+
 export function PipelineProductCard({
     product,
     index,
@@ -89,7 +121,9 @@ export function PipelineProductCard({
     onSelect,
     onView,
     onEnrich,
+    onImageSelection,
     showEnrichButton = false,
+    showImageSelectionButton = false,
     readOnly = false,
     showBatchSelect = false,
     currentStage
@@ -105,8 +139,11 @@ export function PipelineProductCard({
     const hasScrapedData = Object.keys(product.sources || {}).length > 0;
     const confidenceScore = product.confidence_score;
     const stage = currentStage || product.pipeline_status;
-    const stageInfo = stageConfig[stage];
-
+    // Check if this is a new pipeline status
+    const isNewPipelineStatus = (s: string): s is NewPipelineStatus => {
+        return s === 'registered' || s === 'enriched' || s === 'finalized';
+    };
+    const stageInfo = isNewPipelineStatus(stage) ? newStageConfig[stage] : stageConfig[stage as PipelineStatus];
     // In read-only mode (Imported tab), show simplified view
     if (readOnly) {
         return (
@@ -383,6 +420,16 @@ export function PipelineProductCard({
                                     <Settings2 className="h-4 w-4" />
                                 </button>
                             )}
+                            {showImageSelectionButton && onImageSelection && (
+                                <button
+                                    onClick={() => onImageSelection(product.sku)}
+                                    className="flex items-center gap-1 text-sm text-[#008850] hover:text-[#2a7034] font-medium"
+                                    title="Select product images"
+                                >
+                                    <ImageIcon className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Images</span>
+                                </button>
+                            )}
                             <button
                                 onClick={() => onView(product.sku)}
                                 className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
@@ -396,4 +443,3 @@ export function PipelineProductCard({
         </div>
     );
 }
-
