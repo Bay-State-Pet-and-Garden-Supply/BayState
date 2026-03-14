@@ -116,6 +116,7 @@ workflows:
         .s-result-item a[href*="%2Fdp%2F"]
       force: true
       match_context_field: product_name
+      exclude_sponsored: true
       require_context_match: true
       timeout: 10
   - action: wait_for
@@ -125,6 +126,11 @@ workflows:
       selector:
         - "#productTitle"
         - "#title"
+  - action: verify_sku_on_page
+    name: verify_correct_product
+    params:
+      sku_field: sku
+      strict: true
   - action: extract_and_transform
     name: null
     params:

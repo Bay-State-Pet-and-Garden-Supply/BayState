@@ -59,6 +59,32 @@ class VerifyValueAction(BaseAction):
             logger.debug(f"Verification passed for {field}")
 
 
+@ActionRegistry.register("verify_sku_on_page")
+class VerifySkuOnPageAction(BaseAction):
+    """Action to verify that the searched SKU exists anywhere in the page HTML."""
+
+    async def execute(self, params: dict[str, Any]) -> None:
+        sku_field = params.get("sku_field", "sku")
+        strict = params.get("strict", True)
+        
+        # Get the SKU from the context (passed from runtime.py)
+        sku = self.ctx.context.get(sku_field)
+        
+        if not sku:
+            logger.warning(f"No SKU found in context field '{sku_field}' to verify against.")
+            return
+
+        html = await self.ctx.browser.page.content()
+        
+        if str(sku) in html:
+            logger.info(f"SKU {sku} verified on page.")
+        else:
+            msg = f"SKU {sku} not found in page HTML. This might be the wrong product page."
+            logger.warning(msg)
+            if strict:
+                raise WorkflowExecutionError(msg)
+
+
 @ActionRegistry.register("filter_brand")
 class FilterBrandAction(BaseAction):
     """Action to filter brand name from product name."""
