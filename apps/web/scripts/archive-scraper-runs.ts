@@ -52,6 +52,8 @@ async function getSupabaseAdmin() {
   });
 }
 
+type AdminSupabaseClient = Awaited<ReturnType<typeof getSupabaseAdmin>>;
+
 async function ensureDir(dir: string) {
   try {
     await fs.mkdir(dir, { recursive: true });
@@ -70,7 +72,7 @@ function computeChecksum(data: string): string {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
-async function getTableSchema(supabase: ReturnType<typeof createClient>, tableName: string) {
+async function getTableSchema(supabase: AdminSupabaseClient, tableName: string) {
   const { data, error } = await supabase
     .from('information_schema.columns')
     .select('column_name, data_type, is_nullable, column_default')
@@ -86,7 +88,7 @@ async function getTableSchema(supabase: ReturnType<typeof createClient>, tableNa
   return data;
 }
 
-async function exportTable(supabase: ReturnType<typeof createClient>, tableName: string) {
+async function exportTable(supabase: AdminSupabaseClient, tableName: string) {
   console.log(`\n📦 Exporting table: ${tableName}`);
   
   // First, get the row count

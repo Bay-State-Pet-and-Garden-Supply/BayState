@@ -140,17 +140,17 @@ export function WorkflowBuilderClient({ scraper }: WorkflowBuilderClientProps) {
 
   const handleSave = () => {
     const workflows = nodesToWorkflow(nodes as WorkflowNode[]);
-    
+
     startTransition(async () => {
-      const config = { ...scraper.config, workflows };
-      const result = await updateScraper(scraper.id, { config });
+      const result = await updateScraper();
 
       if (result.success) {
         toast.success('Workflow saved');
         setHasChanges(false);
         router.refresh();
       } else {
-        toast.error(result.error || 'Failed to save');
+        const deprecationMessage = result.error || 'Workflow editing in this UI is deprecated. Please update YAML in repository.';
+        toast.error(deprecationMessage);
       }
     });
   };

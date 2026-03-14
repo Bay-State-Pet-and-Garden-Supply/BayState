@@ -213,8 +213,13 @@ export async function GET(request: NextRequest) {
         const scrapers: ScraperConfig[] = [];
 
         for (const config of allLocalConfigs) {
+            const scraperSlug = config.slug;
+            if (!scraperSlug) {
+                continue;
+            }
+
             // If specific scrapers are requested, filter by name/slug
-            if (requestedScrapers.length > 0 && !requestedScrapers.includes(config.slug)) {
+            if (requestedScrapers.length > 0 && !requestedScrapers.includes(scraperSlug)) {
                 continue;
             }
 
@@ -226,11 +231,16 @@ export async function GET(request: NextRequest) {
                 options.timeout = config.timeout;
             }
 
+            const searchUrlTemplate =
+                'search_url_template' in config && typeof config.search_url_template === 'string'
+                    ? config.search_url_template
+                    : undefined;
+
             scrapers.push({
-                name: config.slug,
+                name: scraperSlug,
                 disabled: config.status === 'disabled' || config.status === 'archived',
                 base_url: config.base_url,
-                search_url_template: config.search_url_template,
+                search_url_template: searchUrlTemplate,
                 selectors: toSelectors(config.selectors),
                 options,
                 test_skus: config.test_skus,

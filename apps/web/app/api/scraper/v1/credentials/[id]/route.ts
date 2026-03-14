@@ -28,13 +28,13 @@ function decrypt(payload: { encryptedValue: string; iv: string; authTag: string 
   return decrypted.toString('utf8');
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const apiKey = request.headers.get('x-api-key');
     const auth = await validateRunnerAuth({ apiKey, authorization: request.headers.get('authorization') });
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const scraperSlug = params.id;
+    const { id: scraperSlug } = await params;
 
     // Check allowed scrapers if configured
     if (auth.allowedScrapers && auth.allowedScrapers.length > 0 && !auth.allowedScrapers.includes(scraperSlug)) {
