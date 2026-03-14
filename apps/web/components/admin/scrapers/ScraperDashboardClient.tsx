@@ -11,19 +11,6 @@ import {
   HelpCircle,
   Activity,
   FileCode2,
-  Server,
-  History,
-  Settings2,
-  Plus,
-  RefreshCw,
-} from 'lucide-react';
-  BarChart3,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  HelpCircle,
-  Activity,
-  FileCode2,
   Beaker,
   Server,
   History,
@@ -252,16 +239,6 @@ export function ScraperDashboardClient({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link href="/admin/scrapers/configs">
-          <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
-            <CardContent className="flex flex-col items-center justify-center p-4">
-              <FileCode2 className="h-8 w-8 text-blue-600 mb-2" />
-              <span className="font-medium">Configs</span>
-              <span className="text-xs text-gray-600">Build & Edit</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/admin/scrapers/runs">
         <Link href="/admin/scrapers/configs">
           <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full">
             <CardContent className="flex flex-col items-center justify-center p-4">

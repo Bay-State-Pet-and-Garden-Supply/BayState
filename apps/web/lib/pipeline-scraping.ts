@@ -98,9 +98,14 @@ export async function scrapeProducts(
         if (configs && configs.length > 0) {
             const slugMap = new Map<string, string>();
             configs.forEach(config => {
-                slugMap.set(config.slug.toLowerCase(), config.slug);
+                const slug = config.slug;
+                if (!slug) {
+                    return;
+                }
+
+                slugMap.set(slug.toLowerCase(), slug);
                 if (config.display_name) {
-                    slugMap.set(config.display_name.toLowerCase(), config.slug);
+                    slugMap.set(config.display_name.toLowerCase(), slug);
                 }
             });
             effectiveScrapers = effectiveScrapersRaw.map(s => slugMap.get(s.toLowerCase()) || s);

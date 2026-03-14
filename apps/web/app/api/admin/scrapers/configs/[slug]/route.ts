@@ -4,7 +4,7 @@ import { getLocalScraperConfig } from '@/lib/admin/scrapers/configs';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { slug } = await params;
