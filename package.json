@@ -21,6 +21,6 @@
     "ansi-styles": "^4.3.0"
   },
   "devDependencies": {
-    "turbo": "^2.5.8"
+    "turbo": "^2.8.17"
   }
 }
