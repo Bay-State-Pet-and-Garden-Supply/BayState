@@ -255,7 +255,7 @@ def run_job(
     for scraper_cfg in job_config.scrapers:
         try:
             options = scraper_cfg.options or {}
-            
+
             # The coordinator API puts 'workflows' inside the 'options' object.
             # We map it to the root level expected by ScraperConfigModel.
             config_dict = {
@@ -462,7 +462,6 @@ def _run_ai_search_job(
     if runtime_brave:
         logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
 
-
     if runtime_openai:
         os.environ["OPENAI_API_KEY"] = runtime_openai
     if runtime_brave:
@@ -498,6 +497,7 @@ def _run_ai_search_job(
             {
                 "sku": sku,
                 "product_name": item_context.get("product_name", search_cfg.get("product_name")),
+                "price": item_context.get("price", search_cfg.get("price")),
                 "brand": item_context.get("brand", search_cfg.get("brand")),
                 "category": item_context.get("category", search_cfg.get("category")),
             }

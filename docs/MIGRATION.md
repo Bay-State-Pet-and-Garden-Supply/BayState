@@ -215,7 +215,7 @@ This enables websocket-based job dispatch, eliminating the 30-second polling del
 Fastest method, works on most Linux/macOS systems:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 ```
 
 **Option B: Manual Docker Compose**
@@ -345,7 +345,7 @@ Add more runners by repeating Phase 2 on additional machines:
 
 ```bash
 # On each new machine:
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 # Use a new API key for each runner
 ```
 
@@ -630,7 +630,7 @@ Yes, Docker is required for the recommended setup. It ensures consistent environ
 If you enabled auto-updates during setup, runners update automatically every hour when a new image is available. Manual update:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 ```
 
 ### crawl4ai Questions

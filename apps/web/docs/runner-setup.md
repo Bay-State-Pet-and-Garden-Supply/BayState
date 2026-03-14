@@ -7,7 +7,7 @@ Set up a new scraper runner in under 5 minutes using a single terminal command.
 ## TL;DR (One Command)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 ```
 
 4. Paste the key into the setup wizard
@@ -31,7 +31,7 @@ curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayS
 ### 2) Run the One-Line Installer on the New Machine
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 ```
 
 The script will prompt you for:
@@ -111,7 +111,7 @@ docker exec baystate-scraper python -c "from scrapers.events.emitter import Even
 ### Update the Runner
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
 ```
 
 ---

@@ -17,7 +17,7 @@ To migrate from the GitHub Actions runner to the polling daemon:
 1. Get your runner API key from **Admin Panel → Scraper Network → Runner Accounts**
 2. Run the bootstrap script:
    ```bash
-   curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayStateScraper/main/get.sh | bash
+   curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
    ```
 3. Enter your API URL and API key when prompted
 4. The runner will start automatically and begin polling for jobs
