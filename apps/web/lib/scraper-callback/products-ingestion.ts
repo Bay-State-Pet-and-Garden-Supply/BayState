@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import {
+  extractImageCandidatesFromSources,
   hasMeaningfulProductSourceData,
   mergeProductSources,
 } from '@/lib/product-sources';
@@ -86,6 +87,7 @@ export async function persistProductsIngestionSourcesStrict(
     return {
       sku,
       sources: updatedSources,
+      image_candidates: extractImageCandidatesFromSources(updatedSources),
       is_test_run: isTestJob,
       updated_at: nowIso,
       ...(hasMeaningfulData ? { pipeline_status: 'enriched' as const } : {}),
@@ -145,6 +147,7 @@ export async function persistProductsIngestionSourcesPartial(
     return {
       sku,
       sources: updatedSources,
+      image_candidates: extractImageCandidatesFromSources(updatedSources),
       is_test_run: isTestJob,
       updated_at: nowIso,
       ...(hasMeaningfulData ? { pipeline_status: 'enriched' as const } : {}),

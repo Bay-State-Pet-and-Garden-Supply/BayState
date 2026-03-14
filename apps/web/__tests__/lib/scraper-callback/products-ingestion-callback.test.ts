@@ -68,6 +68,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
             amazon: { price: 12 },
             _last_scraped: nowIso,
           },
+          image_candidates: [],
         }),
         expect.objectContaining({
           sku: 'SKU-2',
@@ -76,6 +77,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
             chewy: { in_stock: true },
             _last_scraped: nowIso,
           },
+          image_candidates: [],
         }),
       ]),
       { onConflict: 'sku' }
@@ -181,6 +183,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
             amazon: { price: 12 },
             _last_scraped: nowIso,
           },
+          image_candidates: [],
         }),
       ],
       { onConflict: 'sku' }

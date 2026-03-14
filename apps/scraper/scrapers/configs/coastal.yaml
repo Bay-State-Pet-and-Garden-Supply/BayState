@@ -84,7 +84,7 @@ workflows:
   - action: navigate
     name: search_page
     params:
-      url: https://www.coastalpet.com/products/search/?q={{sku}}
+      url: https://www.coastalpet.com/products/search/?q={sku}
   - action: conditional_click
     name: null
     params:

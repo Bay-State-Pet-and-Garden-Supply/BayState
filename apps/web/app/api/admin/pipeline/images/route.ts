@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export async function GET(request: Request) {
+    const auth = await requireAdminAuth();
+    if (!auth.authorized) return auth.response;
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
@@ -21,7 +25,7 @@ export async function GET(request: Request) {
                 .in('pipeline_status', ['finalized', 'consolidated', 'approved']);
         }
 
-        const { data, error } = await query.limit(50);
+        const { data, error } = await query.order('updated_at', { ascending: false }).limit(50);
 
         if (error) {
             console.error('Error fetching image candidates:', error);
@@ -39,6 +43,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+    const auth = await requireAdminAuth();
+    if (!auth.authorized) return auth.response;
+
     try {
         const { sku, selectedImages } = await request.json();
 
@@ -51,13 +58,39 @@ export async function POST(request: Request) {
 
         const supabase = await createClient();
 
-        // Format selected_images as array of objects {url, selectedAt}
+        // 1. Fetch current product to validate selected images against candidates
+        const { data: product, error: fetchError } = await supabase
+            .from('products_ingestion')
+            .select('sku, image_candidates, consolidated')
+            .eq('sku', sku)
+            .single();
+
+        if (fetchError || !product) {
+            return NextResponse.json(
+                { error: 'Product not found' },
+                { status: 404 }
+            );
+        }
+
+        // 2. Validate all selected images exist in candidates
+        const candidates = (product.image_candidates as string[]) || [];
+        const invalidImages = selectedImages.filter(url => !candidates.includes(url));
+
+        if (invalidImages.length > 0) {
+            return NextResponse.json(
+                { error: `Invalid image selection. Following URLs are not in candidates: ${invalidImages.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        // 3. Format selected_images as array of objects {url, selectedAt}
         const formattedImages = selectedImages.map((url: string) => ({
             url,
             selectedAt: new Date().toISOString()
         }));
 
-        const { error } = await supabase
+        // 4. Update product
+        const { error: updateError } = await supabase
             .from('products_ingestion')
             .update({ 
                 selected_images: formattedImages,
@@ -65,17 +98,18 @@ export async function POST(request: Request) {
             })
             .eq('sku', sku);
 
-        if (error) {
+        if (updateError) {
             console.error('Error updating selected images:', error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: updateError.message }, { status: 500 });
         }
 
-        // Add to audit log
+        // 5. Add to audit log
         try {
             await supabase.from('pipeline_audit_log').insert([{
                 job_type: 'image_selection',
                 job_id: crypto.randomUUID(),
-                actor_type: 'system',
+                actor_id: auth.user?.id,
+                actor_type: 'user',
                 metadata: {
                     sku,
                     image_count: selectedImages.length,
