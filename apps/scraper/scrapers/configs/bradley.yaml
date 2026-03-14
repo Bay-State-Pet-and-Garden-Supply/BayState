@@ -63,7 +63,7 @@ workflows:
   - action: navigate
     name: search_page
     params:
-      url: https://www.bradleycaldwell.com/search?term={{sku}}
+      url: https://www.bradleycaldwell.com/search?term={sku}
   - action: conditional_click
     name: null
     params:
@@ -97,7 +97,7 @@ workflows:
     name: click_first_result
     params:
       index: 0
-      selector: "main article a[href*='{{sku}}'], article a[href*='{{sku}}'], article a[aria-label], main article a, .product-card a, article a:has-text('View product'), article a.absolute.inset-0"
+      selector: "main article a[href*='{sku}'], article a[href*='{sku}'], article a[aria-label], main article a, .product-card a, article a:has-text('View product'), article a.absolute.inset-0"
   - action: wait_for
     name: wait_for_pdp
     params:
