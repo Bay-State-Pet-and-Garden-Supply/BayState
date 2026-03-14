@@ -3,6 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "uv run python daemon.py --env dev"
+    "dev": "uv run --with-requirements requirements.txt python daemon.py --env dev"
   }
 }
