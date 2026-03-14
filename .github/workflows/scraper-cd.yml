@@ -2,6 +2,12 @@ name: Scraper CD
 
 on:
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even without scraper changes'
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main, master, develop, dev]
     tags: ["v*"]
@@ -14,9 +20,30 @@ env:
   IMAGE_NAME: ${{ github.repository }}/scraper
 
 jobs:
+  changes:
+    name: Detect scraper changes
+    runs-on: ubuntu-latest
+    outputs:
+      scraper: ${{ steps.filter.outputs.scraper }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            scraper:
+              - 'apps/scraper/**'
+              - '.github/workflows/scraper-cd.yml'
+
   build-and-push-docker:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.scraper == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_build)
     permissions:
       contents: read
       packages: write
