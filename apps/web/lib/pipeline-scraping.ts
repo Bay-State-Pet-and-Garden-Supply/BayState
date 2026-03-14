@@ -147,20 +147,29 @@ async function loadScrapeContextItems(
     });
 }
 
-function buildStandardSkuContext(items: ScrapeContextItem[]): Record<string, Omit<ScrapeContextItem, 'sku'>> | undefined {
-    const skuContextEntries = items
-        .map((item) => {
-            const context = {
-                product_name: item.product_name,
-                price: item.price,
-                brand: item.brand,
-                category: item.category,
-            };
+type StandardSkuContext = {
+    product_name?: string;
+    price?: number;
+    brand?: string;
+    category?: string;
+};
 
-            const hasContext = Object.values(context).some((value) => value !== undefined);
-            return hasContext ? [item.sku, context] as const : null;
-        })
-        .filter((entry): entry is readonly [string, Omit<ScrapeContextItem, 'sku'>] => entry !== null);
+function buildStandardSkuContext(items: ScrapeContextItem[]): Record<string, StandardSkuContext> | undefined {
+    const skuContextEntries: Array<readonly [string, StandardSkuContext]> = [];
+
+    items.forEach((item) => {
+        const context: StandardSkuContext = {
+            product_name: item.product_name,
+            price: item.price,
+            brand: item.brand,
+            category: item.category,
+        };
+
+        const hasContext = Object.values(context).some((value) => value !== undefined);
+        if (hasContext) {
+            skuContextEntries.push([item.sku, context]);
+        }
+    });
 
     if (skuContextEntries.length === 0) {
         return undefined;

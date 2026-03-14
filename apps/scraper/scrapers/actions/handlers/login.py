@@ -64,10 +64,10 @@ class LoginAction(BaseAction):
         if self.ctx.config.login and not params.get("url"):
             params.update(self.ctx.config.login.model_dump())
 
-        creds = getattr(self.ctx.config, "options", {}) or {}
-        if "_credentials" in creds:
-            params["username"] = creds["_credentials"].get("username")
-            params["password"] = creds["_credentials"].get("password")
+        creds = self._resolve_credentials()
+        if creds:
+            params["username"] = creds.get("username")
+            params["password"] = creds.get("password")
 
         username = params.get("username")
         password = params.get("password")
@@ -80,8 +80,7 @@ class LoginAction(BaseAction):
         login_url = params.get("url")
 
         if not username or not password:
-            logger.warning(f"Missing credentials for {scraper_name}, skipping login")
-            return
+            raise WorkflowExecutionError(f"Missing credentials for required login scraper: {scraper_name}")
 
         logger.info(f"Logging in to {scraper_name} at {login_url}")
 
@@ -89,7 +88,7 @@ class LoginAction(BaseAction):
             # Navigate
             from scrapers.models.config import WorkflowStep
 
-            self.ctx._execute_step(WorkflowStep(action="navigate", params={"url": login_url}))
+            await self.ctx._execute_step(WorkflowStep(action="navigate", params={"url": login_url}))
 
             # In test mode, validate login selectors exist on the page
             if test_mode:
@@ -100,7 +99,7 @@ class LoginAction(BaseAction):
             if success_indicator:
                 try:
                     # Check quickly if we are already logged in
-                    self.ctx._execute_step(
+                    await self.ctx._execute_step(
                         WorkflowStep(
                             action="wait_for",
                             params={"selector": success_indicator, "timeout": 5},
@@ -132,29 +131,33 @@ class LoginAction(BaseAction):
             username_field = params.get("username_field")
             if username_field:
                 # Wait for username field to appear (with timeout)
-                self.ctx._execute_step(
+                await self.ctx._execute_step(
                     WorkflowStep(
                         action="wait_for",
                         params={"selector": username_field, "timeout": 15},
                     )
                 )
                 # Input username
-                self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": username_field, "text": username}))
+                await self.ctx._execute_step(
+                    WorkflowStep(action="input_text", params={"selector": username_field, "text": username})
+                )
 
             # Input password
             password_field = params.get("password_field")
             if password_field:
-                self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": password_field, "text": password}))
+                await self.ctx._execute_step(
+                    WorkflowStep(action="input_text", params={"selector": password_field, "text": password})
+                )
 
             # Click submit
             submit_button = params.get("submit_button")
             if submit_button:
-                self.ctx._execute_step(WorkflowStep(action="click", params={"selector": submit_button}))
+                await self.ctx._execute_step(WorkflowStep(action="click", params={"selector": submit_button}))
 
             # Wait for success
             timeout = params.get("timeout", 30)
             if success_indicator:
-                self.ctx._execute_step(
+                await self.ctx._execute_step(
                     WorkflowStep(
                         action="wait_for",
                         params={"selector": success_indicator, "timeout": timeout},
@@ -171,6 +174,21 @@ class LoginAction(BaseAction):
         except Exception as e:
             logger.error(f"Login failed for {scraper_name}: {e}")
             raise WorkflowExecutionError(f"Login failed for {scraper_name}: {e}") from e
+
+    def _resolve_credentials(self) -> dict[str, Any]:
+        config_options = getattr(self.ctx.config, "options", {}) or {}
+        injected_credentials = config_options.get("_credentials")
+        if isinstance(injected_credentials, dict):
+            return injected_credentials
+
+        credential_refs = getattr(self.ctx.config, "credential_refs", []) or []
+        resolved_credentials = getattr(self.ctx, "credentials", {}) or {}
+        for ref in credential_refs:
+            creds = resolved_credentials.get(ref)
+            if isinstance(creds, dict):
+                return creds
+
+        return {}
 
     async def _validate_login_selectors(self, params: dict[str, Any]) -> None:
         """
@@ -193,7 +211,7 @@ class LoginAction(BaseAction):
                 continue
 
             # Check if element exists
-            element = self.ctx.find_element_safe(selector)
+            element = await self.ctx.find_element_safe(selector, required=False)
             status = "FOUND" if element else "MISSING"
 
             # Log in format expected by TestingPage: [LOGIN_SELECTOR] name: 'STATUS'

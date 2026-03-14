@@ -63,5 +63,5 @@ def test_amazon_migrated_config_uses_runtime_search_query_placeholder() -> None:
     assert navigate_steps
     navigate_url = navigate_steps[0]["params"]["url"]
 
-    assert "{search_query_encoded}" in navigate_url
-    assert "{{sku}}" not in navigate_url
+    assert "{sku_encoded}" in navigate_url
+    assert "{search_query_encoded}" not in navigate_url

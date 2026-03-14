@@ -71,7 +71,7 @@ export function useTestRunSubscription(
     if (updates.length === 0) return;
 
     setState((prev) => {
-      let currentSteps = [...prev.steps];
+      const currentSteps = [...prev.steps];
       const stepMap = new Map(currentSteps.map(s => [s.id, s]));
 
       updates.forEach((payload) => {

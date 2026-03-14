@@ -80,16 +80,16 @@ describe('PipelineFilters', () => {
 
 describe('PipelineClient Integration', () => {
     const mockProducts = [
-        { sku: 'TEST-1', pipeline_status: 'staging', sources: {}, created_at: '', updated_at: '', input: {}, consolidated: {} }
+        { sku: 'TEST-1', pipeline_status: 'registered', sources: {}, created_at: '', updated_at: '', input: {}, consolidated: {} }
     ];
-    const mockCounts = [{ status: 'staging', count: 1 }];
+    const mockCounts = [{ status: 'registered', count: 1 }];
 
     it('updates URL and fetches data when filters change', async () => {
         render(
             <PipelineClient
                 initialProducts={mockProducts as any}
                 initialCounts={mockCounts as any}
-                initialTab="staging"
+                initialTab="registered"
                 initialFilteredCount={1}
             />
         );

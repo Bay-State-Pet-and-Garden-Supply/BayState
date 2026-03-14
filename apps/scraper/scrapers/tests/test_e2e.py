@@ -242,7 +242,7 @@ class TestScraperIntegration:
             pytest.skip("SCRAPER_API_URL/SCRAPER_API_KEY required for API-only config validation test")
 
         response = api_client.get_published_config("amazon")
-        config_dict = response.get("config")
+        config_dict = response.get("config") if isinstance(response.get("config"), dict) else response
         if not isinstance(config_dict, dict):
             pytest.skip("Published amazon config payload missing from API")
         config = parser.load_from_dict(config_dict)

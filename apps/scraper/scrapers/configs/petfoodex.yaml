@@ -33,19 +33,14 @@ workflows:
     name: null
     params:
       url: https://orders.petfoodexperts.com/Search?query={sku}
-  - action: wait
-    name: null
-    params:
-      seconds: 3
   - action: wait_for
     name: null
     params:
-      timeout: 5
-      selector: h1, h2, [data-test-selector='page_ProductDetailsPage'], body
-  - action: wait
-    name: null
-    params:
-      seconds: 2
+      timeout: 10
+      selector:
+        - h1
+        - h2
+        - "[data-test-selector='page_ProductDetailsPage']"
   - action: check_no_results
     name: null
     params: {}

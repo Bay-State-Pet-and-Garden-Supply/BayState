@@ -1,23 +1,21 @@
 /**
  * Pipeline tabs type definitions and configuration.
  *
- * Defines the 10-tab pipeline system with display configuration and helper functions.
+ * Defines the pipeline tabs with display configuration and helper functions.
  * Note: Icon references are stored as strings, not imported components.
  */
 
 /**
- * All 10 tabs in the pipeline system.
+ * All tabs in the pipeline system.
  */
 export type PipelineTab =
-    | 'staging'
+    | 'registered'
     | 'active-runs'
-    | 'scraped'
+    | 'enriched'
     | 'active-consolidations'
-    | 'consolidated'
-    | 'approved'
     | 'images'
     | 'export'
-    | 'published'
+    | 'finalized'
     | 'failed';
 
 /**
@@ -38,10 +36,10 @@ export interface TabConfig {
  * Icon values are component reference names (strings), NOT imports.
  */
 export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
-    staging: {
-        label: 'Staging',
+    registered: {
+        label: 'Registered',
         icon: 'Inbox',
-        description: 'Imported products waiting to be scraped',
+        description: 'Imported products waiting to be enriched',
         color: '#6B7280',
         bgColor: '#F3F4F6',
         isStatusTab: true,
@@ -56,10 +54,10 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         isStatusTab: false,
         order: 2,
     },
-    scraped: {
-        label: 'Scraped',
+    enriched: {
+        label: 'Enriched',
         icon: 'Download',
-        description: 'Products with scraped data',
+        description: 'Products with enriched data',
         color: '#8B5CF6',
         bgColor: '#EDE9FE',
         isStatusTab: true,
@@ -74,24 +72,6 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         isStatusTab: false,
         order: 4,
     },
-    consolidated: {
-        label: 'Consolidated',
-        icon: 'Merge',
-        description: 'Products after AI enrichment',
-        color: '#10B981',
-        bgColor: '#D1FAE5',
-        isStatusTab: true,
-        order: 5,
-    },
-    approved: {
-        label: 'Approved',
-        icon: 'CheckCircle',
-        description: 'Ready for publishing',
-        color: '#F59E0B',
-        bgColor: '#FEF3C7',
-        isStatusTab: true,
-        order: 6,
-    },
     images: {
         label: 'Images',
         icon: 'Image',
@@ -99,7 +79,7 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         color: '#06B6D4',
         bgColor: '#CFFAFE',
         isStatusTab: false,
-        order: 7,
+        order: 5,
     },
     export: {
         label: 'Export',
@@ -108,16 +88,16 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         color: '#6366F1',
         bgColor: '#E0E7FF',
         isStatusTab: false,
-        order: 8,
+        order: 6,
     },
-    published: {
-        label: 'Published',
+    finalized: {
+        label: 'Finalized',
         icon: 'Store',
-        description: 'Live on storefront',
+        description: 'Ready for publishing/export',
         color: '#008850',
         bgColor: '#D1FAE5',
         isStatusTab: true,
-        order: 9,
+        order: 7,
     },
     failed: {
         label: 'Failed',
@@ -126,7 +106,7 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         color: '#DC2626',
         bgColor: '#FEE2E2',
         isStatusTab: true,
-        order: 10,
+        order: 8,
     },
 };
 

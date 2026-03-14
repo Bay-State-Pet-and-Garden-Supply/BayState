@@ -287,6 +287,7 @@ def test_standard_job_uses_per_sku_context_for_workflow_execution() -> None:
     assert captured_contexts[0]["brand"] == "Bentley Seed"
     assert captured_contexts[0]["search_query"] == "BENTLEY SEED BROCCOL I GREEN SPROUTING"
     assert captured_contexts[0]["search_query_encoded"] == "BENTLEY+SEED+BROCCOL+I+GREEN+SPROUTING"
+    assert captured_contexts[0]["sku_encoded"] == "SKU_A"
 
 
 def test_empty_object_selectors_payload_does_not_fail_parsing() -> None:

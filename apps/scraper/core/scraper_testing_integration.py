@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from core.api_client import *
+from core.scraper_testing_client import ScraperTestingClient
 from utils.testing.scraper_validator import ScraperValidator
 
 class ScraperIntegrationTester:
@@ -38,15 +39,19 @@ class ScraperIntegrationTester:
         # Always use headless mode as per user requirement
         self.testing_client = ScraperTestingClient(headless=True)
 
-    def get_test_skus(self, scraper_name: str) -> list[str]:
+    def _get_published_config(self, scraper_name: str) -> dict[str, Any]:
         if not self.api_client.api_url or not self.api_client.api_key:
-            raise RuntimeError(f"Cannot fetch test SKUs for '{scraper_name}': API credentials missing")
+            raise RuntimeError(f"Cannot fetch published config for '{scraper_name}': API credentials missing")
 
         slug = scraper_name.strip().lower().replace("_", "-").replace(" ", "-")
         response = self.api_client.get_published_config(slug)
-        config = response.get("config")
+        config = response.get("config") if isinstance(response.get("config"), dict) else response
         if not isinstance(config, dict):
             raise RuntimeError(f"Invalid config payload for scraper '{scraper_name}'")
+        return config
+
+    def get_test_skus(self, scraper_name: str) -> list[str]:
+        config = self._get_published_config(scraper_name)
 
         test_skus = config.get("test_skus")
         if isinstance(test_skus, list):
@@ -55,6 +60,17 @@ class ScraperIntegrationTester:
                 return skus
         
         raise RuntimeError(f"No test SKUs configured in API for scraper '{scraper_name}'")
+
+    def get_fake_skus(self, scraper_name: str) -> list[str]:
+        config = self._get_published_config(scraper_name)
+
+        fake_skus = config.get("fake_skus")
+        if isinstance(fake_skus, list):
+            skus = [str(s).strip() for s in fake_skus if str(s).strip()]
+            if skus:
+                return skus
+
+        raise RuntimeError(f"No fake SKUs configured in API for scraper '{scraper_name}'")
 
     def get_available_scrapers(self) -> list[str]:
         if not self.api_client.api_url:

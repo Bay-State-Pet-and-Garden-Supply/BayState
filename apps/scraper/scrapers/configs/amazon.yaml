@@ -65,7 +65,7 @@ workflows:
   - action: navigate
     name: null
     params:
-      url: https://www.amazon.com/s?k={search_query_encoded}
+      url: https://www.amazon.com/s?k={sku_encoded}
   - action: wait
     name: wait_for_load
     params:
@@ -108,12 +108,13 @@ workflows:
     name: click_matching_result
     params:
       index: 0
-      selector: div[data-component-type="s-search-result"] h2 a,
-        div.s-result-item.s-asin h2 a,
-        div.s-result-item[data-asin]:not(.AdHolder) h2 a,
-        .s-result-item a[href*="/dp/"]
+      selector: div[data-component-type="s-search-result"] a:has(h2),
+        div[data-component-type="s-search-result"] h2 a,
+        div.s-result-item.s-asin a:has(h2),
+        div[data-cy="title-recipe"] a.a-link-normal,
+        .s-result-item a[href*="/dp/"],
+        .s-result-item a[href*="%2Fdp%2F"]
       force: true
-      filter_text_exclude: sponsored
       match_context_field: product_name
       require_context_match: true
       timeout: 10

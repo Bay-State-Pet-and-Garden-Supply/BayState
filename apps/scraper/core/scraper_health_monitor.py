@@ -191,7 +191,7 @@ class ScraperHealthMonitor:
                 try:
                     if self._api_client.api_url and self._api_client.api_key:
                         response = self._api_client.get_published_config(slug)
-                        payload = response.get("config")
+                        payload = response.get("config") if isinstance(response.get("config"), dict) else response
                         diagnostics.config_valid = isinstance(payload, dict)
                         if isinstance(payload, dict):
                             test_skus = payload.get("test_skus")

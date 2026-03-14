@@ -13,10 +13,14 @@ describe('Middleware role resolution', () => {
     let mockGetUser: jest.Mock;
     let mockFrom: jest.Mock;
     let profilesTableCalls: string[];
+    const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     beforeEach(() => {
         jest.clearAllMocks();
         profilesTableCalls = [];
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-test-key';
 
         mockGetUser = jest.fn();
         mockFrom = jest.fn().mockImplementation((table: string) => {
@@ -37,6 +41,20 @@ describe('Middleware role resolution', () => {
             from: mockFrom,
         };
         mockCreateServerClient.mockReturnValue(mockSupabase);
+    });
+
+    afterAll(() => {
+        if (originalSupabaseUrl === undefined) {
+            delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+        } else {
+            process.env.NEXT_PUBLIC_SUPABASE_URL = originalSupabaseUrl;
+        }
+
+        if (originalSupabaseAnonKey === undefined) {
+            delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        } else {
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalSupabaseAnonKey;
+        }
     });
 
     function createReq(path: string) {
