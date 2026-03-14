@@ -95,6 +95,8 @@ normalization: null
 timeout: 15
 retries: 2
 image_quality: 20
+credential_refs:
+  - phillips
 test_skus:
   - "072705115310"
   - "072705104321"

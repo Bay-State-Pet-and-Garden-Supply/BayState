@@ -134,7 +134,14 @@ class SelectorResolver:
                     else:
                         elements_timeout = timeout
 
-                    elements = await locator.all(timeout=elements_timeout)
+                    # Locator.all() doesn't take a timeout. Wait for first element to appear.
+                    try:
+                        await locator.first.wait_for(state="attached", timeout=elements_timeout)
+                    except Exception:
+                        # Timeout waiting for elements is fine for find_elements_safe
+                        pass
+
+                    elements = await locator.all()
                     if elements:
                         if i > 0:
                             logger.info(f"Successfully resolved fallback selector '{sel}' for primary '{selectors[0]}'")

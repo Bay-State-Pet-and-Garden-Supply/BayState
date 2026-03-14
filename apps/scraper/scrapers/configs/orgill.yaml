@@ -126,6 +126,8 @@ normalization: null
 timeout: 15
 retries: 2
 image_quality: 40
+credential_refs:
+  - orgill
 test_skus:
   - "037193347322"
   - "032700006105"

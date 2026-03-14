@@ -149,6 +149,10 @@ def run_scraping(
     available_sites: list[str] = []
     remote_scrapers: list[dict[str, Any]] = []
 
+    # Initialize API client if possible
+    from core.api_client import ScraperAPIClient
+    api_client = ScraperAPIClient()
+
     if use_yaml_configs():
         # Load configs from local filesystem instead of API
         log("USE_YAML_CONFIGS is enabled - loading local configurations", "INFO")
@@ -562,6 +566,7 @@ def run_scraping(
                 job_id=job_id,
                 event_emitter=emitter,
                 debug_callback=debug_callback,
+                api_client=api_client,
             )
 
             # Run async initialization
