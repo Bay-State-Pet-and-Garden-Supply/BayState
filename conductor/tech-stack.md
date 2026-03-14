@@ -11,6 +11,7 @@
 ## Scraper Backend (BayStateScraper)
 - **Language:** Python 3.10+
 - **Core Scraping:** Playwright, crawl4ai
+- **Performance & Reliability:** ManagedBrowser contexts, Tiered Timeouts, Resource Interception, Adaptive Retries
 - **AI/LLM:** OpenAI (gpt-4o-mini) for source selection and name canonicalization
 - **Data Validation:** Pydantic
 - **Containerization:** Docker
