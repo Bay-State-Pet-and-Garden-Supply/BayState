@@ -21,6 +21,7 @@ class ClickAction(BaseAction):
         selector_identifier = params.get("selector")
         filter_text = params.get("filter_text")
         filter_text_exclude = params.get("filter_text_exclude")
+        exclude_sponsored = params.get("exclude_sponsored", False)
         match_context_field = params.get("match_context_field")
         require_context_match = params.get("require_context_match", False)
         index = params.get("index", 0)
@@ -46,7 +47,7 @@ class ClickAction(BaseAction):
             if match_context_field and hasattr(self.ctx, "context"):
                 expected_match_value = self.ctx.context.get(match_context_field)
 
-            if filter_text or filter_text_exclude or expected_match_value:
+            if filter_text or filter_text_exclude or expected_match_value or exclude_sponsored:
                 new_filtered = []
                 context_matched = []
                 matcher = MatchingUtils() if isinstance(expected_match_value, str) and expected_match_value.strip() else None
@@ -61,6 +62,24 @@ class ClickAction(BaseAction):
                     exclude_match = False
                     if filter_text_exclude and re.search(filter_text_exclude, txt, re.IGNORECASE):
                         exclude_match = True
+                    
+                    if exclude_sponsored:
+                        # Check for "Sponsored" text in the element or its parent
+                        is_sponsored = False
+                        if "sponsored" in txt.lower():
+                            is_sponsored = True
+                        else:
+                            # Also check parent/container for sponsored indicators common on Amazon
+                            try:
+                                # This is a bit expensive but necessary for robust sponsored detection
+                                html = await el.evaluate("el => el.closest('.s-result-item')?.innerHTML || ''")
+                                if "sponsored" in html.lower():
+                                    is_sponsored = True
+                            except Exception:
+                                pass
+                        
+                        if is_sponsored:
+                            exclude_match = True
                         
                     if include_match and not exclude_match:
                         new_filtered.append(el)
