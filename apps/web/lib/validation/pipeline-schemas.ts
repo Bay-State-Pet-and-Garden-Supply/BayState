@@ -1,11 +1,10 @@
 import { z } from 'zod';
 
 export const PipelineStatusSchema = z.enum([
-    'staging',
-    'scraped',
-    'consolidated',
-    'approved',
-    'published',
+    'registered',
+    'enriched',
+    'finalized',
+    'failed',
 ]);
 
 export const PipelineProductInputSchema = z.object({

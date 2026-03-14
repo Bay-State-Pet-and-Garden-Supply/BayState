@@ -18,7 +18,7 @@ export async function GET(request: Request) {
                 .not('image_candidates', 'is', null)
                 .not('image_candidates', 'eq', '{}')
                 .or('selected_images.is.null,selected_images.eq.[]')
-                .in('pipeline_status', ['consolidated', 'approved']);
+                .in('pipeline_status', ['finalized', 'consolidated', 'approved']);
         }
 
         const { data, error } = await query.limit(50);

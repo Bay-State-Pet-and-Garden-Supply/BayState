@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
-import { submitBatch } from '@/lib/consolidation/batch-service';
 import {
     parseScraperCallbackPayload,
     ScraperCallbackPayload,
@@ -131,41 +130,6 @@ async function persistJobLogs(
 
     if (error) {
         console.warn(`[Callback] Failed to persist job logs for job ${jobId}:`, error.message);
-    }
-}
-
-/**
- * Trigger consolidation for scraped products (Event-Driven Automation)
- * This function is called after a scrape job completes successfully
- * NOTE: Currently disabled - consolidation is now manually triggered by users
- */
-async function onScraperComplete(jobId: string, _skus: string[]): Promise<void> {
-    try {
-        const supabase = getSupabaseAdmin();
-
-        // Fetch scraped products that are ready for consolidation
-        const { data: products } = await supabase
-            .from('products_ingestion')
-            .select('sku, sources')
-            .in('sku', _skus)
-            .eq('pipeline_status', 'scraped');
-
-        if (!products?.length) {
-            console.log(`[Callback] No scraped products to consolidate for job ${jobId}`);
-            return;
-        }
-
-        // Transform to ProductSource format for consolidation
-        const productSources = products.map(p => ({
-            sku: p.sku,
-            sources: p.sources as Record<string, unknown>,
-        }));
-
-        // NOTE: Consolidation is now manually triggered by users via the UI
-        // Previously: This would auto-submit scraped products for AI consolidation
-        console.log(`[Callback] Skipping auto-consolidation for job ${jobId} - manual trigger required`);
-    } catch (error) {
-        console.error(`[Callback] onScraperComplete error for job ${jobId}:`, error);
     }
 }
 

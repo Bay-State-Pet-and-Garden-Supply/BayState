@@ -43,18 +43,15 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
 
         # Track partial results for incremental saving
         partial_results: dict[str, dict[str, dict]] = {}
-        skus_successful = 0
-        skus_failed = 0
+        successful_skus: set[str] = set()
 
         def progress_callback(sku: str, scraper_name: str, data: dict) -> bool:
             """Callback invoked after each SKU is processed. Saves progress incrementally."""
-            nonlocal skus_successful
-
             # Store in partial results
             if sku not in partial_results:
                 partial_results[sku] = {}
             partial_results[sku][scraper_name] = data
-            skus_successful += 1
+            successful_skus.add(sku)
 
             # Submit progress to API (fire and forget - don't block on failure)
             try:
@@ -102,15 +99,16 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
             for sku, scraper_data in final_data.items():
                 if sku not in partial_results:
                     partial_results[sku] = scraper_data
-                    skus_successful += 1
                 else:
                     # Merge any missing scraper data
                     for scraper_name, data in scraper_data.items():
                         if scraper_name not in partial_results[sku]:
                             partial_results[sku][scraper_name] = data
-                            skus_successful += 1
+                if partial_results[sku]:
+                    successful_skus.add(sku)
 
             skus_processed = len(skus)
+            skus_successful = len(successful_skus)
             skus_failed = skus_processed - skus_successful
 
             chunk_results = {
@@ -133,6 +131,7 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
             # Even on failure, save any partial results we collected
             if partial_results:
                 logger.info(f"[Chunk Worker] Saving {len(partial_results)} partial results before failing")
+                skus_successful = len(successful_skus)
                 partial_chunk_results = {
                     "skus_processed": len(skus),
                     "skus_successful": skus_successful,

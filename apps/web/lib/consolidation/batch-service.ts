@@ -765,7 +765,7 @@ export async function applyConsolidationResults(
             upsertRows.push({
                 sku: result.sku,
                 consolidated,
-                pipeline_status: 'consolidated' as PipelineStatus,
+                pipeline_status: 'finalized' as PipelineStatus,
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
                 updated_at: new Date().toISOString(),

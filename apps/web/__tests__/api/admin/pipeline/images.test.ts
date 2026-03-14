@@ -97,7 +97,7 @@ describe('Images Pipeline API', () => {
                     sku: 'SKU-001',
                     image_candidates: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
                     consolidated: { name: 'Product 1' },
-                    pipeline_status: 'scraped',
+                    pipeline_status: 'finalized',
                 },
             ];
 
