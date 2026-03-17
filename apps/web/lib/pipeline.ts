@@ -262,6 +262,10 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         const statuses: NewPipelineStatus[] = ['registered', 'enriched', 'finalized'];
         return statuses.map(status => ({ status, count: 0 }));
     }
+        console.error('Error fetching status counts:', error);
+        const statuses: NewPipelineStatus[] = ['registered', 'enriched', 'finalized'];
+        return statuses.map(status => ({ status, count: 0 }));
+    }
 
     const countMap: Record<string, number> = {};
     const statuses: NewPipelineStatus[] = ['registered', 'enriched', 'finalized'];
