@@ -718,7 +718,62 @@ export function UnifiedPipelineClient({
           </Button>
         </div>
       </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4" />
+            <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="products" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Products</span>
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            <span className="hidden sm:inline">Timeline</span>
+          </TabsTrigger>
+          <TabsTrigger value="runners" className="flex items-center gap-2">
+            <Server className="h-4 w-4" />
+            <span className="hidden sm:inline">Runners</span>
+          </TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="overview" className="space-y-6">
+          <HealthOverview
+            metrics={{
+              totalProducts,
+              runningJobs: jobs.filter(j => j.status === 'running').length,
+              failed24h: jobs.filter(j => j.status === 'failed').length,
+              activeRunners: 3,
+              queueDepth: products.length,
+              successRate: 95,
+            }}
+            trends={{
+              totalProducts: 10,
+              runningJobs: -5,
+              failed24h: 20,
+              activeRunners: 0,
+              queueDepth: -15,
+              successRate: 2,
+            }}
+          />
+          
+          {jobs.length > 0 && jobs[jobs.length - 1].status === 'failed' && (
+            <AlertBanner
+              severity="error"
+              title="Job Failed"
+              message={`Job ${jobs[jobs.length - 1].jobId} failed to complete`}
+              actions={[
+                { label: 'Retry', onClick: () => void handleRefresh() },
+                { label: 'View Logs', onClick: () => console.log('View logs') },
+              ]}
+              onDismiss={() => {}}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="products" className="space-y-6">
+          {/* Products content */}
       <div className="grid gap-4 sm:grid-cols-3">
         {newPipelineStages.map(({ status, color, label }) => (
           <button
@@ -858,6 +913,30 @@ export function UnifiedPipelineClient({
           ))}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="timeline" className="space-y-6">
+          <TimelineView
+            jobs={mockJobs}
+            timeRange="24h"
+            onJobClick={(job) => console.log('Clicked job:', job)}
+            onTimeRangeChange={(range) => console.log('Time range:', range)}
+          />
+        </TabsContent>
+
+        <TabsContent value="runners" className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {mockRunners.map((runner) => (
+              <RunnerHealthCard
+                key={runner.id}
+                runner={runner}
+                showDetails={true}
+                onClick={(r) => console.log('Clicked runner:', r)}
+              />
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {showProductDetail && viewingSku && (
         <PipelineProductDetail
