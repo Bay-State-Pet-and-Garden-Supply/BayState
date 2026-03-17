@@ -50,7 +50,7 @@ export function ExportButton({ currentStatus, searchQuery }: ExportButtonProps) 
             ) : (
                 <Download className="h-4 w-4" />
             )}
-            {isExporting ? 'Exporting...' : 'Export CSV'}
+            {isExporting ? 'Exporting…' : 'Export CSV'}
         </button>
     );
 }

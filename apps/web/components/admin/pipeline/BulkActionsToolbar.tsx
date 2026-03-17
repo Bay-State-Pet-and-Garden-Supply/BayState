@@ -139,7 +139,7 @@ export function BulkActionsToolbar({
                                     ) : (
                                         <ArrowRight className="h-4 w-4" />
                                     )}
-                                    {isMovingToEnriched ? 'Moving...' : 'Move to Enriched'}
+                                    {isMovingToEnriched ? 'Moving…' : 'Move to Enriched'}
                                 </button>
                             )}
 
@@ -164,7 +164,7 @@ export function BulkActionsToolbar({
                                     ) : (
                                         <ArrowRight className="h-4 w-4" />
                                     )}
-                                    {action === 'consolidate' && isConsolidating ? 'Consolidating...' : label}
+                                    {action === 'consolidate' && isConsolidating ? 'Consolidating…' : label}
                                 </button>
                             ))}
 
@@ -175,7 +175,7 @@ export function BulkActionsToolbar({
                                     className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
                                 >
                                     {isClearingScrapeResults ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                    {isClearingScrapeResults ? 'Clearing...' : 'Clear Scrape Results'}
+                                    {isClearingScrapeResults ? 'Clearing…' : 'Clear Scrape Results'}
                                 </button>
                             )}
 

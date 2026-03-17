@@ -265,7 +265,7 @@ export function PipelineProductDetail({
             <Package className="h-6 w-6 text-gray-600" />
             <div>
               <h2 id="modal-title" className="text-lg font-semibold">Edit Product</h2>
-              <p className="text-sm text-gray-600 font-mono">{sku}</p>
+              <p className="text-sm text-gray-600 font-mono tabular-nums">{sku}</p>
             </div>
           </div>
           <button
@@ -455,12 +455,12 @@ export function PipelineProductDetail({
               disabled={saving}
             >
               <Save className="mr-2 h-4 w-4" />
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving…' : 'Save'}
             </Button>
             {pipelineStatus !== 'approved' && pipelineStatus !== 'published' && (
               <Button onClick={() => handleSave(true)} disabled={saving}>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                {saving ? 'Saving...' : 'Save & Verify'}
+                {saving ? 'Saving…' : 'Save & Verify'}
               </Button>
             )}
           </div>

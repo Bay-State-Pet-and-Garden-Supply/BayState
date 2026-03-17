@@ -274,7 +274,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-8 flex items-center gap-4">
           <Loader2 className="h-6 w-6 animate-spin text-[#008850]" />
-          <span className="text-gray-700">Loading enrichment data...</span>
+          <span className="text-gray-700">Loading enrichment data…</span>
         </div>
       </div>
     );
@@ -302,7 +302,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                     ? 'bg-green-100 text-green-700'
                     : 'bg-gray-100 text-gray-600'
                     }`}
-                  title={realtimeStatus === 'connected' ? 'Live updates enabled' : 'Connecting...'}
+                  title={realtimeStatus === 'connected' ? 'Live updates enabled' : 'Connecting…'}
                 >
                   <Radio className="h-3 w-3" />
                   <span>Live</span>
@@ -319,9 +319,9 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
               {isBatchMode ? (
                 <>Select data sources to enhance {batchCount} selected products</>
               ) : hasScrapedData ? (
-                <>Configure data sources for <span className="font-mono font-medium">{effectiveSku}</span></>
+                <>Configure data sources for <span className="font-mono font-medium tabular-nums">{effectiveSku}</span></>
               ) : (
-                <>Select sources to enhance <span className="font-mono font-medium">{originalName}</span></>
+                <>Select sources to enhance <span className="font-mono font-medium tabular-nums">{originalName}</span></>
               )}
             </p>
           </div>
@@ -348,14 +348,14 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
               {isRefreshing && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
                   <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-                  Refreshing {sources.find((s) => s.id === isRefreshing)?.displayName}...
+                  Refreshing {sources.find((s) => s.id === isRefreshing)?.displayName}…
                 </div>
               )}
 
               {enhancementJobId && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
                   <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                  Enhancement running...
+                  Enhancement running…
                 </div>
               )}
             </div>
@@ -399,7 +399,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {skus?.slice(0, 5).map((s) => (
-                          <span key={s} className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">
+                          <span key={s} className="px-2 py-1 bg-gray-100 rounded text-xs font-mono tabular-nums">
                             {s}
                           </span>
                         ))}
@@ -416,7 +416,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">SKU:</span>
-                          <span className="ml-2 font-mono">{effectiveSku}</span>
+                          <span className="ml-2 font-mono tabular-nums">{effectiveSku}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Price:</span>
@@ -493,7 +493,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                 {isRunningEnhancement ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Running...
+                    Running…
                   </>
                 ) : (
                   <>

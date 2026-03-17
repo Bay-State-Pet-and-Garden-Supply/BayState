@@ -3,10 +3,12 @@ import { Package, Sparkles, CheckCircle2, AlertCircle, Upload, Globe } from "luc
 import { Badge } from "@/components/ui/badge";
 import { PipelineStatus, NewPipelineStatus } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
+
 interface StatusBadgeProps {
   status: PipelineStatus | NewPipelineStatus;
   size?: "sm" | "md" | "lg";
   showIcon?: boolean;
+  showLabel?: boolean;
   isLoading?: boolean;
   className?: string;
 }
@@ -31,6 +33,7 @@ const statusConfig: Record<
   enriched: { variant: "success", label: "Enriched", icon: Sparkles },
   finalized: { variant: "success", label: "Finalized", icon: CheckCircle2 }
 };
+
 function PulseDot({ className }: { className?: string }) {
   return (
     <span className={cn("relative flex size-2", className)} aria-hidden="true">
@@ -44,6 +47,7 @@ export function StatusBadge({
   status,
   size = "md",
   showIcon = true,
+  showLabel = true,
   isLoading = false,
   className,
 }: StatusBadgeProps) {
@@ -59,20 +63,15 @@ export function StatusBadge({
     );
   }
 
-  if (status === "scraped") {
-    return (
-      <Badge variant={config.variant} className={cn(sizeSettings.badge, "gap-1.5", className)}>
-        <PulseDot className={sizeSettings.icon} />
-        {showIcon && <Icon className={sizeSettings.icon} aria-hidden="true" />}
-        <span className="sr-only">{config.label}</span>
-      </Badge>
-    );
-  }
-
   return (
-    <Badge variant={config.variant} className={cn(sizeSettings.badge, "gap-1", className)}>
+    <Badge variant={config.variant} className={cn(sizeSettings.badge, "gap-1.5", className)}>
+      {status === "scraped" && <PulseDot className={sizeSettings.icon} />}
       {showIcon && <Icon className={sizeSettings.icon} aria-hidden="true" />}
-      <span className="sr-only">{config.label}</span>
+      {showLabel ? (
+        <span>{config.label}</span>
+      ) : (
+        <span className="sr-only">{config.label}</span>
+      )}
     </Badge>
   );
 }
