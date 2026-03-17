@@ -33,13 +33,15 @@ type ActionButton = {
 
 const newStatusMap: Record<NewPipelineStatus, ActionButton[]> = {
     registered: [
-        { action: 'moveToEnriched', label: 'Move to Enriched', className: 'bg-blue-600 hover:bg-blue-700' },
+        // Note: Products are automatically moved to 'enriched' by scrapers
+        // Manual enrichment is not available - scrapers handle this transition
     ],
     enriched: [
         { action: 'moveToFinalized', label: 'Move to Finalized', className: 'bg-green-600 hover:bg-green-700' },
     ],
     finalized: [], // Terminal state - no outgoing transitions
 };
+
 
 const legacyActionsMap: Record<PipelineStatus, ActionButton[]> = {
     staging: [],
@@ -126,22 +128,7 @@ export function BulkActionsToolbar({
                 <div className="flex items-center gap-2">
                     {selectedCount > 0 && (
                         <>
-                            {/* Move to Enriched button for registered products */}
-                            {currentStatus === 'registered' && onMoveToEnriched && (
-                                <button
-                                    onClick={onMoveToEnriched}
-                                    disabled={isBusy}
-                                    className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-[#008850] hover:bg-[#006d40] disabled:opacity-50"
-                                    title="Move selected products to Enriched status"
-                                >
-                                    {isMovingToEnriched ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <ArrowRight className="h-4 w-4" />
-                                    )}
-                                    {isMovingToEnriched ? 'Moving…' : 'Move to Enriched'}
-                                </button>
-                            )}
+                            {/* Status transition buttons - scrapers handle enrichment automatically */}
 
                             {/* Status transition buttons */}
                             {actions.map(({ action, label, className }) => (
