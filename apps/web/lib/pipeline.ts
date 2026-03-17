@@ -1,9 +1,48 @@
 import { createClient } from '@/lib/supabase/server';
 
 /**
- * Pipeline status types matching the database constraint.
+ * Legacy pipeline status types (for backward compatibility during migration).
+ * @deprecated Use NewPipelineStatus for new code.
  */
 export type PipelineStatus = 'staging' | 'scraped' | 'consolidated' | 'approved' | 'published' | 'failed';
+
+/**
+ * New pipeline status types for the redesigned export-focused pipeline.
+ */
+export type NewPipelineStatus = 'registered' | 'enriched' | 'finalized';
+
+/**
+ * Status transition rules for the new pipeline.
+ * Defines which status transitions are valid.
+ */
+export const STATUS_TRANSITIONS: Record<NewPipelineStatus, NewPipelineStatus[]> = {
+    registered: ['enriched'],
+    enriched: ['finalized'],
+    finalized: [], // Terminal state - no outgoing transitions
+};
+
+/**
+ * Validates if a status transition is allowed.
+ * @param from - Current status
+ * @param to - Target status
+ * @returns true if transition is valid, false otherwise
+ */
+export function validateStatusTransition(
+    from: NewPipelineStatus,
+    to: NewPipelineStatus
+): boolean {
+    if (from === to) return true; // Same status is always valid
+    const allowedTransitions = STATUS_TRANSITIONS[from];
+    return allowedTransitions.includes(to);
+}
+
+/**
+ * Represents a selected image with metadata.
+ */
+export interface SelectedImage {
+    url: string;
+    selectedAt: string;
+}
 
 /**
  * Represents a product in the ingestion pipeline.
@@ -16,6 +55,7 @@ export interface PipelineProduct {
     };
     sources: Record<string, unknown>;
     image_candidates?: string[];
+    selected_images?: SelectedImage[];
     consolidated: {
         name?: string;
         description?: string;
@@ -165,7 +205,7 @@ export async function getSkusByStatus(
     }
 
     return {
-        skus: (data || []).map((row) => row.sku).filter(Boolean),
+        skus: (data || []).map((row: { sku: string }) => row.sku).filter(Boolean),
         count: count || 0,
     };
 }
@@ -200,7 +240,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
     });
 
     // Count each status from the data
-    (data || []).forEach(row => {
+    (data || []).forEach((row: { pipeline_status: string }) => {
         const status = row.pipeline_status;
         if (status && countMap[status] !== undefined) {
             countMap[status]++;
@@ -416,5 +456,115 @@ export async function clearScrapeResultsAndResetStatus(
         const errorMessage = err instanceof Error ? err.message : 'Unknown error during clear scrape results';
         console.error('Error in clearScrapeResultsAndResetStatus:', errorMessage);
         return { success: false, error: errorMessage, updatedCount: 0 };
+    }
+}
+
+
+/**
+ * Fetches selected images for a product by SKU.
+ */
+export async function getSelectedImages(sku: string): Promise<SelectedImage[]> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('products_ingestion')
+        .select('selected_images')
+        .eq('sku', sku)
+        .single();
+
+    if (error || !data) {
+        console.error('Error fetching selected images:', error);
+        return [];
+    }
+
+    return (data.selected_images as SelectedImage[]) || [];
+}
+
+/**
+ * Sets selected images for a product by SKU.
+ * Validates that images are from the product's image_candidates.
+ * Max 10 images allowed.
+ */
+export async function setSelectedImages(
+    sku: string,
+    imageUrls: string[],
+    userId?: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    // Validate max 10 images
+    if (imageUrls.length > 10) {
+        return { success: false, error: 'Maximum 10 images allowed' };
+    }
+
+    try {
+        // First, get the product to validate image candidates
+        const { data: product, error: fetchError } = await supabase
+            .from('products_ingestion')
+            .select('image_candidates, selected_images')
+            .eq('sku', sku)
+            .single();
+
+        if (fetchError || !product) {
+            return { success: false, error: 'Product not found' };
+        }
+
+        // Validate that all selected images are from image_candidates
+        const imageCandidates = Array.isArray(product.image_candidates)
+            ? product.image_candidates
+            : [];
+
+        for (const url of imageUrls) {
+            if (!imageCandidates.includes(url)) {
+                return { success: false, error: `Invalid image: ${url} is not in image_candidates` };
+            }
+        }
+
+        // Build selected_images array with timestamps
+        const selectedImages: SelectedImage[] = imageUrls.map((url) => ({
+            url,
+            selectedAt: new Date().toISOString(),
+        }));
+
+        // Update the product
+        const { error: updateError } = await supabase
+            .from('products_ingestion')
+            .update({
+                selected_images: selectedImages,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('sku', sku);
+
+        if (updateError) {
+            console.error('Error updating selected images:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        // Log to audit_log
+        try {
+            const auditPayload = {
+                job_type: 'image_selection',
+                job_id: crypto.randomUUID(),
+                from_state: 'scraped',
+                to_state: 'scraped',
+                actor_id: userId || null,
+                actor_type: userId ? 'user' : 'system',
+                metadata: {
+                    sku,
+                    selected_images: selectedImages,
+                    timestamp: new Date().toISOString(),
+                },
+            };
+
+            await supabase.from('pipeline_audit_log').insert([auditPayload]);
+        } catch (auditErr) {
+            console.error('Warning: Failed to log image selection:', auditErr);
+        }
+
+        return { success: true };
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.error('Error in setSelectedImages:', errorMessage);
+        return { success: false, error: errorMessage };
     }
 }

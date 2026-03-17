@@ -1,34 +1,15 @@
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util';
+import { TransformStream as WebTransformStream } from 'stream/web';
+import { fetch, Headers, Request, Response } from 'undici';
 
-Object.assign(global, { TextEncoder, TextDecoder });
+Object.assign(global, { TextEncoder, TextDecoder, fetch, Headers, Request, Response });
 
 
 
 // Polyfill for TransformStream (required by Playwright MCP tests)
 if (typeof global.TransformStream === 'undefined') {
-  const { ReadableStream, WritableStream } = require('stream/web');
-  global.TransformStream = class {
-    constructor(transformer = {}) {
-      this.readable = new ReadableStream({
-        start(controller) {
-          this._controller = controller;
-        },
-        cancel() {}
-      });
-      this.writable = new WritableStream({
-        write(chunk, controller) {
-          if (transformer.transform) {
-            transformer.transform(chunk, this._controller, { forward: (c) => controller.enqueue(c) });
-          } else {
-            controller.enqueue(chunk);
-          }
-        },
-        close() {},
-        abort() {}
-      });
-    }
-  };
+  global.TransformStream = WebTransformStream;
 }
 
 // Mock next/cache for server action tests
