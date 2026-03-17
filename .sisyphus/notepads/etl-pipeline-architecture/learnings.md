@@ -120,3 +120,18 @@ Improved the Pipeline UI to better reflect the ETL process:
 - Components compile successfully
 - TypeScript checks pass
 
+## Session 7: Unified Pipeline Realtime UX
+
+### Completed Tasks
+- Integrated `useRealtimeJobs()` into `components/admin/pipeline/UnifiedPipelineClient.tsx` with `autoConnect` and polling fallback enabled.
+- Added a live connection indicator in the pipeline header and terminal-status toasts for completed and failed jobs.
+- Added one-shot auto-refresh behavior for recent completed job updates while preserving manual refresh controls.
+
+### Key Findings
+- **Toast dedupe:** Realtime hooks that keep replacing the latest job state need a per-job/status guard to avoid duplicate completion toasts during reconnects or polling fallback.
+- **Auto-refresh scope:** Refreshing only on recent `completed` updates keeps the UI current without turning every websocket heartbeat into a fetch loop.
+- **Build cleanup:** `UnifiedPipelineClient.tsx` had duplicate import blocks and a couple of stale mock-dashboard diagnostics; cleaning those in-file was necessary to keep the build green after the realtime changes.
+
+### Verification
+- `lsp_diagnostics` clean for `components/admin/pipeline/UnifiedPipelineClient.tsx`
+- `bun run build` passes in `apps/web`

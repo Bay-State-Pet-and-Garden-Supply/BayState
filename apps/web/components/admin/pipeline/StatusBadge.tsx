@@ -1,11 +1,10 @@
-import { Package, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { Package, Sparkles, CheckCircle2, AlertCircle, Upload, Globe } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { PipelineStatus } from "@/lib/pipeline";
+import { PipelineStatus, NewPipelineStatus } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
-
 interface StatusBadgeProps {
-  status: PipelineStatus;
+  status: PipelineStatus | NewPipelineStatus;
   size?: "sm" | "md" | "lg";
   showIcon?: boolean;
   isLoading?: boolean;
@@ -19,17 +18,19 @@ const sizeConfig = {
 };
 
 const statusConfig: Record<
-  PipelineStatus,
+  PipelineStatus | NewPipelineStatus,
   { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   staging: { variant: "default", label: "Staging", icon: Package },
   scraped: { variant: "success", label: "Scraped", icon: Sparkles },
   consolidated: { variant: "warning", label: "Consolidated", icon: CheckCircle2 },
   approved: { variant: "success", label: "Approved", icon: CheckCircle2 },
-  published: { variant: "success", label: "Published", icon: CheckCircle2 },
+  published: { variant: "success", label: "Published", icon: Globe },
   failed: { variant: "destructive", label: "Failed", icon: AlertCircle },
+  registered: { variant: "default", label: "Registered", icon: Upload },
+  enriched: { variant: "success", label: "Enriched", icon: Sparkles },
+  finalized: { variant: "success", label: "Finalized", icon: CheckCircle2 }
 };
-
 function PulseDot({ className }: { className?: string }) {
   return (
     <span className={cn("relative flex size-2", className)} aria-hidden="true">

@@ -1,17 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Search, RefreshCw, Filter, Upload, Download, Plus } from 'lucide-react';
+import { Package, Search, RefreshCw, Filter, Upload, Download, Plus, LayoutDashboard, Clock, Server } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BatchEnhanceDialog } from './BatchEnhanceDialog';
 import { ManualAddProductDialog } from './ManualAddProductDialog';
 import { UndoToast } from './UndoToast';
+import { HealthOverview } from './HealthOverview';
+import { TimelineView } from './TimelineView';
+import { RunnerHealthCard } from './RunnerHealthCard';
+import { AlertBanner } from './AlertBanner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +33,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
+import { useRealtimeJobs } from '@/hooks/useRealtimeJobs';
 import { undoQueue } from '@/lib/pipeline/undo';
+import { cn } from '@/lib/utils';
 import type { PipelineProduct, PipelineStatus, StatusCount, NewPipelineStatus } from '@/lib/pipeline';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 
@@ -79,18 +86,102 @@ export function UnifiedPipelineClient({
   const [exportSearch, setExportSearch] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<PipelineFiltersState>({});
+  const [activeTab, setActiveTab] = useState<string>('products');
+  const lastToastedJobRef = useRef<string | null>(null);
+  const lastRefreshedJobRef = useRef<string | null>(null);
 
-  // Refresh products when status filter changes
-  useEffect(() => {
-    void handleRefresh();
-  }, [statusFilter]);
+  const { jobs, connectionStatus, lastUpdate } = useRealtimeJobs({
+    autoConnect: true,
+    pollingFallback: true,
+  });
+
+  const totalProducts = counts.reduce((sum, c) => sum + c.count, 0);
+
+  // Mock data for Timeline tab
+  const mockJobs = [
+    {
+      id: '1',
+      name: 'Product Enrichment Batch',
+      startTime: new Date(Date.now() - 3600000),
+      endTime: new Date(Date.now() - 1800000),
+      status: 'completed' as const,
+      runner: 'runner-01',
+    },
+    {
+      id: '2',
+      name: 'Image Scraping Job',
+      startTime: new Date(Date.now() - 7200000),
+      status: 'running' as const,
+      runner: 'runner-02',
+    },
+    {
+      id: '3',
+      name: 'Price Update Job',
+      startTime: new Date(Date.now() - 14400000),
+      endTime: new Date(Date.now() - 10800000),
+      status: 'failed' as const,
+      runner: 'runner-01',
+    },
+    {
+      id: '4',
+      name: 'Inventory Sync',
+      startTime: new Date(Date.now() - 21600000),
+      endTime: new Date(Date.now() - 18000000),
+      status: 'completed' as const,
+      runner: 'runner-03',
+    },
+  ];
+
+  // Mock data for Runners tab
+  const mockRunners = [
+    {
+      id: 'runner-01',
+      name: 'Production Runner 1',
+      status: 'online' as const,
+      activeJobs: 0,
+      lastSeen: new Date(),
+      cpuUsage: 45,
+      memoryUsage: 62,
+    },
+    {
+      id: 'runner-02',
+      name: 'Production Runner 2',
+      status: 'busy' as const,
+      activeJobs: 3,
+      lastSeen: new Date(),
+      cpuUsage: 78,
+      memoryUsage: 85,
+      currentJob: {
+        id: 'job-123',
+        name: 'Image Scraping Job',
+        progress: 65,
+      },
+    },
+    {
+      id: 'runner-03',
+      name: 'Staging Runner',
+      status: 'idle' as const,
+      activeJobs: 0,
+      lastSeen: new Date(Date.now() - 300000),
+      cpuUsage: 12,
+      memoryUsage: 34,
+    },
+  ];
+
+  // Mock health metrics for Overview tab
+  const healthMetrics = {
+    totalProducts,
+    runningJobs: mockJobs.filter(j => j.status === 'running').length,
+    failed24h: mockJobs.filter(j => j.status === 'failed').length,
+    activeRunners: mockRunners.length,
+    queueDepth: 12,
+    successRate: 94.5,
+  };
 
   const getCount = (status: NewPipelineStatus): number => {
     const found = counts.find(c => c.status === status);
     return found ? found.count : 0;
   };
-
-  const totalProducts = counts.reduce((sum, c) => sum + c.count, 0);
 
   const newPipelineStages: Array<{ status: NewPipelineStatus; color: string; label: string }> = [
     { status: 'registered', color: 'bg-orange-500', label: 'Registered' },
@@ -102,12 +193,12 @@ export function UnifiedPipelineClient({
     return statusFilter === 'all' ? null : statusFilter;
   };
 
-  const handleRefresh = async (showSuccessToast = false) => {
+  const handleRefresh = useCallback(async (showSuccessToast = false) => {
     setIsRefreshing(true);
 
     try {
       const params = new URLSearchParams();
-      const requestStatus = getRequestStatus();
+      const requestStatus = statusFilter === 'all' ? null : statusFilter;
       if (requestStatus) {
         params.set('status', requestStatus);
       }
@@ -139,7 +230,67 @@ export function UnifiedPipelineClient({
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [searchQuery, statusFilter]);
+
+  // Refresh products when status filter changes
+  useEffect(() => {
+    void handleRefresh();
+  }, [statusFilter, handleRefresh]);
+
+  useEffect(() => {
+    if (jobs.length === 0) {
+      return;
+    }
+
+    const latestJob = jobs[jobs.length - 1];
+    const toastKey = `${latestJob.jobId}:${latestJob.status}`;
+
+    if (lastToastedJobRef.current === toastKey) {
+      return;
+    }
+
+    if (latestJob.status === 'completed') {
+      lastToastedJobRef.current = toastKey;
+      toast.success(`Job ${latestJob.jobId} completed`, {
+        action: {
+          label: 'Refresh',
+          onClick: () => {
+            void handleRefresh(true);
+          },
+        },
+      });
+      return;
+    }
+
+    if (latestJob.status === 'failed') {
+      lastToastedJobRef.current = toastKey;
+      toast.error(`Job ${latestJob.jobId} failed`);
+    }
+  }, [jobs, handleRefresh]);
+
+  useEffect(() => {
+    if (!lastUpdate || jobs.length === 0) {
+      return;
+    }
+
+    const latestJob = jobs[jobs.length - 1];
+    if (latestJob.status !== 'completed') {
+      return;
+    }
+
+    const timeSinceUpdate = Date.now() - lastUpdate.getTime();
+    if (timeSinceUpdate >= 5000) {
+      return;
+    }
+
+    const refreshKey = `${latestJob.jobId}:${latestJob.status}`;
+    if (lastRefreshedJobRef.current === refreshKey) {
+      return;
+    }
+
+    lastRefreshedJobRef.current = refreshKey;
+    void handleRefresh();
+  }, [jobs, lastUpdate, handleRefresh]);
 
   const handleSelect = (sku: string, index: number, isShiftClick: boolean) => {
     setSelectedProducts(prev => {
@@ -523,9 +674,24 @@ export function UnifiedPipelineClient({
           <Package className="h-8 w-8 text-[#008850]" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">New Product Pipeline</h1>
-            <p className="text-gray-600">
-              Manage products from import to publication
-            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-gray-600">
+                Manage products from import to publication
+              </p>
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    'h-2 w-2 rounded-full',
+                    connectionStatus === 'connected' && 'bg-green-500',
+                    connectionStatus === 'connecting' && 'bg-yellow-500 animate-pulse',
+                    connectionStatus === 'disconnected' && 'bg-red-500'
+                  )}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {connectionStatus === 'connected' ? 'Live' : connectionStatus}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
