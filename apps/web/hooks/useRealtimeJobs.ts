@@ -92,6 +92,24 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
     }
   }, []);
 
+  const startPolling = useCallback(() => {
+    clearPollingInterval();
+    pollingIntervalRef.current = setInterval(() => {
+      fetch('/api/jobs/latest')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.jobs) {
+            data.jobs.forEach((job: JobUpdateMessage) => {
+              handleMessage({ data: JSON.stringify(job) } as MessageEvent);
+            });
+          }
+        })
+        .catch(console.error);
+    }, 5000);
+  }, [handleMessage, clearPollingInterval]);
+
+  const connectRef = useRef<() => void>(() => {});
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
@@ -126,7 +144,7 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
           const delay = Math.min(1000 * 2 ** reconnectAttemptsRef.current, 30000);
           reconnectAttemptsRef.current += 1;
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
+            connectRef.current();
           }, delay);
         } else if (pollingFallback) {
           startPolling();
@@ -139,23 +157,11 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
         startPolling();
       }
     }
-  }, [url, maxReconnectAttempts, pollingFallback, handleMessage]);
+  }, [url, maxReconnectAttempts, pollingFallback, handleMessage, startPolling, clearReconnectTimeout, clearPollingInterval]);
 
-  const startPolling = useCallback(() => {
-    clearPollingInterval();
-    pollingIntervalRef.current = setInterval(() => {
-      fetch('/api/jobs/latest')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.jobs) {
-            data.jobs.forEach((job: JobUpdateMessage) => {
-              handleMessage({ data: JSON.stringify(job) } as MessageEvent);
-            });
-          }
-        })
-        .catch(console.error);
-    }, 5000);
-  }, [handleMessage]);
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const disconnect = useCallback(() => {
     clearReconnectTimeout();
@@ -175,7 +181,13 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
 
   useEffect(() => {
     if (autoConnect) {
-      connect();
+      const timeoutId = setTimeout(() => {
+        connect();
+      }, 0);
+      return () => {
+        clearTimeout(timeoutId);
+        disconnect();
+      };
     }
 
     return () => {
