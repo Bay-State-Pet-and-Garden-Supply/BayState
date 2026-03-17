@@ -1,48 +1,42 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Package, Search, FileCheck, CheckCircle, Globe } from 'lucide-react';
 import { PipelineStats } from '@/components/admin/pipeline/PipelineStats';
-import type { StatusCount, PipelineStatus } from '@/lib/pipeline';
+import type { StatusCount } from '@/lib/pipeline';
 
 const mockCounts: StatusCount[] = [
-  { status: 'staging', count: 10 },
-  { status: 'scraped', count: 25 },
-  { status: 'consolidated', count: 15 },
-  { status: 'approved', count: 30 },
-  { status: 'published', count: 50 },
+  { status: 'registered', count: 10 },
+  { status: 'enriched', count: 25 },
+  { status: 'finalized', count: 30 },
+  { status: 'failed', count: 5 },
 ];
 
 describe('PipelineStats', () => {
-  it('renders all five status cards with counts', () => {
+  it('renders all status cards with counts', () => {
     render(<PipelineStats counts={mockCounts} />);
 
-    expect(screen.getByText('Imported')).toBeInTheDocument();
+    expect(screen.getByText('Registered')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
 
-    expect(screen.getByText('Enhanced')).toBeInTheDocument();
+    expect(screen.getByText('Enriched')).toBeInTheDocument();
     expect(screen.getByText('25')).toBeInTheDocument();
 
-    expect(screen.getByText('Ready for Review')).toBeInTheDocument();
-    expect(screen.getByText('15')).toBeInTheDocument();
-
-    expect(screen.getByText('Verified')).toBeInTheDocument();
+    expect(screen.getByText('Finalized')).toBeInTheDocument();
     expect(screen.getByText('30')).toBeInTheDocument();
 
-    expect(screen.getByText('Live')).toBeInTheDocument();
-    expect(screen.getByText('50')).toBeInTheDocument();
+    expect(screen.getByText('Failed')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 
   it('renders zero counts when no products', () => {
     const emptyCounts: StatusCount[] = [
-      { status: 'staging', count: 0 },
-      { status: 'scraped', count: 0 },
-      { status: 'consolidated', count: 0 },
-      { status: 'approved', count: 0 },
-      { status: 'published', count: 0 },
+      { status: 'registered', count: 0 },
+      { status: 'enriched', count: 0 },
+      { status: 'finalized', count: 0 },
+      { status: 'failed', count: 0 },
     ];
 
     render(<PipelineStats counts={emptyCounts} />);
 
-    expect(screen.getAllByText('0')).toHaveLength(5);
+    expect(screen.getAllByText('0')).toHaveLength(4);
   });
 
   it('calls onStatusChange when card is clicked', () => {
@@ -54,16 +48,16 @@ describe('PipelineStats', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Imported'));
+    fireEvent.click(screen.getByText('Registered'));
 
-    expect(handleStatusChange).toHaveBeenCalledWith('staging');
+    expect(handleStatusChange).toHaveBeenCalledWith('registered');
   });
 
   it('shows Filtering subtitle when status is active', () => {
     render(
       <PipelineStats
         counts={mockCounts}
-        activeStatus="scraped"
+        activeStatus="enriched"
       />
     );
 
@@ -83,12 +77,12 @@ describe('PipelineStats', () => {
 
   it('handles missing counts gracefully', () => {
     const partialCounts: StatusCount[] = [
-      { status: 'staging', count: 10 },
+      { status: 'registered', count: 10 },
     ];
 
     render(<PipelineStats counts={partialCounts} />);
 
-    expect(screen.getByText('Imported')).toBeInTheDocument();
+    expect(screen.getByText('Registered')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
   });
 
@@ -96,6 +90,6 @@ describe('PipelineStats', () => {
     render(<PipelineStats counts={mockCounts} />);
 
     const icons = document.querySelectorAll('svg');
-    expect(icons.length).toBeGreaterThanOrEqual(5);
+    expect(icons.length).toBeGreaterThanOrEqual(4);
   });
 });
