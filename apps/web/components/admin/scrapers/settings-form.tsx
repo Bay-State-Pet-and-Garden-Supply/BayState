@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, type Resolver } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -59,7 +59,7 @@ export function SettingsForm({ version, scraperType, isReadOnly = false }: Setti
   };
 
   const form = useForm<SettingsValues>({
-    resolver: zodResolver(settingsSchema) as Resolver<SettingsValues>,
+    resolver: zodResolver(settingsSchema) as any,
     defaultValues,
   });
   const onSubmit = async (data: SettingsValues) => {

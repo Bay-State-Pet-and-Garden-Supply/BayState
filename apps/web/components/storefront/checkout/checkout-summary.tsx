@@ -136,7 +136,7 @@ export function CheckoutSummary({
           <div className="mt-6 rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
             <p className="font-medium">Store Pickup</p>
             <p className="mt-1 text-blue-700">
-              Orders are available for pickup at our store. We&apos;ll email you when your order is ready.
+              Orders are available for pickup at our store. We'll email you when your order is ready.
             </p>
           </div>
         )}
@@ -145,7 +145,7 @@ export function CheckoutSummary({
           <div className="mt-6 rounded-lg bg-green-50 p-4 text-sm text-green-800">
             <p className="font-medium">Local Delivery</p>
             <p className="mt-1 text-green-700">
-              We&apos;ll deliver to {deliveryAddress.street}, {deliveryAddress.city}.
+              We'll deliver to {deliveryAddress.street}, {deliveryAddress.city}.
               {deliveryQuote.distanceMiles > 0 && ` (${deliveryQuote.distanceMiles.toFixed(1)} miles)`}
             </p>
           </div>

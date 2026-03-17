@@ -16,8 +16,6 @@ describe('Middleware role resolution', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
         profilesTableCalls = [];
 
         mockGetUser = jest.fn();

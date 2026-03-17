@@ -1,85 +1,97 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { expect, it, describe, beforeEach, mock } from 'bun:test';
+import { GET } from '@/app/api/admin/scrapers/configs/[slug]/route';
+import { createClient } from '@/lib/supabase/server';
+import fs from 'fs';
 
-jest.mock('next/server', () => ({
+mock.module('next/server', () => ({
+  NextRequest: class MockNextRequest {
+    headers: Headers;
+    url: string;
+    constructor(input: string | Request | URL, init?: RequestInit) {
+      this.url = typeof input === 'string' ? input : 'http://localhost';
+      this.headers = new Headers(init?.headers || {});
+    }
+  },
   NextResponse: {
-    json: (data: unknown, init?: ResponseInit) => ({
-      status: init?.status ?? 200,
-      json: async () => data,
-    }),
+    json: (data: unknown, init?: ResponseInit) => {
+      const status = init?.status || 200;
+      return {
+        status,
+        json: async () => data,
+      };
+    },
   },
 }));
 
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn(),
+mock.module('@/lib/supabase/server', () => ({
+  createClient: mock(() => {}),
 }));
 
-jest.mock('@/lib/admin/scrapers/configs', () => ({
-  getLocalScraperConfig: jest.fn(),
+mock.module('fs', () => ({
+  readdirSync: mock(() => []),
+  readFileSync: mock(() => ''),
+  existsSync: mock(() => true),
+  default: {
+    readdirSync: mock(() => []),
+    readFileSync: mock(() => ''),
+    existsSync: mock(() => true),
+  }
 }));
 
-describe('Specific scraper config API route', () => {
+describe('Specific Scraper config API route', () => {
   const mockSupabase = {
     auth: {
-      getUser: jest.fn(),
+      getUser: mock(() => {}),
     },
-    from: jest.fn(),
+    from: mock(() => {}),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    const { createClient } = jest.requireMock('@/lib/supabase/server') as { createClient: { mockResolvedValue: (value: unknown) => void } };
-    createClient.mockResolvedValue(mockSupabase);
+    (createClient as any).mockResolvedValue(mockSupabase);
 
-    (mockSupabase.auth.getUser as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+    (mockSupabase.auth.getUser as any).mockResolvedValue({
       data: { user: { id: 'user-1' } },
       error: null,
     });
 
     const profileSelect = {
-      eq: jest.fn(() => ({
-        single: jest.fn(() => Promise.resolve({ data: { role: 'admin' } })),
+      eq: mock(() => ({
+        single: mock(() => Promise.resolve({ data: { role: 'admin' } })),
       })),
     };
 
-    mockSupabase.from.mockReturnValue({
-      select: jest.fn(() => profileSelect),
+    (mockSupabase.from as any).mockReturnValue({
+      select: mock(() => profileSelect),
     });
   });
 
   it('returns YAML content for a valid slug', async () => {
-    const { GET } = await import('@/app/api/admin/scrapers/configs/[slug]/route');
-    const { getLocalScraperConfig } = jest.requireMock('@/lib/admin/scrapers/configs') as { getLocalScraperConfig: { mockResolvedValue: (value: unknown) => void } };
     const yamlContent = 'name: amazon\ndisplay_name: Amazon\nbase_url: https://www.amazon.com';
-    getLocalScraperConfig.mockResolvedValue({
-      yaml: yamlContent,
-      config: { name: 'amazon' },
-    });
+    (fs.readFileSync as any).mockReturnValue(yamlContent);
+    (fs.existsSync as any).mockReturnValue(true);
 
-    const res = await GET({} as never, { params: Promise.resolve({ slug: 'amazon' }) });
-    expect(res.status).toBe(200);
+    const res = await GET({} as any, { params: { slug: 'amazon' } });
+    expect(res?.status).toBe(200);
 
-    const body = await res.json();
+    const body = await res!.json() as any;
     expect(body.yaml).toBe(yamlContent);
     expect(body.config.name).toBe('amazon');
   });
 
   it('returns 404 if config does not exist', async () => {
-    const { GET } = await import('@/app/api/admin/scrapers/configs/[slug]/route');
-    const { getLocalScraperConfig } = jest.requireMock('@/lib/admin/scrapers/configs') as { getLocalScraperConfig: { mockResolvedValue: (value: unknown) => void } };
-    getLocalScraperConfig.mockResolvedValue(null);
+    (fs.existsSync as any).mockReturnValue(false);
 
-    const res = await GET({} as never, { params: Promise.resolve({ slug: 'non-existent' }) });
-    expect(res.status).toBe(404);
+    const res = await GET({} as any, { params: { slug: 'non-existent' } });
+    expect(res?.status).toBe(404);
   });
 
   it('returns 401 if not authenticated', async () => {
-    const { GET } = await import('@/app/api/admin/scrapers/configs/[slug]/route');
-    (mockSupabase.auth.getUser as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+    (mockSupabase.auth.getUser as any).mockResolvedValue({
       data: { user: null },
       error: null,
     });
 
-    const res = await GET({} as never, { params: Promise.resolve({ slug: 'amazon' }) });
-    expect(res.status).toBe(401);
+    const res = await GET({} as any, { params: { slug: 'amazon' } });
+    expect(res?.status).toBe(401);
   });
 });

@@ -202,7 +202,7 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                     <DialogHeader>
                         <DialogTitle>Edit {pet.name}</DialogTitle>
                         <DialogDescription>
-                            Update your pet&apos;s details.
+                            Update your pet's details.
                         </DialogDescription>
                     </DialogHeader>
                     <PetForm

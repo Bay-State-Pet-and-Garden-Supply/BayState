@@ -59,9 +59,9 @@ export async function getScraperHealthMetrics(
     return [];
   }
 
-  const result = data.map((item: ScraperHealthMetric & { scraper_configs?: { display_name?: string | null } }) => ({
+  const result = data.map((item: any) => ({
     ...item,
-    config_name: item.scraper_configs?.display_name ?? undefined,
+    config_name: item.scraper_configs?.display_name,
   }));
 
   if (useCache) {

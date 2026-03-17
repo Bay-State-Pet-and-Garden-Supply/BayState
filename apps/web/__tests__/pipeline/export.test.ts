@@ -28,16 +28,13 @@ jest.mock('next/server', () => {
                 this.headers = new Map(Object.entries(init?.headers || {}));
                 this.status = init?.status || 200;
             }
-            static json(body: any, init?: any) {
-                return new (this as any)(body, { ...init, headers: { 'Content-Type': 'application/json' } });
-            }
         }
     };
 });
 
 // Mock dependencies
 jest.mock('@/lib/supabase/server', () => ({
-    createAdminClient: jest.fn(),
+    createClient: jest.fn(),
 }));
 
 jest.mock('@/lib/admin/api-auth', () => ({
@@ -47,7 +44,7 @@ jest.mock('@/lib/admin/api-auth', () => ({
 // Require modules
 const { GET } = require('@/app/api/admin/pipeline/export/route');
 const { NextRequest } = require('next/server');
-const { createAdminClient } = require('@/lib/supabase/server');
+const { createClient } = require('@/lib/supabase/server');
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
 
 describe('CSV Export API', () => {
@@ -70,7 +67,7 @@ describe('CSV Export API', () => {
             or: jest.fn().mockReturnThis(),
             range: jest.fn(),
         };
-        (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
     it('should generate CSV with correct headers and data', async () => {
@@ -90,12 +87,12 @@ describe('CSV Export API', () => {
         mockSupabase.range.mockResolvedValueOnce({ data: mockData, error: null });
         mockSupabase.range.mockResolvedValueOnce({ data: [], error: null });
 
-        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=finalized');
+        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=staging');
         const res = await GET(req);
 
         expect(res.status).toBe(200);
-        expect(res.headers.get('Content-Type')).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        expect(res.headers.get('Content-Disposition')).toContain('products-export.xlsx');
+        expect(res.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
+        expect(res.headers.get('Content-Disposition')).toContain('attachment; filename="pipeline-export-staging');
 
         // Read stream
         const reader = res.body?.getReader();
@@ -110,15 +107,18 @@ describe('CSV Export API', () => {
             }
         }
 
-        expect(csv.length).toBeGreaterThan(0);
+        // Verify CSV content
+        const lines = csv.trim().split('\n');
+        expect(lines[0]).toBe('sku,name,price,status,confidence_score,updated_at');
+        expect(lines[1]).toContain('"SKU-123","Consolidated Name",12.99,staging,0.95,2023-01-01T00:00:00Z');
     });
 
     it('should respect search filter', async () => {
         mockSupabase.range.mockResolvedValue({ data: [], error: null });
 
-        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=finalized&search=test');
-        const res = await GET(req);
+        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=staging&search=test');
+        await GET(req);
 
-        expect(res.status).toBe(200);
+        expect(mockSupabase.or).toHaveBeenCalledWith(expect.stringContaining('test'));
     });
 });

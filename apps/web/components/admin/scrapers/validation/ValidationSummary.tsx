@@ -2,7 +2,6 @@
 'use client';
 
 import { useFormContext } from 'react-hook-form';
-import type { FieldErrors } from 'react-hook-form';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -14,19 +13,19 @@ export function ValidationSummary() {
   }
 
   // Helper to flatten nested errors for summary
-  const getErrorMessages = (obj: FieldErrors, prefix = ''): string[] => {
+  const getErrorMessages = (obj: any, prefix = ''): string[] => {
     let messages: string[] = [];
     
-    for (const [key, value] of Object.entries(obj)) {
-      if (value?.message) {
+    for (const key in obj) {
+      if (obj[key]?.message) {
         // It's an error object
         const label = prefix ? `${prefix}.${key}` : key;
-        messages.push(`${label}: ${String(value.message)}`);
-      } else if (typeof value === 'object' && value !== null) {
+        messages.push(`${label}: ${obj[key].message}`);
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
         // It's a nested object (e.g. array field error)
         // Skip array-like objects that are actually errors (like ref)
-        if (!('ref' in value)) {
-           messages = [...messages, ...getErrorMessages(value as FieldErrors, prefix ? `${prefix}.${key}` : key)];
+        if (!obj[key].ref) {
+           messages = [...messages, ...getErrorMessages(obj[key], prefix ? `${prefix}.${key}` : key)];
         }
       }
     }

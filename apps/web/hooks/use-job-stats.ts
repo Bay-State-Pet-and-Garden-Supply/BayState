@@ -80,9 +80,9 @@ export function useJobStats() {
         itemsPerMin: Math.round(itemsPerMin * 10) / 10, // Round to 1 decimal
         activeJobs,
       });
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('Error fetching job stats:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch job stats');
+      setError(err.message || 'Failed to fetch job stats');
     } finally {
       setLoading(false);
     }

@@ -1,11 +1,11 @@
-import type { TransitionalPipelineStatus } from '@/lib/pipeline';
+import { PipelineStatus } from '@/lib/pipeline';
 
 export interface UndoAction {
     id: string;
     type: 'status_change';
     skus: string[];
-    fromStatus: TransitionalPipelineStatus;
-    toStatus: TransitionalPipelineStatus;
+    fromStatus: PipelineStatus;
+    toStatus: PipelineStatus;
     timestamp: number;
     revert: () => Promise<void>;
 }

@@ -632,13 +632,7 @@ export function PipelineClient({
                     selectedCount={selectedSkus.size}
                     currentStatus={activeTab as PipelineStatus}
                     searchQuery={search}
-                    onAction={(action) => {
-                        if (action === 'moveToEnriched' || action === 'moveToFinalized') {
-                            return;
-                        }
-
-                        void handleBulkAction(action);
-                    }}
+                    onAction={handleBulkAction}
                     onConsolidate={handleConsolidate}
                     isConsolidating={isConsolidating}
                     onClearSelection={() => setSelectedSkus(new Set())}

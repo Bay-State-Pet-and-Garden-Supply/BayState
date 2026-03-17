@@ -21,13 +21,6 @@ import {
 } from '@/components/admin/data-table';
 import type { ScraperEvent, EventSeverity } from '@/types/scraper';
 
-type EventTableRow = ScraperEvent & { id: string };
-
-function getEventString(data: Record<string, unknown>, key: string): string | null {
-  const value = data[key];
-  return typeof value === 'string' ? value : null;
-}
-
 interface EventLogViewerProps {
   jobId: string;
   className?: string;
@@ -100,7 +93,7 @@ export function EventLogViewer({ jobId, className }: EventLogViewerProps) {
           setEvents((prev) => [...prev, newEvent]);
 
           // Update available runners if new one appears
-          const runnerName = getEventString(newEvent.data, 'runner_name');
+          const runnerName = newEvent.data?.runner_name;
           if (runnerName && !availableRunners.includes(runnerName)) {
             setAvailableRunners((prev) => [...prev, runnerName].sort());
           }
@@ -116,7 +109,7 @@ export function EventLogViewer({ jobId, className }: EventLogViewerProps) {
   }, [jobId, supabase]);
 
   // Filter events based on user selections
-  const filteredEvents = useMemo<EventTableRow[]>(() => {
+  const filteredEvents = useMemo(() => {
     let result = events;
 
     // Filter by errors only
@@ -129,18 +122,15 @@ export function EventLogViewer({ jobId, className }: EventLogViewerProps) {
     // Filter by runner
     if (runnerFilter && runnerFilter !== 'all') {
       result = result.filter(
-        (event) => getEventString(event.data, 'runner_name') === runnerFilter
+        (event) => event.data?.runner_name === runnerFilter
       );
     }
 
-    return result.map((event) => ({
-      ...event,
-      id: event.event_id,
-    }));
+    return result;
   }, [events, showErrorsOnly, runnerFilter]);
 
   // Define columns for the data table
-  const columns: Column<EventTableRow>[] = useMemo(
+  const columns: Column<ScraperEvent>[] = useMemo(
     () => [
       {
         key: 'timestamp',
@@ -175,7 +165,7 @@ export function EventLogViewer({ jobId, className }: EventLogViewerProps) {
         sortable: true,
         className: 'w-[150px]',
         render: (_value, row) => {
-          const runnerName = getEventString(row.data, 'runner_name') || getEventString(row.data, 'source') || '-';
+          const runnerName = row.data?.runner_name || row.data?.source || '-';
           return (
             <span className="font-mono text-xs text-muted-foreground">
               {runnerName}
@@ -193,27 +183,22 @@ export function EventLogViewer({ jobId, className }: EventLogViewerProps) {
           
           // Build a descriptive message
           let message = eventType;
-          const sku = getEventString(extraData, 'sku');
-          const url = getEventString(extraData, 'url');
-          const error = getEventString(extraData, 'error');
-          const details = getEventString(extraData, 'message');
-
-          if (sku) {
-            message += ` - SKU: ${sku}`;
+          if (extraData?.sku) {
+            message += ` - SKU: ${extraData.sku}`;
           }
-          if (url) {
-            message += ` - ${url}`;
+          if (extraData?.url) {
+            message += ` - ${extraData.url}`;
           }
-          if (error) {
-            message += ` - ${error}`;
+          if (extraData?.error) {
+            message += ` - ${extraData.error}`;
           }
 
           return (
             <div className="flex flex-col gap-1">
               <span className="text-sm">{message}</span>
-              {details && (
+              {extraData?.message && (
                 <span className="text-xs text-muted-foreground">
-                  {details}
+                  {extraData.message}
                 </span>
               )}
             </div>
@@ -321,8 +306,8 @@ export function EventLogViewer({ jobId, className }: EventLogViewerProps) {
       </CardHeader>
       <CardContent className="p-0">
         <DataTable
-          data={filteredEvents}
-          columns={columns}
+          data={filteredEvents as any}
+          columns={columns as any}
           pageSize={20}
           pageSizeOptions={[10, 20, 50, 100]}
           loading={false}

@@ -99,9 +99,9 @@ describe('Pipeline Accessibility', () => {
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs).toHaveLength(10);
-      expect(screen.getByRole('tab', { name: /Staging/i })).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByRole('tab', { name: /Scraped/i })).toHaveAttribute('aria-selected', 'false');
+      expect(tabs).toHaveLength(5);
+      expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+      expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
     });
   });
 

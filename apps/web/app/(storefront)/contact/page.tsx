@@ -133,7 +133,7 @@ export default async function ContactPage() {
                 <CardContent className="pt-6">
                     <p className="text-center text-zinc-700">
                         Have a question about a product or service? Give us a call or stop by -
-                        we&apos;re always happy to help!
+                        we're always happy to help!
                     </p>
                 </CardContent>
             </Card>

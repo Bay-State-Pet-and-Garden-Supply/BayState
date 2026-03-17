@@ -55,13 +55,13 @@ export default async function AboutPage() {
                     </CardHeader>
                     <CardContent className="prose prose-gray dark:prose-invert">
                         <p>
-                            We&apos;re proud to be a family-owned business. Our team knows the products
+                            We're proud to be a family-owned business. Our team knows the products
                             we sell because we use them ourselves - on our own farms, in our own gardens,
                             and with our own pets.
                         </p>
                         <p>
-                            When you shop with us, you&apos;re not just a customer - you&apos;re a neighbor.
-                            We&apos;re here to help you find exactly what you need, whether it&apos;s the
+                            When you shop with us, you're not just a customer - you're a neighbor.
+                            We're here to help you find exactly what you need, whether it's the
                             right feed for your chickens or the perfect toy for your dog.
                         </p>
                     </CardContent>

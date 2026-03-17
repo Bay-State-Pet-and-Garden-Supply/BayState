@@ -71,7 +71,10 @@ describe('consolidation batch service', () => {
     });
 
     it('applyConsolidationResults merges existing consolidated data and resolves brand ids', async () => {
-        const productsIngestionUpsert = jest.fn().mockResolvedValue({ error: null });
+        const productsIngestionEq = jest.fn().mockResolvedValue({ error: null });
+        const productsIngestionUpdate = jest.fn(() => ({
+            eq: productsIngestionEq,
+        }));
 
         const productsIngestionSelect = {
             in: jest.fn().mockResolvedValue({
@@ -98,7 +101,7 @@ describe('consolidation batch service', () => {
                 if (table === 'products_ingestion') {
                     return {
                         select: jest.fn(() => productsIngestionSelect),
-                        upsert: productsIngestionUpsert,
+                        update: productsIngestionUpdate,
                     };
                 }
 
@@ -128,21 +131,19 @@ describe('consolidation batch service', () => {
         ]);
 
         expect('status' in response && response.status === 'applied').toBe(true);
-        expect(productsIngestionUpsert).toHaveBeenCalledWith(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    pipeline_status: 'consolidated',
-                    confidence_score: 0.94,
-                    error_message: null,
-                    consolidated: expect.objectContaining({
-                        brand_id: 'brand-uuid-1',
-                        brand: 'KONG',
-                        images: ['https://cdn.example.com/existing.jpg'],
-                        stock_status: 'in_stock',
-                    }),
+        expect(productsIngestionUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pipeline_status: 'consolidated',
+                confidence_score: 0.94,
+                error_message: null,
+                consolidated: expect.objectContaining({
+                    brand_id: 'brand-uuid-1',
+                    brand: 'KONG',
+                    images: ['https://cdn.example.com/existing.jpg'],
+                    stock_status: 'in_stock',
                 }),
-            ]),
-            { onConflict: 'sku' }
+            })
         );
+        expect(productsIngestionEq).toHaveBeenCalledWith('sku', 'SKU-1');
     });
 });

@@ -23,13 +23,13 @@ export function TestingTab() {
   // Test SKUs array
   const testSkus = useFieldArray({
     control,
-    name: 'test_skus' as never,
+    name: 'test_skus' as any, // Type cast needed for simple array of strings
   });
 
   // Fake SKUs array
   const fakeSkus = useFieldArray({
     control,
-    name: 'fake_skus' as never,
+    name: 'fake_skus' as any,
   });
 
   return (
@@ -43,7 +43,7 @@ export function TestingTab() {
               SKUs expected to exist and return valid data. Used for health checks.
             </CardDescription>
           </div>
-          <Button onClick={() => testSkus.append('' as never)} size="sm">
+          <Button onClick={() => testSkus.append('')} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             Add SKU
           </Button>
@@ -86,10 +86,10 @@ export function TestingTab() {
           <div>
             <CardTitle>Fake SKUs (Known Bad)</CardTitle>
             <CardDescription>
-              SKUs expected to return &quot;Not Found&quot;. Used to verify no-results detection.
+              SKUs expected to return "Not Found". Used to verify no-results detection.
             </CardDescription>
           </div>
-          <Button onClick={() => fakeSkus.append('' as never)} size="sm">
+          <Button onClick={() => fakeSkus.append('')} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             Add SKU
           </Button>

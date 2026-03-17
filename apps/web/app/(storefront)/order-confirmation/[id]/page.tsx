@@ -176,7 +176,7 @@ export default async function OrderConfirmationPage({
                   </div>
                 </div>
                 <p className="text-sm text-zinc-700">
-                  We&apos;ll email you when your order is ready for pickup.
+                  We'll email you when your order is ready for pickup.
                 </p>
               </div>
             )}
@@ -187,7 +187,7 @@ export default async function OrderConfirmationPage({
         <Card className="mb-8 text-left">
           <CardContent className="p-6">
             <h2 className="mb-4 text-lg font-semibold text-zinc-900">
-              What&apos;s Next?
+              What's Next?
             </h2>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
@@ -195,7 +195,7 @@ export default async function OrderConfirmationPage({
                 <div>
                   <p className="font-medium text-zinc-900">Confirmation Email</p>
                   <p className="text-sm text-zinc-700">
-                    We&apos;ve sent a confirmation to {order.customer_email}
+                    We've sent a confirmation to {order.customer_email}
                   </p>
                 </div>
               </li>

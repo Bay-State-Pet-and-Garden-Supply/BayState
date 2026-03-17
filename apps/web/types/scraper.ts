@@ -163,7 +163,7 @@ export interface ScraperRunner {
   last_seen_at: string;
   status: 'online' | 'offline' | 'busy';
   current_job_id: string | null;
-  metadata: Record<string, unknown> | null;
+  metadata: Record<string, any> | null;
   created_at: string;
 }
 
@@ -173,13 +173,13 @@ export interface ScraperEvent {
   job_id: string;
   event_id: string;
   severity: EventSeverity;
-  data: Record<string, unknown>;
+  data: Record<string, any>;
 }
 
 export interface ScrapeResult {
   id: string;
   job_id: string;
-  data: unknown;
+  data: any;
   runner_name: string;
   created_at: string;
 }

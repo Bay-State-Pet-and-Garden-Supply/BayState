@@ -8,12 +8,6 @@ import { actionCategories, actionDefinitions } from '@/lib/admin/scrapers/action
 import { Search, Plus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-declare global {
-  interface Window {
-    __addWorkflowStep?: (actionType: string) => void;
-  }
-}
-
 interface ActionPaletteProps {
   isReadOnly?: boolean;
 }
@@ -24,8 +18,8 @@ export function ActionPalette({ isReadOnly = false }: ActionPaletteProps) {
   const handleAddAction = (actionType: string) => {
     // We attached this to window in WorkflowStepEditor. 
     // This is a temporary hack to communicate between sibling components without context.
-    if (typeof window !== 'undefined' && window.__addWorkflowStep) {
-      window.__addWorkflowStep(actionType);
+    if (typeof window !== 'undefined' && (window as any).__addWorkflowStep) {
+      (window as any).__addWorkflowStep(actionType);
     }
   };
 

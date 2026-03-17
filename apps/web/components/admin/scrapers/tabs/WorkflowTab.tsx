@@ -64,7 +64,7 @@ export function WorkflowTab() {
         <CardContent>
           {fields.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-              No workflow steps defined. Click &quot;Add Step&quot; to start.
+              No workflow steps defined. Click "Add Step" to start.
             </div>
           ) : (
             <Accordion type="multiple" className="w-full space-y-4">

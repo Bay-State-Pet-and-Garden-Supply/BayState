@@ -214,7 +214,7 @@ export function Crawl4AIDashboard({ days = 30 }: Crawl4AIDashboardProps) {
                       cx="50%"
                       cy="50%"
                       outerRadius={70}
-                      label={({ name, percent }: { name?: string; percent?: number }) => `${name || ''} ${((percent || 0) * 100).toFixed(0)}%`}
+                      label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                       labelLine={false}
                     >
                       {pieData.map((entry, index) => (

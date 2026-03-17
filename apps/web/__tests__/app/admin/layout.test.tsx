@@ -6,8 +6,9 @@ describe('Admin Layout', () => {
   it('renders side navigation with links for admin role', () => {
     render(<AdminSidebar userRole="admin" />);
 
-    const overviewLinks = screen.getAllByRole('link', { name: 'Overview' });
-    expect(overviewLinks).toHaveLength(2);
+    // Check for key navigation items (using exact text to avoid collisions)
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New Products' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Scrapers' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Network' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Data Migration' })).toBeInTheDocument();
@@ -17,6 +18,7 @@ describe('Admin Layout', () => {
   it('hides admin-only links for staff role', () => {
     render(<AdminSidebar userRole="staff" />);
 
+    // Staff should only see Overview (non-admin-only item)
     expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
 
     // Staff should NOT see admin-only items

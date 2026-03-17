@@ -50,7 +50,7 @@ function normalizeRole(value: unknown): AppRole | null {
 }
 
 export async function updateSession(request: NextRequest) {
-  const response = NextResponse.next({
+  let response = NextResponse.next({
     request: {
       headers: request.headers,
     },

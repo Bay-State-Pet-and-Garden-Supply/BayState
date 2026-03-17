@@ -1,24 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { Package, Search, RefreshCw, Filter, Upload, Download, Plus, LayoutDashboard, Clock, Server, Activity } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, Search, RefreshCw, Filter, Upload, Download, Plus } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { PipelineProductDetail } from './PipelineProductDetail';
 import { BatchEnhanceDialog } from './BatchEnhanceDialog';
 import { ManualAddProductDialog } from './ManualAddProductDialog';
 import { UndoToast } from './UndoToast';
-import { HealthOverview } from './HealthOverview';
-import { TimelineView } from './TimelineView';
-import { RunnerHealthCard } from './RunnerHealthCard';
-import { MonitoringClient } from './MonitoringClient';
-import { AlertBanner } from './AlertBanner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -35,10 +27,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
-import { useRealtimeJobs } from '@/hooks/useRealtimeJobs';
 import { undoQueue } from '@/lib/pipeline/undo';
-import { cn } from '@/lib/utils';
-import type { PipelineProduct, PipelineStatus, StatusCount, NewPipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 
 const statusLabels: Record<PipelineStatus, string> = {
@@ -48,12 +38,6 @@ const statusLabels: Record<PipelineStatus, string> = {
   approved: 'Verified',
   published: 'Live',
   failed: 'Failed',
-};
-
-const newStatusLabels: Record<NewPipelineStatus, string> = {
-  registered: 'Registered',
-  enriched: 'Enriched',
-  finalized: 'Finalized',
 };
 
 interface UnifiedPipelineClientProps {
@@ -68,7 +52,7 @@ export function UnifiedPipelineClient({
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<NewPipelineStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<PipelineStatus | 'all'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
@@ -84,144 +68,41 @@ export function UnifiedPipelineClient({
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportStatus, setExportStatus] = useState<NewPipelineStatus>('registered');
+  const [exportStatus, setExportStatus] = useState<PipelineStatus>('staging');
   const [exportSearch, setExportSearch] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<PipelineFiltersState>({});
-  const [activeTab, setActiveTab] = useState<string>('products');
-  const [errors, setErrors] = useState<Array<{
-    id: string;
-    jobId: string;
-    message: string;
-    timestamp: Date;
-  }>>([]);
-  const [runnerFilter, setRunnerFilter] = useState<'all' | 'online' | 'busy' | 'offline'>('all');
-  const [selectedRunners, setSelectedRunners] = useState<Set<string>>(new Set());
-  const lastToastedJobRef = useRef<string | null>(null);
-  const lastRefreshedJobRef = useRef<string | null>(null);
 
-  const { jobs, connectionStatus, lastUpdate } = useRealtimeJobs({
-    autoConnect: true,
-    pollingFallback: true,
-  });
+  // Refresh products when status filter changes
+  useEffect(() => {
+    void handleRefresh();
+  }, [statusFilter]);
 
-  const totalProducts = counts.reduce((sum, c) => sum + c.count, 0);
-
-  // Mock data for Timeline tab
-  const mockJobs = [
-    {
-      id: '1',
-      name: 'Product Enrichment Batch',
-      startTime: new Date(Date.now() - 3600000),
-      endTime: new Date(Date.now() - 1800000),
-      status: 'completed' as const,
-      runner: 'runner-01',
-    },
-    {
-      id: '2',
-      name: 'Image Scraping Job',
-      startTime: new Date(Date.now() - 7200000),
-      status: 'running' as const,
-      runner: 'runner-02',
-    },
-    {
-      id: '3',
-      name: 'Price Update Job',
-      startTime: new Date(Date.now() - 14400000),
-      endTime: new Date(Date.now() - 10800000),
-      status: 'failed' as const,
-      runner: 'runner-01',
-    },
-    {
-      id: '4',
-      name: 'Inventory Sync',
-      startTime: new Date(Date.now() - 21600000),
-      endTime: new Date(Date.now() - 18000000),
-      status: 'completed' as const,
-      runner: 'runner-03',
-    },
-  ];
-
-  // Mock data for Runners tab
-  const mockRunners: Array<{
-    id: string;
-    name: string;
-    status: 'online' | 'busy' | 'idle' | 'offline';
-    activeJobs: number;
-    lastSeen: Date;
-    cpuUsage?: number;
-    memoryUsage?: number;
-    currentJob?: {
-      id: string;
-      name: string;
-      progress: number;
-    };
-  }> = [
-    {
-      id: 'runner-01',
-      name: 'Production Runner 1',
-      status: 'online' as const,
-      activeJobs: 0,
-      lastSeen: new Date(),
-      cpuUsage: 45,
-      memoryUsage: 62,
-    },
-    {
-      id: 'runner-02',
-      name: 'Production Runner 2',
-      status: 'busy' as const,
-      activeJobs: 3,
-      lastSeen: new Date(),
-      cpuUsage: 78,
-      memoryUsage: 85,
-      currentJob: {
-        id: 'job-123',
-        name: 'Image Scraping Job',
-        progress: 65,
-      },
-    },
-    {
-      id: 'runner-03',
-      name: 'Staging Runner',
-      status: 'idle' as const,
-      activeJobs: 0,
-      lastSeen: new Date(Date.now() - 300000),
-      cpuUsage: 12,
-      memoryUsage: 34,
-    },
-  ];
-
-  // Mock health metrics for Overview tab
-  const healthMetrics = {
-    totalProducts,
-    runningJobs: mockJobs.filter(j => j.status === 'running').length,
-    failed24h: mockJobs.filter(j => j.status === 'failed').length,
-    activeRunners: mockRunners.length,
-    queueDepth: 12,
-    successRate: 94.5,
-  };
-
-  const getCount = (status: NewPipelineStatus): number => {
+  const getCount = (status: PipelineStatus): number => {
     const found = counts.find(c => c.status === status);
     return found ? found.count : 0;
   };
 
-  const newPipelineStages: Array<{ status: NewPipelineStatus; color: string; label: string }> = [
-    { status: 'registered', color: 'bg-orange-500', label: 'Registered' },
-    { status: 'enriched', color: 'bg-blue-500', label: 'Enriched' },
-    { status: 'finalized', color: 'bg-green-500', label: 'Finalized' },
+  const totalProducts = counts.reduce((sum, c) => sum + c.count, 0);
+
+  const pipelineStages: Array<{ status: PipelineStatus; color: string }> = [
+    { status: 'staging', color: 'bg-orange-500' },
+    { status: 'scraped', color: 'bg-blue-500' },
+    { status: 'consolidated', color: 'bg-purple-500' },
+    { status: 'approved', color: 'bg-green-500' },
+    { status: 'published', color: 'bg-emerald-600' },
   ];
 
-  const getRequestStatus = (): NewPipelineStatus | null => {
+  const getRequestStatus = (): PipelineStatus | null => {
     return statusFilter === 'all' ? null : statusFilter;
   };
 
-  const handleRefresh = useCallback(async (showSuccessToast = false) => {
+  const handleRefresh = async (showSuccessToast = false) => {
     setIsRefreshing(true);
 
     try {
       const params = new URLSearchParams();
-      const requestStatus = statusFilter === 'all' ? null : statusFilter;
+      const requestStatus = getRequestStatus();
       if (requestStatus) {
         params.set('status', requestStatus);
       }
@@ -253,73 +134,7 @@ export function UnifiedPipelineClient({
     } finally {
       setIsRefreshing(false);
     }
-  }, [searchQuery, statusFilter]);
-
-  // Refresh products when status filter changes
-  useEffect(() => {
-    void handleRefresh();
-  }, [statusFilter, handleRefresh]);
-
-  useEffect(() => {
-    if (jobs.length === 0) {
-      return;
-    }
-
-    const latestJob = jobs[jobs.length - 1];
-    const toastKey = `${latestJob.jobId}:${latestJob.status}`;
-
-    if (lastToastedJobRef.current === toastKey) {
-      return;
-    }
-
-    if (latestJob.status === 'completed') {
-      lastToastedJobRef.current = toastKey;
-      toast.success(`Job ${latestJob.jobId} completed`, {
-        action: {
-          label: 'Refresh',
-          onClick: () => {
-            void handleRefresh(true);
-          },
-        },
-      });
-      return;
-    }
-
-    if (latestJob.status === 'failed') {
-      lastToastedJobRef.current = toastKey;
-      setErrors(prev => [...prev, {
-        id: `${latestJob.jobId}:${Date.now()}`,
-        jobId: latestJob.jobId,
-        message: `Job ${latestJob.jobId} failed`,
-        timestamp: new Date(),
-      }]);
-      toast.error(`Job ${latestJob.jobId} failed`);
-    }
-  }, [jobs, handleRefresh]);
-
-  useEffect(() => {
-    if (!lastUpdate || jobs.length === 0) {
-      return;
-    }
-
-    const latestJob = jobs[jobs.length - 1];
-    if (latestJob.status !== 'completed') {
-      return;
-    }
-
-    const timeSinceUpdate = Date.now() - lastUpdate.getTime();
-    if (timeSinceUpdate >= 5000) {
-      return;
-    }
-
-    const refreshKey = `${latestJob.jobId}:${latestJob.status}`;
-    if (lastRefreshedJobRef.current === refreshKey) {
-      return;
-    }
-
-    lastRefreshedJobRef.current = refreshKey;
-    void handleRefresh();
-  }, [jobs, lastUpdate, handleRefresh]);
+  };
 
   const handleSelect = (sku: string, index: number, isShiftClick: boolean) => {
     setSelectedProducts(prev => {
@@ -429,15 +244,17 @@ export function UnifiedPipelineClient({
     }
   };
 
-  const handleBulkAction = async (action: 'moveToEnriched' | 'moveToFinalized' | 'delete') => {
+  const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
     if (selectedProducts.size === 0) return;
 
     const selectedSkus = Array.from(selectedProducts);
     const selectedCount = selectedSkus.length;
-    const currentStatus = getRequestStatus() || 'registered';
-    const actionLabels: Record<'moveToEnriched' | 'moveToFinalized' | 'delete', string> = {
-      moveToEnriched: 'Moved to Enriched',
-      moveToFinalized: 'Moved to Finalized',
+    const currentStatus = getRequestStatus() || 'staging';
+    const actionLabels: Record<'approve' | 'publish' | 'reject' | 'consolidate' | 'delete', string> = {
+      approve: 'Approved',
+      publish: 'Published',
+      reject: 'Rejected',
+      consolidate: 'Consolidated',
       delete: 'Deleted',
     };
 
@@ -463,13 +280,42 @@ export function UnifiedPipelineClient({
         return;
       }
 
-      // Map actions to new status values
-      const newStatusMap: Record<'moveToEnriched' | 'moveToFinalized', NewPipelineStatus> = {
-        moveToEnriched: 'enriched',
-        moveToFinalized: 'finalized',
+      const statusMap: Record<'approve' | 'publish' | 'reject' | 'consolidate', Record<PipelineStatus, PipelineStatus>> = {
+        approve: {
+          staging: 'staging',
+          scraped: 'scraped',
+          consolidated: 'approved',
+          approved: 'approved',
+          published: 'published',
+          failed: 'failed',
+        },
+        publish: {
+          staging: 'staging',
+          scraped: 'scraped',
+          consolidated: 'consolidated',
+          approved: 'published',
+          published: 'published',
+          failed: 'failed',
+        },
+        reject: {
+          staging: 'staging',
+          scraped: 'staging',
+          consolidated: 'staging',
+          approved: 'consolidated',
+          published: 'approved',
+          failed: 'failed',
+        },
+        consolidate: {
+          staging: 'consolidated',
+          scraped: 'consolidated',
+          consolidated: 'consolidated',
+          approved: 'approved',
+          published: 'published',
+          failed: 'failed',
+        },
       };
 
-      const newStatus = newStatusMap[action];
+      const newStatus = statusMap[action][currentStatus];
       const res = await fetch('/api/admin/pipeline/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -481,7 +327,7 @@ export function UnifiedPipelineClient({
 
       if (!res.ok) {
         const error = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(error?.error || `Failed to ${action}`);
+        toast.error(error?.error || `Failed to ${action} products`);
         return;
       }
 
@@ -515,7 +361,7 @@ export function UnifiedPipelineClient({
           <UndoToast
             id={toastId}
             count={selectedCount}
-            toStatus={newStatusLabels[newStatus]}
+            toStatus={statusLabels[newStatus]}
             onUndo={revert}
           />
         ), { duration: 30000 });
@@ -527,7 +373,7 @@ export function UnifiedPipelineClient({
       await handleRefresh();
     } catch (error) {
       console.error('Bulk action failed:', error);
-      toast.error(`Failed to ${action}`);
+      toast.error(`Failed to ${action} products`);
     } finally {
       setIsBulkActionPending(false);
     }
@@ -642,17 +488,10 @@ export function UnifiedPipelineClient({
     setShowBatchEnhanceDialog(true);
   };
 
-  const router = useRouter();
-
-  const handleImageSelection = (sku: string) => {
-    // Navigate to the image selection page
-    router.push(`/admin/pipeline/image-selection?sku=${sku}`);
-  };
-
   const openExportDialog = () => {
-    // If getRequestStatus() returns null (meaning 'all'), fall back to 'registered'
-    // so export dialog always has a valid NewPipelineStatus selected.
-    setExportStatus(getRequestStatus() ?? 'registered');
+    // If getRequestStatus() returns null (meaning 'all'), fall back to 'staging'
+    // so export dialog always has a valid PipelineStatus selected.
+    setExportStatus(getRequestStatus() ?? 'staging');
     setExportSearch(searchQuery);
     setShowExportDialog(true);
   };
@@ -703,24 +542,9 @@ export function UnifiedPipelineClient({
           <Package className="h-8 w-8 text-[#008850]" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">New Product Pipeline</h1>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-gray-600">
-                Manage products from import to publication
-              </p>
-              <div className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    'h-2 w-2 rounded-full',
-                    connectionStatus === 'connected' && 'bg-green-500',
-                    connectionStatus === 'connecting' && 'bg-yellow-500 animate-pulse',
-                    connectionStatus === 'disconnected' && 'bg-red-500'
-                  )}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {connectionStatus === 'connected' ? 'Live' : connectionStatus}
-                </span>
-              </div>
-            </div>
+            <p className="text-gray-600">
+              Manage products from import to publication
+            </p>
           </div>
         </div>
 
@@ -747,87 +571,17 @@ export function UnifiedPipelineClient({
           </Button>
         </div>
       </div>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-[500px]">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <LayoutDashboard className="h-4 w-4" />
-            <span className="hidden sm:inline">Overview</span>
-          </TabsTrigger>
-          <TabsTrigger value="products" className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            <span className="hidden sm:inline">Products</span>
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span className="hidden sm:inline">Timeline</span>
-          </TabsTrigger>
-          <TabsTrigger value="runners" className="flex items-center gap-2">
-            <Server className="h-4 w-4" />
-            <span className="hidden sm:inline">Runners</span>
-          </TabsTrigger>
-          <TabsTrigger value="monitoring" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">Monitoring</span>
-          </TabsTrigger>
-        </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <HealthOverview
-            metrics={{
-              totalProducts,
-              runningJobs: jobs.filter(j => j.status === 'running').length,
-              failed24h: jobs.filter(j => j.status === 'failed').length,
-              activeRunners: 3,
-              queueDepth: products.length,
-              successRate: 95,
-            }}
-            trends={{
-              totalProducts: 10,
-              runningJobs: -5,
-              failed24h: 20,
-              activeRunners: 0,
-              queueDepth: -15,
-              successRate: 2,
-            }}
-          />
-          
-          {errors.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Recent Errors</h3>
-                <Button variant="ghost" size="sm" onClick={() => setErrors([])}>
-                  Clear All
-                </Button>
-              </div>
-              {errors.map((error) => (
-                <AlertBanner
-                  key={error.id}
-                  severity="error"
-                  title={`Job ${error.jobId} Failed`}
-                  message={error.message}
-                  actions={[
-                    { label: 'Retry', onClick: () => console.log('Retry', error.jobId) },
-                    { label: 'View Logs', onClick: () => console.log('View logs', error.jobId) },
-                  ]}
-                  onDismiss={() => setErrors(prev => prev.filter(e => e.id !== error.id))}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="products" className="space-y-6">
-          {/* Products content */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {newPipelineStages.map(({ status, color, label }) => (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {pipelineStages.map(({ status, color }) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`text-left rounded-lg border p-4 transition-colors ${statusFilter === status ? 'border-[#008850] bg-[#008850]/5 ring-1 ring-[#008850]' : 'bg-white hover:bg-gray-50'}`}
+            className="text-left rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <div className={`h-3 w-3 rounded-full ${color}`} />
-              <span className="text-sm text-gray-600">{label}</span>
+              <span className="text-sm text-gray-600">{statusLabels[status]}</span>
             </div>
             <p className="mt-2 text-3xl font-bold text-gray-900">
               {getCount(status)}
@@ -850,16 +604,19 @@ export function UnifiedPipelineClient({
 
         <Select
           value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value as NewPipelineStatus | 'all')}
+          onValueChange={(value) => setStatusFilter(value as PipelineStatus | 'all')}
         >
           <SelectTrigger className="min-w-[180px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent align="end">
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="registered">{newStatusLabels.registered}</SelectItem>
-            <SelectItem value="enriched">{newStatusLabels.enriched}</SelectItem>
-            <SelectItem value="finalized">{newStatusLabels.finalized}</SelectItem>
+            <SelectItem value="staging">{statusLabels.staging}</SelectItem>
+            <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
+            <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
+            <SelectItem value="approved">{statusLabels.approved}</SelectItem>
+            <SelectItem value="published">{statusLabels.published}</SelectItem>
+            <SelectItem value="failed">{statusLabels.failed}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -909,21 +666,19 @@ export function UnifiedPipelineClient({
       {selectedProducts.size > 0 && (
         <BulkActionsToolbar
           selectedCount={selectedProducts.size}
-          currentStatus={getRequestStatus() || 'registered'}
+          currentStatus={getRequestStatus() || 'staging'}
           searchQuery={searchQuery}
-          onAction={(action) => {
-            if (action === 'approve' || action === 'publish' || action === 'reject' || action === 'consolidate') {
-              return;
-            }
-
-            void handleBulkAction(action);
-          }}
-          onMoveToEnriched={() => void handleBulkAction('moveToEnriched')}
-          isMovingToEnriched={isBulkActionPending}
+          onAction={(action) => void handleBulkAction(action)}
+          onConsolidate={() => void handleBulkAction('consolidate')}
+          isConsolidating={isBulkActionPending}
+          onBulkEnrich={handleBulkEnrich}
+          isBulkEnriching={isBulkEnriching}
           onClearSelection={() => {
             setSelectedProducts(new Set());
             setIsSelectingAllMatching(false);
           }}
+          onClearScrapeResults={() => void handleClearScrapeResults()}
+          isClearingScrapeResults={isClearingScrapeResults}
         />
       )}
 
@@ -948,149 +703,13 @@ export function UnifiedPipelineClient({
               onSelect={handleSelect}
               onView={handleView}
               onEnrich={handleEnrich}
-              onImageSelection={handleImageSelection}
-              showEnrichButton={product.pipeline_status === 'staging' || product.pipeline_status_new === 'registered'}
-              showImageSelectionButton={product.pipeline_status_new === 'enriched'}
+              showEnrichButton={product.pipeline_status === 'staging'}
               showBatchSelect
-              currentStage={product.pipeline_status_new || product.pipeline_status}
+              currentStage={product.pipeline_status}
             />
           ))}
         </div>
       )}
-        </TabsContent>
-
-        <TabsContent value="timeline" className="space-y-6">
-          <TimelineView
-            jobs={mockJobs}
-            timeRange="24h"
-            onJobClick={(job) => console.log('Clicked job:', job)}
-            onTimeRangeChange={(range) => console.log('Time range:', range)}
-          />
-        </TabsContent>
-
-        <TabsContent value="runners" className="space-y-6">
-          {/* Runner Statistics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{mockRunners.length}</div>
-                <p className="text-xs text-muted-foreground">Total Runners</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-green-600">
-                  {mockRunners.filter(r => r.status === 'online').length}
-                </div>
-                <p className="text-xs text-muted-foreground">Online</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {mockRunners.filter(r => r.status === 'busy').length}
-                </div>
-                <p className="text-xs text-muted-foreground">Busy</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-red-600">
-                  {mockRunners.filter(r => r.status === 'offline').length}
-                </div>
-                <p className="text-xs text-muted-foreground">Offline</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filter Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={runnerFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('all')}
-            >
-              All
-            </Button>
-            <Button
-              variant={runnerFilter === 'online' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('online')}
-            >
-              Online
-            </Button>
-            <Button
-              variant={runnerFilter === 'busy' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('busy')}
-            >
-              Busy
-            </Button>
-            <Button
-              variant={runnerFilter === 'offline' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('offline')}
-            >
-              Offline
-            </Button>
-          </div>
-
-          {/* Bulk Actions */}
-          {selectedRunners.size > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm">
-                Pause Selected ({selectedRunners.size})
-              </Button>
-              <Button variant="outline" size="sm">
-                Resume Selected ({selectedRunners.size})
-              </Button>
-              <Button variant="outline" size="sm">
-                Restart Selected ({selectedRunners.size})
-              </Button>
-            </div>
-          )}
-
-          {/* Runner Cards Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mockRunners
-              .filter(runner => runnerFilter === 'all' || runner.status === runnerFilter)
-              .map((runner) => (
-                <div
-                  key={runner.id}
-                  className="relative"
-                  onClick={() => {
-                    setSelectedRunners(prev => {
-                      const newSet = new Set(prev);
-                      if (newSet.has(runner.id)) {
-                        newSet.delete(runner.id);
-                      } else {
-                        newSet.add(runner.id);
-                      }
-                      return newSet;
-                    });
-                  }}
-                >
-                  {selectedRunners.has(runner.id) && (
-                    <div className="absolute left-2 top-2 z-10 h-5 w-5 rounded-full bg-[#008850] flex items-center justify-center">
-                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  )}
-                  <RunnerHealthCard
-                    runner={runner}
-                    showDetails={true}
-                    onClick={(r) => console.log('Clicked runner:', r)}
-                  />
-                </div>
-              ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="monitoring" className="space-y-6">
-          <MonitoringClient />
-        </TabsContent>
-      </Tabs>
 
       {showProductDetail && viewingSku && (
         <PipelineProductDetail
@@ -1136,15 +755,18 @@ export function UnifiedPipelineClient({
               <label className="text-sm font-medium text-gray-700">Status</label>
               <Select
                 value={exportStatus}
-                onValueChange={(value) => setExportStatus(value as NewPipelineStatus)}
+                onValueChange={(value) => setExportStatus(value as PipelineStatus)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="registered">{newStatusLabels.registered}</SelectItem>
-                  <SelectItem value="enriched">{newStatusLabels.enriched}</SelectItem>
-                  <SelectItem value="finalized">{newStatusLabels.finalized}</SelectItem>
+                  <SelectItem value="staging">{statusLabels.staging}</SelectItem>
+                  <SelectItem value="scraped">{statusLabels.scraped}</SelectItem>
+                  <SelectItem value="consolidated">{statusLabels.consolidated}</SelectItem>
+                  <SelectItem value="approved">{statusLabels.approved}</SelectItem>
+                  <SelectItem value="published">{statusLabels.published}</SelectItem>
+                  <SelectItem value="failed">{statusLabels.failed}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

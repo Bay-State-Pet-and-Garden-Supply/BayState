@@ -129,7 +129,7 @@ export interface ScrapeJobTestRecord {
       sku: string;
       status: string;
     }>;
-    [key: string]: unknown;
+    [key: string]: any;
   } | null;
   skus: string[] | null;
   error_message: string | null;

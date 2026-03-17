@@ -1,7 +1,7 @@
 declare module 'jest-axe' {
   import { MatcherFunction } from 'expect';
 
-  export const axe: (html: unknown, options?: unknown) => Promise<unknown>;
+  export const axe: (html: any, options?: any) => Promise<any>;
   export const toHaveNoViolations: {
     toHaveNoViolations: MatcherFunction<[]>;
   };

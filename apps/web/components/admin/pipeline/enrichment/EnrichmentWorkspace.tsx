@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { RefreshCw, Loader2, X, Radio, Play, CheckCircle2, AlertCircle, Package, Sparkles, ImagePlus } from 'lucide-react';
+import { RefreshCw, Loader2, X, Radio, Play, CheckCircle2, AlertCircle, Package, Sparkles } from 'lucide-react';
 import { SourceSelectorPanel } from './SourceSelectorPanel';
 import { EnrichmentDataPreview } from './EnrichmentDataPreview';
+import { ConflictResolutionCard } from './ConflictResolutionCard';
 import { useEnrichmentRealtime } from '@/lib/enrichment/useEnrichmentRealtime';
 import { scrapeProducts } from '@/lib/pipeline-scraping';
 import { formatCurrency } from '@/lib/utils';
@@ -23,6 +23,13 @@ interface ResolvedField {
   value: unknown;
   source: string;
   hasConflict: boolean;
+}
+
+interface ConflictOption {
+  sourceId: string;
+  sourceName: string;
+  value: unknown;
+  isSelected: boolean;
 }
 
 interface EnrichmentWorkspaceProps {
@@ -47,13 +54,15 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
   const [resolvedData, setResolvedData] = useState<ResolvedField[]>([]);
   const [originalPrice, setOriginalPrice] = useState<number>(0);
   const [originalName, setOriginalName] = useState<string>('');
+  const [conflictField, setConflictField] = useState<string | null>(null);
+  const [conflictOptions, setConflictOptions] = useState<ConflictOption[]>([]);
+  const [fieldOverrides, setFieldOverrides] = useState<Record<string, string>>({});
   const [isRefreshing, setIsRefreshing] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [realtimeUpdatePending, setRealtimeUpdatePending] = useState(false);
   const [hasScrapedData, setHasScrapedData] = useState(false);
   const [isRunningEnhancement, setIsRunningEnhancement] = useState(false);
   const [enhancementJobId, setEnhancementJobId] = useState<string | null>(null);
-  const router = useRouter();
 
   const handleRealtimeUpdate = useCallback(() => {
     setRealtimeStatus('connected');
@@ -99,6 +108,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
           setResolvedData(data.resolvedData || []);
           setOriginalPrice(data.originalPrice || 0);
           setOriginalName(data.originalName || effectiveSku);
+          setFieldOverrides(data.fieldOverrides || {});
           setHasScrapedData(data.hasScrapedData ?? (data.resolvedData?.length > 0));
         }
       }
@@ -259,6 +269,50 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
     }
   };
 
+  const handleFieldClick = async (field: string) => {
+    if (isBatchMode) return; // Not supported in batch mode
+
+    const fieldData = resolvedData.find((f) => f.field === field);
+    if (!fieldData?.hasConflict) return;
+
+    try {
+      const res = await fetch(`/api/admin/enrichment/${effectiveSku}/conflicts/${field}`);
+      if (res.ok) {
+        const data = await res.json();
+        setConflictOptions(
+          data.options.map((opt: { sourceId: string; sourceName: string; value: unknown }) => ({
+            ...opt,
+            isSelected: fieldOverrides[field] === opt.sourceId || fieldData.source === opt.sourceId,
+          }))
+        );
+        setConflictField(field);
+      }
+    } catch (error) {
+      console.error('Failed to fetch conflict options:', error);
+    }
+  };
+
+  const handleSelectConflictSource = async (sourceId: string) => {
+    if (!conflictField || isBatchMode) return;
+
+    setConflictOptions((prev) =>
+      prev.map((opt) => ({ ...opt, isSelected: opt.sourceId === sourceId }))
+    );
+
+    try {
+      await fetch(`/api/admin/enrichment/${effectiveSku}/override`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: conflictField, sourceId }),
+      });
+      setFieldOverrides((prev) => ({ ...prev, [conflictField]: sourceId }));
+      await fetchEnrichmentData();
+      setConflictField(null);
+    } catch (error) {
+      console.error('Failed to set field override:', error);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -366,6 +420,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                   sku={effectiveSku}
                   originalPrice={originalPrice}
                   resolvedData={resolvedData}
+                  onFieldClick={handleFieldClick}
                 />
               ) : (
                 <div className="space-y-6">
@@ -462,20 +517,9 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
         </div>
 
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-3">
-            <p className="text-xs text-gray-600">
-              Price and SKU always come from the original import and cannot be changed.
-            </p>
-            {!isBatchMode && hasScrapedData && (
-              <button
-                onClick={() => router.push(`/admin/pipeline/image-selection?sku=${effectiveSku}`)}
-                className="px-3 py-1.5 text-sm font-medium text-[#008850] bg-[#008850]/10 border border-[#008850]/30 rounded-lg hover:bg-[#008850]/20 transition-colors flex items-center gap-2"
-              >
-                <ImagePlus className="h-4 w-4" />
-                Open Image Selection
-              </button>
-            )}
-          </div>
+          <p className="text-xs text-gray-600">
+            Price and SKU always come from the original import and cannot be changed.
+          </p>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
@@ -513,6 +557,17 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
             </button>
           </div>
         </div>
+
+        {conflictField && (
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60]">
+            <ConflictResolutionCard
+              field={conflictField}
+              options={conflictOptions}
+              onSelectSource={handleSelectConflictSource}
+              onClose={() => setConflictField(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
