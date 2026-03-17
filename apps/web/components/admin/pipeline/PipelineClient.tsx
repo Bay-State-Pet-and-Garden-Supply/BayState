@@ -651,7 +651,15 @@ export function PipelineClient({
             {activeTab === 'active-runs' && <ActiveRunsTab />}
             {activeTab === 'active-consolidations' && <ActiveConsolidationsTab />}
             {activeTab === 'images' && <ImageSelectionTab />}
-            {activeTab === 'export' && <ExportTab productCounts={Object.fromEntries(counts.map(c => [c.status, c.count]))} />}
+            {activeTab === 'export' && (
+                <ExportTab 
+                    count={filteredCount} 
+                    filters={{ 
+                        status: activeStatus, 
+                        search: search 
+                    }} 
+                />
+            )}
             
             {isStatusTab(activeTab) && (
                 <div id="main-content" tabIndex={-1} className="scroll-mt-16 outline-none">

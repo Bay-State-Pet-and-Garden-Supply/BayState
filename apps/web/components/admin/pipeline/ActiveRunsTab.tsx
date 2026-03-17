@@ -74,6 +74,17 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         }
     };
 
+    // Transform ActiveJob[] to TimelineJob[] for TimelineView
+    const timelineJobs = useMemo(() => {
+        return jobs.map((job) => ({
+            id: job.id,
+            name: `Job ${job.id.slice(0, 8)}`,
+            startTime: new Date(job.createdAt),
+            status: job.status as 'pending' | 'running',
+            runner: job.scrapers.join(', '),
+        }));
+    }, [jobs]);
+
     if (loading) {
         return (
             <div className={`flex items-center justify-center py-12 ${className}`}>
@@ -101,17 +112,6 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
             </div>
         );
     }
-
-    // Transform ActiveJob[] to TimelineJob[] for TimelineView
-    const timelineJobs = useMemo(() => {
-        return jobs.map((job) => ({
-            id: job.id,
-            name: `Job ${job.id.slice(0, 8)}`,
-            startTime: new Date(job.createdAt),
-            status: job.status as 'pending' | 'running',
-            runner: job.scrapers.join(', '),
-        }));
-    }, [jobs]);
 
 
     return (

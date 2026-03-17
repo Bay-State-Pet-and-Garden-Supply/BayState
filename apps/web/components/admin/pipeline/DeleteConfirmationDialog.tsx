@@ -12,18 +12,20 @@ import { Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 
 interface DeleteConfirmationDialogProps {
     isOpen: boolean;
-    onClose: () => void;
+    onOpenChange: (open: boolean) => void;
     onConfirm: () => void;
     isDeleting: boolean;
-    sku: string;
+    sku?: string;
+    productCount?: number;
 }
 
 export const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
     isOpen,
-    onClose,
+    onOpenChange,
     onConfirm,
     isDeleting,
     sku,
+    productCount,
 }) => {
     const handleConfirm = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -31,30 +33,41 @@ export const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> =
         onConfirm();
     };
 
+    const isBulk = Boolean(productCount && productCount > 0);
+
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-red-600">
                         <AlertTriangle className="h-5 w-5" />
-                        Confirm Deletion
+                        {isBulk ? 'Confirm Bulk Deletion' : 'Confirm Deletion'}
                     </DialogTitle>
                     <DialogDescription className="pt-2">
-                        Are you sure you want to delete SKU <span className="font-mono font-bold tabular-nums text-gray-900">{sku}</span>? 
-                        This action cannot be undone and will remove the product from all pipeline stages.
+                        {isBulk ? (
+                            <>
+                                Are you sure you want to delete <span className="font-bold text-gray-900">{productCount}</span> selected products?
+                            </>
+                        ) : (
+                            <>
+                                Are you sure you want to delete SKU <span className="font-mono font-bold tabular-nums text-gray-900">{sku}</span>?
+                            </>
+                        )}
+                        <br />
+                        This action cannot be undone and will remove the product{isBulk ? 's' : ''} from all pipeline stages.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="bg-red-50 p-4 rounded-lg border border-red-100 my-4">
                     <p className="text-sm text-red-800">
-                        <strong>Warning:</strong> Deleting this product will remove it from the system entirely.
+                        <strong>Warning:</strong> Deleting {isBulk ? 'these products' : 'this product'} will remove {isBulk ? 'them' : 'it'} from the system entirely.
                     </p>
                 </div>
 
                 <DialogFooter className="gap-2 sm:gap-0">
                     <Button
                         variant="outline"
-                        onClick={onClose}
+                        onClick={() => onOpenChange(false)}
                         disabled={isDeleting}
                     >
                         Cancel
@@ -73,7 +86,7 @@ export const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> =
                         ) : (
                             <>
                                 <Trash2 className="h-4 w-4" />
-                                Delete Permanently
+                                Delete {isBulk ? 'All' : 'Permanently'}
                             </>
                         )}
                     </Button>

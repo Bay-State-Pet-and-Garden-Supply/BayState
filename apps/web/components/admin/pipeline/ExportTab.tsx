@@ -5,7 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 interface ExportTabProps {
     count: number;
-    filters: any;
+    filters: {
+        status?: string;
+        search?: string;
+    };
 }
 
 export const ExportTab: React.FC<ExportTabProps> = ({ count, filters }) => {

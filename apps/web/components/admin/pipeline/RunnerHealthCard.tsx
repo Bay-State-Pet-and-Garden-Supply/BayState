@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,14 @@ const STATUS_CONFIG: Record<RunnerStatus, { label: string; color: string; bgColo
   offline: { label: 'Offline', color: 'text-red-600', bgColor: 'bg-red-50' },
 };
 
+const formatLastSeen = (date: Date) => {
+  const diff = Date.now() - date.getTime();
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
+};
+
 export function RunnerHealthCard({
   runner,
   showDetails = false,
@@ -43,13 +51,8 @@ export function RunnerHealthCard({
   const statusConfig = STATUS_CONFIG[runner.status];
   const isOffline = runner.status === 'offline';
 
-  const formatLastSeen = (date: Date) => {
-    const diff = Date.now() - date.getTime();
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return `${Math.floor(diff / 86400000)}d ago`;
-  };
+  // Using useMemo to store the formatted string from an impure source (Date.now())
+  const lastSeenText = useMemo(() => formatLastSeen(runner.lastSeen), [runner.lastSeen]);
 
   return (
     <Card
@@ -64,7 +67,7 @@ export function RunnerHealthCard({
           <div>
             <CardTitle className="text-base">{runner.name}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Last seen: {formatLastSeen(runner.lastSeen)}
+              Last seen: {lastSeenText}
             </p>
           </div>
           <Badge
