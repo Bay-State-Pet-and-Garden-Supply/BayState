@@ -47,7 +47,7 @@ export function BatchEnhanceToolbar({
                     ) : (
                         <Bot className="h-4 w-4" />
                     )}
-                    {isEnhancing ? 'Enhancing...' : 'Batch Enhance'}
+                    {isEnhancing ? 'Enhancing…' : 'Batch Enhance'}
                 </button>
 
                 <button

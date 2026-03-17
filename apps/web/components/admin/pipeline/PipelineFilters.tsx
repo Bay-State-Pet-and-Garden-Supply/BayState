@@ -148,6 +148,8 @@ export function PipelineFilters({ filters, onFilterChange, className }: Pipeline
                         <Label htmlFor="source">Source</Label>
                         <Input
                             id="source"
+                            type="search"
+                            autoComplete="off"
                             placeholder="e.g. scraper-1"
                             value={localFilters.source || ''}
                             onChange={(e) => setLocalFilters(prev => ({ ...prev, source: e.target.value || undefined }))}

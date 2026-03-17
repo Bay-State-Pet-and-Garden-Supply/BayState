@@ -130,7 +130,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
                             {saving === product.sku ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Saving...
+                                    Saving…
                                 </>
                             ) : (
                                 <>

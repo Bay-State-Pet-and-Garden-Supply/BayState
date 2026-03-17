@@ -81,7 +81,7 @@ function TrendIndicator({ value }: { value: number }) {
   return (
     <span
       className={cn(
-        'text-xs font-medium',
+        'text-xs font-medium tabular-nums',
         isPositive ? 'text-green-600' : 'text-red-600'
       )}
     >
@@ -139,7 +139,7 @@ export function HealthOverview({
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">
+                <span className="text-2xl font-bold tabular-nums">
                   {config.format ? config.format(value) : value.toLocaleString()}
                 </span>
                 {trend !== undefined && <TrendIndicator value={trend} />}

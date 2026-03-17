@@ -478,7 +478,7 @@ export function PipelineClient({
         <div className="space-y-6">
             <SkipLink />
             <div className="sr-only" role="status" aria-live="polite">
-                {isPending ? 'Loading products...' : `Showing ${products.length} products in ${isStatusTab(activeTab) ? statusLabels[activeTab as PipelineStatus] : activeTab} stage`}
+                {isPending ? 'Loading products…' : `Showing ${products.length} products in ${isStatusTab(activeTab) ? statusLabels[activeTab as PipelineStatus] : activeTab} stage`}
             </div>
 
             {/* ETL Pipeline Flow Visualization */}
@@ -519,7 +519,7 @@ export function PipelineClient({
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
                     <input
                         type="text"
-                        placeholder="Search by SKU or name..."
+                        placeholder="Search by SKU or name…"
                         aria-label="Search products by SKU or name"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}

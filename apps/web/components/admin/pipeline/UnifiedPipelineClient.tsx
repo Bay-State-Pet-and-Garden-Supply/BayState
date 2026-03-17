@@ -829,7 +829,7 @@ export function UnifiedPipelineClient({
               <div className={`h-3 w-3 rounded-full ${color}`} />
               <span className="text-sm text-gray-600">{label}</span>
             </div>
-            <p className="mt-2 text-3xl font-bold text-gray-900">
+            <p className="mt-2 text-3xl font-bold tabular-nums text-gray-900">
               {getCount(status)}
             </p>
           </button>
@@ -840,8 +840,9 @@ export function UnifiedPipelineClient({
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            type="text"
-            placeholder="Search by SKU or name..."
+            type="search"
+            autoComplete="off"
+            placeholder="Search by SKU or name…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -873,7 +874,7 @@ export function UnifiedPipelineClient({
 
         <Button variant="outline" onClick={() => void handleRefresh(true)} disabled={isRefreshing}>
           <RefreshCw className="mr-2 h-4 w-4" />
-          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          {isRefreshing ? 'Refreshing…' : 'Refresh'}
         </Button>
       </div>
 
@@ -894,7 +895,7 @@ export function UnifiedPipelineClient({
               onClick={() => void handleSelectAllMatching()}
               disabled={isSelectingAllMatching}
             >
-              {isSelectingAllMatching ? 'Selecting...' : 'Select All Matching'}
+              {isSelectingAllMatching ? 'Selecting…' : 'Select All Matching'}
             </Button>
             {selectedProducts.size > 0 && (
               <span className="ml-2 text-sm text-gray-600">
@@ -973,13 +974,13 @@ export function UnifiedPipelineClient({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{mockRunners.length}</div>
+                <div className="text-2xl font-bold tabular-nums">{mockRunners.length}</div>
                 <p className="text-xs text-muted-foreground">Total Runners</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-2xl font-bold tabular-nums text-green-600">
                   {mockRunners.filter(r => r.status === 'online').length}
                 </div>
                 <p className="text-xs text-muted-foreground">Online</p>
@@ -987,7 +988,7 @@ export function UnifiedPipelineClient({
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-yellow-600">
+                <div className="text-2xl font-bold tabular-nums text-yellow-600">
                   {mockRunners.filter(r => r.status === 'busy').length}
                 </div>
                 <p className="text-xs text-muted-foreground">Busy</p>
@@ -995,7 +996,7 @@ export function UnifiedPipelineClient({
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-2xl font-bold tabular-nums text-red-600">
                   {mockRunners.filter(r => r.status === 'offline').length}
                 </div>
                 <p className="text-xs text-muted-foreground">Offline</p>
@@ -1165,7 +1166,7 @@ export function UnifiedPipelineClient({
             </Button>
             <Button onClick={() => void handleExportCsv()} disabled={isExporting}>
               <Download className="mr-2 h-4 w-4" />
-              {isExporting ? 'Exporting...' : 'Download CSV'}
+              {isExporting ? 'Exporting…' : 'Download CSV'}
             </Button>
           </DialogFooter>
         </DialogContent>

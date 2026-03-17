@@ -142,14 +142,14 @@ export function PipelineProductCard({
                     <div className="flex-1 min-w-0 pr-16">
                         <div className="flex items-center gap-1.5 mb-1">
                             <Package className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
-                            <span className="text-[10px] font-mono text-zinc-500 truncate">{product.sku}</span>
+                            <span className="text-[10px] font-mono tabular-nums text-zinc-500 truncate">{product.sku}</span>
                         </div>
 
                         <p className="font-medium text-zinc-900 truncate mb-1" title={registerName}>
                             {registerName}
                         </p>
 
-                        <span className="font-semibold text-green-600">{formatCurrency(price)}</span>
+                        <span className="font-semibold tabular-nums text-green-600">{formatCurrency(price)}</span>
                     </div>
                 </div>
             </div>
@@ -230,7 +230,7 @@ export function PipelineProductCard({
 
                     <div className="flex flex-1 flex-col p-4 bg-white">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-mono font-semibold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">{product.sku}</span>
+                            <span className="text-[10px] font-mono tabular-nums font-semibold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">{product.sku}</span>
                         </div>
 
                         <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-zinc-900 group-hover:text-blue-600 transition-colors" title={cleanName || registerName}>
@@ -238,7 +238,7 @@ export function PipelineProductCard({
                         </h3>
 
                         <div className="mt-auto pt-2 flex items-center justify-between">
-                            <span className="text-lg font-bold tracking-tight text-zinc-900">
+                            <span className="text-lg font-bold tabular-nums tracking-tight text-zinc-900">
                                 {formatCurrency(price)}
                             </span>
 
@@ -287,7 +287,7 @@ export function PipelineProductCard({
                 <div className="flex-1 min-w-0 pr-20">
                     <div className="flex items-center gap-1.5 mb-2">
                         <Package className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
-                        <span className="text-[10px] font-mono text-zinc-500 truncate">{product.sku}</span>
+                        <span className="text-[10px] font-mono tabular-nums text-zinc-500 truncate">{product.sku}</span>
                     </div>
 
                     <div className="space-y-1 mb-2">
@@ -318,7 +318,7 @@ export function PipelineProductCard({
                     )}
 
                     <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                        <span className="font-semibold text-green-600">{formatCurrency(price)}</span>
+                        <span className="font-semibold tabular-nums text-green-600">{formatCurrency(price)}</span>
                         <div className="flex items-center gap-1">
                             {showEnrichButton && onEnrich && (
                                 <button

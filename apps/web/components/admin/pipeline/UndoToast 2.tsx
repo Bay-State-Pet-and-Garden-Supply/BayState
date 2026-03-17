@@ -58,7 +58,7 @@ export function UndoToast({ id, count, toStatus, onUndo }: UndoToastProps) {
                 className="flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
                 <Undo2 className="h-4 w-4" />
-                {isUndoing ? 'Undoing...' : 'Undo'}
+                {isUndoing ? 'Undoing…' : 'Undo'}
             </button>
         </div>
     );

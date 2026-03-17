@@ -81,7 +81,7 @@ export function PipelineProductGrid({
                         disabled={loading}
                         className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {loading ? 'Loading...' : 'Load More'}
+                        {loading ? 'Loading…' : 'Load More'}
                     </button>
                 </div>
             )}

@@ -44,7 +44,7 @@ export function EnrichmentDataPreview({
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Golden Record Preview</h2>
           <div className="flex items-center gap-2 mt-1">
-            <span className="font-mono text-sm text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+            <span className="font-mono text-sm text-gray-600 bg-gray-200 px-2 py-0.5 rounded tabular-nums">
               {sku}
             </span>
           </div>

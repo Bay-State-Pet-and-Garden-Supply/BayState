@@ -172,7 +172,7 @@ export function ExportWorkspace() {
         {isLoadingCounts ? (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Spinner size="sm" />
-            <span>Loading product counts...</span>
+            <span>Loading product counts…</span>
           </div>
         ) : error ? (
           <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">
@@ -211,7 +211,7 @@ export function ExportWorkspace() {
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Generating...
+                Generating…
               </>
             ) : (
               <>
