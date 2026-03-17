@@ -7,6 +7,20 @@
 @theme inline {
   /* ========== DESIGN SYSTEM TOKENS ========== */
 
+  /* Bay State Brand Colors */
+  --color-brand-forest-green: #008850;
+  --color-brand-burgundy: #66161D;
+  --color-brand-gold: #FCD048;
+
+  /* Pipeline Status Colors */
+  --color-status-success: #10B981;
+  --color-status-running: #3B82F6;
+  --color-status-queued: #6B7280;
+  --color-status-failed: #EF4444;
+  --color-status-warning: #F59E0B;
+
+  /* Button Heights
+
   /* Button Heights (consistent touch targets) */
   --size-btn-height-sm: 2rem;         /* 32px - small actions, table buttons */
   --size-btn-height-default: 2.25rem; /* 36px - standard buttons */
