@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Search, RefreshCw, Filter, Upload, Download, Plus, LayoutDashboard, Clock, Server, Activity } from 'lucide-react';
+import { Package, Search, RefreshCw, Filter, Upload, Download, Plus, LayoutDashboard } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { PipelineProductDetail } from './PipelineProductDetail';
@@ -10,9 +10,7 @@ import { BatchEnhanceDialog } from './BatchEnhanceDialog';
 import { ManualAddProductDialog } from './ManualAddProductDialog';
 import { UndoToast } from './UndoToast';
 import { HealthOverview } from './HealthOverview';
-import { TimelineView } from './TimelineView';
-import { RunnerHealthCard } from './RunnerHealthCard';
-import { MonitoringClient } from './MonitoringClient';
+
 import { AlertBanner } from './AlertBanner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -88,7 +86,7 @@ export function UnifiedPipelineClient({
   const [exportSearch, setExportSearch] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<PipelineFiltersState>({});
-  const [activeTab, setActiveTab] = useState<string>('products');
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [errors, setErrors] = useState<Array<{
     id: string;
     jobId: string;
@@ -757,18 +755,7 @@ export function UnifiedPipelineClient({
             <Package className="h-4 w-4" />
             <span className="hidden sm:inline">Products</span>
           </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span className="hidden sm:inline">Timeline</span>
-          </TabsTrigger>
-          <TabsTrigger value="runners" className="flex items-center gap-2">
-            <Server className="h-4 w-4" />
-            <span className="hidden sm:inline">Runners</span>
-          </TabsTrigger>
-          <TabsTrigger value="monitoring" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">Monitoring</span>
-          </TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -960,137 +947,9 @@ export function UnifiedPipelineClient({
       )}
         </TabsContent>
 
-        <TabsContent value="timeline" className="space-y-6">
-          <TimelineView
-            jobs={mockJobs}
-            timeRange="24h"
-            onJobClick={(job) => console.log('Clicked job:', job)}
-            onTimeRangeChange={(range) => console.log('Time range:', range)}
-          />
-        </TabsContent>
 
-        <TabsContent value="runners" className="space-y-6">
-          {/* Runner Statistics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold tabular-nums">{mockRunners.length}</div>
-                <p className="text-xs text-muted-foreground">Total Runners</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold tabular-nums text-green-600">
-                  {mockRunners.filter(r => r.status === 'online').length}
-                </div>
-                <p className="text-xs text-muted-foreground">Online</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold tabular-nums text-yellow-600">
-                  {mockRunners.filter(r => r.status === 'busy').length}
-                </div>
-                <p className="text-xs text-muted-foreground">Busy</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold tabular-nums text-red-600">
-                  {mockRunners.filter(r => r.status === 'offline').length}
-                </div>
-                <p className="text-xs text-muted-foreground">Offline</p>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Filter Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={runnerFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('all')}
-            >
-              All
-            </Button>
-            <Button
-              variant={runnerFilter === 'online' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('online')}
-            >
-              Online
-            </Button>
-            <Button
-              variant={runnerFilter === 'busy' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('busy')}
-            >
-              Busy
-            </Button>
-            <Button
-              variant={runnerFilter === 'offline' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setRunnerFilter('offline')}
-            >
-              Offline
-            </Button>
-          </div>
 
-          {/* Bulk Actions */}
-          {selectedRunners.size > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm">
-                Pause Selected ({selectedRunners.size})
-              </Button>
-              <Button variant="outline" size="sm">
-                Resume Selected ({selectedRunners.size})
-              </Button>
-              <Button variant="outline" size="sm">
-                Restart Selected ({selectedRunners.size})
-              </Button>
-            </div>
-          )}
-
-          {/* Runner Cards Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mockRunners
-              .filter(runner => runnerFilter === 'all' || runner.status === runnerFilter)
-              .map((runner) => (
-                <div
-                  key={runner.id}
-                  className="relative"
-                  onClick={() => {
-                    setSelectedRunners(prev => {
-                      const newSet = new Set(prev);
-                      if (newSet.has(runner.id)) {
-                        newSet.delete(runner.id);
-                      } else {
-                        newSet.add(runner.id);
-                      }
-                      return newSet;
-                    });
-                  }}
-                >
-                  {selectedRunners.has(runner.id) && (
-                    <div className="absolute left-2 top-2 z-10 h-5 w-5 rounded-full bg-[#008850] flex items-center justify-center">
-                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  )}
-                  <RunnerHealthCard
-                    runner={runner}
-                    showDetails={true}
-                    onClick={(r) => console.log('Clicked runner:', r)}
-                  />
-                </div>
-              ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="monitoring" className="space-y-6">
-          <MonitoringClient />
-        </TabsContent>
       </Tabs>
 
       {showProductDetail && viewingSku && (

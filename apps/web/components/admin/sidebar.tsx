@@ -40,8 +40,6 @@ const navSections: NavSection[] = [
     adminOnly: true,
     items: [
       { href: '/admin/pipeline', label: 'Overview', icon: <LayoutGrid className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/pipeline/monitoring', label: 'Monitoring', icon: <Activity className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/pipeline/tools', label: 'Tools', icon: <Wrench className="h-5 w-5" />, adminOnly: true },
     ],
   },
   {
