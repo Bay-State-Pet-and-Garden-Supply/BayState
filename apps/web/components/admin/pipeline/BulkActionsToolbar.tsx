@@ -21,9 +21,11 @@ interface BulkActionsToolbarProps {
     isConsolidating?: boolean;
     onClearScrapeResults?: () => void;
     isClearingScrapeResults?: boolean;
+    onEnrich?: () => void;
+    isEnriching?: boolean;
 }
 
-type ToolbarAction = 'moveToEnriched' | 'moveToFinalized' | 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete';
+type ToolbarAction = 'moveToEnriched' | 'moveToFinalized' | 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete' | 'enrich';
 
 type ActionButton = {
     action: ToolbarAction;
@@ -33,8 +35,7 @@ type ActionButton = {
 
 const newStatusMap: Record<NewPipelineStatus, ActionButton[]> = {
     registered: [
-        // Note: Products are automatically moved to 'enriched' by scrapers
-        // Manual enrichment is not available - scrapers handle this transition
+        { action: 'enrich', label: 'Run Scrapers', className: 'bg-blue-600 hover:bg-blue-700' },
     ],
     enriched: [
         { action: 'moveToFinalized', label: 'Move to Finalized', className: 'bg-green-600 hover:bg-green-700' },
@@ -77,13 +78,15 @@ export function BulkActionsToolbar({
     isConsolidating = false,
     onClearScrapeResults,
     isClearingScrapeResults = false,
+    onEnrich,
+    isEnriching = false,
 }: BulkActionsToolbarProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const isNewPipeline = isNewPipelineStatus(currentStatus);
     const actions = isNewPipeline ? newStatusMap[currentStatus] : legacyActionsMap[currentStatus];
-    const isBusy = isMovingToEnriched || isDeleting || isConsolidating || isClearingScrapeResults;
+    const isBusy = isMovingToEnriched || isDeleting || isConsolidating || isClearingScrapeResults || isEnriching;
 
     const handleDeleteClick = () => {
         setIsDeleteDialogOpen(true);
@@ -128,15 +131,18 @@ export function BulkActionsToolbar({
                 <div className="flex items-center gap-2">
                     {selectedCount > 0 && (
                         <>
-                            {/* Status transition buttons - scrapers handle enrichment automatically */}
-
                             {/* Status transition buttons */}
+
                             {actions.map(({ action, label, className }) => (
                                 <button
                                     key={action}
                                     onClick={() => {
                                         if (action === 'consolidate' && onConsolidate) {
                                             void onConsolidate();
+                                            return;
+                                        }
+                                        if (action === 'enrich' && onEnrich) {
+                                            void onEnrich();
                                             return;
                                         }
                                         onAction(action);

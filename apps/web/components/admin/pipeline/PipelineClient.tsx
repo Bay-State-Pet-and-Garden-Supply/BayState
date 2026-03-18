@@ -288,9 +288,10 @@ export function PipelineClient({
         });
     };
 
-    const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete') => {
-        if (action === 'delete') {
+    const handleBulkAction = async (action: 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete' | 'enrich') => {
+        if (action === 'delete' || action === 'enrich') {
             // Delete is handled separately via DeleteConfirmationDialog
+            // Enrich is not supported in the legacy component
             return;
         }
 
