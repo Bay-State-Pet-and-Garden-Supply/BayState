@@ -278,6 +278,7 @@ async function upsertToIngestion(
             input: { name: product.name, price: product.price },
             b2b_sources: { [distributorCode]: b2bData },
             pipeline_status: 'staging',
+            pipeline_status_new: 'registered',
           });
 
         created++;

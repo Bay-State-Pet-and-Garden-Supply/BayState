@@ -152,13 +152,48 @@ describe('consolidation batch integration behavior', () => {
     });
 
     it('applyConsolidationResults stores quality metrics into batch metadata', async () => {
-        const productsIngestionSelect = {
+        const productsIngestionSelectBySkuIn = {
             in: jest.fn().mockResolvedValue({
                 data: [{ sku: 'SKU-1', consolidated: { images: ['https://cdn.example.com/1.jpg'] } }],
                 error: null,
             }),
         };
-        const productsIngestionUpsert = jest.fn().mockResolvedValue({ error: null });
+        const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
+            data: { sku: 'SKU-1' },
+            error: null,
+        });
+        const productsIngestionUpdateSelect = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionUpdateMaybeSingle });
+        const productsIngestionUpdateEq = jest.fn();
+        productsIngestionUpdateEq.mockReturnValue({
+            eq: productsIngestionUpdateEq,
+            select: productsIngestionUpdateSelect,
+        });
+        const productsIngestionUpdate = jest
+            .fn()
+            .mockReturnValue({ eq: productsIngestionUpdateEq });
+        const productsIngestionSelectCurrentMaybeSingle = jest.fn().mockResolvedValue({
+            data: {
+                consolidated: { images: ['https://cdn.example.com/1.jpg'] },
+                updated_at: '2026-03-18T00:00:00.000Z',
+            },
+            error: null,
+        });
+        const productsIngestionSelectCurrentEq = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
+        const productsIngestionSelect = jest.fn((columns: string) => {
+            if (columns === 'sku, consolidated') {
+                return productsIngestionSelectBySkuIn;
+            }
+            if (columns === 'consolidated, updated_at') {
+                return {
+                    eq: productsIngestionSelectCurrentEq,
+                };
+            }
+            throw new Error(`Unexpected products_ingestion select columns: ${columns}`);
+        });
 
         const batchJobsSelectQuery = {
             eq: jest.fn().mockReturnThis(),
@@ -180,8 +215,8 @@ describe('consolidation batch integration behavior', () => {
             from: jest.fn((table: string) => {
                 if (table === 'products_ingestion') {
                     return {
-                        select: jest.fn(() => productsIngestionSelect),
-                        upsert: productsIngestionUpsert,
+                        select: productsIngestionSelect,
+                        update: productsIngestionUpdate,
                     };
                 }
                 if (table === 'brands') {

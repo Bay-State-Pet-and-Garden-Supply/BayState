@@ -28,15 +28,15 @@ const NEW_TO_LEGACY_STATUS: Record<NewPipelineStatus, PipelineStatus> = {
     finalized: 'consolidated',
 };
 
-function isNewPipelineStatus(status: TransitionalPipelineStatus): status is NewPipelineStatus {
+export function isNewPipelineStatus(status: TransitionalPipelineStatus): status is NewPipelineStatus {
     return status === 'registered' || status === 'enriched' || status === 'finalized';
 }
 
-function toNewPipelineStatus(status: TransitionalPipelineStatus): NewPipelineStatus {
+export function toNewPipelineStatus(status: TransitionalPipelineStatus): NewPipelineStatus {
     return isNewPipelineStatus(status) ? status : LEGACY_TO_NEW_STATUS[status];
 }
 
-function toLegacyPipelineStatus(status: TransitionalPipelineStatus): PipelineStatus {
+export function toLegacyPipelineStatus(status: TransitionalPipelineStatus): PipelineStatus {
     return isNewPipelineStatus(status) ? NEW_TO_LEGACY_STATUS[status] : status;
 }
 

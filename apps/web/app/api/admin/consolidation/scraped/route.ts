@@ -6,7 +6,8 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/scraped
- * Trigger consolidation for products that have been scraped (pipeline_status = 'scraped')
+ * Trigger consolidation for products that are enriched and ready for consolidation.
+ * Backward-compatible with legacy records that only have pipeline_status = 'scraped'.
  * Body: { skus?: string[] } - if no SKUs provided, consolidates all scraped products
  */
 export async function POST(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
         let query = supabase
             .from('products_ingestion')
             .select('sku, sources, input')
-            .eq('pipeline_status', 'scraped');
+            .or('pipeline_status_new.eq.enriched,and(pipeline_status_new.is.null,pipeline_status.in.(scraped,enriched))');
 
         if (skus && Array.isArray(skus) && skus.length > 0) {
             query = query.in('sku', skus);
