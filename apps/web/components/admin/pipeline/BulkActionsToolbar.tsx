@@ -38,6 +38,7 @@ const newStatusMap: Record<NewPipelineStatus, ActionButton[]> = {
         { action: 'enrich', label: 'Run Scrapers', className: 'bg-blue-600 hover:bg-blue-700' },
     ],
     enriched: [
+        { action: 'consolidate', label: 'AI Consolidate', className: 'bg-purple-600 hover:bg-purple-700' },
         { action: 'moveToFinalized', label: 'Move to Finalized', className: 'bg-green-600 hover:bg-green-700' },
     ],
     finalized: [], // Terminal state - no outgoing transitions
