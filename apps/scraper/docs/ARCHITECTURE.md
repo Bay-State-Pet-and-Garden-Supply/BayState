@@ -97,6 +97,19 @@ The scraper system uses a fully decoupled, API-driven architecture with **API Ke
 | **Fallback** | HMAC signature for Docker crash reports |
 | **Isolation** | Runners have zero database credentials |
 
+## Local/Offline Operation (Developer Mode)
+
+While the production runner is API-driven, the system supports a **Stateless Local Mode** designed for development and CI/CD validation.
+
+### Mechanism
+In local mode (`--local`), the runner:
+1. **Bypasses API Client**: Skips all health checks and initialization of the `ScraperAPIClient`.
+2. **Loads Local Configs**: Reads YAML files directly from `scrapers/configs/`.
+3. **Environment Credentials**: Resolves site credentials from environment variables (`SLUG_USERNAME`/`SLUG_PASSWORD`) instead of the `/api/scraper/v1/credentials` endpoint.
+4. **Direct Output**: Emits results to `stdout` or a local file instead of posting to the coordinator callback.
+
+This architecture ensures that scraper logic can be verified in isolation without a running instance of BayStateApp.
+
 ### Database Tables
 
 ```sql
