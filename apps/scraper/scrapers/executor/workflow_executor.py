@@ -285,22 +285,31 @@ class WorkflowExecutor:
 
 
     def _resolve_credential_refs(self) -> dict[str, dict[str, str]]:
-        """Resolve credential_refs from config using the API client."""
+        """Resolve credential_refs from config using the API client or environment variables."""
         if not self.config.credential_refs:
             return {}
 
-        if not self.api_client:
-            logger.warning(f"Cannot resolve credential_refs: no API client available")
-            return {}
+        if self.api_client:
+            try:
+                resolved = self.api_client.resolve_credentials(self.config.credential_refs)
+                if resolved:
+                    logger.info(f"Resolved {len(resolved)} credential references for {self.config.name}")
+                return resolved
+            except Exception as e:
+                logger.error(f"Failed to resolve credential_refs via API: {e}")
 
-        try:
-            resolved = self.api_client.resolve_credentials(self.config.credential_refs)
-            if resolved:
-                logger.info(f"Resolved {len(resolved)} credential references for {self.config.name}")
-            return resolved
-        except Exception as e:
-            logger.error(f"Failed to resolve credential_refs: {e}")
-            return {}
+        # Fallback: resolve from environment variables
+        from core.api_client import ScraperAPIClient
+        resolved: dict[str, dict[str, str]] = {}
+        for ref in self.config.credential_refs:
+            env_creds = ScraperAPIClient.get_credentials_from_env(ref)
+            if env_creds:
+                resolved[ref] = env_creds
+        if resolved:
+            logger.info(f"Resolved {len(resolved)} credential references from environment for {self.config.name}")
+        elif not self.api_client:
+            logger.warning(f"Cannot resolve credential_refs: no API client and no env credentials")
+        return resolved
 
     async def execute_workflow(self, context: dict[str, Any] | None = None, quit_browser: bool = True) -> dict[str, Any]:
         """Execute the complete workflow defined in the configuration."""

@@ -787,11 +787,35 @@ class ScraperAPIClient:
         except Exception as e:
             raise ConfigFetchError(f"Failed to list scraper configs: {e}", original_error=e) from e
 
+    @staticmethod
+    def get_credentials_from_env(scraper_slug: str) -> dict[str, str] | None:
+        """
+        Resolve credentials from environment variables for local/offline use.
+
+        Convention: For slug "phillips", checks PHILLIPS_USERNAME / PHILLIPS_PASSWORD.
+
+        Args:
+            scraper_slug: Slug/ID of the scraper (e.g., "petfoodex", "phillips")
+
+        Returns:
+            Dict with 'username', 'password', and 'type' keys, or None if not set.
+        """
+        prefix = scraper_slug.upper().replace("-", "_")
+        username = os.environ.get(f"{prefix}_USERNAME")
+        password = os.environ.get(f"{prefix}_PASSWORD")
+        if username and password:
+            logger.info(f"Resolved credentials for {scraper_slug} from environment variables")
+            return {"username": username, "password": password, "type": "basic"}
+        return None
+
     def get_credentials(self, scraper_slug: str) -> dict[str, str] | None:
         """
         Fetch credentials for a specific scraper from the coordinator.
         Credentials are fetched on-demand and cached for the duration of the job.
         The coordinator returns credentials over HTTPS to authenticated runners.
+
+        Falls back to environment variables (SLUG_USERNAME / SLUG_PASSWORD) when
+        the API is unavailable or returns no credentials.
 
         Args:
             scraper_slug: Slug/ID of the scraper (e.g., "petfoodex", "phillips")
@@ -804,8 +828,13 @@ class ScraperAPIClient:
             logger.debug(f"Using cached credentials for {scraper_slug}")
             return self._credential_cache[scraper_slug]
 
+        # If no API URL, try environment variables directly
         if not self.api_url:
-            logger.error("API client not configured - missing URL")
+            env_creds = self.get_credentials_from_env(scraper_slug)
+            if env_creds:
+                self._credential_cache[scraper_slug] = env_creds
+                return env_creds
+            logger.error("API client not configured - missing URL and no env credentials")
             return None
 
         try:
@@ -842,7 +871,13 @@ class ScraperAPIClient:
             return None
         except Exception as e:
             logger.error(f"Error fetching credentials for {scraper_slug}: {e}")
-            return None
+
+        # Fallback to environment variables when API fails
+        env_creds = self.get_credentials_from_env(scraper_slug)
+        if env_creds:
+            self._credential_cache[scraper_slug] = env_creds
+            return env_creds
+        return None
 
     def resolve_credentials(self, credential_refs: list[str]) -> dict[str, dict[str, str]]:
         """
