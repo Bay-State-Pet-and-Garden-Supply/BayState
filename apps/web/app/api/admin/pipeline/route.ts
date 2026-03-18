@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bulkUpdateStatus, getProductsByStatus, getSkusByStatus, type PipelineStatus } from '@/lib/pipeline';
+import { bulkUpdateStatus, getProductsByStatus, getSkusByStatus, type TransitionalPipelineStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export async function GET(request: NextRequest) {
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     if (!auth.authorized) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
-    const status = (searchParams.get('status') || 'staging') as PipelineStatus;
+    const status = (searchParams.get('status') || 'registered') as TransitionalPipelineStatus;
     const search = searchParams.get('search') || '';
     const limit = parseInt(searchParams.get('limit') || '200', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus, newStatus } = body as { skus: string[]; newStatus: PipelineStatus };
+        const { skus, newStatus } = body as { skus: string[]; newStatus: TransitionalPipelineStatus };
 
         if (!skus || !Array.isArray(skus) || skus.length === 0) {
             return NextResponse.json({ error: 'SKUs array is required' }, { status: 400 });

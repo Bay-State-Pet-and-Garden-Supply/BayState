@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { validateStatusTransition, type NewPipelineStatus } from '@/lib/pipeline';
+import {
+    toLegacyPipelineStatus,
+    toNewPipelineStatus,
+    validateStatusTransition,
+    type NewPipelineStatus,
+} from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import * as z from 'zod';
 
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
         // Fetch the product to verify current status
         const { data: product, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('sku, pipeline_status_new')
+            .select('sku, pipeline_status, pipeline_status_new')
             .eq('sku', sku)
             .single();
 
@@ -39,7 +44,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const currentStatus = product.pipeline_status_new as NewPipelineStatus | null;
+        const currentStatus =
+            (product.pipeline_status_new as NewPipelineStatus | null)
+            ?? toNewPipelineStatus(product.pipeline_status);
 
         // Verify current status matches fromStatus (409 if mismatch)
         if (currentStatus !== fromStatus) {
@@ -65,6 +72,7 @@ export async function POST(request: NextRequest) {
         const { data: updatedProduct, error: updateError } = await supabase
             .from('products_ingestion')
             .update({
+                pipeline_status: toLegacyPipelineStatus(toStatus),
                 pipeline_status_new: toStatus,
                 updated_at: new Date().toISOString(),
             })

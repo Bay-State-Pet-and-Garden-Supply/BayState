@@ -88,7 +88,12 @@ export async function persistProductsIngestionSourcesStrict(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {}),
+      ...(hasMeaningfulData
+        ? {
+            pipeline_status: 'scraped' as const,
+            pipeline_status_new: 'enriched' as const,
+          }
+        : {}),
     };
   });
 
@@ -147,7 +152,12 @@ export async function persistProductsIngestionSourcesPartial(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData ? { pipeline_status: 'scraped' as const } : {}),
+      ...(hasMeaningfulData
+        ? {
+            pipeline_status: 'scraped' as const,
+            pipeline_status_new: 'enriched' as const,
+          }
+        : {}),
     };
   });
 
@@ -157,8 +167,7 @@ export async function persistProductsIngestionSourcesPartial(
 
   if (updateError) {
     console.error(`[Products Ingestion] Bulk update failed: ${updateError.message}`);
-    // Fallback or rethrow depending on desired resilience. For now, we report as total failure for this batch.
-    return { persisted: [], missing: [...missing, ...toUpdateSkus] };
+    throw new Error(`Bulk update failed: ${updateError.message}`);
   }
 
   return { persisted: toUpdateSkus, missing };

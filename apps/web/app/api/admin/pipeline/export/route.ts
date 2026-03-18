@@ -21,7 +21,16 @@ type ExportProduct = {
   input: unknown;
   consolidated: unknown;
   selected_images: unknown;
+  pipeline_status?: string;
+  pipeline_status_new?: string | null;
 };
+
+function mapExportStatusToLegacy(status: ExportStatus): string[] {
+  if (status === 'registered') return ['staging', 'failed', 'registered'];
+  if (status === 'enriched') return ['scraped', 'enriched'];
+  if (status === 'finalized') return ['consolidated', 'approved', 'published', 'finalized'];
+  return [];
+}
 
 function isExportStatus(value: string): value is ExportStatus {
   return ALLOWED_STATUSES.includes(value as ExportStatus);
@@ -71,6 +80,16 @@ function extractSelectedImages(value: unknown): string {
     .filter((url) => url.length > 0);
 
   return urls.join(', ');
+}
+
+function isExportReady(product: ExportProduct): boolean {
+  const input = asRecord(product.input);
+  const consolidated = asRecord(product.consolidated);
+  const hasName = (asString(consolidated.name) || asString(input.name)).trim().length > 0;
+  const hasDescription = (asString(consolidated.description) || asString(input.description)).trim().length > 0;
+  const selected = extractSelectedImages(product.selected_images).trim();
+  const fallbackImages = extractSelectedImages(consolidated.images).trim();
+  return hasName && hasDescription && (selected.length > 0 || fallbackImages.length > 0);
 }
 
 export async function streamWorkbookRows(
@@ -132,13 +151,16 @@ export async function streamWorkbook(status: ExportStatus | 'all', output: PassT
       
       let query = supabase
         .from('products_ingestion')
-        .select('sku, input, consolidated, selected_images, pipeline_status_new, updated_at')
+        .select('sku, input, consolidated, selected_images, pipeline_status, pipeline_status_new, updated_at')
         .order('updated_at', { ascending: false })
         .order('sku', { ascending: true });
       
       // Only filter by status if not 'all'
       if (status !== 'all') {
-        query = query.eq('pipeline_status_new', status);
+        const legacyStatuses = mapExportStatusToLegacy(status);
+        query = query.or(
+          `pipeline_status_new.eq.${status},and(pipeline_status_new.is.null,pipeline_status.in.(${legacyStatuses.join(',')}))`
+        );
       }
       
       const { data, error } = await query.range(from, to);
@@ -152,6 +174,9 @@ export async function streamWorkbook(status: ExportStatus | 'all', output: PassT
       }
 
       for (const product of data) {
+        if (status === 'finalized' && !isExportReady(product)) {
+          continue;
+        }
         yield product;
       }
 

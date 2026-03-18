@@ -704,7 +704,14 @@ export async function applyConsolidationResults(
         }
     }
 
-    const upsertRows = [];
+    const updateRows: Array<{
+        sku: string;
+        next_fields: Record<string, unknown>;
+        pipeline_status: PipelineStatus;
+        pipeline_status_new: 'finalized';
+        confidence_score: number | null;
+        error_message: null;
+    }> = [];
 
     for (const result of results) {
         if (result.error) {
@@ -716,6 +723,14 @@ export async function applyConsolidationResults(
         }
 
         try {
+            if (!existingBySku.has(result.sku)) {
+                errorCount++;
+                if (errors.length < 10) {
+                    errors.push(`${result.sku}: missing products_ingestion row; skipped stale consolidation result`);
+                }
+                continue;
+            }
+
             const existingConsolidated = existingBySku.get(result.sku) || {};
             const resolvedBrandId = result.brand ? brandIdByName.get(normalizeLookupKey(result.brand)) : undefined;
 
@@ -757,18 +772,13 @@ export async function applyConsolidationResults(
                 }
             });
 
-            const consolidated = {
-                ...existingConsolidated,
-                ...nextFields,
-            };
-
-            upsertRows.push({
+            updateRows.push({
                 sku: result.sku,
-                consolidated,
+                next_fields: nextFields,
                 pipeline_status: 'consolidated' as PipelineStatus,
+                pipeline_status_new: 'finalized' as const,
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
-                updated_at: new Date().toISOString(),
             });
         } catch (e: unknown) {
             errorCount++;
@@ -778,15 +788,93 @@ export async function applyConsolidationResults(
         }
     }
 
-    if (upsertRows.length > 0) {
-        const { error: bulkError } = await supabase
-            .from('products_ingestion')
-            .upsert(upsertRows, { onConflict: 'sku' });
+    if (updateRows.length > 0) {
+        for (const row of updateRows) {
+            const maxAttempts = 3;
+            let applied = false;
 
-        if (bulkError) {
-            return { success: false, error: `Bulk update failed: ${bulkError.message}` };
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                const { data: latestRow, error: latestError } = await supabase
+                    .from('products_ingestion')
+                    .select('consolidated, updated_at')
+                    .eq('sku', row.sku)
+                    .maybeSingle();
+
+                if (latestError) {
+                    return {
+                        success: false,
+                        error: `Failed to load latest products_ingestion row for ${row.sku}: ${latestError.message}`,
+                    };
+                }
+
+                if (!latestRow) {
+                    errorCount++;
+                    if (errors.length < 10) {
+                        errors.push(`${row.sku}: products_ingestion row deleted before apply; skipped stale consolidation result`);
+                    }
+                    applied = true;
+                    break;
+                }
+
+                const currentConsolidated =
+                    latestRow.consolidated && typeof latestRow.consolidated === 'object' && !Array.isArray(latestRow.consolidated)
+                        ? (latestRow.consolidated as Record<string, unknown>)
+                        : {};
+
+                const mergedConsolidated = {
+                    ...currentConsolidated,
+                    ...row.next_fields,
+                };
+
+                const applyTimestamp = new Date().toISOString();
+                let updateQuery = supabase
+                    .from('products_ingestion')
+                    .update({
+                        consolidated: mergedConsolidated,
+                        pipeline_status: row.pipeline_status,
+                        pipeline_status_new: row.pipeline_status_new,
+                        confidence_score: row.confidence_score,
+                        error_message: row.error_message,
+                        updated_at: applyTimestamp,
+                    })
+                    .eq('sku', row.sku);
+
+                if (typeof latestRow.updated_at === 'string' && latestRow.updated_at.length > 0) {
+                    updateQuery = updateQuery.eq('updated_at', latestRow.updated_at);
+                }
+
+                const { data: updatedRow, error: updateError } = await updateQuery
+                    .select('sku')
+                    .maybeSingle();
+
+                if (updateError) {
+                    return {
+                        success: false,
+                        error: `Failed to apply consolidation for ${row.sku}: ${updateError.message}`,
+                    };
+                }
+
+                if (updatedRow) {
+                    successCount++;
+                    applied = true;
+                    break;
+                }
+
+                if (attempt === maxAttempts) {
+                    return {
+                        success: false,
+                        error: `Failed to apply consolidation for ${row.sku}: concurrent update contention`,
+                    };
+                }
+            }
+
+            if (!applied) {
+                return {
+                    success: false,
+                    error: `Failed to apply consolidation for ${row.sku}: unknown apply state`,
+                };
+            }
         }
-        successCount = upsertRows.length;
     }
 
     if (batchJobRow) {

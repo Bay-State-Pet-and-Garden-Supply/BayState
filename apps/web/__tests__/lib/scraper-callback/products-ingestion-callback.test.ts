@@ -58,6 +58,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
     expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).toMatchObject(
       expect.objectContaining({
         pipeline_status: 'scraped',
+        pipeline_status_new: 'enriched',
         is_test_run: false,
         updated_at: nowIso,
       })
@@ -132,6 +133,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
       expect.arrayContaining([
       expect.objectContaining({
         pipeline_status: 'scraped',
+        pipeline_status_new: 'enriched',
       })
       ]),
       { onConflict: 'sku' }
@@ -198,6 +200,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
       expect.arrayContaining([
       expect.objectContaining({
         pipeline_status: 'scraped',
+        pipeline_status_new: 'enriched',
         is_test_run: false,
         updated_at: nowIso,
       })
@@ -254,7 +257,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
     expect(upsert).toHaveBeenCalledTimes(1);
   });
 
-  it('continues on individual update errors', async () => {
+  it('throws on bulk update errors', async () => {
     const { supabase, selectIn, upsert } = createSupabaseMock();
     const nowIso = '2026-02-17T00:00:00.000Z';
 
@@ -269,17 +272,16 @@ describe('persistProductsIngestionSourcesPartial', () => {
       .mockResolvedValueOnce({ error: { message: 'DB error' } })
       .mockResolvedValueOnce({ error: null });
 
-    const result = await persistProductsIngestionSourcesPartial(
-      supabase,
-      {
-        'SKU-1': { amazon: { price: 12 } },
-        'SKU-2': { chewy: { in_stock: true } },
-      },
-      false,
-      nowIso
-    );
-
-    expect(result.persisted).toEqual([]);
-    expect(result.missing).toEqual(['SKU-1', 'SKU-2']);
+    await expect(
+      persistProductsIngestionSourcesPartial(
+        supabase,
+        {
+          'SKU-1': { amazon: { price: 12 } },
+          'SKU-2': { chewy: { in_stock: true } },
+        },
+        false,
+        nowIso
+      )
+    ).rejects.toThrow('Bulk update failed: DB error');
   });
 });

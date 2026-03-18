@@ -6,6 +6,18 @@ export const PipelineStatusSchema = z.enum([
     'consolidated',
     'approved',
     'published',
+    'failed',
+]);
+
+export const NewPipelineStatusSchema = z.enum([
+    'registered',
+    'enriched',
+    'finalized',
+]);
+
+export const TransitionalPipelineStatusSchema = z.union([
+    PipelineStatusSchema,
+    NewPipelineStatusSchema,
 ]);
 
 export const PipelineProductInputSchema = z.object({
@@ -29,18 +41,19 @@ export const PipelineProductSchema = z.object({
     sources: z.record(z.string(), z.unknown()),
     consolidated: PipelineProductConsolidatedSchema,
     pipeline_status: PipelineStatusSchema,
+    pipeline_status_new: NewPipelineStatusSchema.optional(),
     created_at: z.string(),
     updated_at: z.string(),
 });
 
 export const StatusCountSchema = z.object({
-    status: PipelineStatusSchema,
+    status: TransitionalPipelineStatusSchema,
     count: z.number().int().min(0),
 });
 
 export const BulkUpdateStatusSchema = z.object({
     skus: z.array(z.string().min(1)).min(1, 'At least one SKU is required'),
-    newStatus: PipelineStatusSchema,
+    newStatus: TransitionalPipelineStatusSchema,
 });
 
 export const GetProductsByStatusOptionsSchema = z.object({
@@ -50,6 +63,8 @@ export const GetProductsByStatusOptionsSchema = z.object({
 });
 
 export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
+export type NewPipelineStatus = z.infer<typeof NewPipelineStatusSchema>;
+export type TransitionalPipelineStatus = z.infer<typeof TransitionalPipelineStatusSchema>;
 export type PipelineProduct = z.infer<typeof PipelineProductSchema>;
 export type StatusCount = z.infer<typeof StatusCountSchema>;
 export type BulkUpdateStatus = z.infer<typeof BulkUpdateStatusSchema>;

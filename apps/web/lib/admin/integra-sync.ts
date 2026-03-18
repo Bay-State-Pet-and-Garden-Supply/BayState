@@ -108,6 +108,7 @@ export async function addToOnboarding(
       price: p.price,
     },
     pipeline_status: "staging",
+    pipeline_status_new: "registered",
     updated_at: new Date().toISOString(),
   }));
 
