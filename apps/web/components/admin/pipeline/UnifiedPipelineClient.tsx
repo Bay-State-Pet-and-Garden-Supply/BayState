@@ -13,6 +13,9 @@ import { HealthOverview } from './HealthOverview';
 import { MonitoringClient } from './MonitoringClient';
 import { ImageSelectionTab } from './ImageSelectionTab';
 import { ExportTab } from './ExportTab';
+import { ConsolidationDetailsModal } from './ConsolidationDetailsModal';
+import { ConsolidationProgressBanner } from './ConsolidationProgressBanner';
+import { useConsolidationWebSocket } from '@/lib/hooks/useConsolidationWebSocket';
 
 import { AlertBanner } from './AlertBanner';
 import { toast } from 'sonner';
@@ -82,6 +85,15 @@ export function UnifiedPipelineClient({
   const [showBatchEnhanceDialog, setShowBatchEnhanceDialog] = useState(false);
   const [showManualAddDialog, setShowManualAddDialog] = useState(false);
   const [enrichingSkus, setEnrichingSkus] = useState<string[]>([]);
+  
+  // Consolidation state
+  const [isConsolidating, setIsConsolidating] = useState(false);
+  const [consolidationBatchId, setConsolidationBatchId] = useState<string | null>(null);
+  const [consolidationProgress, setConsolidationProgress] = useState(0);
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  
+  const ws = useConsolidationWebSocket();
 
   const [showIntegraImport, setShowIntegraImport] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -573,6 +585,78 @@ export function UnifiedPipelineClient({
     }
   };
 
+  const handleConsolidate = async () => {
+    if (selectedProducts.size === 0) return;
+
+    setIsConsolidating(true);
+    setIsBannerDismissed(false);
+    setConsolidationProgress(0);
+
+    try {
+        const res = await fetch('/api/admin/consolidation/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skus: Array.from(selectedProducts) }),
+        });
+
+        if (res.ok) {
+            const data = await res.json() as { batch_id?: string; jobId?: string; skus?: string[] };
+            const batchId =
+                typeof data.batch_id === 'string' && data.batch_id.length > 0
+                    ? data.batch_id
+                    : typeof data.jobId === 'string' && data.jobId.length > 0
+                        ? data.jobId
+                        : null;
+
+            if (!batchId) {
+                setIsConsolidating(false);
+                toast.error('Consolidation started but no batch ID was returned');
+                return;
+            }
+
+            setConsolidationBatchId(batchId);
+            setSelectedProducts(new Set());
+            toast.success(`Started AI consolidation for ${data.skus?.length || selectedProducts.size} products`);
+        } else {
+            const errorData = await res.json() as { error?: string };
+            toast.error(`Failed to start consolidation: ${errorData.error || 'Unknown error'}`);
+            setIsConsolidating(false);
+        }
+    } catch (error) {
+        console.error('Error starting consolidation:', error);
+        toast.error('An error occurred while starting consolidation');
+        setIsConsolidating(false);
+    }
+  };
+
+  // WebSocket subscription for consolidation progress
+  useEffect(() => {
+      if (!consolidationBatchId) {
+          // Connect to WebSocket when not tracking a batch
+          ws.connect();
+          return;
+      }
+
+      // Connect and subscribe to batch progress
+      ws.connect();
+      ws.subscribeToBatch(consolidationBatchId);
+
+      // Handle progress updates from WebSocket
+      if (ws.lastProgressEvent) {
+          setConsolidationProgress(ws.lastProgressEvent.progress);
+
+          if (ws.lastProgressEvent.status === 'completed' || ws.lastProgressEvent.status === 'failed') {
+              setIsConsolidating(false);
+              setConsolidationBatchId(null);
+              void handleRefresh();
+          }
+      }
+
+      return () => {
+          ws.unsubscribeFromBatch(consolidationBatchId);
+      };
+  }, [consolidationBatchId, ws, handleRefresh]);
+
   const handleBatchEnhanceConfirm = async ({ scrapers, useAiSearch }: { scrapers: string[], useAiSearch: boolean }) => {
     if (enrichingSkus.length === 0) return;
 
@@ -749,6 +833,33 @@ export function UnifiedPipelineClient({
           </Button>
         </div>
       </div>
+
+      {consolidationBatchId && (
+          <ConsolidationProgressBanner
+              batchId={consolidationBatchId}
+              progress={consolidationProgress}
+              isDismissed={isBannerDismissed}
+              onDismiss={() => setIsBannerDismissed(true)}
+              onViewDetails={() => setIsBannerDismissed(false)}
+          />
+      )}
+
+      <ConsolidationDetailsModal
+          isOpen={isDetailsModalOpen}
+          onClose={() => setIsDetailsModalOpen(false)}
+          batchId={consolidationBatchId}
+          status={ws.lastProgressEvent ? {
+              batchId: consolidationBatchId || '',
+              status: (ws.lastProgressEvent.status as string) === 'processing' ? 'in_progress' : ws.lastProgressEvent.status,
+              totalProducts: ws.lastProgressEvent.totalProducts || 0,
+              processedCount: ws.lastProgressEvent.processedProducts || 0,
+              successCount: ws.lastProgressEvent.successfulProducts || 0,
+              errorCount: ws.lastProgressEvent.failedProducts || 0,
+              errors: [],
+              results: []
+          } : null}
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="flex w-full overflow-x-auto lg:w-auto">
           <TabsTrigger value="overview" className="flex items-center gap-2">
@@ -925,6 +1036,8 @@ export function UnifiedPipelineClient({
           isMovingToEnriched={isBulkActionPending}
           onEnrich={handleBulkEnrich}
           isEnriching={isBulkEnriching}
+          onConsolidate={handleConsolidate}
+          isConsolidating={isConsolidating}
           onClearSelection={() => {
             setSelectedProducts(new Set());
             setIsSelectingAllMatching(false);
