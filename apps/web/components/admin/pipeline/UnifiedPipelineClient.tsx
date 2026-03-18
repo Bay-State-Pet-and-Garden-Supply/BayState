@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Search, RefreshCw, Filter, Upload, Download, Plus, LayoutDashboard } from 'lucide-react';
+import { Package, Search, RefreshCw, Filter, Upload, Download, Plus, LayoutDashboard, Activity, Image as ImageIcon } from 'lucide-react';
 import { PipelineProductCard } from './PipelineProductCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { PipelineProductDetail } from './PipelineProductDetail';
@@ -10,6 +10,9 @@ import { BatchEnhanceDialog } from './BatchEnhanceDialog';
 import { ManualAddProductDialog } from './ManualAddProductDialog';
 import { UndoToast } from './UndoToast';
 import { HealthOverview } from './HealthOverview';
+import { MonitoringClient } from './MonitoringClient';
+import { ImageSelectionTab } from './ImageSelectionTab';
+import { ExportTab } from './ExportTab';
 
 import { AlertBanner } from './AlertBanner';
 import { toast } from 'sonner';
@@ -427,8 +430,9 @@ export function UnifiedPipelineClient({
     }
   };
 
-  const handleBulkAction = async (action: 'moveToEnriched' | 'moveToFinalized' | 'delete') => {
+  const handleBulkAction = async (action: 'moveToEnriched' | 'moveToFinalized' | 'delete' | 'enrich') => {
     if (selectedProducts.size === 0) return;
+    if (action === 'enrich') return; // Handled separately by handleBulkEnrich
 
     const selectedSkus = Array.from(selectedProducts);
     const selectedCount = selectedSkus.length;
@@ -755,7 +759,18 @@ export function UnifiedPipelineClient({
             <Package className="h-4 w-4" />
             <span className="hidden sm:inline">Products</span>
           </TabsTrigger>
-
+          <TabsTrigger value="monitoring" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            <span className="hidden sm:inline">Monitoring</span>
+          </TabsTrigger>
+          <TabsTrigger value="images" className="flex items-center gap-2">
+            <ImageIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Images</span>
+          </TabsTrigger>
+          <TabsTrigger value="export" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -908,6 +923,8 @@ export function UnifiedPipelineClient({
           }}
           onMoveToEnriched={() => void handleBulkAction('moveToEnriched')}
           isMovingToEnriched={isBulkActionPending}
+          onEnrich={handleBulkEnrich}
+          isEnriching={isBulkEnriching}
           onClearSelection={() => {
             setSelectedProducts(new Set());
             setIsSelectingAllMatching(false);
@@ -947,8 +964,23 @@ export function UnifiedPipelineClient({
       )}
         </TabsContent>
 
+        <TabsContent value="monitoring" className="space-y-6">
+          <MonitoringClient />
+        </TabsContent>
 
+        <TabsContent value="images" className="space-y-6">
+          <ImageSelectionTab />
+        </TabsContent>
 
+        <TabsContent value="export" className="space-y-6">
+          <ExportTab
+            count={totalProducts}
+            filters={{
+              status: statusFilter === 'all' ? undefined : statusFilter,
+              search: searchQuery
+            }}
+          />
+        </TabsContent>
 
       </Tabs>
 
