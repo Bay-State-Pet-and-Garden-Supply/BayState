@@ -227,6 +227,140 @@ def test_discovery_job_uses_per_sku_context_items() -> None:
     assert captured_items[1]["brand"] == "Brand B"
 
 
+def test_run_job_preserves_login_config_for_authenticated_scrapers() -> None:
+    import runner
+
+    scraper_configs = [
+        ScraperConfig(
+            name="phillips",
+            base_url="https://shop.phillipspet.com",
+            selectors=[],
+            options={
+                "workflows": [{"action": "login", "params": {}}, {"action": "navigate", "params": {"url": "https://example.com"}}],
+                "timeout": 30,
+            },
+            test_skus=[],
+            login={
+                "url": "https://shop.phillipspet.com/ccrz__CCSiteLogin",
+                "username_field": "#emailField",
+                "password_field": "#passwordField",
+                "submit_button": "#send2Dsk",
+                "success_indicator": "a.doLogout.cc_do_logout",
+            },
+            credential_refs=["phillips"],
+        )
+    ]
+
+    job_config = JobConfig(
+        job_id="test-job-login-config",
+        skus=["072705115310"],
+        scrapers=scraper_configs,
+        test_mode=True,
+        max_workers=1,
+    )
+
+    captured_configs = []
+
+    class StubWorkflowExecutor:
+        def __init__(self, config, **kwargs):
+            _ = kwargs
+            captured_configs.append(config)
+            self.browser = None
+
+        async def initialize(self):
+            return None
+
+        async def execute_workflow(self, context=None, quit_browser=False):
+            _ = context
+            _ = quit_browser
+            return {"success": True, "data": {}}
+
+        async def cleanup(self):
+            return None
+
+    original_create_emitter = runner.create_emitter
+
+    try:
+        runner.create_emitter = lambda job_id: MagicMock()
+        with patch.object(runner, "WorkflowExecutor", StubWorkflowExecutor):
+            results = run_job(job_config, runner_name="test-runner")
+    finally:
+        runner.create_emitter = original_create_emitter
+
+    assert results is not None
+    assert captured_configs
+    assert captured_configs[0].login is not None
+    assert captured_configs[0].login.url == "https://shop.phillipspet.com/ccrz__CCSiteLogin"
+
+
+def test_run_job_preserves_structured_scraper_fields_in_output_payload() -> None:
+    import runner
+
+    scraper_configs = [
+        ScraperConfig(
+            name="phillips",
+            base_url="https://shop.phillipspet.com",
+            selectors=[],
+            options={"workflows": [], "timeout": 30},
+            test_skus=[],
+        )
+    ]
+
+    job_config = JobConfig(
+        job_id="test-job-output-shape",
+        skus=["072705115310"],
+        scrapers=scraper_configs,
+        test_mode=True,
+        max_workers=1,
+    )
+
+    class StubWorkflowExecutor:
+        def __init__(self, *args, **kwargs):
+            _ = args, kwargs
+            self.browser = None
+
+        async def initialize(self):
+            return None
+
+        async def execute_workflow(self, context=None, quit_browser=False):
+            _ = context
+            _ = quit_browser
+            return {
+                "success": True,
+                "results": {
+                    "Name": "Fromm Gold Large Breed Dog 30 lb",
+                    "Brand": "FROMM FAMILY FOODS LLC",
+                    "UPC": "072705115310",
+                    "ItemNumber": "727222",
+                    "model_number": "FG-30",
+                    "UoM": "Each",
+                    "Image URLs": ["http://example.com/thumb.jpg"],
+                },
+            }
+
+        async def cleanup(self):
+            return None
+
+    original_create_emitter = runner.create_emitter
+
+    try:
+        runner.create_emitter = lambda job_id: MagicMock()
+        with patch.object(runner, "WorkflowExecutor", StubWorkflowExecutor):
+            results = run_job(job_config, runner_name="test-runner")
+    finally:
+        runner.create_emitter = original_create_emitter
+
+    payload = results["data"]["072705115310"]["phillips"]
+
+    assert payload["title"] == "Fromm Gold Large Breed Dog 30 lb"
+    assert payload["brand"] == "FROMM FAMILY FOODS LLC"
+    assert payload["upc"] == "072705115310"
+    assert payload["item_number"] == "727222"
+    assert payload["manufacturer_part_number"] == "FG-30"
+    assert payload["unit_of_measure"] == "Each"
+    assert payload["images"] == ["http://example.com/thumb.jpg"]
+
+
 def test_empty_object_selectors_payload_does_not_fail_parsing() -> None:
     scraper_configs = [
         ScraperConfig(

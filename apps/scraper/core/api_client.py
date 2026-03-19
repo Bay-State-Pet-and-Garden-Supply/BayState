@@ -13,6 +13,7 @@ import os
 import time
 import hmac
 import hashlib
+import base64
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Any
@@ -43,6 +44,7 @@ class ScraperConfig:
     test_skus: list[str] | None = None
     retries: int = 3
     validation: dict[str, Any] | None = None
+    login: dict[str, Any] | None = None
     credential_refs: list[str] | None = None
 
 
@@ -320,6 +322,7 @@ class ScraperAPIClient:
                     test_skus=s.get("test_skus"),
                     retries=s.get("retries", 3),
                     validation=s.get("validation"),
+                    login=s.get("login"),
                     credential_refs=s.get("credential_refs"),
                 )
                 for s in data.get("scrapers", [])
@@ -591,6 +594,7 @@ class ScraperAPIClient:
                     test_skus=s.get("test_skus"),
                     retries=s.get("retries", 3),
                     validation=s.get("validation"),
+                    login=s.get("login"),
                     credential_refs=s.get("credential_refs"),
                 )
                 for s in job_data.get("scrapers", [])
@@ -808,6 +812,142 @@ class ScraperAPIClient:
             return {"username": username, "password": password, "type": "basic"}
         return None
 
+    @staticmethod
+    def _resolve_supabase_credentials() -> tuple[str | None, str | None]:
+        url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+        key = (
+            os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+            or os.environ.get("SUPABASE_KEY")
+            or os.environ.get("SUPABASE_ANON_KEY")
+            or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        )
+        return url, key
+
+    @staticmethod
+    def _resolve_encryption_key() -> bytes | None:
+        raw = os.environ.get("AI_CREDENTIALS_ENCRYPTION_KEY")
+        if not raw:
+            return None
+
+        trimmed = raw.strip()
+        if not trimmed:
+            return None
+
+        try:
+            maybe_base64 = base64.b64decode(trimmed, validate=True)
+            if len(maybe_base64) == 32:
+                return maybe_base64
+        except Exception:
+            pass
+
+        key_bytes = trimmed.encode("utf-8")
+        if len(key_bytes) == 32:
+            return key_bytes
+        return None
+
+    @classmethod
+    def _decrypt_supabase_secret(cls, encrypted_value: str, iv: str, auth_tag: str) -> str:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+        key = cls._resolve_encryption_key()
+        if not key:
+            raise ValueError("Missing or invalid AI_CREDENTIALS_ENCRYPTION_KEY")
+
+        aesgcm = AESGCM(key)
+        nonce = base64.b64decode(iv)
+        ciphertext = base64.b64decode(encrypted_value)
+        tag = base64.b64decode(auth_tag)
+        decrypted = aesgcm.decrypt(nonce, ciphertext + tag, None)
+        return decrypted.decode("utf-8")
+
+    @classmethod
+    def get_credentials_from_supabase(cls, scraper_slug: str) -> dict[str, str] | None:
+        url, key = cls._resolve_supabase_credentials()
+        if not url or not key:
+            return None
+
+        try:
+            from supabase import create_client
+        except Exception as exc:
+            logger.warning(f"Supabase client unavailable for credential lookup: {exc}")
+            return None
+
+        try:
+            client = create_client(url, key)
+            response = (
+                client.table("scraper_credentials")
+                .select("encrypted_value,iv,auth_tag,credential_type")
+                .eq("scraper_slug", scraper_slug)
+                .execute()
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to fetch credentials for {scraper_slug} from Supabase: {exc}")
+            return None
+
+        rows = getattr(response, "data", None) or []
+        if not rows:
+            return None
+
+        resolved: dict[str, str] = {}
+
+        for row in rows:
+            encrypted_value = row.get("encrypted_value")
+            iv = row.get("iv")
+            auth_tag = row.get("auth_tag")
+            credential_type = str(row.get("credential_type", "")).strip().lower()
+
+            if not encrypted_value or not iv or not auth_tag or not credential_type:
+                continue
+
+            try:
+                decrypted = cls._decrypt_supabase_secret(encrypted_value, iv, auth_tag)
+            except Exception as exc:
+                logger.warning(f"Failed to decrypt credential '{credential_type}' for {scraper_slug}: {exc}")
+                return None
+
+            parsed_payload: dict[str, Any] | None = None
+            try:
+                parsed = json.loads(decrypted)
+                if isinstance(parsed, dict):
+                    parsed_payload = parsed
+            except json.JSONDecodeError:
+                parsed_payload = None
+
+            if parsed_payload:
+                username = parsed_payload.get("username")
+                password = parsed_payload.get("password")
+                api_key = parsed_payload.get("api_key")
+                cred_type = parsed_payload.get("type")
+
+                if isinstance(username, str) and username:
+                    resolved["username"] = username
+                if isinstance(password, str) and password:
+                    resolved["password"] = password
+                if isinstance(api_key, str) and api_key:
+                    resolved["api_key"] = api_key
+                if isinstance(cred_type, str) and cred_type:
+                    resolved["type"] = cred_type
+                continue
+
+            if credential_type == "login":
+                resolved["username"] = decrypted
+            elif credential_type == "password":
+                resolved["password"] = decrypted
+            elif credential_type == "api_key":
+                resolved["api_key"] = decrypted
+
+        if "username" in resolved and "password" in resolved:
+            resolved.setdefault("type", "basic")
+            logger.info(f"Resolved credentials for {scraper_slug} from Supabase")
+            return resolved
+
+        if "api_key" in resolved:
+            resolved.setdefault("type", "api_key")
+            logger.info(f"Resolved API credential for {scraper_slug} from Supabase")
+            return resolved
+
+        return None
+
     def get_credentials(self, scraper_slug: str) -> dict[str, str] | None:
         """
         Fetch credentials for a specific scraper from the coordinator.
@@ -830,11 +970,15 @@ class ScraperAPIClient:
 
         # If no API URL, try environment variables directly
         if not self.api_url:
+            supabase_creds = self.get_credentials_from_supabase(scraper_slug)
+            if supabase_creds:
+                self._credential_cache[scraper_slug] = supabase_creds
+                return supabase_creds
             env_creds = self.get_credentials_from_env(scraper_slug)
             if env_creds:
                 self._credential_cache[scraper_slug] = env_creds
                 return env_creds
-            logger.error("API client not configured - missing URL and no env credentials")
+            logger.error("API client not configured - missing URL and no Supabase/env credentials")
             return None
 
         try:
@@ -846,6 +990,8 @@ class ScraperAPIClient:
                     "password": data["password"],
                     "type": data.get("type", "basic"),
                 }
+                if data.get("api_key"):
+                    credentials["api_key"] = data["api_key"]
                 # Cache credentials for job duration
                 self._credential_cache[scraper_slug] = credentials
                 logger.debug(f"Retrieved and cached credentials for {scraper_slug}")
@@ -871,6 +1017,11 @@ class ScraperAPIClient:
             return None
         except Exception as e:
             logger.error(f"Error fetching credentials for {scraper_slug}: {e}")
+
+        supabase_creds = self.get_credentials_from_supabase(scraper_slug)
+        if supabase_creds:
+            self._credential_cache[scraper_slug] = supabase_creds
+            return supabase_creds
 
         # Fallback to environment variables when API fails
         env_creds = self.get_credentials_from_env(scraper_slug)

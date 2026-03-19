@@ -347,6 +347,11 @@ class WorkflowExecutor:
                     break
 
                 await self._execute_step_with_retry(step, self.context, step_index=i)
+
+                # Sync extracted results back to context so subsequent steps
+                # can reference them via {{variable}} substitution
+                self.context.update(self.results)
+
                 if self.workflow_stopped:
                     break
 

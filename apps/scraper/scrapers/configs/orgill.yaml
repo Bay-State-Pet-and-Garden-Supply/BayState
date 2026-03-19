@@ -12,14 +12,6 @@ selectors:
     fallback_selectors:
       - "h1"
       - "[data-product-name]"
-  - name: Price
-    selector: "[id*='lblSellingPrice'], .price, [class*='price']"
-    attribute: text
-    multiple: false
-    required: false
-    fallback_selectors:
-      - ".price"
-      - "[class*='price']"
   - name: Brand
     selector: "#cphMainContent_ctl00_lblVendorName"
     attribute: text
@@ -141,7 +133,7 @@ login:
   submit_button: "#cphMainContent_ctl00_loginOrgillxs_LoginButton"
   password_field: "#cphMainContent_ctl00_loginOrgillxs_Password"
   username_field: "#cphMainContent_ctl00_loginOrgillxs_UserName"
-  success_indicator: a[href='/signOut.aspx']
+  success_indicator: "#btnMyProfile"
 http_status: null
 normalization: null
 timeout: 30

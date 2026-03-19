@@ -41,7 +41,7 @@ def run_full_mode(client: ScraperAPIClient, job_id: str, runner_name: str) -> No
         sys.exit(1)
 
     try:
-        results = run_job(job_config, runner_name=runner_name)
+        results = run_job(job_config, runner_name=runner_name, api_client=client)
         client.submit_results(
             job_id,
             "completed",

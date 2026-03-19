@@ -13,7 +13,17 @@ selectors:
       - "[data-test-selector='product-name']"
       - "h1"
   - name: Attributes
-    selector: "[data-test-selector='productDetails_specifications'] li"
+    selector: "[data-test-selector='productDetails_specifications']"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Product Meta
+    selector: "[data-test-selector^='productDetails_productId_']"
+    attribute: text
+    multiple: false
+    required: false
+  - name: UoM
+    selector: "[data-test-selector='productPrice_unitOfMeasureLabel']"
     attribute: text
     multiple: false
     required: false
@@ -59,6 +69,8 @@ workflows:
       fields:
         - Name
         - Attributes
+        - Product Meta
+        - UoM
         - Image URLs
   - action: transform_value
     name: null
@@ -69,9 +81,23 @@ workflows:
   - action: transform_value
     name: null
     params:
-      regex: Weight:\s*([^\n]+)
-      source_field: Attributes
-      target_field: Weight
+      regex: "Item #\\s*([A-Z0-9-]+)"
+      source_field: Product Meta
+      target_field: ItemNumber
+  - action: transform_value
+    name: null
+    params:
+      regex: EA:\s*([0-9]+)
+      source_field: Product Meta
+      target_field: UPC
+  - action: transform_value
+    name: null
+    params:
+      field: UoM
+      transformations:
+        - type: replace
+          pattern: ^/\s*
+          replacement: ""
   - action: transform_value
     name: null
     params:

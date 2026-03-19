@@ -65,7 +65,8 @@ describe('consolidation batch service', () => {
         const userContent = parsed.body.messages.find((message) => message.role === 'user')?.content || '';
 
         expect(userContent).toContain('"_legacy"');
-        expect(userContent).toContain('"Name": "Legacy Product Name"');
+        expect(userContent).toContain('"title": "Legacy Product Name"');
+        expect(userContent).toContain('"brand": "Legacy Brand"');
         expect(userContent).not.toContain('"source_url"');
         expect(userContent).not.toContain('"image_url"');
     });

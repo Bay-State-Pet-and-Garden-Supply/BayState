@@ -134,6 +134,12 @@ describe('persistProductsIngestionSourcesStrict', () => {
       expect.objectContaining({
         pipeline_status: 'scraped',
         pipeline_status_new: 'enriched',
+        sources: {
+          ai_discovery: {
+            title: 'Discovery Name',
+          },
+          _last_scraped: nowIso,
+        },
       })
       ]),
       { onConflict: 'sku' }
