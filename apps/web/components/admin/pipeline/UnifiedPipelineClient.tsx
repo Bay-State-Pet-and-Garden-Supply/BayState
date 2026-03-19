@@ -550,7 +550,7 @@ export function UnifiedPipelineClient({
   const handleClearScrapeResults = async () => {
     if (selectedProducts.size === 0) return;
 
-    if (!window.confirm(`Clear scrape results for ${selectedProducts.size} products? This will move them back to Imported.`)) {
+    if (!window.confirm(`Clear scrape results for ${selectedProducts.size} products? This will move them back to Registered.`)) {
       return;
     }
 

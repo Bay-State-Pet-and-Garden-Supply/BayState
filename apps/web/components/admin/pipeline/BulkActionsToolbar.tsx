@@ -162,7 +162,7 @@ export function BulkActionsToolbar({
                                 </button>
                             ))}
 
-                            {!isNewPipeline && currentStatus === 'scraped' && onClearScrapeResults && (
+                            {(currentStatus === 'scraped' || currentStatus === 'enriched') && onClearScrapeResults && (
                                 <button
                                     onClick={() => void onClearScrapeResults()}
                                     disabled={isBusy}
