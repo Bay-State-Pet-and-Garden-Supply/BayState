@@ -107,6 +107,7 @@ class ExtractAndTransformAction(BaseAction):
         required = field_config.get("required", True)
         transforms = field_config.get("transform", [])
         timeout_ms_value = field_config.get("timeout_ms")
+        nth = field_config.get("nth")
 
         if not name:
             raise WorkflowExecutionError("Field config missing 'name'")
@@ -128,11 +129,11 @@ class ExtractAndTransformAction(BaseAction):
             if multiple:
                 value = await self._extract_multiple(target_selector, attribute, timeout_ms)
             else:
-                value = await self._extract_single(target_selector, attribute, required, timeout_ms)
+                value = await self._extract_single(target_selector, attribute, required, timeout_ms, nth)
 
             # Check required constraint
             if required and value is None:
-                logger.warning(f"Required field '{name}' not found (selector: {selector})")
+                logger.warning(f"Required field '{name}' not found (selector: {target_selector})")
                 self.ctx.results[name] = [] if multiple else None
                 return
 
@@ -160,8 +161,19 @@ class ExtractAndTransformAction(BaseAction):
         attribute: str,
         required: bool,
         timeout_ms: int | None,
+        nth: int | None = None,
     ) -> str | None:
         """Extract a single value from the first matching element."""
+        if nth is not None:
+            # If nth is specified, we must find all and take the nth
+            elements = await self.ctx.find_elements_safe(
+                selector,
+                timeout=timeout_ms,
+            )
+            if not elements or len(elements) <= nth:
+                return None
+            return await self.ctx.extract_value_from_element(elements[nth], attribute)
+
         element = await self.ctx.find_element_safe(
             selector,
             required=required,
