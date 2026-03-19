@@ -9,12 +9,17 @@ import { STAGE_CONFIG } from '@/lib/pipeline/types';
  * Bulk action configuration for each pipeline stage.
  * 'imported' opens the scraper selection dialog instead of a direct move.
  */
-const BULK_ACTIONS: Record<PipelineStatus, { label: string; nextStage: PipelineStatus | null }> = {
+const BULK_ACTIONS: Record<PipelineStatus, { 
+  label: string; 
+  nextStage: PipelineStatus | null; 
+  resetLabel?: string;
+  previousStage?: PipelineStatus | null;
+}> = {
   imported: { label: 'Scrape Selected', nextStage: 'scraped' },
-  monitoring: { label: '', nextStage: null },
-  scraped: { label: 'Consolidate Selected', nextStage: 'consolidated' },
-  consolidated: { label: 'Finalize Selected', nextStage: 'finalized' },
-  finalized: { label: 'Publish Selected', nextStage: 'published' },
+  monitoring: { label: '', nextStage: null, resetLabel: 'Cancel & Return to Import', previousStage: 'imported' },
+  scraped: { label: 'Consolidate Selected', nextStage: 'consolidated', resetLabel: 'Clear & Return to Import', previousStage: 'imported' },
+  consolidated: { label: 'Finalize Selected', nextStage: 'finalized', resetLabel: 'Reset Consolidation', previousStage: 'scraped' },
+  finalized: { label: 'Publish Selected', nextStage: 'published', resetLabel: 'Return to Consolidation', previousStage: 'consolidated' },
   published: { label: '', nextStage: null },
 };
 
@@ -27,6 +32,8 @@ interface BulkToolbarProps {
   onSelectAll: () => void;
   /** For imported stage, opens scraper dialog. For others, moves to next stage. */
   onBulkAction: (nextStage: PipelineStatus) => void;
+  /** Resets products to a previous stage, clearing results */
+  onResetStage?: (previousStage: PipelineStatus) => void;
   /** Opens the scraper selection dialog (imported stage only) */
   onOpenScrapeDialog?: () => void;
 }
@@ -39,12 +46,14 @@ export function BulkToolbar({
   onClearSelection,
   onSelectAll,
   onBulkAction,
+  onResetStage,
   onOpenScrapeDialog,
 }: BulkToolbarProps) {
   const bulkAction = BULK_ACTIONS[currentStage];
   const stageConfig = STAGE_CONFIG[currentStage];
   const isTerminalStage = currentStage === 'published';
   const hasBulkAction = !isTerminalStage && bulkAction.nextStage !== null;
+  const hasResetAction = !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
   const isImported = currentStage === 'imported';
 
   const handlePrimaryAction = () => {
@@ -52,6 +61,14 @@ export function BulkToolbar({
       onOpenScrapeDialog();
     } else if (bulkAction.nextStage) {
       onBulkAction(bulkAction.nextStage);
+    }
+  };
+
+  const handleResetAction = () => {
+    if (bulkAction.previousStage && onResetStage) {
+      if (confirm(`Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? 's' : ''}? This action may clear data.`)) {
+        onResetStage(bulkAction.previousStage);
+      }
     }
   };
 
@@ -116,6 +133,18 @@ export function BulkToolbar({
             className="h-8 text-xs text-zinc-600"
           >
             Select All ({totalCount})
+          </Button>
+        )}
+
+        {hasResetAction && selectedCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResetAction}
+            disabled={isLoading}
+            className="h-9 border-zinc-300 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+          >
+            {bulkAction.resetLabel}
           </Button>
         )}
 

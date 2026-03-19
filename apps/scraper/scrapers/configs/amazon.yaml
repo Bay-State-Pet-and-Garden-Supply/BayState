@@ -92,8 +92,8 @@ workflows:
     name: null
     params:
       required_selectors:
-        - "#productTitle"
-      search_result_selector: "div[data-component-type='s-search-result']:not(.AdHolder) h2 a"
+        - "h2"
+      search_result_selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
   - action: conditional
     name: skip_search_if_on_pdp
     params:
@@ -110,7 +110,7 @@ workflows:
     name: click_first_result
     params:
       index: 0
-      selector: "div[data-component-type='s-search-result']:not(.AdHolder) h2 a"
+      selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
       force: true
       timeout: 10
   - action: wait_for

@@ -16,7 +16,11 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus, toStatus } = body as { skus: string[]; toStatus: TransitionalPipelineStatus };
+        const { skus, toStatus, resetResults = false } = body as { 
+            skus: string[]; 
+            toStatus: TransitionalPipelineStatus;
+            resetResults?: boolean;
+        };
 
         // Validate skus array
         if (!skus || !Array.isArray(skus) || skus.length === 0) {
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const result = await bulkUpdateStatus(skus, toStatus, auth.user.id);
+        const result = await bulkUpdateStatus(skus, toStatus, auth.user.id, resetResults);
 
         if (!result.success) {
             // Check if error indicates invalid transitions
