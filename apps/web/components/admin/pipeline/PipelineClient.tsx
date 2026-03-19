@@ -162,6 +162,38 @@ export function PipelineClient({
     }
   };
 
+  // Handle stage reset (moving back and clearing results)
+  const handleResetStage = async (previousStage: PipelineStatus) => {
+    const skus = Array.from(selectedSkus);
+    if (skus.length === 0) return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/pipeline/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          skus, 
+          toStatus: previousStage,
+          resetResults: true 
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(`Reset ${skus.length} product${skus.length > 1 ? 's' : ''} to ${previousStage}`);
+        setSelectedSkus(new Set());
+        await refreshAll();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || 'Failed to reset stage');
+      }
+    } catch {
+      toast.error('Failed to reset stage');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Handle scrape dialog confirm — creates actual scraper jobs
   const handleScrapeConfirm = async (scrapers: string[], enrichmentMethod: 'scrapers' | 'ai_search') => {
     const skus = Array.from(selectedSkus);
@@ -233,6 +265,7 @@ export function PipelineClient({
           onClearSelection={handleClearSelection}
           onSelectAll={handleSelectAll}
           onBulkAction={handleBulkAction}
+          onResetStage={handleResetStage}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
         />
       )}

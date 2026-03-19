@@ -323,11 +323,16 @@ export async function updateProductStatus(
 
 /**
  * Updates the status of multiple products.
+ * @param skus - Array of SKUs to update
+ * @param newStatus - Target pipeline status
+ * @param userId - ID of the user performing the action (for audit log)
+ * @param resetResults - If true, clears data for the stages being left
  */
 export async function bulkUpdateStatus(
     skus: string[],
     newStatus: TransitionalPipelineStatus,
-    userId?: string
+    userId?: string,
+    resetResults: boolean = false
 ): Promise<{ success: boolean; error?: string; updatedCount: number }> {
     const supabase = await createClient();
     const targetStatus = toNewPipelineStatus(newStatus);
@@ -356,12 +361,29 @@ export async function bulkUpdateStatus(
         };
     }
 
+    const updatePayload: any = {
+        pipeline_status: targetStatus,
+        updated_at: new Date().toISOString(),
+    };
+
+    if (resetResults) {
+        if (targetStatus === 'imported') {
+            updatePayload.sources = {};
+            updatePayload.consolidated = null;
+            updatePayload.image_candidates = [];
+            updatePayload.selected_images = [];
+            updatePayload.confidence_score = null;
+            updatePayload.error_message = null;
+            updatePayload.retry_count = 0;
+        } else if (targetStatus === 'scraped') {
+            updatePayload.consolidated = null;
+            updatePayload.confidence_score = null;
+        }
+    }
+
     const { error, count } = await supabase
         .from('products_ingestion')
-        .update({
-            pipeline_status: targetStatus,
-            updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .in('sku', skus);
 
     if (error) {
