@@ -65,15 +65,30 @@ describe('consolidation batch service', () => {
         const userContent = parsed.body.messages.find((message) => message.role === 'user')?.content || '';
 
         expect(userContent).toContain('"_legacy"');
-        expect(userContent).toContain('"Name": "Legacy Product Name"');
+        expect(userContent).toContain('"title": "Legacy Product Name"');
+        expect(userContent).toContain('"brand": "Legacy Brand"');
         expect(userContent).not.toContain('"source_url"');
         expect(userContent).not.toContain('"image_url"');
     });
 
     it('applyConsolidationResults merges existing consolidated data and resolves brand ids', async () => {
-        const productsIngestionUpsert = jest.fn().mockResolvedValue({ error: null });
+        const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
+            data: { sku: 'SKU-1' },
+            error: null,
+        });
+        const productsIngestionUpdateSelect = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionUpdateMaybeSingle });
+        const productsIngestionUpdateEq = jest.fn();
+        productsIngestionUpdateEq.mockReturnValue({
+            eq: productsIngestionUpdateEq,
+            select: productsIngestionUpdateSelect,
+        });
+        const productsIngestionUpdate = jest
+            .fn()
+            .mockReturnValue({ eq: productsIngestionUpdateEq });
 
-        const productsIngestionSelect = {
+        const productsIngestionSelectBySkuIn = {
             in: jest.fn().mockResolvedValue({
                 data: [
                     {
@@ -88,6 +103,31 @@ describe('consolidation batch service', () => {
             }),
         };
 
+        const productsIngestionSelectCurrentMaybeSingle = jest.fn().mockResolvedValue({
+            data: {
+                consolidated: {
+                    images: ['https://cdn.example.com/existing.jpg'],
+                    stock_status: 'in_stock',
+                },
+                updated_at: '2026-03-18T00:00:00.000Z',
+            },
+            error: null,
+        });
+        const productsIngestionSelectCurrentEq = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
+        const productsIngestionSelect = jest.fn((columns: string) => {
+            if (columns === 'sku, consolidated') {
+                return productsIngestionSelectBySkuIn;
+            }
+            if (columns === 'consolidated, updated_at') {
+                return {
+                    eq: productsIngestionSelectCurrentEq,
+                };
+            }
+            throw new Error(`Unexpected products_ingestion select columns: ${columns}`);
+        });
+
         const brandsSelect = jest.fn().mockResolvedValue({
             data: [{ id: 'brand-uuid-1', name: 'KONG' }],
             error: null,
@@ -97,8 +137,8 @@ describe('consolidation batch service', () => {
             from: jest.fn((table: string) => {
                 if (table === 'products_ingestion') {
                     return {
-                        select: jest.fn(() => productsIngestionSelect),
-                        upsert: productsIngestionUpsert,
+                        select: productsIngestionSelect,
+                        update: productsIngestionUpdate,
                     };
                 }
 
@@ -128,21 +168,21 @@ describe('consolidation batch service', () => {
         ]);
 
         expect('status' in response && response.status === 'applied').toBe(true);
-        expect(productsIngestionUpsert).toHaveBeenCalledWith(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    pipeline_status: 'finalized',
-                    confidence_score: 0.94,
-                    error_message: null,
-                    consolidated: expect.objectContaining({
-                        brand_id: 'brand-uuid-1',
-                        brand: 'KONG',
-                        images: ['https://cdn.example.com/existing.jpg'],
-                        stock_status: 'in_stock',
-                    }),
+        expect(productsIngestionUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pipeline_status: 'consolidated',
+                pipeline_status_new: 'finalized',
+                confidence_score: 0.94,
+                error_message: null,
+                consolidated: expect.objectContaining({
+                    brand_id: 'brand-uuid-1',
+                    brand: 'KONG',
+                    images: ['https://cdn.example.com/existing.jpg'],
+                    stock_status: 'in_stock',
                 }),
-            ]),
-            { onConflict: 'sku' }
+            })
         );
+        expect(productsIngestionUpdateEq).toHaveBeenCalledWith('sku', 'SKU-1');
+        expect(productsIngestionUpdateEq).toHaveBeenCalledWith('updated_at', '2026-03-18T00:00:00.000Z');
     });
 });

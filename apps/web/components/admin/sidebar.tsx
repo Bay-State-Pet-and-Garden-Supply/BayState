@@ -14,8 +14,6 @@ import {
   Activity,
   LayoutGrid,
   Wrench,
-  Image,
-  Download,
 } from 'lucide-react';
 
 interface NavItem {
@@ -41,10 +39,7 @@ const navSections: NavSection[] = [
     title: 'Pipeline',
     adminOnly: true,
     items: [
-      { href: '/admin/pipeline', label: 'Dashboard', icon: <LayoutGrid className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/pipeline/image-selection', label: 'Image Selection', icon: <Image className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/pipeline/export', label: 'Export', icon: <Download className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/pipeline/monitoring', label: 'Monitoring', icon: <Activity className="h-5 w-5" />, adminOnly: true },
+      { href: '/admin/pipeline', label: 'Overview', icon: <LayoutGrid className="h-5 w-5" />, adminOnly: true },
     ],
   },
   {
@@ -83,7 +78,7 @@ export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
     .filter(section => section.items.length > 0);
 
   return (
-    <aside className="flex h-full w-48 flex-col bg-sidebar text-sidebar-foreground">
+    <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border">
         <h1 className="text-xl font-bold">Manager Portal</h1>
       </div>

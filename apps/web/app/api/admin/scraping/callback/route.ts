@@ -12,7 +12,7 @@ import {
 import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
-    recordCallbackProcessed,
+    recordCallbackProcessedWithRetry,
 } from '@/lib/scraper-callback/idempotency';
 import {
     finalizeTestJob,
@@ -180,6 +180,23 @@ export async function POST(request: NextRequest) {
 
         const supabase = getSupabaseAdmin();
 
+        const earlyIdempotencyCheck = await checkIdempotency(
+            supabase,
+            payload.job_id,
+            'admin',
+            payload.results?.data
+        );
+
+        if (earlyIdempotencyCheck.isDuplicate) {
+            return NextResponse.json({
+                success: true,
+                idempotent: true,
+                message: 'Callback already processed',
+            });
+        }
+
+        const idempotencyKey = earlyIdempotencyCheck.key;
+
         const { data: existingJob, error: existingJobError } = await supabase
             .from('scrape_jobs')
             .select('id, status, lease_token, attempt_count, max_attempts')
@@ -294,13 +311,25 @@ export async function POST(request: NextRequest) {
             jobUpdateQuery = jobUpdateQuery.eq('lease_token', existingJob.lease_token);
         }
 
-        const { error: updateError } = await jobUpdateQuery;
+        const { data: updatedJobRow, error: updateError } = await jobUpdateQuery
+            .select('id')
+            .maybeSingle();
 
         if (updateError) {
             console.error('[Callback] Failed to update job:', updateError);
             return NextResponse.json(
                 { error: 'Failed to update job' },
                 { status: 500 }
+            );
+        }
+
+        if (!updatedJobRow) {
+            console.warn(
+                `[Callback] No scrape_jobs row updated for ${payload.job_id}; lease likely changed during callback processing`
+            );
+            return NextResponse.json(
+                { error: 'Job lease changed while processing callback' },
+                { status: 409 }
             );
         }
 
@@ -359,31 +388,6 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            const idempotencyCheck = await checkIdempotency(
-                supabase,
-                payload.job_id,
-                'admin',
-                transformedResults
-            );
-
-            if (idempotencyCheck.isDuplicate) {
-                console.log(`[Callback] Duplicate callback detected for job ${payload.job_id}. Skipping side effects.`);
-                
-                // For test jobs, still update the test run status even if duplicate
-                // This ensures test runs don't stay stuck in 'pending'
-                if (isTestJob && testRunId) {
-                    console.log(`[Callback] Test job duplicate - ensuring test run ${testRunId} is updated`);
-                    // Test run update will be handled below after this block
-                } else if (!isTestJob) {
-                    // For production jobs, truly skip on duplicate
-                    return NextResponse.json({
-                        success: true,
-                        idempotent: true,
-                        message: 'Callback already processed',
-                    });
-                }
-            }
-
             if (isTestJob) {
                 console.log(`[Callback] Test job ${payload.job_id} completed with ${skus.length} SKUs. Skipping products_ingestion persistence.`);
             } else {
@@ -406,6 +410,30 @@ export async function POST(request: NextRequest) {
                     console.log(`[Callback] Updated ${persisted.length} products with scraped data`);
                 } catch (error) {
                     console.error(`[Callback] Failed to persist results for job ${payload.job_id}:`, error);
+
+                    const failedAt = new Date().toISOString();
+                    const { data: failedJobRow, error: compensateError } = await supabase
+                        .from('scrape_jobs')
+                        .update({
+                            status: 'failed',
+                            error_message: error instanceof Error ? error.message : 'Failed to persist callback results',
+                            completed_at: failedAt,
+                            updated_at: failedAt,
+                        })
+                        .eq('id', payload.job_id)
+                        .select('id')
+                        .maybeSingle();
+
+                    if (compensateError || !failedJobRow) {
+                        const compensateDetail = compensateError?.message || 'job row missing during compensating failure update';
+                        console.error(
+                            `[Callback] Failed compensating job update for ${payload.job_id}: ${compensateDetail}`
+                        );
+                        throw new Error(
+                            `Failed to persist callback results and failed compensating update: ${compensateDetail}`
+                        );
+                    }
+
                     throw error;
                 }
 
@@ -415,16 +443,20 @@ export async function POST(request: NextRequest) {
                 // Previously: await onScraperComplete(payload.job_id, skus);
             }
 
-            const recordResult = await recordCallbackProcessed(
+            const recordResult = await recordCallbackProcessedWithRetry(
                 supabase,
                 payload.job_id,
                 runnerName,
-                idempotencyCheck.key,
+                idempotencyKey,
                 payload.results || {}
             );
 
             if (!recordResult.success) {
-                console.warn(`[Callback] Failed to record idempotency marker: ${recordResult.error}`);
+                console.error(`[Callback] Failed to record idempotency marker: ${recordResult.error}`);
+                return NextResponse.json(
+                    { error: 'Failed to record callback idempotency marker' },
+                    { status: 500 }
+                );
             }
         }
 

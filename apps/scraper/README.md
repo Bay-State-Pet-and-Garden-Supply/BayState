@@ -181,19 +181,28 @@ The runner supports two environments:
 | **Development** | `http://localhost:3000` | Active development, testing new scrapers |
 | **Production** | `https://bay-state-app.vercel.app` | Live data collection |
 
-### Quick Start
+### Local CLI Mode (New!)
+
+You can now run and test scrapers locally without a running API server. This is perfect for verifying YAML configs and debugging selectors.
 
 ```bash
-# Development mode (connects to local app)
-./run-dev.sh
+# Test a scraper with its built-in test_skus
+python runner.py --local --config scrapers/configs/phillips.yaml
 
-# Production mode (connects to Vercel)
-./run-prod.sh
+# Test a specific SKU and watch the browser
+python runner.py --local --config scrapers/configs/phillips.yaml --sku 072705115310 --no-headless
 
-# Or use Python directly
-python daemon.py --env dev    # Development
-python daemon.py --env prod   # Production (default)
+# Save results to a file
+python runner.py --local --config scrapers/configs/phillips.yaml --output results.json
 ```
+
+For scrapers requiring login, set environment variables:
+```bash
+PHILLIPS_USERNAME=myuser PHILLIPS_PASSWORD=mypass \
+  python runner.py --local --config scrapers/configs/phillips.yaml
+```
+
+### Quick Start (Orchestrated)
 
 ### Environment Files
 

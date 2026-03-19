@@ -141,3 +141,6 @@ The `scraper_config_versions` table stored version history for scraper configs. 
 - [x] SQL syntax uses IF EXISTS clause
 - [x] Comment explains the purpose
 - Follow-up verification: after clearing a stale `.next` build lock from a stray local process, `bun run build` reached type-checking and failed on a pre-existing route signature mismatch in `app/api/scraper/v1/credentials/[id]/route.ts`, unrelated to the studio test endpoint change.
+
+- 2026-03-19 verification: live runners call `/api/scraper/v1/credentials/{slug}` via `ScraperAPIClient.get_credentials()`, so adding `app_settings` fallback in `apps/web/app/api/scraper/v1/credentials/[id]/route.ts` closes the legacy-storage gap that caused `Missing credentials for petfoodex` when `scraper_credentials` had no rows.
+- 2026-03-19 verification: current login scraper allowlist in `apps/scraper/daemon.py` matches the fallback key map (`petfoodex`, `phillips`, `orgill`, `shopsite`); targeted Jest route tests pass, but there is still no automated test that exercises the `app_settings` fallback branch directly.

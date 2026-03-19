@@ -20,8 +20,7 @@ selectors:
     multiple: true
     required: true
   - name: Weight
-    selector: //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] |
-      //li[contains(., 'pounds')]
+    selector: "//tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] | //li[contains(., 'pounds')]"
     attribute: text
     multiple: false
     required: false
@@ -51,8 +50,7 @@ selectors:
     multiple: false
     required: false
   - name: ASIN
-    selector: div#detailBullets_feature_div li:has(span:contains('ASIN')) span +
-      span, tr:has(th:contains('ASIN')) td
+    selector: "div#detailBullets_feature_div li:has(span:has-text('ASIN')) span + span, tr:has(th:has-text('ASIN')) td"
     attribute: text
     multiple: false
     required: false
@@ -65,7 +63,7 @@ workflows:
   - action: navigate
     name: null
     params:
-      url: https://www.amazon.com/s?k={sku_encoded}
+      url: https://www.amazon.com/s?k={{sku}}
   - action: wait
     name: wait_for_load
     params:
@@ -80,11 +78,9 @@ workflows:
       timeout: 30
       selector:
         - "#productTitle"
+        - "div[data-asin]:not([data-asin=''])"
         - ".s-result-item"
-        - ".s-main-slot"
-        - "#search"
         - "#noResultsTitle"
-        - ".s-desktop-no-results"
   - action: check_no_results
     name: null
     params: {}
@@ -92,6 +88,12 @@ workflows:
     name: null
     params:
       if_flag: no_results_found
+  - action: validate_search_result
+    name: null
+    params:
+      required_selectors:
+        - "#productTitle"
+      search_result_selector: "div[data-component-type='s-search-result']:not(.AdHolder) h2 a"
   - action: conditional
     name: skip_search_if_on_pdp
     params:
@@ -105,19 +107,11 @@ workflows:
         params:
           if_flag: true
   - action: click
-    name: click_matching_result
+    name: click_first_result
     params:
       index: 0
-      selector: div[data-component-type="s-search-result"] a:has(h2),
-        div[data-component-type="s-search-result"] h2 a,
-        div.s-result-item.s-asin a:has(h2),
-        div[data-cy="title-recipe"] a.a-link-normal,
-        .s-result-item a[href*="/dp/"],
-        .s-result-item a[href*="%2Fdp%2F"]
+      selector: "div[data-component-type='s-search-result']:not(.AdHolder) h2 a"
       force: true
-      match_context_field: product_name
-      exclude_sponsored: true
-      require_context_match: true
       timeout: 10
   - action: wait_for
     name: wait_for_pdp
@@ -126,11 +120,6 @@ workflows:
       selector:
         - "#productTitle"
         - "#title"
-  - action: verify_sku_on_page
-    name: verify_correct_product
-    params:
-      sku_field: sku
-      strict: true
   - action: extract_and_transform
     name: null
     params:
@@ -155,48 +144,30 @@ workflows:
               replacement: _AC_SL1500_
         - name: Weight
           required: false
-          selector: tr:contains('Item Weight') td,
-            li:contains('Item Weight') span,
-            div#detailBullets_feature_div li:contains('Item Weight') span.a-list-item,
-            //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] |
-            //li[contains(., 'pounds')]
-          attribute: text
-        - name: Price
-          selector: span.a-price span.a-offscreen,
-            span#priceblock_ourprice,
-            span#priceblock_dealprice,
-            span.a-color-price,
-            .a-price .a-offscreen, #priceblock_ourprice, .a-price
+          selector: "tr:has-text('Item Weight') td, li:has-text('Item Weight') span, div#detailBullets_feature_div li:has-text('Item Weight') span.a-list-item, //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] | //li[contains(., 'pounds')]"
           attribute: text
         - name: Rating
-          selector: "span.a-icon-alt, i.a-icon-star span.a-icon-alt, #acrPopover, i[data-hook='average-star-rating'] span"
+          selector: "span.a-icon-alt"
+          multiple: true
           attribute: text
         - name: Reviews
-          selector: "span#acrCustomerReviewText, a.a-link-normal span#acrCustomerReviewText, #acrCustomerReviewText"
+          selector: "span#acrCustomerReviewText, a.a-link-normal span#acrCustomerReviewText"
           attribute: text
         - name: Description
-          selector: "div#feature-bullets, div#productDescription, div#aplus, #productDescription"
+          selector: "div#feature-bullets, div#productDescription, div#aplus"
           attribute: text
         - name: Features
           multiple: true
           selector: "#feature-bullets li span"
           attribute: text
         - name: Availability
-          selector: div#availability span,
-            span.a-declarative[data-action="show-all-offers-display"],
-            "#availability"
+          selector: "#availability"
           attribute: text
         - name: ASIN
-          selector: tr:contains('ASIN') td,
-            li:contains('ASIN') span,
-            div#detailBullets_feature_div li:contains('ASIN') span.a-list-item,
-            div#detailBullets_feature_div li:has(span:contains('ASIN')) span +
-            span, tr:has(th:contains('ASIN')) td
+          selector: "tr:has-text('ASIN') td, li:has-text('ASIN') span, div#detailBullets_feature_div li:has-text('ASIN') span.a-list-item"
           attribute: text
         - name: Technical Specs
-          selector: div#prodDetails,
-            div#detailBullets_feature_div,
-            "#prodDetails, #detailBullets_feature_div"
+          selector: "div#prodDetails, div#detailBullets_feature_div"
           attribute: text
 ai_config: null
 anti_detection:

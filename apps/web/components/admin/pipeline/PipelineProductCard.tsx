@@ -1,20 +1,18 @@
 'use client';
 
-import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
 import {
     ChevronRight,
     Package,
     Settings2,
-    Sparkles,
-    CheckCircle2,
-    AlertCircle,
     TrendingUp,
     Database,
-    ImageIcon,
-    Activity
+    ImageIcon
 } from 'lucide-react';
 import Image from 'next/image';
 import { formatCurrency } from '@/lib/utils';
+import { StatusBadge } from './StatusBadge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PipelineProductCardProps {
     product: PipelineProduct;
@@ -23,48 +21,56 @@ interface PipelineProductCardProps {
     onSelect: (sku: string, index: number, isShiftClick: boolean) => void;
     onView: (sku: string) => void;
     onEnrich?: (sku: string) => void;
+    onImageSelection?: (sku: string) => void;
     showEnrichButton?: boolean;
+    showImageSelectionButton?: boolean;
     readOnly?: boolean;
     showBatchSelect?: boolean;
     currentStage?: PipelineStatus;
 }
 
-const stageConfig: Record<PipelineStatus, {
-    icon: React.ElementType;
-    label: string;
-    color: string;
-    bgColor: string;
-    description: string;
-}> = {
-    registered: {
-        icon: Package,
-        label: 'Registered',
-        color: 'text-gray-600',
-        bgColor: 'bg-gray-100',
-        description: 'Needs enhancement'
-    },
-    enriched: {
-        icon: Sparkles,
-        label: 'Enriched',
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-100',
-        description: 'Data enriched'
-    },
-    finalized: {
-        icon: CheckCircle2,
-        label: 'Finalized',
-        color: 'text-green-600',
-        bgColor: 'bg-green-100',
-        description: 'Finalized'
-    },
-    failed: {
-        icon: AlertCircle,
-        label: 'Failed',
-        color: 'text-red-600',
-        bgColor: 'bg-red-100',
-        description: 'Needs retry'
-    },
-};
+export function PipelineProductCardSkeleton() {
+    return (
+        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+            <div className="flex items-start gap-3">
+                <Skeleton className="h-4 w-4 rounded" />
+                <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-4 rounded" />
+                        <Skeleton className="h-3 w-20 rounded" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <Skeleton className="h-4 w-3/4 rounded" />
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-3 w-24 rounded" />
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                        <Skeleton className="h-5 w-16 rounded" />
+                        <Skeleton className="h-8 w-20 rounded" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export function PipelineProductCardStorefrontSkeleton() {
+    return (
+        <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
+            <div className="relative aspect-square w-full bg-zinc-50">
+                <Skeleton className="h-full w-full" />
+            </div>
+            <div className="p-4 space-y-3">
+                <Skeleton className="h-3 w-16 rounded" />
+                <Skeleton className="h-4 w-3/4 rounded" />
+                <div className="flex items-center justify-between pt-2">
+                    <Skeleton className="h-5 w-20 rounded" />
+                    <Skeleton className="h-4 w-16 rounded" />
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export function PipelineProductCard({
     product,
@@ -73,7 +79,9 @@ export function PipelineProductCard({
     onSelect,
     onView,
     onEnrich,
+    onImageSelection,
     showEnrichButton = false,
+    showImageSelectionButton = false,
     readOnly = false,
     showBatchSelect = false,
     currentStage
@@ -83,15 +91,20 @@ export function PipelineProductCard({
         const isShiftClick = nativeEvent.shiftKey;
         onSelect(product.sku, index, isShiftClick);
     };
+
     const registerName = product.input?.name || product.sku;
     const cleanName = product.consolidated?.name;
     const price = product.consolidated?.price ?? product.input?.price ?? 0;
     const hasScrapedData = Object.keys(product.sources || {}).length > 0;
     const confidenceScore = product.confidence_score;
     const stage = currentStage || product.pipeline_status;
-    const stageInfo = stageConfig[stage];
 
-    // In read-only mode (Imported tab), show simplified view
+    const getConfidenceColor = (score: number) => {
+        if (score >= 0.9) return 'text-green-600';
+        if (score >= 0.7) return 'text-yellow-600';
+        return 'text-red-600';
+    };
+
     if (readOnly) {
         return (
             <div
@@ -107,10 +120,15 @@ export function PipelineProductCard({
                         }
                     }
                 }}
-                className={`rounded-lg border p-4 transition-colors outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showBatchSelect && isSelected
+                className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${showBatchSelect && isSelected
                     ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}>
+                    : 'border-zinc-200 bg-white hover:border-zinc-300'
+                    }`}
+            >
+                <div className="absolute right-2 top-2">
+                        <StatusBadge status={stage as PipelineStatus} size="sm" />
+                </div>
+
                 <div className="flex items-start gap-3">
                     {showBatchSelect && (
                         <input
@@ -118,32 +136,29 @@ export function PipelineProductCard({
                             checked={isSelected}
                             onChange={handleCheckboxChange}
                             aria-label={`Select product ${product.sku}`}
-                            className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                            className="mt-1 h-5 w-5 rounded border-zinc-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         />
                     )}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Package className="h-4 w-4 text-gray-600 flex-shrink-0" />
-                            <span className="text-xs font-mono text-gray-600 truncate">{product.sku}</span>
+                    <div className="flex-1 min-w-0 pr-16">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <Package className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
+                            <span className="text-[10px] font-mono tabular-nums text-zinc-500 truncate">{product.sku}</span>
                         </div>
 
-                        <div className="space-y-1">
-                            <p className="font-medium text-gray-900 truncate" title={registerName}>
-                                {registerName}
-                            </p>
-                        </div>
+                        <p className="font-medium text-zinc-900 truncate mb-1" title={registerName}>
+                            {registerName}
+                        </p>
 
-                        <div className="mt-3 flex items-center justify-between gap-4">
-                            <span className="font-semibold text-green-600 shrink-0">{formatCurrency(price)}</span>
-                        </div>
+                        <span className="font-semibold tabular-nums text-green-600">{formatCurrency(price)}</span>
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Storefront-style view for finalized stage
-    if (stage === 'finalized') {
+    const isStorefrontView = stage === 'consolidated' || stage === 'published' || stage === 'finalized';
+
+    if (isStorefrontView) {
         const imageSrc = product.consolidated?.images?.[0]?.trim();
         const hasValidImage = Boolean(imageSrc) && (imageSrc?.startsWith('/') || imageSrc?.startsWith('http'));
 
@@ -166,7 +181,6 @@ export function PipelineProductCard({
                 className={`group relative h-full rounded-xl border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-lg'
                     }`}
             >
-                {/* Select Checkbox overlaid on image */}
                 <div className="absolute top-3 left-3 z-20">
                     <input
                         type="checkbox"
@@ -176,7 +190,7 @@ export function PipelineProductCard({
                             handleCheckboxChange(e);
                         }}
                         aria-label={`Select product ${product.sku}`}
-                        className="h-5 w-5 rounded border-gray-300 shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        className="h-5 w-5 rounded border-zinc-300 shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     />
                 </div>
 
@@ -184,7 +198,6 @@ export function PipelineProductCard({
                     className="flex h-full flex-col cursor-pointer"
                     onClick={() => onView(product.sku)}
                 >
-                    {/* Product Image */}
                     <div className="relative aspect-square w-full overflow-hidden bg-zinc-50 border-b border-zinc-100">
                         {hasValidImage ? (
                             <Image
@@ -201,36 +214,23 @@ export function PipelineProductCard({
                             </div>
                         )}
 
-                        {/* Badges overlaid */}
-                        <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end z-10">
-                            {(() => {
-                                const StageIcon = stageInfo.icon;
-                                return (
-                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${stageInfo.bgColor} ${stageInfo.color} border border-white/20 backdrop-blur-md`}>
-                                        <StageIcon className="h-3.5 w-3.5" />
-                                        {stageInfo.label}
-                                    </span>
-                                );
-                            })()}
+                        <div className="absolute top-3 right-3 z-10">
+                            <StatusBadge status={stage as PipelineStatus} size="md" />
+                        </div>
 
-                            {confidenceScore !== undefined && confidenceScore > 0 && (
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${confidenceScore >= 0.9
-                                        ? 'bg-green-100/90 text-green-700 border-green-200'
-                                        : confidenceScore >= 0.7
-                                            ? 'bg-yellow-100/90 text-yellow-700 border-yellow-200'
-                                            : 'bg-red-100/90 text-red-700 border-red-200'
-                                    } backdrop-blur-md border`}>
-                                    <TrendingUp className="h-3 w-3" />
+                        {confidenceScore !== undefined && confidenceScore > 0 && (
+                            <div className="absolute top-12 right-3 z-10">
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/90 backdrop-blur-sm border border-zinc-200 ${getConfidenceColor(confidenceScore)}`}>
+                                    <TrendingUp className="h-2.5 w-2.5" />
                                     {(confidenceScore * 100).toFixed(0)}%
                                 </span>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Product Info */}
                     <div className="flex flex-1 flex-col p-4 bg-white">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-mono font-semibold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">{product.sku}</span>
+                            <span className="text-[10px] font-mono tabular-nums font-semibold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">{product.sku}</span>
                         </div>
 
                         <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-zinc-900 group-hover:text-blue-600 transition-colors" title={cleanName || registerName}>
@@ -238,7 +238,7 @@ export function PipelineProductCard({
                         </h3>
 
                         <div className="mt-auto pt-2 flex items-center justify-between">
-                            <span className="text-lg font-bold tracking-tight text-zinc-900">
+                            <span className="text-lg font-bold tabular-nums tracking-tight text-zinc-900">
                                 {formatCurrency(price)}
                             </span>
 
@@ -252,7 +252,6 @@ export function PipelineProductCard({
         );
     }
 
-    // Standard horizontal view with selection for scraped or failing stages
     return (
         <div
             role="article"
@@ -269,109 +268,93 @@ export function PipelineProductCard({
                     }
                 }
             }}
-            className={`rounded-lg border p-4 transition-colors outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+            className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-zinc-200 bg-white hover:border-zinc-300'
                 }`}
         >
+            <div className="absolute right-3 top-3">
+                <StatusBadge status={stage as PipelineStatus} size="md" />
+            </div>
+
             <div className="flex items-start gap-3">
                 <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={handleCheckboxChange}
                     aria-label={`Select product ${product.sku}`}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    className="mt-1 h-5 w-5 rounded border-zinc-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 />
 
-                <div className="flex-1 min-w-0">
-                    {/* Header: SKU + Stage Badge */}
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <Package className="h-4 w-4 text-gray-600 flex-shrink-0" />
-                        <span className="text-xs font-mono text-gray-600 truncate">{product.sku}</span>
-
-                        {/* ETL Stage Badge */}
-                        {(() => {
-                            const StageIcon = stageInfo.icon;
-                            return (
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${stageInfo.bgColor} ${stageInfo.color} border`}>
-                                    <StageIcon className="h-3 w-3" />
-                                    {stageInfo.label}
-                                </span>
-                            );
-                        })()}
-
-                        {/* Confidence Score Badge */}
-                        {confidenceScore !== undefined && confidenceScore > 0 && (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${confidenceScore >= 0.9
-                                    ? 'bg-green-100 text-green-700 border border-green-200'
-                                    : confidenceScore >= 0.7
-                                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                                        : 'bg-red-100 text-red-700 border border-red-200'
-                                }`}>
-                                <TrendingUp className="h-3 w-3" />
-                                {(confidenceScore * 100).toFixed(0)}%
-                            </span>
-                        )}
-
-                        {/* Data Source Indicator */}
-                        {hasScrapedData && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                <Database className="h-3 w-3" />
-                                Enriched
-                            </span>
-                        )}
+                <div className="flex-1 min-w-0 pr-20">
+                    <div className="flex items-center gap-1.5 mb-2">
+                        <Package className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
+                        <span className="text-[10px] font-mono tabular-nums text-zinc-500 truncate">{product.sku}</span>
                     </div>
 
-                    {/* Product Names */}
-                    <div className="space-y-1">
-                        <p className="font-medium text-gray-900 truncate" title={cleanName || registerName}>
+                    <div className="space-y-1 mb-2">
+                        <p className="font-medium text-zinc-900 truncate" title={cleanName || registerName}>
                             {cleanName || registerName}
                         </p>
                         {cleanName && registerName !== cleanName && (
-                            <p className="text-xs text-gray-500 truncate" title={registerName}>
+                            <p className="text-xs text-zinc-500 truncate" title={registerName}>
                                 Original: {registerName}
                             </p>
                         )}
                     </div>
 
-                    {/* Processing Status Bar */}
-                    <div className="mt-3 flex items-center gap-2">
-                        <div className="flex-1 flex items-center gap-1">
-                            {(['registered', 'enriched', 'finalized', 'failed'] as PipelineStatus[]).map((s, idx) => {
-                                const isStageDone = ['registered', 'enriched', 'finalized', 'failed'].indexOf(stage) >= idx;
-                                const isCurrentStage = stage === s;
-                                return (
-                                    <div
-                                        key={s}
-                                        className={`h-1.5 flex-1 rounded-full ${isCurrentStage
-                                                ? 'bg-blue-500 ring-2 ring-blue-200'
-                                                : isStageDone
-                                                    ? 'bg-green-400'
-                                                    : 'bg-gray-200'
-                                            }`}
-                                        title={stageConfig[s].label}
-                                    />
-                                );
-                            })}
+                    {confidenceScore !== undefined && confidenceScore > 0 && (
+                        <div className="flex items-center gap-1 mb-2">
+                            <TrendingUp className={`h-3 w-3 ${getConfidenceColor(confidenceScore)}`} />
+                            <span className={`text-xs font-medium ${getConfidenceColor(confidenceScore)}`}>
+                                {(confidenceScore * 100).toFixed(0)}% confidence
+                            </span>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Footer: Price + Actions */}
-                    <div className="mt-3 flex items-center justify-between">
-                        <span className="font-semibold text-green-600">{formatCurrency(price)}</span>
-                        <div className="flex items-center gap-2">
+                    {hasScrapedData && (
+                        <div className="flex items-center gap-1 mb-3">
+                            <Database className="h-3 w-3 text-blue-500" />
+                            <span className="text-xs text-blue-600">Enriched</span>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
+                        <span className="font-semibold tabular-nums text-green-600">{formatCurrency(price)}</span>
+                        <div className="flex items-center gap-1">
                             {showEnrichButton && onEnrich && (
                                 <button
-                                    onClick={() => onEnrich(product.sku)}
-                                    className="flex items-center gap-1 text-sm text-[#008850] hover:text-[#2a7034]"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEnrich(product.sku);
+                                    }}
+                                    className="flex items-center justify-center h-11 w-11 rounded-md text-[#008850] hover:bg-[#008850]/10 transition-colors"
                                     title="Configure enrichment sources"
+                                    aria-label="Configure enrichment"
                                 >
                                     <Settings2 className="h-4 w-4" />
                                 </button>
                             )}
+                            {showImageSelectionButton && onImageSelection && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onImageSelection(product.sku);
+                                    }}
+                                    className="flex items-center justify-center h-11 w-11 rounded-md text-[#008850] hover:bg-[#008850]/10 transition-colors"
+                                    title="Select product images"
+                                    aria-label="Select images"
+                                >
+                                    <ImageIcon className="h-4 w-4" />
+                                </button>
+                            )}
                             <button
-                                onClick={() => onView(product.sku)}
-                                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onView(product.sku);
+                                }}
+                                className="flex items-center justify-center h-11 px-4 rounded-md text-blue-600 hover:bg-blue-50 font-medium transition-colors"
+                                aria-label="Review product"
                             >
-                                Review <ChevronRight className="h-4 w-4" />
+                                Review <ChevronRight className="h-4 w-4 ml-1" />
                             </button>
                         </div>
                     </div>
@@ -380,4 +363,3 @@ export function PipelineProductCard({
         </div>
     );
 }
-

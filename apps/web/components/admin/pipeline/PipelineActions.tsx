@@ -52,7 +52,7 @@ export function PipelineActions({
                     ) : (
                         <Check className="h-4 w-4" />
                     )}
-                    {isApproving ? 'Approving...' : 'Approve'}
+                    {isApproving ? 'Approving…' : 'Approve'}
                 </Button>
 
                 <Button
@@ -67,7 +67,7 @@ export function PipelineActions({
                     ) : (
                         <XCircle className="h-4 w-4" />
                     )}
-                    {isRejecting ? 'Rejecting...' : 'Reject'}
+                    {isRejecting ? 'Rejecting…' : 'Reject'}
                 </Button>
 
                 <Button
@@ -82,7 +82,7 @@ export function PipelineActions({
                     ) : (
                         <Trash2 className="h-4 w-4" />
                     )}
-                    {isDeleting ? 'Deleting...' : 'Delete'}
+                    {isDeleting ? 'Deleting…' : 'Delete'}
                 </Button>
 
                 <div className="h-6 w-px bg-border mx-1" />

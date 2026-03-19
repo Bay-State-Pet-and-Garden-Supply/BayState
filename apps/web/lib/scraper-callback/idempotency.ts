@@ -123,6 +123,48 @@ export async function recordCallbackProcessed(
   return { success: true };
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function recordCallbackProcessedWithRetry(
+  supabase: SupabaseClient,
+  jobId: string,
+  runnerName: string,
+  idempotencyKey: string,
+  resultsData: Record<string, unknown>,
+  maxAttempts: number = 3
+): Promise<{ success: boolean; error?: string }> {
+  let lastError = 'Unknown idempotency recording error';
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const recordResult = await recordCallbackProcessed(
+      supabase,
+      jobId,
+      runnerName,
+      idempotencyKey,
+      resultsData
+    );
+
+    if (recordResult.success) {
+      return { success: true };
+    }
+
+    lastError = recordResult.error || lastError;
+
+    const verifyResult = await checkCallbackIdempotency(supabase, idempotencyKey);
+    if (verifyResult.processed) {
+      return { success: true };
+    }
+
+    if (attempt < maxAttempts) {
+      await delay(75 * attempt);
+    }
+  }
+
+  return { success: false, error: lastError };
+}
+
 /**
  * Idempotency check result type
  */

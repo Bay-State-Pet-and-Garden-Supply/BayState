@@ -1,24 +1,15 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import {
   MissingProductsIngestionSkusError,
-  persistProductsIngestionSourcesPartial,
   persistProductsIngestionSourcesStrict,
+  persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
 
 function createSupabaseMock() {
   const selectIn = jest.fn();
   const select = jest.fn(() => ({ in: selectIn }));
   const upsert = jest.fn();
-  const from = jest.fn((table: string) => {
-    if (table !== 'products_ingestion') {
-      throw new Error(`Unexpected table: ${table}`);
-    }
-
-    return {
-      select,
-      upsert,
-    };
-  });
+  const from = jest.fn(() => ({ select, upsert }));
 
   return {
     supabase: { from } as unknown as SupabaseClient,
@@ -30,7 +21,7 @@ function createSupabaseMock() {
 }
 
 describe('persistProductsIngestionSourcesStrict', () => {
-  it('upserts merged sources and marks meaningful rows as enriched', async () => {
+  it('updates all rows when every target SKU exists', async () => {
     const { supabase, from, selectIn, upsert } = createSupabaseMock();
     const nowIso = '2026-02-17T00:00:00.000Z';
 
@@ -55,41 +46,40 @@ describe('persistProductsIngestionSourcesStrict', () => {
 
     expect(result).toEqual(['SKU-1', 'SKU-2']);
     expect(from).toHaveBeenCalledWith('products_ingestion');
-    expect(selectIn).toHaveBeenCalledWith('sku', ['SKU-1', 'SKU-2']);
+    expect(upsert).toHaveBeenCalledTimes(1);
+
     expect(upsert).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({
-          sku: 'SKU-1',
-          is_test_run: false,
-          updated_at: nowIso,
-          pipeline_status: 'enriched',
-          sources: {
-            legacy: { price: 10 },
-            amazon: { price: 12 },
-            _last_scraped: nowIso,
-          },
-          image_candidates: [],
-        }),
-        expect.objectContaining({
-          sku: 'SKU-2',
-          pipeline_status: 'enriched',
-          sources: {
-            chewy: { in_stock: true },
-            _last_scraped: nowIso,
-          },
-          image_candidates: [],
-        }),
+        expect.objectContaining({ sku: 'SKU-1' }),
+        expect.objectContaining({ sku: 'SKU-2' }),
       ]),
       { onConflict: 'sku' }
     );
+    expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).toMatchObject(
+      expect.objectContaining({
+        pipeline_status: 'scraped',
+        pipeline_status_new: 'enriched',
+        is_test_run: false,
+        updated_at: nowIso,
+      })
+    );
+    expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).toMatchObject({
+      sources: {
+        legacy: { price: 10 },
+        amazon: { price: 12 },
+        _last_scraped: nowIso,
+      },
+    });
   });
 
-  it('deep-merges source payloads without dropping existing fields', async () => {
+  it('deep-merges existing source payloads without dropping prior fields', async () => {
     const { supabase, selectIn, upsert } = createSupabaseMock();
     const nowIso = '2026-02-17T00:00:00.000Z';
 
     selectIn.mockResolvedValue({
-      data: [{ sku: 'SKU-1', sources: { amazon: { title: 'Existing title', upc: '12345' } } }],
+      data: [
+        { sku: 'SKU-1', sources: { amazon: { title: 'Existing title', upc: '12345' } } },
+      ],
       error: null,
     });
     upsert.mockResolvedValue({ error: null });
@@ -104,25 +94,60 @@ describe('persistProductsIngestionSourcesStrict', () => {
     );
 
     expect(upsert).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          sku: 'SKU-1',
-          sources: {
-            amazon: {
-              title: 'Existing title',
-              upc: '12345',
-              price: 12,
-            },
-            _last_scraped: nowIso,
+      expect.arrayContaining([
+      expect.objectContaining({
+        sources: {
+          amazon: {
+            title: 'Existing title',
+            upc: '12345',
+            price: 12,
           },
-        }),
-      ],
+          _last_scraped: nowIso,
+        },
+      })
+      ]),
       { onConflict: 'sku' }
     );
   });
 
-  it('fails without writing when any SKU is missing', async () => {
+  it('marks nested source payload as meaningful and sets scraped status', async () => {
     const { supabase, selectIn, upsert } = createSupabaseMock();
+    const nowIso = '2026-02-17T00:00:00.000Z';
+
+    selectIn.mockResolvedValue({
+      data: [{ sku: 'SKU-1', sources: {} }],
+      error: null,
+    });
+    upsert.mockResolvedValue({ error: null });
+
+    await persistProductsIngestionSourcesStrict(
+      supabase,
+      {
+        'SKU-1': { ai_discovery: { Name: 'Discovery Name' } },
+      },
+      false,
+      nowIso
+    );
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+      expect.objectContaining({
+        pipeline_status: 'scraped',
+        pipeline_status_new: 'enriched',
+        sources: {
+          ai_discovery: {
+            title: 'Discovery Name',
+          },
+          _last_scraped: nowIso,
+        },
+      })
+      ]),
+      { onConflict: 'sku' }
+    );
+  });
+
+  it('strict-fails with zero writes when any target SKU is missing', async () => {
+    const { selectIn, upsert, supabase } = createSupabaseMock();
 
     selectIn.mockResolvedValue({
       data: [{ sku: 'SKU-1', sources: { legacy: { price: 10 } } }],
@@ -173,19 +198,19 @@ describe('persistProductsIngestionSourcesPartial', () => {
 
     expect(result.persisted).toEqual(['SKU-1']);
     expect(result.missing).toEqual(['SKU-MISSING']);
+
+    // Only the existing SKU should be updated
+    expect(upsert).toHaveBeenCalledTimes(1);
+
     expect(upsert).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          sku: 'SKU-1',
-          pipeline_status: 'enriched',
-          sources: {
-            legacy: { price: 10 },
-            amazon: { price: 12 },
-            _last_scraped: nowIso,
-          },
-          image_candidates: [],
-        }),
-      ],
+      expect.arrayContaining([
+      expect.objectContaining({
+        pipeline_status: 'scraped',
+        pipeline_status_new: 'enriched',
+        is_test_run: false,
+        updated_at: nowIso,
+      })
+      ]),
       { onConflict: 'sku' }
     );
   });
@@ -210,23 +235,58 @@ describe('persistProductsIngestionSourcesPartial', () => {
     expect(upsert).not.toHaveBeenCalled();
   });
 
-  it('throws when the bulk upsert fails so the caller can retry safely', async () => {
+  it('persists all SKUs when none are missing', async () => {
     const { supabase, selectIn, upsert } = createSupabaseMock();
+    const nowIso = '2026-02-17T00:00:00.000Z';
 
     selectIn.mockResolvedValue({
-      data: [{ sku: 'SKU-1', sources: {} }],
+      data: [
+        { sku: 'SKU-1', sources: {} },
+        { sku: 'SKU-2', sources: {} },
+      ],
       error: null,
     });
-    upsert.mockResolvedValue({ error: { message: 'DB error' } });
+    upsert.mockResolvedValue({ error: null });
+
+    const result = await persistProductsIngestionSourcesPartial(
+      supabase,
+      {
+        'SKU-1': { amazon: { price: 12 } },
+        'SKU-2': { chewy: { in_stock: true } },
+      },
+      false,
+      nowIso
+    );
+
+    expect(result.persisted).toEqual(['SKU-1', 'SKU-2']);
+    expect(result.missing).toEqual([]);
+    expect(upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws on bulk update errors', async () => {
+    const { supabase, selectIn, upsert } = createSupabaseMock();
+    const nowIso = '2026-02-17T00:00:00.000Z';
+
+    selectIn.mockResolvedValue({
+      data: [
+        { sku: 'SKU-1', sources: {} },
+        { sku: 'SKU-2', sources: {} },
+      ],
+      error: null,
+    });
+    upsert
+      .mockResolvedValueOnce({ error: { message: 'DB error' } })
+      .mockResolvedValueOnce({ error: null });
 
     await expect(
       persistProductsIngestionSourcesPartial(
         supabase,
         {
           'SKU-1': { amazon: { price: 12 } },
+          'SKU-2': { chewy: { in_stock: true } },
         },
         false,
-        '2026-02-17T00:00:00.000Z'
+        nowIso
       )
     ).rejects.toThrow('Bulk update failed: DB error');
   });

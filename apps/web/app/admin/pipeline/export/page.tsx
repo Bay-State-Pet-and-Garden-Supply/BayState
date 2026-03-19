@@ -1,26 +1,28 @@
-import { getStatusCounts } from '@/lib/pipeline';
-import { ExportTab } from '@/components/admin/pipeline/ExportTab';
+import { Metadata } from 'next';
+import { Suspense } from 'react';
+import { ExportWorkspace } from '@/components/admin/pipeline/ExportWorkspace';
+import { Spinner } from '@/components/ui/spinner';
 
-export default async function ExportPage() {
-    const counts = await getStatusCounts();
-    
-    // Convert counts array to record map
-    const productCounts = counts.reduce((acc, { status, count }) => {
-        acc[status] = count;
-        return acc;
-    }, {} as Record<string, number>);
-    
-    // For now, setting needs-images to 0 unless we fetch it
-    productCounts['needs-images'] = 0;
+export const metadata: Metadata = {
+    title: 'Export Products | Bay State',
+    description: 'Generate Excel exports of pipeline products',
+};
 
+function ExportLoadingState() {
     return (
-        <div className="p-8 space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Export Data</h1>
-                <p className="text-gray-600">Export products from the pipeline</p>
-            </div>
-            
-            <ExportTab productCounts={productCounts} />
+        <div className="flex items-center justify-center p-8">
+            <Spinner size="lg" className="text-[#008850]" />
+            <span className="ml-3 text-gray-600">Loading export workspace...</span>
+        </div>
+    );
+}
+
+export default function PipelineExportPage() {
+    return (
+        <div className="space-y-6">
+            <Suspense fallback={<ExportLoadingState />}>
+                <ExportWorkspace />
+            </Suspense>
         </div>
     );
 }

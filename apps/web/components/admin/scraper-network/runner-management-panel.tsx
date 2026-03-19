@@ -2,14 +2,15 @@
 
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+import { Copy, Check, AlertCircle } from 'lucide-react';
 import {
   renameRunner,
   pauseRunner,
   resumeRunner,
   deleteRunner,
   updateRunnerMetadata,
+  rotateRunnerKey,
 } from '@/app/admin/scrapers/network/[id]/actions';
-import { Check, Copy } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import type { RunnerDetail } from './runner-detail-client';
 
@@ -42,7 +44,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
   // API Key state
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
-  const [copiedApiKey, setCopiedApiKey] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -131,41 +133,23 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
 
   const handleApiKeyRegenerate = async () => {
     startTransition(async () => {
-      try {
-        const res = await fetch('/api/admin/runners/accounts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            runner_name: runner.name,
-            description: 'Rotated API key',
-            rotate_existing: true,
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || 'Failed to rotate API key');
-        }
-
-        setNewApiKey(data.api_key);
-        setCopiedApiKey(false);
-        setApiKeyDialogOpen(false);
-        toast.success('API key rotated. Previous active keys were revoked.');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to rotate API key';
-        toast.error(message);
+      const result = await rotateRunnerKey(runner.id);
+      if (result.success && result.key) {
+        setNewApiKey(result.key);
+        toast.success('API key rotated successfully');
+      } else {
+        toast.error(result.error || 'Failed to rotate API key');
       }
     });
   };
 
-  const handleCopyApiKey = async () => {
-    if (!newApiKey) {
-      return;
+  const copyToClipboard = () => {
+    if (newApiKey) {
+      navigator.clipboard.writeText(newApiKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success('Copied to clipboard');
     }
-
-    await navigator.clipboard.writeText(newApiKey);
-    setCopiedApiKey(true);
-    setTimeout(() => setCopiedApiKey(false), 1500);
   };
 
   const isPaused = runner.status === 'paused';
@@ -218,26 +202,19 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
                 <label className="text-sm font-medium">Current API Key</label>
                 <Input value="bsr_••••••••••••••••" disabled />
                 <p className="text-xs text-muted-foreground">
-                  API keys are masked for security. Rotate to issue a new key and revoke all previous active keys.
+                  API keys are masked for security. Regenerate to get a new key.
                 </p>
               </div>
-              <Button onClick={() => setApiKeyDialogOpen(true)} variant="outline" disabled={isPending}>
-                Rotate API Key
+              <Button 
+                onClick={() => {
+                  setNewApiKey(null);
+                  setApiKeyDialogOpen(true);
+                }} 
+                variant="outline" 
+                disabled={isPending}
+              >
+                Regenerate API Key
               </Button>
-              {newApiKey && (
-                <div className="space-y-2 rounded-md border bg-amber-50 p-3">
-                  <label className="text-sm font-medium">New API Key (shown once)</label>
-                  <div className="flex gap-2">
-                    <Input value={newApiKey} readOnly className="font-mono text-sm" />
-                    <Button variant="outline" size="icon" onClick={handleCopyApiKey} aria-label="Copy API key">
-                      {copiedApiKey ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Update the runner machine with this key in <code className="rounded bg-white px-1">~/.baystate-scraper/runner.env</code> and restart the container.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -341,7 +318,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
           <DialogHeader>
             <DialogTitle>Rename Runner</DialogTitle>
             <DialogDescription>
-              Are you sure you want to rename this runner from "{runner.name}" to "{newName}"?
+              Are you sure you want to rename this runner from &quot;{runner.name}&quot; to &quot;{newName}&quot;?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -355,22 +332,68 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={apiKeyDialogOpen} onOpenChange={setApiKeyDialogOpen}>
-        <DialogContent>
+      {/* API Key Regenerate Dialog */}
+      <Dialog open={apiKeyDialogOpen} onOpenChange={(open) => {
+        if (!open && newApiKey) {
+          setNewApiKey(null);
+        }
+        setApiKeyDialogOpen(open);
+      }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Rotate API Key</DialogTitle>
+            <DialogTitle>{newApiKey ? 'New API Key Generated' : 'Regenerate API Key'}</DialogTitle>
             <DialogDescription>
-              This generates a new key and revokes all previous active keys for this runner.
-              You will need to update the key on the runner machine immediately.
+              {newApiKey 
+                ? 'Please copy your new API key now. You will not be able to see it again.'
+                : 'Are you sure you want to regenerate this runner\'s API key? The old key will stop working immediately.'}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApiKeyDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleApiKeyRegenerate} disabled={isPending}>
-              Rotate
-            </Button>
+
+          {newApiKey ? (
+            <div className="space-y-4 py-4">
+              <Alert className="bg-amber-50 border-amber-200 text-amber-900">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertTitle>Important Security Warning</AlertTitle>
+                <AlertDescription>
+                  This key will only be shown once. If you lose it, you will need to regenerate it again.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex items-center space-x-2">
+                <div className="grid flex-1 gap-2">
+                  <label htmlFor="api-key" className="sr-only">
+                    API Key
+                  </label>
+                  <Input
+                    id="api-key"
+                    value={newApiKey}
+                    readOnly
+                    className="font-mono text-xs h-9"
+                  />
+                </div>
+                <Button type="button" size="sm" className="px-3" onClick={copyToClipboard}>
+                  <span className="sr-only">Copy</span>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter className="sm:justify-start">
+            {!newApiKey ? (
+              <>
+                <Button variant="outline" onClick={() => setApiKeyDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleApiKeyRegenerate} disabled={isPending}>
+                  {isPending ? 'Regenerating...' : 'Regenerate'}
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" className="w-full" onClick={() => setApiKeyDialogOpen(false)}>
+                I have saved the key
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -401,7 +424,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
           <DialogHeader>
             <DialogTitle>Delete Runner</DialogTitle>
             <DialogDescription>
-              This will permanently delete runner "{runner.name}" and all associated API keys.
+              This will permanently delete runner &quot;{runner.name}&quot; and all associated API keys.
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>

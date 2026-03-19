@@ -183,10 +183,9 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                                         )}
                                         {job.status === 'in_progress' && (
                                             <span className="text-xs font-medium text-blue-600 animate-pulse">
-                                                Processing...
+                                                Processing…
                                             </span>
-                                        )}
-                                    </div>
+                                        )}                                    </div>
                                 </div>
 
                                 {/* Progress Bar for active/processing jobs */}

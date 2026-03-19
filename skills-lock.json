@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "ETL Pipeline": {
+      "source": "claude-office-skills/skills",
+      "sourceType": "github",
+      "computedHash": "4663ddf39772a0181df90d996fddeb15c594de2c25cfb4ef7afe2f382df32973"
+    },
     "honest-review": {
       "source": "wyattowalsh/agents",
       "sourceType": "github",

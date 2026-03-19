@@ -1,59 +1,141 @@
 'use client';
 
-import { Package, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
-import { StatCard } from '@/components/admin/dashboard/stat-card';
+import { Package, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { StatusCount, PipelineStatus } from '@/lib/pipeline';
 
 interface PipelineStatsProps {
   counts: StatusCount[];
-  activeStatus?: PipelineStatus | 'all';
-  onStatusChange?: (status: PipelineStatus | 'all') => void;
+  trends?: Record<string, number>;
+  onStatusChange?: (status: PipelineStatus) => void;
+  isLoading?: boolean;
 }
 
-const STATUS_CONFIG: Array<{
+const statusConfig: Array<{
   status: PipelineStatus;
   label: string;
   icon: typeof Package;
-  variant: 'default' | 'warning' | 'success' | 'info';
+  color: string;
+  bgColor: string;
 }> = [
-  { status: 'registered', label: 'Registered', icon: Package, variant: 'warning' },
-  { status: 'enriched', label: 'Enriched', icon: Sparkles, variant: 'info' },
-  { status: 'finalized', label: 'Finalized', icon: CheckCircle, variant: 'success' },
-  { status: 'failed', label: 'Failed', icon: AlertCircle, variant: 'default' },
+  {
+    status: 'imported',
+    label: 'Imported',
+    icon: Package,
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-50',
+  },
+  {
+    status: 'scraped',
+    label: 'Scraped',
+    icon: Sparkles,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+  },
+  {
+    status: 'consolidated',
+    label: 'Consolidated',
+    icon: AlertCircle,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+  },
+  {
+    status: 'finalized',
+    label: 'Finalized',
+    icon: CheckCircle2,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50',
+  },
+  {
+    status: 'published',
+    label: 'Published',
+    icon: CheckCircle2,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+  },
 ];
 
-function getCountForStatus(counts: StatusCount[], status: PipelineStatus): number {
-  const found = counts.find(c => c.status === status);
+function TrendIndicator({ value }: { value: number }) {
+  const isPositive = value >= 0;
+  return (
+    <span
+      className={cn(
+        'text-xs font-medium',
+        isPositive ? 'text-green-600' : 'text-red-600'
+      )}
+    >
+      {isPositive ? '↑' : '↓'} {Math.abs(value)}%
+    </span>
+  );
+}
+
+function getCountForStatus(
+  counts: StatusCount[],
+  status: PipelineStatus
+): number {
+  const found = counts.find((c) => c.status === status);
   return found?.count ?? 0;
 }
 
-export function PipelineStats({ counts, activeStatus = 'all', onStatusChange }: PipelineStatsProps) {
-  const handleCardClick = (status: PipelineStatus | 'all') => {
-    if (onStatusChange) {
-      onStatusChange(status);
-    }
-  };
+export function PipelineStats({
+  counts,
+  trends,
+  onStatusChange,
+  isLoading = false,
+}: PipelineStatsProps) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {STATUS_CONFIG.map(({ status, label, icon: Icon, variant }) => {
-        const count = getCountForStatus(counts, status);
-        const isActive = activeStatus === status;
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      {statusConfig.map((config) => {
+        const count = getCountForStatus(counts, config.status);
+        const trend = trends?.[config.status];
+        const Icon = config.icon;
 
         return (
-          <button
-            key={status}
-            onClick={() => handleCardClick(status)}
-            className="text-left"
+          <Card
+            key={config.status}
+            className={cn(
+              'cursor-pointer transition-shadow hover:shadow-md',
+              onStatusChange ? 'hover:ring-2 hover:ring-primary/20' : ''
+            )}
+            onClick={() => onStatusChange?.(config.status)}
           >
-            <StatCard
-              title={label}
-              value={count}
-              icon={Icon}
-              variant={variant}
-              subtitle={isActive ? 'Filtering' : undefined}
-            />
-          </button>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {config.label}
+              </CardTitle>
+              <div className={cn('rounded-full p-2', config.bgColor)}>
+                <Icon className={cn('h-4 w-4', config.color)} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold">
+                  {count.toLocaleString()}
+                </span>
+                {trend !== undefined && <TrendIndicator value={trend} />}
+              </div>
+            </CardContent>
+          </Card>
         );
       })}
     </div>

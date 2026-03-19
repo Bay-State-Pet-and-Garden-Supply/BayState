@@ -180,12 +180,34 @@ JSON-formatted logs with job context:
 
 ## Common Commands
 
-```bash
-# Local execution with specific scraper
-python -m scraper_backend.runner --job-id test --scraper amazon
+### Local Scraper Testing (No Server Required)
 
-# Run all tests
-python -m pytest tests/ -v
+The most efficient way to develop and debug scrapers is using the `--local` mode. This bypasses all API health checks and fetches.
+
+```bash
+# Basic run (uses test_skus from the YAML)
+python runner.py --local --config scrapers/configs/amazon.yaml
+
+# Run with specific SKU and visible browser (debug mode)
+python runner.py --local --config scrapers/configs/amazon.yaml --sku B000123 --no-headless
+
+# Run multiple SKUs
+python runner.py --local --config scrapers/configs/amazon.yaml --sku B001,B002
+
+# Save output to JSON for inspection
+python runner.py --local --config scrapers/configs/amazon.yaml --output results.json
+```
+
+#### Handling Credentials Locally
+
+For scrapers that require authentication (e.g., Phillips, Petfoodex), you can provide credentials via environment variables using the format `SLUG_USERNAME` and `SLUG_PASSWORD`:
+
+```bash
+PHILLIPS_USERNAME=admin PHILLIPS_PASSWORD=secret \
+  python runner.py --local --config scrapers/configs/phillips.yaml
+```
+
+### Orchestrated Execution (Requires API)
 
 # Run specific test file
 python -m pytest tests/test_runner_config_errors.py -v

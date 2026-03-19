@@ -1,87 +1,146 @@
 /**
  * @jest-environment node
  */
-import {
-    PipelineStatus,
-    STATUS_TRANSITIONS,
-    validateStatusTransition,
-} from '@/lib/pipeline';
+import { validateStatusTransition, PipelineStatus } from '@/lib/pipeline';
+import { createClient } from '@/lib/supabase/server';
+
+jest.mock('@/lib/supabase/server', () => ({
+    createClient: jest.fn(),
+}));
 
 describe('validateStatusTransition', () => {
+    const statuses: PipelineStatus[] = ['imported', 'scraped', 'consolidated', 'finalized', 'published'];
+
     describe('valid transitions', () => {
-        it('allows registered -> enriched', () => {
-            expect(validateStatusTransition('registered', 'enriched')).toBe(true);
+        it('should allow imported → scraped', () => {
+            expect(validateStatusTransition('imported', 'scraped')).toBe(true);
         });
 
-        it('allows enriched -> finalized', () => {
-            expect(validateStatusTransition('enriched', 'finalized')).toBe(true);
+        it('should allow scraped → consolidated', () => {
+            expect(validateStatusTransition('scraped', 'consolidated')).toBe(true);
+        });
+
+        it('should allow consolidated → finalized', () => {
+            expect(validateStatusTransition('consolidated', 'finalized')).toBe(true);
+        });
+
+        it('should allow finalized → published', () => {
+            expect(validateStatusTransition('finalized', 'published')).toBe(true);
+        });
+
+        it('should allow same status transition: imported → imported', () => {
+            expect(validateStatusTransition('imported', 'imported')).toBe(true);
+        });
+
+        it('should allow same status transition: scraped → scraped', () => {
+            expect(validateStatusTransition('scraped', 'scraped')).toBe(true);
+        });
+
+        it('should allow same status transition: published → published', () => {
+            expect(validateStatusTransition('published', 'published')).toBe(true);
         });
     });
 
     describe('invalid transitions', () => {
-        it('rejects registered -> finalized (skipping enriched)', () => {
-            expect(validateStatusTransition('registered', 'finalized')).toBe(false);
+        it('should NOT allow imported → consolidated (skip intermediate)', () => {
+            expect(validateStatusTransition('imported', 'consolidated')).toBe(false);
         });
 
-        it('rejects enriched -> registered (going backwards)', () => {
-            expect(validateStatusTransition('enriched', 'registered')).toBe(false);
+        it('should NOT allow imported → published (skip multiple stages)', () => {
+            expect(validateStatusTransition('imported', 'published')).toBe(false);
         });
 
-        it('rejects finalized -> registered (from terminal state)', () => {
-            expect(validateStatusTransition('finalized', 'registered')).toBe(false);
+        it('should NOT allow published → finalized (terminal state)', () => {
+            expect(validateStatusTransition('published', 'finalized')).toBe(false);
         });
 
-        it('rejects finalized -> enriched (from terminal state)', () => {
-            expect(validateStatusTransition('finalized', 'enriched')).toBe(false);
-        });
-
-        it('rejects registered -> registered (self-transition)', () => {
-            expect(validateStatusTransition('registered', 'registered')).toBe(false);
-        });
-
-        it('rejects enriched -> enriched (self-transition)', () => {
-            expect(validateStatusTransition('enriched', 'enriched')).toBe(false);
-        });
-
-        it('rejects finalized -> finalized (self-transition from terminal)', () => {
-            expect(validateStatusTransition('finalized', 'finalized')).toBe(false);
+        it('should NOT allow published → any other status', () => {
+            expect(validateStatusTransition('published', 'imported')).toBe(false);
+            expect(validateStatusTransition('published', 'scraped')).toBe(false);
+            expect(validateStatusTransition('published', 'consolidated')).toBe(false);
+            expect(validateStatusTransition('published', 'finalized')).toBe(false);
         });
     });
 
-    describe('STATUS_TRANSITIONS constant', () => {
-        it('has correct transitions for registered', () => {
-            expect(STATUS_TRANSITIONS.registered).toEqual(['enriched', 'failed']);
-        });
+    describe('all status combinations', () => {
+        it('should test all 5 statuses with correct transitions', () => {
+            // imported can go to: imported, scraped
+            expect(validateStatusTransition('imported', 'imported')).toBe(true);
+            expect(validateStatusTransition('imported', 'scraped')).toBe(true);
+            expect(validateStatusTransition('imported', 'consolidated')).toBe(false);
+            expect(validateStatusTransition('imported', 'finalized')).toBe(false);
+            expect(validateStatusTransition('imported', 'published')).toBe(false);
 
-        it('has correct transitions for enriched', () => {
-            expect(STATUS_TRANSITIONS.enriched).toEqual(['finalized', 'failed']);
-        });
+            // scraped can go to: scraped, consolidated, imported (backwards)
+            expect(validateStatusTransition('scraped', 'imported')).toBe(true);
+            expect(validateStatusTransition('scraped', 'scraped')).toBe(true);
+            expect(validateStatusTransition('scraped', 'consolidated')).toBe(true);
+            expect(validateStatusTransition('scraped', 'finalized')).toBe(false);
+            expect(validateStatusTransition('scraped', 'published')).toBe(false);
 
-        it('has correct transitions for failed', () => {
-            expect(STATUS_TRANSITIONS.failed).toEqual(['registered', 'enriched']);
-        });
+            // consolidated can go to: consolidated, finalized, scraped (backwards)
+            expect(validateStatusTransition('consolidated', 'imported')).toBe(false);
+            expect(validateStatusTransition('consolidated', 'scraped')).toBe(true);
+            expect(validateStatusTransition('consolidated', 'consolidated')).toBe(true);
+            expect(validateStatusTransition('consolidated', 'finalized')).toBe(true);
+            expect(validateStatusTransition('consolidated', 'published')).toBe(false);
 
-        it('has no transitions for finalized (terminal state)', () => {
-            expect(STATUS_TRANSITIONS.finalized).toEqual([]);
-        });
+            // finalized can go to: finalized, published, consolidated (backwards)
+            expect(validateStatusTransition('finalized', 'imported')).toBe(false);
+            expect(validateStatusTransition('finalized', 'scraped')).toBe(false);
+            expect(validateStatusTransition('finalized', 'consolidated')).toBe(true);
+            expect(validateStatusTransition('finalized', 'finalized')).toBe(true);
+            expect(validateStatusTransition('finalized', 'published')).toBe(true);
 
-        it('has exactly 4 statuses', () => {
-            const statuses = Object.keys(STATUS_TRANSITIONS);
-            expect(statuses).toHaveLength(4);
-            expect(statuses).toContain('registered');
-            expect(statuses).toContain('enriched');
-            expect(statuses).toContain('finalized');
-            expect(statuses).toContain('failed');
+            // published can only go to itself (terminal state)
+            expect(validateStatusTransition('published', 'imported')).toBe(false);
+            expect(validateStatusTransition('published', 'scraped')).toBe(false);
+            expect(validateStatusTransition('published', 'consolidated')).toBe(false);
+            expect(validateStatusTransition('published', 'finalized')).toBe(false);
+            expect(validateStatusTransition('published', 'published')).toBe(true);
         });
     });
 
-    describe('PipelineStatus type', () => {
-        it('accepts all valid status values', () => {
-            const validStatuses: PipelineStatus[] = ['registered', 'enriched', 'finalized', 'failed'];
+    describe('edge cases', () => {
+        it('should handle all valid transitions from imported', () => {
+            const from: PipelineStatus = 'imported';
+            const validTargets = ['imported', 'scraped'];
             
-            // TypeScript compile-time check - if this compiles, the type is correct
-            validStatuses.forEach((status) => {
-                expect(status).toBeDefined();
+            statuses.forEach((to) => {
+                const result = validateStatusTransition(from, to);
+                if (validTargets.includes(to)) {
+                    expect(result).toBe(true);
+                } else {
+                    expect(result).toBe(false);
+                }
+            });
+        });
+
+        it('should handle all valid transitions from scraped', () => {
+            const from: PipelineStatus = 'scraped';
+            const validTargets = ['imported', 'scraped', 'consolidated'];
+            
+            statuses.forEach((to) => {
+                const result = validateStatusTransition(from, to);
+                if (validTargets.includes(to)) {
+                    expect(result).toBe(true);
+                } else {
+                    expect(result).toBe(false);
+                }
+            });
+        });
+
+        it('should handle all valid transitions from published (terminal)', () => {
+            const from: PipelineStatus = 'published';
+            
+            statuses.forEach((to) => {
+                const result = validateStatusTransition(from, to);
+                // Only published should be valid from 'published' (terminal state)
+                if (to === 'published') {
+                    expect(result).toBe(true);
+                } else {
+                    expect(result).toBe(false);
+                }
             });
         });
     });

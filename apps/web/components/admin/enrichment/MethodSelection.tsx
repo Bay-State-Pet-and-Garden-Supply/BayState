@@ -28,7 +28,7 @@ export type EnrichmentMethod = 'scrapers' | 'ai_search' | 'consolidation';
 
 export interface MethodSelectionProps {
     selectedSkus: string[];
-    onNext: (data: { method: EnrichmentMethod; config: AISearchConfig | ScrapersConfig | {} }) => void;
+    onNext: (data: { method: EnrichmentMethod; config: AISearchConfig | ScrapersConfig | Record<string, never> }) => void;
     onBack?: () => void;
 }
 

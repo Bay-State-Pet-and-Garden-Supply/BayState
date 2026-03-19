@@ -64,10 +64,28 @@ class LoginAction(BaseAction):
         if self.ctx.config.login and not params.get("url"):
             params.update(self.ctx.config.login.model_dump())
 
-        creds = self._resolve_credentials()
-        if creds:
-            params["username"] = creds.get("username")
-            params["password"] = creds.get("password")
+        creds = getattr(self.ctx.config, "options", {}) or {}
+        if "_credentials" in creds:
+            params["username"] = creds["_credentials"].get("username")
+            params["password"] = creds["_credentials"].get("password")
+            if creds["_credentials"].get("api_key") and not params.get("api_key"):
+                params["api_key"] = creds["_credentials"].get("api_key")
+
+        if not params.get("username") or not params.get("password"):
+            resolved_credentials = getattr(self.ctx, "credentials", {}) or {}
+            credential_refs = list(getattr(self.ctx.config, "credential_refs", []) or [])
+            candidate_refs = [scraper_name, *credential_refs]
+
+            for ref in candidate_refs:
+                resolved = resolved_credentials.get(ref)
+                if not resolved:
+                    continue
+                params.setdefault("username", resolved.get("username"))
+                params.setdefault("password", resolved.get("password"))
+                if resolved.get("api_key") and not params.get("api_key"):
+                    params["api_key"] = resolved.get("api_key")
+                if params.get("username") and params.get("password"):
+                    break
 
         username = params.get("username")
         password = params.get("password")
@@ -80,7 +98,8 @@ class LoginAction(BaseAction):
         login_url = params.get("url")
 
         if not username or not password:
-            raise WorkflowExecutionError(f"Missing credentials for required login scraper: {scraper_name}")
+            logger.warning(f"Missing credentials for {scraper_name}, skipping login")
+            return
 
         logger.info(f"Logging in to {scraper_name} at {login_url}")
 
@@ -92,7 +111,7 @@ class LoginAction(BaseAction):
 
             # In test mode, validate login selectors exist on the page
             if test_mode:
-                self._validate_login_selectors(params)
+                await self._validate_login_selectors(params)
 
             # Check if already logged in
             success_indicator = params.get("success_indicator")
@@ -138,16 +157,12 @@ class LoginAction(BaseAction):
                     )
                 )
                 # Input username
-                await self.ctx._execute_step(
-                    WorkflowStep(action="input_text", params={"selector": username_field, "text": username})
-                )
+                await self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": username_field, "text": username}))
 
             # Input password
             password_field = params.get("password_field")
             if password_field:
-                await self.ctx._execute_step(
-                    WorkflowStep(action="input_text", params={"selector": password_field, "text": password})
-                )
+                await self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": password_field, "text": password}))
 
             # Click submit
             submit_button = params.get("submit_button")
@@ -175,21 +190,6 @@ class LoginAction(BaseAction):
             logger.error(f"Login failed for {scraper_name}: {e}")
             raise WorkflowExecutionError(f"Login failed for {scraper_name}: {e}") from e
 
-    def _resolve_credentials(self) -> dict[str, Any]:
-        config_options = getattr(self.ctx.config, "options", {}) or {}
-        injected_credentials = config_options.get("_credentials")
-        if isinstance(injected_credentials, dict):
-            return injected_credentials
-
-        credential_refs = getattr(self.ctx.config, "credential_refs", []) or []
-        resolved_credentials = getattr(self.ctx, "credentials", {}) or {}
-        for ref in credential_refs:
-            creds = resolved_credentials.get(ref)
-            if isinstance(creds, dict):
-                return creds
-
-        return {}
-
     async def _validate_login_selectors(self, params: dict[str, Any]) -> None:
         """
         Validate presence of login selectors on the page and log results for UI.
@@ -211,7 +211,7 @@ class LoginAction(BaseAction):
                 continue
 
             # Check if element exists
-            element = await self.ctx.find_element_safe(selector, required=False)
+            element = await self.ctx.find_element_safe(cast(str, selector), required=False)
             status = "FOUND" if element else "MISSING"
 
             # Log in format expected by TestingPage: [LOGIN_SELECTOR] name: 'STATUS'

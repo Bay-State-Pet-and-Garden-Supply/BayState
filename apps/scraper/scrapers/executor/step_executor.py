@@ -292,6 +292,7 @@ class StepExecutor:
     def _substitute_variables(self, text: str, context: dict[str, Any]) -> str:
         """
         Substitute variables in text using context.
+        Supports both {var} and {{var}} syntax.
 
         Args:
             text: Text containing potential placeholders
@@ -303,15 +304,19 @@ class StepExecutor:
         if not context or not isinstance(text, str):
             return text
 
+        # Replace {{var}} with {var} for .format() compatibility
+        import re
+        processed_text = re.sub(r"\{\{([^}]+)\}\}", r"{\1}", text)
+
         try:
             # Only format if it looks like it has placeholders
-            if "{" in text and "}" in text:
-                return text.format(**context)
+            if "{" in processed_text and "}" in processed_text:
+                return processed_text.format(**context)
         except Exception:
-            # If formatting fails (e.g. missing key), return original
-            pass
+            # If formatting fails (e.g. missing key), return original (but with {{}} fixed)
+            return processed_text
 
-        return text
+        return processed_text
 
     def _on_retry_callback(self, attempt: int, error: Exception, delay: float) -> None:
         """Callback called before each retry attempt."""

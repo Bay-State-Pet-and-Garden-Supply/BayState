@@ -65,7 +65,7 @@ export function SelectorsTab() {
         <CardContent>
           {fields.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-              No selectors defined. Click "Add Selector" to create one.
+              No selectors defined. Click &quot;Add Selector&quot; to create one.
             </div>
           ) : (
             <Accordion type="multiple" className="w-full space-y-4">
