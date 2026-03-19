@@ -28,6 +28,8 @@ interface BulkToolbarProps {
   totalCount: number;
   currentStage: PipelineStatus;
   isLoading: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
   onClearSelection: () => void;
   onSelectAll: () => void;
   /** For imported stage, opens scraper dialog. For others, moves to next stage. */
@@ -43,6 +45,8 @@ export function BulkToolbar({
   totalCount,
   currentStage,
   isLoading,
+  search,
+  onSearchChange,
   onClearSelection,
   onSelectAll,
   onBulkAction,
@@ -78,7 +82,7 @@ export function BulkToolbar({
       role="toolbar"
       aria-label="Bulk actions toolbar"
     >
-      {/* Select All / count */}
+      {/* Select All / count / clear */}
       <div className="flex items-center gap-2">
         {selectedCount === 0 ? (
           <Button
@@ -102,6 +106,16 @@ export function BulkToolbar({
             <span className="text-sm font-medium text-zinc-700">
               {selectedCount === 1 ? 'product' : 'products'} selected
             </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearSelection}
+              disabled={isLoading}
+              className="text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+            >
+              <X className="mr-1 h-4 w-4" />
+              Clear
+            </Button>
           </>
         )}
       </div>
@@ -120,7 +134,16 @@ export function BulkToolbar({
         </span>
       </div>
 
-      <div className="flex-1" />
+      {/* Search input */}
+      <div className="min-w-[220px] flex-1">
+        <input
+          type="text"
+          placeholder="Search by SKU or name..."
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full rounded-md border border-input bg-white px-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+      </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2">
@@ -165,19 +188,6 @@ export function BulkToolbar({
                 {bulkAction.label}
               </>
             )}
-          </Button>
-        )}
-
-        {selectedCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClearSelection}
-            disabled={isLoading}
-            className="text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-          >
-            <X className="mr-1 h-4 w-4" />
-            Clear
           </Button>
         )}
       </div>
