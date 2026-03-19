@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { PIPELINE_STATUS_VALUES, type StatusCount } from '@/lib/pipeline/types';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export async function GET() {
+    const auth = await requireAdminAuth();
+    if (!auth.authorized) return auth.response;
+
     const supabase = await createClient();
 
     // Single query to fetch all pipeline_status values
