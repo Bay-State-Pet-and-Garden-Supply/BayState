@@ -13,6 +13,7 @@ interface StageTabsProps {
 
 const STAGE_ORDER: PipelineStatus[] = [
   'imported',
+  'monitoring',
   'scraped',
   'consolidated',
   'finalized',

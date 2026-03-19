@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trash2, ExternalLink, Package, Search } from 'lucide-react';
+import { Trash2, ExternalLink, Package, Search, ImageIcon, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
@@ -28,7 +29,28 @@ export function ScrapedResultsView({
     products.length > 0 ? products[0].sku : null
   );
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeSource, setActiveSource] = useState<string>('');
   
+  const filteredProducts = products.filter(p => 
+    p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.consolidated?.name || p.input?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedProduct = products.find(p => p.sku === selectedSku);
+  const sources = selectedProduct?.sources || {};
+  const sourceKeys = Object.keys(sources);
+
+  // Set active source when product selection changes
+  useEffect(() => {
+    if (sourceKeys.length > 0) {
+      if (!activeSource || !sources[activeSource]) {
+        setActiveSource(sourceKeys[0]);
+      }
+    } else {
+      setActiveSource('');
+    }
+  }, [selectedSku, sourceKeys, activeSource, sources]);
+
   // Update selected SKU if it's no longer in the list (e.g. after search or refresh)
   useEffect(() => {
     if (selectedSku && !products.find(p => p.sku === selectedSku)) {
@@ -37,13 +59,6 @@ export function ScrapedResultsView({
       setSelectedSku(products[0].sku);
     }
   }, [products, selectedSku]);
-
-  const filteredProducts = products.filter(p => 
-    p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.consolidated?.name || p.input?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const selectedProduct = products.find(p => p.sku === selectedSku);
 
   const handleDeleteSource = async (sourceKey: string) => {
     if (!selectedProduct) return;
@@ -74,8 +89,10 @@ export function ScrapedResultsView({
     }
   };
 
+  const currentSourceData = activeSource ? (sources[activeSource] as any) : null;
+
   return (
-    <div className="flex h-[calc(100vh-300px)] border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-[calc(100vh-280px)] border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5">
         <div className="p-3 border-b bg-muted/30">
@@ -89,7 +106,7 @@ export function ScrapedResultsView({
             />
           </div>
         </div>
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-y-auto">
           <div className="divide-y">
             {filteredProducts.map((product) => {
               const name = product.consolidated?.name || product.input?.name || 'Unknown';
@@ -163,102 +180,173 @@ export function ScrapedResultsView({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Right Column: Scraped Details */}
-      <div className="flex-1 flex flex-col bg-muted/10 overflow-hidden">
+      <div className="flex-1 flex flex-col bg-background overflow-hidden">
         {selectedProduct ? (
-          <ScrollArea className="flex-1">
-            <div className="p-6 space-y-6">
+          <>
+            {/* Header & Source Switcher */}
+            <div className="p-4 border-b space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight">
+                  <h2 className="text-xl font-bold tracking-tight">
                     {selectedProduct.consolidated?.name || selectedProduct.input?.name}
                   </h2>
-                  <div className="flex items-center gap-2 mt-1 text-muted-foreground">
-                    <span className="font-mono text-sm">{selectedProduct.sku}</span>
-                    <span>•</span>
-                    <span className="text-sm">Scraped Results</span>
-                  </div>
+                  <p className="text-sm text-muted-foreground font-mono">{selectedProduct.sku}</p>
                 </div>
-                <div className="flex gap-2">
-                   <Button variant="outline" size="sm" asChild>
-                    <a 
-                      href={`/admin/products/${selectedProduct.sku}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2"
-                    >
-                      View Product <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
-                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`/admin/products/${selectedProduct.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                    View in Catalog <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(selectedProduct.sources || {}).map(([key, source]: [string, any]) => (
-                  <Card key={key} className="overflow-hidden border-2 hover:border-primary/20 transition-all">
-                    <CardHeader className="p-4 bg-muted/50 flex flex-row items-center justify-between space-y-0">
-                      <CardTitle className="text-sm font-bold flex items-center gap-2">
-                        <Package className="h-4 w-4 text-primary" />
-                        {key.charAt(0).toUpperCase() + key.slice(1)}
-                      </CardTitle>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteSource(key)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-xs text-muted-foreground">Price</span>
-                        <span className="text-sm font-bold">${source.price?.toFixed(2) || '—'}</span>
+              {sourceKeys.length > 0 ? (
+                <Tabs value={activeSource} onValueChange={setActiveSource} className="w-full">
+                  <div className="flex items-center justify-between gap-4">
+                    <TabsList className="h-9 justify-start bg-muted/50 p-1 flex-1 overflow-x-auto">
+                      {sourceKeys.map(key => (
+                        <TabsTrigger key={key} value={key} className="text-xs px-3">
+                          {key.charAt(0).toUpperCase() + key.slice(1)}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-destructive h-9 px-3 hover:bg-destructive/10"
+                      onClick={() => handleDeleteSource(activeSource)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete {activeSource}
+                    </Button>
+                  </div>
+                </Tabs>
+              ) : (
+                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-100">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">No results for this SKU yet.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Product Result Display */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {currentSourceData ? (
+                <div className="max-w-4xl mx-auto space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Left side: Image */}
+                    <div className="space-y-4">
+                      <div className="aspect-square rounded-xl border bg-muted/30 flex items-center justify-center overflow-hidden relative group">
+                        {currentSourceData.images?.[0] || currentSourceData.image_url ? (
+                          <img 
+                            src={currentSourceData.images?.[0] || currentSourceData.image_url} 
+                            alt={currentSourceData.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center text-muted-foreground">
+                            <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
+                            <span className="text-xs">No image available</span>
+                          </div>
+                        )}
+                        {currentSourceData.url && (
+                          <a 
+                            href={currentSourceData.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="absolute top-2 right-2 bg-white/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border"
+                          >
+                            <ExternalLink className="h-4 w-4 text-primary" />
+                          </a>
+                        )}
                       </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Source Name</span>
-                        <p className="text-xs font-medium line-clamp-2" title={source.name}>
-                          {source.name || '—'}
-                        </p>
+                      
+                      {/* Secondary Images if any */}
+                      {currentSourceData.images && currentSourceData.images.length > 1 && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {currentSourceData.images.slice(1, 5).map((img: string, i: number) => (
+                            <div key={i} className="aspect-square rounded-md border overflow-hidden bg-muted/20">
+                              <img src={img} alt="" className="w-full h-full object-contain" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right side: Core Info */}
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-baseline">
+                           <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">
+                            {activeSource.toUpperCase()} RESULT
+                           </Badge>
+                           {currentSourceData.price && (
+                             <span className="text-3xl font-black text-[#008850]">
+                               ${currentSourceData.price.toFixed(2)}
+                             </span>
+                           )}
+                        </div>
+                        <h1 className="text-2xl font-bold leading-tight">{currentSourceData.name || 'Untitled Product'}</h1>
+                        {currentSourceData.brand && (
+                          <p className="text-sm font-medium text-muted-foreground">Brand: <span className="text-foreground">{currentSourceData.brand}</span></p>
+                        )}
                       </div>
-                      {source.url && (
-                        <Button variant="link" className="p-0 h-auto text-xs text-blue-600" asChild>
-                          <a href={source.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
-                            Visit Source <ExternalLink className="h-3 w-3" />
+
+                      <Separator />
+
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Description</h3>
+                        <div className="text-sm leading-relaxed text-zinc-600 prose prose-sm max-w-none">
+                          {currentSourceData.description ? (
+                            <div dangerouslySetInnerHTML={{ __html: currentSourceData.description }} />
+                          ) : (
+                            <p className="italic">No description provided by source.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {currentSourceData.url && (
+                        <Button className="w-full bg-[#008850] hover:bg-[#008850]/90" asChild>
+                          <a href={currentSourceData.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Visit Source Website
                           </a>
                         </Button>
                       )}
-                      
-                      <div className="pt-2 border-t mt-2">
-                        <details>
-                          <summary className="text-[10px] cursor-pointer text-muted-foreground uppercase font-bold tracking-wider">Raw JSON</summary>
-                          <pre className="text-[10px] mt-2 bg-muted p-2 rounded overflow-x-auto max-h-40">
-                            {JSON.stringify(source, null, 2)}
-                          </pre>
-                        </details>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {Object.keys(selectedProduct.sources || {}).length === 0 && (
-                  <div className="col-span-full py-12 text-center border-2 border-dashed rounded-lg bg-background">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-                    <h3 className="text-lg font-medium">No sources found</h3>
-                    <p className="text-muted-foreground text-sm">No scraper data is currently available for this product.</p>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Extra Data / Raw View */}
+                  <div className="pt-8">
+                     <Separator className="mb-8" />
+                     <div className="space-y-4">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                           <Package className="h-4 w-4" />
+                           Technical Details (Raw Data)
+                        </h3>
+                        <div className="bg-muted/30 rounded-lg p-4 font-mono text-xs overflow-x-auto border">
+                          <pre>{JSON.stringify(currentSourceData, null, 2)}</pre>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
+                  <Package className="h-16 w-16 mb-4 opacity-10" />
+                  <h3 className="text-xl font-medium">No results for {activeSource}</h3>
+                  <p>Try selecting a different source or re-scraping this product.</p>
+                </div>
+              )}
             </div>
-          </ScrollArea>
+          </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
             <Package className="h-16 w-16 mb-4 opacity-10" />
             <h3 className="text-xl font-medium">Select a product</h3>
-            <p>Choose a product from the list to view its scraped details.</p>
+            <p>Choose a product from the list to view its scraped results.</p>
           </div>
         )}
       </div>

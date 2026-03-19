@@ -6,6 +6,7 @@
 /** Pipeline stage status values */
 export const PIPELINE_STATUS_VALUES = [
   'imported',
+  'monitoring',
   'scraped',
   'consolidated',
   'finalized',
@@ -94,6 +95,11 @@ export const STAGE_CONFIG: Record<PipelineStatus, StageConfig> = {
     label: 'Imported',
     color: '#6B7280',
     description: 'Product data has been imported into the system',
+  },
+  monitoring: {
+    label: 'Monitoring',
+    color: '#F59E0B',
+    description: 'Track active scraper jobs and progress',
   },
   scraped: {
     label: 'Scraped',

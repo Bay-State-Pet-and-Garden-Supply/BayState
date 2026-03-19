@@ -11,6 +11,7 @@ import { STAGE_CONFIG } from '@/lib/pipeline/types';
  */
 const BULK_ACTIONS: Record<PipelineStatus, { label: string; nextStage: PipelineStatus | null }> = {
   imported: { label: 'Scrape Selected', nextStage: 'scraped' },
+  monitoring: { label: '', nextStage: null },
   scraped: { label: 'Consolidate Selected', nextStage: 'consolidated' },
   consolidated: { label: 'Finalize Selected', nextStage: 'finalized' },
   finalized: { label: 'Publish Selected', nextStage: 'published' },
