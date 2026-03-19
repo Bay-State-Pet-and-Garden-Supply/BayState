@@ -64,9 +64,10 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { consolidated, pipeline_status } = body as {
+    const { consolidated, pipeline_status, sources } = body as {
       consolidated?: unknown;
       pipeline_status?: TransitionalPipelineStatus;
+      sources?: Record<string, unknown>;
     };
 
     const updateData: Record<string, unknown> = {
@@ -75,6 +76,10 @@ export async function PATCH(
 
     if (consolidated !== undefined) {
       updateData.consolidated = consolidated;
+    }
+
+    if (sources !== undefined) {
+      updateData.sources = sources;
     }
 
     if (pipeline_status !== undefined) {
