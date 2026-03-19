@@ -45,7 +45,7 @@ async function fetchCounts(): Promise<StatusCount[]> {
 async function fetchProducts(): Promise<{ products: PipelineProduct[]; count: number }> {
     try {
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/pipeline?status=imported&limit=50`,
+            `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/pipeline?status=imported&limit=500`,
             {
                 cache: 'no-store',
                 headers: {
@@ -94,6 +94,7 @@ export default async function PipelinePage() {
         <PipelineClient
             initialProducts={products}
             initialCounts={counts}
+            initialTotal={count}
         />
     );
 }

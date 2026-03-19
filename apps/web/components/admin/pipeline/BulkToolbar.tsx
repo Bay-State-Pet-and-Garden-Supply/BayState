@@ -1,94 +1,96 @@
 'use client';
 
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, CheckSquare, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PipelineStatus } from '@/lib/pipeline/types';
 import { STAGE_CONFIG } from '@/lib/pipeline/types';
 
 /**
- * Bulk action configuration for each pipeline stage
- * Defines the label and next stage for bulk operations
+ * Bulk action configuration for each pipeline stage.
+ * 'imported' opens the scraper selection dialog instead of a direct move.
  */
 const BULK_ACTIONS: Record<PipelineStatus, { label: string; nextStage: PipelineStatus | null }> = {
-  imported: { label: 'Move to Scraped', nextStage: 'scraped' },
-  scraped: { label: 'Move to Consolidated', nextStage: 'consolidated' },
-  consolidated: { label: 'Move to Finalized', nextStage: 'finalized' },
+  imported: { label: 'Scrape Selected', nextStage: 'scraped' },
+  scraped: { label: 'Consolidate Selected', nextStage: 'consolidated' },
+  consolidated: { label: 'Finalize Selected', nextStage: 'finalized' },
   finalized: { label: 'Publish Selected', nextStage: 'published' },
   published: { label: '', nextStage: null },
 };
 
 interface BulkToolbarProps {
-  /** Number of products currently selected */
   selectedCount: number;
-  /** Current pipeline stage being viewed */
+  totalCount: number;
   currentStage: PipelineStatus;
-  /** Whether a bulk operation is in progress */
   isLoading: boolean;
-  /** Callback to clear the current selection */
   onClearSelection: () => void;
-  /** Callback to perform bulk action with the next stage */
+  onSelectAll: () => void;
+  /** For imported stage, opens scraper dialog. For others, moves to next stage. */
   onBulkAction: (nextStage: PipelineStatus) => void;
+  /** Opens the scraper selection dialog (imported stage only) */
+  onOpenScrapeDialog?: () => void;
 }
 
-/**
- * BulkToolbar Component
- *
- * Displays bulk operation controls when products are selected in the pipeline.
- * Shows stage-specific action buttons and selection count.
- *
- * @example
- * ```tsx
- * <BulkToolbar
- *   selectedCount={5}
- *   currentStage="imported"
- *   isLoading={false}
- *   onClearSelection={() => setSelectedSkus([])}
- *   onBulkAction={(nextStage) => handleBulkMove(nextStage)}
- * />
- * ```
- */
 export function BulkToolbar({
   selectedCount,
+  totalCount,
   currentStage,
   isLoading,
   onClearSelection,
+  onSelectAll,
   onBulkAction,
+  onOpenScrapeDialog,
 }: BulkToolbarProps) {
-  // Don't render if no products are selected
-  if (selectedCount === 0) {
-    return null;
-  }
-
-  // Get the bulk action configuration for the current stage
   const bulkAction = BULK_ACTIONS[currentStage];
   const stageConfig = STAGE_CONFIG[currentStage];
-
-  // Published is a terminal stage - no bulk actions available
   const isTerminalStage = currentStage === 'published';
   const hasBulkAction = !isTerminalStage && bulkAction.nextStage !== null;
+  const isImported = currentStage === 'imported';
+
+  const handlePrimaryAction = () => {
+    if (isImported && onOpenScrapeDialog) {
+      onOpenScrapeDialog();
+    } else if (bulkAction.nextStage) {
+      onBulkAction(bulkAction.nextStage);
+    }
+  };
 
   return (
     <div
-      className="flex items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm"
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm"
       role="toolbar"
       aria-label="Bulk actions toolbar"
     >
-      {/* Selection count */}
+      {/* Select All / count */}
       <div className="flex items-center gap-2">
-        <span
-          className="inline-flex items-center justify-center rounded-full bg-[#008850] px-2.5 py-0.5 text-sm font-semibold text-white"
-          aria-live="polite"
-        >
-          {selectedCount}
-        </span>
-        <span className="text-sm font-medium text-zinc-700">
-          {selectedCount === 1 ? 'product' : 'products'} selected
-        </span>
+        {selectedCount === 0 ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSelectAll}
+            disabled={isLoading || totalCount === 0}
+            className="h-8"
+          >
+            <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
+            Select All ({totalCount})
+          </Button>
+        ) : (
+          <>
+            <span
+              className="inline-flex items-center justify-center rounded-full bg-[#008850] px-2.5 py-0.5 text-sm font-semibold text-white"
+              aria-live="polite"
+            >
+              {selectedCount}
+            </span>
+            <span className="text-sm font-medium text-zinc-700">
+              {selectedCount === 1 ? 'product' : 'products'} selected
+            </span>
+          </>
+        )}
       </div>
 
-      {/* Current stage indicator */}
+      {/* Stage indicator */}
       <div className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500">
-        <span>from</span>
+        <span>in</span>
         <span
           className="inline-flex items-center rounded-full px-2 py-0.5 font-medium"
           style={{
@@ -100,21 +102,27 @@ export function BulkToolbar({
         </span>
       </div>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Action buttons */}
+      {/* Actions */}
       <div className="flex items-center gap-2">
-        {/* Stage-specific bulk action button */}
-        {hasBulkAction && (
+        {selectedCount > 0 && selectedCount < totalCount && (
           <Button
-            onClick={() => {
-              if (bulkAction.nextStage) {
-                onBulkAction(bulkAction.nextStage);
-              }
-            }}
+            variant="ghost"
+            size="sm"
+            onClick={onSelectAll}
             disabled={isLoading}
-            className="bg-[#008850] hover:bg-[#008850]/90 text-white"
+            className="h-8 text-xs text-zinc-600"
+          >
+            Select All ({totalCount})
+          </Button>
+        )}
+
+        {hasBulkAction && selectedCount > 0 && (
+          <Button
+            onClick={handlePrimaryAction}
+            disabled={isLoading}
+            className={`${isImported ? 'bg-[#008850] hover:bg-[#008850]/90' : 'bg-[#008850] hover:bg-[#008850]/90'} text-white`}
           >
             {isLoading ? (
               <>
@@ -122,22 +130,26 @@ export function BulkToolbar({
                 Processing...
               </>
             ) : (
-              bulkAction.label
+              <>
+                {isImported && <Search className="mr-1.5 h-4 w-4" />}
+                {bulkAction.label}
+              </>
             )}
           </Button>
         )}
 
-        {/* Clear selection button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClearSelection}
-          disabled={isLoading}
-          className="text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-        >
-          <X className="mr-1.5 h-4 w-4" />
-          Clear
-        </Button>
+        {selectedCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClearSelection}
+            disabled={isLoading}
+            className="text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+          >
+            <X className="mr-1 h-4 w-4" />
+            Clear
+          </Button>
+        )}
       </div>
     </div>
   );

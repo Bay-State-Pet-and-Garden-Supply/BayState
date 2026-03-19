@@ -33,7 +33,7 @@ export interface PipelineProduct {
   input: {
     name?: string;
     price?: number;
-  };
+  } | null;
   /** Scraped data from multiple sources keyed by source ID */
   sources: Record<string, unknown>;
   /** AI-consolidated product data from all sources */
@@ -45,7 +45,7 @@ export interface PipelineProduct {
     brand_id?: string;
     stock_status?: string;
     is_featured?: boolean;
-  };
+  } | null;
   pipeline_status: PipelineStatus;
   /** Image URLs from scraping */
   image_candidates?: string[];
