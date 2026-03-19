@@ -147,14 +147,33 @@ export const ConsolidationSubmitSchema = z.object({
 export const ScrapedDataItemSchema = z.object({
     price: z.number().min(0).optional(),
     title: z.string().optional(),
+    brand: z.string().optional(),
+    weight: z.union([z.string(), z.number()]).optional(),
+    size: z.union([z.string(), z.number()]).optional(),
     description: z.string().optional(),
     images: z.array(z.string().url()).optional(),
     availability: z.string().optional(),
+    category: z.string().optional(),
+    categories: z.array(z.string()).optional(),
+    product_type: z.string().optional(),
+    ingredients: z.union([z.string(), z.array(z.string())]).optional(),
+    features: z.union([z.string(), z.array(z.string())]).optional(),
+    dimensions: z.string().optional(),
+    specifications: z.unknown().optional(),
+    upc: z.string().optional(),
+    item_number: z.string().optional(),
+    manufacturer_part_number: z.string().optional(),
+    case_pack: z.union([z.string(), z.number()]).optional(),
+    unit_of_measure: z.string().optional(),
+    size_options: z.array(z.string()).optional(),
     ratings: z.number().min(0).max(5).optional(),
     reviews_count: z.number().int().min(0).optional(),
     url: z.string().url().optional(),
+    source_website: z.string().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    size_metrics: z.record(z.string(), z.unknown()).optional(),
     scraped_at: z.string().optional(),
-});
+}).catchall(z.unknown());
 
 export const ScrapedDataSchema = z.record(z.string(), ScrapedDataItemSchema);
 

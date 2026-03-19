@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jsdom
+ */
+
 import { render, screen } from '@testing-library/react';
 import { PipelineProductGrid } from '@/components/admin/pipeline/PipelineProductGrid';
 import type { PipelineProduct } from '@/lib/pipeline';
@@ -8,7 +12,7 @@ const mockProducts: PipelineProduct[] = [
     input: { name: 'Product 1', price: 10.99 },
     sources: {},
     consolidated: { name: 'Product 1', price: 10.99 },
-    pipeline_status: 'registered',
+    pipeline_status: 'imported',
     created_at: '2024-01-01',
     updated_at: '2024-01-01',
   },
@@ -17,7 +21,7 @@ const mockProducts: PipelineProduct[] = [
     input: { name: 'Product 2', price: 20.99 },
     sources: {},
     consolidated: { name: 'Product 2', price: 20.99 },
-    pipeline_status: 'enriched',
+    pipeline_status: 'scraped',
     created_at: '2024-01-02',
     updated_at: '2024-01-02',
   },

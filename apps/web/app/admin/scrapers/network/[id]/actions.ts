@@ -280,3 +280,89 @@ export async function updateRunnerMetadata(
     revalidatePath(`/admin/scrapers/network/${id}`);
     return { success: true };
 }
+
+/**
+ * Rotate the API key for a runner
+ * Revokes all existing keys and creates a new one, preserving settings
+ */
+export async function rotateRunnerKey(id: string): Promise<{ success: boolean; key?: string; error?: string }> {
+    const { error: adminError } = await verifyAdminAccess();
+    if (adminError) {
+        return { success: false, error: adminError };
+    }
+
+    const supabase = getServiceRoleClient();
+
+    // Check if runner exists
+    const { data: existingRunner, error: fetchError } = await supabase
+        .from('scraper_runners')
+        .select('name')
+        .eq('name', id)
+        .single();
+
+    if (fetchError || !existingRunner) {
+        return { success: false, error: 'Runner not found' };
+    }
+
+    // Get the most recent active key to copy its settings
+    const { data: latestKeys } = await supabase
+        .from('runner_api_keys')
+        .select('allowed_scrapers, expires_at')
+        .eq('runner_name', id)
+        .is('revoked_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    const settings = latestKeys?.[0] || { allowed_scrapers: null, expires_at: null };
+
+    // 1. Revoke all existing keys for this runner
+    const { error: revokeError } = await supabase
+        .from('runner_api_keys')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('runner_name', id)
+        .is('revoked_at', null);
+
+    if (revokeError) {
+        console.error(`Error revoking keys for runner ${id}:`, revokeError);
+        return { success: false, error: 'Failed to revoke old API keys' };
+    }
+
+    // 2. Generate new API key
+    // We use crypto module directly since this is a server action
+    const crypto = await import('crypto');
+    const randomBytes = crypto.randomBytes(32);
+    const keyBody = randomBytes.toString('base64url');
+    const key = `bsr_${keyBody}`;
+    const hash = crypto.createHash('sha256').update(key).digest('hex');
+    const prefix = key.substring(0, 12);
+
+    // 3. Insert the new key
+    const authSupabase = await createClient();
+    const { data: userData } = await authSupabase.auth.getUser();
+    
+    const { error: insertError } = await supabase
+        .from('runner_api_keys')
+        .insert({
+            runner_name: id,
+            key_hash: hash,
+            key_prefix: prefix,
+            description: 'Rotated API Key',
+            created_by: userData.user?.id,
+            allowed_scrapers: settings.allowed_scrapers,
+            expires_at: settings.expires_at,
+        });
+
+    if (insertError) {
+        console.error(`Error inserting new key for runner ${id}:`, insertError);
+        return { success: false, error: 'Failed to create new API key' };
+    }
+
+    revalidatePath('/admin/scrapers/network');
+    revalidatePath(`/admin/scrapers/network/${id}`);
+    
+    return { 
+        success: true, 
+        key // Return the plain text key so it can be shown once
+    };
+}
+

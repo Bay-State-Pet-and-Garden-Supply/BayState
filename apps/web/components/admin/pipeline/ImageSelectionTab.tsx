@@ -6,7 +6,7 @@ import { ImageIcon, Check, Loader2 } from 'lucide-react';
 interface ProductNeedingImages {
     sku: string;
     image_candidates: string[];
-    consolidated: any;
+    consolidated: Record<string, unknown> | null;
     pipeline_status: string;
 }
 
@@ -119,7 +119,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
                         <div>
                             <h4 className="font-medium text-gray-900">{product.sku}</h4>
                             <p className="text-sm text-gray-500">
-                                {product.consolidated?.name || 'Unnamed Product'}
+                                {typeof product.consolidated?.name === 'string' ? product.consolidated.name : 'Unnamed Product'}
                             </p>
                         </div>
                         <button
@@ -130,7 +130,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
                             {saving === product.sku ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Saving...
+                                    Saving…
                                 </>
                             ) : (
                                 <>

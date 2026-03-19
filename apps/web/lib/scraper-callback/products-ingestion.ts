@@ -1,6 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import {
-  extractImageCandidatesFromSources,
   hasMeaningfulProductSourceData,
   mergeProductSources,
 } from '@/lib/product-sources';
@@ -87,10 +86,14 @@ export async function persistProductsIngestionSourcesStrict(
     return {
       sku,
       sources: updatedSources,
-      image_candidates: extractImageCandidatesFromSources(updatedSources),
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData ? { pipeline_status: 'enriched' as const } : {}),
+      ...(hasMeaningfulData
+        ? {
+            pipeline_status: 'scraped' as const,
+            pipeline_status_new: 'enriched' as const,
+          }
+        : {}),
     };
   });
 
@@ -147,10 +150,14 @@ export async function persistProductsIngestionSourcesPartial(
     return {
       sku,
       sources: updatedSources,
-      image_candidates: extractImageCandidatesFromSources(updatedSources),
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData ? { pipeline_status: 'enriched' as const } : {}),
+      ...(hasMeaningfulData
+        ? {
+            pipeline_status: 'scraped' as const,
+            pipeline_status_new: 'enriched' as const,
+          }
+        : {}),
     };
   });
 
@@ -159,6 +166,7 @@ export async function persistProductsIngestionSourcesPartial(
     .upsert(updateRows, { onConflict: 'sku' });
 
   if (updateError) {
+    console.error(`[Products Ingestion] Bulk update failed: ${updateError.message}`);
     throw new Error(`Bulk update failed: ${updateError.message}`);
   }
 

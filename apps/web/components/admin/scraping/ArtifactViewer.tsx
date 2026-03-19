@@ -119,7 +119,7 @@ export function ArtifactViewer({ jobId, className }: ArtifactViewerProps) {
               <GitCompare className="w-8 h-8 mx-auto mb-3 opacity-50" />
               <p className="text-sm">Comparison view coming soon</p>
               <p className="text-xs mt-1">
-                This will show "Source of Truth" vs "Scraped Result" comparison
+                This will show &quot;Source of Truth&quot; vs &quot;Scraped Result&quot; comparison
               </p>
             </div>
           </TabsContent>

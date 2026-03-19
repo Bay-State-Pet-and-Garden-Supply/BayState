@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Save, CheckCircle, Package } from 'lucide-react';
 import { toast } from 'sonner';
-import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,10 +37,11 @@ const stockStatusOptions = [
 ];
 
 const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
-  { value: 'registered', label: 'Registered' },
-  { value: 'enriched', label: 'Enriched' },
+  { value: 'imported', label: 'Imported' },
+  { value: 'scraped', label: 'Scraped' },
+  { value: 'consolidated', label: 'Consolidated' },
   { value: 'finalized', label: 'Finalized' },
-  { value: 'failed', label: 'Failed' },
+  { value: 'published', label: 'Published' },
 ];
 
 export function PipelineProductDetail({
@@ -61,7 +62,7 @@ export function PipelineProductDetail({
   const [brandId, setBrandId] = useState('none');
   const [stockStatus, setStockStatus] = useState('in_stock');
   const [isFeatured, setIsFeatured] = useState(false);
-  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('registered');
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('imported');
   const [imageCandidates, setImageCandidates] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
@@ -101,7 +102,7 @@ export function PipelineProductDetail({
         setBrandId(consolidated.brand_id || 'none');
         setStockStatus(consolidated.stock_status || 'in_stock');
         setIsFeatured(consolidated.is_featured || false);
-        setPipelineStatus(productData.product?.pipeline_status || 'registered');
+        setPipelineStatus(productData.product?.pipeline_status || 'imported');
         setImageCandidates(candidates);
         setSelectedImages(currentImages);
       } catch (err) {
@@ -192,7 +193,7 @@ export function PipelineProductDetail({
           .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/')),
       };
 
-      const newStatus: PipelineStatus = andApprove ? 'finalized' : pipelineStatus;
+      const newStatus = andApprove ? 'finalized' : pipelineStatus;
 
       const res = await fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
         method: 'PATCH',
@@ -264,7 +265,7 @@ export function PipelineProductDetail({
             <Package className="h-6 w-6 text-gray-600" />
             <div>
               <h2 id="modal-title" className="text-lg font-semibold">Edit Product</h2>
-              <p className="text-sm text-gray-600 font-mono">{sku}</p>
+              <p className="text-sm text-gray-600 font-mono tabular-nums">{sku}</p>
             </div>
           </div>
           <button
@@ -454,12 +455,12 @@ export function PipelineProductDetail({
               disabled={saving}
             >
               <Save className="mr-2 h-4 w-4" />
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving…' : 'Save'}
             </Button>
-            {pipelineStatus !== 'finalized' && (
+            {pipelineStatus !== 'finalized' && pipelineStatus !== 'published' && (
               <Button onClick={() => handleSave(true)} disabled={saving}>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                {saving ? 'Saving...' : 'Save & Finalize'}
+                {saving ? 'Saving…' : 'Save & Verify'}
               </Button>
             )}
           </div>

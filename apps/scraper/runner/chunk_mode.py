@@ -92,7 +92,12 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
             )
 
             # Run job with progress callback for incremental saving
-            results = run_job(chunk_job_config, runner_name=runner_name, progress_callback=progress_callback)
+            results = run_job(
+                chunk_job_config,
+                runner_name=runner_name,
+                progress_callback=progress_callback,
+                api_client=client,
+            )
 
             # Calculate final results (including any SKUs that weren't captured by callback)
             final_data = results.get("data", {})

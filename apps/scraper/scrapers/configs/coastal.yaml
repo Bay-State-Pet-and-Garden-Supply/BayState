@@ -4,29 +4,26 @@ display_name: Coastal Pet
 base_url: https://www.coastalpet.com
 scraper_type: static
 selectors:
-  - name: Name
-    selector: h1.product-detail__name
+  - name: search_result_link
+    selector: "a.product-listing__title.product-listing__link >> nth=0"
     fallback_selectors:
-      - h1.product-title
-      - h1
-      - "[data-product-title]"
+      - "a.product-listing__link >> nth=0"
+    attribute: href
+    multiple: false
+    required: true
+  - name: Name
+    selector: h4.product-details__product-name
+    fallback_selectors:
+      - "#product-details h4"
+      - h1.product-detail__name
     attribute: text
     multiple: false
     required: true
   - name: Brand
-    selector: .product-detail__brand
+    selector: "#product-details a.gray-bold-link"
     fallback_selectors:
-      - a.gray-bold-link[href*='brand=']
-      - .gray-bold-link
-    attribute: text
-    multiple: false
-    required: true
-  - name: Price
-    selector: ".product-detail__price"
-    fallback_selectors:
-      - ".price"
-      - "[class*='price']"
-      - "[data-product-price]"
+      - "a.gray-bold-link[href*='brand=']"
+      - .product-detail__brand
     attribute: text
     multiple: false
     required: true
@@ -34,41 +31,35 @@ selectors:
     selector: .product-details__size-button--active
     fallback_selectors:
       - .product-details__size-button
-      - .active-size
     attribute: text
     multiple: false
     required: false
   - name: Image URLs
-    selector: ".product-details__main-image img"
+    selector: ".product-details__preview-images--scrolling-container img"
     fallback_selectors:
-      - ".product-details__preview-images--scrolling-container img"
       - "img[src*='salsify']"
-      - "img[src]"
-      - "[data-product-image]"
     attribute: src
     multiple: true
     required: true
   - name: UPC
-    selector: ".product-details__info span:has-text('UPC:') + span"
+    selector: "span.product-details__upc"
     fallback_selectors:
-      - ".product-details__info span:contains('UPC:') + span"
-      - "[itemprop='sku']"
+      - ".coastal--type-body2 strong:has-text('UPC:') ~ span"
     attribute: text
     multiple: false
     required: false
   - name: Item Number
-    selector: ".product-details__info span:has-text('Item Number:') + span"
+    selector: "span.product-details__item-code"
     fallback_selectors:
-      - ".product-details__info span:contains('Item Number:') + span"
-      - ".item-number"
+      - ".coastal--type-body2 strong:has-text('Item Number:') ~ span"
     attribute: text
     multiple: false
     required: false
   - name: Description
-    selector: "#product-details__description-tab-panel"
+    selector: ".product-details__description-gray .coastal--type-body1"
     fallback_selectors:
-      - "#description"
-      - ".product-description"
+      - ".product-details__description-gray p"
+      - "#product-details__description-tab-panel"
     attribute: text
     multiple: false
     required: false
@@ -90,18 +81,10 @@ workflows:
     params:
       selector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll,
         .CybotCookiebotDialogBodyButton, button[aria-label='Allow all']"
-  - action: wait_for
-    name: null
-    params:
-      timeout: 5
-      selector:
-        - .product-listing__title--text
-        - h3:has-text('Search')
-        - //h3[contains(text(), 'Search')]
   - action: wait
-    name: null
+    name: wait_for_page_load
     params:
-      duration: 1
+      duration: 3
   - action: check_no_results
     name: null
     params: {}
@@ -109,14 +92,27 @@ workflows:
     name: null
     params:
       if_flag: no_results_found
-  - action: click
-    name: null
-    params:
-      selector: a.product-listing__title.product-listing__link
   - action: wait_for
     name: null
     params:
-      timeout: 5
+      timeout: 8
+      selector:
+        - .product-listing__title
+        - .product-listing
+  - action: extract_single
+    name: extract_product_url
+    params:
+      field: product_url
+      selector_id: search_result_link
+  - action: navigate
+    name: product_page
+    params:
+      url: "{{product_url}}"
+      wait_after: 2
+  - action: wait_for
+    name: null
+    params:
+      timeout: 8
       selector: .product-details
   - action: extract
     name: null
@@ -126,7 +122,6 @@ workflows:
         - Brand
         - Size
         - Image URLs
-        - Price
         - UPC
         - Item Number
         - Description
@@ -145,10 +140,8 @@ anti_detection:
 validation:
   no_results_selectors:
     - //main//*[contains(text(), 'Your search returned no results')]
-    - //main//*[contains(text(), '0 Products Found')]
   no_results_text_patterns:
     - Your search returned no results
-    - 0 Products Found
 login: null
 http_status: null
 normalization: null

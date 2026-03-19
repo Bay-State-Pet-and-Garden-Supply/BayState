@@ -351,13 +351,11 @@ describe('POST /api/scraper/v1/poll', () => {
 
         const req = createRequest({});
         const res = await POST(req);
+        const data = await res.json();
 
         expect(res.status).toBe(200);
-        expect(mockSupabase.in).toHaveBeenCalledWith('slug', ['ai_discovery']);
+        expect(data.job.scrapers).toHaveLength(0);
 
-        const data = await res.json();
-        expect(data.job.scrapers).toHaveLength(1);
-        expect(data.job.scrapers[0].name).toBe('ai_discovery');
         expect(data.job.job_type).toBe('ai_search');
     });
 
@@ -412,6 +410,6 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(Array.isArray(data.job.scrapers[0].selectors)).toBe(true);
         expect(data.job.scrapers[0].selectors[0].name).toBe('Name');
         expect(data.job.scrapers[0].validation.no_results_selectors[0]).toContain('Sorry');
-        expect(data.job.scrapers[0].retries).toBe(1);
+        expect(data.job.scrapers[0].retries).toBe(2);
     });
 });

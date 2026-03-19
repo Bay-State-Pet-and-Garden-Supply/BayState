@@ -1,7 +1,4 @@
-'use client';
-
-import { useState } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import React from 'react';
 import {
     Dialog,
     DialogContent,
@@ -11,66 +8,63 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 
 interface DeleteConfirmationDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    productCount: number;
-    onConfirm: () => Promise<void>;
-    isDeleting?: boolean;
+    onConfirm: () => void;
+    isDeleting: boolean;
+    sku?: string;
+    productCount?: number;
 }
 
-export function DeleteConfirmationDialog({
+export const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
     isOpen,
     onOpenChange,
-    productCount,
     onConfirm,
-    isDeleting = false,
-}: DeleteConfirmationDialogProps) {
-    const [error, setError] = useState<string | null>(null);
-
-    const handleConfirm = async () => {
-        try {
-            setError(null);
-            await onConfirm();
-            onOpenChange(false);
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to delete products';
-            setError(errorMessage);
-        }
+    isDeleting,
+    sku,
+    productCount,
+}) => {
+    const handleConfirm = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onConfirm();
     };
+
+    const isBulk = Boolean(productCount && productCount > 0);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-red-600">
-                        <Trash2 className="h-5 w-5" />
-                        Permanently Delete Products
+                        <AlertTriangle className="h-5 w-5" />
+                        {isBulk ? 'Confirm Bulk Deletion' : 'Confirm Deletion'}
                     </DialogTitle>
-                    <DialogDescription>
-                        This action cannot be undone.
+                    <DialogDescription className="pt-2">
+                        {isBulk ? (
+                            <>
+                                Are you sure you want to delete <span className="font-bold text-gray-900">{productCount}</span> selected products?
+                            </>
+                        ) : (
+                            <>
+                                Are you sure you want to delete SKU <span className="font-mono font-bold tabular-nums text-gray-900">{sku}</span>?
+                            </>
+                        )}
+                        <br />
+                        This action cannot be undone and will remove the product{isBulk ? 's' : ''} from all pipeline stages.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <p className="font-semibold text-base">
-                            Delete {productCount} product{productCount > 1 ? 's' : ''}?
-                        </p>
-                        <p className="text-sm text-gray-600">
-                            Once deleted, these products will be permanently removed from the database and cannot be recovered.
-                        </p>
-                    </div>
-
-                    {error && (
-                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-                            {error}
-                        </div>
-                    )}
+                <div className="bg-red-50 p-4 rounded-lg border border-red-100 my-4">
+                    <p className="text-sm text-red-800">
+                        <strong>Warning:</strong> Deleting {isBulk ? 'these products' : 'this product'} will remove {isBulk ? 'them' : 'it'} from the system entirely.
+                    </p>
                 </div>
 
-                <DialogFooter className="gap-2">
+                <DialogFooter className="gap-2 sm:gap-0">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
@@ -87,12 +81,12 @@ export function DeleteConfirmationDialog({
                         {isDeleting ? (
                             <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Deleting...
+                                Deleting…
                             </>
                         ) : (
                             <>
                                 <Trash2 className="h-4 w-4" />
-                                Delete Permanently
+                                Delete {isBulk ? 'All' : 'Permanently'}
                             </>
                         )}
                     </Button>
@@ -100,4 +94,4 @@ export function DeleteConfirmationDialog({
             </DialogContent>
         </Dialog>
     );
-}
+};

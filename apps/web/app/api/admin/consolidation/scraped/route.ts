@@ -6,8 +6,9 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/scraped
- * Trigger consolidation for products that are ready for consolidation.
- * Body: { skus?: string[] } - if no SKUs provided, consolidates all ready products
+ * Trigger consolidation for products that are enriched and ready for consolidation.
+ * Backward-compatible with legacy records that only have pipeline_status = 'scraped'.
+ * Body: { skus?: string[] } - if no SKUs provided, consolidates all scraped products
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
@@ -19,11 +20,11 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Build query - either specific SKUs or all products that are ready for consolidation
+        // Build query - either specific SKUs or all scraped products
         let query = supabase
             .from('products_ingestion')
             .select('sku, sources, input')
-            .in('pipeline_status', ['enriched', 'scraped']);
+            .or('pipeline_status_new.eq.enriched,and(pipeline_status_new.is.null,pipeline_status.in.(scraped,enriched))');
 
         if (skus && Array.isArray(skus) && skus.length > 0) {
             query = query.in('sku', skus);
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
 
         if (!products || products.length === 0) {
             return NextResponse.json(
-                { error: 'No products ready for consolidation found. Run scraping first.' },
+                { error: 'No scraped products found. Run scraping first.' },
                 { status: 404 }
             );
         }
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
         // Submit for consolidation
         const result = await submitBatch(productSources, {
-            description: `Manual consolidation for ${productSources.length} products ready for consolidation`,
+            description: `Manual consolidation for ${productSources.length} scraped products`,
             auto_apply: false, // Manual review required
         });
 

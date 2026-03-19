@@ -1,11 +1,27 @@
 import os
 import time
+import base64
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 import httpx
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from core.api_client import *
+
+
+def _encrypt_supabase_secret(secret: str, key: bytes) -> tuple[str, str, str]:
+    nonce = b"test-nonce12"
+    aesgcm = AESGCM(key)
+    encrypted = aesgcm.encrypt(nonce, secret.encode("utf-8"), None)
+    ciphertext = encrypted[:-16]
+    auth_tag = encrypted[-16:]
+    return (
+        base64.b64encode(ciphertext).decode("utf-8"),
+        base64.b64encode(nonce).decode("utf-8"),
+        base64.b64encode(auth_tag).decode("utf-8"),
+    )
 
 
 class TestScraperAPIClient:
@@ -199,6 +215,140 @@ class TestScraperAPIClient:
 
             claimed = self.client.claim_chunk("runner-1")
             assert claimed is None
+
+    def test_get_credentials_from_supabase_reconstructs_login_and_password_rows(self):
+        encryption_key = "12345678901234567890123456789012"
+        key_bytes = encryption_key.encode("utf-8")
+        username_row = _encrypt_supabase_secret("local-user", key_bytes)
+        password_row = _encrypt_supabase_secret("local-password", key_bytes)
+
+        mock_table = MagicMock()
+        mock_table.select.return_value = mock_table
+        mock_table.eq.return_value = mock_table
+        mock_table.execute.return_value = MagicMock(
+            data=[
+                {
+                    "encrypted_value": username_row[0],
+                    "iv": username_row[1],
+                    "auth_tag": username_row[2],
+                    "credential_type": "login",
+                },
+                {
+                    "encrypted_value": password_row[0],
+                    "iv": password_row[1],
+                    "auth_tag": password_row[2],
+                    "credential_type": "password",
+                },
+            ]
+        )
+        mock_supabase = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        with patch.dict(
+            os.environ,
+            {
+                "NEXT_PUBLIC_SUPABASE_URL": "https://test.supabase.co",
+                "SUPABASE_SERVICE_ROLE_KEY": "service-role-key",
+                "AI_CREDENTIALS_ENCRYPTION_KEY": encryption_key,
+            },
+            clear=False,
+        ):
+            with patch("supabase.create_client", return_value=mock_supabase):
+                creds = ScraperAPIClient.get_credentials_from_supabase("phillips")
+
+        assert creds == {
+            "username": "local-user",
+            "password": "local-password",
+            "type": "basic",
+        }
+
+    def test_get_credentials_from_http_preserves_api_key_and_uses_cache(self):
+        with patch.object(
+            self.client,
+            "_make_request",
+            return_value={
+                "username": "http-user",
+                "password": "http-password",
+                "api_key": "http-api-key",
+                "type": "basic",
+            },
+        ) as mock_request:
+            creds = self.client.get_credentials("petfoodex")
+            cached_creds = self.client.get_credentials("petfoodex")
+
+        assert creds == {
+            "username": "http-user",
+            "password": "http-password",
+            "api_key": "http-api-key",
+            "type": "basic",
+        }
+        assert cached_creds == creds
+        mock_request.assert_called_once_with("GET", "/api/scraper/v1/credentials/petfoodex")
+
+    def test_get_credentials_from_supabase_supports_legacy_json_payload(self):
+        encryption_key = "12345678901234567890123456789012"
+        key_bytes = encryption_key.encode("utf-8")
+        payload = json.dumps(
+            {
+                "username": "legacy-user",
+                "password": "legacy-password",
+                "type": "basic",
+            }
+        )
+        encrypted_row = _encrypt_supabase_secret(payload, key_bytes)
+
+        mock_table = MagicMock()
+        mock_table.select.return_value = mock_table
+        mock_table.eq.return_value = mock_table
+        mock_table.execute.return_value = MagicMock(
+            data=[
+                {
+                    "encrypted_value": encrypted_row[0],
+                    "iv": encrypted_row[1],
+                    "auth_tag": encrypted_row[2],
+                    "credential_type": "login",
+                }
+            ]
+        )
+        mock_supabase = MagicMock()
+        mock_supabase.table.return_value = mock_table
+
+        with patch.dict(
+            os.environ,
+            {
+                "NEXT_PUBLIC_SUPABASE_URL": "https://test.supabase.co",
+                "SUPABASE_SERVICE_ROLE_KEY": "service-role-key",
+                "AI_CREDENTIALS_ENCRYPTION_KEY": encryption_key,
+            },
+            clear=False,
+        ):
+            with patch("supabase.create_client", return_value=mock_supabase):
+                creds = ScraperAPIClient.get_credentials_from_supabase("orgill")
+
+        assert creds == {
+            "username": "legacy-user",
+            "password": "legacy-password",
+            "type": "basic",
+        }
+
+    def test_get_credentials_uses_supabase_when_api_url_missing(self):
+        client = ScraperAPIClient(api_url="", api_key="", runner_name="local-test")
+
+        with patch.object(
+            ScraperAPIClient,
+            "get_credentials_from_supabase",
+            return_value={"username": "supabase-user", "password": "supabase-password", "type": "basic"},
+        ) as mock_supabase:
+            with patch.object(ScraperAPIClient, "get_credentials_from_env", return_value=None):
+                creds = client.get_credentials("petfoodex")
+
+        assert creds == {
+            "username": "supabase-user",
+            "password": "supabase-password",
+            "type": "basic",
+        }
+        mock_supabase.assert_called_once_with("petfoodex")
+        assert client._credential_cache["petfoodex"]["username"] == "supabase-user"
 
 
 class TestRetryLogic:

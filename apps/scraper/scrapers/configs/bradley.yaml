@@ -10,7 +10,7 @@ selectors:
     multiple: false
     required: true
   - name: Brand
-    selector: ".product-detail__brand, a.brand-link, span.brand, //main//h1/preceding-sibling::p[1]/a"
+    selector: "//main//h1/preceding-sibling::p[1]/a"
     attribute: text
     multiple: false
     required: true
@@ -20,32 +20,32 @@ selectors:
     multiple: false
     required: false
   - name: Image URLs
-    selector: main img[src*='products/']
+    selector: "[class*='product-gallery'] img[src*='products/']"
     attribute: src
     multiple: true
     required: true
   - name: BCI Item Number
-    selector: ".product-detail__sku, span:has-text('SKU:'), div.sku, p:has-text('BCI Item Number:')"
+    selector: "dt:has-text('BCI Item Number') + dd"
     attribute: text
     multiple: false
     required: false
   - name: "Manufacturer #"
-    selector: "p:has-text('Manufacturer #:')"
+    selector: "dt:has-text('Manufacturer #') + dd"
     attribute: text
     multiple: false
     required: false
   - name: UPC
-    selector: p:has-text('UPC Code:')
+    selector: "dt:has-text('UPC') + dd"
     attribute: text
     multiple: false
     required: false
   - name: Case Pack
-    selector: li:has-text('Case Pack:')
+    selector: "dt:has-text('Case Pack') + dd"
     attribute: text
     multiple: false
     required: false
   - name: Unit of Measure
-    selector: li:has-text('Unit of Measure:')
+    selector: "dt:has-text('Unit of Measure') + dd"
     attribute: text
     multiple: false
     required: false
@@ -55,7 +55,7 @@ selectors:
     multiple: false
     required: false
   - name: Ingredients
-    selector: div#ingredients, .ingredients
+    selector: "//main//li[contains(normalize-space(.), 'Ingredients:')]"
     attribute: text
     multiple: false
     required: false
@@ -89,6 +89,7 @@ workflows:
       required_selectors:
         - //h2[contains(text(), 'Additional Details')]
         - //h2[contains(text(), 'Product Details')]
+      search_result_selector: "main article"
   - action: conditional_skip
     name: null
     params:

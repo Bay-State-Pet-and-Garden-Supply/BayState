@@ -47,7 +47,7 @@ class WaitForAction(BaseAction):
             if not found_selector:
                 async def wait_for_selector(sel: str):
                     locator = convert_to_playwright_locator(page, sel)
-                    await locator.wait_for(state="visible", timeout=timeout * 1000)
+                    await locator.first.wait_for(state="visible", timeout=timeout * 1000)
                     return sel
 
                 # Use asyncio.wait to return as soon as ANY selector matches

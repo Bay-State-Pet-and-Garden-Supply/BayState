@@ -1,4 +1,8 @@
-import { filterMeaningfulProductSources, hasMeaningfulProductSourceData } from '@/lib/product-sources';
+import {
+    filterMeaningfulProductSources,
+    hasMeaningfulProductSourceData,
+    normalizeProductSources,
+} from '@/lib/product-sources';
 
 describe('hasMeaningfulProductSourceData', () => {
     it('returns false for ai_search payloads that only contain diagnostics/errors', () => {
@@ -53,7 +57,50 @@ describe('filterMeaningfulProductSources', () => {
 
         expect(result).toEqual({
             amazon: {
-                name: 'Valid Product',
+                title: 'Valid Product',
+            },
+        });
+    });
+});
+
+describe('normalizeProductSources', () => {
+    it('rewrites legacy scraper field aliases to canonical source keys', () => {
+        const result = normalizeProductSources({
+            bradley: {
+                Name: 'Vita Prima Sunscription Finch Formula',
+                'Image URLs': ['https://cdn.example.com/1.jpg', 'https://cdn.example.com/2.jpg'],
+                ProductType: 'Bird Food',
+                'BCI Item Number': '073353',
+                'Mfg#': 'MAZ123',
+                UoM: 'EA',
+            },
+        });
+
+        expect(result).toEqual({
+            bradley: {
+                title: 'Vita Prima Sunscription Finch Formula',
+                images: ['https://cdn.example.com/1.jpg', 'https://cdn.example.com/2.jpg'],
+                product_type: 'Bird Food',
+                item_number: '073353',
+                manufacturer_part_number: 'MAZ123',
+                unit_of_measure: 'EA',
+            },
+        });
+    });
+
+    it('normalizes top-level legacy fields into the _legacy source payload', () => {
+        const result = normalizeProductSources({
+            Name: 'Legacy Product',
+            'Image URLs': ['https://cdn.example.com/legacy.jpg'],
+            scraped_at: '2026-03-19T00:00:00.000Z',
+            _last_scraped: '2026-03-19T00:00:00.000Z',
+        });
+
+        expect(result).toEqual({
+            _legacy: {
+                title: 'Legacy Product',
+                images: ['https://cdn.example.com/legacy.jpg'],
+                scraped_at: '2026-03-19T00:00:00.000Z',
             },
         });
     });

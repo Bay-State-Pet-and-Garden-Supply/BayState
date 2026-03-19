@@ -80,7 +80,7 @@ export function RetryButton({ product, onRetry }: RetryButtonProps) {
                 </DialogHeader>
 
                 <div className="py-4">
-                    {product.pipeline_status === 'failed' ? (
+                    {product.error_message ? (
                         <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-3 rounded-md">
                             <AlertCircle className="h-5 w-5 mt-0.5" />
                             <div className="text-sm">
@@ -99,7 +99,7 @@ export function RetryButton({ product, onRetry }: RetryButtonProps) {
                         <textarea
                             className="w-full p-2 border rounded-md text-sm"
                             rows={3}
-                            placeholder="Describe why this product needs to be retried..."
+                            placeholder="Describe why this product needs to be retried…"
                             value={retryReason}
                             onChange={(e) => setRetryReason(e.target.value)}
                         />
@@ -134,7 +134,7 @@ export function RetryButton({ product, onRetry }: RetryButtonProps) {
                         {isPending ? (
                             <>
                                 <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                                Submitting...
+                                Submitting…
                             </>
                         ) : (
                             'Submit Retry Request'

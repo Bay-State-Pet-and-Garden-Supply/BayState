@@ -2,7 +2,7 @@
 
 import { Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { PipelineStatus } from '@/lib/pipeline';
+import type { PipelineStatus } from '@/lib/pipeline/types';
 
 interface ExportButtonProps {
     currentStatus: PipelineStatus;
@@ -50,7 +50,7 @@ export function ExportButton({ currentStatus, searchQuery }: ExportButtonProps) 
             ) : (
                 <Download className="h-4 w-4" />
             )}
-            {isExporting ? 'Exporting...' : 'Export CSV'}
+            {isExporting ? 'Exporting…' : 'Export CSV'}
         </button>
     );
 }

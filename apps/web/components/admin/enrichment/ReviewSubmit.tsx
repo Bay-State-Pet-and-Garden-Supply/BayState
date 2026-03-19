@@ -18,6 +18,17 @@ interface ReviewSubmitProps {
     onBack?: () => void;
 }
 
+interface ScraperMethodConfig {
+    scrapers: string[];
+}
+
+interface AISearchMethodConfig {
+    extraction_strategy?: string;
+    llm_model?: string;
+    cache_enabled?: boolean;
+    costEstimate?: string | number;
+}
+
 export function ReviewSubmit({
     selectedSkus,
     method,
@@ -27,6 +38,9 @@ export function ReviewSubmit({
 }: ReviewSubmitProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const scraperConfig = methodConfig as ScraperMethodConfig;
+    const aiSearchConfig = methodConfig as AISearchMethodConfig;
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
@@ -53,7 +67,7 @@ export function ReviewSubmit({
 
             const configPayload = method === 'ai_search'
                 ? { aiSearchConfig: methodConfig }
-                : { scrapers: (methodConfig as { scrapers: string[] }).scrapers };
+                : { scrapers: scraperConfig.scrapers };
 
             const response = await fetch('/api/admin/enrichment/jobs', {
                 method: 'POST',
@@ -149,7 +163,7 @@ export function ReviewSubmit({
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">Selected Scrapers:</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {(methodConfig as { scrapers: string[] }).scrapers?.map((scraper: string) => (
+                                        {scraperConfig.scrapers?.map((scraper: string) => (
                                             <Badge key={scraper} variant="outline" className="bg-background">
                                                 {scraper}
                                             </Badge>
@@ -160,21 +174,21 @@ export function ReviewSubmit({
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Strategy:</span>
-                                        <span className="font-medium uppercase">{(methodConfig as any).extraction_strategy}</span>
+                                        <span className="font-medium uppercase">{aiSearchConfig.extraction_strategy}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Model:</span>
-                                        <span className="font-medium">{(methodConfig as any).llm_model || 'N/A'}</span>
+                                        <span className="font-medium">{aiSearchConfig.llm_model || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Caching:</span>
-                                        <span className="font-medium">{(methodConfig as any).cache_enabled ? 'Enabled' : 'Disabled'}</span>
+                                        <span className="font-medium">{aiSearchConfig.cache_enabled ? 'Enabled' : 'Disabled'}</span>
                                     </div>
-                                    {(methodConfig as any).costEstimate && (
+                                    {aiSearchConfig.costEstimate && (
                                         <div className="mt-4 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
                                             <div className="flex justify-between items-center text-sm font-semibold">
                                                 <span>Estimated Cost:</span>
-                                                <span>${(methodConfig as any).costEstimate}</span>
+                                                <span>${aiSearchConfig.costEstimate}</span>
                                             </div>
                                         </div>
                                     )}

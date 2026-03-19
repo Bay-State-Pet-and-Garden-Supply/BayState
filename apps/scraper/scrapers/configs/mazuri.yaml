@@ -29,31 +29,34 @@ selectors:
     multiple: false
     required: false
   - name: Image URLs
-    selector: ".product-single__photo img"
+    selector: "#carouselExampleControls img"
     fallback_selectors:
+      - ".product-single__photo img"
       - ".product__photo img"
-      - "#carouselExampleControls img"
       - ".product-gallery img"
     attribute: src
     multiple: true
     required: true
   - name: Ingredients
-    selector: "#ingredients-tab-content"
+    selector: ".tab-pane:nth-of-type(2)"
     fallback_selectors:
+      - "#ingredients-tab-content"
       - ".ingredients-section"
     attribute: text
     multiple: false
     required: false
   - name: Guaranteed Analysis
-    selector: "#analysis-tab-content"
+    selector: ".tab-pane:nth-of-type(1)"
     fallback_selectors:
+      - "#analysis-tab-content"
       - ".guaranteed-analysis"
     attribute: text
     multiple: false
     required: false
   - name: Feeding Directions
-    selector: "#feeding-tab-content"
+    selector: ".tab-pane:nth-of-type(3)"
     fallback_selectors:
+      - "#feeding-tab-content"
       - ".feeding-directions"
     attribute: text
     multiple: false
@@ -91,12 +94,6 @@ workflows:
     name: null
     params:
       if_flag: no_results_found
-  - action: validate_search_result
-    name: null
-    params:
-      required_selectors:
-        - "h2.product-single__title"
-        - ".product-single"
   - action: click
     name: null
     params:
@@ -105,11 +102,15 @@ workflows:
   - action: wait_for
     name: null
     params:
-      timeout: 5
+      timeout: 10
       selector:
         - h2.product-single__title
         - .product-single
         - "[data-section-type='product']"
+  - action: wait
+    name: null
+    params:
+      duration: 2
   - action: extract
     name: null
     params:
@@ -118,7 +119,6 @@ workflows:
         - Brand
         - Weight
         - Image URLs
-        - Price
         - Ingredients
         - Guaranteed Analysis
         - Feeding Directions

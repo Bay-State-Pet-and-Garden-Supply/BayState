@@ -10,12 +10,6 @@ type EncryptedRow = {
   credential_type: string;
 };
 
-type ResolvedCredentials = {
-  username: string;
-  password: string;
-  type: string;
-};
-
 function resolveKey(): Buffer {
   const raw = process.env.AI_CREDENTIALS_ENCRYPTION_KEY;
   if (!raw) throw new Error('Missing encryption key');
@@ -34,51 +28,50 @@ function decrypt(payload: { encryptedValue: string; iv: string; authTag: string 
   return decrypted.toString('utf8');
 }
 
-function resolveCredentials(rows: EncryptedRow[]): ResolvedCredentials | null {
-  let username: string | null = null;
-  let password: string | null = null;
-  let type = 'basic';
-
-  for (const row of rows) {
-    let decrypted: string;
-    try {
-      decrypted = decrypt({ encryptedValue: row.encrypted_value, iv: row.iv, authTag: row.auth_tag });
-    } catch {
-      continue;
+function tryParseCredentialPayload(value: string): { username?: string; password?: string; api_key?: string; type?: string } | null {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
     }
-
-    try {
-      const parsed = JSON.parse(decrypted) as {
-        username?: unknown;
-        password?: unknown;
-        type?: unknown;
-      };
-
-      if (typeof parsed.username === 'string' && parsed.username.trim()) {
-        username = parsed.username;
-      }
-      if (typeof parsed.password === 'string' && parsed.password.trim()) {
-        password = parsed.password;
-      }
-      if (typeof parsed.type === 'string' && parsed.type.trim()) {
-        type = parsed.type;
-      }
-    } catch {
-      if (row.credential_type === 'login' && decrypted.trim()) {
-        username = decrypted;
-      } else if (row.credential_type === 'password' && decrypted.trim()) {
-        password = decrypted;
-      } else if (row.credential_type && row.credential_type !== 'api_key') {
-        type = row.credential_type;
-      }
-    }
+    return parsed as { username?: string; password?: string; api_key?: string; type?: string };
+  } catch {
+    return null;
   }
+}
 
-  if (!username || !password) {
+const CREDENTIAL_KEYS: Record<string, { username: string; password: string }> = {
+  petfoodex: { username: 'petfoodex_username', password: 'petfoodex_password' },
+  phillips: { username: 'phillips_username', password: 'phillips_password' },
+  orgill: { username: 'orgill_username', password: 'orgill_password' },
+  shopsite: { username: 'shopsite_username', password: 'shopsite_password' },
+};
+
+async function getLegacyCredentials(
+  supabase: Awaited<ReturnType<typeof createAdminClient>>,
+  scraperSlug: string
+): Promise<{ username?: string; password?: string; type?: string } | null> {
+  const credentialMapping = CREDENTIAL_KEYS[scraperSlug.toLowerCase()];
+  if (!credentialMapping) return null;
+
+  const { data: settings, error } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .in('key', [credentialMapping.username, credentialMapping.password]);
+
+  if (error) {
+    console.error(`[Credentials] Failed to fetch legacy credentials for ${scraperSlug}:`, error);
     return null;
   }
 
-  return { username, password, type };
+  const settingsMap = new Map(settings?.map(s => [s.key, s.value]) || []);
+  const username = settingsMap.get(credentialMapping.username) as string | undefined;
+  const password = settingsMap.get(credentialMapping.password) as string | undefined;
+
+  if (!username || !password) return null;
+
+  console.log(`[Credentials] Providing legacy ${scraperSlug} credentials`);
+  return { username, password, type: 'basic' };
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -95,22 +88,69 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const supabase = await createAdminClient();
+    
+    // Try encrypted credentials table first
     const { data, error } = await supabase
       .from('scraper_credentials')
       .select('encrypted_value, iv, auth_tag, credential_type')
-      .eq('scraper_slug', scraperSlug);
+      .eq('scraper_slug', scraperSlug)
+      .order('credential_type', { ascending: true });
 
-    if (error || !Array.isArray(data) || data.length === 0) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    // If encrypted credentials found, decrypt and return them
+    if (!error && data && data.length > 0) {
+      const rows = data as EncryptedRow[];
+      const resolved: { username?: string; password?: string; api_key?: string; type?: string } = {};
+
+      for (const row of rows) {
+        let decrypted: string;
+        try {
+          decrypted = decrypt({ encryptedValue: row.encrypted_value, iv: row.iv, authTag: row.auth_tag });
+        } catch {
+          console.error('[Scraper Credentials API] Decryption failed');
+          continue;
+        }
+
+        const parsed = tryParseCredentialPayload(decrypted);
+        if (parsed) {
+          if (parsed.username) resolved.username = parsed.username;
+          if (parsed.password) resolved.password = parsed.password;
+          if (parsed.api_key) resolved.api_key = parsed.api_key;
+          if (parsed.type) resolved.type = parsed.type;
+          continue;
+        }
+
+        if (row.credential_type === 'login') {
+          resolved.username = decrypted;
+        } else if (row.credential_type === 'password') {
+          resolved.password = decrypted;
+        } else if (row.credential_type === 'api_key') {
+          resolved.api_key = decrypted;
+        }
+      }
+
+      if (resolved.username && resolved.password) {
+        return NextResponse.json({
+          username: resolved.username,
+          password: resolved.password,
+          ...(resolved.api_key ? { api_key: resolved.api_key } : {}),
+          type: resolved.type ?? 'basic',
+        });
+      }
     }
 
-    const resolved = resolveCredentials(data as EncryptedRow[]);
-    if (!resolved) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    // Fallback to legacy app_settings table
+    const legacyCreds = await getLegacyCredentials(supabase, scraperSlug);
+    if (legacyCreds) {
+      return NextResponse.json({
+        username: legacyCreds.username,
+        password: legacyCreds.password,
+        type: legacyCreds.type ?? 'basic',
+      });
     }
 
-    return NextResponse.json(resolved);
-  } catch (err) {
+    // No credentials found in either location
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  } catch {
     console.error('[Scraper Credentials API] Request error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

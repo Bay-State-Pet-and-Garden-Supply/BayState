@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { extractImageCandidatesFromSources } from '@/lib/product-sources';
+import {
+  isLegacyPipelineStatus,
+  toNewPipelineStatus,
+  validateStatusTransition,
+  type TransitionalPipelineStatus,
+} from '@/lib/pipeline';
+import type { PipelineStatus } from '@/lib/pipeline/types';
 
 export async function GET(
   request: NextRequest,
@@ -57,7 +64,10 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { consolidated, pipeline_status } = body;
+    const { consolidated, pipeline_status } = body as {
+      consolidated?: unknown;
+      pipeline_status?: TransitionalPipelineStatus;
+    };
 
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -68,7 +78,32 @@ export async function PATCH(
     }
 
     if (pipeline_status !== undefined) {
-      updateData.pipeline_status = pipeline_status;
+      const { data: currentRow, error: fetchError } = await supabase
+        .from('products_ingestion')
+        .select('pipeline_status')
+        .eq('sku', sku)
+        .single();
+
+      if (fetchError || !currentRow) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        );
+      }
+
+      const currentStatus = currentRow.pipeline_status as PipelineStatus;
+      const targetStatus = isLegacyPipelineStatus(pipeline_status)
+        ? toNewPipelineStatus(pipeline_status)
+        : pipeline_status;
+
+      if (!validateStatusTransition(currentStatus, targetStatus)) {
+        return NextResponse.json(
+          { error: `Invalid transition from '${currentStatus}' to '${targetStatus}'` },
+          { status: 400 }
+        );
+      }
+
+      updateData.pipeline_status = targetStatus;
     }
 
     const { error } = await supabase

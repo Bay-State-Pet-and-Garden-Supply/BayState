@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
-import {
-    parseChunkCallbackPayload,
-    ChunkCallbackPayload,
-    ChunkProgressPayload,
-} from '@/lib/scraper-callback/contract';
+import { parseChunkCallbackPayload, ChunkCallbackPayload } from '@/lib/scraper-callback/contract';
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
 import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, mergeProductSources, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
-    recordCallbackProcessed,
+    recordCallbackProcessedWithRetry,
 } from '@/lib/scraper-callback/idempotency';
 import { finalizeTestJob, persistChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
 import type { ChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
@@ -26,18 +22,6 @@ function getSupabaseAdmin(): SupabaseClient {
 }
 
 type ScrapedDataBySku = Record<string, Record<string, unknown>>;
-
-function isTerminalChunkStatus(status: ChunkCallbackPayload['status']): status is 'completed' | 'failed' {
-    return status === 'completed' || status === 'failed';
-}
-
-export function buildProgressResults(progress: ChunkProgressPayload): ScrapedDataBySku {
-    return {
-        [progress.sku]: {
-            [progress.scraper_name]: progress.data,
-        },
-    };
-}
 
 export function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedDataBySku {
     const aggregated: ScrapedDataBySku = {};
@@ -61,17 +45,6 @@ export function mergeChunkResults(chunks: Array<{ results: unknown }>): ScrapedD
     }
 
     return aggregated;
-}
-
-export function mergeChunkPayloadResults(existingResults: unknown, incomingResults: unknown): ScrapedDataBySku {
-    const chunks: Array<{ results: unknown }> = [];
-    if (existingResults) {
-        chunks.push({ results: existingResults });
-    }
-    if (incomingResults) {
-        chunks.push({ results: incomingResults });
-    }
-    return mergeChunkResults(chunks);
 }
 
 export async function persistChunkResultsToPipeline(
@@ -138,7 +111,7 @@ export async function POST(request: NextRequest) {
         }
 
         const payload: ChunkCallbackPayload = payloadResult.payload;
-        const { chunk_id, status, results, error_message, progress } = payload;
+        const { chunk_id, status, results, error_message } = payload;
         console.log(`[Chunk Callback] Processing chunk ${chunk_id}, status: ${status}`);
 
         const supabase = getSupabaseAdmin();
@@ -166,72 +139,56 @@ export async function POST(request: NextRequest) {
             .single();
 
         const isTestJob = updatedJobRecord?.test_mode === true;
-        const runnerName = payload.runner_name || runner.runnerName;
-        const progressResults = progress ? buildProgressResults(progress) : undefined;
-        const mergedChunkResults = mergeChunkPayloadResults(
-            chunk.results,
-            status === 'in_progress' ? progressResults : results?.data
+
+        const chunkIdempotency = await checkIdempotency(
+            supabase,
+            `${jobId}:${chunk_id}`,
+            'chunk',
+            results?.data
         );
 
-        let idempotencyCheck:
-            | Awaited<ReturnType<typeof checkIdempotency>>
-            | null = null;
-        if (isTerminalChunkStatus(status)) {
-            idempotencyCheck = await checkIdempotency(
-                supabase,
-                jobId,
-                'chunk',
-                {
-                    chunk_id,
-                    status,
-                    error_message: error_message ?? null,
-                    results: mergedChunkResults,
-                }
-            );
+        if (chunkIdempotency.isDuplicate) {
+            return NextResponse.json({
+                success: true,
+                idempotent: true,
+                chunk_id,
+                status,
+            });
+        }
 
-            if (idempotencyCheck.isDuplicate) {
-                console.log(
-                    `[Chunk Callback] Duplicate terminal callback detected for chunk ${chunk_id}. Skipping side effects.`
-                );
-                return NextResponse.json({
-                    success: true,
-                    idempotent: true,
-                    chunk_id,
-                    status,
-                });
+        let effectiveChunkStatus = status;
+        let persistenceErrorMessage: string | null = null;
+
+        if (status === 'completed' && results?.data) {
+            const chunkResultsBySku = mergeChunkResults([{ results: results.data }]);
+            if (Object.keys(chunkResultsBySku).length > 0) {
+                try {
+                    await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob);
+                    console.log(`[Chunk Callback] Persisted ${Object.keys(chunkResultsBySku).length} SKUs from chunk ${chunk.chunk_index}`);
+                } catch (persistError) {
+                    effectiveChunkStatus = 'failed';
+                    persistenceErrorMessage = persistError instanceof Error ? persistError.message : 'Failed to persist chunk results';
+                    console.error(`[Chunk Callback] Failed to persist chunk results for job ${jobId}:`, persistError);
+                }
             }
         }
 
         // Update chunk status and results
         const updateData: Record<string, unknown> = {
+            status: effectiveChunkStatus,
+            completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         };
 
-        if (status === 'in_progress') {
-            updateData.status = 'running';
-        } else {
-            updateData.status = status;
-            updateData.completed_at = new Date().toISOString();
-        }
-
-        if (Object.keys(mergedChunkResults).length > 0) {
-            updateData.results = mergedChunkResults;
-        }
-
         if (results) {
-            if (typeof results.skus_processed === 'number') {
-                updateData.skus_processed = results.skus_processed;
-            }
-            if (typeof results.skus_successful === 'number') {
-                updateData.skus_successful = results.skus_successful;
-            }
-            if (typeof results.skus_failed === 'number') {
-                updateData.skus_failed = results.skus_failed;
-            }
+            updateData.results = results.data || {};
+            updateData.skus_processed = results.skus_processed || 0;
+            updateData.skus_successful = results.skus_successful || 0;
+            updateData.skus_failed = results.skus_failed || 0;
         }
 
-        if (error_message) {
-            updateData.error_message = error_message;
+        if (error_message || persistenceErrorMessage) {
+            updateData.error_message = persistenceErrorMessage || error_message;
         }
 
         const { error: updateError } = await supabase
@@ -247,27 +204,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log(`[Chunk Callback] Chunk ${chunk.chunk_index} for job ${chunk.job_id} marked as ${status}`);
-
-        const pipelineResultsToPersist =
-            status === 'in_progress'
-                ? mergeChunkPayloadResults(undefined, progressResults)
-                : mergedChunkResults;
-
-        if (Object.keys(pipelineResultsToPersist).length > 0) {
-            await persistChunkResultsToPipeline(supabase, jobId, pipelineResultsToPersist, isTestJob);
-            console.log(
-                `[Chunk Callback] Persisted ${Object.keys(pipelineResultsToPersist).length} SKU(s) from chunk ${chunk.chunk_index}`
-            );
-        }
-
-        if (status === 'in_progress') {
-            return NextResponse.json({
-                success: true,
-                chunk_id,
-                status: 'running',
-            });
-        }
+        console.log(`[Chunk Callback] Chunk ${chunk.chunk_index} for job ${chunk.job_id} marked as ${effectiveChunkStatus}`);
 
         // Check if all chunks for this job are complete
         const { data: allChunksForJob, error: statsError } = await supabase
@@ -275,7 +212,15 @@ export async function POST(request: NextRequest) {
             .select('status, skus_processed, skus_successful, skus_failed, results')
             .eq('job_id', jobId);
 
-        if (!statsError && allChunksForJob) {
+        if (statsError) {
+            console.error(`[Chunk Callback] Failed to load chunk rollup state for job ${jobId}:`, statsError);
+            return NextResponse.json(
+                { error: 'Failed to compute chunk rollup' },
+                { status: 500 }
+            );
+        }
+
+        if (allChunksForJob) {
             const totalChunks = allChunksForJob.length;
             const completedChunks = allChunksForJob.filter((c) => c.status === 'completed').length;
             const failedChunks = allChunksForJob.filter((c) => c.status === 'failed').length;
@@ -286,7 +231,7 @@ export async function POST(request: NextRequest) {
             );
 
             if (pendingOrRunning === 0) {
-                const jobStatus = failedChunks > 0 && completedChunks === 0 ? 'failed' : 'completed';
+                const jobStatus = failedChunks > 0 ? 'failed' : 'completed';
 
                 const aggregatedResults = {
                     chunks_total: totalChunks,
@@ -304,14 +249,23 @@ export async function POST(request: NextRequest) {
                         completed_at: new Date().toISOString(),
                     })
                     .eq('id', jobId)
+                    .in('status', ['pending', 'running'])
                     .select('id, test_mode, metadata')
-                    .single();
+                    .maybeSingle();
 
                 if (jobUpdateError) {
                     console.error(`[Chunk Callback] Failed to update job ${jobId}:`, jobUpdateError);
+                    return NextResponse.json(
+                        { error: 'Failed to finalize job status from chunks' },
+                        { status: 500 }
+                    );
                 }
 
-                if (jobStatus === 'completed' && updatedJob && !isTestJob) {
+                if (!updatedJob) {
+                    console.log(`[Chunk Callback] Job ${jobId} was already finalized by another callback`);
+                }
+
+                if (jobStatus === 'completed' && !isTestJob) {
                     console.log(
                         `[Chunk Callback] Job ${jobId} completed. Consolidation remains manual and must be user-triggered.`
                     );
@@ -338,8 +292,21 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        const recordResult = await recordCallbackProcessedWithRetry(
+            supabase,
+            jobId,
+            runner.runnerName,
+            chunkIdempotency.key,
+            results?.data || {}
+        );
+
+        if (!recordResult.success) {
+            console.error(`[Chunk Callback] Failed to record idempotency marker: ${recordResult.error}`);
+        }
+
         // Update runner status to online (not busy)
-        await supabase
+        const runnerName = runner.runnerName;
+        const { error: runnerUpdateError } = await supabase
             .from('scraper_runners')
             .update({
                 status: 'online',
@@ -347,32 +314,21 @@ export async function POST(request: NextRequest) {
             })
             .eq('name', runnerName);
 
-        if (idempotencyCheck) {
-            const recordResult = await recordCallbackProcessed(
-                supabase,
-                jobId,
-                runnerName,
-                idempotencyCheck.key,
-                {
-                    callback_type: 'chunk',
-                    chunk_id,
-                    status,
-                    error_message: error_message ?? null,
-                    results: payload.results ?? null,
-                }
-            );
+        if (runnerUpdateError) {
+            console.warn(`[Chunk Callback] Failed to mark runner ${runnerName} as online: ${runnerUpdateError.message}`);
+        }
 
-            if (!recordResult.success) {
-                console.warn(
-                    `[Chunk Callback] Failed to record idempotency marker for chunk ${chunk_id}: ${recordResult.error}`
-                );
-            }
+        if (!recordResult.success) {
+            return NextResponse.json(
+                { error: 'Failed to record callback idempotency marker' },
+                { status: 500 }
+            );
         }
 
         return NextResponse.json({
             success: true,
             chunk_id,
-            status,
+            status: effectiveChunkStatus,
         });
     } catch (error) {
         console.error('[Chunk Callback] Error:', error);

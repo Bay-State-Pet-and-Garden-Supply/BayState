@@ -3,10 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
-from urllib.parse import quote_plus
 
 from core.api_client import JobConfig
 from core.events import ScraperEvent, create_emitter, event_bus
@@ -56,101 +54,6 @@ def _normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
         return normalized
 
     return []
-
-
-def _to_optional_string(value: Any) -> str | None:
-    if not isinstance(value, str):
-        return None
-
-    trimmed = value.strip()
-    return trimmed if trimmed else None
-
-
-def _normalize_search_text(value: str | None) -> str:
-    return re.sub(r"[^a-z0-9]", "", (value or "").lower())
-
-
-def _normalize_item_context(candidate: dict[str, Any]) -> dict[str, Any]:
-    normalized: dict[str, Any] = {}
-
-    product_name = _to_optional_string(candidate.get("product_name") or candidate.get("name"))
-    brand = _to_optional_string(candidate.get("brand"))
-    category = _to_optional_string(candidate.get("category"))
-
-    if product_name:
-        normalized["product_name"] = product_name
-    if brand:
-        normalized["brand"] = brand
-    if category:
-        normalized["category"] = category
-    if candidate.get("price") is not None:
-        normalized["price"] = candidate.get("price")
-
-    return normalized
-
-
-def _build_item_context_by_sku(job_config: JobConfig) -> dict[str, dict[str, Any]]:
-    raw_config = job_config.job_config if isinstance(job_config.job_config, dict) else {}
-    item_context_by_sku: dict[str, dict[str, Any]] = {}
-
-    raw_items = raw_config.get("items")
-    if isinstance(raw_items, list):
-        for candidate in raw_items:
-            if not isinstance(candidate, dict):
-                continue
-
-            candidate_sku = _to_optional_string(candidate.get("sku"))
-            if not candidate_sku:
-                continue
-
-            item_context_by_sku[candidate_sku] = _normalize_item_context(candidate)
-
-    raw_sku_context = raw_config.get("sku_context")
-    if isinstance(raw_sku_context, dict):
-        for key, value in raw_sku_context.items():
-            candidate_sku = _to_optional_string(key)
-            if not candidate_sku or not isinstance(value, dict):
-                continue
-
-            merged_context = dict(item_context_by_sku.get(candidate_sku, {}))
-            merged_context.update(_normalize_item_context(value))
-            item_context_by_sku[candidate_sku] = merged_context
-
-    return item_context_by_sku
-
-
-def _build_search_query(sku: str, item_context: dict[str, Any]) -> str:
-    product_name = _to_optional_string(item_context.get("product_name"))
-    brand = _to_optional_string(item_context.get("brand"))
-
-    if product_name:
-        normalized_product_name = _normalize_search_text(product_name)
-        normalized_brand = _normalize_search_text(brand)
-
-        if brand and normalized_brand and normalized_brand not in normalized_product_name:
-            return f"{brand} {product_name}"
-
-        return product_name
-
-    return sku
-
-
-def _build_standard_workflow_context(
-    sku: str,
-    test_mode: bool,
-    item_context_by_sku: dict[str, dict[str, Any]],
-) -> dict[str, Any]:
-    item_context = dict(item_context_by_sku.get(sku, {}))
-    search_query = _build_search_query(sku, item_context)
-
-    return {
-        "sku": sku,
-        "sku_encoded": quote_plus(sku),
-        "test_mode": test_mode,
-        **item_context,
-        "search_query": search_query,
-        "search_query_encoded": quote_plus(search_query),
-    }
 
 
 def _build_telemetry_from_events(events: list[ScraperEvent]) -> Dict[str, Any]:
@@ -352,7 +255,7 @@ def run_job(
     for scraper_cfg in job_config.scrapers:
         try:
             options = scraper_cfg.options or {}
-
+            
             # The coordinator API puts 'workflows' inside the 'options' object.
             # We map it to the root level expected by ScraperConfigModel.
             config_dict = {
@@ -365,6 +268,7 @@ def run_job(
                 "test_skus": scraper_cfg.test_skus if scraper_cfg.test_skus is not None else [],
                 "retries": getattr(scraper_cfg, "retries", 3),
                 "validation": getattr(scraper_cfg, "validation", None),
+                "login": getattr(scraper_cfg, "login", None),
                 "credential_refs": getattr(scraper_cfg, "credential_refs", []) or [],
             }
 
@@ -417,8 +321,6 @@ def run_job(
 
             # Run all async operations in a single event loop to properly manage
             # Playwright browser subprocess lifecycle
-            item_context_by_sku = _build_item_context_by_sku(job_config)
-
             async def run_all_scrapes() -> List[Tuple[str, Any]]:
                 if executor is None:
                     return []
@@ -428,11 +330,7 @@ def run_job(
                     for sku in skus:
                         try:
                             result = await executor.execute_workflow(
-                                context=_build_standard_workflow_context(
-                                    sku,
-                                    job_config.test_mode,
-                                    item_context_by_sku,
-                                ),
+                                context={"sku": sku, "test_mode": job_config.test_mode},
                                 quit_browser=False,
                             )
                             scrape_results.append((sku, result))
@@ -498,8 +396,24 @@ def run_job(
                             "brand": extracted_data.get("Brand"),
                             "weight": extracted_data.get("Weight"),
                             "description": extracted_data.get("Description"),
-                            "images": extracted_data.get("Image URLs", []) or extracted_data.get("Images", []),
+                            "images": images,
                             "availability": extracted_data.get("Availability"),
+                            "category": extracted_data.get("Category"),
+                            "categories": extracted_data.get("Categories"),
+                            "product_type": extracted_data.get("ProductType"),
+                            "item_number": extracted_data.get("ItemNumber") or extracted_data.get("Item Number"),
+                            "manufacturer_part_number": extracted_data.get("ManufacturerPartNumber")
+                            or extracted_data.get("Manufacturer Part Number")
+                            or extracted_data.get("model_number")
+                            or extracted_data.get("ModelNumber")
+                            or extracted_data.get("Model Number")
+                            or extracted_data.get("Mfg#")
+                            or extracted_data.get("Mfg No")
+                            or extracted_data.get("MfgNo"),
+                            "unit_of_measure": extracted_data.get("UoM") or extracted_data.get("Unit of Measure"),
+                            "upc": extracted_data.get("UPC"),
+                            "size": extracted_data.get("Size"),
+                            "size_options": extracted_data.get("Size Options") or extracted_data.get("SizeOptions"),
                             "url": page_url,
                             "scraped_at": datetime.now().isoformat(),
                         }
@@ -565,6 +479,7 @@ def _run_ai_search_job(
     if runtime_brave:
         logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
 
+
     if runtime_openai:
         os.environ["OPENAI_API_KEY"] = runtime_openai
     if runtime_brave:
@@ -600,7 +515,6 @@ def _run_ai_search_job(
             {
                 "sku": sku,
                 "product_name": item_context.get("product_name", search_cfg.get("product_name")),
-                "price": item_context.get("price", search_cfg.get("price")),
                 "brand": item_context.get("brand", search_cfg.get("brand")),
                 "category": item_context.get("category", search_cfg.get("category")),
             }

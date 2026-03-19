@@ -1,88 +1,221 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import * as XLSX from 'xlsx';
+import { PassThrough, Readable } from 'node:stream';
+import ExcelJS from 'exceljs';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') || 'finalized';
-    const format = searchParams.get('format') || 'xlsx';
-    const search = searchParams.get('search');
+export const runtime = 'nodejs';
 
-    try {
-        const supabase = await createClient();
+const EXPORT_FILENAME = 'products-export.xlsx';
+const PAGE_SIZE = 200;
+const ALLOWED_STATUSES = ['registered', 'enriched', 'finalized', 'all'] as const;
 
-        let query = supabase
-            .from('products_ingestion')
-            .select('*')
-            .eq('pipeline_status', status);
+type ExportStatus = (typeof ALLOWED_STATUSES)[number];
 
-        if (search) {
-            query = query.or(`sku.ilike.%${search}%,input->>name.ilike.%${search}%`);
-        }
+type JsonRecord = Record<string, unknown>;
+type SelectedImageRecord = {
+  url?: unknown;
+};
+type ExportProduct = {
+  sku: string;
+  input: unknown;
+  consolidated: unknown;
+  selected_images: unknown;
+  pipeline_status?: string;
+  pipeline_status_new?: string | null;
+};
 
-        // Limit to 1000 for reasonable memory usage
-        const { data, error } = await query.limit(1000);
+function mapExportStatusToLegacy(status: ExportStatus): string[] {
+  if (status === 'registered') return ['staging', 'failed', 'registered'];
+  if (status === 'enriched') return ['scraped', 'enriched'];
+  if (status === 'finalized') return ['consolidated', 'approved', 'published', 'finalized'];
+  return [];
+}
 
-        if (error) {
-            console.error('Error fetching data for export:', error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
-        }
+function isExportStatus(value: string): value is ExportStatus {
+  return ALLOWED_STATUSES.includes(value as ExportStatus);
+}
 
-        if (!data || data.length === 0) {
-            return NextResponse.json({ error: 'No data found to export' }, { status: 404 });
-        }
+function asRecord(value: unknown): JsonRecord {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as JsonRecord;
+  }
 
-        // Flatten data
-        const flattenedData = data.map((item) => ({
-            SKU: item.sku,
-            Name: item.consolidated?.name || item.input?.name || '',
-            Description: item.consolidated?.description || '',
-            Price: item.consolidated?.price || item.input?.price || '',
-            Brand: item.consolidated?.brand_id || '',
-            StockStatus: item.consolidated?.stock_status || '',
-            PipelineStatus: item.pipeline_status,
-            CreatedAt: item.created_at,
-            UpdatedAt: item.updated_at,
-        }));
+  return {};
+}
 
-        if (format === 'csv') {
-            const headers = Object.keys(flattenedData[0]);
-            const csvContent = [
-                headers.join(','),
-                ...flattenedData.map(row => 
-                    headers.map(header => {
-                        const val = row[header as keyof typeof row] || '';
-                        return `"${String(val).replace(/"/g, '""')}"`;
-                    }).join(',')
-                )
-            ].join('\n');
+function asString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
 
-            return new NextResponse(csvContent, {
-                headers: {
-                    'Content-Type': 'text/csv',
-                    'Content-Disposition': `attachment; filename="export-${status}.csv"`,
-                },
-            });
-        } else {
-            // XLSX format
-            const worksheet = XLSX.utils.json_to_sheet(flattenedData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
-            
-            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
 
-            return new NextResponse(buffer, {
-                headers: {
-                    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'Content-Disposition': `attachment; filename="export-${status}.xlsx"`,
-                },
-            });
-        }
-    } catch (error) {
-        console.error('Error in export GET route:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
+  return '';
+}
+
+function asNumber(value: unknown): number | string {
+  return typeof value === 'number' ? value : '';
+}
+
+function extractSelectedImages(value: unknown): string {
+  if (!Array.isArray(value)) {
+    return '';
+  }
+
+  const urls = value
+    .map((entry) => {
+      if (typeof entry === 'string') {
+        return entry;
+      }
+
+      if (entry && typeof entry === 'object') {
+        return asString((entry as SelectedImageRecord).url);
+      }
+
+      return '';
+    })
+    .filter((url) => url.length > 0);
+
+  return urls.join(', ');
+}
+
+function isExportReady(product: ExportProduct): boolean {
+  const input = asRecord(product.input);
+  const consolidated = asRecord(product.consolidated);
+  const hasName = (asString(consolidated.name) || asString(input.name)).trim().length > 0;
+  const hasDescription = (asString(consolidated.description) || asString(input.description)).trim().length > 0;
+  const selected = extractSelectedImages(product.selected_images).trim();
+  const fallbackImages = extractSelectedImages(consolidated.images).trim();
+  return hasName && hasDescription && (selected.length > 0 || fallbackImages.length > 0);
+}
+
+export async function streamWorkbookRows(
+  products: AsyncIterable<ExportProduct>,
+  output: PassThrough
+) {
+  const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+    stream: output,
+    useStyles: false,
+    useSharedStrings: false,
+  });
+
+  const worksheet = workbook.addWorksheet('Products');
+
+  worksheet.columns = [
+    { header: 'SKU', key: 'sku', width: 24 },
+    { header: 'Name', key: 'name', width: 40 },
+    { header: 'Description', key: 'description', width: 60 },
+    { header: 'Price', key: 'price', width: 14 },
+    { header: 'Brand', key: 'brand', width: 24 },
+    { header: 'Weight', key: 'weight', width: 16 },
+    { header: 'Category', key: 'category', width: 24 },
+    { header: 'Product_Type', key: 'productType', width: 24 },
+    { header: 'Stock_Status', key: 'stockStatus', width: 20 },
+    { header: 'Selected Images', key: 'selectedImages', width: 80 },
+  ];
+
+  for await (const product of products) {
+    const input = asRecord(product.input);
+    const consolidated = asRecord(product.consolidated);
+
+    worksheet.addRow({
+      sku: product.sku,
+      name: asString(consolidated.name) || asString(input.name),
+      description: asString(consolidated.description) || asString(input.description),
+      price: asNumber(consolidated.price),
+      brand: asString(consolidated.brand) || asString(consolidated.brand_name) || asString(consolidated.brand_id) || asString(input.brand),
+      weight: asString(consolidated.weight),
+      category: asString(consolidated.category),
+      productType: asString(consolidated.product_type),
+      stockStatus: asString(consolidated.stock_status),
+      selectedImages: extractSelectedImages(product.selected_images) || extractSelectedImages(consolidated.images),
+    }).commit();
+  }
+
+  await worksheet.commit();
+  await workbook.commit();
+}
+
+export async function streamWorkbook(status: ExportStatus | 'all', output: PassThrough) {
+  const supabase = await createAdminClient();
+
+  async function* loadProducts(): AsyncGenerator<ExportProduct> {
+    let page = 0;
+
+    while (true) {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
+      let query = supabase
+        .from('products_ingestion')
+        .select('sku, input, consolidated, selected_images, pipeline_status, pipeline_status_new, updated_at')
+        .order('updated_at', { ascending: false })
+        .order('sku', { ascending: true });
+      
+      // Only filter by status if not 'all'
+      if (status !== 'all') {
+        const legacyStatuses = mapExportStatusToLegacy(status);
+        query = query.or(
+          `pipeline_status_new.eq.${status},and(pipeline_status_new.is.null,pipeline_status.in.(${legacyStatuses.join(',')}))`
         );
+      }
+      
+      const { data, error } = await query.range(from, to);
+
+      if (error) {
+        throw new Error(`Failed to export products: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      for (const product of data) {
+        if (status === 'finalized' && !isExportReady(product)) {
+          continue;
+        }
+        yield product;
+      }
+
+      if (data.length < PAGE_SIZE) {
+        break;
+      }
+
+      page += 1;
     }
+  }
+
+  await streamWorkbookRows(loadProducts(), output);
+}
+
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth();
+  if (!auth.authorized) return auth.response;
+
+  const statusParam = request.nextUrl.searchParams.get('status') ?? 'finalized';
+
+  if (!isExportStatus(statusParam)) {
+    return NextResponse.json(
+      { error: `Invalid status. Expected one of: ${ALLOWED_STATUSES.join(', ')}` },
+      { status: 400 }
+    );
+  }
+
+  const output = new PassThrough();
+
+  void streamWorkbook(statusParam, output).catch((error: unknown) => {
+    console.error('Pipeline export stream failed:', error);
+    output.destroy(error instanceof Error ? error : new Error('Pipeline export failed'));
+  });
+
+  return new NextResponse(Readable.toWeb(output) as ReadableStream<Uint8Array>, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${EXPORT_FILENAME}"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 }

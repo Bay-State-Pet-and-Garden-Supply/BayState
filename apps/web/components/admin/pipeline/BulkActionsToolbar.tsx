@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Sparkles, RotateCcw } from 'lucide-react';
-import type { PipelineStatus } from '@/lib/pipeline';
+import { Loader2, ArrowRight, Trash2 } from 'lucide-react';
+import type { PipelineStatus } from '@/lib/pipeline/types';
 import { ExportButton } from './ExportButton';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
@@ -10,65 +10,84 @@ interface BulkActionsToolbarProps {
     selectedCount: number;
     currentStatus: PipelineStatus;
     searchQuery?: string;
-    onAction: (action: 'enrich' | 'finalize' | 'reject' | 'retry' | 'delete') => void;
-    onEnrich?: () => void;
-    isEnriching?: boolean;
+    onAction: (action: ToolbarAction) => void;
+    onMoveToEnriched?: () => void;
+    isMovingToEnriched?: boolean;
     onClearSelection: () => void;
     selectedSkus?: string[];
     onDeleteStart?: () => void;
     onDeleteEnd?: () => void;
+    onConsolidate?: () => void;
+    isConsolidating?: boolean;
     onClearScrapeResults?: () => void;
     isClearingScrapeResults?: boolean;
-    onBulkEnrich?: () => void;
-    isBulkEnriching?: boolean;
+    onEnrich?: () => void;
+    isEnriching?: boolean;
 }
 
-const nextStatusMap: Record<PipelineStatus, { action: string; nextStatus: PipelineStatus }[]> = {
-    registered: [
-        { action: 'reject', nextStatus: 'failed' }
-    ],
-    enriched: [
-        { action: 'finalize', nextStatus: 'finalized' },
-        { action: 'reject', nextStatus: 'registered' },
-    ],
-    finalized: [
-        { action: 'reject', nextStatus: 'enriched' },
-    ],
-    failed: [
-        { action: 'retry', nextStatus: 'registered' }
-    ],
+type ToolbarAction = 'moveToEnriched' | 'moveToFinalized' | 'approve' | 'publish' | 'reject' | 'consolidate' | 'delete' | 'enrich';
+
+type ActionButton = {
+    action: ToolbarAction;
+    label: string;
+    className: string;
 };
 
-const actionLabels: Record<string, string> = {
-    enrich: 'Enrich',
-    finalize: 'Finalize',
-    reject: 'Move Back',
-    retry: 'Retry',
+const newStatusMap: Record<PipelineStatus, ActionButton[]> = {
+    imported: [
+        { action: 'enrich', label: 'Run Scrapers', className: 'bg-blue-600 hover:bg-blue-700' },
+    ],
+    scraped: [
+        { action: 'consolidate', label: 'AI Consolidate', className: 'bg-purple-600 hover:bg-purple-700' },
+    ],
+    consolidated: [
+        { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },
+        { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
+    ],
+    finalized: [], // Terminal state
+    published: [], // Terminal state
 };
+
+
+const legacyActionsMap: Record<PipelineStatus, ActionButton[]> = {
+    imported: [],
+    scraped: [{ action: 'consolidate', label: 'Consolidate', className: 'bg-blue-600 hover:bg-blue-700' }],
+    consolidated: [
+        { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },
+        { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
+    ],
+    finalized: [
+        { action: 'publish', label: 'Publish', className: 'bg-green-600 hover:bg-green-700' },
+        { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
+    ],
+    published: [],
+};
+
 
 export function BulkActionsToolbar({
     selectedCount,
     currentStatus,
     searchQuery,
     onAction,
-    onEnrich,
-    isEnriching = false,
+    onMoveToEnriched,
+    isMovingToEnriched = false,
     onClearSelection,
     selectedSkus = [],
     onDeleteStart,
     onDeleteEnd,
+    onConsolidate,
+    isConsolidating = false,
     onClearScrapeResults,
     isClearingScrapeResults = false,
-    onBulkEnrich,
-    isBulkEnriching = false,
+    onEnrich,
+    isEnriching = false,
 }: BulkActionsToolbarProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const actions = nextStatusMap[currentStatus] || [];
-    const showClearScrapeButton = currentStatus === 'enriched' && onClearScrapeResults;
-
-    const visibleActions = actions;
+    const isNewPipeline = true;
+    const actions = newStatusMap[currentStatus];
+    const isBusy = isMovingToEnriched || isDeleting || isConsolidating || isClearingScrapeResults || isEnriching;
 
     const handleDeleteClick = () => {
         setIsDeleteDialogOpen(true);
@@ -113,66 +132,60 @@ export function BulkActionsToolbar({
                 <div className="flex items-center gap-2">
                     {selectedCount > 0 && (
                         <>
-                            {currentStatus === 'registered' && onBulkEnrich && (
-                                <button
-                                    onClick={onBulkEnrich}
-                                    disabled={isBulkEnriching}
-                                    className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                                    title="Run scraper enhancement on selected products"
-                                >
-                                    {isBulkEnriching ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Sparkles className="h-4 w-4" />
-                                    )}
-                                    {isBulkEnriching ? 'Enhancing...' : 'Enhance'}
-                                </button>
-                            )}
+                            {/* Status transition buttons */}
 
-                            {showClearScrapeButton && (
-                                <button
-                                    onClick={onClearScrapeResults}
-                                    disabled={isClearingScrapeResults || isEnriching}
-                                    className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
-                                    title="Clear scrape results and move back to Registered"
-                                >
-                                    {isClearingScrapeResults ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <RotateCcw className="h-4 w-4" />
-                                    )}
-                                    {isClearingScrapeResults ? 'Clearing...' : 'Clear & Reset'}
-                                </button>
-                            )}
-
-                            {visibleActions.map(({ action }) => (
+                            {actions.map(({ action, label, className }) => (
                                 <button
                                     key={action}
-                                    onClick={() => onAction(action as 'enrich' | 'finalize' | 'reject' | 'retry')}
-                                    disabled={isEnriching}
-                                    className={`rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${action === 'reject'
-                                        ? 'bg-red-600 hover:bg-red-700'
-                                        : action === 'finalize'
-                                            ? 'bg-green-600 hover:bg-green-700'
-                                            : 'bg-blue-600 hover:bg-blue-700'
-                                        }`}
+                                    onClick={() => {
+                                        if (action === 'consolidate' && onConsolidate) {
+                                            void onConsolidate();
+                                            return;
+                                        }
+                                        if (action === 'enrich' && onEnrich) {
+                                            void onEnrich();
+                                            return;
+                                        }
+                                        onAction(action);
+                                    }}
+                                    disabled={isBusy}
+                                    className={`flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${className}`}
                                 >
-                                    {actionLabels[action] || action.charAt(0).toUpperCase() + action.slice(1)}
+                                    {action === 'consolidate' && isConsolidating ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : action === 'reject' ? (
+                                        <Trash2 className="h-4 w-4" />
+                                    ) : (
+                                        <ArrowRight className="h-4 w-4" />
+                                    )}
+                                    {action === 'consolidate' && isConsolidating ? 'Consolidating…' : label}
                                 </button>
                             ))}
 
+                            {(currentStatus === 'scraped') && onClearScrapeResults && (
+                                <button
+                                    onClick={() => void onClearScrapeResults()}
+                                    disabled={isBusy}
+                                    className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
+                                >
+                                    {isClearingScrapeResults ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    {isClearingScrapeResults ? 'Clearing…' : 'Clear Scrape Results'}
+                                </button>
+                            )}
+
                             <button
                                 onClick={handleDeleteClick}
-                                disabled={isEnriching || isDeleting}
-                                className="rounded px-3 py-1.5 text-sm font-medium transition-colors bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                                disabled={isBusy}
+                                className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-red-600 hover:bg-red-700 disabled:opacity-50"
                                 title="Permanently delete selected products"
                             >
+                                <Trash2 className="h-4 w-4" />
                                 Delete
                             </button>
 
                             <button
                                 onClick={onClearSelection}
-                                disabled={isEnriching}
+                                disabled={isBusy}
                                 className="rounded px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white disabled:opacity-50"
                             >
                                 Clear
@@ -182,7 +195,7 @@ export function BulkActionsToolbar({
                         </>
                     )}
                     
-                    <ExportButton currentStatus={currentStatus} searchQuery={searchQuery} />
+                    {isNewPipeline && <ExportButton currentStatus={currentStatus} searchQuery={searchQuery} />}
                 </div>
             </div>
         </>
