@@ -4,39 +4,53 @@ import { Package, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { StatusCount, NewPipelineStatus } from '@/lib/pipeline';
+import type { StatusCount, PipelineStatus } from '@/lib/pipeline';
 
 interface PipelineStatsProps {
   counts: StatusCount[];
   trends?: Record<string, number>;
-  onStatusChange?: (status: NewPipelineStatus) => void;
+  onStatusChange?: (status: PipelineStatus) => void;
   isLoading?: boolean;
 }
 
 const statusConfig: Array<{
-  status: NewPipelineStatus;
+  status: PipelineStatus;
   label: string;
   icon: typeof Package;
   color: string;
   bgColor: string;
 }> = [
   {
-    status: 'registered',
-    label: 'Registered',
+    status: 'imported',
+    label: 'Imported',
     icon: Package,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-50',
   },
   {
-    status: 'enriched',
-    label: 'Enriched',
+    status: 'scraped',
+    label: 'Scraped',
     icon: Sparkles,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
   },
   {
+    status: 'consolidated',
+    label: 'Consolidated',
+    icon: AlertCircle,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+  },
+  {
     status: 'finalized',
     label: 'Finalized',
+    icon: CheckCircle2,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50',
+  },
+  {
+    status: 'published',
+    label: 'Published',
     icon: CheckCircle2,
     color: 'text-green-600',
     bgColor: 'bg-green-50',
@@ -59,7 +73,7 @@ function TrendIndicator({ value }: { value: number }) {
 
 function getCountForStatus(
   counts: StatusCount[],
-  status: NewPipelineStatus
+  status: PipelineStatus
 ): number {
   const found = counts.find((c) => c.status === status);
   return found?.count ?? 0;
@@ -73,8 +87,8 @@ export function PipelineStats({
 }: PipelineStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <Skeleton className="h-4 w-24" />
@@ -90,7 +104,7 @@ export function PipelineStats({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
       {statusConfig.map((config) => {
         const count = getCountForStatus(counts, config.status);
         const trend = trends?.[config.status];

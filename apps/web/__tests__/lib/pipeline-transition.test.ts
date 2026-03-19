@@ -30,38 +30,28 @@ describe('pipeline status transition CRUD', () => {
         jest.clearAllMocks();
     });
 
-    it('queries pipeline_status_new for new statuses', async () => {
+    it('queries products by pipeline_status', async () => {
         const queryBuilder = createThenableBuilder({ data: [], error: null, count: 0 });
         (createClient as jest.Mock).mockResolvedValue({
             from: jest.fn().mockReturnValue(queryBuilder),
         });
 
-        await getProductsByStatus('registered');
+        await getProductsByStatus('imported');
 
-        expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status_new', 'registered');
-        expect(queryBuilder.eq).not.toHaveBeenCalledWith('pipeline_status', 'registered');
+        expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'imported');
     });
 
-    it('keeps querying pipeline_status for legacy statuses', async () => {
-        const queryBuilder = createThenableBuilder({ data: [], error: null, count: 0 });
-        (createClient as jest.Mock).mockResolvedValue({
-            from: jest.fn().mockReturnValue(queryBuilder),
-        });
-
-        await getProductsByStatus('staging');
-
-        expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'staging');
-        expect(queryBuilder.eq).not.toHaveBeenCalledWith('pipeline_status_new', 'staging');
-    });
-
-    it('returns counts for new statuses with legacy fallback mapping', async () => {
+    it('returns counts for all 5 pipeline statuses', async () => {
         const select = jest.fn().mockResolvedValue({
             data: [
-                { pipeline_status_new: 'registered', pipeline_status: 'staging' },
-                { pipeline_status_new: 'enriched', pipeline_status: 'scraped' },
-                { pipeline_status_new: 'finalized', pipeline_status: 'consolidated' },
-                { pipeline_status_new: null, pipeline_status: 'approved' },
-                { pipeline_status_new: null, pipeline_status: 'failed' },
+                { pipeline_status: 'imported' },
+                { pipeline_status: 'imported' },
+                { pipeline_status: 'scraped' },
+                { pipeline_status: 'consolidated' },
+                { pipeline_status: 'finalized' },
+                { pipeline_status: 'published' },
+                { pipeline_status: 'published' },
+                { pipeline_status: 'published' },
             ],
             error: null,
         });
@@ -72,11 +62,13 @@ describe('pipeline status transition CRUD', () => {
 
         const counts = await getStatusCounts();
 
-        expect(select).toHaveBeenCalledWith('pipeline_status, pipeline_status_new');
+        expect(select).toHaveBeenCalledWith('pipeline_status');
         expect(counts).toEqual([
-            { status: 'registered', count: 2 },
-            { status: 'enriched', count: 1 },
-            { status: 'finalized', count: 2 },
+            { status: 'imported', count: 2 },
+            { status: 'scraped', count: 1 },
+            { status: 'consolidated', count: 1 },
+            { status: 'finalized', count: 1 },
+            { status: 'published', count: 3 },
         ]);
     });
 
@@ -84,7 +76,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'consolidated', pipeline_status_new: 'finalized' }],
+                data: [{ sku: 'SKU-1', pipeline_status: 'finalized' }],
                 error: null,
             }),
         };
@@ -101,21 +93,21 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'registered');
+        const result = await bulkUpdateStatus(['SKU-1'], 'imported');
 
         expect(result).toEqual({
             success: false,
-            error: 'Invalid status transition to registered for SKU(s): SKU-1',
+            error: 'Invalid status transition to imported for SKU(s): SKU-1',
             updatedCount: 0,
         });
         expect(updateBuilder.update).not.toHaveBeenCalled();
     });
 
-    it('dual-writes legacy and new statuses for valid bulk transitions', async () => {
+    it('allows valid bulk transitions and logs to audit', async () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'staging', pipeline_status_new: 'registered' }],
+                data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
                 error: null,
             }),
         };
@@ -137,24 +129,46 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'enriched', 'user-1');
+        const result = await bulkUpdateStatus(['SKU-1'], 'scraped', 'user-1');
 
         expect(result).toEqual({ success: true, updatedCount: 1 });
         expect(updateBuilder.update).toHaveBeenCalledWith(
             expect.objectContaining({
                 pipeline_status: 'scraped',
-                pipeline_status_new: 'enriched',
             })
         );
         expect(auditBuilder.insert).toHaveBeenCalledWith([
             expect.objectContaining({
-                to_state: 'enriched',
+                to_state: 'scraped',
                 actor_id: 'user-1',
-                metadata: expect.objectContaining({
-                    legacy_status_written: 'scraped',
-                    new_status_written: 'enriched',
-                }),
             }),
         ]);
+    });
+
+    it('allows backwards transitions for correction', async () => {
+        const fetchBuilder = {
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({
+                data: [{ sku: 'SKU-1', pipeline_status: 'scraped' }],
+                error: null,
+            }),
+        };
+
+        const updateBuilder = {
+            update: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ data: null, error: null, count: 1 }),
+        };
+
+        const from = jest
+            .fn()
+            .mockReturnValueOnce(fetchBuilder)
+            .mockReturnValueOnce(updateBuilder);
+
+        (createClient as jest.Mock).mockResolvedValue({ from });
+
+        // scraped → imported is a valid backwards transition
+        const result = await bulkUpdateStatus(['SKU-1'], 'imported');
+
+        expect(result.success).toBe(true);
     });
 });

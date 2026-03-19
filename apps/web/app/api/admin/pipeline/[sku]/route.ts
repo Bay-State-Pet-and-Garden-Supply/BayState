@@ -3,14 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 import {
-  isNewPipelineStatus,
-  toLegacyPipelineStatus,
+  isLegacyPipelineStatus,
   toNewPipelineStatus,
   validateStatusTransition,
-  type NewPipelineStatus,
-  type PipelineStatus,
   type TransitionalPipelineStatus,
 } from '@/lib/pipeline';
+import type { PipelineStatus } from '@/lib/pipeline/types';
 
 export async function GET(
   request: NextRequest,
@@ -82,7 +80,7 @@ export async function PATCH(
     if (pipeline_status !== undefined) {
       const { data: currentRow, error: fetchError } = await supabase
         .from('products_ingestion')
-        .select('pipeline_status, pipeline_status_new')
+        .select('pipeline_status')
         .eq('sku', sku)
         .single();
 
@@ -93,21 +91,19 @@ export async function PATCH(
         );
       }
 
-      const currentNewStatus = (currentRow.pipeline_status_new as NewPipelineStatus | null)
-        ?? toNewPipelineStatus(currentRow.pipeline_status as PipelineStatus);
-      const targetNewStatus = isNewPipelineStatus(pipeline_status)
-        ? pipeline_status
-        : toNewPipelineStatus(pipeline_status);
+      const currentStatus = currentRow.pipeline_status as PipelineStatus;
+      const targetStatus = isLegacyPipelineStatus(pipeline_status)
+        ? toNewPipelineStatus(pipeline_status)
+        : pipeline_status;
 
-      if (!validateStatusTransition(currentNewStatus, targetNewStatus)) {
+      if (!validateStatusTransition(currentStatus, targetStatus)) {
         return NextResponse.json(
-          { error: `Invalid transition from '${currentNewStatus}' to '${targetNewStatus}'` },
+          { error: `Invalid transition from '${currentStatus}' to '${targetStatus}'` },
           { status: 400 }
         );
       }
 
-      updateData.pipeline_status = toLegacyPipelineStatus(targetNewStatus);
-      updateData.pipeline_status_new = targetNewStatus;
+      updateData.pipeline_status = targetStatus;
     }
 
     const { error } = await supabase

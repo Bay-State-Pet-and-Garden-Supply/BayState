@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import {
-    toLegacyPipelineStatus,
-    toNewPipelineStatus,
-    validateStatusTransition,
-    type NewPipelineStatus,
-} from '@/lib/pipeline';
+import { createAdminClient } from '@/lib/supabase/server';
+import { validateTransition } from '@/lib/pipeline/core';
+import { PIPELINE_STATUS_VALUES, type PipelineStatus } from '@/lib/pipeline/types';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import * as z from 'zod';
 
-const transitionStatuses = ['registered', 'enriched', 'finalized'] as const;
-
 const transitionSchema = z.object({
     sku: z.string().min(1, 'SKU is required'),
-    fromStatus: z.enum(transitionStatuses, { error: 'Invalid fromStatus. Must be registered, enriched, or finalized' }),
-    toStatus: z.enum(transitionStatuses, { error: 'Invalid toStatus. Must be registered, enriched, or finalized' }),
+    toStatus: z.enum(PIPELINE_STATUS_VALUES, {
+        error: `Invalid toStatus. Must be one of: ${PIPELINE_STATUS_VALUES.join(', ')}`,
+    }),
 });
 
 type TransitionBody = z.infer<typeof transitionSchema>;
@@ -26,14 +21,14 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const parsed = transitionSchema.parse(body) as TransitionBody;
-        const { sku, fromStatus, toStatus } = parsed;
+        const { sku, toStatus } = parsed;
 
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
 
-        // Fetch the product to verify current status
+        // Fetch the product to get current status
         const { data: product, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('sku, pipeline_status, pipeline_status_new')
+            .select('sku, pipeline_status')
             .eq('sku', sku)
             .single();
 
@@ -44,41 +39,28 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const currentStatus =
-            (product.pipeline_status_new as NewPipelineStatus | null)
-            ?? toNewPipelineStatus(product.pipeline_status);
-
-        // Verify current status matches fromStatus (409 if mismatch)
-        if (currentStatus !== fromStatus) {
-            return NextResponse.json(
-                {
-                    error: `Status mismatch. Current status is '${currentStatus || 'null'}', but expected '${fromStatus}'`,
-                },
-                { status: 409 }
-            );
-        }
+        const currentStatus = product.pipeline_status as PipelineStatus;
 
         // Validate the transition (400 if invalid)
-        if (!validateStatusTransition(fromStatus, toStatus)) {
+        if (!validateTransition(currentStatus, toStatus)) {
             return NextResponse.json(
                 {
-                    error: `Invalid transition from '${fromStatus}' to '${toStatus}'`,
+                    error: `Invalid transition from '${currentStatus}' to '${toStatus}'`,
                 },
                 { status: 400 }
             );
         }
 
+        const updatedAt = new Date().toISOString();
+
         // Update the product status
-        const { data: updatedProduct, error: updateError } = await supabase
+        const { error: updateError } = await supabase
             .from('products_ingestion')
             .update({
-                pipeline_status: toLegacyPipelineStatus(toStatus),
-                pipeline_status_new: toStatus,
-                updated_at: new Date().toISOString(),
+                pipeline_status: toStatus,
+                updated_at: updatedAt,
             })
-            .eq('sku', sku)
-            .select()
-            .single();
+            .eq('sku', sku);
 
         if (updateError) {
             console.error('Error updating product status:', updateError);
@@ -93,13 +75,13 @@ export async function POST(request: NextRequest) {
             const auditPayload = {
                 job_type: 'status_transition',
                 job_id: crypto.randomUUID(),
-                from_state: fromStatus,
+                from_state: currentStatus,
                 to_state: toStatus,
                 actor_id: auth.user.id,
                 actor_type: 'user',
                 metadata: {
                     sku,
-                    timestamp: new Date().toISOString(),
+                    timestamp: updatedAt,
                 },
             };
 
@@ -114,7 +96,7 @@ export async function POST(request: NextRequest) {
             console.error('Error logging to audit_log:', auditErr);
         }
 
-        return NextResponse.json({ success: true, product: updatedProduct });
+        return NextResponse.json({ success: true, updatedAt });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json(

@@ -46,29 +46,34 @@ describe('design-tokens', () => {
     });
 
     describe('PIPELINE_STATUS_COLORS', () => {
-        it('should map registered to queued gray', () => {
-            expect(PIPELINE_STATUS_COLORS.registered).toBe('#6B7280');
+        it('should map imported to queued gray', () => {
+            expect(PIPELINE_STATUS_COLORS.imported).toBe('#6B7280');
         });
 
-        it('should map enriched to running blue', () => {
-            expect(PIPELINE_STATUS_COLORS.enriched).toBe('#3B82F6');
+        it('should map scraped to running blue', () => {
+            expect(PIPELINE_STATUS_COLORS.scraped).toBe('#3B82F6');
+        });
+
+        it('should map consolidated to warning amber', () => {
+            expect(PIPELINE_STATUS_COLORS.consolidated).toBe('#F59E0B');
         });
 
         it('should map finalized to success green', () => {
             expect(PIPELINE_STATUS_COLORS.finalized).toBe('#10B981');
         });
 
-        it('should map failed to failed red', () => {
-            expect(PIPELINE_STATUS_COLORS.failed).toBe('#EF4444');
+        it('should map published to success green', () => {
+            expect(PIPELINE_STATUS_COLORS.published).toBe('#10B981');
         });
     });
 
     describe('PIPELINE_STATUS_LABELS', () => {
         it('should have correct labels for all statuses', () => {
-            expect(PIPELINE_STATUS_LABELS.registered).toBe('Registered');
-            expect(PIPELINE_STATUS_LABELS.enriched).toBe('Enriched');
+            expect(PIPELINE_STATUS_LABELS.imported).toBe('Imported');
+            expect(PIPELINE_STATUS_LABELS.scraped).toBe('Scraped');
+            expect(PIPELINE_STATUS_LABELS.consolidated).toBe('Consolidated');
             expect(PIPELINE_STATUS_LABELS.finalized).toBe('Finalized');
-            expect(PIPELINE_STATUS_LABELS.failed).toBe('Failed');
+            expect(PIPELINE_STATUS_LABELS.published).toBe('Published');
         });
     });
 
@@ -89,38 +94,46 @@ describe('design-tokens', () => {
     });
 
     describe('getStatusColor', () => {
-        it('should return correct color for registered status', () => {
-            expect(getStatusColor('registered')).toBe('#6B7280');
+        it('should return correct color for imported status', () => {
+            expect(getStatusColor('imported')).toBe('#6B7280');
         });
 
-        it('should return correct color for enriched status', () => {
-            expect(getStatusColor('enriched')).toBe('#3B82F6');
+        it('should return correct color for scraped status', () => {
+            expect(getStatusColor('scraped')).toBe('#3B82F6');
+        });
+
+        it('should return correct color for consolidated status', () => {
+            expect(getStatusColor('consolidated')).toBe('#F59E0B');
         });
 
         it('should return correct color for finalized status', () => {
             expect(getStatusColor('finalized')).toBe('#10B981');
         });
 
-        it('should return correct color for failed status', () => {
-            expect(getStatusColor('failed')).toBe('#EF4444');
+        it('should return correct color for published status', () => {
+            expect(getStatusColor('published')).toBe('#10B981');
         });
     });
 
     describe('getStatusCssVar', () => {
-        it('should return correct CSS var for registered status', () => {
-            expect(getStatusCssVar('registered')).toBe('--color-status-queued');
+        it('should return correct CSS var for imported status', () => {
+            expect(getStatusCssVar('imported')).toBe('--color-status-queued');
         });
 
-        it('should return correct CSS var for enriched status', () => {
-            expect(getStatusCssVar('enriched')).toBe('--color-status-running');
+        it('should return correct CSS var for scraped status', () => {
+            expect(getStatusCssVar('scraped')).toBe('--color-status-running');
+        });
+
+        it('should return correct CSS var for consolidated status', () => {
+            expect(getStatusCssVar('consolidated')).toBe('--color-status-warning');
         });
 
         it('should return correct CSS var for finalized status', () => {
             expect(getStatusCssVar('finalized')).toBe('--color-status-success');
         });
 
-        it('should return correct CSS var for failed status', () => {
-            expect(getStatusCssVar('failed')).toBe('--color-status-failed');
+        it('should return correct CSS var for published status', () => {
+            expect(getStatusCssVar('published')).toBe('--color-status-success');
         });
     });
 });

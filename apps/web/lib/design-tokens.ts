@@ -17,21 +17,19 @@ export const STATUS_COLORS = {
 export type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];
 
 export const PIPELINE_STATUS_COLORS: Record<PipelineStatus, StatusColor> = {
-    staging: STATUS_COLORS.QUEUED,
+    imported: STATUS_COLORS.QUEUED,
     scraped: STATUS_COLORS.RUNNING,
     consolidated: STATUS_COLORS.WARNING,
-    approved: STATUS_COLORS.SUCCESS,
+    finalized: STATUS_COLORS.SUCCESS,
     published: STATUS_COLORS.SUCCESS,
-    failed: STATUS_COLORS.FAILED,
 } as const;
 
 export const PIPELINE_STATUS_LABELS: Record<PipelineStatus, string> = {
-    staging: 'Staging',
+    imported: 'Imported',
     scraped: 'Scraped',
     consolidated: 'Consolidated',
-    approved: 'Approved',
+    finalized: 'Finalized',
     published: 'Published',
-    failed: 'Failed',
 } as const;
 
 export const CSS_CUSTOM_PROPERTIES = {
@@ -55,12 +53,11 @@ export function getStatusColor(status: PipelineStatus): StatusColor {
 
 export function getStatusCssVar(status: PipelineStatus): string {
     const statusToCssVar: Record<PipelineStatus, string> = {
-        staging: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
+        imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
         scraped: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
         consolidated: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
-        approved: CSS_CUSTOM_PROPERTIES.STATUS.SUCCESS,
+        finalized: CSS_CUSTOM_PROPERTIES.STATUS.SUCCESS,
         published: CSS_CUSTOM_PROPERTIES.STATUS.SUCCESS,
-        failed: CSS_CUSTOM_PROPERTIES.STATUS.FAILED,
     };
     return statusToCssVar[status];
 }

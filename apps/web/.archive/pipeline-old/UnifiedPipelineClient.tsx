@@ -42,10 +42,24 @@ import { SyncClient } from '@/app/admin/tools/integra-sync/SyncClient';
 import { useRealtimeJobs } from '@/hooks/useRealtimeJobs';
 import { undoQueue } from '@/lib/pipeline/undo';
 import { cn } from '@/lib/utils';
-import type { PipelineProduct, PipelineStatus, StatusCount, NewPipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline';
 import { PipelineFilters, type PipelineFiltersState } from './PipelineFilters';
 
 const statusLabels: Record<PipelineStatus, string> = {
+  imported: 'Imported',
+  scraped: 'Scraped',
+  consolidated: 'Consolidated',
+  finalized: 'Finalized',
+  published: 'Published',
+};
+
+interface UnifiedPipelineClientProps {
+
+interface UnifiedPipelineClientProps {
+
+
+];
+
   staging: 'Imported',
   scraped: 'Enhanced',
   consolidated: 'Ready for Review',
@@ -54,7 +68,7 @@ const statusLabels: Record<PipelineStatus, string> = {
   failed: 'Failed',
 };
 
-const newStatusLabels: Record<NewPipelineStatus, string> = {
+
   registered: 'Registered',
   enriched: 'Enriched',
   finalized: 'Finalized',

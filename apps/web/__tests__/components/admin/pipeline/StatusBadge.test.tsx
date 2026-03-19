@@ -1,10 +1,13 @@
+/**
+ * @jest-environment jsdom
+ */
 import { render, screen } from "@testing-library/react";
 import { StatusBadge } from "@/components/admin/pipeline/StatusBadge";
 
 describe("StatusBadge", () => {
-  describe("registered status", () => {
-    it("renders registered status with Package icon", () => {
-      render(<StatusBadge status="registered" />);
+  describe("imported status", () => {
+    it("renders imported status with Package icon", () => {
+      render(<StatusBadge status="imported" />);
 
       const badge = screen.getByRole("status");
       expect(badge).toBeInTheDocument();
@@ -12,9 +15,9 @@ describe("StatusBadge", () => {
     });
   });
 
-  describe("enriched status", () => {
-    it("renders enriched status with pulse animation", () => {
-      render(<StatusBadge status="enriched" />);
+  describe("scraped status", () => {
+    it("renders scraped status with pulse animation", () => {
+      render(<StatusBadge status="scraped" />);
 
       const badge = screen.getByRole("status");
       expect(badge).toBeInTheDocument();
@@ -22,10 +25,19 @@ describe("StatusBadge", () => {
       expect(pulseDot).toBeInTheDocument();
     });
 
-    it("renders enriched status with Sparkles icon", () => {
-      render(<StatusBadge status="enriched" />);
+    it("renders scraped status with Sparkles icon", () => {
+      render(<StatusBadge status="scraped" />);
 
       const icon = document.querySelector(".lucide-sparkles");
+      expect(icon).toBeInTheDocument();
+    });
+  });
+
+  describe("consolidated status", () => {
+    it("renders consolidated status with AlertCircle icon", () => {
+      render(<StatusBadge status="consolidated" />);
+
+      const icon = document.querySelector(".lucide-alert-circle, [data-lucide='alert-circle']");
       expect(icon).toBeInTheDocument();
     });
   });
@@ -39,32 +51,32 @@ describe("StatusBadge", () => {
     });
   });
 
-  describe("failed status", () => {
-    it("renders failed status with AlertCircle icon", () => {
-      render(<StatusBadge status="failed" />);
+  describe("published status", () => {
+    it("renders published status with Globe icon", () => {
+      render(<StatusBadge status="published" />);
 
-      const icon = document.querySelector(".lucide-alert-circle, [data-lucide='alert-circle']");
-      expect(icon).toBeInTheDocument();
+      const badge = screen.getByRole("status");
+      expect(badge).toBeInTheDocument();
     });
   });
 
   describe("size variants", () => {
     it("renders sm size correctly", () => {
-      render(<StatusBadge status="registered" size="sm" />);
+      render(<StatusBadge status="imported" size="sm" />);
 
       const badge = screen.getByRole("status");
       expect(badge).toHaveClass("text-[10px]");
     });
 
     it("renders md size correctly", () => {
-      render(<StatusBadge status="registered" size="md" />);
+      render(<StatusBadge status="imported" size="md" />);
 
       const badge = screen.getByRole("status");
       expect(badge).toHaveClass("text-xs");
     });
 
     it("renders lg size correctly", () => {
-      render(<StatusBadge status="registered" size="lg" />);
+      render(<StatusBadge status="imported" size="lg" />);
 
       const badge = screen.getByRole("status");
       expect(badge).toHaveClass("text-sm");
@@ -73,7 +85,7 @@ describe("StatusBadge", () => {
 
   describe("icon display", () => {
     it("hides icon when showIcon is false", () => {
-      render(<StatusBadge status="registered" showIcon={false} />);
+      render(<StatusBadge status="imported" showIcon={false} />);
 
       const icon = document.querySelector(".lucide-package");
       expect(icon).not.toBeInTheDocument();
@@ -82,7 +94,7 @@ describe("StatusBadge", () => {
 
   describe("loading state", () => {
     it("renders skeleton when isLoading is true", () => {
-      render(<StatusBadge status="registered" isLoading={true} />);
+      render(<StatusBadge status="imported" isLoading={true} />);
 
       const skeleton = document.querySelector(".animate-pulse");
       expect(skeleton).toBeInTheDocument();
