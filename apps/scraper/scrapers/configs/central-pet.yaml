@@ -67,7 +67,7 @@ workflows:
   - action: wait
     name: null
     params:
-      duration: 2
+      seconds: 2
   - action: wait_for
     name: null
     params:

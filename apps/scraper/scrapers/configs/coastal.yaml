@@ -84,7 +84,7 @@ workflows:
   - action: wait
     name: wait_for_page_load
     params:
-      duration: 3
+      seconds: 3
   - action: check_no_results
     name: null
     params: {}

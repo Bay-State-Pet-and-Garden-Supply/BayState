@@ -110,7 +110,7 @@ workflows:
   - action: wait
     name: null
     params:
-      duration: 2
+      seconds: 2
   - action: extract
     name: null
     params:

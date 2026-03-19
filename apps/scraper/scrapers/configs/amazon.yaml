@@ -67,7 +67,7 @@ workflows:
   - action: wait
     name: wait_for_load
     params:
-      duration: 3
+      seconds: 3
   - action: conditional_click
     name: accept_cookies
     params:
@@ -97,29 +97,23 @@ workflows:
   - action: conditional
     name: skip_search_if_on_pdp
     params:
-      condition:
-        action: wait_for
-        params:
-          timeout: 2
-          selector: "#productTitle"
-      if_true:
-        action: conditional_skip
-        params:
-          if_flag: true
-  - action: click
-    name: click_first_result
-    params:
-      index: 0
-      selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
-      force: true
-      timeout: 10
-  - action: wait_for
-    name: wait_for_pdp
-    params:
-      timeout: 10
-      selector:
-        - "#productTitle"
-        - "#title"
+      condition_type: element_exists
+      selector: "#productTitle"
+      else:
+        - action: click
+          name: click_first_result
+          params:
+            index: 0
+            selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
+            force: true
+            timeout: 10
+        - action: wait_for
+          name: wait_for_pdp
+          params:
+            timeout: 10
+            selector:
+              - "#productTitle"
+              - "#title"
   - action: extract_and_transform
     name: null
     params:
