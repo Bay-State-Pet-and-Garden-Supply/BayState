@@ -17,9 +17,13 @@ import { GET } from '@/app/api/scraper/v1/credentials/[id]/route';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { createAdminClient } from '@/lib/supabase/server';
 
-jest.mock('@/lib/scraper-auth', () => ({
-  validateRunnerAuth: jest.fn(),
-}));
+jest.mock('@/lib/scraper-auth', () => {
+  const actual = jest.requireActual('@/lib/scraper-auth');
+  return {
+    ...actual,
+    validateRunnerAuth: jest.fn(),
+  };
+});
 
 jest.mock('@/lib/supabase/server', () => ({
   createAdminClient: jest.fn(),
@@ -145,6 +149,43 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
     expect(await res.json()).toEqual({
       username: 'legacy-user',
       password: 'legacy-password',
+      type: 'basic',
+    });
+  });
+
+  it('normalizes scraper slugs and trims the encryption key during decryption', async () => {
+    const key = Buffer.from(encryptionKey, 'utf8');
+    process.env.AI_CREDENTIALS_ENCRYPTION_KEY = `${encryptionKey} \n`;
+    (validateRunnerAuth as jest.Mock).mockResolvedValue({
+      runnerName: 'test-runner',
+      authMethod: 'api_key',
+      allowedScrapers: ['orgill'],
+    });
+
+    mockSupabase.order.mockResolvedValue({
+      data: [
+        {
+          ...encryptSecret('normalized-user@example.com', key),
+          credential_type: 'login',
+        },
+        {
+          ...encryptSecret('normalized-secret', key),
+          credential_type: 'password',
+        },
+      ],
+      error: null,
+    });
+
+    const res = await GET(
+      createRequest({ 'x-api-key': 'bsr_test_key' }),
+      { params: Promise.resolve({ id: 'Orgill ' }) }
+    );
+
+    expect(mockSupabase.eq).toHaveBeenCalledWith('scraper_slug', 'orgill');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      username: 'normalized-user@example.com',
+      password: 'normalized-secret',
       type: 'basic',
     });
   });

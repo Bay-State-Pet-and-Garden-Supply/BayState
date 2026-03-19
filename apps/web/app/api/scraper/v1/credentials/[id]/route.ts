@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { validateRunnerAuth } from '@/lib/scraper-auth';
-import crypto from 'crypto';
+import { normalizeScraperSlug, validateRunnerAuth } from '@/lib/scraper-auth';
+import { decryptSecret } from '@/lib/ai-scraping/credentials';
 
 type EncryptedRow = {
   encrypted_value: string;
@@ -9,24 +9,6 @@ type EncryptedRow = {
   auth_tag: string;
   credential_type: string;
 };
-
-function resolveKey(): Buffer {
-  const raw = process.env.AI_CREDENTIALS_ENCRYPTION_KEY;
-  if (!raw) throw new Error('Missing encryption key');
-  const maybeBase64 = Buffer.from(raw, 'base64');
-  if (maybeBase64.length === 32 && maybeBase64.toString('base64').replace(/=+$/, '') === raw.replace(/=+$/, '')) return maybeBase64;
-  const buf = Buffer.from(raw, 'utf8');
-  if (buf.length !== 32) throw new Error('Invalid encryption key length');
-  return buf;
-}
-
-function decrypt(payload: { encryptedValue: string; iv: string; authTag: string }): string {
-  const key = resolveKey();
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(payload.iv, 'base64'));
-  decipher.setAuthTag(Buffer.from(payload.authTag, 'base64'));
-  const decrypted = Buffer.concat([decipher.update(Buffer.from(payload.encryptedValue, 'base64')), decipher.final()]);
-  return decrypted.toString('utf8');
-}
 
 function tryParseCredentialPayload(value: string): { username?: string; password?: string; api_key?: string; type?: string } | null {
   try {
@@ -80,7 +62,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const auth = await validateRunnerAuth({ apiKey, authorization: request.headers.get('authorization') });
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { id: scraperSlug } = await params;
+    const { id } = await params;
+    const scraperSlug = normalizeScraperSlug(id);
 
     // Check allowed scrapers if configured
     if (auth.allowedScrapers && auth.allowedScrapers.length > 0 && !auth.allowedScrapers.includes(scraperSlug)) {
@@ -104,7 +87,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       for (const row of rows) {
         let decrypted: string;
         try {
-          decrypted = decrypt({ encryptedValue: row.encrypted_value, iv: row.iv, authTag: row.auth_tag });
+          decrypted = decryptSecret({ encryptedValue: row.encrypted_value, iv: row.iv, authTag: row.auth_tag });
         } catch {
           console.error('[Scraper Credentials API] Decryption failed');
           continue;
