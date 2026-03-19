@@ -3,6 +3,7 @@ name: central-pet
 display_name: Central Pet
 base_url: https://www.centralpet.com
 scraper_type: static
+use_stealth: false
 selectors:
   - name: Name
     selector: "#tst_productDetail_erpDescription, h1"
@@ -78,30 +79,36 @@ workflows:
         - ".no-results"
         - "//h1[contains(text(), 'RESULTS FOUND FOR')]"
         - "//div[contains(text(), \"We're sorry, your search returned no results.\")]"
-        - "a[href*='/Login']"
-        - "input[name='criteria']"
   - action: check_no_results
     name: null
     params: {}
-  - action: execute_script
-    name: Check URL still on search page
-    params:
-      script: "return window.location.href.includes('/Search?criteria=')"
   - action: conditional_skip
-    name: Skip if redirected to PDP
+    name: Skip if no results
     params:
       if_flag: no_results_found
-  - action: validate_search_result
-    name: null
+  - action: conditional
+    name: Skip validation if on PDP
     params:
-      required_selectors:
+      condition_type: element_exists
+      selector: "#tst_productDetail_erpDescription"
+      else:
+        - action: validate_search_result
+          name: null
+          params:
+            required_selectors:
+              - "#tst_productDetail_erpDescription"
+              - "h1"
+              - "[data-product-detail]"
+        - action: conditional_skip
+          name: null
+          params:
+            if_flag: no_results_found
+  - action: wait_for
+    name: Wait for product detail
+    params:
+      timeout: 10
+      selector:
         - "#tst_productDetail_erpDescription"
-        - "h1"
-        - "[data-product-detail]"
-  - action: conditional_skip
-    name: null
-    params:
-      if_flag: no_results_found
   - action: extract
     name: null
     params:

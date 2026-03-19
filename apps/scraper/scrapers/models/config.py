@@ -108,6 +108,7 @@ class ScraperConfig(BaseModel):
     login: LoginConfig | None = Field(None, description="Login configuration if required")
     timeout: int = Field(30, description="Default timeout in seconds", ge=1, le=300)
     retries: int = Field(3, description="Number of retries on failure", ge=0, le=10)
+    use_stealth: bool = Field(True, description="Apply playwright-stealth to the browser (disable for sites broken by stealth scripts)")
     anti_detection: Any | None = Field(None, description="Anti-detection configuration")
     http_status: HttpStatusConfig | None = Field(None, description="HTTP status monitoring configuration")
     validation: ValidationConfig | None = Field(None, description="Data validation and no-results configuration")

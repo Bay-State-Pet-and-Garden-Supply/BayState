@@ -44,7 +44,7 @@ class ConditionalAction(BaseAction):
                 )
             # Use executor's find_element_safe (Playwright-compatible)
             try:
-                element = self.ctx.find_element_safe(selector)
+                element = await self.ctx.find_element_safe(selector)
                 condition_met = element is not None
             except Exception:
                 condition_met = False
@@ -64,4 +64,4 @@ class ConditionalAction(BaseAction):
                     workflow_steps.append(step_data)
 
             logger.info(f"Executing {len(workflow_steps)} conditional steps")
-            self.ctx.execute_steps(workflow_steps)
+            await self.ctx.execute_steps(workflow_steps)

@@ -98,7 +98,7 @@ workflows:
     name: null
     params:
       index: 0
-      selector: "a.snize-view-link, div.snize-item a, a[href*='/products/']:not([href*='gift-card'])"
+      selector: "a.snize-view-link, .snize-product a"
   - action: wait_for
     name: null
     params:

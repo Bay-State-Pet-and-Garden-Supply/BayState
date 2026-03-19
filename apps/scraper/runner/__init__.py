@@ -265,6 +265,7 @@ def run_job(
                 "selectors": _normalize_selectors_payload(scraper_cfg.selectors),
                 "workflows": options.get("workflows", []),
                 "timeout": options.get("timeout", getattr(scraper_cfg, "timeout", 30)),
+                "use_stealth": options.get("use_stealth", True),
                 "test_skus": scraper_cfg.test_skus if scraper_cfg.test_skus is not None else [],
                 "retries": getattr(scraper_cfg, "retries", 3),
                 "validation": getattr(scraper_cfg, "validation", None),
