@@ -37,6 +37,7 @@ const newStatusMap: Record<PipelineStatus, ActionButton[]> = {
     imported: [
         { action: 'enrich', label: 'Run Scrapers', className: 'bg-blue-600 hover:bg-blue-700' },
     ],
+    monitoring: [], // Transient state
     scraped: [
         { action: 'consolidate', label: 'AI Consolidate', className: 'bg-purple-600 hover:bg-purple-700' },
     ],
@@ -51,6 +52,7 @@ const newStatusMap: Record<PipelineStatus, ActionButton[]> = {
 
 const legacyActionsMap: Record<PipelineStatus, ActionButton[]> = {
     imported: [],
+    monitoring: [],
     scraped: [{ action: 'consolidate', label: 'Consolidate', className: 'bg-blue-600 hover:bg-blue-700' }],
     consolidated: [
         { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },

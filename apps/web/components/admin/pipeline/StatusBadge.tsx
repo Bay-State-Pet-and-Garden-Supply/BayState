@@ -24,6 +24,7 @@ const statusConfig: Record<
   { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   imported: { variant: "default", label: "Imported", icon: Package },
+  monitoring: { variant: "warning", label: "Monitoring", icon: Sparkles },
   scraped: { variant: "success", label: "Scraped", icon: Sparkles },
   consolidated: { variant: "warning", label: "Consolidated", icon: CheckCircle2 },
   finalized: { variant: "warning", label: "Finalized", icon: CheckCircle2 },
@@ -61,7 +62,7 @@ export function StatusBadge({
 
   return (
     <Badge variant={config.variant} className={cn(sizeSettings.badge, "gap-1.5", className)}>
-      {status === "scraped" && <PulseDot className={sizeSettings.icon} />}
+      {(status === "scraped" || status === "monitoring") && <PulseDot className={sizeSettings.icon} />}
       {showIcon && <Icon className={sizeSettings.icon} aria-hidden="true" />}
       {showLabel ? (
         <span>{config.label}</span>
