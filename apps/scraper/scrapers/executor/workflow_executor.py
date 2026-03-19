@@ -200,6 +200,7 @@ class WorkflowExecutor:
                 headless=self.headless,
                 profile_suffix=profile_suffix,
                 timeout=self.timeout,
+                use_stealth=self.config.use_stealth,
             )
 
             logger.info(f"Browser initialized for scraper: {self.config.name}")

@@ -411,6 +411,7 @@ async def create_playwright_browser(
     custom_options: list[str] | None = None,
     timeout: int = 30,
     block_resources: bool = False,
+    use_stealth: bool = True,
 ) -> PlaywrightScraperBrowser:
     """Factory for Async Browser."""
     browser = PlaywrightScraperBrowser(
@@ -420,6 +421,7 @@ async def create_playwright_browser(
         custom_options,
         timeout,
         block_resources=block_resources,
+        use_stealth=use_stealth,
     )
     await browser.initialize()
     return browser

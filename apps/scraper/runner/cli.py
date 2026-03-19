@@ -97,6 +97,7 @@ def run_local_mode(args: argparse.Namespace) -> None:
         options={
             "workflows": [w.model_dump() if hasattr(w, "model_dump") else w for w in config.workflows],
             "timeout": config.timeout,
+            "use_stealth": config.use_stealth,
         },
         test_skus=list(config.test_skus) if config.test_skus else [],
         retries=config.retries if config.retries is not None else 2,
