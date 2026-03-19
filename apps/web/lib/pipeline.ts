@@ -102,7 +102,7 @@ export interface PipelineProduct {
     input: {
         name?: string;
         price?: number;
-    };
+    } | null;
     sources: Record<string, unknown>;
     image_candidates?: string[];
     selected_images?: SelectedImage[];
@@ -114,7 +114,7 @@ export interface PipelineProduct {
         brand_id?: string;
         stock_status?: string;
         is_featured?: boolean;
-    };
+    } | null;
     /** Current pipeline stage status (five-stage: imported, scraped, consolidated, finalized, published) */
     pipeline_status: PipelineStatus;
     confidence_score?: number;

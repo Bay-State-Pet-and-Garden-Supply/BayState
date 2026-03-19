@@ -1,0 +1,253 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { Loader2, Search, CheckSquare, Square, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+
+interface ScraperOption {
+    slug: string;
+    display_name: string;
+    domain: string | null;
+    base_url: string;
+    scraper_type: string;
+    status: string;
+}
+
+interface ScraperSelectDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    selectedSkuCount: number;
+    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers' | 'ai_search') => void;
+}
+
+export function ScraperSelectDialog({
+    open,
+    onOpenChange,
+    selectedSkuCount,
+    onConfirm,
+}: ScraperSelectDialogProps) {
+    const [scrapers, setScrapers] = useState<ScraperOption[]>([]);
+    const [selectedScrapers, setSelectedScrapers] = useState<Set<string>>(new Set());
+    const [enrichmentMethod, setEnrichmentMethod] = useState<'scrapers' | 'ai_search'>('scrapers');
+    const [isLoadingScrapers, setIsLoadingScrapers] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
+
+    const fetchScrapers = useCallback(async () => {
+        setIsLoadingScrapers(true);
+        setLoadError(null);
+        try {
+            const res = await fetch('/api/admin/pipeline/scrapers');
+            if (!res.ok) throw new Error('Failed to load scrapers');
+            const data = await res.json();
+            const list: ScraperOption[] = data.scrapers ?? [];
+            setScrapers(list);
+            // Select all by default
+            setSelectedScrapers(new Set(list.map((s) => s.slug)));
+        } catch (err) {
+            setLoadError(err instanceof Error ? err.message : 'Failed to load scrapers');
+        } finally {
+            setIsLoadingScrapers(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (open) {
+            fetchScrapers();
+            setEnrichmentMethod('scrapers');
+            setIsSubmitting(false);
+        }
+    }, [open, fetchScrapers]);
+
+    const toggleScraper = (slug: string) => {
+        setSelectedScrapers((prev) => {
+            const next = new Set(prev);
+            if (next.has(slug)) {
+                next.delete(slug);
+            } else {
+                next.add(slug);
+            }
+            return next;
+        });
+    };
+
+    const selectAllScrapers = () => {
+        setSelectedScrapers(new Set(scrapers.map((s) => s.slug)));
+    };
+
+    const deselectAllScrapers = () => {
+        setSelectedScrapers(new Set());
+    };
+
+    const handleConfirm = async () => {
+        const scraperSlugs = Array.from(selectedScrapers);
+        if (enrichmentMethod === 'scrapers' && scraperSlugs.length === 0) return;
+
+        setIsSubmitting(true);
+        try {
+            await onConfirm(scraperSlugs, enrichmentMethod);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const isAISearch = enrichmentMethod === 'ai_search';
+    const canSubmit = isAISearch || selectedScrapers.size > 0;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Start Scrape Jobs</DialogTitle>
+                    <DialogDescription>
+                        {selectedSkuCount} product{selectedSkuCount !== 1 ? 's' : ''} selected.
+                        Choose scrapers and enrichment method.
+                    </DialogDescription>
+                </DialogHeader>
+
+                {/* Enrichment Method Toggle */}
+                <div className="space-y-3">
+                    <Label className="text-sm font-medium">Enrichment Method</Label>
+                    <div className="flex gap-2">
+                        <Button
+                            variant={enrichmentMethod === 'scrapers' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setEnrichmentMethod('scrapers')}
+                            className={enrichmentMethod === 'scrapers' ? 'bg-[#008850] hover:bg-[#008850]/90' : ''}
+                        >
+                            <Search className="mr-1.5 h-3.5 w-3.5" />
+                            Standard Scrapers
+                        </Button>
+                        <Button
+                            variant={enrichmentMethod === 'ai_search' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setEnrichmentMethod('ai_search')}
+                            className={enrichmentMethod === 'ai_search' ? 'bg-[#8B5CF6] hover:bg-[#8B5CF6]/90' : ''}
+                        >
+                            <Zap className="mr-1.5 h-3.5 w-3.5" />
+                            AI Search
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Scraper List (only shown for standard method) */}
+                {!isAISearch && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium">Select Scrapers</Label>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={selectAllScrapers}
+                                    className="h-7 px-2 text-xs"
+                                >
+                                    <CheckSquare className="mr-1 h-3 w-3" />
+                                    All
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={deselectAllScrapers}
+                                    className="h-7 px-2 text-xs"
+                                >
+                                    <Square className="mr-1 h-3 w-3" />
+                                    None
+                                </Button>
+                            </div>
+                        </div>
+
+                        {isLoadingScrapers ? (
+                            <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                <span className="ml-2 text-sm text-muted-foreground">Loading scrapers...</span>
+                            </div>
+                        ) : loadError ? (
+                            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                                {loadError}
+                                <Button variant="link" size="sm" onClick={fetchScrapers} className="ml-2 text-red-700 underline">
+                                    Retry
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border p-2">
+                                {scrapers.map((scraper) => (
+                                    <label
+                                        key={scraper.slug}
+                                        className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50"
+                                    >
+                                        <Checkbox
+                                            checked={selectedScrapers.has(scraper.slug)}
+                                            onCheckedChange={() => toggleScraper(scraper.slug)}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium">{scraper.display_name}</div>
+                                            {scraper.domain && (
+                                                <div className="text-xs text-muted-foreground truncate">
+                                                    {scraper.domain}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Badge variant="outline" className="text-xs shrink-0">
+                                            {scraper.scraper_type}
+                                        </Badge>
+                                    </label>
+                                ))}
+                                {scrapers.length === 0 && (
+                                    <p className="py-4 text-center text-sm text-muted-foreground">
+                                        No active scrapers found.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        <p className="text-xs text-muted-foreground">
+                            {selectedScrapers.size} of {scrapers.length} scrapers selected
+                        </p>
+                    </div>
+                )}
+
+                {isAISearch && (
+                    <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-700">
+                        AI Search uses LLM-powered web search to find product data across the internet.
+                        No specific scrapers needed — cost is capped at $5 per job.
+                    </div>
+                )}
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleConfirm}
+                        disabled={!canSubmit || isSubmitting}
+                        className="bg-[#008850] hover:bg-[#008850]/90 text-white"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Creating Jobs...
+                            </>
+                        ) : (
+                            <>
+                                Start Scraping {selectedSkuCount} Product{selectedSkuCount !== 1 ? 's' : ''}
+                            </>
+                        )}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
