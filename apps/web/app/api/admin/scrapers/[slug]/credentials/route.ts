@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeScraperSlug } from '@/lib/scraper-auth';
 import {
   getScraperCredentialStatuses,
   setScraperCredential,
@@ -42,7 +43,8 @@ export async function GET(
     }
 
     const { slug } = await params;
-    const statuses = await getScraperCredentialStatuses(slug);
+    const normalizedSlug = normalizeScraperSlug(slug);
+    const statuses = await getScraperCredentialStatuses(normalizedSlug);
 
     return NextResponse.json({ statuses });
   } catch (error) {
@@ -67,6 +69,7 @@ export async function POST(
     }
 
     const { slug } = await params;
+    const normalizedSlug = normalizeScraperSlug(slug);
     const body = (await request.json()) as {
       type: ScraperCredentialType;
       value: string;
@@ -76,9 +79,9 @@ export async function POST(
       return NextResponse.json({ error: 'Type and value are required' }, { status: 400 });
     }
 
-    await setScraperCredential(slug, body.type, body.value, auth.userId);
+    await setScraperCredential(normalizedSlug, body.type, body.value, auth.userId);
 
-    const statuses = await getScraperCredentialStatuses(slug);
+    const statuses = await getScraperCredentialStatuses(normalizedSlug);
 
     return NextResponse.json({ success: true, statuses });
   } catch (error) {
@@ -104,6 +107,7 @@ export async function DELETE(
     }
 
     const { slug } = await params;
+    const normalizedSlug = normalizeScraperSlug(slug);
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') as ScraperCredentialType;
 
@@ -111,9 +115,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Type is required' }, { status: 400 });
     }
 
-    await deleteScraperCredential(slug, type);
+    await deleteScraperCredential(normalizedSlug, type);
 
-    const statuses = await getScraperCredentialStatuses(slug);
+    const statuses = await getScraperCredentialStatuses(normalizedSlug);
 
     return NextResponse.json({ success: true, statuses });
   } catch (error) {

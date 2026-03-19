@@ -88,4 +88,47 @@ describe('Scraper credentials API route', () => {
     expect(res!.status).toBe(200);
     expect(deleteScraperCredential).toHaveBeenCalledWith('amazon', 'login');
   });
+
+  describe('slug normalization', () => {
+    it('POST normalizes slug with underscores and mixed case', async () => {
+      const { POST } = await import('@/app/api/admin/scrapers/[slug]/credentials/route');
+      const { setScraperCredential, getScraperCredentialStatuses } = jest.requireMock('@/lib/admin/scrapers/credentials') as { 
+        setScraperCredential: jest.Mock;
+        getScraperCredentialStatuses: jest.Mock;
+      };
+      const req = {
+        json: async () => ({ type: 'login', value: 'testuser' }),
+      };
+
+      const res = await POST(req as never, { params: Promise.resolve({ slug: 'Phillips_Wholesale' }) });
+      expect(res).toBeDefined();
+      expect(res!.status).toBe(200);
+      expect(setScraperCredential).toHaveBeenCalledWith('phillips-wholesale', 'login', 'testuser', 'user-1');
+      expect(getScraperCredentialStatuses).toHaveBeenCalledWith('phillips-wholesale');
+    });
+
+    it('GET normalizes slug before fetching statuses', async () => {
+      const { GET } = await import('@/app/api/admin/scrapers/[slug]/credentials/route');
+      const { getScraperCredentialStatuses } = jest.requireMock('@/lib/admin/scrapers/credentials') as { getScraperCredentialStatuses: { mockResolvedValue: (value: unknown) => void; mockClear: () => void } };
+      getScraperCredentialStatuses.mockResolvedValue([]);
+
+      await GET({} as never, { params: Promise.resolve({ slug: 'ORGILL' }) });
+      expect(getScraperCredentialStatuses).toHaveBeenCalledWith('orgill');
+    });
+
+    it('DELETE normalizes slug with spaces', async () => {
+      const { DELETE } = await import('@/app/api/admin/scrapers/[slug]/credentials/route');
+      const { deleteScraperCredential, getScraperCredentialStatuses } = jest.requireMock('@/lib/admin/scrapers/credentials') as { 
+        deleteScraperCredential: jest.Mock;
+        getScraperCredentialStatuses: jest.Mock;
+      };
+      const req = {
+        url: 'http://localhost?type=password',
+      };
+
+      await DELETE(req as never, { params: Promise.resolve({ slug: 'Pet Food EX' }) });
+      expect(deleteScraperCredential).toHaveBeenCalledWith('pet-food-ex', 'password');
+      expect(getScraperCredentialStatuses).toHaveBeenCalledWith('pet-food-ex');
+    });
+  });
 });

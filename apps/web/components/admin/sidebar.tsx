@@ -1,20 +1,21 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Home,
   Settings,
-  PackagePlus,
   RefreshCw,
   LogOut,
   Network,
-  FileCode2,
-  History,
   Activity,
   LayoutGrid,
-  Wrench,
-} from 'lucide-react';
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   href: string;
@@ -32,61 +33,141 @@ interface NavSection {
 const navSections: NavSection[] = [
   {
     items: [
-      { href: '/admin', label: 'Overview', icon: <Home className="h-5 w-5" /> },
+      { href: "/admin", label: "Overview", icon: <Home className="h-5 w-5" /> },
     ],
   },
   {
-    title: 'Pipeline',
+    title: "Pipeline",
     adminOnly: true,
     items: [
-      { href: '/admin/pipeline', label: 'Overview', icon: <LayoutGrid className="h-5 w-5" />, adminOnly: true },
+      {
+        href: "/admin/pipeline",
+        label: "Overview",
+        icon: <LayoutGrid className="h-5 w-5" />,
+        adminOnly: true,
+      },
     ],
   },
   {
-    title: 'Scrapers',
+    title: "Scrapers",
     adminOnly: true,
     items: [
-      { href: '/admin/scrapers/list', label: 'Scrapers', icon: <Activity className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/scrapers/network', label: 'Network', icon: <Network className="h-5 w-5" />, adminOnly: true },
+      {
+        href: "/admin/scrapers/list",
+        label: "Scrapers",
+        icon: <Activity className="h-5 w-5" />,
+        adminOnly: true,
+      },
+      {
+        href: "/admin/scrapers/network",
+        label: "Network",
+        icon: <Network className="h-5 w-5" />,
+        adminOnly: true,
+      },
     ],
   },
   {
-    title: 'System',
+    title: "System",
     adminOnly: true,
     items: [
-      { href: '/admin/migration', label: 'Data Migration', icon: <RefreshCw className="h-5 w-5" />, adminOnly: true },
-      { href: '/admin/settings', label: 'Settings', icon: <Settings className="h-5 w-5" />, adminOnly: true },
+      {
+        href: "/admin/migration",
+        label: "Data Migration",
+        icon: <RefreshCw className="h-5 w-5" />,
+        adminOnly: true,
+      },
+      {
+        href: "/admin/settings",
+        label: "Settings",
+        icon: <Settings className="h-5 w-5" />,
+        adminOnly: true,
+      },
     ],
   },
 ];
 
+const SIDEBAR_STORAGE_KEY = "adminSidebarCollapsed";
+
 interface AdminSidebarProps {
-  userRole?: 'admin' | 'staff' | 'customer';
+  userRole?: "admin" | "staff" | "customer";
 }
 
-export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
+export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
   const pathname = usePathname();
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === "admin";
+  const [collapsed, setCollapsed] = useState(false);
 
-  // Filter sections and items based on role
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      if (stored !== null) {
+        setCollapsed(stored === "true");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
+    } catch {
+      // ignore
+    }
+  }, [collapsed]);
+
   const visibleSections = navSections
-    .filter(section => !section.adminOnly || isAdmin)
-    .map(section => ({
+    .filter((section) => !section.adminOnly || isAdmin)
+    .map((section) => ({
       ...section,
-      items: section.items.filter(item => !item.adminOnly || isAdmin)
+      items: section.items.filter((item) => !item.adminOnly || isAdmin),
     }))
-    .filter(section => section.items.length > 0);
+    .filter((section) => section.items.length > 0);
+
+  const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center justify-center border-b border-sidebar-border">
-        <h1 className="text-xl font-bold">Manager Portal</h1>
+    <aside
+      className={cn(
+        "flex h-full flex-col bg-sidebar text-sidebar-foreground transition-all",
+        collapsed ? "w-20" : "w-64",
+      )}
+    >
+      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-3">
+        <h1 className={cn("text-xl font-bold", collapsed && "sr-only")}>
+          Manager Portal
+        </h1>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-accent"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-5 w-5" />
+          ) : (
+            <ChevronLeft className="h-5 w-5" />
+          )}
+        </button>
       </div>
-      <nav className="flex-1 space-y-6 overflow-y-auto p-4" aria-label="Admin">
+
+      <nav
+        className={cn(
+          "flex-1 space-y-6 overflow-y-auto",
+          collapsed ? "px-2" : "p-4",
+        )}
+        aria-label="Admin"
+      >
         {visibleSections.map((section, idx) => (
           <div key={idx}>
             {section.title && (
-              <h2 className="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
+              <h2
+                className={cn(
+                  "mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
+                  collapsed && "sr-only",
+                )}
+              >
                 {section.title}
               </h2>
             )}
@@ -94,24 +175,36 @@ export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
               {section.items.map((item) => {
                 // For dashboard root routes like /admin/scrapers, only match exact paths
                 // to avoid highlighting when on child routes like /admin/scrapers/network
-                const isDashboardRoot = item.href === '/admin/scrapers';
+                const isDashboardRoot = item.href === "/admin/scrapers";
                 const isActive = pathname
                   ? isDashboardRoot
-                    ? pathname === item.href || pathname === item.href + '/dashboard'
-                    : pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/'))
+                    ? pathname === item.href ||
+                      pathname === item.href + "/dashboard"
+                    : pathname === item.href ||
+                      (item.href !== "/admin" &&
+                        pathname.startsWith(item.href + "/"))
                   : false;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center space-x-3 rounded px-4 py-2 transition-colors ${
+                    className={cn(
+                      "flex items-center space-x-3 rounded px-4 py-2 transition-colors",
+                      collapsed && "justify-center px-2",
                       isActive
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                        : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                    }`}
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    )}
                   >
-                    {item.icon}
-                    <span>{item.label}</span>
+                    <span
+                      aria-hidden="true"
+                      className="flex items-center justify-center"
+                    >
+                      {item.icon}
+                    </span>
+                    <span className={collapsed ? "sr-only" : ""}>
+                      {item.label}
+                    </span>
                   </Link>
                 );
               })}
@@ -121,20 +214,43 @@ export function AdminSidebar({ userRole = 'staff' }: AdminSidebarProps) {
       </nav>
 
       {/* Footer: Role & Exit */}
-      <div className="border-t border-sidebar-border p-4">
+      <div
+        className={cn(
+          "border-t border-sidebar-border p-4",
+          collapsed && "px-2",
+        )}
+      >
         <div className="flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center space-x-2 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
+            className={cn(
+              "flex items-center space-x-2 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground",
+              collapsed && "justify-center",
+            )}
           >
-            <LogOut className="h-4 w-4 rotate-180" />
-            <span>Exit</span>
+            <LogOut className="h-4 w-4 rotate-180" aria-hidden="true" />
+            <span className={collapsed ? "sr-only" : ""}>Exit</span>
           </Link>
 
           <div className="flex items-center space-x-2 text-xs">
-            <span className="text-sidebar-foreground/50">Role:</span>
-            <span className={`px-2 py-0.5 rounded ${isAdmin ? 'bg-purple-900/50 text-purple-300' : 'bg-sidebar-accent text-sidebar-accent-foreground'}`}>
-              {userRole}
+            <span
+              className={cn(
+                "text-sidebar-foreground/50",
+                collapsed && "sr-only",
+              )}
+            >
+              Role:
+            </span>
+            <span
+              title={userRole}
+              className={cn(
+                "px-2 py-0.5 rounded",
+                isAdmin
+                  ? "bg-purple-900/50 text-purple-300"
+                  : "bg-sidebar-accent text-sidebar-accent-foreground",
+              )}
+            >
+              {collapsed ? userRole.charAt(0).toUpperCase() : userRole}
             </span>
           </div>
         </div>

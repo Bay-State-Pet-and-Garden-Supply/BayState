@@ -205,39 +205,45 @@ export function PipelineClient({
         onStageChange={handleStageChange}
       />
 
-      {/* Search bar */}
-      <div className="flex items-center gap-3">
-        <input
-          type="text"
-          placeholder="Search by SKU or name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      {/* Search bar — hidden for monitoring */}
+      {currentStage !== 'monitoring' && (
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search by SKU or name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          {totalCount > 0 && (
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              {totalCount} total product{totalCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Bulk Toolbar — hidden for monitoring */}
+      {currentStage !== 'monitoring' && (
+        <BulkToolbar
+          selectedCount={selectedSkus.size}
+          totalCount={totalCount}
+          currentStage={currentStage}
+          isLoading={isLoading}
+          onClearSelection={handleClearSelection}
+          onSelectAll={handleSelectAll}
+          onBulkAction={handleBulkAction}
+          onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
         />
-        {totalCount > 0 && (
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
-            {totalCount} total product{totalCount !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+      )}
 
-      {/* Bulk Toolbar — always visible for select all */}
-      <BulkToolbar
-        selectedCount={selectedSkus.size}
-        totalCount={totalCount}
-        currentStage={currentStage}
-        isLoading={isLoading}
-        onClearSelection={handleClearSelection}
-        onSelectAll={handleSelectAll}
-        onBulkAction={handleBulkAction}
-        onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
-      />
-
-      {/* Product Table or Scraped Results View */}
+      {/* Content Area */}
       {isLoading ? (
         <div className="flex h-48 items-center justify-center">
-          <div className="text-muted-foreground">Loading products...</div>
+          <div className="text-muted-foreground">Loading...</div>
         </div>
+      ) : currentStage === 'monitoring' ? (
+        <ActiveRunsTab />
       ) : currentStage === 'scraped' ? (
         <ScrapedResultsView
           products={products}
@@ -256,18 +262,12 @@ export function PipelineClient({
         />
       )}
 
-      {/* Footer count */}
-      {!isLoading && products.length > 0 && (
+      {/* Footer count — hidden for monitoring */}
+      {!isLoading && currentStage !== 'monitoring' && products.length > 0 && (
         <div className="text-center text-sm text-muted-foreground">
           Showing {products.length} of {totalCount} product{totalCount !== 1 ? 's' : ''}
         </div>
       )}
-
-      {/* Active Scrape Jobs section */}
-      <div className="pt-4 border-t">
-        <h3 className="text-sm font-semibold mb-3">Active Scrape Jobs</h3>
-        <ActiveRunsTab />
-      </div>
 
       {/* Scraper Selection Dialog */}
       <ScraperSelectDialog
@@ -276,6 +276,6 @@ export function PipelineClient({
         selectedSkuCount={selectedSkus.size}
         onConfirm={handleScrapeConfirm}
       />
-    </div>
-  );
-}
+      </div>
+      );
+      }
