@@ -9,7 +9,8 @@ import { STAGE_CONFIG, type PipelineStatus, type StageConfig } from './types';
  * Valid status transitions for each pipeline stage
  */
 export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
-  imported: ['scraped'],
+  imported: ['monitoring', 'scraped'],
+  monitoring: ['scraped', 'imported'],
   scraped: ['consolidated', 'imported'],
   consolidated: ['finalized', 'scraped'],
   finalized: ['published', 'consolidated'],

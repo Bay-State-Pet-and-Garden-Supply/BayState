@@ -18,6 +18,7 @@ export type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];
 
 export const PIPELINE_STATUS_COLORS: Record<PipelineStatus, StatusColor> = {
     imported: STATUS_COLORS.QUEUED,
+    monitoring: STATUS_COLORS.WARNING,
     scraped: STATUS_COLORS.RUNNING,
     consolidated: STATUS_COLORS.WARNING,
     finalized: STATUS_COLORS.SUCCESS,
@@ -26,6 +27,7 @@ export const PIPELINE_STATUS_COLORS: Record<PipelineStatus, StatusColor> = {
 
 export const PIPELINE_STATUS_LABELS: Record<PipelineStatus, string> = {
     imported: 'Imported',
+    monitoring: 'Monitoring',
     scraped: 'Scraped',
     consolidated: 'Consolidated',
     finalized: 'Finalized',
@@ -54,6 +56,7 @@ export function getStatusColor(status: PipelineStatus): StatusColor {
 export function getStatusCssVar(status: PipelineStatus): string {
     const statusToCssVar: Record<PipelineStatus, string> = {
         imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
+        monitoring: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
         scraped: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
         consolidated: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
         finalized: CSS_CUSTOM_PROPERTIES.STATUS.SUCCESS,

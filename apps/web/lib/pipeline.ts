@@ -23,6 +23,7 @@ const LEGACY_TO_NEW_STATUS: Record<LegacyPipelineStatus, PipelineStatus> = {
 
 const NEW_TO_LEGACY_STATUS: Record<PipelineStatus, LegacyPipelineStatus> = {
     imported: 'staging',
+    monitoring: 'staging',
     scraped: 'scraped',
     consolidated: 'consolidated',
     finalized: 'consolidated',
@@ -33,7 +34,7 @@ const NEW_TO_LEGACY_STATUS: Record<PipelineStatus, LegacyPipelineStatus> = {
  * @deprecated Use PipelineStatus from '@/lib/pipeline/types'
  */
 export function isLegacyPipelineStatus(status: TransitionalPipelineStatus): status is LegacyPipelineStatus {
-    return !['imported', 'scraped', 'consolidated', 'finalized', 'published'].includes(status);
+    return !['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'].includes(status);
 }
 
 /**
@@ -55,19 +56,11 @@ export function toLegacyPipelineStatus(status: TransitionalPipelineStatus): Lega
  * Defines which status transitions are valid.
  */
 export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
-    imported: ['scraped'],
+    imported: ['monitoring', 'scraped'],
+    monitoring: ['scraped', 'imported'],
     scraped: ['consolidated', 'imported'],
     consolidated: ['finalized', 'scraped'],
     finalized: ['published', 'consolidated'],
-    published: [], // Terminal state - no outgoing transitions
-};
-
-/**
- * Validates if a status transition is allowed.
-    imported: ['scraped'],
-    scraped: ['consolidated'],
-    consolidated: ['finalized'],
-    finalized: ['published'],
     published: [], // Terminal state - no outgoing transitions
 };
 
@@ -276,12 +269,13 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
 
     if (error) {
         console.error('Error fetching status counts:', error);
-        const statuses: PipelineStatus[] = ['imported', 'scraped', 'consolidated', 'finalized', 'published'];
+        const statuses: PipelineStatus[] = ['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'];
         return statuses.map(status => ({ status, count: 0 }));
     }
 
     const countMap: Record<PipelineStatus, number> = {
         imported: 0,
+        monitoring: 0,
         scraped: 0,
         consolidated: 0,
         finalized: 0,
@@ -294,7 +288,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         }
     });
 
-    const statuses: PipelineStatus[] = ['imported', 'scraped', 'consolidated', 'finalized', 'published'];
+    const statuses: PipelineStatus[] = ['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'];
     return statuses.map(status => ({
         status,
         count: countMap[status] || 0,
