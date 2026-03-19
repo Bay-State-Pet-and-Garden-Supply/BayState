@@ -105,21 +105,40 @@ def run_local_mode(args: argparse.Namespace) -> None:
         credential_refs=list(config.credential_refs) if config.credential_refs else [],
     )
 
+    # Check for API configuration
+    api_url = os.environ.get("SCRAPER_API_URL")
+    api_key = os.environ.get("SCRAPER_API_KEY", "")
+
+    if not api_url:
+        logger.info("[Local] SCRAPER_API_URL not set, will try Supabase/env fallback for credentials")
+    if not api_key:
+        logger.warning("[Local] SCRAPER_API_KEY not set - credential fetching may fail")
+
     credential_client = ScraperAPIClient(
-        api_url=os.environ.get("SCRAPER_API_URL"),
-        api_key=os.environ.get("SCRAPER_API_KEY", ""),
+        api_url=api_url,
+        api_key=api_key,
         runner_name="local-cli",
     )
 
-    # Inject credentials from coordinator/Supabase/env if available
-    for ref in (scraper_cfg.credential_refs or []):
+    # Inject credentials from API/Supabase/env if available
+    credentials_loaded = False
+    for ref in scraper_cfg.credential_refs or []:
+        logger.info(f"[Local] Fetching credentials for '{ref}'...")
         creds = credential_client.get_credentials(ref)
         if creds:
             if scraper_cfg.options is None:
                 scraper_cfg.options = {}
             scraper_cfg.options["_credentials"] = creds
-            logger.info(f"[Local] Injected credentials for '{ref}'")
+            logger.info(f"[Local] Successfully loaded credentials for '{ref}' (type: {creds.get('type', 'basic')})")
+            credentials_loaded = True
             break
+        else:
+            logger.warning(f"[Local] No credentials found for '{ref}'")
+
+    if scraper_cfg.credential_refs and not credentials_loaded:
+        logger.error(f"[Local] Failed to load any credentials. Checked refs: {scraper_cfg.credential_refs}")
+        logger.error("[Local] Ensure SCRAPER_API_URL and SCRAPER_API_KEY are set in your .env file")
+        logger.error("[Local] Or set {REF}_USERNAME and {REF}_PASSWORD environment variables")
 
     job_config = JobConfig(
         job_id=job_id,
