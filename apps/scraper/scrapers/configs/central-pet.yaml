@@ -76,8 +76,10 @@ workflows:
         - "#tst_productDetail_erpDescription"
         - "span.no-results-found"
         - ".no-results"
-        - "//h2[contains(text(), 'No results found')]"
-        - ".empty-search"
+        - "//h1[contains(text(), 'RESULTS FOUND FOR')]"
+        - "//div[contains(text(), \"We're sorry, your search returned no results.\")]"
+        - "a[href*='/Login']"
+        - "input[name='criteria']"
   - action: check_no_results
     name: null
     params: {}
@@ -141,9 +143,11 @@ validation:
     - .empty-search
     - "[data-testid*='no-results']"
     - div.search-results-none
-    - p:contains('Sorry, no products were found')]
-    - h2:contains('No Search Results')
+    - "p:contains('Sorry, no products were found')"
+    - "h2:contains('No Search Results')"
     - "h2:contains('No results found for')"
+    - "div:contains(\"We're sorry, your search returned no results.\")"
+    - "div:contains(\"We're sorry, there were no products found.\")"
   no_results_text_patterns:
     - no results found
     - no products found
@@ -152,6 +156,8 @@ validation:
     - no items match your search
     - sorry, no products were found
     - no search results
+    - "We're sorry, your search returned no results."
+    - "We're sorry, there were no products found."
 login: null
 http_status:
   enabled: true

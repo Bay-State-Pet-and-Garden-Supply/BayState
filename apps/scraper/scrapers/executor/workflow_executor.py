@@ -53,10 +53,11 @@ logger = logging.getLogger(__name__)
 # Constants
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+
 class WorkflowExecutor:
     """Executes scraper workflows defined in YAML configurations using Playwright.
-    
-    AI/Agentic features are deprecated for static scrapers. 
+
+    AI/Agentic features are deprecated for static scrapers.
     Use AISearchScraper for AI-powered tasks.
     """
 
@@ -100,7 +101,7 @@ class WorkflowExecutor:
         self.api_client = api_client
         self.credentials: dict[str, dict[str, str]] = {}
         self.settings = SettingsManager()
-        self.scraper_type = "static" # Force static type
+        self.scraper_type = "static"  # Force static type
 
         # Determine if running in CI environment
         self.is_ci: bool = os.getenv("CI") == "true"
@@ -188,9 +189,11 @@ class WorkflowExecutor:
         """Initialize the browser and all extracted modules asynchronously."""
         try:
             import uuid
+
             profile_suffix = f"workflow_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
             from utils.scraping.playwright_browser import create_playwright_browser
+
             logger.info(f"Initializing Playwright browser for scraper: {self.config.name}")
             self.browser = await create_playwright_browser(
                 site_name=self.config.name,
@@ -283,23 +286,29 @@ class WorkflowExecutor:
         retry_executor.register_recovery_handler(FailureType.RATE_LIMITED, handle_rate_limit)
         retry_executor.register_recovery_handler(FailureType.ACCESS_DENIED, handle_access_denied)
 
-
     def _resolve_credential_refs(self) -> dict[str, dict[str, str]]:
         """Resolve credential_refs from config using the API client or environment variables."""
+        logger.info(f"[Credentials] Resolving credential_refs for {self.config.name}: {self.config.credential_refs}")
+
         if not self.config.credential_refs:
+            logger.info(f"[Credentials] No credential_refs defined for {self.config.name}")
             return {}
 
         if self.api_client:
+            logger.info(f"[Credentials] Using API client to resolve {len(self.config.credential_refs)} credential refs")
             try:
                 resolved = self.api_client.resolve_credentials(self.config.credential_refs)
                 if resolved:
-                    logger.info(f"Resolved {len(resolved)} credential references for {self.config.name}")
+                    logger.info(f"[Credentials] Resolved {len(resolved)} credential references for {self.config.name}: {list(resolved.keys())}")
+                else:
+                    logger.warning(f"[Credentials] API client returned no credentials for {self.config.name}")
                 return resolved
             except Exception as e:
-                logger.error(f"Failed to resolve credential_refs via API: {e}")
+                logger.error(f"[Credentials] Failed to resolve credential_refs via API: {e}", exc_info=True)
 
         # Fallback: resolve from environment variables
         from core.api_client import ScraperAPIClient
+
         resolved: dict[str, dict[str, str]] = {}
         for ref in self.config.credential_refs:
             env_creds = ScraperAPIClient.get_credentials_from_env(ref)

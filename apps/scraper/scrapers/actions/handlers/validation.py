@@ -136,7 +136,26 @@ class CheckNoResultsAction(BaseAction):
                             logger.info(f"DEBUG: Selector '{selector}' visibility: {is_vis}")
 
                             if is_vis:
-                                # Potential match found - wait and verify it persists
+                                # Potential match found - check if it contains no-results text patterns
+                                if config_text_patterns:
+                                    try:
+                                        # Extract text from this specific element to see if it's the no-results message
+                                        element_text = await locator.first.inner_text()
+                                        element_text = element_text.lower()
+                                        if any(p.lower() in element_text for p in config_text_patterns):
+                                            logger.info(f"No results detected via selector '{selector}' and text pattern match within element")
+                                            self.ctx.results["no_results_found"] = True
+                                            self._emit_no_results_event()
+                                            return
+                                        else:
+                                            logger.info(f"Selector '{selector}' found but its text does not match no-results patterns. Continuing.")
+                                            continue
+                                    except Exception as e:
+                                        logger.debug(f"Error checking text pattern in element {selector}: {e}")
+                                        # Fallback to persistence check if text check fails
+                                        pass
+
+                                # If no patterns defined or text check failed, fallback to persistence check
                                 logger.info(f"Potential no-results detected via {selector}, verifying persistence...")
 
                                 await asyncio.sleep(2)

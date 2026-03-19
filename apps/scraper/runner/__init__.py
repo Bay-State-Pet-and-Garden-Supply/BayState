@@ -255,7 +255,7 @@ def run_job(
     for scraper_cfg in job_config.scrapers:
         try:
             options = scraper_cfg.options or {}
-            
+
             # The coordinator API puts 'workflows' inside the 'options' object.
             # We map it to the root level expected by ScraperConfigModel.
             config_dict = {
@@ -275,8 +275,13 @@ def run_job(
             config = cast(ScraperConfigModel, parser.load_from_dict(config_dict))
             configs.append(config)
             cfg_name = getattr(config, "name", "unknown")
+            credential_refs = getattr(config, "credential_refs", []) or []
             log_buffer.append(create_log_entry("info", f"Loaded scraper config: {cfg_name}"))
             logger.info(f"[Runner] Loaded scraper config: {cfg_name}")
+            if credential_refs:
+                logger.info(f"[Runner]   credential_refs: {credential_refs}")
+            else:
+                logger.info(f"[Runner]   no credential_refs defined")
         except Exception as e:
             config_errors.append((scraper_cfg.name, str(e)))
             log_buffer.append(create_log_entry("error", f"Failed to parse config for {scraper_cfg.name}: {e}"))
@@ -478,7 +483,6 @@ def _run_ai_search_job(
         logger.debug(f"Setting OPENAI_API_KEY from job payload: {runtime_openai[:4]}...")
     if runtime_brave:
         logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
-
 
     if runtime_openai:
         os.environ["OPENAI_API_KEY"] = runtime_openai

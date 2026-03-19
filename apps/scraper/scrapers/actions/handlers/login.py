@@ -76,8 +76,12 @@ class LoginAction(BaseAction):
             credential_refs = list(getattr(self.ctx.config, "credential_refs", []) or [])
             candidate_refs = [scraper_name, *credential_refs]
 
+            logger.info(f"[Login] Looking for credentials in ctx.credentials: {list(resolved_credentials.keys()) if resolved_credentials else 'empty'}")
+            logger.info(f"[Login] Candidate refs: {candidate_refs}")
+
             for ref in candidate_refs:
                 resolved = resolved_credentials.get(ref)
+                logger.info(f"[Login] Checking ref '{ref}': {'found' if resolved else 'not found'}")
                 if not resolved:
                     continue
                 params.setdefault("username", resolved.get("username"))
@@ -85,6 +89,7 @@ class LoginAction(BaseAction):
                 if resolved.get("api_key") and not params.get("api_key"):
                     params["api_key"] = resolved.get("api_key")
                 if params.get("username") and params.get("password"):
+                    logger.info(f"[Login] Successfully resolved credentials from ref '{ref}'")
                     break
 
         username = params.get("username")

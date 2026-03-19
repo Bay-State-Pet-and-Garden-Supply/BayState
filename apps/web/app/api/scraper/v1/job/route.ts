@@ -26,6 +26,7 @@ interface ScraperConfig {
     test_skus?: string[];
     retries?: number;
     validation?: Record<string, unknown>;
+    credential_refs?: string[];
 }
 
 interface JobConfigResponse {
@@ -246,6 +247,7 @@ export async function GET(request: NextRequest) {
                 test_skus: config.test_skus,
                 retries: config.retries,
                 validation: config.validation,
+                credential_refs: config.credential_refs,
             });
         }
 

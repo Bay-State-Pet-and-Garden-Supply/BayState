@@ -126,9 +126,11 @@ workflows:
       fields:
         - name: Name
           selector: "#productTitle"
+          nth: 0
           attribute: text
         - name: Brand
           selector: "#bylineInfo"
+          nth: 0
           attribute: text
           transform:
             - type: regex_extract
@@ -145,6 +147,7 @@ workflows:
         - name: Weight
           required: false
           selector: "tr:has-text('Item Weight') td, li:has-text('Item Weight') span, div#detailBullets_feature_div li:has-text('Item Weight') span.a-list-item, //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] | //li[contains(., 'pounds')]"
+          nth: 0
           attribute: text
         - name: Rating
           selector: "span.a-icon-alt"
@@ -152,9 +155,11 @@ workflows:
           attribute: text
         - name: Reviews
           selector: "span#acrCustomerReviewText, a.a-link-normal span#acrCustomerReviewText"
+          nth: 0
           attribute: text
         - name: Description
           selector: "div#feature-bullets, div#productDescription, div#aplus"
+          nth: 0
           attribute: text
         - name: Features
           multiple: true
@@ -162,12 +167,15 @@ workflows:
           attribute: text
         - name: Availability
           selector: "#availability"
+          nth: 0
           attribute: text
         - name: ASIN
           selector: "tr:has-text('ASIN') td, li:has-text('ASIN') span, div#detailBullets_feature_div li:has-text('ASIN') span.a-list-item"
+          nth: 0
           attribute: text
         - name: Technical Specs
           selector: "div#prodDetails, div#detailBullets_feature_div"
+          nth: 0
           attribute: text
 ai_config: null
 anti_detection:

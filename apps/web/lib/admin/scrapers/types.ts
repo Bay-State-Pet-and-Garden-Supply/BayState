@@ -49,6 +49,7 @@ export interface ScraperConfig {
   fake_skus?: string[];
   edge_case_skus?: string[];
   ai_config?: AIConfig;
+  credential_refs?: string[];
 }
 
 export interface ScraperConfigVersion {
