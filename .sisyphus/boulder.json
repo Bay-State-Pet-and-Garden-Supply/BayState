@@ -1,4 +1,10 @@
 {
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/pipeline-rebuild.md",
+  "started_at": "2026-03-19T10:04:00.798Z",
+  "session_ids": ["ses_2fa7efadeffeVOfW4ViQSHShrD"],
+  "plan_name": "pipeline-rebuild",
+  "worktree_path": null
+}
   "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\scraper-performance-fixes.md",
   "started_at": "2026-03-13T20:37:09.906Z",
   "session_ids": [

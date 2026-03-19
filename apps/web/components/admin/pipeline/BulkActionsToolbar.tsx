@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { Loader2, ArrowRight, Trash2 } from 'lucide-react';
-import type { NewPipelineStatus, PipelineStatus } from '@/lib/pipeline';
+import type { PipelineStatus } from '@/lib/pipeline/types';
 import { ExportButton } from './ExportButton';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 interface BulkActionsToolbarProps {
     selectedCount: number;
-    currentStatus: NewPipelineStatus | PipelineStatus;
+    currentStatus: PipelineStatus;
     searchQuery?: string;
     onAction: (action: ToolbarAction) => void;
     onMoveToEnriched?: () => void;
@@ -33,36 +33,36 @@ type ActionButton = {
     className: string;
 };
 
-const newStatusMap: Record<NewPipelineStatus, ActionButton[]> = {
-    registered: [
+const newStatusMap: Record<PipelineStatus, ActionButton[]> = {
+    imported: [
         { action: 'enrich', label: 'Run Scrapers', className: 'bg-blue-600 hover:bg-blue-700' },
     ],
-    enriched: [
+    scraped: [
         { action: 'consolidate', label: 'AI Consolidate', className: 'bg-purple-600 hover:bg-purple-700' },
-        { action: 'moveToFinalized', label: 'Move to Finalized', className: 'bg-green-600 hover:bg-green-700' },
     ],
-    finalized: [], // Terminal state - no outgoing transitions
+    consolidated: [
+        { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },
+        { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
+    ],
+    finalized: [], // Terminal state
+    published: [], // Terminal state
 };
 
 
 const legacyActionsMap: Record<PipelineStatus, ActionButton[]> = {
-    staging: [],
+    imported: [],
     scraped: [{ action: 'consolidate', label: 'Consolidate', className: 'bg-blue-600 hover:bg-blue-700' }],
     consolidated: [
         { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },
         { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
     ],
-    approved: [
+    finalized: [
         { action: 'publish', label: 'Publish', className: 'bg-green-600 hover:bg-green-700' },
         { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
     ],
     published: [],
-    failed: [],
 };
 
-function isNewPipelineStatus(status: NewPipelineStatus | PipelineStatus): status is NewPipelineStatus {
-    return status === 'registered' || status === 'enriched' || status === 'finalized';
-}
 
 export function BulkActionsToolbar({
     selectedCount,
@@ -85,8 +85,8 @@ export function BulkActionsToolbar({
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const isNewPipeline = isNewPipelineStatus(currentStatus);
-    const actions = isNewPipeline ? newStatusMap[currentStatus] : legacyActionsMap[currentStatus];
+    const isNewPipeline = true;
+    const actions = newStatusMap[currentStatus];
     const isBusy = isMovingToEnriched || isDeleting || isConsolidating || isClearingScrapeResults || isEnriching;
 
     const handleDeleteClick = () => {
@@ -162,7 +162,7 @@ export function BulkActionsToolbar({
                                 </button>
                             ))}
 
-                            {(currentStatus === 'scraped' || currentStatus === 'enriched') && onClearScrapeResults && (
+                            {(currentStatus === 'scraped') && onClearScrapeResults && (
                                 <button
                                     onClick={() => void onClearScrapeResults()}
                                     disabled={isBusy}
@@ -195,7 +195,7 @@ export function BulkActionsToolbar({
                         </>
                     )}
                     
-                    {isNewPipeline && <ExportButton currentStatus={currentStatus as NewPipelineStatus} searchQuery={searchQuery} />}
+                    {isNewPipeline && <ExportButton currentStatus={currentStatus} searchQuery={searchQuery} />}
                 </div>
             </div>
         </>

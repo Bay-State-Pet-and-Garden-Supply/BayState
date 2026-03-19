@@ -36,7 +36,7 @@ export interface CompletenessMetric {
 export async function getStatusBreakdown(): Promise<StatusBreakdown[]> {
     const supabase = await createClient();
 
-    const statuses: PipelineStatus[] = ['staging', 'scraped', 'consolidated', 'approved', 'published'];
+    const statuses: PipelineStatus[] = ['imported', 'scraped', 'consolidated', 'finalized', 'published'];
     const counts: { status: PipelineStatus; count: number }[] = [];
     let total = 0;
 

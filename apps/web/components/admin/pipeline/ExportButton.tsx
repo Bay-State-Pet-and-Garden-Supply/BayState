@@ -2,10 +2,10 @@
 
 import { Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { NewPipelineStatus } from '@/lib/pipeline';
+import type { PipelineStatus } from '@/lib/pipeline/types';
 
 interface ExportButtonProps {
-    currentStatus: NewPipelineStatus;
+    currentStatus: PipelineStatus;
     searchQuery?: string;
 }
 

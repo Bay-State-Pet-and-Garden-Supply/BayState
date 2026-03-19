@@ -1,6 +1,6 @@
 'use client';
 
-import type { PipelineProduct, PipelineStatus, NewPipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
 import {
     ChevronRight,
     Package,
@@ -26,7 +26,7 @@ interface PipelineProductCardProps {
     showImageSelectionButton?: boolean;
     readOnly?: boolean;
     showBatchSelect?: boolean;
-    currentStage?: PipelineStatus | NewPipelineStatus;
+    currentStage?: PipelineStatus;
 }
 
 export function PipelineProductCardSkeleton() {
@@ -126,7 +126,7 @@ export function PipelineProductCard({
                     }`}
             >
                 <div className="absolute right-2 top-2">
-                    <StatusBadge status={stage as PipelineStatus | NewPipelineStatus} size="sm" />
+                        <StatusBadge status={stage as PipelineStatus} size="sm" />
                 </div>
 
                 <div className="flex items-start gap-3">
@@ -156,7 +156,7 @@ export function PipelineProductCard({
         );
     }
 
-    const isStorefrontView = stage === 'consolidated' || stage === 'approved' || stage === 'published' || stage === 'finalized';
+    const isStorefrontView = stage === 'consolidated' || stage === 'published' || stage === 'finalized';
 
     if (isStorefrontView) {
         const imageSrc = product.consolidated?.images?.[0]?.trim();
@@ -215,7 +215,7 @@ export function PipelineProductCard({
                         )}
 
                         <div className="absolute top-3 right-3 z-10">
-                            <StatusBadge status={stage as PipelineStatus | NewPipelineStatus} size="md" />
+                            <StatusBadge status={stage as PipelineStatus} size="md" />
                         </div>
 
                         {confidenceScore !== undefined && confidenceScore > 0 && (
@@ -272,7 +272,7 @@ export function PipelineProductCard({
                 }`}
         >
             <div className="absolute right-3 top-3">
-                <StatusBadge status={stage as PipelineStatus | NewPipelineStatus} size="md" />
+                <StatusBadge status={stage as PipelineStatus} size="md" />
             </div>
 
             <div className="flex items-start gap-3">
