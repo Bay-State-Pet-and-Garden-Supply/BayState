@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { StageTabs } from './StageTabs';
 import { ProductTable } from './ProductTable';
+import { ScrapedResultsView } from './ScrapedResultsView';
 import { BulkToolbar } from './BulkToolbar';
 import { ScraperSelectDialog } from './ScraperSelectDialog';
 import { ActiveRunsTab } from './ActiveRunsTab';
@@ -232,11 +233,18 @@ export function PipelineClient({
         onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
       />
 
-      {/* Product Table */}
+      {/* Product Table or Scraped Results View */}
       {isLoading ? (
         <div className="flex h-48 items-center justify-center">
           <div className="text-muted-foreground">Loading products...</div>
         </div>
+      ) : currentStage === 'scraped' ? (
+        <ScrapedResultsView
+          products={products}
+          selectedSkus={selectedSkus}
+          onSelectSku={handleSelectSku}
+          onRefresh={refreshAll}
+        />
       ) : (
         <ProductTable
           products={products}
