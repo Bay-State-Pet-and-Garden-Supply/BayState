@@ -216,9 +216,13 @@ export function PipelineClient({
           `Created scrape job for ${skus.length} product${skus.length > 1 ? 's' : ''} with ${scrapers.length} scraper${scrapers.length !== 1 ? 's' : ''}`,
           { description: `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? 'unknown'}...` }
         );
+        setCurrentStage('monitoring');
+        setSearch('');
         setIsScrapeDialogOpen(false);
         setSelectedSkus(new Set());
-        await refreshAll();
+
+        // Refresh monitoring view and counts after transitioning
+        await Promise.all([fetchCounts(), fetchProducts('monitoring')]);
       } else {
         const error = await res.json();
         toast.error(error.error || 'Failed to create scrape jobs');
@@ -237,31 +241,15 @@ export function PipelineClient({
         onStageChange={handleStageChange}
       />
 
-      {/* Search bar — hidden for monitoring */}
-      {currentStage !== 'monitoring' && (
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search by SKU or name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-          {totalCount > 0 && (
-            <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {totalCount} total product{totalCount !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Bulk Toolbar — hidden for monitoring */}
+      {/* Bulk Toolbar + Search bar — hidden for monitoring */}
       {currentStage !== 'monitoring' && (
         <BulkToolbar
           selectedCount={selectedSkus.size}
           totalCount={totalCount}
           currentStage={currentStage}
           isLoading={isLoading}
+          search={search}
+          onSearchChange={(value) => setSearch(value)}
           onClearSelection={handleClearSelection}
           onSelectAll={handleSelectAll}
           onBulkAction={handleBulkAction}
@@ -309,6 +297,6 @@ export function PipelineClient({
         selectedSkuCount={selectedSkus.size}
         onConfirm={handleScrapeConfirm}
       />
-      </div>
-      );
-      }
+    </div>
+  );
+}
