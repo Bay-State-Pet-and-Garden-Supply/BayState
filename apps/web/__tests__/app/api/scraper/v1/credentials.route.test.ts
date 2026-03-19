@@ -11,9 +11,13 @@ jest.mock('next/server', () => ({
   },
 }));
 
-jest.mock('@/lib/scraper-auth', () => ({
-  validateRunnerAuth: jest.fn(),
-}));
+jest.mock('@/lib/scraper-auth', () => {
+  const actual = jest.requireActual('@/lib/scraper-auth');
+  return {
+    ...actual,
+    validateRunnerAuth: jest.fn(),
+  };
+});
 
 jest.mock('@/lib/supabase/server', () => ({
   createAdminClient: jest.fn(),
@@ -61,24 +65,48 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
     } as unknown as Request;
   }
 
+  function mockCredentialRows(
+    rows: Array<Record<string, string>>,
+    options?: {
+      error?: unknown;
+      legacySettings?: Array<{ key: string; value: string }>;
+      legacyError?: unknown;
+    }
+  ) {
+    const order = jest.fn().mockResolvedValue({ data: rows, error: options?.error ?? null });
+    const eq = jest.fn().mockReturnValue({ order });
+    const credentialSelect = jest.fn().mockReturnValue({ eq });
+
+    const legacyIn = jest.fn().mockResolvedValue({
+      data: options?.legacySettings ?? [],
+      error: options?.legacyError ?? null,
+    });
+    const legacySelect = jest.fn().mockReturnValue({ in: legacyIn });
+
+    const from = jest.fn((table: string) => {
+      if (table === 'scraper_credentials') {
+        return { select: credentialSelect };
+      }
+
+      if (table === 'app_settings') {
+        return { select: legacySelect };
+      }
+
+      throw new Error(`Unexpected table lookup: ${table}`);
+    });
+
+    mockCreateAdminClient.mockResolvedValue({ from });
+
+    return { from, credentialSelect, eq, order, legacyIn };
+  }
+
   it('returns credentials when stored as separate login/password rows', async () => {
     const login = encryptSecret('user@example.com', encryptionKey);
     const password = encryptSecret('super-secret', encryptionKey);
-    const mockEq = jest.fn().mockResolvedValue({
-      data: [
-        { ...login, credential_type: 'login' },
-        { ...password, credential_type: 'password' },
-      ],
-      error: null,
-    });
-
-    mockCreateAdminClient.mockResolvedValue({
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: mockEq,
-        }),
-      }),
-    });
+    mockCredentialRows([
+      { ...login, credential_type: 'login' },
+      { ...password, credential_type: 'password' },
+    ]);
 
     const res = await GET(createRequest({ 'x-api-key': 'bsr_test' }), {
       params: Promise.resolve({ id: 'orgill' }),
@@ -97,18 +125,7 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
       JSON.stringify({ username: 'legacy-user', password: 'legacy-pass', type: 'basic' }),
       encryptionKey
     );
-    const mockEq = jest.fn().mockResolvedValue({
-      data: [{ ...legacy, credential_type: 'login' }],
-      error: null,
-    });
-
-    mockCreateAdminClient.mockResolvedValue({
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: mockEq,
-        }),
-      }),
-    });
+    mockCredentialRows([{ ...legacy, credential_type: 'login' }]);
 
     const res = await GET(createRequest({ 'x-api-key': 'bsr_test' }), {
       params: Promise.resolve({ id: 'phillips' }),
@@ -124,18 +141,7 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
 
   it('returns 404 when credentials cannot be assembled', async () => {
     const login = encryptSecret('only-user', encryptionKey);
-    const mockEq = jest.fn().mockResolvedValue({
-      data: [{ ...login, credential_type: 'login' }],
-      error: null,
-    });
-
-    mockCreateAdminClient.mockResolvedValue({
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: mockEq,
-        }),
-      }),
-    });
+    mockCredentialRows([{ ...login, credential_type: 'login' }]);
 
     const res = await GET(createRequest({ 'x-api-key': 'bsr_test' }), {
       params: Promise.resolve({ id: 'petfoodex' }),
@@ -143,5 +149,26 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
 
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ error: 'Not found' });
+  });
+
+  it('normalizes the route slug before allowlist checks and database lookup', async () => {
+    const login = encryptSecret('user@example.com', encryptionKey);
+    const password = encryptSecret('super-secret', encryptionKey);
+    const { eq } = mockCredentialRows([
+      { ...login, credential_type: 'login' },
+      { ...password, credential_type: 'password' },
+    ]);
+    mockValidateRunnerAuth.mockResolvedValue({
+      runnerName: 'test-runner',
+      authMethod: 'api_key',
+      allowedScrapers: ['orgill'],
+    });
+
+    const res = await GET(createRequest({ 'x-api-key': 'bsr_test' }), {
+      params: Promise.resolve({ id: 'Orgill' }),
+    });
+
+    expect(eq).toHaveBeenCalledWith('scraper_slug', 'orgill');
+    expect(res.status).toBe(200);
   });
 });

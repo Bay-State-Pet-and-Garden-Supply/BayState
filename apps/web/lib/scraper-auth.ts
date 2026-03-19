@@ -8,7 +8,7 @@ export interface RunnerAuthResult {
     allowedScrapers: string[] | null;
 }
 
-function normalizeScraperSlug(value: string): string {
+export function normalizeScraperSlug(value: string): string {
     return value.trim().toLowerCase().replace(/[\s_]+/g, '-');
 }
 
