@@ -5,7 +5,7 @@ base_url: https://shop.phillipspet.com
 scraper_type: static
 selectors:
   - name: Name
-    selector: .cc_product_item .cc_product_name
+    selector: "#plp-desktop-row .cc_product_name strong"
     attribute: text
     multiple: false
     required: true
@@ -13,22 +13,22 @@ selectors:
       - "h1"
       - "[data-testid='product-name']"
   - name: Brand
-    selector: .cc_product_item .product-brand .branded
+    selector: "#plp-desktop-row .product-brand .branded"
     attribute: text
     multiple: false
     required: false
   - name: UPC
-    selector: .cc_product_item .product-upc .cc_value
+    selector: "#plp-desktop-row .product-upc .cc_value"
     attribute: text
     multiple: false
     required: false
   - name: ItemNumber
-    selector: .cc_product_item .product-item-number .cc_value
+    selector: "#plp-desktop-row .product-item-number .cc_value"
     attribute: text
     multiple: false
     required: false
   - name: Image URLs
-    selector: .cc_product_item .cc_product_image img
+    selector: "#plp-desktop-row .cc_product_image img"
     attribute: src
     multiple: true
     required: false
@@ -48,7 +48,7 @@ workflows:
     params:
       timeout: 5
       selector:
-        - .cc_product_item .cc_product_name
+        - "#plp-desktop-row .cc_product_name"
         - .plp-empty-state-message-container h3
   - action: check_no_results
     name: null

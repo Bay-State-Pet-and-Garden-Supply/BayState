@@ -38,6 +38,7 @@ class LoginConfig(BaseModel):
     password_field: str = Field(..., description="CSS selector for password input")
     submit_button: str = Field(..., description="CSS selector for submit button")
     success_indicator: str | None = Field(None, description="CSS selector indicating successful login")
+    timeout: int | None = Field(None, description="Seconds to wait for login success indicator")
     failure_indicators: dict[str, Any] | None = Field(None, description="Indicators for detecting login failures")
 
 

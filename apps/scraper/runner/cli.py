@@ -101,17 +101,24 @@ def run_local_mode(args: argparse.Namespace) -> None:
         test_skus=list(config.test_skus) if config.test_skus else [],
         retries=config.retries if config.retries is not None else 2,
         validation=config.validation.model_dump() if hasattr(getattr(config, "validation", None), "model_dump") else getattr(config, "validation", None),
+        login=config.login.model_dump() if hasattr(getattr(config, "login", None), "model_dump") else getattr(config, "login", None),
         credential_refs=list(config.credential_refs) if config.credential_refs else [],
     )
 
-    # Inject credentials from environment if available
+    credential_client = ScraperAPIClient(
+        api_url=os.environ.get("SCRAPER_API_URL"),
+        api_key=os.environ.get("SCRAPER_API_KEY", ""),
+        runner_name="local-cli",
+    )
+
+    # Inject credentials from coordinator/Supabase/env if available
     for ref in (scraper_cfg.credential_refs or []):
-        env_creds = ScraperAPIClient.get_credentials_from_env(ref)
-        if env_creds:
+        creds = credential_client.get_credentials(ref)
+        if creds:
             if scraper_cfg.options is None:
                 scraper_cfg.options = {}
-            scraper_cfg.options["_credentials"] = env_creds
-            logger.info(f"[Local] Injected credentials from env for '{ref}'")
+            scraper_cfg.options["_credentials"] = creds
+            logger.info(f"[Local] Injected credentials for '{ref}'")
             break
 
     job_config = JobConfig(
@@ -126,7 +133,7 @@ def run_local_mode(args: argparse.Namespace) -> None:
 
     logger.info(f"[Local] Starting local scrape job: {job_id}")
     try:
-        results = run_job(job_config, runner_name="local-cli", api_client=None)
+        results = run_job(job_config, runner_name="local-cli", api_client=credential_client)
     except Exception as e:
         logger.exception(f"[Local] Job failed: {e}")
         sys.exit(1)

@@ -68,6 +68,24 @@ class LoginAction(BaseAction):
         if "_credentials" in creds:
             params["username"] = creds["_credentials"].get("username")
             params["password"] = creds["_credentials"].get("password")
+            if creds["_credentials"].get("api_key") and not params.get("api_key"):
+                params["api_key"] = creds["_credentials"].get("api_key")
+
+        if not params.get("username") or not params.get("password"):
+            resolved_credentials = getattr(self.ctx, "credentials", {}) or {}
+            credential_refs = list(getattr(self.ctx.config, "credential_refs", []) or [])
+            candidate_refs = [scraper_name, *credential_refs]
+
+            for ref in candidate_refs:
+                resolved = resolved_credentials.get(ref)
+                if not resolved:
+                    continue
+                params.setdefault("username", resolved.get("username"))
+                params.setdefault("password", resolved.get("password"))
+                if resolved.get("api_key") and not params.get("api_key"):
+                    params["api_key"] = resolved.get("api_key")
+                if params.get("username") and params.get("password"):
+                    break
 
         username = params.get("username")
         password = params.get("password")
@@ -89,18 +107,18 @@ class LoginAction(BaseAction):
             # Navigate
             from scrapers.models.config import WorkflowStep
 
-            self.ctx._execute_step(WorkflowStep(action="navigate", params={"url": login_url}))
+            await self.ctx._execute_step(WorkflowStep(action="navigate", params={"url": login_url}))
 
             # In test mode, validate login selectors exist on the page
             if test_mode:
-                self._validate_login_selectors(params)
+                await self._validate_login_selectors(params)
 
             # Check if already logged in
             success_indicator = params.get("success_indicator")
             if success_indicator:
                 try:
                     # Check quickly if we are already logged in
-                    self.ctx._execute_step(
+                    await self.ctx._execute_step(
                         WorkflowStep(
                             action="wait_for",
                             params={"selector": success_indicator, "timeout": 5},
@@ -132,29 +150,29 @@ class LoginAction(BaseAction):
             username_field = params.get("username_field")
             if username_field:
                 # Wait for username field to appear (with timeout)
-                self.ctx._execute_step(
+                await self.ctx._execute_step(
                     WorkflowStep(
                         action="wait_for",
                         params={"selector": username_field, "timeout": 15},
                     )
                 )
                 # Input username
-                self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": username_field, "text": username}))
+                await self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": username_field, "text": username}))
 
             # Input password
             password_field = params.get("password_field")
             if password_field:
-                self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": password_field, "text": password}))
+                await self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": password_field, "text": password}))
 
             # Click submit
             submit_button = params.get("submit_button")
             if submit_button:
-                self.ctx._execute_step(WorkflowStep(action="click", params={"selector": submit_button}))
+                await self.ctx._execute_step(WorkflowStep(action="click", params={"selector": submit_button}))
 
             # Wait for success
             timeout = params.get("timeout", 30)
             if success_indicator:
-                self.ctx._execute_step(
+                await self.ctx._execute_step(
                     WorkflowStep(
                         action="wait_for",
                         params={"selector": success_indicator, "timeout": timeout},
@@ -193,7 +211,7 @@ class LoginAction(BaseAction):
                 continue
 
             # Check if element exists
-            element = self.ctx.find_element_safe(selector)
+            element = await self.ctx.find_element_safe(cast(str, selector), required=False)
             status = "FOUND" if element else "MISSING"
 
             # Log in format expected by TestingPage: [LOGIN_SELECTOR] name: 'STATUS'

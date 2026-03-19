@@ -268,6 +268,7 @@ def run_job(
                 "test_skus": scraper_cfg.test_skus if scraper_cfg.test_skus is not None else [],
                 "retries": getattr(scraper_cfg, "retries", 3),
                 "validation": getattr(scraper_cfg, "validation", None),
+                "login": getattr(scraper_cfg, "login", None),
                 "credential_refs": getattr(scraper_cfg, "credential_refs", []) or [],
             }
 
@@ -389,17 +390,33 @@ def run_job(
                             except Exception:
                                 pass
 
-                            results["data"][sku][cfg_name] = {
-                                # Note: Price is NOT scraped - we use our own pricing
-                                "title": extracted_data.get("Name"),
-                                "brand": extracted_data.get("Brand"),
-                                "weight": extracted_data.get("Weight"),
-                                "description": extracted_data.get("Description"),
-                                "images": extracted_data.get("Image URLs", []) or extracted_data.get("Images", []),
-                                "availability": extracted_data.get("Availability"),
-                                "url": page_url,
-                                "scraped_at": datetime.now().isoformat(),
-                            }
+                        results["data"][sku][cfg_name] = {
+                            # Note: Price is NOT scraped - we use our own pricing
+                            "title": extracted_data.get("Name"),
+                            "brand": extracted_data.get("Brand"),
+                            "weight": extracted_data.get("Weight"),
+                            "description": extracted_data.get("Description"),
+                            "images": images,
+                            "availability": extracted_data.get("Availability"),
+                            "category": extracted_data.get("Category"),
+                            "categories": extracted_data.get("Categories"),
+                            "product_type": extracted_data.get("ProductType"),
+                            "item_number": extracted_data.get("ItemNumber") or extracted_data.get("Item Number"),
+                            "manufacturer_part_number": extracted_data.get("ManufacturerPartNumber")
+                            or extracted_data.get("Manufacturer Part Number")
+                            or extracted_data.get("model_number")
+                            or extracted_data.get("ModelNumber")
+                            or extracted_data.get("Model Number")
+                            or extracted_data.get("Mfg#")
+                            or extracted_data.get("Mfg No")
+                            or extracted_data.get("MfgNo"),
+                            "unit_of_measure": extracted_data.get("UoM") or extracted_data.get("Unit of Measure"),
+                            "upc": extracted_data.get("UPC"),
+                            "size": extracted_data.get("Size"),
+                            "size_options": extracted_data.get("Size Options") or extracted_data.get("SizeOptions"),
+                            "url": page_url,
+                            "scraped_at": datetime.now().isoformat(),
+                        }
 
                         collector.add_result(sku, cfg_name, extracted_data)
 

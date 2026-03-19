@@ -28,6 +28,18 @@ function decrypt(payload: { encryptedValue: string; iv: string; authTag: string 
   return decrypted.toString('utf8');
 }
 
+function tryParseCredentialPayload(value: string): { username?: string; password?: string; api_key?: string; type?: string } | null {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as { username?: string; password?: string; api_key?: string; type?: string };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const apiKey = request.headers.get('x-api-key');
@@ -46,38 +58,53 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .from('scraper_credentials')
       .select('encrypted_value, iv, auth_tag, credential_type')
       .eq('scraper_slug', scraperSlug)
-      .single();
+      .order('credential_type', { ascending: true });
 
-    if (error || !data) {
+    if (error || !data || data.length === 0) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const row = data as EncryptedRow;
+    const rows = data as EncryptedRow[];
+    const resolved: { username?: string; password?: string; api_key?: string; type?: string } = {};
 
-    let decrypted: string;
-    try {
-      decrypted = decrypt({ encryptedValue: row.encrypted_value, iv: row.iv, authTag: row.auth_tag });
-    } catch (err) {
-      // Do not leak internal error details
-      console.error('[Scraper Credentials API] Decryption failed');
+    for (const row of rows) {
+      let decrypted: string;
+      try {
+        decrypted = decrypt({ encryptedValue: row.encrypted_value, iv: row.iv, authTag: row.auth_tag });
+      } catch {
+        console.error('[Scraper Credentials API] Decryption failed');
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      }
+
+      const parsed = tryParseCredentialPayload(decrypted);
+      if (parsed) {
+        if (parsed.username) resolved.username = parsed.username;
+        if (parsed.password) resolved.password = parsed.password;
+        if (parsed.api_key) resolved.api_key = parsed.api_key;
+        if (parsed.type) resolved.type = parsed.type;
+        continue;
+      }
+
+      if (row.credential_type === 'login') {
+        resolved.username = decrypted;
+      } else if (row.credential_type === 'password') {
+        resolved.password = decrypted;
+      } else if (row.credential_type === 'api_key') {
+        resolved.api_key = decrypted;
+      }
+    }
+
+    if (!resolved.username || !resolved.password) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // Expect decrypted payload to be JSON: { username, password, type }
-    let parsed: { username?: string; password?: string; type?: string } | null = null;
-    try {
-      parsed = JSON.parse(decrypted);
-    } catch (err) {
-      console.error('[Scraper Credentials API] Invalid credential payload');
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
-
-    if (!parsed || !parsed.username || !parsed.password) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ username: parsed.username, password: parsed.password, type: parsed.type ?? row.credential_type ?? 'basic' });
-  } catch (err) {
+    return NextResponse.json({
+      username: resolved.username,
+      password: resolved.password,
+      ...(resolved.api_key ? { api_key: resolved.api_key } : {}),
+      type: resolved.type ?? 'basic',
+    });
+  } catch {
     console.error('[Scraper Credentials API] Request error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
