@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   Package,
   ExternalLink,
@@ -64,6 +64,7 @@ export function ScrapedResultsView({
     products.length > 0 ? products[0].sku : null,
   );
   const [preferredSource, setPreferredSource] = useState<string>("");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedProduct =
     products.find((product) => product.sku === preferredSku) ??
@@ -83,6 +84,61 @@ export function ScrapedResultsView({
 
     return sourceKeys[0] ?? "";
   }, [preferredSource, sourceKeys]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (
+        activeElement?.tagName === "INPUT" ||
+        activeElement?.tagName === "TEXTAREA" ||
+        activeElement?.getAttribute("contenteditable") === "true"
+      ) {
+        return;
+      }
+
+      if (products.length === 0) return;
+
+      const currentIndex = products.findIndex((p) => p.sku === preferredSku);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIndex = Math.min(currentIndex + 1, products.length - 1);
+        const nextSku = products[nextIndex].sku;
+        setPreferredSku(nextSku);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const nextIndex = Math.max(currentIndex - 1, 0);
+        const nextSku = products[nextIndex].sku;
+        setPreferredSku(nextSku);
+      } else if (e.key === " ") {
+        if (preferredSku) {
+          e.preventDefault();
+          const isChecked = selectedSkus.has(preferredSku);
+          onSelectSku(
+            preferredSku,
+            !isChecked,
+            currentIndex,
+            e.shiftKey,
+            products
+          );
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [preferredSku, products, selectedSkus, onSelectSku]);
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (preferredSku && scrollContainerRef.current) {
+      const activeElement = scrollContainerRef.current.querySelector(`[data-sku="${preferredSku}"]`);
+      if (activeElement) {
+        activeElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+  }, [preferredSku]);
 
   const handleDeleteSource = async (sourceKey: string) => {
     if (!selectedProduct) return;
@@ -141,7 +197,7 @@ export function ScrapedResultsView({
     <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
           <div className="divide-y">
             {products.map((product, index) => {
               const name =
@@ -156,14 +212,12 @@ export function ScrapedResultsView({
               return (
                 <div
                   key={product.sku}
+                  data-sku={product.sku}
                   className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
-                    isSelected ? "bg-primary/5" : ""
+                    isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_#008850]" : ""
                   }`}
                   onClick={() => setPreferredSku(product.sku)}
                 >
-                  {isSelected && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-                  )}
                   <div className="flex items-start gap-3">
                     <div
                       className="pt-1"
