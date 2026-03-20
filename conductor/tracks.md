@@ -14,15 +14,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Pipeline Workflow Redesign & Enrichment Enhancements**
-*Link: [./tracks/pipeline_workflow_redesign_20260314/](./tracks/pipeline_workflow_redesign_20260314/)*
-
----
-
 - [ ] **Track: Refactor product ingestion pipeline: implement database-level JSONB merging, streaming batch creation, standardized ProductSourceSchema, and a failed-callback retry queue.**
 *Link: [./tracks/pipeline_refactor_20260314/](./tracks/pipeline_refactor_20260314/)*
 
 ---
 
-- [ ] **Track: Admin Panel Dashboard Overhaul and Product Reset**
+- [x] **Track: Admin Panel Dashboard Overhaul and Product Reset**
 *Link: [./tracks/admin_dashboard_overhaul_20260320/](./tracks/admin_dashboard_overhaul_20260320/)*
