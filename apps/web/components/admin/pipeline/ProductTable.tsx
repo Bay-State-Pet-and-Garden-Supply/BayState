@@ -190,7 +190,9 @@ export function ProductTable({
               {name}
             </span>
             {product.error_message && (
-              <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" title={product.error_message} />
+              <span title={product.error_message} className="shrink-0 flex items-center justify-center">
+                <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+              </span>
             )}
           </div>
         );
