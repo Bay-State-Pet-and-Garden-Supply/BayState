@@ -56,8 +56,9 @@ describe('POST /api/scraper/v1/poll', () => {
         mockSupabase = {
             from: jest.fn().mockReturnThis(),
             update: jest.fn().mockReturnThis(),
-            select: jest.fn().mockReturnThis(),
+            select: jest.fn().mockResolvedValue({ data: [{ name: 'test-runner' }], error: null }),
             eq: jest.fn().mockReturnThis(),
+            neq: jest.fn().mockReturnThis(),
             in: jest.fn().mockReturnThis(),
             rpc: jest.fn(),
             channel: jest.fn().mockReturnValue({
@@ -100,7 +101,6 @@ describe('POST /api/scraper/v1/poll', () => {
             runnerName: 'test-runner',
             allowedScrapers: null 
         });
-        mockSupabase.eq.mockResolvedValue({ error: null });
         mockSupabase.rpc.mockResolvedValue({ data: [], error: null });
 
         const req = createRequest({});
@@ -116,8 +116,6 @@ describe('POST /api/scraper/v1/poll', () => {
             runnerName: 'test-runner',
             allowedScrapers: null 
         });
-        mockSupabase.eq.mockResolvedValue({ error: null });
-        mockSupabase.in.mockReturnThis();
         mockSupabase.rpc.mockResolvedValue({ 
             data: [{ job_id: 'job-123', skus: [], scrapers: [], test_mode: false, max_workers: 3 }], 
             error: null 
@@ -129,6 +127,22 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(res.status).toBe(400);
         const data = await res.json();
         expect(data.error).toContain('no SKUs');
+    });
+
+    it('returns null job when the runner is disabled', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+        mockSupabase.select.mockResolvedValueOnce({ data: [], error: null });
+
+        const req = createRequest({});
+        const res = await POST(req);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.job).toBeNull();
+        expect(mockSupabase.rpc).not.toHaveBeenCalled();
     });
 
     it('should return job successfully when SKUs present', async () => {

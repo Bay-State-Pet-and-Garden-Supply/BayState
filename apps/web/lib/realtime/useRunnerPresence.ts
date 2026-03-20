@@ -6,12 +6,12 @@
  * to maintain a live view of which runners are online, busy, or offline.
  */
 
-import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
-import type { RunnerPresence } from './types';
+import { useEffect, useMemo, useCallback, useState, useRef } from "react";
+import { RealtimeChannel } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import type { RunnerPresence } from "./types";
 
-const CHANNEL_RUNNER_PRESENCE = 'runner-presence';
+const CHANNEL_RUNNER_PRESENCE = "runner-presence";
 
 /**
  * Runner presence state managed by the hook
@@ -59,9 +59,11 @@ interface ApiRunnerData {
   id: string;
   name: string;
   os: string;
-  status: 'online' | 'offline' | 'busy' | 'idle';
+  status: "online" | "offline" | "busy" | "idle";
   busy: boolean;
   labels: string[];
+  last_seen?: string;
+  active_jobs?: number;
 }
 
 /**
@@ -104,7 +106,9 @@ export interface UseRunnerPresenceReturn extends RunnerPresenceState {
  * });
  * ```
  */
-export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRunnerPresenceReturn {
+export function useRunnerPresence(
+  options: UseRunnerPresenceOptions = {},
+): UseRunnerPresenceReturn {
   const {
     channelName: providedChannelName,
     autoConnect = true,
@@ -115,8 +119,10 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
   } = { ...DEFAULT_OPTIONS, ...options };
 
   const channelName = useMemo(
-    () => providedChannelName ?? `runners-presence-${Math.random().toString(36).substring(2, 9)}`,
-    [providedChannelName]
+    () =>
+      providedChannelName ??
+      `runners-presence-${Math.random().toString(36).substring(2, 9)}`,
+    [providedChannelName],
   );
 
   const [state, setState] = useState<RunnerPresenceState>({
@@ -152,37 +158,40 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
   const fetchInitialRunners = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/admin/scraper-network/runners');
-      
+      const response = await fetch("/api/admin/scraper-network/runners");
+
       if (!response.ok) {
-        throw new Error('Failed to fetch runners');
+        throw new Error("Failed to fetch runners");
       }
-      
-      const data = await response.json() as { runners: ApiRunnerData[] };
-      
+
+      const data = (await response.json()) as { runners: ApiRunnerData[] };
+
       // Convert API data to RunnerPresence format
       const initialRunners: Record<string, RunnerPresence> = {};
-      
+
       data.runners.forEach((runner) => {
         initialRunners[runner.id] = {
           runner_id: runner.id,
           runner_name: runner.name,
-          status: runner.status === 'offline' ? 'offline' : 'online',
-          active_jobs: runner.busy ? 1 : 0,
-          last_seen: new Date().toISOString(),
+          status: runner.status === "offline" ? "offline" : "online",
+          active_jobs: runner.active_jobs ?? (runner.busy ? 1 : 0),
+          last_seen: runner.last_seen ?? new Date(0).toISOString(),
           metadata: {
             os: runner.os,
             labels: runner.labels,
           },
         };
       });
-      
+
       setState((prev) => ({
         ...prev,
         runners: initialRunners,
       }));
     } catch (err) {
-      console.error('[useRunnerPresence] Failed to fetch initial runners:', err);
+      console.error(
+        "[useRunnerPresence] Failed to fetch initial runners:",
+        err,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -205,14 +214,14 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
         config: {
           private: true,
           presence: {
-            key: 'admin-dashboard',
+            key: "admin-dashboard",
           },
         },
       });
 
       // Set up presence event handlers
       channel
-        .on('presence', { event: 'sync' }, () => {
+        .on("presence", { event: "sync" }, () => {
           const presenceState = channel.presenceState();
           const newRunners: Record<string, RunnerPresence> = {};
           const newOnlineIds = new Set<string>();
@@ -228,7 +237,11 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
               // We only care about actual runner presence data
               if (Array.isArray(presences) && presences.length > 0) {
                 const presence = presences[0] as unknown as RunnerPresence;
-                if (presence && typeof presence === 'object' && 'runner_id' in presence) {
+                if (
+                  presence &&
+                  typeof presence === "object" &&
+                  "runner_id" in presence
+                ) {
                   newRunners[presence.runner_id] = presence;
                   newOnlineIds.add(presence.runner_id);
 
@@ -259,17 +272,17 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
             };
           });
         })
-        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-          console.log('[useRunnerPresence] Runner joined:', key, newPresences);
+        .on("presence", { event: "join" }, ({ key, newPresences }) => {
+          console.log("[useRunnerPresence] Runner joined:", key, newPresences);
         })
-        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-          console.log('[useRunnerPresence] Runner left:', key, leftPresences);
+        .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
+          console.log("[useRunnerPresence] Runner left:", key, leftPresences);
         })
         .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
+          if (status === "SUBSCRIBED") {
             // Track our own presence (admin dashboard)
             await channel.track({
-              user: 'admin-dashboard',
+              user: "admin-dashboard",
               online_at: new Date().toISOString(),
             });
           }
@@ -279,8 +292,8 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
 
       setState((prev) => ({ ...prev, isConnected: true, error: null }));
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to connect');
-      console.error('[useRunnerPresence] Connection error:', error);
+      const error = err instanceof Error ? err : new Error("Failed to connect");
+      console.error("[useRunnerPresence] Connection error:", error);
       setState((prev) => ({ ...prev, error, isConnected: false }));
     }
   }, [channelName, getSupabase]);
@@ -295,7 +308,9 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
       channelRef.current = null;
     }
 
-    setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
+    setState((prev) =>
+      prev.isConnected ? { ...prev, isConnected: false } : prev,
+    );
   }, [getSupabase]);
 
   /**
@@ -305,7 +320,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
     if (channelRef.current) {
       // Trigger sync by tracking current state again
       channelRef.current.track({
-        user: 'admin-dashboard',
+        user: "admin-dashboard",
         synced_at: new Date().toISOString(),
       });
     }
@@ -318,7 +333,7 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
     (runnerId: string): RunnerPresence | undefined => {
       return state.runners[runnerId];
     },
-    [state.runners]
+    [state.runners],
   );
 
   /**
@@ -332,7 +347,8 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
    * Get count of busy runners
    */
   const getBusyCount = useCallback((): number => {
-    return Object.values(state.runners).filter((r) => r.status === 'busy').length;
+    return Object.values(state.runners).filter((r) => r.status === "busy")
+      .length;
   }, [state.runners]);
 
   /**
@@ -342,25 +358,25 @@ export function useRunnerPresence(options: UseRunnerPresenceOptions = {}): UseRu
     (runnerId: string): boolean => {
       return state.onlineIds.has(runnerId);
     },
-    [state.onlineIds]
+    [state.onlineIds],
   );
 
   /**
-    * Auto-connect on mount if enabled
-    */
+   * Auto-connect on mount if enabled
+   */
   useEffect(() => {
     const init = async () => {
       // Fetch initial runners from API first
       if (fetchInitial) {
         await fetchInitialRunners();
       }
-      
+
       // Then connect to presence channel
       if (autoConnect) {
         connect();
       }
     };
-    
+
     init();
 
     // Cleanup on unmount

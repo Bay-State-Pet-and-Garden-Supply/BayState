@@ -18,7 +18,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { deleteRunner } from '@/app/admin/scrapers/network/[id]/actions';
 import { RunnerManagementPanel } from './runner-management-panel';
 import { RunnerMetadataEditor } from './runner-metadata-editor';
@@ -31,6 +30,7 @@ export interface RunnerDetail {
   id: string;
   name: string;
   status: RunnerStatus;
+  enabled: boolean;
   last_seen_at: string | null;
   active_jobs: number;
   region: string | null;
@@ -72,6 +72,7 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const accessBadgeVariant: 'default' | 'destructive' = runner.enabled ? 'default' : 'destructive';
 
   const handleDelete = async () => {
     if (deleteConfirmName !== runner.name) {
@@ -113,6 +114,9 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
           <Badge variant={statusVariants[runner.status]}>
             {statusLabels[runner.status]}
           </Badge>
+          <Badge variant={accessBadgeVariant}>
+            {runner.enabled ? 'Enabled' : 'Disabled'}
+          </Badge>
           <Button
             variant="outline"
             size="sm"
@@ -137,10 +141,12 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
               <Badge variant={statusVariants[runner.status]}>
                 {statusLabels[runner.status]}
               </Badge>
-              <span className="text-sm text-gray-500">
-                {runner.active_jobs} active job{runner.active_jobs !== 1 ? 's' : ''}
-              </span>
             </div>
+            <p className="mt-2 text-sm text-gray-500">
+              {runner.enabled
+                ? `${runner.active_jobs} active job${runner.active_jobs !== 1 ? 's' : ''}`
+                : 'Job pickup disabled from the admin panel'}
+            </p>
           </CardContent>
         </Card>
 
