@@ -24,3 +24,4 @@ export * from './broadcast-types';
 export { useRunnerPresence } from './useRunnerPresence';
 export { useJobBroadcasts } from './useJobBroadcasts';
 export { useJobSubscription } from './useJobSubscription';
+export { useLogSubscription } from './useLogSubscription';

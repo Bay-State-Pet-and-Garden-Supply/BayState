@@ -65,6 +65,7 @@ describe('pipeline status transition CRUD', () => {
         expect(select).toHaveBeenCalledWith('pipeline_status');
         expect(counts).toEqual([
             { status: 'imported', count: 2 },
+            { status: 'monitoring', count: 0 },
             { status: 'scraped', count: 1 },
             { status: 'consolidated', count: 1 },
             { status: 'finalized', count: 1 },

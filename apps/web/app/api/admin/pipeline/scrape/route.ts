@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { scrapeProducts } from '@/lib/pipeline-scraping';
-import { bulkUpdateStatus } from '@/lib/pipeline';
 
 /**
  * POST /api/admin/pipeline/scrape
@@ -45,18 +44,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
-        // Transition products to 'scraped' status
-        const statusResult = await bulkUpdateStatus(skus, 'scraped', auth.user.id);
-        if (!statusResult.success) {
-            console.warn('[Pipeline Scrape] Jobs created but status transition failed:', statusResult.error);
-        }
+        // Status transition is handled by the scraper callback when results arrive.
+        // Products stay in their current status until meaningful data is delivered.
 
         return NextResponse.json({
             success: true,
             jobIds: result.jobIds,
             skuCount: skus.length,
             scraperCount: scrapers.length,
-            statusUpdated: statusResult.success,
         });
     } catch (error) {
         console.error('[Pipeline Scrape] Request failed:', error);
