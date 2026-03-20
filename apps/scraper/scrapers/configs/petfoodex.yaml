@@ -111,7 +111,7 @@ workflows:
   - action: transform_value
     name: null
     params:
-      regex: EA:\s*([0-9]+)
+      regex: "(?:UPC#:\\s*(?:[A-Z]+:\\s*)?|EA:\\s*)([0-9]{8,14})"
       source_field: Product Meta
       target_field: UPC
   - action: transform_value
