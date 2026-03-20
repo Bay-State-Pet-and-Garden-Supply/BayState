@@ -301,14 +301,6 @@ export function PipelineProductCard({
                         )}
                     </div>
 
-                    {confidenceScore !== undefined && confidenceScore > 0 && (
-                        <div className="flex items-center gap-1 mb-2">
-                            <TrendingUp className={`h-3 w-3 ${getConfidenceColor(confidenceScore)}`} />
-                            <span className={`text-xs font-medium ${getConfidenceColor(confidenceScore)}`}>
-                                {(confidenceScore * 100).toFixed(0)}% confidence
-                            </span>
-                        </div>
-                    )}
 
                     {hasScrapedData && (
                         <div className="flex items-center gap-1 mb-3">

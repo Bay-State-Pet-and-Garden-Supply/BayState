@@ -19,8 +19,26 @@ export async function GET(request: NextRequest) {
     const minConfidence = searchParams.get('minConfidence') ? parseFloat(searchParams.get('minConfidence')!) : undefined;
     const maxConfidence = searchParams.get('maxConfidence') ? parseFloat(searchParams.get('maxConfidence')!) : undefined;
 
-    if (selectAll) {
-        const { skus, count } = await getSkusByStatus(status, {
+    try {
+        if (selectAll) {
+            const { skus, count } = await getSkusByStatus(status, {
+                search: search || undefined,
+                startDate,
+                endDate,
+                source,
+                minConfidence,
+                maxConfidence,
+            });
+
+            return NextResponse.json({
+                skus,
+                count,
+            });
+        }
+
+        const { products, count } = await getProductsByStatus(status, {
+            limit,
+            offset,
             search: search || undefined,
             startDate,
             endDate,
@@ -29,24 +47,14 @@ export async function GET(request: NextRequest) {
             maxConfidence,
         });
 
-        return NextResponse.json({
-            skus,
-            count,
-        });
+        return NextResponse.json({ products, count });
+    } catch (error) {
+        console.error('Pipeline GET error:', error);
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Unknown error during pipeline fetch' },
+            { status: 500 }
+        );
     }
-
-    const { products, count } = await getProductsByStatus(status, {
-        limit,
-        offset,
-        search: search || undefined,
-        startDate,
-        endDate,
-        source,
-        minConfidence,
-        maxConfidence,
-    });
-
-    return NextResponse.json({ products, count });
 }
 
 export async function POST(request: NextRequest) {

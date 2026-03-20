@@ -347,22 +347,6 @@ export function PipelineProductDetail({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="stockStatus">Stock Status</Label>
-                <Select value={stockStatus} onValueChange={setStockStatus}>
-                  <SelectTrigger aria-label="Stock Status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stockStatusOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className="flex items-center gap-2 pt-2">
                 <Checkbox
                   id="featured"

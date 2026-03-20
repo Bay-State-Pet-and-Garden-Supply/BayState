@@ -59,7 +59,6 @@ const RELEVANT_FIELDS = [
     'case_pack',
     'unit_of_measure',
     'size_options',
-    'availability',
     'confidence',
     'source_website',
 ];

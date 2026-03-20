@@ -397,8 +397,6 @@ export class ShopSiteClient {
             const categoryName = this.extractXmlValue(productXml, 'ProductField24');
             const productTypeName = this.extractXmlValue(productXml, 'ProductField25');
 
-            // Availability and status
-            const availability = this.extractXmlValue(productXml, 'Availability') || this.extractXmlValue(productXml, 'availability');
 
             // SEO and content
             const fileName = this.extractXmlValue(productXml, 'FileName');
@@ -443,7 +441,6 @@ export class ShopSiteClient {
                 categoryName,
                 productTypeName,
                 isDisabled,
-                availability,
                 fileName,
                 moreInfoText,
                 searchKeywords,

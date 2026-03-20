@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { StageTabs } from './StageTabs';
 import { ProductTable } from './ProductTable';
@@ -70,11 +70,53 @@ export function PipelineClient({
     await Promise.all([fetchProducts(currentStage, search), fetchCounts()]);
   }, [currentStage, search, fetchProducts, fetchCounts]);
 
+  const isFirstMount = useRef(true);
+
   // Fetch products when stage or search changes
   useEffect(() => {
-    fetchProducts(currentStage, search);
-    setSelectedSkus(new Set());
-  }, [currentStage, fetchProducts, search]);
+    // Skip initial fetch since we have initialProducts from props
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
+    let isMounted = true;
+
+    const performFetch = async () => {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          status: currentStage,
+          limit: '500',
+        });
+        if (search) params.set('search', search);
+
+        const res = await fetch(`/api/admin/pipeline?${params}`);
+        if (!res.ok) throw new Error('Failed to fetch products');
+        const data = await res.json();
+        
+        if (isMounted) {
+          setProducts(data.products || []);
+          setTotalCount(data.count || 0);
+          setSelectedSkus(new Set());
+        }
+      } catch (error) {
+        if (isMounted) {
+          toast.error('Failed to fetch products');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    performFetch();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentStage, search]);
 
   // Handle stage tab change
   const handleStageChange = (stage: PipelineStatus) => {

@@ -44,7 +44,6 @@ export interface PipelineProduct {
     price?: number;
     images?: string[];
     brand_id?: string;
-    stock_status?: string;
     is_featured?: boolean;
   } | null;
   pipeline_status: PipelineStatus;

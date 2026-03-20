@@ -8,7 +8,6 @@ export interface CanonicalProductSourceRecord extends SourceRecord {
     size?: string | number;
     description?: string;
     images?: string[];
-    availability?: string;
     category?: string;
     categories?: string[];
     product_type?: string;
@@ -45,7 +44,7 @@ const AI_DIAGNOSTIC_ONLY_KEYS = new Set([
     '_scraped_at',
 ]);
 const SOURCE_FIELD_ALIASES: Record<string, string> = {
-    availability: 'availability',
+// Deleted availability alias
     bci_item_number: 'item_number',
     brand: 'brand',
     case_pack: 'case_pack',
