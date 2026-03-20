@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get('type');
 
-    if (!type || !['products', 'orders', 'customers'].includes(type)) {
+    if (!type || !['products', 'customers'].includes(type)) {
         return NextResponse.json(
-            { error: 'Invalid type. Must be products, orders, or customers.' },
+            { error: 'Invalid type. Must be products or customers.' },
             { status: 400 }
         );
     }
@@ -56,11 +56,6 @@ export async function GET(request: NextRequest) {
             footer = '</ShopSiteProducts>';
             const products = await client.fetchProducts(TEST_LIMIT);
             xmlContent = products.map(p => p.rawXml).join('\n');
-        } else if (type === 'orders') {
-            header = '<?xml version="1.0" encoding="utf-8" ?>\n<ShopSiteOrders>';
-            footer = '</ShopSiteOrders>';
-            const orders = await client.fetchOrders({ limit: TEST_LIMIT });
-            xmlContent = orders.map(o => o.rawXml).join('\n');
         } else if (type === 'customers') {
             header = '<?xml version="1.0" encoding="utf-8" ?>\n<customers>';
             footer = '</customers>';

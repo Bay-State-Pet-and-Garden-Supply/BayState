@@ -5,7 +5,7 @@ import path from 'path';
 
 // Manual .env loading to avoid dependencies
 const envPath = path.resolve(__dirname, '../.env.local');
-let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+let supabaseUrl = process.env.SUPABASE_URL;
 let supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (fs.existsSync(envPath)) {
@@ -14,7 +14,7 @@ if (fs.existsSync(envPath)) {
     const [key, ...valueParts] = line.split('=');
     if (key && valueParts.length > 0) {
       const val = valueParts.join('=').trim().replace(/^["']|["']$/g, ''); // strip quotes
-      if (key.trim() === 'NEXT_PUBLIC_SUPABASE_URL') supabaseUrl = val;
+      if (key.trim() === 'SUPABASE_URL') supabaseUrl = val;
       if (key.trim() === 'SUPABASE_SERVICE_ROLE_KEY') supabaseKey = val;
     }
   });

@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { generateAPIKey } from '@/lib/scraper-auth';
 
 function getSupabaseAdmin(): SupabaseClient {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
         throw new Error('Missing Supabase configuration');
@@ -18,8 +18,8 @@ function getSupabaseAdmin(): SupabaseClient {
 async function getAuthenticatedUser() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_ANON_KEY!,
         {
             cookies: {
                 getAll() {

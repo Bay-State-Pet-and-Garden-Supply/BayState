@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Database, RefreshCw } from 'lucide-react';
-import { getCredentials, saveCredentialsAction, syncProductsFormAction, syncCustomersFormAction, syncOrdersFormAction } from './actions';
+import { getCredentials, saveCredentialsAction, syncProductsFormAction, syncCustomersFormAction } from './actions';
 import { getRecentMigrationLogs } from '@/lib/admin/migration/history';
 import { DownloadXmlButtons } from '@/components/admin/migration/download-xml-buttons';
 import { MigrationHistory } from '@/components/admin/migration/migration-history';
@@ -21,7 +21,7 @@ export default async function AdminMigrationPage() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Data Migration</h1>
                 <p className="text-muted-foreground">
-                    Sync products, customers, and orders from ShopSite
+                    Sync products and customers from ShopSite (orders are deprecated)
                 </p>
             </div>
 
@@ -111,9 +111,6 @@ export default async function AdminMigrationPage() {
                                 </form>
                                 <form action={syncCustomersFormAction}>
                                     <SyncButton label="Sync Customers" />
-                                </form>
-                                <form action={syncOrdersFormAction}>
-                                    <SyncButton label="Sync Orders" />
                                 </form>
                             </div>
 

@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 function getSupabaseAdmin(): SupabaseClient {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const url = SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
         throw new Error('Missing Supabase configuration');
@@ -17,8 +17,8 @@ function getSupabaseAdmin(): SupabaseClient {
 async function getAuthenticatedUser() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        SUPABASE_URL!,
+        SUPABASE_ANON_KEY!,
         {
             cookies: {
                 getAll() {

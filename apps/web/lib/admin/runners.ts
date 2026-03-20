@@ -16,7 +16,7 @@ import type { RunnerPresence } from '@/lib/realtime/types';
 export async function getAllRunners(): Promise<RunnerPresence[]> {
     // Use service role to bypass RLS for admin dashboard
     const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
         {
             auth: {

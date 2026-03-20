@@ -1,15 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import {
-  ShoppingCart,
   Package,
-  DollarSign,
   PackagePlus,
   BarChart3,
   RefreshCw,
   Eye,
 } from 'lucide-react';
 import { StatCard } from '@/components/admin/dashboard/stat-card';
-import { RecentActivity } from '@/components/admin/dashboard/recent-activity';
 import { QuickActions } from '@/components/admin/dashboard/quick-actions';
 import { PipelineStatus } from '@/components/admin/dashboard/pipeline-status';
 import { formatCurrency } from '@/lib/utils';
@@ -17,31 +14,16 @@ import { formatCurrency } from '@/lib/utils';
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
-  // Fetch all dashboard data in parallel
+  // Fetch all dashboard data in parallel (orders are deprecated and no longer tracked here)
   const [
-    { count: pendingOrdersCount },
     { count: totalPublishedProducts },
-    { data: recentOrders },
     { data: pipelineCounts },
     { data: outOfStockProducts },
   ] = await Promise.all([
-    // Pending orders
-    supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending'),
-
     // Published products
     supabase
       .from('products')
       .select('*', { count: 'exact', head: true }),
-
-    // Recent orders (last 10)
-    supabase
-      .from('orders')
-      .select('id, order_number, status, total, created_at, customer_name')
-      .order('created_at', { ascending: false })
-      .limit(10),
 
     // Pipeline status counts - fetch all and count client-side
     supabase
@@ -78,33 +60,16 @@ export default async function AdminDashboard() {
     pipelineStatusCounts.scraped +
     pipelineStatusCounts.consolidated;
 
-  // Calculate today's revenue
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const todaysOrders = (recentOrders || []).filter(
-    (order) => new Date(order.created_at) >= today
-  );
-  const todaysRevenue = todaysOrders.reduce(
-    (sum, order) => sum + (order.total || 0),
-    0
-  );
-
-  // Build activity feed from recent orders
-  const activities = (recentOrders || []).slice(0, 5).map((order) => ({
-    id: order.id,
-    type: 'order' as const,
-    title: `Order #${order.order_number || order.id.slice(0, 8)}`,
-    description: `${order.customer_name || 'Customer'} - ${formatCurrency(order.total || 0)}`,
-    timestamp: order.created_at,
-    status:
-      order.status === 'completed'
-        ? ('success' as const)
-        : order.status === 'pending'
-          ? ('pending' as const)
-          : ('info' as const),
-    href: `/admin/orders/${order.id}`,
-  }));
+  // No order-based revenue/activities; orders are deprecated.
+  const activities: Array<{
+    id: string;
+    type: 'pipeline' | 'product';
+    title: string;
+    description: string;
+    timestamp: string;
+    status: 'info' | 'success' | 'warning' | 'pending';
+    href: string;
+  }> = [];
 
   // Quick actions
   const quickActions = [
@@ -114,7 +79,6 @@ export default async function AdminDashboard() {
       icon: PackagePlus,
       variant: needsReviewCount > 0 ? ('default' as const) : ('outline' as const),
     },
-    { label: 'View Orders', href: '/admin/orders', icon: ShoppingCart },
     { label: 'Sync Products', href: '/admin/migration', icon: RefreshCw },
     { label: 'View Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'View Store', href: '/', icon: Eye },
@@ -133,33 +97,12 @@ export default async function AdminDashboard() {
       {/* Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Pending Orders"
-          value={pendingOrdersCount || 0}
-          icon={ShoppingCart}
-          href="/admin/orders?status=pending"
-          variant={pendingOrdersCount && pendingOrdersCount > 0 ? 'warning' : 'default'}
-          subtitle={
-            pendingOrdersCount && pendingOrdersCount > 0
-              ? 'Needs attention'
-              : 'All caught up'
-          }
-        />
-
-        <StatCard
           title="New Product Review"
           value={needsReviewCount}
           icon={PackagePlus}
           href="/admin/pipeline"
           variant={needsReviewCount > 0 ? 'info' : 'default'}
           subtitle={`${needsReviewCount} new items to review`}
-        />
-
-        <StatCard
-          title="Today's Revenue"
-          value={formatCurrency(todaysRevenue)}
-          icon={DollarSign}
-          variant="success"
-          subtitle={`${todaysOrders.length} order${todaysOrders.length !== 1 ? 's' : ''} today`}
         />
 
         <StatCard
@@ -174,15 +117,30 @@ export default async function AdminDashboard() {
           }
           variant={outOfStockProducts?.length ? 'warning' : 'default'}
         />
+
+        <StatCard
+          title="Out of Stock"
+          value={outOfStockProducts?.length || 0}
+          icon={BarChart3}
+          href="/admin/products?status=out-of-stock"
+          subtitle={outOfStockProducts?.length ? 'Investigate soon' : 'No issues'}
+          variant={outOfStockProducts?.length ? 'warning' : 'default'}
+        />
+
+        <StatCard
+          title="Pipeline Items"
+          value={pipelineCounts?.length || 0}
+          icon={RefreshCw}
+          href="/admin/pipeline"
+          subtitle="Total items in product ingestion pipeline"
+          variant="default"
+        />
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-1">
         {/* Pipeline Status */}
         <PipelineStatus counts={pipelineStatusCounts} />
-
-        {/* Recent Activity */}
-        <RecentActivity activities={activities} />
       </div>
 
       {/* Quick Actions */}

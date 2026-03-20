@@ -1,4 +1,4 @@
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+import { SUPABASE_URL } from './config'
 
 interface ImageLoaderParams {
   src: string;

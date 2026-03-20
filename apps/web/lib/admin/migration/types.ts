@@ -111,7 +111,7 @@ export interface ShopSiteCustomer {
 // Migration Log Types
 // ============================================================================
 
-export type SyncType = 'products' | 'customers' | 'orders';
+export type SyncType = 'products' | 'customers';
 
 export interface MigrationLog {
     id: string;

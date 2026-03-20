@@ -13,8 +13,8 @@ const PLACEHOLDER_SUPABASE_URL = 'https://your-project.supabase.co'
 const PLACEHOLDER_SUPABASE_ANON_KEY = 'your-anon-key'
 
 function resolveSupabaseConfig(): SupabaseConfig | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+  const url = (process.env.SUPABASE_URL ?? process.env.SUPABASE_URL)?.trim() ?? ''
+  const anonKey = (process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY)?.trim() ?? ''
 
   if (!url || !anonKey) {
     return null
@@ -91,7 +91,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!supabaseConfig) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY')
+      throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY')
     }
 
     return response

@@ -24,7 +24,7 @@ export interface MigrationLogEntry {
 /**
  * Log the start of a migration sync.
  */
-export async function startMigrationLog(syncType: 'products' | 'customers' | 'orders'): Promise<string | null> {
+export async function startMigrationLog(syncType: 'products' | 'customers'): Promise<string | null> {
     const supabase = await createClient();
 
     const { data, error } = await supabase
