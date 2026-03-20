@@ -130,20 +130,6 @@ export function BulkToolbar({
         )}
       </div>
 
-      {/* Stage indicator */}
-      <div className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500">
-        <span>in</span>
-        <span
-          className="inline-flex items-center rounded-full px-2 py-0.5 font-medium"
-          style={{
-            backgroundColor: `${stageConfig.color}15`,
-            color: stageConfig.color,
-          }}
-        >
-          {stageConfig.label}
-        </span>
-      </div>
-
       {/* Search and Source Filter */}
       <div className="flex flex-1 items-center gap-2 min-w-[300px]">
         {isScrapedStage && onSourceFilterChange && (
