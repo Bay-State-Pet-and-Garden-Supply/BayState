@@ -3,7 +3,7 @@
 ## Phase 1: Foundation & Data Cleanup
 Goal: Prepare the database by removing placeholders and implementing the product reset logic.
 
-- [ ] Task: Create Product Reset Script
+- [x] Task: Create Product Reset Script a31dc6f
     - [ ] Write tests for product reset and placeholder removal logic
     - [ ] Implement script to reset `published` status and delete placeholder products in Supabase
     - [ ] Verify script execution and database state
