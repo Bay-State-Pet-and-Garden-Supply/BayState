@@ -1,23 +1,24 @@
-'use client';
+"use client";
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import type { PipelineStatus, StatusCount } from '@/lib/pipeline/types';
-import { STAGE_CONFIG } from '@/lib/pipeline/types';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import type { PipelineStage, StatusCount } from "@/lib/pipeline/types";
+import { STAGE_CONFIG } from "@/lib/pipeline/types";
 
 interface StageTabsProps {
-  currentStage: PipelineStatus;
+  currentStage: PipelineStage;
   counts: StatusCount[];
   onStageChange: (stage: PipelineStatus) => void;
 }
 
-const STAGE_ORDER: PipelineStatus[] = [
-  'imported',
-  'monitoring',
-  'scraped',
-  'consolidated',
-  'finalized',
-  'published',
+const STAGE_ORDER: PipelineStage[] = [
+  "imported",
+  "monitoring",
+  "scraped",
+  "consolidating",
+  "consolidated",
+  "finalized",
+  "published",
 ];
 
 export function StageTabs({
@@ -25,7 +26,10 @@ export function StageTabs({
   counts,
   onStageChange,
 }: StageTabsProps) {
-  const getCount = (stage: PipelineStatus): number => {
+  const getCount = (stage: PipelineStage): number => {
+    if (stage === "consolidating" || stage === "monitoring") {
+      return 0;
+    }
     const countData = counts.find((c) => c.status === stage);
     return countData?.count ?? 0;
   };
@@ -46,18 +50,18 @@ export function StageTabs({
               key={stage}
               value={stage}
               className="flex items-center gap-2 data-[state=active]:shadow-sm"
-              style={{
-                '--stage-color': config.color,
-              } as React.CSSProperties}
+              style={
+                {
+                  "--stage-color": config.color,
+                } as React.CSSProperties
+              }
             >
               <span>{config.label}</span>
               {count > 0 && (
                 <Badge
-                  variant={isActive ? 'default' : 'secondary'}
+                  variant={isActive ? "default" : "secondary"}
                   className={`ml-1 ${
-                    isActive
-                      ? 'bg-white/20 text-white hover:bg-white/30'
-                      : ''
+                    isActive ? "bg-white/20 text-white hover:bg-white/30" : ""
                   }`}
                 >
                   {count}
