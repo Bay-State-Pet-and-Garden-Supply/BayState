@@ -92,8 +92,9 @@ const nextConfig: NextConfig = {
     optimizeCss: false,
   },
 
-  // External packages that should not be bundled
-  serverExternalPackages: [],
+  // Externalize native/Node-heavy SFTP packages so Turbopack doesn't try to
+  // place ssh2 internals into ESM chunks during server builds on Vercel.
+  serverExternalPackages: ['ssh2', 'ssh2-sftp-client'],
 
   // Keep Turbopack rooted at the monorepo workspace so hoisted dependencies resolve consistently.
   turbopack: {
