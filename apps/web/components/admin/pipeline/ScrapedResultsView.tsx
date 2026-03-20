@@ -19,7 +19,13 @@ import { Separator } from "@/components/ui/separator";
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
   selectedSkus: Set<string>;
-  onSelectSku: (sku: string, selected: boolean) => void;
+  onSelectSku: (
+    sku: string,
+    selected: boolean,
+    index?: number,
+    isShiftClick?: boolean,
+    visibleProducts?: PipelineProduct[],
+  ) => void;
   onRefresh: () => void;
 }
 
@@ -59,8 +65,6 @@ export function ScrapedResultsView({
   );
   const [preferredSource, setPreferredSource] = useState<string>("");
 
-  const [sourceFilter, setSourceFilter] = useState<string>("");
-
   const selectedProduct =
     products.find((product) => product.sku === preferredSku) ??
     products[0] ??
@@ -72,26 +76,6 @@ export function ScrapedResultsView({
     [sources],
   );
 
-  const availableSourceFilters = useMemo(() => {
-    const all = new Set<string>();
-    products.forEach((product) => {
-      const productSources = product.sources ?? {};
-      Object.keys(productSources)
-        .filter((key) => !key.startsWith("_"))
-        .forEach((key) => all.add(key));
-    });
-    return Array.from(all).sort();
-  }, [products]);
-
-  const filteredProducts = useMemo(() => {
-    if (!sourceFilter) return products;
-    return products.filter((product) => {
-      const productSources = product.sources ?? {};
-      return Object.keys(productSources)
-        .filter((key) => !key.startsWith("_"))
-        .includes(sourceFilter);
-    });
-  }, [products, sourceFilter]);
   const activeSource = useMemo(() => {
     if (preferredSource && sourceKeys.includes(preferredSource)) {
       return preferredSource;
@@ -157,37 +141,9 @@ export function ScrapedResultsView({
     <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
-        <div className="p-3 border-b bg-muted/30">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Scraped Products ({filteredProducts.length})
-            </div>
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="source-filter"
-                className="text-[11px] text-muted-foreground"
-              >
-                Filter by source:
-              </label>
-              <select
-                id="source-filter"
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                className="rounded border border-muted-foreground/30 bg-white px-2 py-1 text-xs"
-              >
-                <option value="">All</option>
-                {availableSourceFilters.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
         <div className="flex-1 overflow-y-auto">
           <div className="divide-y">
-            {filteredProducts.map((product) => {
+            {products.map((product, index) => {
               const name =
                 product.consolidated?.name || product.input?.name || "Unknown";
               const price = product.consolidated?.price ?? product.input?.price;
@@ -213,14 +169,27 @@ export function ScrapedResultsView({
                       className="pt-1"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onSelectSku(product.sku, !isChecked);
+                        onSelectSku(
+                          product.sku,
+                          !isChecked,
+                          index,
+                          e.shiftKey,
+                          products,
+                        );
                       }}
                     >
                       <Checkbox
                         checked={isChecked}
                         onCheckedChange={(checked) =>
-                          onSelectSku(product.sku, !!checked)
+                          onSelectSku(
+                            product.sku,
+                            !!checked,
+                            index,
+                            false,
+                            products,
+                          )
                         }
+                        onClick={(e) => e.stopPropagation()}
                         className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                     </div>

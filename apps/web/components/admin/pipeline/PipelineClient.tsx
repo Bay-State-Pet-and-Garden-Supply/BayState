@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Activity, Brain } from "lucide-react";
 import { StageTabs } from "./StageTabs";
@@ -36,6 +36,35 @@ export function PipelineClient({
   const [isLoading, setIsLoading] = useState(false);
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+
+  const availableSourceFilters = useMemo(() => {
+    const all = new Set<string>();
+    products.forEach((product) => {
+      const productSources = product.sources ?? {};
+      Object.keys(productSources)
+        .filter((key) => !key.startsWith("_"))
+        .forEach((key) => all.add(key));
+    });
+    return Array.from(all).sort();
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    if (!sourceFilter || currentStage !== "scraped") return products;
+    return products.filter((product) => {
+      const productSources = product.sources ?? {};
+      return Object.keys(productSources)
+        .filter((key) => !key.startsWith("_"))
+        .includes(sourceFilter);
+    });
+  }, [products, sourceFilter, currentStage]);
+
+  // Reset source filter if the selected source is no longer available in the product set
+  useEffect(() => {
+    if (sourceFilter && availableSourceFilters.length > 0 && !availableSourceFilters.includes(sourceFilter)) {
+      setSourceFilter("");
+    }
+  }, [availableSourceFilters, sourceFilter]);
 
   // Fetch products for a specific stage
   const fetchProducts = useCallback(
@@ -127,30 +156,58 @@ export function PipelineClient({
   const handleStageChange = (stage: PipelineStage) => {
     setCurrentStage(stage);
     setSearch("");
+    setSourceFilter("");
   };
 
-  // Toggle single product selection
-  const handleSelectSku = (sku: string, selected: boolean) => {
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
+    null,
+  );
+
+  // Toggle product selection with optional Shift+Click range support
+  const handleSelectSku = (
+    sku: string,
+    selected: boolean,
+    index?: number,
+    isShiftClick?: boolean,
+    visibleProducts?: PipelineProduct[],
+  ) => {
+    const sourceProducts = visibleProducts ?? filteredProducts;
+
     setSelectedSkus((prev) => {
       const next = new Set(prev);
-      if (selected) {
-        next.add(sku);
+
+      if (isShiftClick && index !== undefined && lastSelectedIndex !== null) {
+        const [start, end] = [lastSelectedIndex, index].sort((a, b) => a - b);
+        const rangeSkus = sourceProducts
+          .slice(start, end + 1)
+          .map((p) => p.sku);
+        rangeSkus.forEach((skuItem) => next.add(skuItem));
       } else {
-        next.delete(sku);
+        if (selected) {
+          next.add(sku);
+        } else {
+          next.delete(sku);
+        }
       }
+
       return next;
     });
+
+    if (index !== undefined) {
+      setLastSelectedIndex(index);
+    }
   };
 
   // Select all visible products
   const handleSelectAllVisible = () => {
-    setSelectedSkus(new Set(products.map((p) => p.sku)));
+    setSelectedSkus(new Set(filteredProducts.map((p) => p.sku)));
   };
 
   // Select ALL matching (including beyond visible page) via API
   const handleSelectAll = async () => {
-    // If visible products cover the total, just select visible
-    if (products.length >= totalCount) {
+    // If we have a source filter, we only select what's visible since API doesn't support complex local filters easily
+    // or if visible products cover the total, just select visible
+    if (sourceFilter || products.length >= totalCount) {
       handleSelectAllVisible();
       return;
     }
@@ -355,7 +412,7 @@ export function PipelineClient({
       {currentStage !== "monitoring" && currentStage !== "consolidating" && (
         <BulkToolbar
           selectedCount={selectedSkus.size}
-          totalCount={totalCount}
+          totalCount={sourceFilter ? filteredProducts.length : totalCount}
           currentStage={currentStage}
           isLoading={isLoading}
           search={search}
@@ -365,6 +422,9 @@ export function PipelineClient({
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
+          sourceFilter={sourceFilter}
+          onSourceFilterChange={setSourceFilter}
+          availableSourceFilters={availableSourceFilters}
         />
       )}
 
@@ -414,14 +474,14 @@ export function PipelineClient({
           </div>
         ) : currentStage === "scraped" ? (
           <ScrapedResultsView
-            products={products}
+            products={filteredProducts}
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
             onRefresh={refreshAll}
           />
         ) : (
           <ProductTable
-            products={products}
+            products={filteredProducts}
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
             onSelectAll={handleSelectAllVisible}
