@@ -8,7 +8,7 @@ import { STAGE_CONFIG } from "@/lib/pipeline/types";
 interface StageTabsProps {
   currentStage: PipelineStage;
   counts: StatusCount[];
-  onStageChange: (stage: PipelineStatus) => void;
+  onStageChange: (stage: PipelineStage) => void;
 }
 
 const STAGE_ORDER: PipelineStage[] = [
@@ -37,7 +37,12 @@ export function StageTabs({
   return (
     <Tabs
       value={currentStage}
-      onValueChange={(value) => onStageChange(value as PipelineStatus)}
+      onValueChange={(value) => {
+        const nextStage = STAGE_ORDER.find((stage) => stage === value);
+        if (nextStage) {
+          onStageChange(nextStage);
+        }
+      }}
     >
       <TabsList className="flex-wrap h-auto gap-1 bg-muted/50 p-1">
         {STAGE_ORDER.map((stage) => {

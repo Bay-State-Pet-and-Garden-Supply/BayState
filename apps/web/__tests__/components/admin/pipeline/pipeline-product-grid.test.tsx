@@ -130,7 +130,7 @@ describe('PipelineProductGrid', () => {
       />
     );
 
-    const button = screen.getByText('Loading...') as HTMLButtonElement;
+    const button = screen.getByRole('button', { name: /Loading/i }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 

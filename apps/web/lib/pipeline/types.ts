@@ -15,6 +15,12 @@ export const PIPELINE_STATUS_VALUES = [
 
 export type PipelineStatus = (typeof PIPELINE_STATUS_VALUES)[number];
 
+const PIPELINE_STATUS_SET = new Set<string>(PIPELINE_STATUS_VALUES);
+
+export function isPipelineStatus(value: string): value is PipelineStatus {
+  return PIPELINE_STATUS_SET.has(value);
+}
+
 /**
  * Extended pipeline stages used in the UI pipeline tab flow.
  * Includes a transient consolidating monitoring stage.
@@ -95,7 +101,7 @@ export interface StageConfig {
  * Stage display configurations
  * Maps each pipeline status to its UI representation
  */
-export const STAGE_CONFIG: Record<PipelineStatus, StageConfig> = {
+export const STAGE_CONFIG: Record<PipelineStage, StageConfig> = {
   imported: {
     label: "Imported",
     color: "#6B7280",

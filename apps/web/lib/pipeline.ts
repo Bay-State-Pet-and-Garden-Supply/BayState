@@ -361,7 +361,17 @@ export async function bulkUpdateStatus(
         };
     }
 
-    const updatePayload: any = {
+    const updatePayload: {
+        pipeline_status: PipelineStatus;
+        updated_at: string;
+        sources?: Record<string, unknown>;
+        consolidated?: PipelineProduct['consolidated'];
+        image_candidates?: string[];
+        selected_images?: SelectedImage[];
+        confidence_score?: number | null;
+        error_message?: string | null;
+        retry_count?: number;
+    } = {
         pipeline_status: targetStatus,
         updated_at: new Date().toISOString(),
     };

@@ -61,10 +61,18 @@ export function useLogSubscription(
     const channelRef = useRef<RealtimeChannel | null>(null);
     const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
     const onLogRef = useRef(onLog);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
         onLogRef.current = onLog;
     }, [onLog]);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
 
     const getSupabase = useCallback(() => {
         if (!supabaseRef.current) {
@@ -152,11 +160,17 @@ export function useLogSubscription(
 
     useEffect(() => {
         if (autoConnect) {
-            connect();
+            const connectionTimeout = setTimeout(() => {
+                if (mountedRef.current) {
+                    connect();
+                }
+            }, 0);
+
+            return () => {
+                clearTimeout(connectionTimeout);
+                disconnect();
+            };
         }
-        return () => {
-            disconnect();
-        };
     }, [autoConnect, connect, disconnect]);
 
     return useMemo(

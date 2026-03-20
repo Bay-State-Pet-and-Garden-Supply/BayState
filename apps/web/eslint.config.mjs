@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".archive/**",
     // Test files and scripts (use TypeScript for type checking instead)
     "__tests__/**",
     "scripts/**",

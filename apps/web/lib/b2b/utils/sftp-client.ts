@@ -12,21 +12,16 @@ export interface SFTPClientResult {
   error?: string;
 }
 
+type SFTPClientConstructor = typeof import('ssh2-sftp-client');
 type SFTPClientModule = {
-  default: new () => {
-    connect(config: Record<string, unknown>): Promise<void>;
-    get(remotePath: string): Promise<Buffer | string>;
-    list(remotePath: string): Promise<Array<{ name: string }>>;
-    cwd(): Promise<string>;
-    end(): Promise<void>;
-  };
+  default: SFTPClientConstructor;
 };
 
-async function loadSFTPModule(): Promise<SFTPClientModule['default']> {
+async function loadSFTPModule(): Promise<SFTPClientConstructor> {
   if (typeof window !== 'undefined') {
     throw new Error('SFTP client can only be used on the server');
   }
-  const mod = await (eval('import("ssh2-sftp-client")') as Promise<SFTPClientModule>);
+  const mod = (await import('ssh2-sftp-client')) as unknown as SFTPClientModule;
   return mod.default;
 }
 

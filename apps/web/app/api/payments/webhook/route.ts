@@ -79,10 +79,9 @@ function mapPaymentIntentStatus(
     case 'requires_capture':
       return 'processing';
     case 'succeeded':
-    case 'canceled':
       return 'succeeded';
-    case 'requires_capture':
-      return 'processing';
+    case 'canceled':
+      return 'cancelled';
     default:
       return 'pending';
   }
