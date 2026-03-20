@@ -12,6 +12,8 @@ To provide internal operators with a high-fidelity, real-time control center for
 - **Scraper Admin Panel:** A high-density dashboard for triggering scraper jobs, viewing live execution logs, and managing scraper configurations.
 - **Job Monitoring:** Real-time feedback on job status (pending, running, completed, failed) with detailed error reporting for troubleshooting.
 - **Real-time Diagnostic Insights:** Mini-visualizations (sparklines) and expanded diagnostic views for immediate feedback on selector and extraction health.
+- **Live Product Metrics:** High-density overview of catalog health, including total counts, publication status, and inventory alerts.
+- **Unified Activity Feed:** Integrated stream of product updates, scraper events, and system alerts for end-to-end operational visibility.
 - **Performance & Reliability Engine:** Enhanced extraction stability through tiered timeouts, resource blocking, and intelligent retry policies to handle transient site failures.
 - **Supplier Config Management:** Centralized repository-based management of YAML scraper configurations, with a read-only viewer in the admin panel and dedicated credential management.
 
