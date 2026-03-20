@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, X, CheckSquare, Search } from 'lucide-react';
+import { Loader2, X, CheckSquare, Search, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PipelineStatus } from '@/lib/pipeline/types';
 import { STAGE_CONFIG } from '@/lib/pipeline/types';
@@ -14,10 +14,11 @@ const BULK_ACTIONS: Record<PipelineStatus, {
   nextStage: PipelineStatus | null; 
   resetLabel?: string;
   previousStage?: PipelineStatus | null;
+  secondaryAction?: string;
 }> = {
   imported: { label: 'Scrape Selected', nextStage: 'scraped' },
   monitoring: { label: '', nextStage: null, resetLabel: 'Cancel & Return to Import', previousStage: 'imported' },
-  scraped: { label: 'Consolidate Selected', nextStage: 'consolidated', resetLabel: 'Clear & Return to Import', previousStage: 'imported' },
+  scraped: { label: 'Consolidate Selected', nextStage: 'consolidated', resetLabel: 'Clear & Return to Import', previousStage: 'imported', secondaryAction: 'Scrape Additional Sources' },
   consolidated: { label: 'Finalize Selected', nextStage: 'finalized', resetLabel: 'Reset Consolidation', previousStage: 'scraped' },
   finalized: { label: 'Publish Selected', nextStage: 'published', resetLabel: 'Return to Consolidation', previousStage: 'consolidated' },
   published: { label: '', nextStage: null },
@@ -59,6 +60,7 @@ export function BulkToolbar({
   const hasBulkAction = !isTerminalStage && bulkAction.nextStage !== null;
   const hasResetAction = !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
   const isImported = currentStage === 'imported';
+  const hasSecondaryAction = !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
 
   const handlePrimaryAction = () => {
     if (isImported && onOpenScrapeDialog) {
@@ -168,6 +170,19 @@ export function BulkToolbar({
             className="h-9 border-zinc-300 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
           >
             {bulkAction.resetLabel}
+          </Button>
+        )}
+
+        {hasSecondaryAction && selectedCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenScrapeDialog?.()}
+            disabled={isLoading}
+            className="h-9 border-[#008850]/30 text-[#008850] hover:bg-[#008850]/5"
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            {bulkAction.secondaryAction}
           </Button>
         )}
 

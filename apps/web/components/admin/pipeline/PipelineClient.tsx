@@ -199,6 +199,8 @@ export function PipelineClient({
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
+    const isAdditionalScrape = currentStage === 'scraped';
+
     try {
       const res = await fetch('/api/admin/pipeline/scrape', {
         method: 'POST',
@@ -213,16 +215,25 @@ export function PipelineClient({
       if (res.ok) {
         const data = await res.json();
         toast.success(
-          `Created scrape job for ${skus.length} product${skus.length > 1 ? 's' : ''} with ${scrapers.length} scraper${scrapers.length !== 1 ? 's' : ''}`,
+          isAdditionalScrape
+            ? `Started additional scrape for ${skus.length} product${skus.length > 1 ? 's' : ''}`
+            : `Created scrape job for ${skus.length} product${skus.length > 1 ? 's' : ''} with ${scrapers.length} scraper${scrapers.length !== 1 ? 's' : ''}`,
           { description: `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? 'unknown'}...` }
         );
-        setCurrentStage('monitoring');
-        setSearch('');
+
         setIsScrapeDialogOpen(false);
         setSelectedSkus(new Set());
 
-        // Refresh monitoring view and counts after transitioning
-        await Promise.all([fetchCounts(), fetchProducts('monitoring')]);
+        if (isAdditionalScrape) {
+          // Stay on scraped tab, refresh to show updated results when callback delivers
+          setSearch('');
+          await refreshAll();
+        } else {
+          // Navigate to monitoring tab for initial scrapes
+          setCurrentStage('monitoring');
+          setSearch('');
+          await Promise.all([fetchCounts(), fetchProducts('monitoring')]);
+        }
       } else {
         const error = await res.json();
         toast.error(error.error || 'Failed to create scrape jobs');
