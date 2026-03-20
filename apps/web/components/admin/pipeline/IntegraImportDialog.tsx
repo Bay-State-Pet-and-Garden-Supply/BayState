@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Database, Loader2, X, CheckCircle, Upload, FileText, AlertCircle, ArrowRight } from 'lucide-react';
+import { Database, Loader2, X, CheckCircle, Upload, FileText, AlertCircle, ArrowRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { FileUpload } from '@/components/ui/file-upload';
 import { formatCurrency } from '@/lib/utils';
@@ -70,6 +69,9 @@ export function IntegraImportDialog({
         }
     };
 
+    const isBusy = isAnalyzing || isProcessing;
+    const hasNewProducts = analysis && analysis.newProducts.length > 0;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 backdrop-blur-sm p-4">
             <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col border border-zinc-200">
@@ -86,7 +88,7 @@ export function IntegraImportDialog({
                     </div>
                     <button
                         onClick={onCancel}
-                        disabled={isAnalyzing || isProcessing}
+                        disabled={isBusy}
                         className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors disabled:opacity-50"
                     >
                         <X className="h-5 w-5" />
@@ -114,45 +116,22 @@ export function IntegraImportDialog({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-                                <div className="lg:col-span-3">
-                                    <FileUpload
-                                        onFileSelect={handleFileChange}
-                                        accept=".xlsx, .xls"
-                                        maxSize={20}
-                                        loading={isAnalyzing}
-                                        selectedFile={file}
-                                        label={
-                                            <div className="py-4">
-                                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-50 text-orange-600 mb-4 group-hover:scale-110 transition-transform">
-                                                    <Upload className="h-6 w-6" />
-                                                </div>
-                                                <p className="text-sm font-medium text-zinc-900">
-                                                    <span className="text-orange-600">Click to upload</span> or drag and drop
-                                                </p>
-                                                <p className="text-xs text-zinc-400 mt-1">Excel spreadsheet up to 20MB</p>
-                                            </div>
-                                        }
-                                    />
-                                </div>
-                                <Button
-                                    onClick={handleAnalyze}
-                                    disabled={!file || isAnalyzing}
-                                    size="lg"
-                                    className="h-[148px] w-full flex-col gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-200 transition-all active:scale-[0.98]"
-                                >
-                                    {isAnalyzing ? (
-                                        <>
-                                            <Loader2 className="h-6 w-6 animate-spin" />
-                                            <span>Analyzing...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ArrowRight className="h-6 w-6" />
-                                            <span className="font-bold">Process File</span>
-                                        </>
-                                    )}
-                                </Button>
+                            <div className="space-y-4">
+                                <FileUpload
+                                    onFileSelect={handleFileChange}
+                                    accept=".xlsx, .xls"
+                                    maxSize={20}
+                                    loading={isAnalyzing}
+                                    selectedFile={file}
+                                    label={
+                                        <div className="py-4">
+                                            <p className="text-sm font-medium text-zinc-900">
+                                                <span className="text-orange-600 font-bold underline decoration-orange-200 underline-offset-4 hover:decoration-orange-500 transition-colors">Click to upload</span> or drag and drop
+                                            </p>
+                                            <p className="text-xs text-zinc-400 mt-2">Excel spreadsheet up to 20MB</p>
+                                        </div>
+                                    }
+                                />
                             </div>
                         </div>
                     ) : (
@@ -183,31 +162,14 @@ export function IntegraImportDialog({
 
                             {analysis.newProducts.length > 0 ? (
                                 <div className="space-y-6">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900 rounded-2xl p-6 text-white shadow-xl">
-                                        <div className="space-y-1">
+                                    <div className="bg-zinc-900 rounded-2xl p-6 text-white shadow-xl">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
                                             <h3 className="text-lg font-bold">Import Selection</h3>
-                                            <p className="text-sm text-zinc-400">
-                                                Found <span className="text-orange-400 font-bold">{analysis.newProducts.length}</span> items not in the live store.
-                                            </p>
                                         </div>
-                                        <Button
-                                            onClick={handleAddToOnboarding}
-                                            disabled={isProcessing}
-                                            size="lg"
-                                            className="bg-orange-500 hover:bg-orange-600 text-white border-none h-12 px-8 font-bold active:scale-[0.98] transition-all"
-                                        >
-                                            {isProcessing ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Importing…
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Add to Pipeline
-                                                </>
-                                            )}
-                                        </Button>
+                                        <p className="text-sm text-zinc-400">
+                                            Found <span className="text-orange-400 font-bold">{analysis.newProducts.length}</span> items not in the live store. Review the list below before finalizing the import.
+                                        </p>
                                     </div>
 
                                     <div className="rounded-2xl border border-zinc-200 overflow-hidden bg-white shadow-sm">
@@ -221,7 +183,7 @@ export function IntegraImportDialog({
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-zinc-100">
-                                                    {analysis.newProducts.slice(0, 50).map((product, idx) => (
+                                                    {analysis.newProducts.slice(0, 50).map((product) => (
                                                         <tr key={product.sku} className="group hover:bg-zinc-50/50 transition-colors">
                                                             <td className="px-6 py-4">
                                                                 <span className="font-mono text-zinc-900 bg-zinc-100 px-2 py-1 rounded text-xs border border-zinc-200/50">{product.sku}</span>
@@ -267,20 +229,13 @@ export function IntegraImportDialog({
                                     <p className="text-zinc-500 mt-2 max-w-sm mx-auto leading-relaxed">
                                         Excellent! Every product found in this export is already present in your website catalog.
                                     </p>
-                                    <Button 
-                                        variant="outline" 
-                                        className="mt-8 rounded-full px-8 h-11 font-bold border-zinc-200"
-                                        onClick={onCancel}
-                                    >
-                                        Return to Pipeline
-                                    </Button>
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
 
-                {/* Footer */}
+                {/* Footer Actions */}
                 <div className="flex items-center justify-between gap-3 border-t border-zinc-100 bg-zinc-50/50 px-8 py-5 flex-shrink-0 rounded-b-2xl">
                     <p className="text-xs text-zinc-400 font-medium">
                         Supported formats: CSV, XLSX, XLS
@@ -290,39 +245,62 @@ export function IntegraImportDialog({
                             type="button"
                             variant="ghost"
                             onClick={onCancel}
-                            disabled={isAnalyzing || isProcessing}
+                            disabled={isBusy}
                             className="text-zinc-500 font-bold hover:bg-zinc-200/50"
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="button"
-                            onClick={onCancel}
-                            className="bg-zinc-900 text-white hover:bg-zinc-800 font-bold px-6"
-                        >
-                            Done
-                        </Button>
+
+                        {!analysis ? (
+                            <Button
+                                onClick={handleAnalyze}
+                                disabled={!file || isBusy}
+                                size="lg"
+                                className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-200 transition-all active:scale-[0.98] px-8 font-bold h-11"
+                            >
+                                {isAnalyzing ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Analyzing...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ArrowRight className="mr-2 h-4 w-4" />
+                                        <span>Process Inventory File</span>
+                                    </>
+                                )}
+                            </Button>
+                        ) : hasNewProducts ? (
+                            <Button
+                                onClick={handleAddToOnboarding}
+                                disabled={isProcessing}
+                                size="lg"
+                                className="bg-[#008850] hover:bg-[#008850]/90 text-white shadow-lg shadow-green-100 transition-all active:scale-[0.98] px-8 font-bold h-11"
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Importing…</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        <span>Add to Pipeline</span>
+                                    </>
+                                )}
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={onCancel}
+                                size="lg"
+                                className="bg-zinc-900 text-white hover:bg-zinc-800 font-bold px-8 h-11"
+                            >
+                                Done
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
         </div>
     );
-}
-
-// Simple internal helper component since we need it in the table
-function Plus(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="3" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      {...props}
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
-  );
 }
