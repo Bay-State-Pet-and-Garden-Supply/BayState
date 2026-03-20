@@ -1,7 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trash2, ExternalLink, Package, Search, ImageIcon, AlertCircle } from 'lucide-react';
+import { 
+  Package, 
+  Search, 
+  ExternalLink,
+  ChevronRight, 
+  ChevronLeft, 
+  Filter, 
+  ArrowRight,
+  Database,
+  Info,
+  Loader2,
+  Trash2,
+  Image as ImageIcon,
+  AlertCircle
+} from 'lucide-react';
 import { toast } from 'sonner';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import { Button } from '@/components/ui/button';
@@ -28,17 +42,11 @@ export function ScrapedResultsView({
   const [selectedSku, setSelectedSku] = useState<string | null>(
     products.length > 0 ? products[0].sku : null
   );
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeSource, setActiveSource] = useState<string>('');
-  
-  const filteredProducts = products.filter(p => 
-    p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.consolidated?.name || p.input?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const selectedProduct = products.find(p => p.sku === selectedSku);
   const sources = selectedProduct?.sources || {};
-  const sourceKeys = Object.keys(sources);
+  const sourceKeys = Object.keys(sources).filter(key => !key.startsWith('_'));
 
   // Set active source when product selection changes
   useEffect(() => {
@@ -95,23 +103,15 @@ export function ScrapedResultsView({
     <div className="flex h-[calc(100vh-280px)] border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5">
-        <div className="p-3 border-b bg-muted/30">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Filter products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 h-9 bg-background"
-            />
-          </div>
+        <div className="p-3 border-b bg-muted/30 font-medium text-xs text-muted-foreground uppercase tracking-wider">
+          Scraped Products ({products.length})
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="divide-y">
-            {filteredProducts.map((product) => {
+            {products.map((product) => {
               const name = product.consolidated?.name || product.input?.name || 'Unknown';
               const price = product.consolidated?.price ?? product.input?.price;
-              const sourceCount = Object.keys(product.sources || {}).length;
+              const sourceCount = Object.keys(product.sources || {}).filter(key => !key.startsWith('_')).length;
               const isSelected = selectedSku === product.sku;
               const isChecked = selectedSkus.has(product.sku);
               
@@ -158,22 +158,13 @@ export function ScrapedResultsView({
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none">
                           {sourceCount} source{sourceCount !== 1 ? 's' : ''}
                         </Badge>
-                        {product.confidence_score !== undefined && (
-                           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-normal ${
-                            product.confidence_score >= 0.8 ? 'border-green-200 bg-green-50 text-green-700' :
-                            product.confidence_score >= 0.5 ? 'border-yellow-200 bg-yellow-50 text-yellow-700' :
-                            'border-red-200 bg-red-50 text-red-700'
-                          }`}>
-                            {Math.round(product.confidence_score * 100)}% match
-                          </Badge>
-                        )}
                       </div>
                     </div>
                   </div>
                 </div>
               );
             })}
-            {filteredProducts.length === 0 && (
+            {products.length === 0 && (
               <div className="p-12 text-center text-muted-foreground text-sm">
                 <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
                 No products found matching your search.
@@ -243,7 +234,7 @@ export function ScrapedResultsView({
                         {currentSourceData.images?.[0] || currentSourceData.image_url ? (
                           <img 
                             src={currentSourceData.images?.[0] || currentSourceData.image_url} 
-                            alt={currentSourceData.name}
+                            alt={currentSourceData.title || currentSourceData.name}
                             className="w-full h-full object-contain"
                           />
                         ) : (
@@ -285,17 +276,56 @@ export function ScrapedResultsView({
                            </Badge>
                            {currentSourceData.price && (
                              <span className="text-3xl font-black text-[#008850]">
-                               ${currentSourceData.price.toFixed(2)}
+                               ${typeof currentSourceData.price === 'number' ? currentSourceData.price.toFixed(2) : currentSourceData.price}
                              </span>
                            )}
                         </div>
-                        <h1 className="text-2xl font-bold leading-tight">{currentSourceData.name || 'Untitled Product'}</h1>
-                        {currentSourceData.brand && (
-                          <p className="text-sm font-medium text-muted-foreground">Brand: <span className="text-foreground">{currentSourceData.brand}</span></p>
-                        )}
+                        <h1 className="text-2xl font-bold leading-tight">
+                          {currentSourceData.title || currentSourceData.name || 'Untitled Product'}
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-y-2 gap-x-4">
+                          {currentSourceData.brand && (
+                            <p className="text-sm font-medium text-muted-foreground">Brand: <span className="text-foreground">{currentSourceData.brand}</span></p>
+                          )}
+                          {currentSourceData.url && (
+                             <a 
+                                href={currentSourceData.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-100 hover:bg-sky-100 transition-colors uppercase tracking-widest"
+                             >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                View Source
+                             </a>
+                          )}
+                        </div>
                       </div>
 
                       <Separator />
+
+                      {/* Technical Specs Grid */}
+                      <div className="grid grid-cols-2 gap-4 text-sm bg-muted/20 p-4 rounded-xl border">
+                        <div className="space-y-3">
+                             <div className="flex flex-col gap-1">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Manufacturer Product #</span>
+                                <span className="font-mono text-zinc-900 truncate">{currentSourceData.manufacturer_part_number || currentSourceData.item_number || 'N/A'}</span>
+                             </div>
+                             <div className="flex flex-col gap-1">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Weight / Size</span>
+                                <span className="text-zinc-900">{currentSourceData.weight || currentSourceData.size || currentSourceData.unit_of_measure || 'N/A'}</span>
+                             </div>
+                          </div>
+                          <div className="space-y-3">
+                             <div className="flex flex-col gap-1">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">UPC / Barcode</span>
+                                <span className="font-mono text-zinc-900">{currentSourceData.upc || 'N/A'}</span>
+                             </div>
+                             <div className="flex flex-col gap-1">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Category</span>
+                                <span className="text-zinc-900 truncate">{currentSourceData.category || currentSourceData.categories?.[0] || 'Uncategorized'}</span>
+                             </div>
+                          </div>
+                      </div>
 
                       <div className="space-y-2">
                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Description</h3>

@@ -78,10 +78,7 @@ export async function persistProductsIngestionSourcesStrict(
     const scrapedData = skuData[sku];
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
-    const updatedSources = {
-      ...mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData),
-      _last_scraped: nowIso,
-    };
+    const updatedSources = mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData);
 
     return {
       sku,
@@ -142,10 +139,7 @@ export async function persistProductsIngestionSourcesPartial(
     const scrapedData = skuData[sku];
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
-    const updatedSources = {
-      ...mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData),
-      _last_scraped: nowIso,
-    };
+    const updatedSources = mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData);
 
     return {
       sku,

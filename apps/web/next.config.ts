@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Enable strict React mode for better development experience
   reactStrictMode: true,
+  // Expose these specific variables to the client side without NEXT_PUBLIC_ prefix
+  env: {
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  },
 
   // Remove X-Powered-By header for security
   poweredByHeader: false,

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
+import { getProductsByStatus, getStatusCounts } from '@/lib/pipeline';
 import type { PipelineProduct, StatusCount } from '@/lib/pipeline/types';
 
 export const metadata: Metadata = {
@@ -11,90 +12,30 @@ export const metadata: Metadata = {
     },
 };
 
-/**
- * Fetches stage counts from the API.
- */
-async function fetchCounts(): Promise<StatusCount[]> {
-    try {
-        const res = await fetch(
-            `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/pipeline/counts`,
-            {
-                cache: 'no-store',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-
-        if (!res.ok) {
-            console.error('Failed to fetch counts:', res.status, res.statusText);
-            return getDefaultCounts();
-        }
-
-        const data = await res.json();
-        return data.counts || getDefaultCounts();
-    } catch (error) {
-        console.error('Error fetching counts:', error);
-        return getDefaultCounts();
-    }
-}
-
-/**
- * Fetches initial products for the imported stage.
- */
-async function fetchProducts(): Promise<{ products: PipelineProduct[]; count: number }> {
-    try {
-        const res = await fetch(
-            `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/pipeline?status=imported&limit=500`,
-            {
-                cache: 'no-store',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-
-        if (!res.ok) {
-            console.error('Failed to fetch products:', res.status, res.statusText);
-            return { products: [], count: 0 };
-        }
-
-        const data = await res.json();
-        return {
-            products: data.products || [],
-            count: data.count || 0,
-        };
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        return { products: [], count: 0 };
-    }
-}
-
-/**
- * Returns default counts for all pipeline stages.
- */
-function getDefaultCounts(): StatusCount[] {
-    return [
-        { status: 'imported', count: 0 },
-        { status: 'scraped', count: 0 },
-        { status: 'consolidated', count: 0 },
-        { status: 'finalized', count: 0 },
-        { status: 'published', count: 0 },
-    ];
-}
-
 export default async function PipelinePage() {
-    // Fetch counts first (lightweight), then products for default view
-    const [counts, { products, count }] = await Promise.all([
-        fetchCounts(),
-        fetchProducts(),
-    ]);
+    // Call library functions directly instead of internal fetch
+    try {
+        const [counts, { products, count }] = await Promise.all([
+            getStatusCounts(),
+            getProductsByStatus('imported', { limit: 500 }),
+        ]);
 
-    return (
-        <PipelineClient
-            initialProducts={products}
-            initialCounts={counts}
-            initialTotal={count}
-        />
-    );
+        return (
+            <PipelineClient
+                initialProducts={products}
+                initialCounts={counts}
+                initialTotal={count}
+            />
+        );
+    } catch (error) {
+        console.error('Error loading pipeline page:', error);
+        // Return with empty states as fallback
+        return (
+            <PipelineClient
+                initialProducts={[]}
+                initialCounts={[]}
+                initialTotal={0}
+            />
+        );
+    }
 }
