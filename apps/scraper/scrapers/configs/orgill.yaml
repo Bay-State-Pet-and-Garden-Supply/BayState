@@ -28,13 +28,48 @@ selectors:
     multiple: false
     required: false
   - name: Image URLs
-    selector: "img[id*='imgProductDetail'], #multipleImagesCarousel img"
+    selector: "#multipleImagesCarousel img[src*='orgill.com'], img[id*='imgProductDetail'][src*='orgill.com']"
     attribute: src
     multiple: true
     required: false
     fallback_selectors:
-      - "img[src]"
-      - "[data-product-image]"
+      - "img[id*='imgProductDetail']"
+      - "#multipleImagesCarousel img"
+  - name: UPC
+    selector: "#cphMainContent_ctl00_lblUPCCode"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - "//strong[contains(text(),'UPC')]/parent::div/following-sibling::div"
+  - name: Description
+    selector: "#cphMainContent_ctl00_lblLongDescription, #cphMainContent_ctl00_lblShortDescription"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - ".product-description"
+      - "#productDescriptionDiv"
+  - name: Dimensions
+    selector: "//strong[contains(text(),'Dimension')]/parent::div/following-sibling::div"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Features
+    selector: "#cphMainContent_ctl00_lblFeatures li, #cphMainContent_ctl00_lblFeatures"
+    attribute: text
+    multiple: true
+    required: false
+    fallback_selectors:
+      - ".product-features li"
+      - "#featuresDiv li"
+  - name: Category
+    selector: "#cphMainContent_ctl00_lblDepartment"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - ".breadcrumb li:last-child a"
 workflows:
   - action: login
     name: null
@@ -60,7 +95,7 @@ workflows:
   - action: wait
     name: null
     params:
-      seconds: 5
+      seconds: 3
   - action: check_no_results
     name: null
     params: {}
@@ -93,14 +128,30 @@ workflows:
         - model_number
         - Weight
         - Image URLs
-  - action: transform_value
+        - UPC
+        - Description
+        - Dimensions
+        - Features
+        - Category
+  - action: process_images
     name: null
     params:
       field: Image URLs
-      transformations:
-        - type: replace
-          pattern: /websmall/
-          replacement: /web/
+      quality_patterns:
+        - regex: "/websmall/"
+          replacement: "/web/"
+        - regex: "_thumb\\."
+          replacement: "."
+      filters:
+        - type: require_text
+          text: orgill.com
+        - type: exclude_text
+          text: spacer
+        - type: exclude_text
+          text: noimage
+        - type: exclude_text
+          text: placeholder
+      deduplicate: true
 ai_config: null
 anti_detection:
   enable_rate_limiting: false
@@ -115,9 +166,9 @@ anti_detection:
 validation:
   no_results_selectors:
     - //span[contains(text(), 'Found 0 results')]
+    - "#cphMainContent_ctl00_lblErrorMessage"
     - .no-results
     - .empty-search
-    - "[data-testid*='no-results']"
     - .search-no-results
   no_results_text_patterns:
     - no results found
@@ -126,6 +177,7 @@ validation:
     - we couldn't find any results
     - no items match your search
     - Found 0 results
+    - did not return any results
 login:
   url: https://www.orgill.com/index.aspx?tab=8
   timeout: 60

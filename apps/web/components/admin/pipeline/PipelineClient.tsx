@@ -343,7 +343,7 @@ export function PipelineClient({
   };
 
   return (
-    <div className="space-y-4 min-h-[calc(100vh-260px)]">
+    <div className="flex h-full flex-col space-y-2 -mt-4">
       {/* Stage Tabs */}
       <StageTabs
         currentStage={currentStage}
@@ -369,73 +369,67 @@ export function PipelineClient({
       )}
 
       {/* Content Area */}
-      {isLoading ? (
-        <div className="flex h-48 items-center justify-center">
-          <div className="text-muted-foreground">Loading...</div>
-        </div>
-      ) : currentStage === "monitoring" ? (
-        <div className="grid gap-6 xl:grid-cols-1">
-          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="rounded-lg bg-[#008850]/10 p-2">
-                <Activity className="h-5 w-5 text-[#008850]" />
+      <div className="flex-1 min-h-0">
+        {isLoading ? (
+          <div className="flex h-48 items-center justify-center">
+            <div className="text-muted-foreground">Loading...</div>
+          </div>
+        ) : currentStage === "monitoring" ? (
+          <div className="grid gap-6 xl:grid-cols-1">
+            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="rounded-lg bg-[#008850]/10 p-2">
+                  <Activity className="h-5 w-5 text-[#008850]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Active Runs
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Live scraper jobs currently running or queued.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Active Runs
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Live scraper jobs currently running or queued.
-                </p>
+              <ActiveRunsTab />
+            </section>
+          </div>
+        ) : currentStage === "consolidating" ? (
+          <div className="grid gap-6 xl:grid-cols-1">
+            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="rounded-lg bg-purple-100 p-2">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    AI Consolidations
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Active consolidation batches and history.
+                  </p>
+                </div>
               </div>
-            </div>
-            <ActiveRunsTab />
-          </section>
-        </div>
-      ) : currentStage === "consolidating" ? (
-        <div className="grid gap-6 xl:grid-cols-1">
-          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="rounded-lg bg-purple-100 p-2">
-                <Brain className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  AI Consolidations
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Active consolidation batches and history.
-                </p>
-              </div>
-            </div>
-            <ActiveConsolidationsTab />
-          </section>
-        </div>
-      ) : currentStage === "scraped" ? (
-        <ScrapedResultsView
-          products={products}
-          selectedSkus={selectedSkus}
-          onSelectSku={handleSelectSku}
-          onRefresh={refreshAll}
-        />
-      ) : (
-        <ProductTable
-          products={products}
-          selectedSkus={selectedSkus}
-          onSelectSku={handleSelectSku}
-          onSelectAll={handleSelectAllVisible}
-          onDeselectAll={handleClearSelection}
-          currentStage={currentStage}
-        />
-      )}
-
-      {/* Footer count — hidden for monitoring */}
-      {!isLoading && currentStage !== "monitoring" && products.length > 0 && (
-        <div className="text-center text-sm text-muted-foreground">
-          Showing {products.length} of {totalCount} product
-          {totalCount !== 1 ? "s" : ""}
-        </div>
-      )}
+              <ActiveConsolidationsTab />
+            </section>
+          </div>
+        ) : currentStage === "scraped" ? (
+          <ScrapedResultsView
+            products={products}
+            selectedSkus={selectedSkus}
+            onSelectSku={handleSelectSku}
+            onRefresh={refreshAll}
+          />
+        ) : (
+          <ProductTable
+            products={products}
+            selectedSkus={selectedSkus}
+            onSelectSku={handleSelectSku}
+            onSelectAll={handleSelectAllVisible}
+            onDeselectAll={handleClearSelection}
+            currentStage={currentStage}
+          />
+        )}
+      </div>
 
       {/* Scraper Selection Dialog */}
       <ScraperSelectDialog

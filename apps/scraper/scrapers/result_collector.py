@@ -84,6 +84,13 @@ class ResultCollector:
                     product_type=result_data.get("ProductType"),
                     scraped_price=result_data.get("Price"),
                     image_quality=image_quality,
+                    features=result_data.get("Features"),
+                    ingredients=result_data.get("Ingredients"),
+                    dimensions=result_data.get("Dimensions"),
+                    specifications=result_data.get("Specifications") or result_data.get("Technical Specs"),
+                    case_pack=result_data.get("Case Pack"),
+                    ratings=result_data.get("Rating"),
+                    reviews_count=result_data.get("Reviews"),
                 )
                 data_for_db = product.to_db_dict()
             else:

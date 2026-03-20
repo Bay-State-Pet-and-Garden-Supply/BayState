@@ -59,14 +59,39 @@ export function ScrapedResultsView({
   );
   const [preferredSource, setPreferredSource] = useState<string>("");
 
+  const [sourceFilter, setSourceFilter] = useState<string>("");
+
   const selectedProduct =
-    products.find((product) => product.sku === preferredSku) ?? products[0] ?? null;
+    products.find((product) => product.sku === preferredSku) ??
+    products[0] ??
+    null;
   const selectedSku = selectedProduct?.sku ?? null;
   const sources = selectedProduct?.sources ?? EMPTY_SOURCES;
   const sourceKeys = useMemo(
     () => Object.keys(sources).filter((key) => !key.startsWith("_")),
     [sources],
   );
+
+  const availableSourceFilters = useMemo(() => {
+    const all = new Set<string>();
+    products.forEach((product) => {
+      const productSources = product.sources ?? {};
+      Object.keys(productSources)
+        .filter((key) => !key.startsWith("_"))
+        .forEach((key) => all.add(key));
+    });
+    return Array.from(all).sort();
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    if (!sourceFilter) return products;
+    return products.filter((product) => {
+      const productSources = product.sources ?? {};
+      return Object.keys(productSources)
+        .filter((key) => !key.startsWith("_"))
+        .includes(sourceFilter);
+    });
+  }, [products, sourceFilter]);
   const activeSource = useMemo(() => {
     if (preferredSource && sourceKeys.includes(preferredSource)) {
       return preferredSource;
@@ -88,12 +113,22 @@ export function ScrapedResultsView({
       const newSources = { ...selectedProduct.sources };
       delete newSources[sourceKey];
 
+      const cleanedSources = Object.fromEntries(
+        Object.entries(newSources).filter(([key]) => !key.startsWith("_")),
+      );
+
+      const nextStatus =
+        Object.keys(cleanedSources).length === 0 ? "imported" : undefined;
+
       const res = await fetch(
         `/api/admin/pipeline/${encodeURIComponent(selectedProduct.sku)}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sources: newSources }),
+          body: JSON.stringify({
+            sources: newSources,
+            ...(nextStatus ? { pipeline_status: nextStatus } : {}),
+          }),
         },
       );
 
@@ -119,15 +154,40 @@ export function ScrapedResultsView({
   }, [activeSource, sources]);
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-280px)] border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
-      <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5">
-        <div className="p-3 border-b bg-muted/30 font-medium text-xs text-muted-foreground uppercase tracking-wider">
-          Scraped Products ({products.length})
+      <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
+        <div className="p-3 border-b bg-muted/30">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Scraped Products ({filteredProducts.length})
+            </div>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="source-filter"
+                className="text-[11px] text-muted-foreground"
+              >
+                Filter by source:
+              </label>
+              <select
+                id="source-filter"
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="rounded border border-muted-foreground/30 bg-white px-2 py-1 text-xs"
+              >
+                <option value="">All</option>
+                {availableSourceFilters.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="divide-y">
-            {products.map((product) => {
+            {filteredProducts.map((product) => {
               const name =
                 product.consolidated?.name || product.input?.name || "Unknown";
               const price = product.consolidated?.price ?? product.input?.price;
@@ -180,13 +240,23 @@ export function ScrapedResultsView({
                       >
                         {name}
                       </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none"
-                        >
-                          {sourceCount} source{sourceCount !== 1 ? "s" : ""}
-                        </Badge>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {Object.keys(product.sources || {})
+                          .filter((key) => !key.startsWith("_"))
+                          .map((key) => (
+                            <Badge
+                              key={key}
+                              variant="secondary"
+                              className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none"
+                            >
+                              {key}
+                            </Badge>
+                          ))}
+                        {sourceCount === 0 && (
+                          <span className="text-[10px] text-muted-foreground">
+                            —
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -208,27 +278,17 @@ export function ScrapedResultsView({
         {selectedProduct ? (
           <>
             {/* Header & Source Switcher */}
-            <div className="p-4 border-b space-y-4">
+            <div className="p-4 border-b space-y-4 flex-shrink-0">
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-bold tracking-tight">
                     {selectedProduct.consolidated?.name ||
                       selectedProduct.input?.name}
                   </h2>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {selectedProduct.sku}
-                  </p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <a
-                    href={`/admin/products/${selectedProduct.sku}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2"
-                  >
-                    View in Catalog <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
+                <div className="text-sm font-mono text-muted-foreground">
+                  SKU: {selectedProduct.sku}
+                </div>
               </div>
 
               {sourceKeys.length > 0 ? (
