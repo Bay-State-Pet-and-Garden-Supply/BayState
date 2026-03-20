@@ -23,7 +23,13 @@ const DEFAULT_STAGE_CONFIG = {
 interface ProductTableProps {
   products: PipelineProduct[];
   selectedSkus: Set<string>;
-  onSelectSku: (sku: string, selected: boolean) => void;
+  onSelectSku: (
+    sku: string,
+    selected: boolean,
+    index?: number,
+    isShiftClick?: boolean,
+    visibleProducts?: PipelineProduct[],
+  ) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   currentStage: PipelineStatus;
@@ -261,7 +267,7 @@ export function ProductTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedProducts.map((product) => {
+          {sortedProducts.map((product, index) => {
             const isSelected = selectedSkus.has(product.sku);
             const displayName =
               product.consolidated?.name || product.input?.name || "—";
@@ -274,14 +280,40 @@ export function ProductTable({
               <TableRow
                 key={product.sku}
                 className={`cursor-pointer transition-colors ${isSelected ? "bg-[#008850]/5" : "hover:bg-muted/30"}`}
-                onClick={() => onSelectSku(product.sku, !isSelected)}
+                onClick={(e) =>
+                  onSelectSku(
+                    product.sku,
+                    !isSelected,
+                    index,
+                    e.shiftKey,
+                    sortedProducts,
+                  )
+                }
               >
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableCell
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectSku(
+                      product.sku,
+                      !isSelected,
+                      index,
+                      e.shiftKey,
+                      sortedProducts,
+                    );
+                  }}
+                >
                   <Checkbox
                     checked={isSelected}
                     onCheckedChange={(checked) =>
-                      onSelectSku(product.sku, !!checked)
+                      onSelectSku(
+                        product.sku,
+                        !!checked,
+                        index,
+                        false,
+                        sortedProducts,
+                      )
                     }
+                    onClick={(e) => e.stopPropagation()}
                     aria-label={`Select ${product.sku}`}
                   />
                 </TableCell>

@@ -39,6 +39,10 @@ interface BulkToolbarProps {
   onResetStage?: (previousStage: PipelineStatus) => void;
   /** Opens the scraper selection dialog (imported stage only) */
   onOpenScrapeDialog?: () => void;
+  // Source filtering
+  sourceFilter?: string;
+  onSourceFilterChange?: (value: string) => void;
+  availableSourceFilters?: string[];
 }
 
 export function BulkToolbar({
@@ -53,6 +57,9 @@ export function BulkToolbar({
   onBulkAction,
   onResetStage,
   onOpenScrapeDialog,
+  sourceFilter = '',
+  onSourceFilterChange,
+  availableSourceFilters = [],
 }: BulkToolbarProps) {
   const bulkAction = BULK_ACTIONS[currentStage];
   const stageConfig = STAGE_CONFIG[currentStage];
@@ -61,6 +68,7 @@ export function BulkToolbar({
   const hasResetAction = !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
   const isImported = currentStage === 'imported';
   const hasSecondaryAction = !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
+  const isScrapedStage = currentStage === 'scraped';
 
   const handlePrimaryAction = () => {
     if (isImported && onOpenScrapeDialog) {
@@ -136,15 +144,34 @@ export function BulkToolbar({
         </span>
       </div>
 
-      {/* Search input */}
-      <div className="min-w-[220px] flex-1">
-        <input
-          type="text"
-          placeholder="Search by SKU or name..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full rounded-md border border-input bg-white px-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        />
+      {/* Search and Source Filter */}
+      <div className="flex flex-1 items-center gap-2 min-w-[300px]">
+        {isScrapedStage && onSourceFilterChange && (
+          <select
+            id="source-filter"
+            value={sourceFilter}
+            onChange={(e) => onSourceFilterChange(e.target.value)}
+            className="h-9 rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="">All Sources</option>
+            {availableSourceFilters.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        )}
+        
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search by SKU or name..."
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full rounded-md border border-input bg-white pl-9 pr-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
       </div>
 
       {/* Actions */}

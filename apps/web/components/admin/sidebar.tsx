@@ -13,21 +13,30 @@ import {
   LayoutGrid,
   ChevronLeft,
   ChevronRight,
+  User,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavItem {
   href: string;
   label: string;
-  icon: React.ReactNode;
-  adminOnly?: boolean; // If true, only show for admin role
+  icon: React.ElementType;
+  adminOnly?: boolean;
 }
 
 interface NavSection {
   title?: string;
   items: NavItem[];
-  adminOnly?: boolean; // If true, entire section is admin-only
+  adminOnly?: boolean;
 }
 
 const navSections: NavSection[] = [
@@ -36,7 +45,7 @@ const navSections: NavSection[] = [
       {
         href: "/admin",
         label: "Dashboard",
-        icon: <Home className="h-5 w-5" />,
+        icon: Home,
       },
     ],
   },
@@ -47,7 +56,7 @@ const navSections: NavSection[] = [
       {
         href: "/admin/pipeline",
         label: "Pipeline",
-        icon: <LayoutGrid className="h-5 w-5" />,
+        icon: LayoutGrid,
         adminOnly: true,
       },
     ],
@@ -59,13 +68,13 @@ const navSections: NavSection[] = [
       {
         href: "/admin/scrapers/list",
         label: "Scrapers",
-        icon: <Activity className="h-5 w-5" />,
+        icon: Activity,
         adminOnly: true,
       },
       {
         href: "/admin/scrapers/network",
         label: "Network",
-        icon: <Network className="h-5 w-5" />,
+        icon: Network,
         adminOnly: true,
       },
     ],
@@ -77,13 +86,13 @@ const navSections: NavSection[] = [
       {
         href: "/admin/migration",
         label: "Data Migration",
-        icon: <RefreshCw className="h-5 w-5" />,
+        icon: RefreshCw,
         adminOnly: true,
       },
       {
         href: "/admin/settings",
         label: "Settings",
-        icon: <Settings className="h-5 w-5" />,
+        icon: Settings,
         adminOnly: true,
       },
     ],
@@ -94,37 +103,25 @@ const SIDEBAR_STORAGE_KEY = "adminSidebarCollapsed";
 const SIDEBAR_STORAGE_EVENT = "admin-sidebar-storage";
 
 function getCollapsedSnapshot(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
+  if (typeof window === "undefined") return true;
   try {
-    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+    const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    return stored === null ? true : stored === "true";
   } catch {
-    return false;
+    return true;
   }
 }
 
 function subscribeToCollapsedState(onStoreChange: () => void): () => void {
-  if (typeof window === "undefined") {
-    return () => {};
-  }
-
+  if (typeof window === "undefined") return () => {};
   const handleChange = (event: Event) => {
-    if (
-      event instanceof StorageEvent &&
-      event.key !== null &&
-      event.key !== SIDEBAR_STORAGE_KEY
-    ) {
+    if (event instanceof StorageEvent && event.key !== null && event.key !== SIDEBAR_STORAGE_KEY) {
       return;
     }
-
     onStoreChange();
   };
-
   window.addEventListener("storage", handleChange);
   window.addEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
-
   return () => {
     window.removeEventListener("storage", handleChange);
     window.removeEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
@@ -132,16 +129,11 @@ function subscribeToCollapsedState(onStoreChange: () => void): () => void {
 }
 
 function setCollapsedPreference(value: boolean) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(value));
     window.dispatchEvent(new Event(SIDEBAR_STORAGE_EVENT));
-  } catch {
-    // ignore
-  }
+  } catch { /* ignore */ }
 }
 
 interface AdminSidebarProps {
@@ -154,7 +146,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
   const collapsed = useSyncExternalStore(
     subscribeToCollapsedState,
     getCollapsedSnapshot,
-    () => false,
+    () => true,
   );
 
   const visibleSections = navSections
@@ -172,130 +164,170 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
   return (
     <aside
       className={cn(
-        "flex h-full flex-col bg-sidebar text-sidebar-foreground transition-all",
-        collapsed ? "w-20" : "w-64",
+        "relative flex h-full flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out border-r border-sidebar-border/20 shadow-xl z-50",
+        collapsed ? "w-[80px]" : "w-[200px]",
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-3">
-        <h1 className={cn("text-xl font-bold", collapsed && "sr-only")}>
-          Manager Portal
-        </h1>
+      {/* Header */}
+      <div className="flex h-20 items-center px-4 mb-2">
+        <div className={cn(
+          "flex items-center gap-2.5 transition-opacity duration-300",
+          collapsed ? "opacity-0 invisible w-0" : "opacity-100 visible w-full"
+        )}>
+          <div className="bg-white/10 p-1.5 rounded-lg shadow-inner border border-white/20 shrink-0">
+            <Zap className="h-5 w-5 text-accent animate-pulse" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold tracking-tight text-white leading-tight truncate">
+              Bay State
+            </h1>
+            <p className="text-[9px] font-medium uppercase tracking-wider text-white/50 truncate">
+              Admin Control
+            </p>
+          </div>
+        </div>
+        
+        {collapsed && (
+          <div className="absolute inset-x-0 top-0 flex justify-center py-6">
+            <Zap className="h-8 w-8 text-accent" />
+          </div>
+        )}
+
         <button
           type="button"
           onClick={toggleCollapsed}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-accent"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-expanded={!collapsed}
+          className={cn(
+            "absolute -right-3 top-1/2 -translate-y-1/2 z-50 flex h-6 w-6 items-center justify-center rounded-full bg-sidebar border border-sidebar-border/30 text-sidebar-foreground shadow-lg hover:scale-110 transition-transform active:scale-95 cursor-pointer",
+            collapsed && "right-[-12px]"
+          )}
+          aria-label={collapsed ? "Expand" : "Collapse"}
         >
           {collapsed ? (
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-3 w-3" />
           ) : (
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-3 w-3" />
           )}
         </button>
       </div>
 
+      {/* Navigation */}
       <nav
         className={cn(
-          "flex-1 space-y-6 overflow-y-auto",
-          collapsed ? "px-2" : "p-4",
+          "flex-1 space-y-6 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-4",
+          collapsed ? "px-4" : "px-4",
         )}
-        aria-label="Admin"
       >
-        {visibleSections.map((section, idx) => (
-          <div key={idx}>
-            {section.title && (
-              <h2
-                className={cn(
-                  "mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
-                  collapsed && "sr-only",
-                )}
-              >
-                {section.title}
-              </h2>
-            )}
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                // For dashboard root routes like /admin/scrapers, only match exact paths
-                // to avoid highlighting when on child routes like /admin/scrapers/network
-                const isDashboardRoot = item.href === "/admin/scrapers";
-                const isActive = pathname
-                  ? isDashboardRoot
-                    ? pathname === item.href ||
-                      pathname === item.href + "/dashboard"
-                    : pathname === item.href ||
-                      (item.href !== "/admin" &&
-                        pathname.startsWith(item.href + "/"))
-                  : false;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center space-x-3 rounded px-4 py-2 transition-colors",
-                      collapsed && "justify-center px-2",
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                        : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="flex items-center justify-center"
+        <TooltipProvider delayDuration={0}>
+          {visibleSections.map((section, idx) => (
+            <div key={idx} className="space-y-1.5">
+              {section.title && !collapsed && (
+                <h2 className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white/40 truncate">
+                  {section.title}
+                </h2>
+              )}
+              {section.title && collapsed && (
+                <div className="h-px bg-white/10 mx-2 my-4" />
+              )}
+              
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+
+                  const content = (
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 transition-all duration-200",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-1 ring-white/10"
+                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                      )}
                     >
-                      {item.icon}
-                    </span>
-                    <span className={collapsed ? "sr-only" : ""}>
-                      {item.label}
-                    </span>
-                  </Link>
-                );
-              })}
+                      <Icon className={cn(
+                        "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                        isActive ? "text-accent" : "text-white/60 group-hover:text-white"
+                      )} />
+                      {!collapsed && (
+                        <span className="text-xs font-medium tracking-wide truncate">
+                          {item.label}
+                        </span>
+                      )}
+                      {isActive && !collapsed && (
+                        <div className="absolute right-2 h-1 w-1 rounded-full bg-accent shadow-[0_0_8px_var(--sidebar-accent-foreground)]" />
+                      )}
+                    </Link>
+                  );
+
+                  if (collapsed) {
+                    return (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>{content}</TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={20} className="bg-sidebar-accent border-sidebar-border/30 text-sidebar-accent-foreground font-medium px-4 py-2 text-xs shadow-xl">
+                          {item.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+
+                  return <div key={item.href}>{content}</div>;
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </TooltipProvider>
       </nav>
 
-      {/* Footer: Role & Exit */}
-      <div
-        className={cn(
-          "border-t border-sidebar-border p-4",
-          collapsed && "px-2",
-        )}
-      >
-        <div className="flex items-center justify-between">
+      {/* Footer / User Profile */}
+      <div className="mt-auto p-3 border-t border-white/10 bg-black/5">
+        <div className={cn(
+          "flex items-center gap-2.5",
+          collapsed ? "justify-center" : "px-1"
+        )}>
+          <div className="relative shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center border border-white/20 shadow-lg">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-brand-forest-green border-2 border-sidebar flex items-center justify-center">
+              <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
+            </div>
+          </div>
+          
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-white truncate leading-tight">
+                Staff Account
+              </p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <ShieldCheck className={cn(
+                  "h-2.5 w-2.5",
+                  isAdmin ? "text-accent" : "text-white/40"
+                )} />
+                <span className={cn(
+                  "text-[9px] font-bold uppercase tracking-wider truncate",
+                  isAdmin ? "text-accent" : "text-white/40"
+                )}>
+                  {userRole}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className={cn(
+          "mt-3 flex flex-col gap-0.5",
+          collapsed ? "items-center" : ""
+        )}>
           <Link
             href="/"
             className={cn(
-              "flex items-center space-x-2 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground",
-              collapsed && "justify-center",
+              "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400",
+              collapsed && "justify-center"
             )}
           >
-            <LogOut className="h-4 w-4 rotate-180" aria-hidden="true" />
-            <span className={collapsed ? "sr-only" : ""}>Exit</span>
+            <LogOut className="h-3.5 w-3.5 rotate-180" />
+            {!collapsed && <span className="truncate">Exit Portal</span>}
           </Link>
-
-          <div className="flex items-center space-x-2 text-xs">
-            <span
-              className={cn(
-                "text-sidebar-foreground/50",
-                collapsed && "sr-only",
-              )}
-            >
-              Role:
-            </span>
-            <span
-              title={userRole}
-              className={cn(
-                "px-2 py-0.5 rounded",
-                isAdmin
-                  ? "bg-purple-900/50 text-purple-300"
-                  : "bg-sidebar-accent text-sidebar-accent-foreground",
-              )}
-            >
-              {collapsed ? userRole.charAt(0).toUpperCase() : userRole}
-            </span>
-          </div>
         </div>
       </div>
     </aside>
