@@ -59,8 +59,8 @@ describe('Middleware Auth Logic', () => {
     let mockSupabase: any;
     let mockGetUser: jest.Mock;
     let mockFrom: jest.Mock;
-    const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const originalSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const originalSupabaseUrl = process.env.SUPABASE_URL;
+    const originalSupabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -80,13 +80,13 @@ describe('Middleware Auth Logic', () => {
         };
         mockCreateServerClient.mockReturnValue(mockSupabase);
 
-        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+        process.env.SUPABASE_URL = 'https://test.supabase.co';
+        process.env.SUPABASE_ANON_KEY = 'test-anon-key';
     });
 
     afterAll(() => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL = originalSupabaseUrl;
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalSupabaseAnonKey;
+        process.env.SUPABASE_URL = originalSupabaseUrl;
+        process.env.SUPABASE_ANON_KEY = originalSupabaseAnonKey;
     });
 
     function createReq(path: string) {

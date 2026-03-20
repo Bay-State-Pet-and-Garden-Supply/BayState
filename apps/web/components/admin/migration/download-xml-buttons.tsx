@@ -11,7 +11,7 @@ interface DownloadXmlButtonsProps {
 export function DownloadXmlButtons({ className }: DownloadXmlButtonsProps) {
     const [downloading, setDownloading] = useState<string | null>(null);
 
-    const handleDownload = async (type: 'products' | 'orders' | 'customers') => {
+    const handleDownload = async (type: 'products' | 'customers') => {
         setDownloading(type);
         try {
             const response = await fetch(`/api/admin/migration/download?type=${type}`);
@@ -68,15 +68,6 @@ export function DownloadXmlButtons({ className }: DownloadXmlButtonsProps) {
                 >
                     <Download className="mr-2 h-4 w-4" />
                     {downloading === 'products' ? 'Downloading...' : 'Products'}
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownload('orders')}
-                    disabled={downloading !== null}
-                >
-                    <Download className="mr-2 h-4 w-4" />
-                    {downloading === 'orders' ? 'Downloading...' : 'Orders'}
                 </Button>
                 <Button
                     variant="outline"

@@ -29,7 +29,7 @@ async function verifyAdminAccess(): Promise<{ userId: string | null; error: stri
  */
 function getServiceRoleClient() {
     return createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
         {
             auth: {

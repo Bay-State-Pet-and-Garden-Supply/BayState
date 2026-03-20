@@ -34,12 +34,12 @@ interface ScraperRun {
 }
 
 async function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   
   if (!url || !key) {
     throw new Error(
-      'Missing Supabase configuration. Ensure NEXT_PUBLIC_SUPABASE_URL and ' +
+      'Missing Supabase configuration. Ensure SUPABASE_URL and ' +
       'SUPABASE_SERVICE_ROLE_KEY are set in your environment.'
     );
   }

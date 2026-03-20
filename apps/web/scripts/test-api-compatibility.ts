@@ -186,7 +186,7 @@ function getApiKey(): string | null {
 }
 
 function getSupabaseAdminClient(): SupabaseClient | null {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -407,7 +407,7 @@ async function run(): Promise<void> {
   }
   if (!supabase) {
     globalIssues.push(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Ordering checks require DB access.',
+      'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Ordering checks require DB access.',
     );
   }
 

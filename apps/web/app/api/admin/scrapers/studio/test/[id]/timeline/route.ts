@@ -3,7 +3,7 @@ import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/
 import { NextRequest, NextResponse } from 'next/server';
 
 function getSupabaseAdmin(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error('Missing Supabase configuration');
