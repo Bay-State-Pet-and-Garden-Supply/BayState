@@ -1,6 +1,6 @@
 'use client';
 
-import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
+import type { PipelineProduct, PipelineStatus, PipelineStage } from '@/lib/pipeline/types';
 import {
     ChevronRight,
     Package,
@@ -26,7 +26,7 @@ interface PipelineProductCardProps {
     showImageSelectionButton?: boolean;
     readOnly?: boolean;
     showBatchSelect?: boolean;
-    currentStage?: PipelineStatus;
+    currentStage?: PipelineStage;
 }
 
 export function PipelineProductCardSkeleton() {

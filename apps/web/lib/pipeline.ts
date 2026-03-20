@@ -871,4 +871,4 @@ export async function setSelectedImages(
 }
 
 // Re-export types from types.ts for convenience
-export type { PipelineStatus, StatusCount, StageConfig } from '@/lib/pipeline/types';
+export type { PipelineStatus, PipelineStage, StatusCount, StageConfig } from '@/lib/pipeline/types';

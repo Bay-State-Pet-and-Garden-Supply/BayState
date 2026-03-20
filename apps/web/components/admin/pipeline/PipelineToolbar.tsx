@@ -2,11 +2,11 @@
 
 import { Search, Plus, Database, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { PipelineStatus } from '@/lib/pipeline/types';
+import type { PipelineStatus, PipelineStage } from '@/lib/pipeline/types';
 
 interface PipelineToolbarProps {
   totalCount: number;
-  currentStage: PipelineStatus;
+  currentStage: PipelineStage;
   isLoading: boolean;
   search: string;
   onSearchChange: (value: string) => void;

@@ -3,13 +3,13 @@
 import { Loader2, X, CheckSquare, Plus, Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { PipelineStatus } from '@/lib/pipeline/types';
+import type { PipelineStatus, PipelineStage } from '@/lib/pipeline/types';
 
 /**
  * Bulk action configuration for each pipeline stage.
  * 'imported' opens the scraper selection dialog instead of a direct move.
  */
-const BULK_ACTIONS: Record<PipelineStatus, { 
+const BULK_ACTIONS: Record<PipelineStage, { 
   label: string; 
   nextStage: PipelineStatus | null; 
   resetLabel?: string;
@@ -22,12 +22,13 @@ const BULK_ACTIONS: Record<PipelineStatus, {
   consolidated: { label: 'Finalize Selected', nextStage: 'finalized', resetLabel: 'Reset Consolidation', previousStage: 'scraped' },
   finalized: { label: 'Publish Selected', nextStage: 'published', resetLabel: 'Return to Consolidation', previousStage: 'consolidated' },
   published: { label: '', nextStage: null },
+  consolidating: { label: '', nextStage: null },
 };
 
 interface FloatingActionsBarProps {
   selectedCount: number;
   totalCount: number;
-  currentStage: PipelineStatus;
+  currentStage: PipelineStage;
   isLoading: boolean;
   onClearSelection: () => void;
   onSelectAll: () => void;
