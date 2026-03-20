@@ -5,7 +5,7 @@
  * The table is already published to supabase_realtime (see migration 20260110000000).
  */
 
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 
@@ -159,12 +159,15 @@ export function useLogSubscription(
         };
     }, [autoConnect, connect, disconnect]);
 
-    return {
-        logs,
-        isConnected,
-        error,
-        connect,
-        disconnect,
-        clearLogs,
-    };
+    return useMemo(
+        () => ({
+            logs,
+            isConnected,
+            error,
+            connect,
+            disconnect,
+            clearLogs,
+        }),
+        [logs, isConnected, error, connect, disconnect, clearLogs]
+    );
 }
