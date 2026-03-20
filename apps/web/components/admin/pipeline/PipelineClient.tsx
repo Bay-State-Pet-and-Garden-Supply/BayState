@@ -8,6 +8,8 @@ import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
 import { BulkToolbar } from "./BulkToolbar";
 import { ScraperSelectDialog } from "./ScraperSelectDialog";
+import { ManualAddProductDialog } from "./ManualAddProductDialog";
+import { IntegraImportDialog } from "./IntegraImportDialog";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import type {
@@ -35,6 +37,8 @@ export function PipelineClient({
   const [totalCount, setTotalCount] = useState(initialTotal);
   const [isLoading, setIsLoading] = useState(false);
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
+  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
+  const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
@@ -157,6 +161,7 @@ export function PipelineClient({
     setCurrentStage(stage);
     setSearch("");
     setSourceFilter("");
+    setLastSelectedIndex(null);
   };
 
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
@@ -164,7 +169,7 @@ export function PipelineClient({
   );
 
   // Toggle product selection with optional Shift+Click range support
-  const handleSelectSku = (
+  const handleSelectSku = useCallback((
     sku: string,
     selected: boolean,
     index?: number,
@@ -181,7 +186,12 @@ export function PipelineClient({
         const rangeSkus = sourceProducts
           .slice(start, end + 1)
           .map((p) => p.sku);
-        rangeSkus.forEach((skuItem) => next.add(skuItem));
+        
+        if (selected) {
+          rangeSkus.forEach((skuItem) => next.add(skuItem));
+        } else {
+          rangeSkus.forEach((skuItem) => next.delete(skuItem));
+        }
       } else {
         if (selected) {
           next.add(sku);
@@ -196,7 +206,7 @@ export function PipelineClient({
     if (index !== undefined) {
       setLastSelectedIndex(index);
     }
-  };
+  }, [filteredProducts, lastSelectedIndex]);
 
   // Select all visible products
   const handleSelectAllVisible = () => {
@@ -275,6 +285,38 @@ export function PipelineClient({
     }
   }, [fetchCounts]);
 
+  // Handle product deletion
+  const handleDelete = useCallback(async () => {
+    const skus = Array.from(selectedSkus);
+    if (skus.length === 0) return;
+
+    if (!confirm(`Are you sure you want to permanently delete ${skus.length} product${skus.length > 1 ? 's' : ''}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/admin/pipeline/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skus }),
+      });
+
+      if (res.ok) {
+        toast.success(`Deleted ${skus.length} product${skus.length > 1 ? 's' : ''}`);
+        setSelectedSkus(new Set());
+        await refreshAll();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to delete products");
+      }
+    } catch {
+      toast.error("Failed to delete products");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedSkus, refreshAll]);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -303,13 +345,16 @@ export function PipelineClient({
             e.preventDefault();
             handleConsolidate(Array.from(selectedSkus));
           }
+        } else if (e.key === "Delete" || (e.key === "Backspace" && (e.metaKey || e.ctrlKey))) {
+          e.preventDefault();
+          handleDelete();
         }
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [selectedSkus, currentStage, handleClearSelection, refreshAll, handleConsolidate]);
+  }, [selectedSkus, currentStage, handleClearSelection, refreshAll, handleConsolidate, handleDelete]);
 
   // Handle bulk status transition (non-scrape stages)
   const handleBulkAction = async (nextStage: PipelineStatus) => {
@@ -458,6 +503,9 @@ export function PipelineClient({
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
+          onManualAdd={() => setIsManualAddOpen(true)}
+          onIntegraImport={() => setIsIntegraImportOpen(true)}
+          onDelete={handleDelete}
           sourceFilter={sourceFilter}
           onSourceFilterChange={setSourceFilter}
           availableSourceFilters={availableSourceFilters}
@@ -534,6 +582,26 @@ export function PipelineClient({
         selectedSkuCount={selectedSkus.size}
         onConfirm={handleScrapeConfirm}
       />
+      {/* Manual Add Product Dialog */}
+      {isManualAddOpen && (
+        <ManualAddProductDialog
+          onSuccess={() => {
+            setIsManualAddOpen(false);
+            refreshAll();
+          }}
+          onCancel={() => setIsManualAddOpen(false)}
+        />
+      )}
+      {/* Integra Import Dialog */}
+      {isIntegraImportOpen && (
+        <IntegraImportDialog
+          onSuccess={() => {
+            setIsIntegraImportOpen(false);
+            refreshAll();
+          }}
+          onCancel={() => setIsIntegraImportOpen(false)}
+        />
+      )}
     </div>
   );
 }

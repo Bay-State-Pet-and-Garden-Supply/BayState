@@ -234,16 +234,28 @@ export function ScrapedResultsView({
                     >
                       <Checkbox
                         checked={isChecked}
-                        onCheckedChange={(checked) =>
+                        onCheckedChange={() => {
+                          // Handle keyboard selection
+                          if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
+                            onSelectSku(
+                              product.sku,
+                              !isChecked,
+                              index,
+                              false,
+                              products,
+                            )
+                          }
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
                           onSelectSku(
                             product.sku,
-                            !!checked,
+                            !isChecked,
                             index,
-                            false,
+                            e.shiftKey,
                             products,
-                          )
-                        }
-                        onClick={(e) => e.stopPropagation()}
+                          );
+                        }}
                         className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                     </div>
