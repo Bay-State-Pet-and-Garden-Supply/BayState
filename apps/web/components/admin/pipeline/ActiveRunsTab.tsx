@@ -178,45 +178,66 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         return () => clearInterval(interval);
     }, [fetchJobs]);
 
+    // Memoize the specific job arrays to stabilize the effect dependency
+    const pendingJobs = realtimeJobs.pending;
+    const runningJobs = realtimeJobs.running;
+    const completedIdsData = useMemo(() => [
+        ...realtimeJobs.completed.map(j => j.id),
+        ...realtimeJobs.failed.map(j => j.id),
+        ...realtimeJobs.cancelled.map(j => j.id)
+    ], [realtimeJobs.completed, realtimeJobs.failed, realtimeJobs.cancelled]);
+
     // Merge realtime job updates into the local state
     useEffect(() => {
         const activeRealtimeJobs = [
-            ...realtimeJobs.pending,
-            ...realtimeJobs.running,
+            ...pendingJobs,
+            ...runningJobs,
         ];
 
-        if (activeRealtimeJobs.length > 0) {
+        if (activeRealtimeJobs.length > 0 || completedIdsData.length > 0) {
             setJobs((prev) => {
+                // Use a map for efficient updates, keeping previous state for unchanged jobs
                 const jobMap = new Map(prev.map((j) => [j.id, j]));
+                let hasChanges = false;
 
                 activeRealtimeJobs.forEach((rj) => {
                     if (rj.status === 'pending' || rj.status === 'running') {
-                        jobMap.set(rj.id, {
-                            id: rj.id,
-                            skuCount: rj.skus?.length ?? 0,
-                            scrapers: rj.scrapers ?? [],
-                            status: rj.status,
-                            createdAt: rj.created_at,
-                            progress: 0,
-                        });
+                        const existing = jobMap.get(rj.id);
+                        // Only update if something changed to prevent unnecessary re-renders
+                        if (!existing || existing.status !== rj.status || existing.skuCount !== (rj.skus?.length ?? 0)) {
+                            jobMap.set(rj.id, {
+                                id: rj.id,
+                                skuCount: rj.skus?.length ?? 0,
+                                scrapers: rj.scrapers ?? [],
+                                status: rj.status as 'pending' | 'running',
+                                createdAt: rj.created_at,
+                                progress: existing?.progress ?? 0,
+                            });
+                            hasChanges = true;
+                        }
                     }
                 });
 
-                // Remove jobs that have completed/failed from realtime
-                const completedIds = new Set([
-                    ...realtimeJobs.completed.map((j) => j.id),
-                    ...realtimeJobs.failed.map((j) => j.id),
-                    ...realtimeJobs.cancelled.map((j) => j.id),
-                ]);
+                // Remove jobs that have completed/failed from our local "active" list
+                const completedIds = new Set(completedIdsData);
+                const beforeCount = jobMap.size;
+                
+                // We actually need to iterate and delete to remove from the map
+                for (const jobId of jobMap.keys()) {
+                    if (completedIds.has(jobId)) {
+                        jobMap.delete(jobId);
+                    }
+                }
+                
+                if (jobMap.size !== beforeCount) {
+                    hasChanges = true;
+                }
 
-                const merged = Array.from(jobMap.values()).filter(
-                    (j) => !completedIds.has(j.id)
-                );
-
-                return merged;
+                if (!hasChanges) return prev;
+                return Array.from(jobMap.values());
             });
         }
-    }, [realtimeJobs]);
+    }, [pendingJobs, runningJobs, completedIdsData]);
 
     const handleCancel = async (jobId: string) => {
         if (!confirm('Are you sure you want to cancel this job?')) return;

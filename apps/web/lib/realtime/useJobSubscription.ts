@@ -487,12 +487,15 @@ export function useJobSubscription(
     };
   }, [autoConnect, connect, disconnect]);
 
-  return {
-    ...state,
-    connect,
-    disconnect,
-    refetch,
-    getJob,
-    getJobsForRunner,
-  };
+  return useMemo(
+    () => ({
+      ...state,
+      connect,
+      disconnect,
+      refetch,
+      getJob,
+      getJobsForRunner,
+    }),
+    [state, connect, disconnect, refetch, getJob, getJobsForRunner]
+  );
 }
