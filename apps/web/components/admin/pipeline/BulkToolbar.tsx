@@ -1,6 +1,7 @@
 'use client';
 
-import { Loader2, X, CheckSquare, Search, Plus } from 'lucide-react';
+import { Loader2, X, CheckSquare, Search, Plus, Trash2, Database } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import type { PipelineStatus } from '@/lib/pipeline/types';
 import { STAGE_CONFIG } from '@/lib/pipeline/types';
@@ -39,6 +40,12 @@ interface BulkToolbarProps {
   onResetStage?: (previousStage: PipelineStatus) => void;
   /** Opens the scraper selection dialog (imported stage only) */
   onOpenScrapeDialog?: () => void;
+  /** Opens the manual add product dialog */
+  onManualAdd?: () => void;
+  /** Opens the Integra import dialog */
+  onIntegraImport?: () => void;
+  /** Deletes selected products */
+  onDelete?: () => void;
   // Source filtering
   sourceFilter?: string;
   onSourceFilterChange?: (value: string) => void;
@@ -57,6 +64,9 @@ export function BulkToolbar({
   onBulkAction,
   onResetStage,
   onOpenScrapeDialog,
+  onManualAdd,
+  onIntegraImport,
+  onDelete,
   sourceFilter = '',
   onSourceFilterChange,
   availableSourceFilters = [],
@@ -162,6 +172,31 @@ export function BulkToolbar({
 
       {/* Actions */}
       <div className="flex items-center gap-2">
+        {isImported && onIntegraImport && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onIntegraImport}
+            className="h-9 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+          >
+            <Database className="mr-1.5 h-4 w-4" />
+            Import from Integra
+          </Button>
+        )}
+
+        {isImported && onManualAdd && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onManualAdd}
+            disabled={isLoading}
+            className="h-9 border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add Product
+          </Button>
+        )}
+
         {selectedCount > 0 && selectedCount < totalCount && (
           <Button
             variant="ghost"
@@ -196,6 +231,19 @@ export function BulkToolbar({
           >
             <Plus className="mr-1.5 h-4 w-4" />
             {bulkAction.secondaryAction}
+          </Button>
+        )}
+
+        {onDelete && selectedCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDelete}
+            disabled={isLoading}
+            className="h-9 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            Delete Selected
           </Button>
         )}
 

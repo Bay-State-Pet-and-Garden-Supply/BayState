@@ -23,19 +23,8 @@ import {
   ChevronDown, 
   ChevronUp, 
   ChevronsUpDown, 
-  MoreHorizontal, 
-  ExternalLink,
-  Info,
   AlertCircle
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PipelineProduct, PipelineStatus } from "@/lib/pipeline/types";
@@ -145,23 +134,41 @@ export function ProductTable({
           />
         );
       },
-      cell: ({ row, table }) => (
-        <Checkbox
-          checked={selectedSkus.has(row.original.sku)}
-          onCheckedChange={(value) => {
-            onSelectSku(
-              row.original.sku,
-              !!value,
-              row.index,
-              false,
-              table.getRowModel().rows.map(r => r.original)
-            );
-          }}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Select row"
-          className="translate-y-[2px]"
-        />
-      ),
+      cell: ({ row, table }) => {
+        const isChecked = selectedSkus.has(row.original.sku);
+        const visibleRows = table.getRowModel().rows;
+        const visibleIndex = visibleRows.findIndex(r => r.id === row.id);
+        
+        return (
+          <Checkbox
+            checked={isChecked}
+            onCheckedChange={() => {
+              // Handle keyboard selection
+              if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
+                onSelectSku(
+                  row.original.sku,
+                  !isChecked,
+                  visibleIndex,
+                  false,
+                  visibleRows.map(r => r.original)
+                );
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectSku(
+                row.original.sku,
+                !isChecked,
+                visibleIndex,
+                e.shiftKey,
+                visibleRows.map(r => r.original)
+              );
+            }}
+            aria-label="Select row"
+            className="translate-y-[2px]"
+          />
+        );
+      },
       enableSorting: false,
       enableHiding: false,
     },
@@ -258,40 +265,6 @@ export function ProductTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Updated" />,
       cell: ({ row }) => <div className="text-[10px] text-muted-foreground">{formatDate(row.getValue("updated_at"))}</div>,
     },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const product = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  if (product.consolidated?.url || product.input?.url) {
-                    window.open(product.consolidated?.url || product.input?.url, "_blank");
-                  }
-                }}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                View Source
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Info className="mr-2 h-4 w-4" />
-                Quick Details
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
   ], [showSources, showConfidence, selectedSkus, onSelectSku, onSelectAll, onDeselectAll]);
 
   const table = useReactTable({
@@ -340,7 +313,7 @@ export function ProductTable({
             onSelectSku(
               row.original.sku,
               !selectedSkus.has(row.original.sku),
-              row.index,
+              focusedIndex,
               e.shiftKey,
               rows.map(r => r.original)
             );
@@ -408,7 +381,7 @@ export function ProductTable({
                     onSelectSku(
                       row.original.sku,
                       !isSelected,
-                      row.index,
+                      index,
                       e.shiftKey,
                       table.getRowModel().rows.map(r => r.original)
                     );
