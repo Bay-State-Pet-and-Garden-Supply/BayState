@@ -343,7 +343,7 @@ export function PipelineClient({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-h-[calc(100vh-260px)]">
       {/* Stage Tabs */}
       <StageTabs
         currentStage={currentStage}

@@ -32,8 +32,9 @@ export async function GET() {
     const { data: activeRunners, error: runnerError } = await supabase
         .from('scraper_runners')
         .select('name, status, last_seen_at')
+        .eq('enabled', true)
         .gt('last_seen_at', fiveMinutesAgo)
-        .in('status', ['online', 'polling', 'idle', 'running']);
+        .in('status', ['online', 'polling', 'idle', 'busy']);
 
     if (runnerError) {
         checks.push({

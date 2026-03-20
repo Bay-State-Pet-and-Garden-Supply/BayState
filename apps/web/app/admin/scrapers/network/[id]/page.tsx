@@ -17,6 +17,7 @@ interface RunnerDetailPageProps {
 interface DatabaseRunner {
   name: string;
   status: string;
+  enabled: boolean;
   last_seen_at: string | null;
   current_job_id: string | null;
   metadata: Record<string, unknown> | null;
@@ -28,7 +29,7 @@ async function getRunner(id: string): Promise<RunnerDetail | null> {
 
   const { data, error } = await supabase
     .from('scraper_runners')
-    .select('name, status, last_seen_at, current_job_id, metadata, created_at')
+    .select('name, status, enabled, last_seen_at, current_job_id, metadata, created_at')
     .eq('name', id)
     .single();
 
@@ -48,6 +49,7 @@ async function getRunner(id: string): Promise<RunnerDetail | null> {
     id: runner.name, // Use name as id since it's the primary key
     name: runner.name,
     status: runner.status as RunnerDetail['status'],
+    enabled: runner.enabled,
     last_seen_at: runner.last_seen_at,
     active_jobs: runner.current_job_id ? 1 : 0, // Infer from current_job_id
     region,

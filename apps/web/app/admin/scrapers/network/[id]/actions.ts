@@ -101,6 +101,86 @@ export async function renameRunner(id: string, newName: string): Promise<{ succe
 }
 
 /**
+ * Disable a runner from claiming new jobs while keeping its API keys intact.
+ */
+export async function disableRunner(id: string): Promise<{ success: boolean; error?: string }> {
+    const { error: adminError } = await verifyAdminAccess();
+    if (adminError) {
+        return { success: false, error: adminError };
+    }
+
+    const supabase = getServiceRoleClient();
+
+    const { data: existingRunner, error: fetchError } = await supabase
+        .from('scraper_runners')
+        .select('name, enabled')
+        .eq('name', id)
+        .single();
+
+    if (fetchError || !existingRunner) {
+        return { success: false, error: 'Runner not found' };
+    }
+
+    if (!existingRunner.enabled) {
+        return { success: false, error: 'Runner is already disabled' };
+    }
+
+    const { error: updateError } = await supabase
+        .from('scraper_runners')
+        .update({ enabled: false })
+        .eq('name', id);
+
+    if (updateError) {
+        console.error(`Error disabling runner ${id}:`, updateError);
+        return { success: false, error: 'Failed to disable runner' };
+    }
+
+    revalidatePath('/admin/scrapers/network');
+    revalidatePath(`/admin/scrapers/network/${id}`);
+    return { success: true };
+}
+
+/**
+ * Re-enable a runner so it can claim new jobs again.
+ */
+export async function enableRunner(id: string): Promise<{ success: boolean; error?: string }> {
+    const { error: adminError } = await verifyAdminAccess();
+    if (adminError) {
+        return { success: false, error: adminError };
+    }
+
+    const supabase = getServiceRoleClient();
+
+    const { data: existingRunner, error: fetchError } = await supabase
+        .from('scraper_runners')
+        .select('name, enabled')
+        .eq('name', id)
+        .single();
+
+    if (fetchError || !existingRunner) {
+        return { success: false, error: 'Runner not found' };
+    }
+
+    if (existingRunner.enabled) {
+        return { success: false, error: 'Runner is already enabled' };
+    }
+
+    const { error: updateError } = await supabase
+        .from('scraper_runners')
+        .update({ enabled: true })
+        .eq('name', id);
+
+    if (updateError) {
+        console.error(`Error enabling runner ${id}:`, updateError);
+        return { success: false, error: 'Failed to enable runner' };
+    }
+
+    revalidatePath('/admin/scrapers/network');
+    revalidatePath(`/admin/scrapers/network/${id}`);
+    return { success: true };
+}
+
+/**
  * Pause a runner - prevents new jobs from being assigned
  */
 export async function pauseRunner(id: string): Promise<{ success: boolean; error?: string }> {
@@ -347,7 +427,7 @@ export async function rotateRunnerKey(id: string): Promise<{ success: boolean; k
             runner_name: id,
             key_hash: hash,
             key_prefix: prefix,
-            description: 'Rotated API Key',
+            description: 'Rotated API key',
             created_by: userData.user?.id,
             allowed_scrapers: settings.allowed_scrapers,
             expires_at: settings.expires_at,

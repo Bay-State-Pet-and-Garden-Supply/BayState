@@ -63,6 +63,36 @@ export async function POST(request: NextRequest) {
         // Use provided runner_name or fall back to authenticated runner name
         const claimingRunner = runner_name || runner.runnerName;
         const supabase = getSupabaseAdmin();
+        const nowIso = new Date().toISOString();
+
+        const { data: eligibleRunners, error: runnerLookupError } = await supabase
+            .from('scraper_runners')
+            .select('name')
+            .eq('name', claimingRunner)
+            .eq('enabled', true)
+            .neq('status', 'paused');
+
+        if (runnerLookupError) {
+            console.error('[Claim Chunk] Failed to load runner state:', runnerLookupError);
+            return NextResponse.json(
+                { error: 'Failed to validate runner state', details: runnerLookupError.message },
+                { status: 500 }
+            );
+        }
+
+        if (!eligibleRunners || eligibleRunners.length === 0) {
+            await supabase
+                .from('scraper_runners')
+                .update({ last_seen_at: nowIso })
+                .eq('name', claimingRunner);
+
+            const response: ClaimChunkResponse = {
+                chunk: null,
+                message: 'Runner is disabled or paused',
+            };
+
+            return NextResponse.json(response);
+        }
 
         // Call the atomic claim function
         const { data: claimedChunks, error: claimError } = await supabase.rpc('claim_next_pending_chunk', {
@@ -106,7 +136,7 @@ export async function POST(request: NextRequest) {
             .from('scraper_runners')
             .update({
                 status: 'busy',
-                last_seen_at: new Date().toISOString(),
+                last_seen_at: nowIso,
                 current_job_id: chunk.job_id,
             })
             .eq('name', claimingRunner);
