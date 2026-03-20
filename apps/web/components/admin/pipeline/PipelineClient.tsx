@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { Activity, Brain } from 'lucide-react';
 import { StageTabs } from './StageTabs';
 import { ProductTable } from './ProductTable';
 import { ScrapedResultsView } from './ScrapedResultsView';
 import { BulkToolbar } from './BulkToolbar';
 import { ScraperSelectDialog } from './ScraperSelectDialog';
 import { ActiveRunsTab } from './ActiveRunsTab';
+import { ActiveConsolidationsTab } from './ActiveConsolidationsTab';
 import type { PipelineProduct, PipelineStatus, StatusCount } from '@/lib/pipeline/types';
 
 interface PipelineClientProps {
@@ -176,10 +178,51 @@ export function PipelineClient({
     setSelectedSkus(new Set());
   };
 
+  // Handle consolidation submission for scraped products
+  const handleConsolidate = async (skus: string[]) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/consolidation/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skus,
+          description: `Consolidation batch for ${skus.length} products`,
+          auto_apply: false,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(
+          `Submitted ${data.product_count} product${data.product_count !== 1 ? 's' : ''} for AI consolidation`,
+          { description: `Batch ID: ${data.batch_id?.slice(0, 12) ?? 'unknown'}...` }
+        );
+        setSelectedSkus(new Set());
+        setCurrentStage('monitoring');
+        setSearch('');
+        await fetchCounts();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || 'Failed to submit consolidation');
+      }
+    } catch {
+      toast.error('Failed to submit consolidation');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Handle bulk status transition (non-scrape stages)
   const handleBulkAction = async (nextStage: PipelineStatus) => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
+
+    // Intercept scraped → consolidated to call consolidation API
+    if (currentStage === 'scraped' && nextStage === 'consolidated') {
+      await handleConsolidate(skus);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -317,7 +360,32 @@ export function PipelineClient({
           <div className="text-muted-foreground">Loading...</div>
         </div>
       ) : currentStage === 'monitoring' ? (
-        <ActiveRunsTab />
+        <div className="grid gap-6 xl:grid-cols-2">
+          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="rounded-lg bg-[#008850]/10 p-2">
+                <Activity className="h-5 w-5 text-[#008850]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Active Runs</h2>
+                <p className="text-sm text-gray-600">Live scraper jobs currently running or queued.</p>
+              </div>
+            </div>
+            <ActiveRunsTab />
+          </section>
+          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="rounded-lg bg-purple-100 p-2">
+                <Brain className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">AI Consolidations</h2>
+                <p className="text-sm text-gray-600">Active consolidation batches and history.</p>
+              </div>
+            </div>
+            <ActiveConsolidationsTab />
+          </section>
+        </div>
       ) : currentStage === 'scraped' ? (
         <ScrapedResultsView
           products={products}

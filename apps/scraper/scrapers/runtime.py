@@ -665,6 +665,8 @@ def run_scraping(
                         debug_mode=debug_mode,
                         job_id=job_id,
                         event_emitter=emitter,
+                        debug_callback=debug_callback,
+                        api_client=api_client,
                     )
                     if loop:
                         loop.run_until_complete(executor.initialize())

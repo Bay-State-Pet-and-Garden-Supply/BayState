@@ -202,7 +202,7 @@ def run_job(job_config, client, log_buffer=None) -> dict[str, Any]:
                 scraper.options["_credentials"] = creds
                 logger.debug(f"Injected credentials for {scraper.name}")
 
-    return run_job(job_config, runner_name=client.runner_name, log_buffer=log_buffer)
+    return run_job(job_config, runner_name=client.runner_name, log_buffer=log_buffer, api_client=client)
 
 
 def run_claimed_chunk(chunk, client, log_buffer=None) -> dict[str, Any]:
