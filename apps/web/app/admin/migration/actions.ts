@@ -654,9 +654,3 @@ export async function syncUploadedXmlAction(formData: FormData): Promise<SyncRes
     return result;
 }
 
-/**
- * Form action wrapper for syncOrders.
- */
-export async function syncOrdersFormAction(): Promise<void> {
-    await syncOrdersAction();
-}
