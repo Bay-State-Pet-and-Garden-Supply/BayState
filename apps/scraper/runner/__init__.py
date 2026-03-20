@@ -15,6 +15,7 @@ from scrapers.executor.workflow_executor import WorkflowExecutor
 from scrapers.parser import ScraperConfigParser
 from scrapers.result_collector import ResultCollector
 from scrapers.models.config import ScraperConfig as ScraperConfigModel
+from validation.result_quality import sanitize_product_payload
 from typing import cast
 
 logger = logging.getLogger(__name__)
@@ -396,7 +397,7 @@ def run_job(
                             except Exception:
                                 pass
 
-                        results["data"][sku][cfg_name] = {
+                        payload = {
                             # Note: Price is NOT scraped - we use our own pricing
                             "title": extracted_data.get("Name"),
                             "brand": extracted_data.get("Brand"),
@@ -436,6 +437,14 @@ def run_job(
                             "url": page_url,
                             "scraped_at": datetime.now().isoformat(),
                         }
+                        sanitized_payload, quality_warnings = sanitize_product_payload(payload)
+                        results["data"][sku][cfg_name] = sanitized_payload
+
+                        for quality_warning in quality_warnings:
+                            message = f"{cfg_name}/{sku}: {quality_warning}"
+                            log_buffer.append(create_log_entry("warning", message))
+                            emitter.warning(message, scraper=cfg_name, sku=sku)
+                            logger.warning(f"[Runner] {message}")
 
                         collector.add_result(sku, cfg_name, extracted_data)
 

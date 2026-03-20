@@ -137,12 +137,12 @@ workflows:
               pattern: Visit the (.+) Store
         - name: Images
           multiple: true
-          selector: "#altImages li.imageThumbnail img"
+          selector: "#altImages li.imageThumbnail img, #landingImage"
           attribute: src
           transform:
             - type: replace
-              pattern: _AC_US40_
-              replacement: _AC_SL1500_
+              pattern: "\\._[A-Z0-9_,-]+_\\."
+              replacement: "._AC_SL1500_."
         - name: Weight
           required: false
           selector: "tr:has-text('Item Weight') td, li:has-text('Item Weight') span, div#detailBullets_feature_div li:has-text('Item Weight') span.a-list-item, //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] | //li[contains(., 'pounds')]"
@@ -187,10 +187,8 @@ workflows:
     params:
       field: Images
       quality_patterns:
-        - regex: "_AC_US\\d+_"
-          replacement: "_AC_SL1500_"
-        - regex: "_SS\\d+_"
-          replacement: "_AC_SL1500_"
+        - regex: "\\._[A-Z0-9_,-]+_\\."
+          replacement: "._AC_SL1500_."
       filters:
         - type: exclude_text
           text: sprite
