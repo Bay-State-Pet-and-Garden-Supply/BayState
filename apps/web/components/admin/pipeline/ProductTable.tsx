@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { PipelineProduct, PipelineStatus } from "@/lib/pipeline/types";
+import type { PipelineProduct, PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
 
 interface ProductTableProps {
   products: PipelineProduct[];
@@ -41,7 +41,7 @@ interface ProductTableProps {
   ) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
-  currentStage: PipelineStatus;
+  currentStage: PipelineStage;
 }
 
 function formatDate(iso: string): string {

@@ -2,7 +2,7 @@
 
 import { RefreshCw } from 'lucide-react';
 
-import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStatus, PipelineStage } from '@/lib/pipeline';
 
 import { PipelineProductCard } from './PipelineProductCard';
 
@@ -18,7 +18,7 @@ interface PipelineProductGridProps {
     showEnrichButton?: boolean;
     readOnly?: boolean;
     showBatchSelect?: boolean;
-    currentStage?: PipelineStatus;
+    currentStage?: PipelineStage;
     emptyMessage?: string;
 }
 
