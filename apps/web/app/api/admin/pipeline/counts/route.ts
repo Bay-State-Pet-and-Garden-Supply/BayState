@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { PIPELINE_STATUS_VALUES, type StatusCount } from '@/lib/pipeline/types';
+import {
+  PIPELINE_STATUS_VALUES,
+  isPipelineStatus,
+  type PipelineStatus,
+  type StatusCount,
+} from '@/lib/pipeline/types';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+
+type PipelineStatusRow = {
+  pipeline_status: string | null;
+};
 
 export async function GET() {
     const auth = await requireAdminAuth();
@@ -25,21 +34,26 @@ export async function GET() {
         }
 
         // Aggregate counts in memory
-        const countMap: Record<string, number> = {};
-        PIPELINE_STATUS_VALUES.forEach(status => {
-            countMap[status] = 0;
-        });
+        const countMap: Record<PipelineStatus, number> = {
+            imported: 0,
+            monitoring: 0,
+            scraped: 0,
+            consolidated: 0,
+            finalized: 0,
+            published: 0,
+        };
+        const rows = (data ?? []) as PipelineStatusRow[];
 
-        (data || []).forEach((row: any) => {
+        rows.forEach((row) => {
             const status = row.pipeline_status;
-            if (status && countMap[status] !== undefined) {
-                countMap[status]++;
+            if (status && isPipelineStatus(status)) {
+                countMap[status] += 1;
             }
         });
 
         const counts: StatusCount[] = PIPELINE_STATUS_VALUES.map(status => ({
             status,
-            count: countMap[status] || 0,
+            count: countMap[status],
         }));
 
         return NextResponse.json({ counts });

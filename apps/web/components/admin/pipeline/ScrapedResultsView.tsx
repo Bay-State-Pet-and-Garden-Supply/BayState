@@ -1,17 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import {
   Package,
-  Search,
   ExternalLink,
-  ChevronRight,
-  ChevronLeft,
-  Filter,
-  ArrowRight,
-  Database,
-  Info,
-  Loader2,
   Trash2,
   Image as ImageIcon,
   AlertCircle,
@@ -20,10 +12,8 @@ import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 
 interface ScrapedResultsViewProps {
@@ -33,40 +23,57 @@ interface ScrapedResultsViewProps {
   onRefresh: () => void;
 }
 
+interface SourceDetails extends Record<string, unknown> {
+  title?: string;
+  name?: string;
+  description?: string;
+  brand?: string;
+  category?: string;
+  manufacturer_part_number?: string;
+  item_number?: string;
+  weight?: string;
+  size?: string;
+  unit_of_measure?: string;
+  upc?: string;
+  image_url?: string;
+  url?: string;
+  price?: number | string;
+  images?: string[];
+  categories?: string[];
+}
+
+const EMPTY_SOURCES: Record<string, unknown> = {};
+
+function isSourceDetails(value: unknown): value is SourceDetails {
+  return typeof value === "object" && value !== null;
+}
+
 export function ScrapedResultsView({
   products,
   selectedSkus,
   onSelectSku,
   onRefresh,
 }: ScrapedResultsViewProps) {
-  const [selectedSku, setSelectedSku] = useState<string | null>(
+  const [preferredSku, setPreferredSku] = useState<string | null>(
     products.length > 0 ? products[0].sku : null,
   );
-  const [activeSource, setActiveSource] = useState<string>("");
+  const [preferredSource, setPreferredSource] = useState<string>("");
 
-  const selectedProduct = products.find((p) => p.sku === selectedSku);
-  const sources = selectedProduct?.sources || {};
-  const sourceKeys = Object.keys(sources).filter((key) => !key.startsWith("_"));
-
-  // Set active source when product selection changes
-  useEffect(() => {
-    if (sourceKeys.length > 0) {
-      if (!activeSource || !sources[activeSource]) {
-        setActiveSource(sourceKeys[0]);
-      }
-    } else {
-      setActiveSource("");
+  const selectedProduct =
+    products.find((product) => product.sku === preferredSku) ?? products[0] ?? null;
+  const selectedSku = selectedProduct?.sku ?? null;
+  const sources = selectedProduct?.sources ?? EMPTY_SOURCES;
+  const sourceKeys = useMemo(
+    () => Object.keys(sources).filter((key) => !key.startsWith("_")),
+    [sources],
+  );
+  const activeSource = useMemo(() => {
+    if (preferredSource && sourceKeys.includes(preferredSource)) {
+      return preferredSource;
     }
-  }, [selectedSku, sourceKeys, activeSource, sources]);
 
-  // Update selected SKU if it's no longer in the list (e.g. after search or refresh)
-  useEffect(() => {
-    if (selectedSku && !products.find((p) => p.sku === selectedSku)) {
-      setSelectedSku(products.length > 0 ? products[0].sku : null);
-    } else if (!selectedSku && products.length > 0) {
-      setSelectedSku(products[0].sku);
-    }
-  }, [products, selectedSku]);
+    return sourceKeys[0] ?? "";
+  }, [preferredSource, sourceKeys]);
 
   const handleDeleteSource = async (sourceKey: string) => {
     if (!selectedProduct) return;
@@ -97,14 +104,19 @@ export function ScrapedResultsView({
         const data = await res.json();
         toast.error(data.error || "Failed to delete source");
       }
-    } catch (error) {
+    } catch {
       toast.error("An error occurred while deleting the source");
     }
   };
 
-  const currentSourceData = activeSource
-    ? (sources[activeSource] as any)
-    : null;
+  const currentSourceData = useMemo(() => {
+    if (!activeSource) {
+      return null;
+    }
+
+    const sourceValue = sources[activeSource];
+    return isSourceDetails(sourceValue) ? sourceValue : null;
+  }, [activeSource, sources]);
 
   return (
     <div className="flex h-full min-h-[calc(100vh-280px)] border rounded-lg overflow-hidden bg-background shadow-sm">
@@ -131,7 +143,7 @@ export function ScrapedResultsView({
                   className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
                     isSelected ? "bg-primary/5" : ""
                   }`}
-                  onClick={() => setSelectedSku(product.sku)}
+                  onClick={() => setPreferredSku(product.sku)}
                 >
                   {isSelected && (
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
@@ -222,7 +234,7 @@ export function ScrapedResultsView({
               {sourceKeys.length > 0 ? (
                 <Tabs
                   value={activeSource}
-                  onValueChange={setActiveSource}
+                  onValueChange={setPreferredSource}
                   className="w-full"
                 >
                   <div className="flex items-center justify-between gap-4">
@@ -302,7 +314,7 @@ export function ScrapedResultsView({
                           <div className="grid grid-cols-4 gap-2">
                             {currentSourceData.images
                               .slice(1, 5)
-                              .map((img: string, i: number) => (
+                              .map((img, i) => (
                                 <div
                                   key={i}
                                   className="aspect-square rounded-md border overflow-hidden bg-muted/20"

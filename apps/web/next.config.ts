@@ -1,4 +1,9 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+const appDirectory = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(appDirectory, "..", "..");
 
 const nextConfig: NextConfig = {
   // Enable strict React mode for better development experience
@@ -89,6 +94,11 @@ const nextConfig: NextConfig = {
 
   // External packages that should not be bundled
   serverExternalPackages: [],
+
+  // Keep Turbopack rooted at the monorepo workspace so hoisted dependencies resolve consistently.
+  turbopack: {
+    root: workspaceRoot,
+  },
 
   // Redirects for legacy routes
   async redirects() {

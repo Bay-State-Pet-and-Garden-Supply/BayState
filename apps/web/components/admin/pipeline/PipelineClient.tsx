@@ -124,7 +124,7 @@ export function PipelineClient({
   }, [currentStage, search, fetchProducts]);
 
   // Handle stage tab change
-  const handleStageChange = (stage: PipelineStatus) => {
+  const handleStageChange = (stage: PipelineStage) => {
     setCurrentStage(stage);
     setSearch("");
   };

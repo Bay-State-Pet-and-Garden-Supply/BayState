@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import {
   Home,
   Settings,
@@ -87,6 +87,58 @@ const navSections: NavSection[] = [
 ];
 
 const SIDEBAR_STORAGE_KEY = "adminSidebarCollapsed";
+const SIDEBAR_STORAGE_EVENT = "admin-sidebar-storage";
+
+function getCollapsedSnapshot(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function subscribeToCollapsedState(onStoreChange: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleChange = (event: Event) => {
+    if (
+      event instanceof StorageEvent &&
+      event.key !== null &&
+      event.key !== SIDEBAR_STORAGE_KEY
+    ) {
+      return;
+    }
+
+    onStoreChange();
+  };
+
+  window.addEventListener("storage", handleChange);
+  window.addEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
+
+  return () => {
+    window.removeEventListener("storage", handleChange);
+    window.removeEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
+  };
+}
+
+function setCollapsedPreference(value: boolean) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(value));
+    window.dispatchEvent(new Event(SIDEBAR_STORAGE_EVENT));
+  } catch {
+    // ignore
+  }
+}
 
 interface AdminSidebarProps {
   userRole?: "admin" | "staff" | "customer";
@@ -95,26 +147,11 @@ interface AdminSidebarProps {
 export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
   const pathname = usePathname();
   const isAdmin = userRole === "admin";
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
-      if (stored !== null) {
-        setCollapsed(stored === "true");
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
-    } catch {
-      // ignore
-    }
-  }, [collapsed]);
+  const collapsed = useSyncExternalStore(
+    subscribeToCollapsedState,
+    getCollapsedSnapshot,
+    () => false,
+  );
 
   const visibleSections = navSections
     .filter((section) => !section.adminOnly || isAdmin)
@@ -124,7 +161,9 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
     }))
     .filter((section) => section.items.length > 0);
 
-  const toggleCollapsed = () => setCollapsed((prev) => !prev);
+  const toggleCollapsed = useCallback(() => {
+    setCollapsedPreference(!collapsed);
+  }, [collapsed]);
 
   return (
     <aside

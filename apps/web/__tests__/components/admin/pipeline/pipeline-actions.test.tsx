@@ -5,7 +5,7 @@ describe('PipelineActions', () => {
   const defaultProps = {
     selectedCount: 0,
     selectedSkus: [],
-    currentStatus: 'staging',
+    currentStatus: 'imported',
     onApprove: jest.fn(),
     onReject: jest.fn(),
     onDelete: jest.fn(),
@@ -94,7 +94,7 @@ describe('PipelineActions', () => {
       />
     );
 
-    expect(screen.getByText('Approving...')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Approving/i })).toBeInTheDocument();
   });
 
   it('shows loading state for Reject button', () => {
@@ -106,7 +106,7 @@ describe('PipelineActions', () => {
       />
     );
 
-    expect(screen.getByText('Rejecting...')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Rejecting/i })).toBeInTheDocument();
   });
 
   it('shows loading state for Delete button', () => {
@@ -118,7 +118,7 @@ describe('PipelineActions', () => {
       />
     );
 
-    expect(screen.getByText('Deleting...')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Deleting/i })).toBeInTheDocument();
   });
 
   it('disables action buttons when approve is loading', () => {
@@ -130,7 +130,7 @@ describe('PipelineActions', () => {
       />
     );
 
-    const approveButton = screen.getByText('Approving...').closest('button');
+    const approveButton = screen.getByRole('button', { name: /Approving/i });
     expect(approveButton).toBeDisabled();
   });
 

@@ -13,6 +13,12 @@ import {
 import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
 import { STAGE_CONFIG } from '@/lib/pipeline/types';
 
+const DEFAULT_STAGE_CONFIG = {
+    label: 'Unknown',
+    color: '#6B7280',
+    description: 'Unknown pipeline stage',
+};
+
 interface ProductTableProps {
     products: PipelineProduct[];
     selectedSkus: Set<string>;
@@ -86,7 +92,7 @@ export function ProductTable({
                         const isSelected = selectedSkus.has(product.sku);
                         const displayName = product.consolidated?.name || product.input?.name || '—';
                         const displayPrice = product.consolidated?.price ?? product.input?.price;
-                        const stageConfig = STAGE_CONFIG[product.pipeline_status];
+                        const stageConfig = STAGE_CONFIG[product.pipeline_status] ?? DEFAULT_STAGE_CONFIG;
                         const sourceCount = getSourceCount(product.sources);
                         const confidence = product.confidence_score;
 
