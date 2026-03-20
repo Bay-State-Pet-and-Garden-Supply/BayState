@@ -33,7 +33,11 @@ interface NavSection {
 const navSections: NavSection[] = [
   {
     items: [
-      { href: "/admin", label: "Overview", icon: <Home className="h-5 w-5" /> },
+      {
+        href: "/admin",
+        label: "Dashboard",
+        icon: <Home className="h-5 w-5" />,
+      },
     ],
   },
   {
@@ -42,7 +46,7 @@ const navSections: NavSection[] = [
     items: [
       {
         href: "/admin/pipeline",
-        label: "Overview",
+        label: "Pipeline",
         icon: <LayoutGrid className="h-5 w-5" />,
         adminOnly: true,
       },

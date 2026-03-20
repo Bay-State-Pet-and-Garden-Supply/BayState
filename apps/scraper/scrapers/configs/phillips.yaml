@@ -33,8 +33,31 @@ selectors:
     multiple: true
     required: false
     fallback_selectors:
-      - "img[src]"
-      - "[data-testid='product-image']"
+      - ".cc_product_image img"
+      - "img[src*='product']"
+  - name: Description
+    selector: "#plp-desktop-row .product-description, #plp-desktop-row .cc_product_description"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - ".product-description"
+      - ".cc_product_description"
+  - name: Weight
+    selector: "#plp-desktop-row .product-weight .cc_value, #plp-desktop-row .product-ship-weight .cc_value"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - ".product-weight .cc_value"
+      - ".product-ship-weight .cc_value"
+  - name: Features
+    selector: "#plp-desktop-row .product-features li, #plp-desktop-row .cc_product_features li"
+    attribute: text
+    multiple: true
+    required: false
+    fallback_selectors:
+      - ".product-features li"
 workflows:
   - action: login
     name: null
@@ -66,14 +89,24 @@ workflows:
         - UPC
         - ItemNumber
         - Image URLs
-  - action: transform_value
+        - Description
+        - Weight
+        - Features
+  - action: process_images
     name: null
     params:
       field: Image URLs
-      transformations:
-        - type: replace
-          pattern: /thumb/
-          replacement: /large/
+      quality_patterns:
+        - regex: "/thumb/"
+          replacement: "/large/"
+        - regex: "_thumb"
+          replacement: "_large"
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: noimage
+      deduplicate: true
 ai_config: null
 anti_detection:
   enable_rate_limiting: false
@@ -105,7 +138,7 @@ http_status: null
 normalization: null
 timeout: 30
 retries: 2
-image_quality: 20
+image_quality: 40
 credential_refs:
   - phillips
 test_skus:

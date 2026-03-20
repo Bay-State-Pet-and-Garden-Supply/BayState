@@ -51,6 +51,16 @@ selectors:
     attribute: text
     multiple: true
     required: false
+  - name: Features
+    selector: "#tst_productDetail_features li, .product-features li"
+    attribute: text
+    multiple: true
+    required: false
+  - name: Dimensions
+    selector: "//div[@class='specification-container']//li[strong[contains(text(), 'Dimension')]]/span"
+    attribute: innerHTML
+    multiple: false
+    required: false
   - name: Safety Info
     selector: .safety-info
     attribute: text
@@ -122,14 +132,23 @@ workflows:
         - "Mfg Part #"
         - Description
         - Specifications
-  - action: transform_value
+        - Features
+        - Dimensions
+  - action: process_images
     name: null
     params:
       field: Image URLs
-      transformations:
-        - type: replace
-          pattern: /w_900/
-          replacement: /w_1500/
+      quality_patterns:
+        - regex: "/w_\\d+/"
+          replacement: "/w_1500/"
+        - regex: "/h_\\d+/"
+          replacement: "/h_1500/"
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: noimage
+      deduplicate: true
 ai_config: null
 anti_detection:
   enable_rate_limiting: false
@@ -186,7 +205,7 @@ http_status:
 normalization: null
 timeout: 30
 retries: 2
-image_quality: 20
+image_quality: 60
 credential_refs:
   - central-pet
 test_skus:

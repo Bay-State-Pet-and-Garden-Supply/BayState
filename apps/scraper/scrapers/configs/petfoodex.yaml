@@ -33,8 +33,33 @@ selectors:
     multiple: true
     required: false
     fallback_selectors:
-      - "img[src]"
-      - "[data-test-selector='product-image']"
+      - "img[data-test-selector*='productImage']"
+      - "[data-test-selector='product-image'] img"
+  - name: Description
+    selector: "[data-test-selector='productDetails_description'], .product-description"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - "[data-test-selector='productDetails_longDescription']"
+      - ".product-detail-description"
+  - name: Weight
+    selector: "[data-test-selector='productDetails_specifications'] li:has-text('Weight'), [data-test-selector='productDetails_specifications'] li:has-text('weight')"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - "//li[contains(text(), 'Weight')]"
+  - name: Features
+    selector: "[data-test-selector='productDetails_features'] li, .product-features li"
+    attribute: text
+    multiple: true
+    required: false
+  - name: Ingredients
+    selector: "[data-test-selector='productDetails_ingredients'], .product-ingredients"
+    attribute: text
+    multiple: false
+    required: false
 workflows:
   - action: login
     name: null
@@ -67,6 +92,10 @@ workflows:
         - Product Meta
         - UoM
         - Image URLs
+        - Description
+        - Weight
+        - Features
+        - Ingredients
   - action: transform_value
     name: null
     params:
@@ -93,14 +122,23 @@ workflows:
         - type: replace
           pattern: ^/\s*
           replacement: ""
-  - action: transform_value
+  - action: process_images
     name: null
     params:
       field: Image URLs
-      transformations:
-        - type: replace
-          pattern: _md
-          replacement: _lg
+      quality_patterns:
+        - regex: "_md"
+          replacement: "_lg"
+        - regex: "_sm"
+          replacement: "_lg"
+        - regex: "_thumbnail"
+          replacement: "_lg"
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: noimage
+      deduplicate: true
 ai_config: null
 anti_detection:
   enable_rate_limiting: false
@@ -128,7 +166,7 @@ http_status: null
 normalization: null
 timeout: 15
 retries: 2
-image_quality: 20
+image_quality: 40
 credential_refs:
   - petfoodex
 test_skus:
