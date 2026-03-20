@@ -115,7 +115,11 @@ function getCollapsedSnapshot(): boolean {
 function subscribeToCollapsedState(onStoreChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   const handleChange = (event: Event) => {
-    if (event instanceof StorageEvent && event.key !== null && event.key !== SIDEBAR_STORAGE_KEY) {
+    if (
+      event instanceof StorageEvent &&
+      event.key !== null &&
+      event.key !== SIDEBAR_STORAGE_KEY
+    ) {
       return;
     }
     onStoreChange();
@@ -133,7 +137,9 @@ function setCollapsedPreference(value: boolean) {
   try {
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(value));
     window.dispatchEvent(new Event(SIDEBAR_STORAGE_EVENT));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 interface AdminSidebarProps {
@@ -170,12 +176,20 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
     >
       {/* Header */}
       <div className="flex h-20 items-center px-4 mb-2">
-        <div className={cn(
-          "flex items-center gap-2.5 transition-opacity duration-300",
-          collapsed ? "opacity-0 invisible w-0" : "opacity-100 visible w-full"
-        )}>
+        <div
+          className={cn(
+            "flex items-center gap-2.5 transition-opacity duration-300",
+            collapsed
+              ? "opacity-0 invisible w-0"
+              : "opacity-100 visible w-full",
+          )}
+        >
           <div className="bg-white/10 p-1.5 rounded-lg shadow-inner border border-white/20 shrink-0">
-            <Zap className="h-5 w-5 text-accent animate-pulse" />
+            <img
+              src="/icon.png"
+              alt="Bay State app icon"
+              className="h-5 w-5 object-contain"
+            />
           </div>
           <div className="min-w-0">
             <h1 className="text-sm font-bold tracking-tight text-white leading-tight truncate">
@@ -186,10 +200,14 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
             </p>
           </div>
         </div>
-        
+
         {collapsed && (
           <div className="absolute inset-x-0 top-0 flex justify-center py-6">
-            <Zap className="h-8 w-8 text-accent" />
+            <img
+              src="/logo.png"
+              alt="Bay State logo"
+              className="h-8 w-8 object-contain"
+            />
           </div>
         )}
 
@@ -198,7 +216,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           onClick={toggleCollapsed}
           className={cn(
             "absolute -right-3 top-1/2 -translate-y-1/2 z-50 flex h-6 w-6 items-center justify-center rounded-full bg-sidebar border border-sidebar-border/30 text-sidebar-foreground shadow-lg hover:scale-110 transition-transform active:scale-95 cursor-pointer",
-            collapsed && "right-[-12px]"
+            collapsed && "right-[-12px]",
           )}
           aria-label={collapsed ? "Expand" : "Collapse"}
         >
@@ -228,11 +246,13 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
               {section.title && collapsed && (
                 <div className="h-px bg-white/10 mx-2 my-4" />
               )}
-              
+
               <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/admin" && pathname.startsWith(item.href));
 
                   const content = (
                     <Link
@@ -241,13 +261,17 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                         "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 transition-all duration-200",
                         isActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-1 ring-white/10"
-                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                          : "text-white/70 hover:bg-white/5 hover:text-white",
                       )}
                     >
-                      <Icon className={cn(
-                        "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
-                        isActive ? "text-accent" : "text-white/60 group-hover:text-white"
-                      )} />
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                          isActive
+                            ? "text-accent"
+                            : "text-white/60 group-hover:text-white",
+                        )}
+                      />
                       {!collapsed && (
                         <span className="text-xs font-medium tracking-wide truncate">
                           {item.label}
@@ -263,7 +287,11 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                     return (
                       <Tooltip key={item.href}>
                         <TooltipTrigger asChild>{content}</TooltipTrigger>
-                        <TooltipContent side="right" sideOffset={20} className="bg-sidebar-accent border-sidebar-border/30 text-sidebar-accent-foreground font-medium px-4 py-2 text-xs shadow-xl">
+                        <TooltipContent
+                          side="right"
+                          sideOffset={20}
+                          className="bg-sidebar-accent border-sidebar-border/30 text-sidebar-accent-foreground font-medium px-4 py-2 text-xs shadow-xl"
+                        >
                           {item.label}
                         </TooltipContent>
                       </Tooltip>
@@ -280,10 +308,12 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
 
       {/* Footer / User Profile */}
       <div className="mt-auto p-3 border-t border-white/10 bg-black/5">
-        <div className={cn(
-          "flex items-center gap-2.5",
-          collapsed ? "justify-center" : "px-1"
-        )}>
+        <div
+          className={cn(
+            "flex items-center gap-2.5",
+            collapsed ? "justify-center" : "px-1",
+          )}
+        >
           <div className="relative shrink-0">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center border border-white/20 shadow-lg">
               <User className="h-4 w-4 text-white" />
@@ -292,21 +322,25 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
               <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
             </div>
           </div>
-          
+
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white truncate leading-tight">
                 Staff Account
               </p>
               <div className="flex items-center gap-1 mt-0.5">
-                <ShieldCheck className={cn(
-                  "h-2.5 w-2.5",
-                  isAdmin ? "text-accent" : "text-white/40"
-                )} />
-                <span className={cn(
-                  "text-[9px] font-bold uppercase tracking-wider truncate",
-                  isAdmin ? "text-accent" : "text-white/40"
-                )}>
+                <ShieldCheck
+                  className={cn(
+                    "h-2.5 w-2.5",
+                    isAdmin ? "text-accent" : "text-white/40",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-[9px] font-bold uppercase tracking-wider truncate",
+                    isAdmin ? "text-accent" : "text-white/40",
+                  )}
+                >
                   {userRole}
                 </span>
               </div>
@@ -314,15 +348,17 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           )}
         </div>
 
-        <div className={cn(
-          "mt-3 flex flex-col gap-0.5",
-          collapsed ? "items-center" : ""
-        )}>
+        <div
+          className={cn(
+            "mt-3 flex flex-col gap-0.5",
+            collapsed ? "items-center" : "",
+          )}
+        >
           <Link
             href="/"
             className={cn(
               "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400",
-              collapsed && "justify-center"
+              collapsed && "justify-center",
             )}
           >
             <LogOut className="h-3.5 w-3.5 rotate-180" />

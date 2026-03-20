@@ -6,7 +6,8 @@ import { Activity, Brain } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
-import { BulkToolbar } from "./BulkToolbar";
+import { PipelineToolbar } from "./PipelineToolbar";
+import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ScraperSelectDialog } from "./ScraperSelectDialog";
 import { ManualAddProductDialog } from "./ManualAddProductDialog";
 import { IntegraImportDialog } from "./IntegraImportDialog";
@@ -65,7 +66,11 @@ export function PipelineClient({
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
-    if (sourceFilter && availableSourceFilters.length > 0 && !availableSourceFilters.includes(sourceFilter)) {
+    if (
+      sourceFilter &&
+      availableSourceFilters.length > 0 &&
+      !availableSourceFilters.includes(sourceFilter)
+    ) {
       setSourceFilter("");
     }
   }, [availableSourceFilters, sourceFilter]);
@@ -169,44 +174,47 @@ export function PipelineClient({
   );
 
   // Toggle product selection with optional Shift+Click range support
-  const handleSelectSku = useCallback((
-    sku: string,
-    selected: boolean,
-    index?: number,
-    isShiftClick?: boolean,
-    visibleProducts?: PipelineProduct[],
-  ) => {
-    const sourceProducts = visibleProducts ?? filteredProducts;
+  const handleSelectSku = useCallback(
+    (
+      sku: string,
+      selected: boolean,
+      index?: number,
+      isShiftClick?: boolean,
+      visibleProducts?: PipelineProduct[],
+    ) => {
+      const sourceProducts = visibleProducts ?? filteredProducts;
 
-    setSelectedSkus((prev) => {
-      const next = new Set(prev);
+      setSelectedSkus((prev) => {
+        const next = new Set(prev);
 
-      if (isShiftClick && index !== undefined && lastSelectedIndex !== null) {
-        const [start, end] = [lastSelectedIndex, index].sort((a, b) => a - b);
-        const rangeSkus = sourceProducts
-          .slice(start, end + 1)
-          .map((p) => p.sku);
-        
-        if (selected) {
-          rangeSkus.forEach((skuItem) => next.add(skuItem));
+        if (isShiftClick && index !== undefined && lastSelectedIndex !== null) {
+          const [start, end] = [lastSelectedIndex, index].sort((a, b) => a - b);
+          const rangeSkus = sourceProducts
+            .slice(start, end + 1)
+            .map((p) => p.sku);
+
+          if (selected) {
+            rangeSkus.forEach((skuItem) => next.add(skuItem));
+          } else {
+            rangeSkus.forEach((skuItem) => next.delete(skuItem));
+          }
         } else {
-          rangeSkus.forEach((skuItem) => next.delete(skuItem));
+          if (selected) {
+            next.add(sku);
+          } else {
+            next.delete(sku);
+          }
         }
-      } else {
-        if (selected) {
-          next.add(sku);
-        } else {
-          next.delete(sku);
-        }
+
+        return next;
+      });
+
+      if (index !== undefined) {
+        setLastSelectedIndex(index);
       }
-
-      return next;
-    });
-
-    if (index !== undefined) {
-      setLastSelectedIndex(index);
-    }
-  }, [filteredProducts, lastSelectedIndex]);
+    },
+    [filteredProducts, lastSelectedIndex],
+  );
 
   // Select all visible products
   const handleSelectAllVisible = () => {
@@ -249,48 +257,55 @@ export function PipelineClient({
   }, []);
 
   // Handle consolidation submission for scraped products
-  const handleConsolidate = useCallback(async (skus: string[]) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/admin/consolidation/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          skus,
-          description: `Consolidation batch for ${skus.length} products`,
-          auto_apply: false,
-        }),
-      });
+  const handleConsolidate = useCallback(
+    async (skus: string[]) => {
+      setIsLoading(true);
+      try {
+        const res = await fetch("/api/admin/consolidation/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            skus,
+            description: `Consolidation batch for ${skus.length} products`,
+            auto_apply: false,
+          }),
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(
-          `Submitted ${data.product_count} product${data.product_count !== 1 ? "s" : ""} for AI consolidation`,
-          {
-            description: `Batch ID: ${data.batch_id?.slice(0, 12) ?? "unknown"}...`,
-          },
-        );
-        setSelectedSkus(new Set());
-        setCurrentStage("consolidating");
-        setSearch("");
-        await fetchCounts();
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to submit consolidation");
+        if (res.ok) {
+          const data = await res.json();
+          toast.success(
+            `Submitted ${data.product_count} product${data.product_count !== 1 ? "s" : ""} for AI consolidation`,
+            {
+              description: `Batch ID: ${data.batch_id?.slice(0, 12) ?? "unknown"}...`,
+            },
+          );
+          setSelectedSkus(new Set());
+          setCurrentStage("consolidating");
+          setSearch("");
+          await fetchCounts();
+        } else {
+          const error = await res.json();
+          toast.error(error.error || "Failed to submit consolidation");
+        }
+      } catch {
+        toast.error("Failed to submit consolidation");
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      toast.error("Failed to submit consolidation");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchCounts]);
+    },
+    [fetchCounts],
+  );
 
   // Handle product deletion
   const handleDelete = useCallback(async () => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
-    if (!confirm(`Are you sure you want to permanently delete ${skus.length} product${skus.length > 1 ? 's' : ''}? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to permanently delete ${skus.length} product${skus.length > 1 ? "s" : ""}? This action cannot be undone.`,
+      )
+    ) {
       return;
     }
 
@@ -303,7 +318,9 @@ export function PipelineClient({
       });
 
       if (res.ok) {
-        toast.success(`Deleted ${skus.length} product${skus.length > 1 ? 's' : ''}`);
+        toast.success(
+          `Deleted ${skus.length} product${skus.length > 1 ? "s" : ""}`,
+        );
         setSelectedSkus(new Set());
         await refreshAll();
       } else {
@@ -345,7 +362,10 @@ export function PipelineClient({
             e.preventDefault();
             handleConsolidate(Array.from(selectedSkus));
           }
-        } else if (e.key === "Delete" || (e.key === "Backspace" && (e.metaKey || e.ctrlKey))) {
+        } else if (
+          e.key === "Delete" ||
+          (e.key === "Backspace" && (e.metaKey || e.ctrlKey))
+        ) {
           e.preventDefault();
           handleDelete();
         }
@@ -354,7 +374,14 @@ export function PipelineClient({
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [selectedSkus, currentStage, handleClearSelection, refreshAll, handleConsolidate, handleDelete]);
+  }, [
+    selectedSkus,
+    currentStage,
+    handleClearSelection,
+    refreshAll,
+    handleConsolidate,
+    handleDelete,
+  ]);
 
   // Handle bulk status transition (non-scrape stages)
   const handleBulkAction = async (nextStage: PipelineStatus) => {
@@ -489,26 +516,21 @@ export function PipelineClient({
         onStageChange={handleStageChange}
       />
 
-      {/* Bulk Toolbar + Search bar — hidden for monitoring/consolidating */}
+      {/* Pipeline Toolbar — hidden for monitoring/consolidating */}
       {currentStage !== "monitoring" && currentStage !== "consolidating" && (
-        <BulkToolbar
-          selectedCount={selectedSkus.size}
-          totalCount={sourceFilter ? filteredProducts.length : totalCount}
+        <PipelineToolbar
+          totalCount={totalCount}
           currentStage={currentStage}
           isLoading={isLoading}
           search={search}
           onSearchChange={(value) => setSearch(value)}
-          onClearSelection={handleClearSelection}
           onSelectAll={handleSelectAll}
-          onBulkAction={handleBulkAction}
-          onResetStage={handleResetStage}
-          onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onManualAdd={() => setIsManualAddOpen(true)}
           onIntegraImport={() => setIsIntegraImportOpen(true)}
-          onDelete={handleDelete}
           sourceFilter={sourceFilter}
           onSourceFilterChange={setSourceFilter}
           availableSourceFilters={availableSourceFilters}
+          selectedCount={selectedSkus.size}
         />
       )}
 
@@ -541,8 +563,8 @@ export function PipelineClient({
           <div className="grid gap-6 xl:grid-cols-1">
             <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
-                <div className="rounded-lg bg-purple-100 p-2">
-                  <Brain className="h-5 w-5 text-purple-600" />
+                <div className="rounded-lg bg-brand-burgundy/10 p-2">
+                  <Brain className="h-5 w-5 text-brand-burgundy" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">
@@ -602,6 +624,20 @@ export function PipelineClient({
           onCancel={() => setIsIntegraImportOpen(false)}
         />
       )}
+
+      {/* Floating Bulk Actions Bar */}
+      <FloatingActionsBar
+        selectedCount={selectedSkus.size}
+        totalCount={totalCount}
+        currentStage={currentStage}
+        isLoading={isLoading}
+        onClearSelection={handleClearSelection}
+        onSelectAll={handleSelectAll}
+        onBulkAction={handleBulkAction}
+        onResetStage={handleResetStage}
+        onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }
