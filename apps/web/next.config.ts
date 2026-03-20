@@ -79,7 +79,7 @@ const nextConfig: NextConfig = {
       "tailwind-merge",
     ],
     // Optimize CSS with Lightning CSS (faster than postcss)
-    optimizeCss: true,
+    optimizeCss: false,
   },
 
   // External packages that should not be bundled

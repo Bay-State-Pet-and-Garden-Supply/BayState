@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { SUPABASE_URL } from '@/lib/supabase/config';
 import { revalidatePath } from 'next/cache';
 import { hasRole } from '@/lib/auth/roles';
 
