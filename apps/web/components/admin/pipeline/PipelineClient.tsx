@@ -234,12 +234,12 @@ export function PipelineClient({
   };
 
   // Clear selection
-  const handleClearSelection = () => {
+  const handleClearSelection = useCallback(() => {
     setSelectedSkus(new Set());
-  };
+  }, []);
 
   // Handle consolidation submission for scraped products
-  const handleConsolidate = async (skus: string[]) => {
+  const handleConsolidate = useCallback(async (skus: string[]) => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/admin/consolidation/submit", {
@@ -273,7 +273,43 @@ export function PipelineClient({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchCounts]);
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (
+        activeElement?.tagName === "INPUT" ||
+        activeElement?.tagName === "TEXTAREA" ||
+        activeElement?.getAttribute("contenteditable") === "true"
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        handleClearSelection();
+      } else if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        refreshAll();
+      } else if (selectedSkus.size > 0) {
+        if (e.key.toLowerCase() === "s") {
+          if (currentStage === "imported" || currentStage === "scraped") {
+            e.preventDefault();
+            setIsScrapeDialogOpen(true);
+          }
+        } else if (e.key.toLowerCase() === "c") {
+          if (currentStage === "scraped") {
+            e.preventDefault();
+            handleConsolidate(Array.from(selectedSkus));
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [selectedSkus, currentStage, handleClearSelection, refreshAll, handleConsolidate]);
 
   // Handle bulk status transition (non-scrape stages)
   const handleBulkAction = async (nextStage: PipelineStatus) => {
