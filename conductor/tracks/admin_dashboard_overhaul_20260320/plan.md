@@ -7,7 +7,7 @@ Goal: Prepare the database by removing placeholders and implementing the product
     - [ ] Write tests for product reset and placeholder removal logic
     - [ ] Implement script to reset `published` status and delete placeholder products in Supabase
     - [ ] Verify script execution and database state
-- [ ] Task: Define Dashboard Data Schema
+- [x] Task: Define Dashboard Data Schema 8311ed9
     - [ ] Identify key metrics for the dashboard (Scraper health, Sync status, Product stats)
     - [ ] Create Supabase views or RPCs for efficient data aggregation
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Data Cleanup' (Protocol in workflow.md)
