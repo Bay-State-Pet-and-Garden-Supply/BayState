@@ -26,6 +26,7 @@ interface ScraperConfig {
     test_skus?: string[];
     retries?: number;
     validation?: Record<string, unknown>;
+    login?: Record<string, unknown>;
     credential_refs?: string[];
 }
 
@@ -162,6 +163,14 @@ function toSelectors(value: unknown): Record<string, unknown> | Record<string, u
     return undefined;
 }
 
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+
+    return undefined;
+}
+
 export async function GET(request: NextRequest) {
     try {
         // Validate authentication using unified auth function
@@ -247,6 +256,7 @@ export async function GET(request: NextRequest) {
                 test_skus: config.test_skus,
                 retries: config.retries,
                 validation: config.validation,
+                login: toRecord(config.login),
                 credential_refs: config.credential_refs,
             });
         }

@@ -61,6 +61,7 @@ export function PipelineStatusTabs({
 }: PipelineStatusTabsProps) {
     const activeIndex = flowOrder.indexOf(activeTab);
     const [showLegend, setShowLegend] = useState(false);
+    const activeConfig = TAB_CONFIG[activeTab] ?? TAB_CONFIG.registered;
 
     const getCount = (tab: PipelineTab): number => {
         if (isMonitoringTab(tab)) {
@@ -196,15 +197,15 @@ export function PipelineStatusTabs({
 
             {/* Current Tab Description */}
             <div 
-                className={`mt-4 p-3 rounded-lg text-sm ${TAB_CONFIG[activeTab].bgColor} ${TAB_CONFIG[activeTab].color}`}
+                className={`mt-4 p-3 rounded-lg text-sm ${activeConfig.bgColor} ${activeConfig.color}`}
             >
                 <div className="flex items-center gap-2">
                     {(() => {
-                        const Icon = iconMap[TAB_CONFIG[activeTab].icon] || Upload;
+                        const Icon = iconMap[activeConfig.icon] || Upload;
                         return <Icon className="h-4 w-4" />;
                     })()}
-                    <span className="font-medium">{TAB_CONFIG[activeTab].label}:</span>
-                    <span>{TAB_CONFIG[activeTab].description}</span>
+                    <span className="font-medium">{activeConfig.label}:</span>
+                    <span>{activeConfig.description}</span>
                 </div>
             </div>
         </div>

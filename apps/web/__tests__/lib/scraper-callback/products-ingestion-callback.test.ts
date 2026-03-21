@@ -67,7 +67,6 @@ describe('persistProductsIngestionSourcesStrict', () => {
       sources: {
         legacy: { price: 10 },
         amazon: { price: 12 },
-        _last_scraped: nowIso,
       },
     });
   });
@@ -102,7 +101,6 @@ describe('persistProductsIngestionSourcesStrict', () => {
             upc: '12345',
             price: 12,
           },
-          _last_scraped: nowIso,
         },
       })
       ]),
@@ -138,7 +136,6 @@ describe('persistProductsIngestionSourcesStrict', () => {
           ai_discovery: {
             title: 'Discovery Name',
           },
-          _last_scraped: nowIso,
         },
       })
       ]),

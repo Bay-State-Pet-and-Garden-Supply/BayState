@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Copy, Check, AlertCircle } from 'lucide-react';
 import {
   renameRunner,
-  pauseRunner,
-  resumeRunner,
+  disableRunner,
+  enableRunner,
   deleteRunner,
   updateRunnerMetadata,
   rotateRunnerKey,
@@ -35,6 +36,7 @@ interface RunnerManagementPanelProps {
 }
 
 export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   
   // Rename state
@@ -68,27 +70,30 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
       if (result.success) {
         toast.success('Runner renamed successfully');
         setRenameDialogOpen(false);
+        router.refresh();
       } else {
         toast.error(result.error || 'Failed to rename runner');
       }
     });
   };
 
-  const handlePauseResume = async () => {
+  const handleToggleAccess = async () => {
     startTransition(async () => {
-      if (runner.status === 'paused') {
-        const result = await resumeRunner(runner.id);
+      if (runner.enabled) {
+        const result = await disableRunner(runner.id);
         if (result.success) {
-          toast.success('Runner resumed');
+          toast.success('Runner disabled');
+          router.refresh();
         } else {
-          toast.error(result.error || 'Failed to resume runner');
+          toast.error(result.error || 'Failed to disable runner');
         }
       } else {
-        const result = await pauseRunner(runner.id);
+        const result = await enableRunner(runner.id);
         if (result.success) {
-          toast.success('Runner paused');
+          toast.success('Runner enabled');
+          router.refresh();
         } else {
-          toast.error(result.error || 'Failed to pause runner');
+          toast.error(result.error || 'Failed to enable runner');
         }
       }
     });
@@ -122,6 +127,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
         if (result.success) {
           toast.success('Metadata updated');
           setMetadataEditOpen(false);
+          router.refresh();
         } else {
           toast.error(result.error || 'Failed to update metadata');
         }
@@ -131,7 +137,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
     }
   };
 
-  const handleApiKeyRegenerate = async () => {
+  const handleRotateApiKey = async () => {
     startTransition(async () => {
       const result = await rotateRunnerKey(runner.id);
       if (result.success && result.key) {
@@ -152,7 +158,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
     }
   };
 
-  const isPaused = runner.status === 'paused';
+  const isEnabled = runner.enabled;
 
   return (
     <div className="space-y-6">
@@ -160,7 +166,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="rename">Rename</TabsTrigger>
           <TabsTrigger value="api-key">API Key</TabsTrigger>
-          <TabsTrigger value="pause">Pause</TabsTrigger>
+          <TabsTrigger value="access">Access</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           <TabsTrigger value="delete" className="text-red-600">Delete</TabsTrigger>
         </TabsList>
@@ -202,7 +208,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
                 <label className="text-sm font-medium">Current API Key</label>
                 <Input value="bsr_••••••••••••••••" disabled />
                 <p className="text-xs text-muted-foreground">
-                  API keys are masked for security. Regenerate to get a new key.
+                  API keys are masked for security. Rotate the key to invalidate the current one and reveal a new key once.
                 </p>
               </div>
               <Button 
@@ -213,41 +219,41 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
                 variant="outline" 
                 disabled={isPending}
               >
-                Regenerate API Key
+                Rotate API Key
               </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Pause Tab */}
-        <TabsContent value="pause">
+        {/* Access Tab */}
+        <TabsContent value="access">
           <Card>
             <CardHeader>
-              <CardTitle>Pause / Resume Runner</CardTitle>
+              <CardTitle>Runner Access</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
-                <Badge variant={isPaused ? 'secondary' : 'default'}>
-                  {isPaused ? 'Paused' : 'Active'}
+                <Badge variant={isEnabled ? 'default' : 'destructive'}>
+                  {isEnabled ? 'Enabled' : 'Disabled'}
                 </Badge>
                 <p className="text-sm text-muted-foreground">
-                  {isPaused
-                    ? 'This runner will not accept new jobs.'
-                    : 'This runner is accepting new jobs.'}
+                  {isEnabled
+                    ? 'This runner can claim new jobs with its current API key.'
+                    : 'This runner cannot claim new jobs right now, but its API key remains intact for later re-enable or rotation.'}
                 </p>
               </div>
               <Button
-                onClick={handlePauseResume}
-                variant={isPaused ? 'default' : 'destructive'}
+                onClick={handleToggleAccess}
+                variant={isEnabled ? 'destructive' : 'default'}
                 disabled={isPending}
               >
                 {isPending
-                  ? isPaused
-                    ? 'Resuming...'
-                    : 'Pausing...'
-                  : isPaused
-                  ? 'Resume Runner'
-                  : 'Pause Runner'}
+                  ? isEnabled
+                    ? 'Disabling...'
+                    : 'Enabling...'
+                  : isEnabled
+                  ? 'Disable Runner'
+                  : 'Enable Runner'}
               </Button>
             </CardContent>
           </Card>
@@ -341,11 +347,11 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{newApiKey ? 'New API Key Generated' : 'Regenerate API Key'}</DialogTitle>
+            <DialogTitle>{newApiKey ? 'New API Key Generated' : 'Rotate API Key'}</DialogTitle>
             <DialogDescription>
               {newApiKey 
                 ? 'Please copy your new API key now. You will not be able to see it again.'
-                : 'Are you sure you want to regenerate this runner\'s API key? The old key will stop working immediately.'}
+                : 'Are you sure you want to rotate this runner\'s API key? Existing active keys for this runner will stop working immediately.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -355,7 +361,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertTitle>Important Security Warning</AlertTitle>
                 <AlertDescription>
-                  This key will only be shown once. If you lose it, you will need to regenerate it again.
+                  This key will only be shown once. If you lose it, you will need to rotate it again.
                 </AlertDescription>
               </Alert>
               
@@ -385,8 +391,8 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
                 <Button variant="outline" onClick={() => setApiKeyDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleApiKeyRegenerate} disabled={isPending}>
-                  {isPending ? 'Regenerating...' : 'Regenerate'}
+                <Button onClick={handleRotateApiKey} disabled={isPending}>
+                  {isPending ? 'Rotating...' : 'Rotate Key'}
                 </Button>
               </>
             ) : (

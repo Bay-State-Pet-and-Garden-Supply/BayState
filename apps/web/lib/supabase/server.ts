@@ -1,13 +1,29 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
+import {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY,
+  requireSupabaseConfig,
+} from './config'
+
+function requireServiceRoleKey() {
+  const serviceRoleKey = SUPABASE_SERVICE_ROLE_KEY.trim()
+
+  if (!serviceRoleKey) {
+    throw new Error('Supabase service role key missing. Set SUPABASE_SERVICE_ROLE_KEY.')
+  }
+
+  return serviceRoleKey
+}
 
 export async function createClient() {
   const cookieStore = await cookies()
+  const { url, anonKey } = requireSupabaseConfig()
 
   return createServerClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {
@@ -33,9 +49,11 @@ export async function createClient() {
 }
 
 export async function createAdminClient() {
+  const { url } = requireSupabaseConfig()
+
   return createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    url,
+    requireServiceRoleKey(),
     {
       cookies: {
         getAll() {
@@ -51,6 +69,7 @@ export async function createAdminClient() {
 export function createClientFromRequest(request: Request) {
   // For use in contexts where we don't have access to cookies() async
   // This is a fallback that reads cookies from the request header
+  const { url, anonKey } = requireSupabaseConfig()
   const cookieHeader = request.headers.get('cookie') || ''
   const cookieMap = new Map<string, string>()
 
@@ -62,8 +81,8 @@ export function createClientFromRequest(request: Request) {
   })
 
   return createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {

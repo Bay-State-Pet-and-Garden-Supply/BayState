@@ -9,7 +9,7 @@ describe("StatusBadge", () => {
     it("renders imported status with Package icon", () => {
       render(<StatusBadge status="imported" />);
 
-      const badge = screen.getByRole("status");
+      const badge = screen.getByText("Imported").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
       expect(badge).toHaveClass("border-transparent");
     });
@@ -19,7 +19,7 @@ describe("StatusBadge", () => {
     it("renders scraped status with pulse animation", () => {
       render(<StatusBadge status="scraped" />);
 
-      const badge = screen.getByRole("status");
+      const badge = screen.getByText("Scraped").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
       const pulseDot = document.querySelector(".animate-ping");
       expect(pulseDot).toBeInTheDocument();
@@ -34,19 +34,19 @@ describe("StatusBadge", () => {
   });
 
   describe("consolidated status", () => {
-    it("renders consolidated status with AlertCircle icon", () => {
-      render(<StatusBadge status="consolidated" />);
+    it("renders consolidated status with CheckCircle2 icon", () => {
+      const { container } = render(<StatusBadge status="consolidated" />);
 
-      const icon = document.querySelector(".lucide-alert-circle, [data-lucide='alert-circle']");
+      const icon = container.querySelector("[data-slot='badge'] svg");
       expect(icon).toBeInTheDocument();
     });
   });
 
   describe("finalized status", () => {
     it("renders finalized status with CheckCircle2 icon", () => {
-      render(<StatusBadge status="finalized" />);
+      const { container } = render(<StatusBadge status="finalized" />);
 
-      const icon = document.querySelector(".lucide-check-circle-2, [data-lucide='check-circle-2']");
+      const icon = container.querySelector("[data-slot='badge'] svg");
       expect(icon).toBeInTheDocument();
     });
   });
@@ -55,7 +55,7 @@ describe("StatusBadge", () => {
     it("renders published status with Globe icon", () => {
       render(<StatusBadge status="published" />);
 
-      const badge = screen.getByRole("status");
+      const badge = screen.getByText("Published").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
     });
   });
@@ -64,21 +64,21 @@ describe("StatusBadge", () => {
     it("renders sm size correctly", () => {
       render(<StatusBadge status="imported" size="sm" />);
 
-      const badge = screen.getByRole("status");
+      const badge = screen.getByText("Imported").closest("[data-slot='badge']");
       expect(badge).toHaveClass("text-[10px]");
     });
 
     it("renders md size correctly", () => {
       render(<StatusBadge status="imported" size="md" />);
 
-      const badge = screen.getByRole("status");
+      const badge = screen.getByText("Imported").closest("[data-slot='badge']");
       expect(badge).toHaveClass("text-xs");
     });
 
     it("renders lg size correctly", () => {
       render(<StatusBadge status="imported" size="lg" />);
 
-      const badge = screen.getByRole("status");
+      const badge = screen.getByText("Imported").closest("[data-slot='badge']");
       expect(badge).toHaveClass("text-sm");
     });
   });

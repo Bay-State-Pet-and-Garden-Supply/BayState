@@ -5,15 +5,27 @@
 
 /** Pipeline stage status values */
 export const PIPELINE_STATUS_VALUES = [
-  'imported',
-  'monitoring',
-  'scraped',
-  'consolidated',
-  'finalized',
-  'published',
+  "imported",
+  "monitoring",
+  "scraped",
+  "consolidated",
+  "finalized",
+  "published",
 ] as const;
 
 export type PipelineStatus = (typeof PIPELINE_STATUS_VALUES)[number];
+
+const PIPELINE_STATUS_SET = new Set<string>(PIPELINE_STATUS_VALUES);
+
+export function isPipelineStatus(value: string): value is PipelineStatus {
+  return PIPELINE_STATUS_SET.has(value);
+}
+
+/**
+ * Extended pipeline stages used in the UI pipeline tab flow.
+ * Includes a transient consolidating monitoring stage.
+ */
+export type PipelineStage = PipelineStatus | "consolidating";
 
 /**
  * Selected image with metadata
@@ -89,35 +101,40 @@ export interface StageConfig {
  * Stage display configurations
  * Maps each pipeline status to its UI representation
  */
-export const STAGE_CONFIG: Record<PipelineStatus, StageConfig> = {
+export const STAGE_CONFIG: Record<PipelineStage, StageConfig> = {
   imported: {
-    label: 'Imported',
-    color: '#6B7280',
-    description: 'Product data has been imported into the system',
+    label: "Imported",
+    color: "#6B7280",
+    description: "Product data has been imported into the system",
   },
   monitoring: {
-    label: 'Monitoring',
-    color: '#F59E0B',
-    description: 'Track active scraper jobs and progress',
+    label: "Scraping",
+    color: "#F59E0B",
+    description: "Track active scraper jobs and progress",
   },
   scraped: {
-    label: 'Scraped',
-    color: '#3B82F6',
-    description: 'Product data has been scraped from source websites',
+    label: "Scraped",
+    color: "#3B82F6",
+    description: "Product data has been scraped from source websites",
+  },
+  consolidating: {
+    label: "Consolidating",
+    color: "#8B5CF6",
+    description: "Track active AI consolidation batches",
   },
   consolidated: {
-    label: 'Consolidated',
-    color: '#8B5CF6',
-    description: 'Data from multiple sources has been merged by AI',
+    label: "Consolidated",
+    color: "#8B5CF6",
+    description: "Data from multiple sources has been merged by AI",
   },
   finalized: {
-    label: 'Finalized',
-    color: '#F59E0B',
-    description: 'Product data has been reviewed and finalized',
+    label: "Finalized",
+    color: "#F59E0B",
+    description: "Product data has been reviewed and finalized",
   },
   published: {
-    label: 'Published',
-    color: '#008850',
-    description: 'Product is live on the storefront',
+    label: "Published",
+    color: "#008850",
+    description: "Product is live on the storefront",
   },
 } as const;

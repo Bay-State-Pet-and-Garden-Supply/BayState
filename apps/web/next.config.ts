@@ -1,4 +1,9 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+const appDirectory = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(appDirectory, "..", "..");
 
 const nextConfig: NextConfig = {
   // Enable strict React mode for better development experience
@@ -87,8 +92,14 @@ const nextConfig: NextConfig = {
     optimizeCss: false,
   },
 
-  // External packages that should not be bundled
-  serverExternalPackages: [],
+  // Externalize native/Node-heavy SFTP packages so Turbopack doesn't try to
+  // place ssh2 internals into ESM chunks during server builds on Vercel.
+  serverExternalPackages: ['ssh2', 'ssh2-sftp-client'],
+
+  // Keep Turbopack rooted at the monorepo workspace so hoisted dependencies resolve consistently.
+  turbopack: {
+    root: workspaceRoot,
+  },
 
   // Redirects for legacy routes
   async redirects() {

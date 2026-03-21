@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Package, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { StatusCount, PipelineStatus } from '@/lib/pipeline';
+import { Package, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { StatusCount, PipelineStatus } from "@/lib/pipeline";
 
 interface PipelineStatsProps {
   counts: StatusCount[];
@@ -21,39 +21,39 @@ const statusConfig: Array<{
   bgColor: string;
 }> = [
   {
-    status: 'imported',
-    label: 'Imported',
+    status: "imported",
+    label: "Imported",
     icon: Package,
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-50',
+    color: "text-brand-forest-green",
+    bgColor: "bg-brand-forest-green/10",
   },
   {
-    status: 'scraped',
-    label: 'Scraped',
+    status: "scraped",
+    label: "Scraped",
     icon: Sparkles,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
+    color: "text-brand-burgundy",
+    bgColor: "bg-brand-burgundy/10",
   },
   {
-    status: 'consolidated',
-    label: 'Consolidated',
+    status: "consolidated",
+    label: "Consolidated",
     icon: AlertCircle,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
+    color: "text-brand-gold",
+    bgColor: "bg-brand-gold/10",
   },
   {
-    status: 'finalized',
-    label: 'Finalized',
+    status: "finalized",
+    label: "Finalized",
     icon: CheckCircle2,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-50',
+    color: "text-brand-forest-green",
+    bgColor: "bg-brand-forest-green/10",
   },
   {
-    status: 'published',
-    label: 'Published',
+    status: "published",
+    label: "Published",
     icon: CheckCircle2,
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    color: "text-brand-burgundy",
+    bgColor: "bg-brand-burgundy/10",
   },
 ];
 
@@ -62,18 +62,18 @@ function TrendIndicator({ value }: { value: number }) {
   return (
     <span
       className={cn(
-        'text-xs font-medium',
-        isPositive ? 'text-green-600' : 'text-red-600'
+        "text-xs font-medium",
+        isPositive ? "text-green-600" : "text-red-600",
       )}
     >
-      {isPositive ? '↑' : '↓'} {Math.abs(value)}%
+      {isPositive ? "↑" : "↓"} {Math.abs(value)}%
     </span>
   );
 }
 
 function getCountForStatus(
   counts: StatusCount[],
-  status: PipelineStatus
+  status: PipelineStatus,
 ): number {
   const found = counts.find((c) => c.status === status);
   return found?.count ?? 0;
@@ -114,8 +114,8 @@ export function PipelineStats({
           <Card
             key={config.status}
             className={cn(
-              'cursor-pointer transition-shadow hover:shadow-md',
-              onStatusChange ? 'hover:ring-2 hover:ring-primary/20' : ''
+              "cursor-pointer transition-shadow hover:shadow-md",
+              onStatusChange ? "hover:ring-2 hover:ring-primary/20" : "",
             )}
             onClick={() => onStatusChange?.(config.status)}
           >
@@ -123,8 +123,8 @@ export function PipelineStats({
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {config.label}
               </CardTitle>
-              <div className={cn('rounded-full p-2', config.bgColor)}>
-                <Icon className={cn('h-4 w-4', config.color)} />
+              <div className={cn("rounded-full p-2", config.bgColor)}>
+                <Icon className={cn("h-4 w-4", config.color)} />
               </div>
             </CardHeader>
             <CardContent>

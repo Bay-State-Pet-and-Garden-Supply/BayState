@@ -81,7 +81,7 @@ describe('Consolidation Schemas', () => {
 
     describe('PipelineStatusSchema', () => {
         it('should accept valid pipeline statuses', () => {
-            const validStatuses = ['registered', 'enriched', 'finalized', 'failed'];
+            const validStatuses = ['staging', 'scraped', 'consolidated', 'approved', 'published', 'failed'];
             for (const status of validStatuses) {
                 expect(PipelineStatusSchema.parse(status)).toBe(status);
             }
@@ -116,7 +116,8 @@ describe('Consolidation Schemas', () => {
                 stock_status: 'in_stock',
                 is_featured: false,
             },
-            pipeline_status: 'enriched',
+            pipeline_status: 'scraped',
+            pipeline_status_new: 'enriched',
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-02T00:00:00Z',
         };
@@ -124,7 +125,8 @@ describe('Consolidation Schemas', () => {
         it('should parse valid pipeline product', () => {
             const result = PipelineProductSchema.parse(validPipelineProduct);
             expect(result.sku).toBe('PROD-001');
-            expect(result.pipeline_status).toBe('enriched');
+            expect(result.pipeline_status).toBe('scraped');
+            expect(result.pipeline_status_new).toBe('enriched');
         });
 
         it('should parse pipeline product with optional fields missing', () => {
@@ -133,12 +135,14 @@ describe('Consolidation Schemas', () => {
                 input: {},
                 sources: {},
                 consolidated: {},
-                pipeline_status: 'registered',
+                pipeline_status: 'staging',
+                pipeline_status_new: 'registered',
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
             };
             const result = PipelineProductSchema.parse(minimalProduct);
             expect(result.sku).toBe('MIN-001');
+            expect(result.pipeline_status_new).toBe('registered');
         });
 
         it('should reject pipeline product with empty SKU', () => {

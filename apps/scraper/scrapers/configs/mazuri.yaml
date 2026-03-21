@@ -68,6 +68,22 @@ selectors:
     attribute: text
     multiple: true
     required: false
+  - name: Description
+    selector: ".product-single__description, .product-description, .product-single__description-content"
+    fallback_selectors:
+      - ".product-single__content-text"
+      - "div[class*='product'] .rte"
+    attribute: text
+    multiple: false
+    required: false
+  - name: UPC
+    selector: "//li[contains(text(), 'UPC')], //dt[contains(text(), 'UPC')]/following-sibling::dd"
+    fallback_selectors:
+      - ".product-upc"
+      - "span:has-text('UPC') + span"
+    attribute: text
+    multiple: false
+    required: false
 workflows:
   - action: navigate
     name: null
@@ -123,14 +139,27 @@ workflows:
         - Guaranteed Analysis
         - Feeding Directions
         - Size Options
-  - action: transform_value
+        - Description
+        - UPC
+  - action: process_images
     name: null
     params:
       field: Image URLs
-      transformations:
-        - type: replace
-          pattern: _small
-          replacement: _large
+      quality_patterns:
+        - regex: "_small"
+          replacement: "_large"
+        - regex: "_compact"
+          replacement: "_grande"
+        - regex: "_\\d+x\\d+"
+          replacement: "_1024x1024"
+      filters:
+        - type: exclude_text
+          text: no-image
+        - type: exclude_text
+          text: placeholder
+        - type: require_text
+          text: cdn.shopify
+      deduplicate: true
   - action: transform_value
     name: null
     params:
@@ -175,7 +204,7 @@ http_status: null
 normalization: null
 timeout: 30
 retries: 2
-image_quality: 20
+image_quality: 60
 test_skus:
   - 5E5L
   - 5M30

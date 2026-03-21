@@ -48,7 +48,15 @@ export async function parseIntegraExcel(
     })
     .filter((p) => p.sku && p.name); // Basic validation
 
-  return products;
+  // Deduplicate by SKU to ensure analysis and import counts match
+  const uniqueMap = new Map<string, IntegraProduct>();
+  for (const p of products) {
+    if (!uniqueMap.has(p.sku)) {
+      uniqueMap.set(p.sku, p);
+    }
+  }
+
+  return Array.from(uniqueMap.values());
 }
 
 /**
@@ -107,8 +115,7 @@ export async function addToOnboarding(
       name: p.name,
       price: p.price,
     },
-    pipeline_status: "staging",
-    pipeline_status_new: "registered",
+    pipeline_status: "imported",
     updated_at: new Date().toISOString(),
   }));
 
@@ -118,7 +125,7 @@ export async function addToOnboarding(
     );
   }
 
-  // Use upsert to avoid duplicate key errors if some products were already in staging
+  // Use upsert to avoid duplicate key errors if some products were already in imported
   const { error } = await supabase
     .from("products_ingestion")
     .upsert(onboardingData, { onConflict: "sku" });

@@ -19,15 +19,17 @@ const mockProduct = {
     price: 10.99,
     stock_status: 'in_stock',
   },
-  pipeline_status: 'staging',
+  pipeline_status: 'imported',
+  sources: {},
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
 };
 
 const mockCounts = [
-  { status: 'staging', count: 10 },
-  { status: 'scraped', count: 5 },
-  { status: 'consolidated', count: 2 },
-  { status: 'approved', count: 1 },
-  { status: 'published', count: 0 },
+  { status: 'registered', count: 10 },
+  { status: 'enriched', count: 5 },
+  { status: 'finalized', count: 2 },
+  { status: 'failed', count: 1 },
 ];
 
 describe('Pipeline Accessibility', () => {
@@ -75,7 +77,7 @@ describe('Pipeline Accessibility', () => {
         <>
             <PipelineStatusTabs
               counts={mockCounts as any}
-              activeTab="staging"
+              activeTab="registered"
               onTabChange={() => {}}
             />
             <div id="main-content">Content</div>
@@ -91,7 +93,7 @@ describe('Pipeline Accessibility', () => {
       render(
           <PipelineStatusTabs
             counts={mockCounts as any}
-            activeTab="staging"
+            activeTab="registered"
             onTabChange={() => {}}
           />
       );
@@ -99,9 +101,9 @@ describe('Pipeline Accessibility', () => {
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs).toHaveLength(10);
-      expect(screen.getByRole('tab', { name: /Staging/i })).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByRole('tab', { name: /Scraped/i })).toHaveAttribute('aria-selected', 'false');
+      expect(tabs).toHaveLength(8);
+      expect(screen.getByRole('tab', { name: /Registered/i })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: /Enriched/i })).toHaveAttribute('aria-selected', 'false');
     });
   });
 

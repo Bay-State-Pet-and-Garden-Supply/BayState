@@ -26,6 +26,8 @@ interface ScraperConfig {
     test_skus?: string[];
     retries?: number;
     validation?: Record<string, unknown>;
+    login?: Record<string, unknown>;
+    credential_refs?: string[];
 }
 
 interface PollResponse {
@@ -167,13 +169,6 @@ function toSelectors(value: unknown): Record<string, unknown> | Record<string, u
     return undefined;
 }
 
-function toStringArray(value: unknown): string[] | undefined {
-    if (!Array.isArray(value)) {
-        return undefined;
-    }
-    return value.filter((item): item is string => typeof item === 'string');
-}
-
 export async function POST(request: NextRequest) {
     try {
         const runner = await validateRunnerAuth({
@@ -190,14 +185,40 @@ export async function POST(request: NextRequest) {
 
         const runnerName = runner.runnerName;
         const supabase = getSupabaseAdmin();
+        const nowIso = new Date().toISOString();
 
-        await supabase
+        const { data: updatedRunners, error: runnerUpdateError } = await supabase
             .from('scraper_runners')
             .update({
-                last_seen_at: new Date().toISOString(),
+                last_seen_at: nowIso,
                 status: 'polling',
             })
-            .eq('name', runnerName);
+            .eq('name', runnerName)
+            .eq('enabled', true)
+            .neq('status', 'paused')
+            .select('name');
+
+        if (runnerUpdateError) {
+            console.error('[Poll] Failed to update runner polling state:', runnerUpdateError);
+            return NextResponse.json(
+                { error: 'Failed to update runner state', details: runnerUpdateError.message },
+                { status: 500 }
+            );
+        }
+
+        if (!updatedRunners || updatedRunners.length === 0) {
+            await supabase
+                .from('scraper_runners')
+                .update({ last_seen_at: nowIso })
+                .eq('name', runnerName);
+
+            const response: PollResponse = { job: null };
+            return NextResponse.json(response, {
+                headers: {
+                    'X-Enforced-Runner-Name': runnerName
+                }
+            });
+        }
 
         const { data: claimedJobs, error: claimError } = await supabase.rpc('claim_next_pending_job', {
             p_runner_name: runnerName,
@@ -258,6 +279,8 @@ export async function POST(request: NextRequest) {
                 test_skus: config.test_skus,
                 retries: config.retries,
                 validation: config.validation,
+                login: toRecord(config.login),
+                credential_refs: config.credential_refs,
             });
         }
 

@@ -1,0 +1,8 @@
+{
+  "track_id": "rebuild_scraper_admin_ui_yaml_20260313",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-13T12:20:00Z",
+  "updated_at": "2026-03-13T12:20:00Z",
+  "description": "Rebuild the Scraper Admin UI to reflect the move from Supabase-based configurations to local YAML files."
+}

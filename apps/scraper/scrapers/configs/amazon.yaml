@@ -54,6 +54,16 @@ selectors:
     attribute: text
     multiple: false
     required: false
+  - name: Dimensions
+    selector: "tr:has(th:has-text('Dimensions')) td, tr:has(th:has-text('Package Dimensions')) td, li:has-text('Package Dimensions') span.a-list-item"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Ingredients
+    selector: "#important-information .content ul li, #ingredient-information-container, div[id*='ingredient'] p"
+    attribute: text
+    multiple: false
+    required: false
 workflows:
   - action: navigate
     name: null
@@ -127,12 +137,12 @@ workflows:
               pattern: Visit the (.+) Store
         - name: Images
           multiple: true
-          selector: "#altImages li.imageThumbnail img"
+          selector: "#altImages li.imageThumbnail img, #landingImage"
           attribute: src
           transform:
             - type: replace
-              pattern: _AC_US40_
-              replacement: _AC_SL1500_
+              pattern: "\\._[A-Z0-9_,-]+_\\."
+              replacement: "._AC_SL1500_."
         - name: Weight
           required: false
           selector: "tr:has-text('Item Weight') td, li:has-text('Item Weight') span, div#detailBullets_feature_div li:has-text('Item Weight') span.a-list-item, //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] | //li[contains(., 'pounds')]"
@@ -162,6 +172,35 @@ workflows:
           selector: "div#prodDetails, div#detailBullets_feature_div"
           nth: 0
           attribute: text
+        - name: Dimensions
+          selector: "tr:has-text('Dimensions') td, tr:has-text('Package Dimensions') td, li:has-text('Package Dimensions') span.a-list-item"
+          nth: 0
+          attribute: text
+          required: false
+        - name: Ingredients
+          selector: "#important-information .content ul li, div[id*='ingredient'] p, #ingredient-information-container"
+          nth: 0
+          attribute: text
+          required: false
+  - action: process_images
+    name: null
+    params:
+      field: Images
+      quality_patterns:
+        - regex: "\\._[A-Z0-9_,-]+_\\."
+          replacement: "._AC_SL1500_."
+      filters:
+        - type: exclude_text
+          text: sprite
+        - type: exclude_text
+          text: grey-pixel
+        - type: exclude_text
+          text: transparent-pixel
+        - type: exclude_text
+          text: play-button
+        - type: require_text
+          text: images/I/
+      deduplicate: true
 ai_config: null
 anti_detection:
   enable_rate_limiting: false

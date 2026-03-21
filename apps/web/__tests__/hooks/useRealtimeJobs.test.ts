@@ -3,23 +3,34 @@ import { useRealtimeJobs } from '@/hooks/useRealtimeJobs';
 
 // Mock WebSocket
 class MockWebSocket {
+  static instances: MockWebSocket[] = [];
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+
   onopen: (() => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
   onclose: (() => void) | null = null;
-  readyState = 0;
+  readyState = MockWebSocket.CONNECTING;
 
   constructor(public url: string) {
+    MockWebSocket.instances.push(this);
     setTimeout(() => {
-      this.readyState = 1;
+      this.readyState = MockWebSocket.OPEN;
       this.onopen?.();
     }, 10);
   }
 
-  send(data: string) {}
+  static reset() {
+    MockWebSocket.instances = [];
+  }
+
+  send(_data: string) {}
 
   close() {
-    this.readyState = 3;
+    this.readyState = MockWebSocket.CLOSED;
     this.onclose?.();
   }
 
@@ -30,11 +41,20 @@ class MockWebSocket {
 }
 
 global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+window.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+
+async function flushTimers() {
+  await act(async () => {
+    jest.runOnlyPendingTimers();
+    await Promise.resolve();
+  });
+}
 
 describe('useRealtimeJobs', () => {
   beforeEach(() => {
-    jest.clearAllTimers();
     jest.useFakeTimers();
+    jest.clearAllTimers();
+    MockWebSocket.reset();
   });
 
   afterEach(() => {
@@ -52,7 +72,10 @@ describe('useRealtimeJobs', () => {
   it('connects when autoConnect is true', async () => {
     const { result } = renderHook(() => useRealtimeJobs({ autoConnect: true }));
 
-    expect(result.current.connectionStatus).toBe('connecting');
+    expect(result.current.connectionStatus).toBe('disconnected');
+
+    await flushTimers();
+    await flushTimers();
 
     await waitFor(() => {
       expect(result.current.connectionStatus).toBe('connected');
@@ -60,11 +83,22 @@ describe('useRealtimeJobs', () => {
   });
 
   it('receives job updates', async () => {
-    const { result } = renderHook(() => useRealtimeJobs({ autoConnect: true }));
+    const { result } = renderHook(() => useRealtimeJobs({ autoConnect: false }));
+
+    act(() => {
+      result.current.connect();
+    });
+
+    expect(result.current.connectionStatus).toBe('connecting');
+
+    await flushTimers();
 
     await waitFor(() => {
       expect(result.current.connectionStatus).toBe('connected');
     });
+
+    const socket = MockWebSocket.instances.at(-1);
+    expect(socket).toBeDefined();
 
     const mockJob = {
       type: 'job_update',
@@ -75,40 +109,70 @@ describe('useRealtimeJobs', () => {
     };
 
     act(() => {
-      const ws = result.current as unknown as { _ws: MockWebSocket };
-      // Simulate message through the WebSocket
+      socket?.simulateMessage(mockJob);
     });
+
+    expect(result.current.jobs).toEqual([mockJob]);
+    expect(result.current.lastUpdate).toBeInstanceOf(Date);
   });
 
   it('disconnects when disconnect is called', async () => {
-    const { result } = renderHook(() => useRealtimeJobs({ autoConnect: true }));
+    const { result } = renderHook(() => useRealtimeJobs({ autoConnect: false }));
+
+    act(() => {
+      result.current.connect();
+    });
+
+    await flushTimers();
 
     await waitFor(() => {
       expect(result.current.connectionStatus).toBe('connected');
     });
+
+    const initialSocketCount = MockWebSocket.instances.length;
 
     act(() => {
       result.current.disconnect();
     });
 
     expect(result.current.connectionStatus).toBe('disconnected');
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(initialSocketCount);
+    expect(result.current.connectionStatus).toBe('disconnected');
   });
 
   it('reconnects when reconnect is called', async () => {
-    const { result } = renderHook(() => useRealtimeJobs({ autoConnect: true }));
+    const { result } = renderHook(() => useRealtimeJobs({ autoConnect: false }));
+
+    act(() => {
+      result.current.connect();
+    });
+
+    await flushTimers();
 
     await waitFor(() => {
       expect(result.current.connectionStatus).toBe('connected');
     });
 
-    act(() => {
-      result.current.disconnect();
-    });
+    const initialSocketCount = MockWebSocket.instances.length;
 
     act(() => {
       result.current.reconnect();
     });
 
     expect(result.current.connectionStatus).toBe('connecting');
+
+    await flushTimers();
+
+    await waitFor(() => {
+      expect(result.current.connectionStatus).toBe('connected');
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(initialSocketCount + 1);
   });
 });

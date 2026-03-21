@@ -40,23 +40,42 @@ class TransformValueAction(BaseAction):
             logger.warning(f"Field {source_field} not found in results, skipping transformation")
             return
 
+        preserve_on_no_match = source_field == target_field
+
         # Handle list of values or single value
         if isinstance(value, list):
-            self.ctx.results[target_field] = [
-                self._apply_transformations(v, transformations) for v in value
+            transformed_values = [
+                self._apply_transformations(
+                    str(v),
+                    transformations,
+                    preserve_on_no_match=preserve_on_no_match,
+                )
+                for v in value
             ]
+            self.ctx.results[target_field] = [item for item in transformed_values if item is not None]
         else:
             self.ctx.results[target_field] = self._apply_transformations(
-                str(value), transformations
+                str(value),
+                transformations,
+                preserve_on_no_match=preserve_on_no_match,
             )
 
         logger.debug(
             f"Transformed {source_field} -> {target_field}: {self.ctx.results[target_field]}"
         )
 
-    def _apply_transformations(self, value: str, transformations: list) -> str:
-        result = value
+    def _apply_transformations(
+        self,
+        value: str,
+        transformations: list,
+        *,
+        preserve_on_no_match: bool,
+    ) -> str | None:
+        result: str | None = value
         for transform in transformations:
+            if result is None:
+                return None
+
             t_type = transform.get("type")
 
             if t_type == "replace":
@@ -88,5 +107,7 @@ class TransformValueAction(BaseAction):
                             result = match.group(group)
                         except IndexError:
                             pass  # Keep original if group not found
+                    elif not preserve_on_no_match:
+                        return None
 
         return result

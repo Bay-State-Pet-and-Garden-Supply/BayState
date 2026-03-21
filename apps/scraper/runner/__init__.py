@@ -15,6 +15,7 @@ from scrapers.executor.workflow_executor import WorkflowExecutor
 from scrapers.parser import ScraperConfigParser
 from scrapers.result_collector import ResultCollector
 from scrapers.models.config import ScraperConfig as ScraperConfigModel
+from validation.result_quality import sanitize_product_payload
 from typing import cast
 
 logger = logging.getLogger(__name__)
@@ -396,7 +397,7 @@ def run_job(
                             except Exception:
                                 pass
 
-                        results["data"][sku][cfg_name] = {
+                        payload = {
                             # Note: Price is NOT scraped - we use our own pricing
                             "title": extracted_data.get("Name"),
                             "brand": extracted_data.get("Brand"),
@@ -407,22 +408,43 @@ def run_job(
                             "category": extracted_data.get("Category"),
                             "categories": extracted_data.get("Categories"),
                             "product_type": extracted_data.get("ProductType"),
-                            "item_number": extracted_data.get("ItemNumber") or extracted_data.get("Item Number"),
+                            "item_number": extracted_data.get("ItemNumber")
+                            or extracted_data.get("Item Number")
+                            or extracted_data.get("BCI Item Number")
+                            or extracted_data.get("Product #"),
                             "manufacturer_part_number": extracted_data.get("ManufacturerPartNumber")
                             or extracted_data.get("Manufacturer Part Number")
                             or extracted_data.get("model_number")
                             or extracted_data.get("ModelNumber")
                             or extracted_data.get("Model Number")
                             or extracted_data.get("Mfg#")
+                            or extracted_data.get("Mfg Part #")
+                            or extracted_data.get("Manufacturer #")
                             or extracted_data.get("Mfg No")
                             or extracted_data.get("MfgNo"),
                             "unit_of_measure": extracted_data.get("UoM") or extracted_data.get("Unit of Measure"),
                             "upc": extracted_data.get("UPC"),
                             "size": extracted_data.get("Size"),
                             "size_options": extracted_data.get("Size Options") or extracted_data.get("SizeOptions"),
+                            "features": extracted_data.get("Features"),
+                            "ingredients": extracted_data.get("Ingredients"),
+                            "dimensions": extracted_data.get("Dimensions"),
+                            "specifications": extracted_data.get("Specifications")
+                            or extracted_data.get("Technical Specs"),
+                            "case_pack": extracted_data.get("Case Pack"),
+                            "ratings": extracted_data.get("Rating"),
+                            "reviews_count": extracted_data.get("Reviews"),
                             "url": page_url,
                             "scraped_at": datetime.now().isoformat(),
                         }
+                        sanitized_payload, quality_warnings = sanitize_product_payload(payload)
+                        results["data"][sku][cfg_name] = sanitized_payload
+
+                        for quality_warning in quality_warnings:
+                            message = f"{cfg_name}/{sku}: {quality_warning}"
+                            log_buffer.append(create_log_entry("warning", message))
+                            emitter.warning(message, scraper=cfg_name, sku=sku)
+                            logger.warning(f"[Runner] {message}")
 
                         collector.add_result(sku, cfg_name, extracted_data)
 
