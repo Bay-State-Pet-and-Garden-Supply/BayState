@@ -311,8 +311,8 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
       <div className="mt-auto p-3 border-t border-white/10 bg-black/5">
         <div
           className={cn(
-            "flex items-center gap-2.5",
-            collapsed ? "justify-center" : "px-1",
+            "flex items-center",
+            collapsed ? "justify-center" : "gap-2.5 px-1",
           )}
         >
           <div className="relative shrink-0">
@@ -358,8 +358,8 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           <Link
             href="/"
             className={cn(
-              "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400",
-              collapsed && "justify-center",
+              "flex items-center rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400",
+              collapsed ? "justify-center" : "gap-2.5",
             )}
           >
             <LogOut className="h-3.5 w-3.5 rotate-180" />
