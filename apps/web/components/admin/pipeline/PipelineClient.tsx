@@ -13,6 +13,7 @@ import { ManualAddProductDialog } from "./ManualAddProductDialog";
 import { IntegraImportDialog } from "./IntegraImportDialog";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
+import { FinalizingResultsView } from "./FinalizingResultsView";
 import type {
   PipelineProduct,
   PipelineStatus,
@@ -223,6 +224,11 @@ export function PipelineClient({
 
   // Select ALL matching (including beyond visible page) via API
   const handleSelectAll = async () => {
+    if (currentStage === "finalized") {
+      // Finalizing should not support select-all behavior; enforce one-by-one in UI.
+      return;
+    }
+
     // If we have a source filter, we only select what's visible since API doesn't support complex local filters easily
     // or if visible products cover the total, just select visible
     if (sourceFilter || products.length >= totalCount) {
@@ -583,6 +589,11 @@ export function PipelineClient({
             products={filteredProducts}
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
+            onRefresh={refreshAll}
+          />
+        ) : currentStage === "finalized" ? (
+          <FinalizingResultsView
+            products={filteredProducts}
             onRefresh={refreshAll}
           />
         ) : (

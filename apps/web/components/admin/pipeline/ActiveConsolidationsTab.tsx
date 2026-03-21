@@ -17,6 +17,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Settings, Key, Save, CheckCircle } from "lucide-react";
 
 // ============================================================================
 // Types
@@ -46,6 +58,27 @@ interface BatchHistoryJob {
   metadata: Record<string, unknown>;
   created_at: string;
   completed_at: string | null;
+}
+
+interface AISettings {
+  defaults: {
+    llm_model: string;
+    max_search_results: number;
+    max_steps: number;
+    confidence_threshold: number;
+  };
+  statuses: {
+    openai: {
+      configured: boolean;
+      last4: string | null;
+      updated_at: string | null;
+    };
+    brave: {
+      configured: boolean;
+      last4: string | null;
+      updated_at: string | null;
+    };
+  };
 }
 
 interface ActiveConsolidationsTabProps {
@@ -481,6 +514,223 @@ function BatchHistoryCard({
 }
 
 // ============================================================================
+// AI Settings Dialog
+// ============================================================================
+
+function AISettingsDialog() {
+  const [settings, setSettings] = useState<AISettings | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [openaiKey, setOpenaiKey] = useState("");
+
+  const fetchSettings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/consolidation/settings");
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch AI settings", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleSaveDefaults = async () => {
+    if (!settings) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/consolidation/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings.defaults),
+      });
+      if (res.ok) {
+        toast.success("Defaults saved");
+        await fetchSettings();
+      } else {
+        toast.error("Failed to save defaults");
+      }
+    } catch {
+      toast.error("Failed to save defaults");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveKey = async () => {
+    if (!openaiKey.trim()) {
+      toast.error("API key cannot be empty");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/consolidation/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ openai_api_key: openaiKey }),
+      });
+      if (res.ok) {
+        toast.success("OpenAI API Key updated");
+        setOpenaiKey("");
+        await fetchSettings();
+      } else {
+        toast.error("Failed to update API Key");
+      }
+    } catch {
+      toast.error("Failed to update API Key");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open) fetchSettings();
+  }, [open, fetchSettings]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Settings className="mr-2 h-4 w-4" />
+          AI Settings
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>AI Consolidation Settings</DialogTitle>
+          <DialogDescription>
+            Configure OpenAI credentials and default models for consolidation.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-6 py-4">
+          {/* API Key Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Key className="h-4 w-4 text-brand-burgundy" />
+              <h4 className="text-sm font-semibold">OpenAI API Key</h4>
+            </div>
+
+            <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+              {settings?.statuses.openai.configured ? (
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5 text-xs text-green-700">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    <span>Configured (Ends in {settings.statuses.openai.last4})</span>
+                  </div>
+                  <span className="text-[10px] text-gray-400">
+                    Updated {settings.statuses.openai.updated_at ? new Date(settings.statuses.openai.updated_at).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs text-amber-700 mb-3">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <span>Not Configured</span>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="sk-..."
+                  value={openaiKey}
+                  onChange={(e) => setOpenaiKey(e.target.value)}
+                  className="h-8 text-xs"
+                />
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-8 px-3 text-xs"
+                  onClick={handleSaveKey}
+                  disabled={saving || !openaiKey}
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Model Selection Section */}
+          <div className="space-y-4 border-t pt-4">
+            <div className="flex items-center gap-2">
+              <Brain className="h-4 w-4 text-brand-burgundy" />
+              <h4 className="text-sm font-semibold">Consolidation Defaults</h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="model" className="text-xs">Model</Label>
+                <select
+                  id="model"
+                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={settings?.defaults.llm_model || "gpt-4o-mini"}
+                  onChange={(e) =>
+                    setSettings((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            defaults: {
+                              ...prev.defaults,
+                              llm_model: e.target.value as any,
+                            },
+                          }
+                        : null
+                    )
+                  }
+                >
+                  <option value="gpt-4o-mini">GPT-4o Mini (Cost Effective)</option>
+                  <option value="gpt-4o">GPT-4o (High Performance)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="confidence" className="text-xs">Min Confidence</Label>
+                <Input
+                  id="confidence"
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  max="1"
+                  className="h-8 text-xs"
+                  value={settings?.defaults.confidence_threshold || 0.7}
+                  onChange={(e) =>
+                    setSettings((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            defaults: {
+                              ...prev.defaults,
+                              confidence_threshold: parseFloat(e.target.value),
+                            },
+                          }
+                        : null
+                    )
+                  }
+                />
+              </div>
+            </div>
+
+            <Button
+              className="w-full h-8 text-xs"
+              variant="secondary"
+              onClick={handleSaveDefaults}
+              disabled={saving || !settings}
+            >
+              <Save className="mr-2 h-3.5 w-3.5" />
+              Save Default Parameters
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -503,7 +753,14 @@ export function ActiveConsolidationsTab({
       const response = await fetch("/api/admin/pipeline/active-consolidations");
       if (!response.ok) throw new Error("Failed to fetch jobs");
       const data = await response.json();
-      setJobs(data.jobs || []);
+      const activeJobs = data.jobs || [];
+      setJobs(activeJobs);
+      
+      // If no active jobs, show history automatically
+      if (activeJobs.length === 0) {
+        setShowHistory(true);
+      }
+      
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -656,6 +913,7 @@ export function ActiveConsolidationsTab({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <AISettingsDialog />
           <Button
             variant="outline"
             size="sm"

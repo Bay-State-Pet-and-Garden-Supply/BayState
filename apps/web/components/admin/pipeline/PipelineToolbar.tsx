@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Search, Plus, Database, CheckSquare } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { PipelineStatus, PipelineStage } from '@/lib/pipeline/types';
+import { Search, Plus, Database, CheckSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
 
 interface PipelineToolbarProps {
   totalCount: number;
@@ -31,13 +31,14 @@ export function PipelineToolbar({
   onSelectAll,
   onManualAdd,
   onIntegraImport,
-  sourceFilter = '',
+  sourceFilter = "",
   onSourceFilterChange,
   availableSourceFilters = [],
   selectedCount,
 }: PipelineToolbarProps) {
-  const isImported = currentStage === 'imported';
-  const isScrapedStage = currentStage === 'scraped';
+  const isImported = currentStage === "imported";
+  const isScrapedStage = currentStage === "scraped";
+  const isFinalizing = currentStage === "finalized";
 
   return (
     <div
@@ -46,7 +47,7 @@ export function PipelineToolbar({
       aria-label="Pipeline toolbar"
     >
       {/* Select All (when none selected) */}
-      {selectedCount === 0 && (
+      {selectedCount === 0 && !isFinalizing && (
         <Button
           variant="outline"
           size="sm"
@@ -76,7 +77,7 @@ export function PipelineToolbar({
             ))}
           </select>
         )}
-        
+
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input

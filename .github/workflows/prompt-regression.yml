@@ -3,9 +3,9 @@ name: Prompt Regression Tests
 on:
   pull_request:
     paths:
-      - 'apps/scraper/prompts/**'
-      - 'apps/scraper/scrapers/ai_search/**'
-      - '.github/workflows/prompt-regression.yml'
+      - "apps/scraper/prompts/**"
+      - "apps/scraper/scrapers/ai_search/**"
+      - ".github/workflows/prompt-regression.yml"
   workflow_dispatch:
 
 permissions:
@@ -13,13 +13,13 @@ permissions:
   pull-requests: write
 
 env:
-  PYTHON_VERSION: '3.11'
-  REGRESSION_THRESHOLD: '0.02'
+  PYTHON_VERSION: "3.11"
+  REGRESSION_THRESHOLD: "0.02"
 
 jobs:
   prompt-regression:
     name: Prompt Regression Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     defaults:
       run:
         shell: bash

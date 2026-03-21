@@ -5,6 +5,11 @@
  */
 
 import { ShopSiteProduct } from './types';
+import {
+    normalizeBrandName,
+    normalizeCategoryValue,
+    normalizeProductTypeValue,
+} from '@/lib/facets/normalization';
 
 /**
  * Generate a URL-friendly slug from a product name.
@@ -40,7 +45,21 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
     images: string[];
     is_featured: boolean;
     is_special_order: boolean;
+    shopsite_product_id: string | null;
+    shopsite_guid: string | null;
+    legacy_filename: string | null;
+    shopsite_pages: string[];
     weight: number | null;
+    quantity: number;
+    low_stock_threshold: number | null;
+    is_taxable: boolean;
+    gtin: string | null;
+    barcode: string | null;
+    availability: string | null;
+    is_disabled: boolean;
+    minimum_quantity: number;
+    long_description: string | null;
+    product_type: string | null;
     search_keywords: string | null;
     brand_name: string | null; // Used for brand lookup, not stored directly
     category_name: string | null; // Used for category lookup, not stored directly
@@ -77,10 +96,24 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
         images,
         is_featured: false, // Default, can be updated in admin
         is_special_order: !!product.isSpecialOrder,
+        shopsite_product_id: product.productId || null,
+        shopsite_guid: product.productGuid || null,
+        legacy_filename: product.fileName || null,
+        shopsite_pages: product.shopsitePages || [],
         weight: product.weight || null,
+        quantity: product.quantityOnHand || 0,
+        low_stock_threshold: product.lowStockThreshold ?? null,
+        is_taxable: !!product.taxable,
+        gtin: product.gtin || null,
+        barcode: product.gtin || null,
+        availability: product.availability || null,
+        is_disabled: !!product.isDisabled,
+        minimum_quantity: Math.max(product.minimumQuantity ?? 1, 1),
+        long_description: product.moreInfoText || null,
+        product_type: normalizeProductTypeValue(product.productTypeName),
         search_keywords: product.searchKeywords || null,
-        brand_name: product.brandName || null,
-        category_name: product.categoryName || null,
+        brand_name: normalizeBrandName(product.brandName),
+        category_name: normalizeCategoryValue(product.categoryName),
     };
 }
 

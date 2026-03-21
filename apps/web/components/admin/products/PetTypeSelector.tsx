@@ -5,6 +5,7 @@ import { Dog, Cat, Bird, Fish, Rabbit, Bug } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface PetType {
   id: string;
@@ -13,11 +14,9 @@ interface PetType {
 
 interface ProductPetType {
   pet_type_id: string;
-  confidence: 'inferred' | 'manual' | 'verified';
 }
 
 interface PetTypeSelectorProps {
-  productId: string;
   selectedPetTypes: ProductPetType[];
   onChange: (petTypes: ProductPetType[]) => void;
 }
@@ -34,6 +33,8 @@ const petTypeIcons: Record<string, React.ElementType> = {
 export function PetTypeSelector({ selectedPetTypes, onChange }: PetTypeSelectorProps) {
   const [petTypes, setPetTypes] = useState<PetType[]>([]);
   const [loading, setLoading] = useState(true);
+  const isSelected = (petTypeId: string) =>
+    selectedPetTypes.some((petType) => petType.pet_type_id === petTypeId);
 
   useEffect(() => {
     async function fetchPetTypes() {
@@ -52,20 +53,11 @@ export function PetTypeSelector({ selectedPetTypes, onChange }: PetTypeSelectorP
     fetchPetTypes();
   }, []);
 
-  const isSelected = (petTypeId: string) => {
-    return selectedPetTypes.some((pt) => pt.pet_type_id === petTypeId);
-  };
-
-  const getConfidence = (petTypeId: string): 'inferred' | 'manual' | 'verified' | null => {
-    const pt = selectedPetTypes.find((pt) => pt.pet_type_id === petTypeId);
-    return pt?.confidence || null;
-  };
-
   const handleToggle = (petTypeId: string, checked: boolean) => {
     if (checked) {
       onChange([
         ...selectedPetTypes,
-        { pet_type_id: petTypeId, confidence: 'manual' },
+        { pet_type_id: petTypeId },
       ]);
     } else {
       onChange(selectedPetTypes.filter((pt) => pt.pet_type_id !== petTypeId));
@@ -74,57 +66,52 @@ export function PetTypeSelector({ selectedPetTypes, onChange }: PetTypeSelectorP
 
   if (loading) {
     return (
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <Label>Pet Types</Label>
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="text-sm text-muted-foreground animate-pulse">Loading pet types…</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <Label>Pet Types</Label>
+    <div className="flex flex-col gap-3">
+      <Label className="text-sm font-semibold tracking-tight">Pet Types</Label>
       <div className="grid grid-cols-2 gap-2">
         {petTypes.map((petType) => {
           const IconComponent = petTypeIcons[petType.name] || Dog;
           const selected = isSelected(petType.id);
-          const confidence = getConfidence(petType.id);
 
           return (
             <div
               key={petType.id}
-              className={`flex items-center gap-2 rounded-lg border p-2 transition-colors ${
-                selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
-              }`}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border p-2 transition-all duration-200",
+                selected 
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20" 
+                  : "border-border hover:bg-muted/50"
+              )}
             >
               <Checkbox
                 id={`pet-type-${petType.id}`}
                 checked={selected}
                 onCheckedChange={(checked) => handleToggle(petType.id, checked === true)}
+                className="size-4"
               />
-              <IconComponent className="h-4 w-4 text-muted-foreground" />
+              <div className="flex size-5 items-center justify-center text-muted-foreground">
+                <IconComponent className="size-full" />
+              </div>
               <Label
                 htmlFor={`pet-type-${petType.id}`}
-                className="flex-1 cursor-pointer text-sm font-normal"
+                className="flex-1 cursor-pointer text-xs font-medium"
               >
                 {petType.name}
               </Label>
-              {confidence === 'inferred' && (
-                <Badge variant="secondary" className="text-xs">
-                  Auto
-                </Badge>
-              )}
-              {confidence === 'verified' && (
-                <Badge variant="default" className="text-xs">
-                  Verified
-                </Badge>
-              )}
             </div>
           );
         })}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Select which pet types this product is suitable for
+      <p className="text-[10px] text-muted-foreground italic">
+        Select which pet types this product is suitable for.
       </p>
     </div>
   );

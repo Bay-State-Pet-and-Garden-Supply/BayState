@@ -12,7 +12,7 @@ jest.mock('@/hooks/use-recent-activity', () => ({
         description: 'amazon, orgill',
         status: 'success',
         activity_timestamp: new Date().toISOString(),
-        href: '/admin/scraper/jobs/1',
+        href: '/admin/scrapers/runs/1',
       },
       {
         id: '2',

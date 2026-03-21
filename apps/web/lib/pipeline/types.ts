@@ -128,9 +128,9 @@ export const STAGE_CONFIG: Record<PipelineStage, StageConfig> = {
     description: "Data from multiple sources has been merged by AI",
   },
   finalized: {
-    label: "Finalized",
+    label: "Finalizing",
     color: "#F59E0B",
-    description: "Product data has been reviewed and finalized",
+    description: "Product data is being reviewed and finalized",
   },
   published: {
     label: "Published",

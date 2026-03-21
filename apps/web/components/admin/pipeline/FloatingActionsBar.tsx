@@ -1,28 +1,52 @@
-'use client';
+"use client";
 
-import { Loader2, X, CheckSquare, Plus, Trash2, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import type { PipelineStatus, PipelineStage } from '@/lib/pipeline/types';
+import { Loader2, X, CheckSquare, Plus, Trash2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
 
 /**
  * Bulk action configuration for each pipeline stage.
  * 'imported' opens the scraper selection dialog instead of a direct move.
  */
-const BULK_ACTIONS: Record<PipelineStage, { 
-  label: string; 
-  nextStage: PipelineStatus | null; 
-  resetLabel?: string;
-  previousStage?: PipelineStatus | null;
-  secondaryAction?: string;
-}> = {
-  imported: { label: 'Scrape Selected', nextStage: 'scraped' },
-  monitoring: { label: '', nextStage: null, resetLabel: 'Cancel & Return to Import', previousStage: 'imported' },
-  scraped: { label: 'Consolidate Selected', nextStage: 'consolidated', resetLabel: 'Clear & Return to Import', previousStage: 'imported', secondaryAction: 'Scrape Additional Sources' },
-  consolidated: { label: 'Finalize Selected', nextStage: 'finalized', resetLabel: 'Reset Consolidation', previousStage: 'scraped' },
-  finalized: { label: 'Publish Selected', nextStage: 'published', resetLabel: 'Return to Consolidation', previousStage: 'consolidated' },
-  published: { label: '', nextStage: null },
-  consolidating: { label: '', nextStage: null },
+const BULK_ACTIONS: Record<
+  PipelineStage,
+  {
+    label: string;
+    nextStage: PipelineStatus | null;
+    resetLabel?: string;
+    previousStage?: PipelineStatus | null;
+    secondaryAction?: string;
+  }
+> = {
+  imported: { label: "Scrape Selected", nextStage: "scraped" },
+  monitoring: {
+    label: "",
+    nextStage: null,
+    resetLabel: "Cancel & Return to Import",
+    previousStage: "imported",
+  },
+  scraped: {
+    label: "Consolidate Selected",
+    nextStage: "consolidated",
+    resetLabel: "Clear & Return to Import",
+    previousStage: "imported",
+    secondaryAction: "Scrape Additional Sources",
+  },
+  consolidated: {
+    label: "Finalize Selected",
+    nextStage: "finalized",
+    resetLabel: "Reset Consolidation",
+    previousStage: "scraped",
+  },
+  finalized: {
+    label: "Publish Selected",
+    nextStage: "published",
+    resetLabel: "Return to Consolidation",
+    previousStage: "consolidated",
+  },
+  published: { label: "", nextStage: null },
+  consolidating: { label: "", nextStage: null },
 };
 
 interface FloatingActionsBarProps {
@@ -53,11 +77,13 @@ export function FloatingActionsBar({
   if (selectedCount === 0) return null;
 
   const bulkAction = BULK_ACTIONS[currentStage];
-  const isTerminalStage = currentStage === 'published';
+  const isTerminalStage = currentStage === "published";
   const hasBulkAction = !isTerminalStage && bulkAction.nextStage !== null;
-  const hasResetAction = !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
-  const isImported = currentStage === 'imported';
-  const hasSecondaryAction = !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
+  const hasResetAction =
+    !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
+  const isImported = currentStage === "imported";
+  const hasSecondaryAction =
+    !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
 
   const handlePrimaryAction = () => {
     if (isImported && onOpenScrapeDialog) {
@@ -69,7 +95,11 @@ export function FloatingActionsBar({
 
   const handleResetAction = () => {
     if (bulkAction.previousStage && onResetStage) {
-      if (confirm(`Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? 's' : ''}? This action may clear data.`)) {
+      if (
+        confirm(
+          `Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? "s" : ""}? This action may clear data.`,
+        )
+      ) {
         onResetStage(bulkAction.previousStage);
       }
     }
@@ -85,7 +115,7 @@ export function FloatingActionsBar({
           </div>
           <div className="flex flex-col">
             <span className="text-xs font-bold text-zinc-900 leading-none">
-              {selectedCount === 1 ? 'Product' : 'Products'} Selected
+              {selectedCount === 1 ? "Product" : "Products"} Selected
             </span>
             <button
               onClick={onClearSelection}
@@ -98,7 +128,7 @@ export function FloatingActionsBar({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {selectedCount < totalCount && (
+          {selectedCount < totalCount && currentStage !== "finalized" && (
             <Button
               variant="ghost"
               size="sm"

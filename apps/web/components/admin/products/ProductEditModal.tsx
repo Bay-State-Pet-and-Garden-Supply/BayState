@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Package } from 'lucide-react';
+import { Save, Package, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Dialog,
     DialogContent,
@@ -23,6 +26,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { PetTypeSelector } from './PetTypeSelector';
 import { updateProduct } from '@/app/admin/products/actions';
+import { cn } from '@/lib/utils';
 
 interface Brand {
     id: string;
@@ -32,10 +36,8 @@ interface Brand {
 
 interface ProductPetType {
     pet_type_id: string;
-    confidence: 'inferred' | 'manual' | 'verified';
 }
 
-// Define specific type based on queries used in AdminProductsClient
 export interface PublishedProduct {
     id: string;
     sku: string;
@@ -49,6 +51,8 @@ export interface PublishedProduct {
     brand_id: string | null;
     brand_name: string | null;
     brand_slug: string | null;
+    product_type?: string | null;
+    category_ids?: string[];
     created_at: string;
 }
 
@@ -85,23 +89,42 @@ export function ProductEditModal({
     const [isFeatured, setIsFeatured] = useState(product.is_featured);
     const [selectedPetTypes, setSelectedPetTypes] = useState<ProductPetType[]>([]);
 
-    // Parse images helper
     const parseImages = (images: unknown): string[] => {
         if (!images) return [];
-        if (Array.isArray(images)) return images;
-        if (typeof images === 'string') {
+        let parsed: string[] = [];
+        if (Array.isArray(images)) {
+            parsed = images;
+        } else if (typeof images === 'string') {
             try {
-                return JSON.parse(images);
+                parsed = JSON.parse(images);
             } catch {
                 return [];
             }
+        } else {
+            return [];
         }
-        return [];
+
+        // Ensure relative paths start with a leading slash
+        return parsed.map(img => {
+            if (typeof img !== 'string') return '';
+            const trimmed = img.trim();
+            if (trimmed.startsWith('http') || trimmed.startsWith('/')) {
+                return trimmed;
+            }
+            // If it's a relative path without a leading slash, prepend it
+            if (trimmed.length > 0) {
+                return `/${trimmed}`;
+            }
+            return '';
+        }).filter(Boolean);
+    };
+
+    const isValidImageUrl = (url: string) => {
+        return url && (url.startsWith('/') || url.startsWith('http'));
     };
 
     const images = parseImages(product.images);
 
-    // Fetch brands and product pet types
     useEffect(() => {
         async function fetchData() {
             try {
@@ -128,7 +151,6 @@ export function ProductEditModal({
         fetchData();
     }, [product.id]);
 
-    // Handle keyboard shortcuts
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -196,40 +218,45 @@ export function ProductEditModal({
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+                <DialogHeader className="p-6 pb-0">
                     <div className="flex items-center gap-3">
-                        <Package className="h-6 w-6 text-gray-600" />
+                        <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                            <Package className="size-6 text-muted-foreground" />
+                        </div>
                         <div>
-                            <DialogTitle>Edit Product</DialogTitle>
-                            <p className="text-sm text-gray-600 font-mono">{product.sku}</p>
+                            <DialogTitle className="text-xl">Edit Product</DialogTitle>
+                            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">{product.sku}</p>
                         </div>
                     </div>
                 </DialogHeader>
 
-                {/* Error Banner */}
-                {error && (
-                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                        {error}
-                    </div>
-                )}
+                <div className="flex flex-col gap-6 p-6">
+                    {/* Error Banner */}
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="size-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
 
-                {/* Form Content */}
-                <div className="space-y-6">
-                    <div className="grid gap-6 md:grid-cols-2">
+                    {/* Form Content */}
+                    <div className="grid gap-8 md:grid-cols-2">
                         {/* Left Column */}
-                        <div className="space-y-4">
-                            <div className="space-y-2">
+                        <div className="flex flex-col gap-5">
+                            <div className="flex flex-col gap-2">
                                 <Label htmlFor="name">Product Name *</Label>
                                 <Input
                                     id="name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Enter product name"
+                                    aria-required="true"
                                 />
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 <Label htmlFor="slug">Slug *</Label>
                                 <Input
                                     id="slug"
@@ -237,13 +264,14 @@ export function ProductEditModal({
                                     onChange={(e) => setSlug(e.target.value)}
                                     placeholder="product-slug"
                                     aria-describedby="slug-help"
+                                    aria-required="true"
                                 />
-                                <p id="slug-help" className="text-sm text-muted-foreground">
+                                <p id="slug-help" className="text-xs text-muted-foreground">
                                     URL-friendly version of the name.
                                 </p>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 <Label htmlFor="price">Price ($) *</Label>
                                 <Input
                                     id="price"
@@ -253,49 +281,52 @@ export function ProductEditModal({
                                     value={price}
                                     onChange={(e) => setPrice(e.target.value)}
                                     placeholder="0.00"
+                                    aria-required="true"
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="brand">Brand</Label>
-                                <Select value={brandId} onValueChange={setBrandId}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a brand" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">No brand</SelectItem>
-                                        {brands.map((brand) => (
-                                            <SelectItem key={brand.id} value={brand.id}>
-                                                {brand.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="flex flex-col gap-2">
+                                    <Label htmlFor="brand">Brand</Label>
+                                    <Select value={brandId} onValueChange={setBrandId}>
+                                        <SelectTrigger id="brand">
+                                            <SelectValue placeholder="Select a brand" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No brand</SelectItem>
+                                            {brands.map((brand) => (
+                                                <SelectItem key={brand.id} value={brand.id}>
+                                                    {brand.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="flex flex-col gap-2">
+                                    <Label htmlFor="stockStatus">Stock Status</Label>
+                                    <Select value={stockStatus} onValueChange={setStockStatus}>
+                                        <SelectTrigger id="stockStatus">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {stockStatusOptions.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="stockStatus">Stock Status</Label>
-                                <Select value={stockStatus} onValueChange={setStockStatus}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {stockStatusOptions.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-2">
+                            <div className="flex items-center gap-2 py-1">
                                 <Checkbox
                                     id="featured"
                                     checked={isFeatured}
                                     onCheckedChange={(checked) => setIsFeatured(checked === true)}
                                 />
-                                <Label htmlFor="featured" className="cursor-pointer">
+                                <Label htmlFor="featured" className="cursor-pointer font-medium">
                                     Featured Product
                                 </Label>
                             </div>
@@ -308,32 +339,31 @@ export function ProductEditModal({
                         </div>
 
                         {/* Right Column - Description */}
-                        <div className="space-y-4">
-                            <div className="space-y-2">
+                        <div className="flex flex-col gap-5">
+                            <div className="flex flex-col gap-2">
                                 <Label htmlFor="description">Description</Label>
-                                <textarea
+                                <Textarea
                                     id="description"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Enter product description"
-                                    rows={8}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="Enter product description…"
+                                    rows={10}
+                                    className="min-h-[240px] resize-none"
                                 />
                             </div>
 
                             {/* Images Preview - Read Only for now */}
                             {images.length > 0 && (
-                                <div className="space-y-2">
-                                    <Label>Images (Read-only)</Label>
+                                <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
+                                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Images (Read-only)</Label>
                                     <div className="flex gap-2 flex-wrap">
                                         {images
-                                            .map((img) => img.trim())
-                                            .filter((img) => img.startsWith('/') || img.startsWith('http'))
+                                            .filter(isValidImageUrl)
                                             .slice(0, 4)
                                             .map((img, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className="h-16 w-16 rounded border bg-gray-100 overflow-hidden"
+                                                    className="size-16 rounded-md border bg-background overflow-hidden relative"
                                                 >
                                                     <img
                                                         src={img}
@@ -343,22 +373,27 @@ export function ProductEditModal({
                                                 </div>
                                             ))}
                                         {images.length > 4 && (
-                                            <div className="flex h-16 w-16 items-center justify-center rounded border bg-gray-50 text-sm text-gray-600">
+                                            <div className="flex size-16 items-center justify-center rounded-md border bg-muted text-xs font-medium">
                                                 +{images.length - 4}
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-sm text-muted-foreground">Image management coming soon</p>
+                                    <p className="text-[10px] text-muted-foreground italic">Image management coming soon…</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2">
-                    <div className="flex-1 text-xs text-gray-600 flex items-center">
-                        Press <kbd className="mx-1 rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
-                        <kbd className="mx-1 rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
+                <DialogFooter className="flex-col sm:flex-row gap-4 bg-muted/50 p-6">
+                    <div className="flex-1 text-[10px] text-muted-foreground flex items-center gap-1.5">
+                        <span className="flex items-center gap-1">
+                            Press <kbd className="rounded bg-muted-foreground/20 px-1 font-sans text-[9px] uppercase">Esc</kbd> to close
+                        </span>
+                        <span className="text-muted-foreground/30">•</span>
+                        <span className="flex items-center gap-1">
+                            <kbd className="rounded bg-muted-foreground/20 px-1 font-sans text-[9px] uppercase">Ctrl+S</kbd> to save
+                        </span>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={onClose} disabled={saving}>
@@ -367,9 +402,19 @@ export function ProductEditModal({
                         <Button
                             onClick={handleSave}
                             disabled={saving}
+                            className="min-w-[120px]"
                         >
-                            <Save className="mr-2 h-4 w-4" />
-                            {saving ? 'Saving...' : 'Save Product'}
+                            {saving ? (
+                                <>
+                                    <Spinner data-icon="inline-start" />
+                                    Saving…
+                                </>
+                            ) : (
+                                <>
+                                    <Save data-icon="inline-start" />
+                                    Save Product
+                                </>
+                            )}
                         </Button>
                     </div>
                 </DialogFooter>

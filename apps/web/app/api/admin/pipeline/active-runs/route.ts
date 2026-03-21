@@ -6,7 +6,7 @@ interface ActiveJob {
     id: string;
     skuCount: number;
     scrapers: string[];
-    status: 'pending' | 'running';
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
     createdAt: string;
     progress: number;
 }
@@ -18,12 +18,14 @@ export async function GET() {
     }
 
     const supabase = await createClient();
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const { data: jobs, error: jobsError } = await supabase
         .from('scrape_jobs')
         .select('id, status, created_at, scrapers, skus')
-        .in('status', ['pending', 'running'])
-        .order('created_at', { ascending: false });
+        .or(`status.in.(pending,running),and(status.in.(completed,failed),created_at.gt.${last24Hours})`)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
     if (jobsError) {
         console.error('[Active Runs] Failed to fetch jobs:', jobsError);

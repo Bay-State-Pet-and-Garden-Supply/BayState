@@ -26,6 +26,45 @@ export interface OrderDownloadOptions {
     limit?: number;
 }
 
+interface FetchProductsOptions {
+    includeRawXml?: boolean;
+}
+
+const PRODUCT_XML_VERSION = '15.0';
+
+const PRODUCT_DOWNLOAD_FIELDS = [
+    'ProductDisabled',
+    'SKU',
+    'Name',
+    'Price',
+    'SaleAmount',
+    'ProductDescription',
+    'QuantityOnHand',
+    'Quantity',
+    'LowStockThreshold',
+    'OutOfStockLimit',
+    'Graphic',
+    'Weight',
+    'Taxable',
+    'ProductType',
+    'ProdType',
+    'ProductID',
+    'ProductGUID',
+    'GTIN',
+    'ProductField11',
+    'ProductField16',
+    'ProductField24',
+    'ProductField25',
+    'Availability',
+    'FileName',
+    'MoreInformationText',
+    'SearchKeywords',
+    'GoogleProductCategory',
+    'ProductOnPages',
+    'MinimumQuantity',
+    ...Array.from({ length: 20 }, (_, index) => `MoreInfoImage${index + 1}`),
+].join('|');
+
 export { ShopSiteConfigSchema };
 export type { ShopSiteConfig, AddressInfo } from './types';
 
@@ -144,11 +183,17 @@ export class ShopSiteClient {
     /**
      * Fetch all products from ShopSite db_xml.cgi endpoint.
      */
-    async fetchProducts(limit?: number): Promise<ShopSiteProduct[]> {
+    async fetchProducts(limit?: number, options: FetchProductsOptions = {}): Promise<ShopSiteProduct[]> {
         try {
-            // Added version=14.0 as per legacy guide
+            const params = new URLSearchParams({
+                clientApp: '1',
+                dbname: 'products',
+                version: PRODUCT_XML_VERSION,
+                fields: `|${PRODUCT_DOWNLOAD_FIELDS}|`,
+            });
+
             const response = await fetch(
-                this.buildUrl('clientApp=1&dbname=products&version=14.0', 'db_xml.cgi'),
+                this.buildUrl(params.toString(), 'db_xml.cgi'),
                 {
                     method: 'GET',
                     headers: {
@@ -166,12 +211,11 @@ export class ShopSiteClient {
             // Implement manual streaming to abort download early if limit is set
             let rawText = '';
 
-            if (limit && response.body) {
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8', { fatal: false });
-                const productCount = 0;
+                if (limit && response.body) {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder('utf-8', { fatal: false });
 
-                try {
+                    try {
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
@@ -215,7 +259,7 @@ export class ShopSiteClient {
             }
 
             const xmlText = ShopSiteClient.sanitizeXml(rawText);
-            return this.parseProductsXml(xmlText, limit);
+            return this.parseProductsXml(xmlText, limit, options);
         } catch (error) {
             console.error('Error fetching products:', error);
             return [];
@@ -313,8 +357,9 @@ export class ShopSiteClient {
     // XML Parsing Methods
     // ============================================================================
 
-    private parseProductsXml(xmlText: string, limit?: number): ShopSiteProduct[] {
+    public parseProductsXml(xmlText: string, limit?: number, options: FetchProductsOptions = {}): ShopSiteProduct[] {
         const products: ShopSiteProduct[] = [];
+        const includeRawXml = options.includeRawXml ?? true;
 
         // Support both <product> and <Product> tags
         const productMatches = xmlText.match(/<(?:product|Product)>([\s\S]*?)<\/(?:product|Product)>/gi);
@@ -453,7 +498,7 @@ export class ShopSiteClient {
                 googleProductCategory,
                 shopsitePages,
                 isSpecialOrder: this.extractXmlValue(productXml, 'ProductField11')?.toLowerCase() === 'yes',
-                rawXml: productXml,
+                rawXml: includeRawXml ? productXml : undefined,
             });
 
             // Respect limit if specified

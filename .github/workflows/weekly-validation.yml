@@ -2,7 +2,7 @@ name: Weekly Validation
 
 on:
   schedule:
-    - cron: '0 9 * * 1'
+    - cron: "0 9 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -10,12 +10,12 @@ permissions:
   issues: write
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: "3.11"
 
 jobs:
   weekly-validation:
     name: Weekly Validation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     timeout-minutes: 30
     defaults:
       run:

@@ -20,12 +20,14 @@ export async function GET() {
     }
 
     const supabase = await createClient();
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const { data: jobs, error: jobsError } = await supabase
         .from('batch_jobs')
         .select('id, status, created_at, total_requests, completed_requests, failed_requests')
-        .not('status', 'in', '(completed,failed,expired)')
-        .order('created_at', { ascending: false });
+        .or(`status.not.in.(completed,failed,expired,cancelled),and(status.in.(completed,failed,expired,cancelled),created_at.gt.${last24Hours})`)
+        .order('created_at', { ascending: false })
+        .limit(15);
 
     if (jobsError) {
         console.error('[Active Consolidations] Failed to fetch jobs:', jobsError);

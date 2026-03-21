@@ -12,7 +12,8 @@ import type { Category, ProductType } from './types';
  * Fetch categories from the database.
  */
 export async function getCategories(): Promise<Category[]> {
-    const supabase = await createClient();
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const supabase = await createAdminClient();
     const { data, error } = await supabase.from('categories').select('id, name, slug').order('name');
 
     if (error) {
@@ -27,7 +28,8 @@ export async function getCategories(): Promise<Category[]> {
  * Fetch product types from the database.
  */
 export async function getProductTypes(): Promise<ProductType[]> {
-    const supabase = await createClient();
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const supabase = await createAdminClient();
     const { data, error } = await supabase.from('product_types').select('id, name').order('name');
 
     if (error) {

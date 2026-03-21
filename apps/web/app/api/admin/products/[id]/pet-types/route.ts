@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
   const { data, error } = await supabase
     .from('product_pet_types')
-    .select('pet_type_id, confidence')
+    .select('pet_type_id')
     .eq('product_id', productId);
 
   if (error) {
@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   const supabase = await createClient();
 
   const body = await request.json();
-  const petTypes: { pet_type_id: string; confidence: string }[] = body.petTypes || [];
+  const petTypes: { pet_type_id: string }[] = body.petTypes || [];
 
   const { error: deleteError } = await supabase
     .from('product_pet_types')
@@ -56,7 +56,6 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const insertData = petTypes.map((pt) => ({
       product_id: productId,
       pet_type_id: pt.pet_type_id,
-      confidence: pt.confidence || 'manual',
     }));
 
     const { error: insertError } = await supabase

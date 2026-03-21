@@ -91,9 +91,9 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         order: 6,
     },
     finalized: {
-        label: 'Finalized',
+        label: 'Finalizing',
         icon: 'Store',
-        description: 'Ready for publishing/export',
+        description: 'Review and finalize product data',
         color: '#008850',
         bgColor: '#D1FAE5',
         isStatusTab: true,
