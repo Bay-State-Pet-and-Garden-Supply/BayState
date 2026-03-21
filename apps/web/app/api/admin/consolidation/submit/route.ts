@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     if (!auth.authorized) return auth.response;
 
     // Check if OpenAI is configured
-    if (!isOpenAIConfigured()) {
+    if (!(await isOpenAIConfigured())) {
         return NextResponse.json(
             { error: 'OpenAI API key not configured. Set OPENAI_API_KEY environment variable.' },
             { status: 503 }
