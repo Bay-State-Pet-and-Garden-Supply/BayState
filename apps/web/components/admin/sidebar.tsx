@@ -258,7 +258,8 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                     <Link
                       href={item.href}
                       className={cn(
-                        "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 transition-all duration-200",
+                        "group relative flex items-center rounded-lg px-3 py-2 transition-all duration-200",
+                        collapsed ? "justify-center" : "gap-2.5",
                         isActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-1 ring-white/10"
                           : "text-white/70 hover:bg-white/5 hover:text-white",
