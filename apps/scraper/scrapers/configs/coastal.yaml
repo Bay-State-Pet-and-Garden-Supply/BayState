@@ -71,6 +71,28 @@ selectors:
     attribute: text
     multiple: true
     required: false
+  - name: Weight
+    selector: ".product-details__weight, span:has-text('Weight') + span"
+    fallback_selectors:
+      - "//dt[contains(text(),'Weight')]/following-sibling::dd"
+      - ".product-specs dt:has-text('Weight') + dd"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Specifications
+    selector: "#product-details__specs-tab-panel dt, #product-details__specs-tab-panel dd"
+    fallback_selectors:
+      - ".product-specs"
+    attribute: text
+    multiple: true
+    required: false
+  - name: Dimensions
+    selector: ".product-details__dimensions, span:has-text('Dimensions') + span"
+    fallback_selectors:
+      - "//dt[contains(text(),'Dimensions')]/following-sibling::dd"
+    attribute: text
+    multiple: false
+    required: false
 workflows:
   - action: navigate
     name: search_page
@@ -126,6 +148,26 @@ workflows:
         - Item Number
         - Description
         - Features
+        - Weight
+        - Specifications
+        - Dimensions
+  - action: process_images
+    name: null
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "\\?w=\\d+"
+          replacement: "?w=1500"
+        - regex: "_small\\."
+          replacement: "_large."
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: no-image
+        - type: require_text
+          text: salsify
+      deduplicate: true
 ai_config: null
 anti_detection:
   enable_rate_limiting: false
@@ -147,7 +189,7 @@ http_status: null
 normalization: null
 timeout: 15
 retries: 2
-image_quality: 20
+image_quality: 60
 test_skus:
   - HSCP2
   - "06601"

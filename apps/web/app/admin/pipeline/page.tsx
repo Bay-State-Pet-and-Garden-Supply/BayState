@@ -13,29 +13,28 @@ export const metadata: Metadata = {
 };
 
 export default async function PipelinePage() {
-    // Call library functions directly instead of internal fetch
+    let initialCounts: StatusCount[] = [];
+    let initialProducts: PipelineProduct[] = [];
+    let initialTotal = 0;
+
     try {
         const [counts, { products, count }] = await Promise.all([
             getStatusCounts(),
             getProductsByStatus('imported', { limit: 500 }),
         ]);
 
-        return (
-            <PipelineClient
-                initialProducts={products}
-                initialCounts={counts}
-                initialTotal={count}
-            />
-        );
+        initialCounts = counts;
+        initialProducts = products;
+        initialTotal = count;
     } catch (error) {
         console.error('Error loading pipeline page:', error);
-        // Return with empty states as fallback
-        return (
-            <PipelineClient
-                initialProducts={[]}
-                initialCounts={[]}
-                initialTotal={0}
-            />
-        );
     }
+
+    return (
+        <PipelineClient
+            initialProducts={initialProducts}
+            initialCounts={initialCounts}
+            initialTotal={initialTotal}
+        />
+    );
 }

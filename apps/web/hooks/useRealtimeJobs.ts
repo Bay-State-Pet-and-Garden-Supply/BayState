@@ -56,6 +56,7 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const shouldReconnectRef = useRef(autoConnect);
 
   const clearReconnectTimeout = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -115,6 +116,7 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
       return;
     }
 
+    shouldReconnectRef.current = true;
     clearReconnectTimeout();
     setConnectionStatus('connecting');
     setError(null);
@@ -140,13 +142,13 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
         setConnectionStatus('disconnected');
         wsRef.current = null;
 
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+        if (shouldReconnectRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
           const delay = Math.min(1000 * 2 ** reconnectAttemptsRef.current, 30000);
           reconnectAttemptsRef.current += 1;
           reconnectTimeoutRef.current = setTimeout(() => {
             connectRef.current();
           }, delay);
-        } else if (pollingFallback) {
+        } else if (shouldReconnectRef.current && pollingFallback) {
           startPolling();
         }
       };
@@ -164,6 +166,7 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
   }, [connect]);
 
   const disconnect = useCallback(() => {
+    shouldReconnectRef.current = false;
     clearReconnectTimeout();
     clearPollingInterval();
     if (wsRef.current) {
@@ -171,7 +174,7 @@ export function useRealtimeJobs(options: UseRealtimeJobsOptions = {}): UseRealti
       wsRef.current = null;
     }
     setConnectionStatus('disconnected');
-  }, []);
+  }, [clearReconnectTimeout, clearPollingInterval]);
 
   const reconnect = useCallback(() => {
     disconnect();

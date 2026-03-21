@@ -9,11 +9,22 @@ import {
   getStageConfig,
 } from './core';
 
+const PIPELINE_STATUSES = [
+  'imported',
+  'monitoring',
+  'scraped',
+  'consolidated',
+  'finalized',
+  'published',
+] as const;
+
 describe('STATUS_TRANSITIONS', () => {
-  it('imported can transition to scraped', () => {
-    expect(STATUS_TRANSITIONS.imported).toEqual(['scraped']);
+  it('imported can transition to monitoring and scraped', () => {
+    expect(STATUS_TRANSITIONS.imported).toEqual(['monitoring', 'scraped']);
   });
-    expect(STATUS_TRANSITIONS.imported).toEqual(['scraped', 'deleted']);
+
+  it('monitoring can transition to scraped and imported', () => {
+    expect(STATUS_TRANSITIONS.monitoring).toEqual(['scraped', 'imported']);
   });
 
   it('scraped can transition to consolidated and imported', () => {
@@ -35,30 +46,22 @@ describe('STATUS_TRANSITIONS', () => {
 
 describe('validateTransition', () => {
   describe('same status transitions', () => {
-    it('allows imported -> imported', () => {
-      expect(validateTransition('imported', 'imported')).toBe(true);
-    });
-
-    it('allows scraped -> scraped', () => {
-      expect(validateTransition('scraped', 'scraped')).toBe(true);
-    });
-
-    it('allows consolidated -> consolidated', () => {
-      expect(validateTransition('consolidated', 'consolidated')).toBe(true);
-    });
-
-    it('allows finalized -> finalized', () => {
-      expect(validateTransition('finalized', 'finalized')).toBe(true);
-    });
-
-    it('allows published -> published', () => {
-      expect(validateTransition('published', 'published')).toBe(true);
+    it.each(PIPELINE_STATUSES)('allows %s -> %s', (status) => {
+      expect(validateTransition(status, status)).toBe(true);
     });
   });
 
   describe('valid forward transitions', () => {
+    it('allows imported -> monitoring', () => {
+      expect(validateTransition('imported', 'monitoring')).toBe(true);
+    });
+
     it('allows imported -> scraped', () => {
       expect(validateTransition('imported', 'scraped')).toBe(true);
+    });
+
+    it('allows monitoring -> scraped', () => {
+      expect(validateTransition('monitoring', 'scraped')).toBe(true);
     });
 
     it('allows scraped -> consolidated', () => {
@@ -75,6 +78,10 @@ describe('validateTransition', () => {
   });
 
   describe('valid backward transitions', () => {
+    it('allows monitoring -> imported', () => {
+      expect(validateTransition('monitoring', 'imported')).toBe(true);
+    });
+
     it('allows scraped -> imported', () => {
       expect(validateTransition('scraped', 'imported')).toBe(true);
     });
@@ -88,18 +95,11 @@ describe('validateTransition', () => {
     });
   });
 
-describe('deletion transition', () => {
-    it('is not supported in this version', () => {
-      // 'deleted' is not a valid PipelineStatus
-      expect(STATUS_TRANSITIONS.imported).not.toContain('deleted');
-    });
-  });
-    it('allows imported -> deleted', () => {
-      expect(validateTransition('imported', 'deleted')).toBe(true);
-    });
-  });
-
   describe('invalid transitions', () => {
+    it('rejects monitoring -> finalized (skipping scraped and consolidated)', () => {
+      expect(validateTransition('monitoring', 'finalized')).toBe(false);
+    });
+
     it('rejects imported -> consolidated (skipping scraped)', () => {
       expect(validateTransition('imported', 'consolidated')).toBe(false);
     });
@@ -110,6 +110,10 @@ describe('deletion transition', () => {
 
     it('rejects imported -> published (skipping all stages)', () => {
       expect(validateTransition('imported', 'published')).toBe(false);
+    });
+
+    it('rejects monitoring -> published (skipping multiple stages)', () => {
+      expect(validateTransition('monitoring', 'published')).toBe(false);
     });
 
     it('rejects scraped -> finalized (skipping consolidated)', () => {
@@ -151,6 +155,10 @@ describe('isTerminalStage', () => {
     expect(isTerminalStage('imported')).toBe(false);
   });
 
+  it('returns false for monitoring', () => {
+    expect(isTerminalStage('monitoring')).toBe(false);
+  });
+
   it('returns false for scraped', () => {
     expect(isTerminalStage('scraped')).toBe(false);
   });
@@ -173,6 +181,12 @@ describe('getStageConfig', () => {
     const config = getStageConfig('imported');
     expect(config.label).toBe('Imported');
     expect(config.color).toBe('#6B7280');
+  });
+
+  it('returns correct config for monitoring', () => {
+    const config = getStageConfig('monitoring');
+    expect(config.label).toBe('Scraping');
+    expect(config.color).toBe('#F59E0B');
   });
 
   it('returns correct config for scraped', () => {

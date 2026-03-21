@@ -30,11 +30,11 @@ describe('TimelineView', () => {
   it('renders time range buttons', () => {
     render(<TimelineView jobs={mockJobs} timeRange="24h" />);
 
-    expect(screen.getByText('1h')).toBeInTheDocument();
-    expect(screen.getByText('6h')).toBeInTheDocument();
-    expect(screen.getByText('24h')).toBeInTheDocument();
-    expect(screen.getByText('7d')).toBeInTheDocument();
-    expect(screen.getByText('30d')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1h' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '6h' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '24h' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '7d' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '30d' })).toBeInTheDocument();
   });
 
   it('renders job names', () => {
@@ -55,7 +55,7 @@ describe('TimelineView', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('6h'));
+    fireEvent.click(screen.getByRole('button', { name: '6h' }));
     expect(handleRangeChange).toHaveBeenCalledWith('6h');
   });
 

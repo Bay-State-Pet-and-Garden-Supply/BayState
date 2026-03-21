@@ -15,10 +15,6 @@ type PersistChunkResultsToPipelineFn =
   typeof import('@/app/api/scraper/v1/chunk-callback/route').persistChunkResultsToPipeline;
 type MergeChunkResultsFn =
   typeof import('@/app/api/scraper/v1/chunk-callback/route').mergeChunkResults;
-type MergeChunkPayloadResultsFn =
-  typeof import('@/app/api/scraper/v1/chunk-callback/route').mergeChunkPayloadResults;
-type BuildProgressResultsFn =
-  typeof import('@/app/api/scraper/v1/chunk-callback/route').buildProgressResults;
 
 jest.mock('@/lib/scraper-callback/products-ingestion', () => ({
   persistProductsIngestionSourcesPartial: jest.fn(),
@@ -30,8 +26,6 @@ const mockedPersist = persistProductsIngestionSourcesPartial as jest.MockedFunct
 
 let persistChunkResultsToPipeline: PersistChunkResultsToPipelineFn;
 let mergeChunkResults: MergeChunkResultsFn;
-let mergeChunkPayloadResults: MergeChunkPayloadResultsFn;
-let buildProgressResults: BuildProgressResultsFn;
 
 describe('persistChunkResultsToPipeline', () => {
   const supabase = {} as SupabaseClient;
@@ -43,8 +37,6 @@ describe('persistChunkResultsToPipeline', () => {
     const routeModule = await import('@/app/api/scraper/v1/chunk-callback/route');
     persistChunkResultsToPipeline = routeModule.persistChunkResultsToPipeline;
     mergeChunkResults = routeModule.mergeChunkResults;
-    mergeChunkPayloadResults = routeModule.mergeChunkPayloadResults;
-    buildProgressResults = routeModule.buildProgressResults;
   });
 
   beforeEach(() => {
@@ -109,13 +101,13 @@ describe('persistChunkResultsToPipeline', () => {
 
     expect(merged['SKU-1']).toEqual({
       amazon: {
-        Name: 'Product A',
-        Price: '$10.00',
-        Color: 'Red',
+        title: 'Product A',
+        price: '$10.00',
+        color: 'Red',
       },
       ai_discovery: {
-        Brand: 'KONG',
-        Description: 'Discovery text',
+        brand: 'KONG',
+        description: 'Discovery text',
       },
     });
   });
@@ -175,34 +167,38 @@ describe('persistChunkResultsToPipeline', () => {
 
     expect(merged['SKU-3']).toEqual({
       amazon: {
-        name: 'Gas Can 2 Gal',
+        title: 'Gas Can 2 Gal',
         price: 21.99,
       },
     });
   });
 
-  it('builds progress payloads in the chunk-results shape expected by persistence', () => {
-    const progressResults = buildProgressResults({
-      sku: 'SKU-4',
-      scraper_name: 'amazon',
-      data: {
-        Name: 'Progress Product',
-        Price: '$15.99',
+  it('normalizes single chunk payloads into the persistence shape', () => {
+    const merged = mergeChunkResults([
+      {
+        results: {
+          'SKU-4': {
+            amazon: {
+              Name: 'Progress Product',
+              Price: '$15.99',
+            },
+          },
+        },
       },
-    });
+    ]);
 
-    expect(progressResults).toEqual({
+    expect(merged).toEqual({
       'SKU-4': {
         amazon: {
-          Name: 'Progress Product',
-          Price: '$15.99',
+          title: 'Progress Product',
+          price: '$15.99',
         },
       },
     });
   });
 
-  it('merges existing chunk results with new progress without dropping prior sources', () => {
-    const merged = mergeChunkPayloadResults(
+  it('merges sequential chunk payloads without dropping prior sources', () => {
+    const merged = mergeChunkResults([
       {
         'SKU-5': {
           amazon: {
@@ -217,15 +213,15 @@ describe('persistChunkResultsToPipeline', () => {
           },
         },
       }
-    );
+    ].map((results) => ({ results })));
 
     expect(merged).toEqual({
       'SKU-5': {
         amazon: {
-          Name: 'Existing Product',
+          title: 'Existing Product',
         },
         chewy: {
-          Description: 'New source payload',
+          description: 'New source payload',
         },
       },
     });

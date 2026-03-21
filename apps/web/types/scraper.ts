@@ -161,7 +161,8 @@ export interface ScrapeJobChunk {
 export interface ScraperRunner {
   name: string;
   last_seen_at: string;
-  status: 'online' | 'offline' | 'busy';
+  status: 'online' | 'offline' | 'busy' | 'idle' | 'polling' | 'paused';
+  enabled: boolean;
   current_job_id: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;

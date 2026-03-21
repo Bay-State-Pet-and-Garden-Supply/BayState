@@ -31,6 +31,12 @@ const statusConfig: Record<
   published: { variant: "success", label: "Published", icon: Globe },
 };
 
+const defaultStatusConfig = {
+  variant: "default" as const,
+  label: "Unknown",
+  icon: Package,
+};
+
 function PulseDot({ className }: { className?: string }) {
   return (
     <span className={cn("relative flex size-2", className)} aria-hidden="true">
@@ -48,7 +54,7 @@ export function StatusBadge({
   isLoading = false,
   className,
 }: StatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] ?? defaultStatusConfig;
   const sizeSettings = sizeConfig[size];
   const Icon = config.icon;
 

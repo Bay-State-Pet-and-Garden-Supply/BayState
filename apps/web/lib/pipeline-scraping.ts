@@ -406,8 +406,9 @@ export async function getAvailableRunnerCount(): Promise<number> {
     const { count, error } = await supabase
         .from('scraper_runners')
         .select('*', { count: 'exact', head: true })
+        .eq('enabled', true)
         .gt('last_seen_at', fiveMinutesAgo)
-        .in('status', ['online', 'polling', 'idle', 'running']);
+        .in('status', ['online', 'polling', 'idle']);
 
     if (error) {
         console.error('[Pipeline Scraping] Failed to check runners:', error);

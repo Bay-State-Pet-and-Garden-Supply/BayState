@@ -72,6 +72,17 @@ class ScraperIntegrationTester:
 
         raise RuntimeError(f"No fake SKUs configured in API for scraper '{scraper_name}'")
 
+    def get_edge_case_skus(self, scraper_name: str) -> list[str]:
+        config = self._get_published_config(scraper_name)
+
+        edge_case_skus = config.get("edge_case_skus")
+        if isinstance(edge_case_skus, list):
+            skus = [str(s).strip() for s in edge_case_skus if str(s).strip()]
+            if skus:
+                return skus
+
+        raise RuntimeError(f"No edge_case_skus configured in API for scraper '{scraper_name}'")
+
     def get_available_scrapers(self) -> list[str]:
         if not self.api_client.api_url:
             logger.warning("SCRAPER_API_URL missing; no API scrapers available for integration test discovery")

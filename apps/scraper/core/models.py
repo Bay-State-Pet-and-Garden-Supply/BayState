@@ -90,6 +90,13 @@ class RawScrapedProduct(BaseModel):
     images: list[str] = Field(default_factory=list)
     category: str | None = None
     product_type: str | None = None
+    features: list[str] | str | None = None
+    ingredients: str | None = None
+    dimensions: str | None = None
+    specifications: str | None = None
+    case_pack: str | None = None
+    ratings: float | None = None
+    reviews_count: int | None = None
 
     # Scraped price is stored but IGNORED in final output
     scraped_price: float | None = Field(
@@ -144,6 +151,13 @@ class RawScrapedProduct(BaseModel):
             "description": self.description,
             "category": self.category,
             "product_type": self.product_type,
+            "features": self.features,
+            "ingredients": self.ingredients,
+            "dimensions": self.dimensions,
+            "specifications": self.specifications,
+            "case_pack": self.case_pack,
+            "ratings": self.ratings,
+            "reviews_count": self.reviews_count,
             # Scraped price stored for reference
             "scraped_price": self.scraped_price,
         }

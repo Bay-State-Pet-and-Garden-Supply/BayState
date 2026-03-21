@@ -80,33 +80,32 @@ describe('PipelineFilters', () => {
 
 describe('PipelineClient Integration', () => {
     const mockProducts = [
-        { sku: 'TEST-1', pipeline_status: 'registered', sources: {}, created_at: '', updated_at: '', input: {}, consolidated: {} }
+        {
+            sku: 'TEST-1',
+            pipeline_status: 'imported',
+            sources: {},
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+            input: { name: 'Test Product', price: 10 },
+            consolidated: null,
+        }
     ];
-    const mockCounts = [{ status: 'registered', count: 1 }];
+    const mockCounts = [{ status: 'imported', count: 1 }];
 
-    it('updates URL and fetches data when filters change', async () => {
+    it('fetches products when the active stage changes', async () => {
         render(
             <PipelineClient
                 initialProducts={mockProducts as any}
                 initialCounts={mockCounts as any}
-                initialTab="registered"
-                initialFilteredCount={1}
+                initialTotal={1}
             />
         );
 
-        // Open filters
-        fireEvent.click(screen.getByText('Filters'));
-
-        // Set source
-        const sourceInput = screen.getByLabelText('Source');
-        fireEvent.change(sourceInput, { target: { value: 'test-source' } });
-
-        // Apply
-        fireEvent.click(screen.getByText('Apply Filters'));
+        await userEvent.click(screen.getByRole('tab', { name: /Scraped/i }));
 
         await waitFor(() => {
             expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('source=test-source')
+                expect.stringContaining('status=scraped')
             );
         });
     });
