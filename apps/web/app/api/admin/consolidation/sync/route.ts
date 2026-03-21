@@ -12,7 +12,7 @@ export async function POST() {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
-    if (!isOpenAIConfigured()) {
+    if (!(await isOpenAIConfigured())) {
         return NextResponse.json(
             { error: 'OpenAI API key not configured' },
             { status: 503 }

@@ -117,17 +117,42 @@ function isExcludedKeyName(key: string): boolean {
     );
 }
 
+const EXCLUDED_FROM_LLM = new Set([
+    'ratings',
+    'reviews_count',
+    'availability',
+    'scraped_at',
+]);
+
+function isEmptyValue(value: unknown): boolean {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string' && value.trim().length === 0) return true;
+    if (Array.isArray(value) && value.length === 0) return true;
+    return false;
+}
+
+function truncateSpecifications(value: string, maxLength = 500): string {
+    if (value.length <= maxLength) return value;
+    return value.slice(0, maxLength).replace(/\s+\S*$/, '…');
+}
+
 function filterSourceData(sourceData: Record<string, unknown>): Record<string, unknown> {
     const filteredData: Record<string, unknown> = {};
 
     RELEVANT_FIELDS.forEach((field) => {
-        if (field in sourceData && sourceData[field] !== null && sourceData[field] !== undefined) {
-            filteredData[field] = sourceData[field];
+        if (EXCLUDED_FROM_LLM.has(field)) return;
+        if (!(field in sourceData) || isEmptyValue(sourceData[field])) return;
+
+        let value = sourceData[field];
+        if (field === 'specifications' && typeof value === 'string') {
+            value = truncateSpecifications(value);
         }
+        filteredData[field] = value;
     });
 
     Object.entries(sourceData).forEach(([key, value]) => {
-        if (key in filteredData || isExcludedKeyName(key)) return;
+        if (key in filteredData || isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) return;
+        if (isEmptyValue(value)) return;
 
         if (typeof value === 'string') {
             const trimmed = value.trim();
@@ -352,7 +377,7 @@ export async function submitBatch(
     products: ProductSource[],
     metadata: BatchMetadata = {}
 ): Promise<SubmitBatchResponse | BatchErrorResponse> {
-    const client = getOpenAIClient();
+    const client = await getOpenAIClient();
     if (!client) {
         return { success: false, error: 'OpenAI API key not configured' };
     }
@@ -433,7 +458,7 @@ export async function submitBatch(
  * Get the status of a batch job. Also syncs status to Supabase.
  */
 export async function getBatchStatus(batchId: string): Promise<BatchStatus | BatchErrorResponse> {
-    const client = getOpenAIClient();
+    const client = await getOpenAIClient();
     if (!client) {
         return { success: false, error: 'OpenAI API key not configured' };
     }
@@ -505,7 +530,7 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
  * Retrieve and parse results from a completed batch.
  */
 export async function retrieveResults(batchId: string): Promise<ConsolidationResult[] | BatchErrorResponse> {
-    const client = getOpenAIClient();
+    const client = await getOpenAIClient();
     if (!client) {
         return { success: false, error: 'OpenAI API key not configured' };
     }
@@ -1016,7 +1041,7 @@ export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | Ba
  * Cancel a batch job.
  */
 export async function cancelBatch(batchId: string): Promise<{ status: string } | BatchErrorResponse> {
-    const client = getOpenAIClient();
+    const client = await getOpenAIClient();
     if (!client) {
         return { success: false, error: 'OpenAI API key not configured' };
     }
