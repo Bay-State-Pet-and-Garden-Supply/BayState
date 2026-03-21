@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bulkUpdateStatus, type TransitionalPipelineStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { publishToStorefront } from '@/lib/pipeline/publish';
 
 /**
  * POST /api/admin/pipeline/bulk
  * Bulk transition products to a new status
- *
- * Accepts: { skus: string[], toStatus: PipelineStatus }
- * Returns: { success: boolean, updatedCount: number }
- * Returns 400 if any transition is invalid (all-or-nothing)
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
@@ -36,6 +33,21 @@ export async function POST(request: NextRequest) {
                 { error: 'toStatus is required' },
                 { status: 400 }
             );
+        }
+
+        // If moving to published, we also need to trigger the actual publishing to the storefront table
+        if (toStatus === 'published') {
+            const publishResults = await Promise.all(
+                skus.map(sku => publishToStorefront(sku))
+            );
+
+            const failures = publishResults.filter(r => !r.success);
+            if (failures.length > 0 && failures.length === skus.length) {
+                return NextResponse.json(
+                    { error: 'Failed to publish any products to storefront', details: failures[0].error },
+                    { status: 500 }
+                );
+            }
         }
 
         const result = await bulkUpdateStatus(skus, toStatus, auth.user.id, resetResults);

@@ -3,12 +3,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { ShopSiteClient, ShopSiteConfig } from '@/lib/admin/migration/shopsite-client';
-import { transformShopSiteProduct, generateUniqueSlug } from '@/lib/admin/migration/product-sync';
 import { transformShopSiteCustomer } from '@/lib/admin/migration/customer-sync';
-import { transformShopSiteOrder, batchOrders } from '@/lib/admin/migration/order-sync';
-import { inferPetTypes, PetTypeName } from '@/lib/admin/migration/pet-type-inference';
-import { SyncResult, MigrationError, ShopSiteProduct, ShopSiteCustomer, ShopSiteOrder } from '@/lib/admin/migration/types';
+import { SyncResult, MigrationError, ShopSiteProduct, ShopSiteCustomer } from '@/lib/admin/migration/types';
 import { startMigrationLog, completeMigrationLog, updateMigrationProgress } from '@/lib/admin/migration/history';
+import { importShopSiteProducts } from '@/lib/admin/migration/product-import';
 
 const MIGRATION_SETTINGS_KEY = 'shopsite_migration';
 
@@ -127,7 +125,7 @@ export async function syncProductsAction(): Promise<SyncResult> {
     const client = new ShopSiteClient(config);
     let shopSiteProducts = [];
     try {
-        shopSiteProducts = await client.fetchProducts();
+        shopSiteProducts = await client.fetchProducts(undefined, { includeRawXml: false });
     } catch (err) {
         const result = {
             success: false,
@@ -150,298 +148,18 @@ export async function syncProductsAction(): Promise<SyncResult> {
  * Shared logic for processing ShopSite products.
  */
 async function processProducts(shopSiteProducts: ShopSiteProduct[], logId?: string): Promise<SyncResult> {
-    const startTime = Date.now();
-    const MAX_ERRORS = 50;
-    const errors: MigrationError[] = [];
-    let created = 0;
-    let updated = 0;
-    let failed = 0;
-
-    const addError = (record: string, message: string) => {
-        if (errors.length < MAX_ERRORS) {
-            errors.push({
-                record,
-                error: message,
-                timestamp: new Date().toISOString(),
-            });
-        }
-    };
-
-    if (shopSiteProducts.length === 0) {
-        return {
-            success: true,
-            processed: 0,
-            created: 0,
-            updated: 0,
-            failed: 0,
-            errors: [],
-            duration: Date.now() - startTime,
-        };
-    }
-
     const supabase = await createClient();
-
-    // Get existing slugs to ensure uniqueness
-    const { data: existingProducts } = await supabase
-        .from('products')
-        .select('slug, sku');
-
-    const existingSlugs = new Set((existingProducts || []).map((p: { slug: string }) => p.slug));
-    const existingSkus = new Set((existingProducts || []).map((p: { sku: string }) => p.sku).filter(Boolean));
-
-    // ------------------------------------------------------------------------
-    // Step 1: Pre-process Brands and Categories
-    // ------------------------------------------------------------------------
-    const brandNames = new Set<string>();
-    const categoryNames = new Set<string>();
-
-    for (const p of shopSiteProducts) {
-        if (p.brandName?.trim()) brandNames.add(p.brandName.trim());
-        if (p.categoryName?.trim()) {
-            // Split pipe-delimited categories if any
-            p.categoryName.split('|').forEach((c: string) => categoryNames.add(c.trim()));
-        }
-    }
-
-    const brandMap = new Map<string, string>();     // name -> uuid
-    const categoryMap = new Map<string, string>();  // name -> uuid
-    const petTypeMap = new Map<PetTypeName, string>(); // pet type name -> uuid
-
-    // Upsert Brands
-    if (brandNames.size > 0) {
-        for (const name of Array.from(brandNames)) {
-            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-            // First try to select
-            const { data: existing } = await supabase.from('brands').select('id').eq('slug', slug).single();
-
-            if (existing) {
-                brandMap.set(name, existing.id);
-            } else {
-                const { data: created } = await supabase.from('brands').insert({
-                    name,
-                    slug
-                }).select('id').single();
-                if (created) brandMap.set(name, created.id);
-            }
-        }
-    }
-
-    // Upsert Categories
-    if (categoryNames.size > 0) {
-        for (const name of Array.from(categoryNames)) {
-            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-            // First try to select
-            const { data: existing } = await supabase.from('categories').select('id').eq('slug', slug).single();
-
-            if (existing) {
-                categoryMap.set(name, existing.id);
-            } else {
-                const { data: created } = await supabase.from('categories').insert({
-                    name,
-                    slug,
-                    display_order: 0
-                }).select('id').single();
-                if (created) categoryMap.set(name, created.id);
-            }
-        }
-    }
-
-    // Fetch Pet Types for inference mapping
-    const { data: petTypes } = await supabase.from('pet_types').select('id, name');
-    for (const pt of petTypes || []) {
-        petTypeMap.set(pt.name as PetTypeName, pt.id);
-    }
-
-    // ------------------------------------------------------------------------
-    // Step 2: Transform and Upsert Products
-    // ------------------------------------------------------------------------
-
-    // Store category links to insert after products
-    const productCategoryLinks: { product_id: string, category_id: string }[] = [];
-
-    // Store pet type links and attributes to insert after products
-    const productPetTypeLinks: { product_id: string, pet_type_id: string, confidence: string }[] = [];
-    const productPetAttributes: {
-        product_id: string,
-        life_stages: string[],
-        size_classes: string[],
-        special_needs: string[],
-        min_weight_lbs: number | null,
-        max_weight_lbs: number | null,
-        confidence: string
-    }[] = [];
-
-    // Transform and upsert each product
-    for (const shopSiteProduct of shopSiteProducts) {
-        try {
-            const { brand_name, ...transformed } = transformShopSiteProduct(shopSiteProduct);
-
-            // Build the database record with brand_id lookup
-            const productRecord: Record<string, unknown> = { ...transformed };
-
-            // Lookup Brand
-            if (brand_name) {
-                const brandId = brandMap.get(brand_name.trim());
-                if (brandId) {
-                    productRecord.brand_id = brandId;
-                }
-            }
-
-            // Check if product exists by SKU
-            const isUpdate = existingSkus.has(shopSiteProduct.sku);
-
-            // Generate unique slug for new products
-            if (!isUpdate) {
-                productRecord.slug = generateUniqueSlug(transformed.slug, existingSlugs);
-                existingSlugs.add(productRecord.slug as string);
-            }
-
-            const { data: upserted, error } = await supabase
-                .from('products')
-                .upsert(productRecord, {
-                    onConflict: 'sku',
-                })
-                .select('id')
-                .single();
-
-            if (error) {
-                addError(shopSiteProduct.sku, error.message);
-                failed++;
-            } else {
-                if (upserted && shopSiteProduct.categoryName) {
-                    const cats = shopSiteProduct.categoryName.split('|');
-                    for (const c of cats) {
-                        const catId = categoryMap.get(c.trim());
-                        if (catId) {
-                            productCategoryLinks.push({
-                                product_id: upserted.id,
-                                category_id: catId
-                            });
-                        }
-                    }
-                }
-
-                if (upserted) {
-                    const inference = inferPetTypes(shopSiteProduct);
-
-                    for (const petTypeName of inference.petTypes) {
-                        const petTypeId = petTypeMap.get(petTypeName);
-                        if (petTypeId) {
-                            productPetTypeLinks.push({
-                                product_id: upserted.id,
-                                pet_type_id: petTypeId,
-                                confidence: 'inferred'
-                            });
-                        }
-                    }
-
-                    if (inference.petTypes.length > 0) {
-                        productPetAttributes.push({
-                            product_id: upserted.id,
-                            life_stages: inference.lifeStages,
-                            size_classes: inference.sizeClasses,
-                            special_needs: inference.specialNeeds,
-                            min_weight_lbs: inference.minWeightLbs,
-                            max_weight_lbs: inference.maxWeightLbs,
-                            confidence: 'inferred'
-                        });
-                    }
-                }
-
-                if (isUpdate) {
-                    updated++;
-                } else {
-                    created++;
-                    existingSkus.add(shopSiteProduct.sku);
-                }
-            }
-        } catch (err) {
-            addError(shopSiteProduct.sku, err instanceof Error ? err.message : 'Unknown error');
-            failed++;
-        }
-
-        // Update progress every 10 records
-        if ((created + updated + failed) % 10 === 0 && logId) {
-            await updateMigrationProgress(logId, {
-                success: true,
-                processed: shopSiteProducts.length,
-                created,
-                updated,
-                failed,
-                errors: [],
-                duration: Date.now() - startTime,
-            });
-        }
-    }
-
-    // ------------------------------------------------------------------------
-    // Step 3: Insert Product-Category Links
-    // ------------------------------------------------------------------------
-    if (productCategoryLinks.length > 0) {
-        // Process in batches of 1000 to avoid request size limits
-        const BATCH_SIZE = 1000;
-        for (let i = 0; i < productCategoryLinks.length; i += BATCH_SIZE) {
-            const batch = productCategoryLinks.slice(i, i + BATCH_SIZE);
-            const { error: linkError } = await supabase
-                .from('product_categories')
-                .upsert(batch, { onConflict: 'product_id, category_id' });
-
-            if (linkError) {
-                console.error('Error inserting product categories:', linkError);
-                // We don't fail the whole sync for this, but log it
-                addError('CATEGORY_LINKS', `Failed to link ${batch.length} categories: ${linkError.message}`);
-            }
-        }
-    }
-
-    // ------------------------------------------------------------------------
-    // Step 4: Insert Product-PetType Links
-    // ------------------------------------------------------------------------
-    if (productPetTypeLinks.length > 0) {
-        const BATCH_SIZE = 1000;
-        for (let i = 0; i < productPetTypeLinks.length; i += BATCH_SIZE) {
-            const batch = productPetTypeLinks.slice(i, i + BATCH_SIZE);
-            const { error: linkError } = await supabase
-                .from('product_pet_types')
-                .upsert(batch, { onConflict: 'product_id, pet_type_id' });
-
-            if (linkError) {
-                console.error('Error inserting product pet types:', linkError);
-                addError('PET_TYPE_LINKS', `Failed to link ${batch.length} pet types: ${linkError.message}`);
-            }
-        }
-    }
-
-    // ------------------------------------------------------------------------
-    // Step 5: Insert Product Pet Attributes
-    // ------------------------------------------------------------------------
-    if (productPetAttributes.length > 0) {
-        const BATCH_SIZE = 1000;
-        for (let i = 0; i < productPetAttributes.length; i += BATCH_SIZE) {
-            const batch = productPetAttributes.slice(i, i + BATCH_SIZE);
-            const { error: attrError } = await supabase
-                .from('product_pet_attributes')
-                .upsert(batch, { onConflict: 'product_id' });
-
-            if (attrError) {
-                console.error('Error inserting product pet attributes:', attrError);
-                addError('PET_ATTRIBUTES', `Failed to insert ${batch.length} pet attributes: ${attrError.message}`);
-            }
-        }
-    }
+    const result = await importShopSiteProducts({
+        supabase,
+        shopSiteProducts,
+        logId,
+        updateProgress: logId
+            ? async (progressResult) => updateMigrationProgress(logId, progressResult)
+            : undefined,
+    });
 
     revalidatePath('/admin/products');
     revalidatePath('/admin/migration');
-
-    const result = {
-        success: failed === 0,
-        processed: shopSiteProducts.length,
-        created,
-        updated,
-        failed,
-        errors,
-        duration: Date.now() - startTime,
-    };
 
     if (logId) await completeMigrationLog(logId, result);
 

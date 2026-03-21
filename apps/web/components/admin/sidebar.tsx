@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useSyncExternalStore } from "react";
 import {
   Home,
   Settings,
-  RefreshCw,
   LogOut,
   Network,
   Activity,
@@ -15,7 +15,7 @@ import {
   ChevronRight,
   User,
   ShieldCheck,
-  Zap,
+  Package,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -46,6 +46,16 @@ const navSections: NavSection[] = [
         href: "/admin",
         label: "Dashboard",
         icon: Home,
+      },
+    ],
+  },
+  {
+    title: "Storefront",
+    items: [
+      {
+        href: "/admin/products",
+        label: "Products",
+        icon: Package,
       },
     ],
   },
@@ -83,12 +93,6 @@ const navSections: NavSection[] = [
     title: "System",
     adminOnly: true,
     items: [
-      {
-        href: "/admin/migration",
-        label: "Data Migration",
-        icon: RefreshCw,
-        adminOnly: true,
-      },
       {
         href: "/admin/settings",
         label: "Settings",
@@ -185,9 +189,11 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           )}
         >
           <div className="bg-white/10 p-1.5 rounded-lg shadow-inner border border-white/20 shrink-0">
-            <img
+            <Image
               src="/icon.png"
               alt="Bay State app icon"
+              width={20}
+              height={20}
               className="h-5 w-5 object-contain"
             />
           </div>
@@ -203,9 +209,11 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
 
         {collapsed && (
           <div className="absolute inset-x-0 top-0 flex justify-center py-6">
-            <img
-              src="/logo.png"
-              alt="Bay State logo"
+            <Image
+              src="/icon.png"
+              alt="Bay State app icon"
+              width={32}
+              height={32}
               className="h-8 w-8 object-contain"
             />
           </div>

@@ -62,8 +62,9 @@ describe('Active Consolidations API', () => {
         mockSupabase = {
             from: jest.fn().mockReturnThis(),
             select: jest.fn().mockReturnThis(),
-            not: jest.fn().mockReturnThis(),
+            or: jest.fn().mockReturnThis(),
             order: jest.fn().mockReturnThis(),
+            limit: jest.fn(),
         };
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
@@ -100,7 +101,7 @@ describe('Active Consolidations API', () => {
             },
         ];
 
-        mockSupabase.order.mockReturnValueOnce({
+        mockSupabase.limit.mockReturnValueOnce({
             data: mockJobs,
             error: null,
         });
@@ -135,14 +136,14 @@ describe('Active Consolidations API', () => {
         });
     });
 
-    it('should filter out completed, failed, and expired jobs', async () => {
+    it('should filter jobs correctly using .or()', async () => {
         (requireAdminAuth as jest.Mock).mockResolvedValue({
             authorized: true,
             user: { id: 'user-123' },
             role: 'admin',
         });
 
-        mockSupabase.order.mockReturnValueOnce({
+        mockSupabase.limit.mockReturnValueOnce({
             data: [],
             error: null,
         });
@@ -150,7 +151,7 @@ describe('Active Consolidations API', () => {
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-consolidations');
         await GET(req);
 
-        expect(mockSupabase.not).toHaveBeenCalledWith('status', 'in', '(completed,failed,expired)');
+        expect(mockSupabase.or).toHaveBeenCalledWith(expect.stringContaining('status.not.in.(completed,failed,expired,cancelled)'));
     });
 
     it('should order by created_at DESC', async () => {
@@ -160,7 +161,7 @@ describe('Active Consolidations API', () => {
             role: 'admin',
         });
 
-        mockSupabase.order.mockReturnValueOnce({
+        mockSupabase.limit.mockReturnValueOnce({
             data: [],
             error: null,
         });
@@ -178,7 +179,7 @@ describe('Active Consolidations API', () => {
             role: 'admin',
         });
 
-        mockSupabase.order.mockReturnValueOnce({
+        mockSupabase.limit.mockReturnValueOnce({
             data: [],
             error: null,
         });
@@ -198,7 +199,7 @@ describe('Active Consolidations API', () => {
             role: 'admin',
         });
 
-        mockSupabase.order.mockReturnValueOnce({
+        mockSupabase.limit.mockReturnValueOnce({
             data: null,
             error: { message: 'Database error' },
         });
@@ -227,7 +228,7 @@ describe('Active Consolidations API', () => {
             },
         ];
 
-        mockSupabase.order.mockReturnValueOnce({
+        mockSupabase.limit.mockReturnValueOnce({
             data: mockJobs,
             error: null,
         });

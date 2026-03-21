@@ -2,20 +2,20 @@ name: Web CI
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'apps/web/**'
-      - '.github/workflows/web-ci.yml'
+      - "apps/web/**"
+      - ".github/workflows/web-ci.yml"
   push:
-    branches: [ develop, main ]
+    branches: [develop, main]
     paths:
-      - 'apps/web/**'
-      - '.github/workflows/web-ci.yml'
+      - "apps/web/**"
+      - ".github/workflows/web-ci.yml"
 
 jobs:
   test:
     name: Test & Lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     defaults:
       run:
         working-directory: ./apps/web

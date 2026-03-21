@@ -18,7 +18,18 @@ describe('Product Sync Utilities', () => {
                 categoryName: 'Dog Food',
                 weight: 5.5,
                 searchKeywords: 'dog, food, healthy',
-                isSpecialOrder: true
+                isSpecialOrder: true,
+                productId: '123',
+                productGuid: 'guid-123',
+                fileName: 'test-product.html',
+                shopsitePages: ['Dogs', 'Featured'],
+                lowStockThreshold: 2,
+                taxable: true,
+                gtin: '0123456789012',
+                availability: 'in stock',
+                minimumQuantity: 0,
+                moreInfoText: '<p>Long form details</p>',
+                productTypeName: 'Dog Food',
             };
 
             const result = transformShopSiteProduct(shopSiteProduct);
@@ -34,7 +45,21 @@ describe('Product Sync Utilities', () => {
                 images: ['https://example.com/image.jpg'],
                 is_featured: false,
                 is_special_order: true,
+                shopsite_product_id: '123',
+                shopsite_guid: 'guid-123',
+                legacy_filename: 'test-product.html',
+                shopsite_pages: ['Dogs', 'Featured'],
                 weight: 5.5,
+                quantity: 10,
+                low_stock_threshold: 2,
+                is_taxable: true,
+                gtin: '0123456789012',
+                barcode: '0123456789012',
+                availability: 'in stock',
+                is_disabled: false,
+                minimum_quantity: 1,
+                long_description: '<p>Long form details</p>',
+                product_type: 'Dog Food',
                 search_keywords: 'dog, food, healthy',
                 brand_name: 'Test Brand',
                 category_name: 'Dog Food',
@@ -86,6 +111,26 @@ describe('Product Sync Utilities', () => {
             const result = transformShopSiteProduct(shopSiteProduct);
 
             expect(result.images).toEqual([]);
+        });
+
+        it('normalizes imported facet values before persistence', () => {
+            const shopSiteProduct = {
+                sku: 'SKU-004',
+                name: 'Facet Normalization Product',
+                price: 12.99,
+                description: '',
+                quantityOnHand: 3,
+                imageUrl: '',
+                brandName: '  Bay State P&G  ',
+                categoryName: ' lawn & garden | bird supplies ',
+                productTypeName: ' food | Apparrel | gloves ',
+            };
+
+            const result = transformShopSiteProduct(shopSiteProduct);
+
+            expect(result.brand_name).toBe('Bay State P&G');
+            expect(result.category_name).toBe('Lawn & Garden|Bird Supplies');
+            expect(result.product_type).toBe('Food|Apparel|Gloves');
         });
     });
 

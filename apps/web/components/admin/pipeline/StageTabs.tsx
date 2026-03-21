@@ -18,7 +18,6 @@ const STAGE_ORDER: PipelineStage[] = [
   "monitoring",
   "scraped",
   "consolidating",
-  "consolidated",
   "finalized",
   "published",
 ];

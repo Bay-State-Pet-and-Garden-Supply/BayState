@@ -63,8 +63,10 @@ describe('Active Runs API', () => {
         mockSupabase = {
             from: jest.fn().mockReturnThis(),
             select: jest.fn().mockReturnThis(),
+            or: jest.fn().mockReturnThis(),
             in: jest.fn().mockReturnThis(),
-            order: jest.fn(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn(),
         };
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
@@ -113,9 +115,8 @@ describe('Active Runs API', () => {
             { job_id: 'job-2', status: 'pending', chunk_index: 0 },
         ];
 
-        mockSupabase.order
-            .mockResolvedValueOnce({ data: mockJobs, error: null })
-            .mockResolvedValueOnce({ data: mockChunks, error: null });
+        mockSupabase.limit.mockResolvedValueOnce({ data: mockJobs, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: mockChunks, error: null });
 
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
         const res = await GET(req);
@@ -131,7 +132,7 @@ describe('Active Runs API', () => {
             createdAt: '2024-01-15T10:00:00Z',
             scrapers: ['amazon', 'walmart'],
             skuCount: 3,
-            progress: 0,
+            progress: 50,
         });
 
         expect(json.jobs[1]).toEqual({
@@ -144,21 +145,20 @@ describe('Active Runs API', () => {
         });
     });
 
-    it('should query for pending and running jobs only', async () => {
+    it('should query for pending and running jobs correctly using .or()', async () => {
         (requireAdminAuth as jest.Mock).mockResolvedValue({
             authorized: true,
             user: { id: 'user-123' },
             role: 'admin',
         });
 
-        mockSupabase.order
-            .mockResolvedValueOnce({ data: [], error: null })
-            .mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.limit.mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
 
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
         await GET(req);
 
-        expect(mockSupabase.in).toHaveBeenCalledWith('status', ['pending', 'running']);
+        expect(mockSupabase.or).toHaveBeenCalledWith(expect.stringContaining('status.in.(pending,running)'));
     });
 
     it('should order by created_at DESC', async () => {
@@ -168,9 +168,8 @@ describe('Active Runs API', () => {
             role: 'admin',
         });
 
-        mockSupabase.order
-            .mockResolvedValueOnce({ data: [], error: null })
-            .mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.limit.mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
 
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
         await GET(req);
@@ -185,9 +184,8 @@ describe('Active Runs API', () => {
             role: 'admin',
         });
 
-        mockSupabase.order
-            .mockResolvedValueOnce({ data: [], error: null })
-            .mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.limit.mockResolvedValueOnce({ data: [], error: null });
+        mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
 
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
         const res = await GET(req);
@@ -204,7 +202,7 @@ describe('Active Runs API', () => {
             role: 'admin',
         });
 
-        mockSupabase.order.mockResolvedValueOnce({ data: null, error: { message: 'Database error' } });
+        mockSupabase.limit.mockResolvedValueOnce({ data: null, error: { message: 'Database error' } });
 
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
         const res = await GET(req);

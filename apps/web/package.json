@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "sync:shopsite": "bun scripts/sync-shopsite-products.ts",
     "test": "bash -lc 'if [ -x \"$HOME/.nvm/versions/node/v24.12.0/bin/node\" ]; then export PATH=\"$HOME/.nvm/versions/node/v24.12.0/bin:$PATH\"; fi; node ../../node_modules/jest/bin/jest.js'",
     "test:api-compat": "ts-node scripts/test-api-compatibility.ts",
     "test:a11y:e2e": "playwright test --config=playwright.config.ts",

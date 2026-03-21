@@ -156,6 +156,40 @@ describe('ShopSite XML Parsing', () => {
             expect(products[0].sku).toBe('ENABLED-SKU');
         });
 
+        it('should parse ShopSite v15 product exports with the wrapper document', () => {
+            const xml = `
+                <?xml version="1.0" encoding="ISO-8859-1"?>
+                <!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">
+                <ShopSiteProducts version="15.0">
+                    <Response>
+                        <ResponseCode>1</ResponseCode>
+                    </Response>
+                    <Products>
+                        <Product>
+                            <SKU>V15-SKU</SKU>
+                            <Name>Version 15 Product</Name>
+                            <Price>12.34</Price>
+                            <ProductDisabled>uncheck</ProductDisabled>
+                            <QuantityOnHand/>
+                            <Availability>in stock</Availability>
+                        </Product>
+                    </Products>
+                </ShopSiteProducts>
+            `;
+
+            const products = (client as any).parseProductsXml(xml);
+
+            expect(products).toHaveLength(1);
+            expect(products[0]).toMatchObject({
+                sku: 'V15-SKU',
+                name: 'Version 15 Product',
+                price: 12.34,
+                quantityOnHand: 0,
+                availability: 'in stock',
+                isDisabled: false,
+            });
+        });
+
         it('should filter out "none" from image fields', () => {
             const xml = `
                 <Product>

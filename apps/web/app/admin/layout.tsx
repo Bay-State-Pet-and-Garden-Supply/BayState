@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/auth/roles'
 import { redirect } from 'next/navigation'
 import { SkipLink } from '@/components/ui/skip-link'
+import { AdminLayoutStyles } from '@/components/admin/AdminLayoutStyles'
 
 export default async function AdminLayout({
   children,
@@ -28,11 +29,14 @@ export default async function AdminLayout({
   const role = 'admin';
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden bg-muted">
+    <div className="fixed inset-0 flex overflow-hidden bg-muted selection:bg-primary/10">
+      <AdminLayoutStyles />
       <SkipLink />
       <AdminSidebar userRole={role as 'admin' | 'staff'} />
-      <main id="main-content" className="flex-1 h-full overflow-y-auto overflow-x-hidden overscroll-y-contain p-8">
-        {children}
+      <main id="main-content" className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden p-8">
+        <div className="max-w-[1600px] mx-auto">
+          {children}
+        </div>
       </main>
     </div>
   )

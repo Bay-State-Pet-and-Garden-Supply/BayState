@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "db994d5097a46cc01de3f84c55bafbb2659762339b82ab0135acff297c55672b"
     },
+    "openai-docs": {
+      "source": "openai/skills",
+      "sourceType": "github",
+      "computedHash": "d80d4a94b1fe9c36798edd1b316a5670997152cbb694b751254dbf18e0bfe068"
+    },
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",

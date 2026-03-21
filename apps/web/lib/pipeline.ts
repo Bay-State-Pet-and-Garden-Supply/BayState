@@ -58,9 +58,9 @@ export function toLegacyPipelineStatus(status: TransitionalPipelineStatus): Lega
 export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
     imported: ['monitoring', 'scraped'],
     monitoring: ['scraped', 'imported'],
-    scraped: ['consolidated', 'imported'],
+    scraped: ['finalized', 'consolidated', 'imported'],
     consolidated: ['finalized', 'scraped'],
-    finalized: ['published', 'consolidated'],
+    finalized: ['published', 'scraped', 'consolidated'],
     published: [], // Terminal state - no outgoing transitions
 };
 
@@ -147,7 +147,11 @@ export async function getProductsByStatus(
         .order('updated_at', { ascending: false });
 
     const targetStatus = toNewPipelineStatus(status);
-    query = query.eq('pipeline_status', targetStatus);
+    if (targetStatus === 'finalized') {
+        query = query.in('pipeline_status', ['finalized', 'consolidated']);
+    } else {
+        query = query.eq('pipeline_status', targetStatus);
+    }
 
     if (options?.search) {
         query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
@@ -217,7 +221,11 @@ export async function getSkusByStatus(
         .order('updated_at', { ascending: false });
 
     const targetStatus = toNewPipelineStatus(status);
-    query = query.eq('pipeline_status', targetStatus);
+    if (targetStatus === 'finalized') {
+        query = query.in('pipeline_status', ['finalized', 'consolidated']);
+    } else {
+        query = query.eq('pipeline_status', targetStatus);
+    }
 
     if (options?.search) {
         query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
@@ -287,6 +295,10 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
             countMap[row.pipeline_status]++;
         }
     });
+
+    // Merge consolidated count into finalized count for the UI
+    countMap.finalized += countMap.consolidated;
+    countMap.consolidated = 0;
 
     const statuses: PipelineStatus[] = ['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'];
     return statuses.map(status => ({
@@ -387,7 +399,11 @@ export async function bulkUpdateStatus(
             updatePayload.retry_count = 0;
         } else if (targetStatus === 'scraped') {
             updatePayload.consolidated = null;
+            updatePayload.image_candidates = [];
+            updatePayload.selected_images = [];
             updatePayload.confidence_score = null;
+            updatePayload.error_message = null;
+            updatePayload.retry_count = 0;
         }
     }
 

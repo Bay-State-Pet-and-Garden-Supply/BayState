@@ -32,6 +32,9 @@ export interface BatchStatus {
     completed_requests: number;
     failed_requests: number;
     progress_percent: number;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
     created_at: number | null | undefined;
     completed_at: number | null | undefined;
     metadata: BatchMetadata;

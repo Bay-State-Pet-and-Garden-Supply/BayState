@@ -1,28 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { publishToStorefront } from '@/lib/pipeline/publish';
 
 /**
  * Publish a product from the ingestion pipeline to the storefront products table.
- * 
- * This is a secondary publishing option that copies finalized products to the
- * storefront catalog.
- * 
- * Body: { sku: string }
- * 
- * Returns:
- * - 200: Success with message
- * - 400: Invalid request (missing sku)
- * - 401: Unauthorized
- * - 404: Product not found in ingestion table
- * - 409: Product not in valid status for publishing
- * - 500: Server error
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
-
-    const supabase = await createClient();
 
     try {
         const body = await request.json();
@@ -35,141 +21,19 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Fetch the product from ingestion table
-        const { data: ingestionProduct, error: fetchError } = await supabase
-            .from('products_ingestion')
-            .select('sku, input, consolidated, pipeline_status')
-            .eq('sku', sku)
-            .single();
+        const result = await publishToStorefront(sku);
 
-        if (fetchError || !ingestionProduct) {
+        if (!result.success) {
             return NextResponse.json(
-                { error: 'Product not found in pipeline' },
-                { status: 404 }
+                { error: result.error },
+                { status: result.error?.includes('not found') ? 404 : 400 }
             );
         }
-
-        const publishableStatuses = new Set(['finalized', 'approved']);
-        if (!publishableStatuses.has(ingestionProduct.pipeline_status)) {
-            return NextResponse.json(
-                { error: `Product must be in 'finalized' status to publish. Current status: ${ingestionProduct.pipeline_status}` },
-                { status: 409 }
-            );
-        }
-
-        // Get consolidated data
-        const consolidated = ingestionProduct.consolidated || {};
-        const input = ingestionProduct.input || {};
-
-        // Extract the data to publish
-        const name = consolidated.name || input.name || '';
-        if (!name) {
-            return NextResponse.json(
-                { error: 'Product has no name to publish' },
-                { status: 400 }
-            );
-        }
-
-        // Generate slug from name
-        const slug = name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '') +
-            '-' +
-            sku.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-        // Prepare images array
-        let images: string[] = [];
-        if (consolidated.images && Array.isArray(consolidated.images)) {
-            images = consolidated.images.filter((img: unknown): img is string => typeof img === 'string' && img.trim() !== '');
-        } else if (consolidated.selected_images && Array.isArray(consolidated.selected_images)) {
-            // Also check selected_images
-            images = consolidated.selected_images
-                .map((img: { url?: string }) => img.url)
-                .filter((url: unknown): url is string => typeof url === 'string' && url.trim() !== '');
-        }
-
-        // Prepare product data for products table
-        const productData = {
-            name,
-            slug,
-            description: consolidated.description || '',
-            price: consolidated.price ?? input.price ?? 0,
-            brand_id: consolidated.brand_id || null,
-            stock_status: consolidated.stock_status || 'in_stock',
-            images: images.length > 0 ? images : [],
-            is_featured: consolidated.is_featured || false,
-            is_special_order: false,
-            weight: null,
-            search_keywords: null,
-            category_id: null,
-            compare_at_price: null,
-            cost_price: null,
-            quantity: 0,
-            low_stock_threshold: 5,
-            is_taxable: true,
-            tax_code: null,
-            barcode: null,
-            meta_title: null,
-            meta_description: null,
-            dimensions: null,
-            origin_country: null,
-            vendor: null,
-            published_at: new Date().toISOString(),
-            avg_rating: null,
-            review_count: 0,
-        };
-
-        // Check if product already exists in products table
-        const { data: existingProduct } = await supabase
-            .from('products')
-            .select('id')
-            .eq('slug', slug)
-            .single();
-
-        let result;
-
-        if (existingProduct) {
-            // Update existing product
-            const { error: updateError } = await supabase
-                .from('products')
-                .update(productData)
-                .eq('id', existingProduct.id);
-
-            if (updateError) {
-                console.error('Error updating product:', updateError);
-                return NextResponse.json(
-                    { error: 'Failed to update product in storefront' },
-                    { status: 500 }
-                );
-            }
-
-            result = { action: 'updated', productId: existingProduct.id };
-        } else {
-            // Insert new product
-            const { data: insertedProduct, error: insertError } = await supabase
-                .from('products')
-                .insert(productData)
-                .select('id')
-                .single();
-
-            if (insertError) {
-                console.error('Error inserting product:', insertError);
-                return NextResponse.json(
-                    { error: 'Failed to create product in storefront' },
-                    { status: 500 }
-                );
-            }
-
-            result = { action: 'created', productId: insertedProduct?.id };
-        }
-
-        // Note: We don't update the pipeline status to 'published' as per task requirements
-        // The task specifically says "Do NOT change status to 'published'"
 
         return NextResponse.json({
             success: true,
-            ...result,
+            action: result.action,
+            productId: result.productId,
             message: `Product ${result.action === 'created' ? 'created' : 'updated'} in storefront`,
         });
     } catch (err) {

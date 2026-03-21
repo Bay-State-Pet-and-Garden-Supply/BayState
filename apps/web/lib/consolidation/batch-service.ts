@@ -7,7 +7,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { getOpenAIClient, CONSOLIDATION_CONFIG } from './openai-client';
+import { getOpenAIClient, CONSOLIDATION_CONFIG, getConsolidationConfig } from './openai-client';
 import { buildPromptContext } from './prompt-builder';
 import { buildResponseSchema, validateCategory, validateConsolidationTaxonomy, validateProductType } from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
@@ -213,44 +213,40 @@ interface BatchRowLookup {
 async function findBatchJobRow(
     batchIdentifier: string
 ): Promise<{ row: BatchRowLookup | null; lookupError: string | null }> {
-    const supabase = await createClient();
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const supabase = await createAdminClient();
 
-    const byOpenAi = await supabase
-        .from('batch_jobs')
-        .select('id, metadata')
-        .eq('openai_batch_id', batchIdentifier)
-        .limit(1)
-        .maybeSingle();
+    // 1. Try to find by openai_batch_id if it's not a UUID
+    if (!isUuid(batchIdentifier)) {
+        const { data, error } = await supabase
+            .from('batch_jobs')
+            .select('id, metadata')
+            .eq('openai_batch_id', batchIdentifier)
+            .limit(1)
+            .maybeSingle();
 
-    if (!byOpenAi || typeof byOpenAi !== 'object') {
-        return { row: null, lookupError: null };
+        if (error && error.code !== 'PGRST204') {
+            return { row: null, lookupError: error.message };
+        }
+        if (data) {
+            return { row: data as BatchRowLookup, lookupError: null };
+        }
     }
 
-    if (!byOpenAi.error && byOpenAi.data) {
-        return { row: byOpenAi.data as BatchRowLookup, lookupError: null };
-    }
-
+    // 2. Try to find by primary key if it IS a UUID
     if (isUuid(batchIdentifier)) {
-        const byLegacyId = await supabase
+        const { data, error } = await supabase
             .from('batch_jobs')
             .select('id, metadata')
             .eq('id', batchIdentifier)
             .limit(1)
             .maybeSingle();
 
-        if (!byLegacyId || typeof byLegacyId !== 'object') {
-            return { row: null, lookupError: null };
+        if (error) {
+            return { row: null, lookupError: error.message };
         }
 
-        if (byLegacyId.error) {
-            return { row: null, lookupError: byLegacyId.error.message };
-        }
-
-        return { row: (byLegacyId.data as BatchRowLookup | null) || null, lookupError: null };
-    }
-
-    if (byOpenAi.error && !isUuid(batchIdentifier)) {
-        return { row: null, lookupError: byOpenAi.error.message };
+        return { row: (data as BatchRowLookup | null) || null, lookupError: null };
     }
 
     return { row: null, lookupError: null };
@@ -261,23 +257,22 @@ async function resolveOpenAIBatchId(batchIdentifier: string): Promise<string> {
         return batchIdentifier;
     }
 
-    const supabase = await createClient();
-    const response = await supabase
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const supabase = await createAdminClient();
+    const { data, error } = await supabase
         .from('batch_jobs')
         .select('openai_batch_id')
         .eq('id', batchIdentifier)
         .limit(1)
         .maybeSingle();
 
-    if (!response || typeof response !== 'object') {
+    if (error || !data || !data.openai_batch_id) {
+        // If we can't resolve it (column missing or null), 
+        // return the identifier as is - maybe it was used as the PK.
         return batchIdentifier;
     }
 
-    if (!response.error && response.data && typeof response.data.openai_batch_id === 'string') {
-        return response.data.openai_batch_id;
-    }
-
-    return batchIdentifier;
+    return data.openai_batch_id;
 }
 
 function parseBatchMetadata(value: unknown): Record<string, unknown> {
@@ -314,9 +309,14 @@ function parseDelimitedTaxonomy(value: string | undefined): string[] {
 export function createBatchContent(
     products: ProductSource[],
     systemPrompt: string,
-    responseFormat?: object
+    responseFormat?: object,
+    config?: { model: string; maxTokens: number; temperature: number }
 ): string {
     const lines: string[] = [];
+
+    const model = config?.model || CONSOLIDATION_CONFIG.model;
+    const maxTokens = config?.maxTokens || CONSOLIDATION_CONFIG.maxTokens;
+    const temperature = config?.temperature || CONSOLIDATION_CONFIG.temperature;
 
     for (const product of products) {
         // Filter sources to only include relevant fields
@@ -349,13 +349,13 @@ export function createBatchContent(
             method: 'POST',
             url: '/v1/chat/completions',
             body: {
-                model: CONSOLIDATION_CONFIG.model,
+                model: model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt },
                 ],
-                max_tokens: CONSOLIDATION_CONFIG.maxTokens,
-                temperature: CONSOLIDATION_CONFIG.temperature,
+                max_tokens: maxTokens,
+                temperature: temperature,
                 ...(responseFormat ? { response_format: responseFormat } : {}),
             },
         };
@@ -387,6 +387,9 @@ export async function submitBatch(
     }
 
     try {
+        // Load runtime config (key-version, model, etc.)
+        const config = await getConsolidationConfig();
+
         // Build prompt context with taxonomy
         const { systemPrompt, categories, productTypes } = await buildPromptContext();
 
@@ -394,7 +397,7 @@ export async function submitBatch(
         const responseFormat = buildResponseSchema(categories, productTypes);
 
         // Create JSONL content
-        const content = createBatchContent(products, systemPrompt, responseFormat);
+        const content = createBatchContent(products, systemPrompt, responseFormat, config);
         const blob = new Blob([content], { type: 'application/jsonl' });
         const file = new File([blob], 'batch.jsonl', { type: 'application/jsonl' });
 
@@ -416,12 +419,13 @@ export async function submitBatch(
         const batch = await client.batches.create({
             input_file_id: fileResponse.id,
             endpoint: '/v1/chat/completions',
-            completion_window: CONSOLIDATION_CONFIG.completionWindow,
+            completion_window: config.completionWindow,
             metadata: stringMetadata,
         });
 
         // Track batch job in Supabase
         const supabase = await createClient();
+        
         const { error: dbError } = await supabase.from('batch_jobs').insert({
             openai_batch_id: batch.id,
             status: batch.status,
@@ -433,7 +437,7 @@ export async function submitBatch(
         });
 
         if (dbError) {
-            console.warn('[Consolidation] Failed to track batch in database:', dbError);
+            console.error('[Consolidation] Failed to track batch in database:', dbError);
         }
 
         return {
@@ -481,18 +485,25 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
                 requestCounts.total > 0
                     ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
                     : 0,
+            prompt_tokens: (batch as any).usage?.prompt_tokens,
+            completion_tokens: (batch as any).usage?.completion_tokens,
+            total_tokens: (batch as any).usage?.total_tokens,
             created_at: batch.created_at,
             completed_at: batch.completed_at,
             metadata: (batch.metadata || {}) as BatchMetadata,
         };
 
         // Sync status to Supabase
-        const supabase = await createClient();
+        const { createAdminClient } = await import('@/lib/supabase/server');
+        const supabase = await createAdminClient();
         const updateData: Record<string, unknown> = {
             status: batch.status,
             total_requests: requestCounts.total || 0,
             completed_requests: requestCounts.completed || 0,
             failed_requests: requestCounts.failed || 0,
+            prompt_tokens: (batch as any).usage?.prompt_tokens || 0,
+            completion_tokens: (batch as any).usage?.completion_tokens || 0,
+            total_tokens: (batch as any).usage?.total_tokens || 0,
             output_file_id: batch.output_file_id,
             error_file_id: batch.error_file_id,
         };
@@ -501,16 +512,26 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
             updateData.completed_at = new Date(batch.completed_at * 1000).toISOString();
         }
 
-        await supabase
+        const upsertPayload = {
+            ...updateData,
+            openai_batch_id: batch.id,
+            input_file_id: batch.input_file_id,
+        };
+
+        const { error: upsertError } = await supabase
             .from('batch_jobs')
-            .upsert(
-                {
-                    openai_batch_id: batch.id,
-                    ...updateData,
-                    input_file_id: batch.input_file_id,
-                },
-                { onConflict: 'openai_batch_id' }
-            );
+            .upsert(upsertPayload, { onConflict: 'openai_batch_id' });
+
+        if (upsertError && upsertError.code === 'PGRST204') {
+            console.warn('[Consolidation] openai_batch_id missing during status sync, falling back to id lookup');
+            // Find by UUID if possible, or just skip sync
+            const { row } = await findBatchJobRow(batch.id);
+            if (row) {
+                await supabase.from('batch_jobs').update(updateData).eq('id', row.id);
+            }
+        } else if (upsertError) {
+            console.warn('[Consolidation] Failed to sync batch status to DB:', upsertError.message);
+        }
 
         return status;
     } catch (error: unknown) {
@@ -687,7 +708,8 @@ export async function applyConsolidationResults(
         return { success: false, error: 'Invalid results format' };
     }
 
-    const supabase = await createClient();
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const supabase = await createAdminClient();
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
@@ -815,7 +837,7 @@ export async function applyConsolidationResults(
             updateRows.push({
                 sku: result.sku,
                 next_fields: nextFields,
-                pipeline_status: 'consolidated' as PipelineStatus,
+                pipeline_status: 'finalized' as PipelineStatus,
                 pipeline_status_new: 'finalized' as const,
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
@@ -973,7 +995,8 @@ export async function applyConsolidationResults(
  */
 export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | BatchErrorResponse> {
     try {
-        const supabase = await createClient();
+        const { createAdminClient } = await import('@/lib/supabase/server');
+        const supabase = await createAdminClient();
         const { data, error } = await supabase
             .from('batch_jobs')
             .select('*')
