@@ -567,7 +567,18 @@ export function ScrapedResultsView({
                         Technical Details (Raw Data)
                       </h3>
                       <div className="bg-muted/30 rounded-lg p-4 font-mono text-xs overflow-x-auto border">
-                        <pre>{JSON.stringify(currentSourceData, null, 2)}</pre>
+                        <pre>
+                          {JSON.stringify(
+                            currentSourceData,
+                            (_, value) => {
+                              if (value === null || value === undefined) return undefined;
+                              if (typeof value === 'string' && value.trim().length === 0) return undefined;
+                              if (Array.isArray(value) && value.length === 0) return undefined;
+                              return value;
+                            },
+                            2
+                          )}
+                        </pre>
                       </div>
                     </div>
                   </div>

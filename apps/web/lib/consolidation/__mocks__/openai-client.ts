@@ -66,7 +66,7 @@ export const CONSOLIDATION_CONFIG = {
 /**
  * Mock implementation - always returns true for testing.
  */
-export function isOpenAIConfigured(): boolean {
+export async function isOpenAIConfigured(): Promise<boolean> {
     return true;
 }
 
@@ -216,7 +216,7 @@ let mockClient: ReturnType<typeof createMockClient> | null = null;
  * Get the mock OpenAI client instance.
  * Returns a mock client that doesn't make real API calls.
  */
-export function getOpenAIClient(): ReturnType<typeof createMockClient> | null {
+export async function getOpenAIClient(): Promise<ReturnType<typeof createMockClient> | null> {
     if (!mockClient) {
         mockClient = createMockClient();
     }

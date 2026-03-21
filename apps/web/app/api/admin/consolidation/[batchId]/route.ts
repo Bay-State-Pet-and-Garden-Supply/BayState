@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { batchId } = await context.params;
 
-    if (!isOpenAIConfigured()) {
+    if (!(await isOpenAIConfigured())) {
         return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 });
     }
 
@@ -60,7 +60,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     const { batchId } = await context.params;
 
-    if (!isOpenAIConfigured()) {
+    if (!(await isOpenAIConfigured())) {
         return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 });
     }
 
