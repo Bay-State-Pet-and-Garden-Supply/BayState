@@ -1,0 +1,8 @@
+{
+  "track_id": "scraper_performance_fixes_20260313",
+  "type": "bug_performance",
+  "status": "new",
+  "created_at": "2026-03-13T17:11:00Z",
+  "updated_at": "2026-03-13T17:11:00Z",
+  "description": "Fix 15 critical performance and reliability issues in the Playwright scraper to reduce timeouts, eliminate resource leaks, and improve success rates."
+}
