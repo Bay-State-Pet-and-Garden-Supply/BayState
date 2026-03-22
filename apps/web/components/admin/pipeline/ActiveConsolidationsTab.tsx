@@ -675,7 +675,7 @@ function AISettingsDialog() {
                             ...prev,
                             defaults: {
                               ...prev.defaults,
-                              llm_model: e.target.value as any,
+                              llm_model: e.target.value as "gpt-4o" | "gpt-4o-mini",
                             },
                           }
                         : null

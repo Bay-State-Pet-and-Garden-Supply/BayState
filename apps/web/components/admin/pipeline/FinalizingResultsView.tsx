@@ -103,7 +103,7 @@ export function FinalizingResultsView({
         description: consolidated.description || "",
         price: String(consolidated.price ?? input.price ?? ""),
         brandId: consolidated.brand_id || "none",
-        stockStatus: (consolidated as any).stock_status || "in_stock",
+        stockStatus: (consolidated as Record<string, unknown>).stock_status as string || "in_stock",
         isFeatured: consolidated.is_featured || false,
         customImageUrl: "",
         selectedImages: consolidated.images || [],
@@ -154,7 +154,7 @@ export function FinalizingResultsView({
     }
   }, [preferredSku]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | boolean | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 

@@ -57,7 +57,7 @@ export default async function AdminProductsPage() {
     brand_name: product.brand?.name || null,
     brand_slug: product.brand?.slug || null,
     product_type: product.product_type || null,
-    category_ids: (product.product_categories || []).map((pc: any) => pc.category?.id).filter(Boolean),
+    category_ids: (product.product_categories || []).map((pc: { category?: { id: string } }) => pc.category?.id).filter(Boolean),
     created_at: product.created_at,
   }));
 
