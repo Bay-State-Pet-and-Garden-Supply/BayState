@@ -332,7 +332,6 @@ export function ProductEditModal({
                             </div>
 
                             <PetTypeSelector
-                                productId={product.id}
                                 selectedPetTypes={selectedPetTypes}
                                 onChange={setSelectedPetTypes}
                             />

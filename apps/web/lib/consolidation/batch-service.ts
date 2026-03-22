@@ -485,9 +485,9 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
                 requestCounts.total > 0
                     ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
                     : 0,
-            prompt_tokens: (batch as any).usage?.prompt_tokens,
-            completion_tokens: (batch as any).usage?.completion_tokens,
-            total_tokens: (batch as any).usage?.total_tokens,
+            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens,
+            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens,
+            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens,
             created_at: batch.created_at,
             completed_at: batch.completed_at,
             metadata: (batch.metadata || {}) as BatchMetadata,
@@ -501,9 +501,9 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
             total_requests: requestCounts.total || 0,
             completed_requests: requestCounts.completed || 0,
             failed_requests: requestCounts.failed || 0,
-            prompt_tokens: (batch as any).usage?.prompt_tokens || 0,
-            completion_tokens: (batch as any).usage?.completion_tokens || 0,
-            total_tokens: (batch as any).usage?.total_tokens || 0,
+            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0,
+            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0,
+            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0,
             output_file_id: batch.output_file_id,
             error_file_id: batch.error_file_id,
         };

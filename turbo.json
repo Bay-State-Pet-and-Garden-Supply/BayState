@@ -7,7 +7,8 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "env": ["VERCEL", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+      "outputs": [".next/**", "!.next/cache/**", ".vercel/output/**", "dist/**"]
     },
     "test": {
       "dependsOn": ["build"],
