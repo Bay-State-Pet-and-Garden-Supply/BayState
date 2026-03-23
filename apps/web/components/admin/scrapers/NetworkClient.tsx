@@ -195,8 +195,8 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
             <Network className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Scraper Network</h1>
-            <p className="text-sm text-gray-600">Manage self-hosted runners and monitor scraping jobs</p>
+            <h1 className="text-2xl font-bold text-foreground">Scraper Network</h1>
+            <p className="text-sm text-muted-foreground">Manage self-hosted runners and monitor scraping jobs</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -221,7 +221,7 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Total Runners</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Total Runners</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{runnerStats.total}</div>
@@ -234,34 +234,34 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Active Jobs</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Active Jobs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{jobStats.running + jobStats.pending}</div>
             <div className="flex gap-2 mt-1 text-xs">
               <span className="text-blue-600">{jobStats.running} running</span>
-              <span className="text-gray-600">{jobStats.pending} pending</span>
+              <span className="text-muted-foreground">{jobStats.pending} pending</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Completed (24h)</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Completed (24h)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">{jobStats.completed}</div>
-            <p className="text-xs text-gray-600 mt-1">Successfully finished</p>
+            <p className="text-xs text-muted-foreground mt-1">Successfully finished</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Failed (24h)</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Failed (24h)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">{jobStats.failed}</div>
-            <p className="text-xs text-gray-600 mt-1">Needs attention</p>
+            <p className="text-xs text-muted-foreground mt-1">Needs attention</p>
           </CardContent>
         </Card>
       </div>
@@ -289,13 +289,13 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
             <CardContent>
               {loading && runners.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : runners.length === 0 ? (
                 <div className="text-center py-12">
-                  <Server className="h-12 w-12 text-gray-400 mx-auto" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No Runners Connected</h3>
-                  <p className="mt-2 text-sm text-gray-600">
+                  <Server className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <h3 className="mt-4 text-lg font-medium text-foreground">No Runners Connected</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Set up a self-hosted runner to start scraping
                   </p>
                 </div>
@@ -313,7 +313,7 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                             ? isBusy
                                 ? 'border-yellow-200 bg-yellow-50 hover:border-yellow-300'
                                 : 'border-green-200 bg-green-50 hover:border-green-300'
-                            : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                            : 'border-border bg-muted hover:border-border'
                         }`}
                         onClick={() => router.push(`/admin/scrapers/network/${runner.id || runner.name}`)}
                       >
@@ -322,11 +322,11 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                             {isOnline ? (
                               <Wifi className={`h-5 w-5 ${isBusy ? 'text-yellow-600' : 'text-green-600'}`} />
                             ) : (
-                              <WifiOff className="h-5 w-5 text-gray-600" />
+                              <WifiOff className="h-5 w-5 text-muted-foreground" />
                             )}
                             <div>
-                              <h4 className="font-medium text-gray-900">{runner.name}</h4>
-                              <p className="text-sm text-gray-600">{runner.os || 'Unknown OS'}</p>
+                              <h4 className="font-medium text-foreground">{runner.name}</h4>
+                              <p className="text-sm text-muted-foreground">{runner.os || 'Unknown OS'}</p>
                             </div>
                           </div>
                           <Badge
@@ -384,9 +384,9 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
             <CardContent>
               {accounts.length === 0 ? (
                 <div className="text-center py-12">
-                  <Key className="h-12 w-12 text-gray-400 mx-auto" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No Runner Accounts</h3>
-                  <p className="mt-2 text-sm text-gray-600">
+                  <Key className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <h3 className="mt-4 text-lg font-medium text-foreground">No Runner Accounts</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Create API keys to allow runners to authenticate
                   </p>
                   <Button className="mt-4" onClick={() => setShowAccountModal(true)}>
@@ -422,11 +422,11 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                               {account.has_active_key ? (
                                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                               ) : (
-                                <XCircle className="h-5 w-5 text-gray-600" />
+                                <XCircle className="h-5 w-5 text-muted-foreground" />
                               )}
                               <div>
                                 <div className="font-medium">{account.name}</div>
-                                <div className="text-xs text-gray-600">
+                                <div className="text-xs text-muted-foreground">
                                   {account.has_active_key 
                                     ? `${account.active_key_count} active key(s)` 
                                     : 'No API key configured'}
@@ -445,10 +445,10 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                               {statusLabel}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm text-gray-600">
+                          <TableCell className="text-sm text-muted-foreground">
                             {formatDate(account.last_auth_at)}
                           </TableCell>
-                          <TableCell className="text-sm text-gray-600">
+                          <TableCell className="text-sm text-muted-foreground">
                             {formatDate(account.last_seen_at)}
                           </TableCell>
                           <TableCell className="text-sm">
@@ -492,9 +492,9 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
             <CardContent>
               {jobs.length === 0 ? (
                 <div className="text-center py-12">
-                  <Activity className="h-12 w-12 text-gray-400 mx-auto" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No Jobs Yet</h3>
-                  <p className="mt-2 text-sm text-gray-600">
+                  <Activity className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <h3 className="mt-4 text-lg font-medium text-foreground">No Jobs Yet</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Jobs will appear here when runners start processing
                   </p>
                 </div>
@@ -526,7 +526,7 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                               ? job.scrapers.join(', ') 
                               : 'Unknown'}
                           </TableCell>
-                          <TableCell className="text-gray-600">{job.runner_name || '-'}</TableCell>
+                          <TableCell className="text-muted-foreground">{job.runner_name || '-'}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
@@ -547,7 +547,7 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                               {job.skus ? job.skus.length : 0} SKUs
                             </span>
                           </TableCell>
-                          <TableCell className="text-sm text-gray-600">
+                          <TableCell className="text-sm text-muted-foreground">
                             {format(new Date(job.created_at), 'MMM d, h:mm a')}
                           </TableCell>
                           <TableCell>
@@ -617,7 +617,7 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
             </DialogHeader>
             <div className="space-y-4">
               {jobs.filter(j => j.runner_name === selectedRunner.name).length === 0 ? (
-                <div className="text-center py-8 text-gray-600">
+                <div className="text-center py-8 text-muted-foreground">
                   No jobs found for this runner
                 </div>
               ) : (
@@ -657,7 +657,7 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                               {job.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm text-gray-600">
+                          <TableCell className="text-sm text-muted-foreground">
                             {format(new Date(job.created_at), 'MMM d, h:mm a')}
                           </TableCell>
                         </TableRow>

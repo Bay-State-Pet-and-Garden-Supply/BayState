@@ -272,9 +272,9 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-8 flex items-center gap-4">
+        <div className="bg-card rounded-lg p-8 flex items-center gap-4">
           <Loader2 className="h-6 w-6 animate-spin text-[#008850]" />
-          <span className="text-gray-700">Loading enrichment data…</span>
+          <span className="text-muted-foreground">Loading enrichment data…</span>
         </div>
       </div>
     );
@@ -287,11 +287,11 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50/50">
+      <div className="bg-card rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-border bg-muted/50">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-foreground">
                 {isBatchMode
                   ? 'Batch Enhancement'
                   : (hasScrapedData ? 'Enrichment Workspace' : 'Configure Enhancement')}
@@ -300,7 +300,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                 <div
                   className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${realtimeStatus === 'connected'
                     ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-600'
+                    : 'bg-muted text-muted-foreground'
                     }`}
                   title={realtimeStatus === 'connected' ? 'Live updates enabled' : 'Connecting…'}
                 >
@@ -315,7 +315,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                 </div>
               )}
             </div>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {isBatchMode ? (
                 <>Select data sources to enhance {batchCount} selected products</>
               ) : hasScrapedData ? (
@@ -327,7 +327,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-600 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -346,14 +346,14 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
               />
 
               {isRefreshing && (
-                <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
                   <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
                   Refreshing {sources.find((s) => s.id === isRefreshing)?.displayName}…
                 </div>
               )}
 
               {enhancementJobId && (
-                <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
+                <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground bg-purple-50 p-3 rounded-lg">
                   <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
                   Enhancement running…
                 </div>
@@ -369,21 +369,21 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                 />
               ) : (
                 <div className="space-y-6">
-                  <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+                  <div className="rounded-lg border-2 border-dashed border-border bg-muted p-8 text-center">
                     {isBatchMode ? (
                       <>
-                        <Package className="mx-auto h-12 w-12 text-gray-600" />
-                        <h3 className="mt-4 text-lg font-medium text-gray-900">Batch Enhancement</h3>
-                        <p className="mt-2 text-sm text-gray-600 max-w-md mx-auto">
+                        <Package className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <h3 className="mt-4 text-lg font-medium text-foreground">Batch Enhancement</h3>
+                        <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
                           Select the data sources on the left, then click &quot;Run Enhancement&quot;
                           to fetch product data for all {batchCount} selected products.
                         </p>
                       </>
                     ) : (
                       <>
-                        <AlertCircle className="mx-auto h-12 w-12 text-gray-600" />
-                        <h3 className="mt-4 text-lg font-medium text-gray-900">No Enhanced Data Yet</h3>
-                        <p className="mt-2 text-sm text-gray-600 max-w-md mx-auto">
+                        <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <h3 className="mt-4 text-lg font-medium text-foreground">No Enhanced Data Yet</h3>
+                        <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
                           Select the data sources you want to use on the left, then click &quot;Run Enhancement&quot;
                           to fetch product data from those sources.
                         </p>
@@ -392,40 +392,40 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                   </div>
 
                   {isBatchMode ? (
-                    <div className="bg-white rounded-lg border p-4 space-y-3">
-                      <h4 className="font-medium text-gray-900">Selected Products</h4>
-                      <p className="text-sm text-gray-600">
+                    <div className="bg-card rounded-lg border p-4 space-y-3">
+                      <h4 className="font-medium text-foreground">Selected Products</h4>
+                      <p className="text-sm text-muted-foreground">
                         {batchCount} product{batchCount !== 1 ? 's' : ''} will be enhanced with the selected data sources.
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {skus?.slice(0, 5).map((s) => (
-                          <span key={s} className="px-2 py-1 bg-gray-100 rounded text-xs font-mono tabular-nums">
+                          <span key={s} className="px-2 py-1 bg-muted rounded text-xs font-mono tabular-nums">
                             {s}
                           </span>
                         ))}
                         {(skus?.length || 0) > 5 && (
-                          <span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                          <span className="px-2 py-1 bg-muted rounded text-xs text-muted-foreground">
                             +{(skus?.length || 0) - 5} more
                           </span>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-lg border p-4 space-y-3">
-                      <h4 className="font-medium text-gray-900">Original Import Data</h4>
+                    <div className="bg-card rounded-lg border p-4 space-y-3">
+                      <h4 className="font-medium text-foreground">Original Import Data</h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-gray-600">SKU:</span>
+                          <span className="text-muted-foreground">SKU:</span>
                           <span className="ml-2 font-mono tabular-nums">{effectiveSku}</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Price:</span>
+                          <span className="text-muted-foreground">Price:</span>
                           <span className="ml-2 font-semibold text-green-600">{formatCurrency(originalPrice)}</span>
-                          <span className="ml-1 text-xs text-gray-600">(protected)</span>
+                          <span className="ml-1 text-xs text-muted-foreground">(protected)</span>
                         </div>
                         {originalName && originalName !== effectiveSku && (
                           <div className="col-span-2">
-                            <span className="text-gray-600">Name:</span>
+                            <span className="text-muted-foreground">Name:</span>
                             <span className="ml-2">{originalName}</span>
                           </div>
                         )}
@@ -461,9 +461,9 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50/50">
+        <div className="flex items-center justify-between p-6 border-t border-border bg-muted/50">
           <div className="flex items-center gap-3">
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-muted-foreground">
               Price and SKU always come from the original import and cannot be changed.
             </p>
             {!isBatchMode && hasScrapedData && (
@@ -479,7 +479,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors"
             >
               Cancel
             </button>

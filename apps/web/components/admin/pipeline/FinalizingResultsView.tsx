@@ -324,7 +324,7 @@ export function FinalizingResultsView({
         {selectedProduct ? (
           <>
             {/* Header */}
-            <div className="p-4 border-b flex justify-between items-center bg-white sticky top-0 z-10">
+            <div className="p-4 border-b flex justify-between items-center bg-card sticky top-0 z-10">
               <div className="flex items-center gap-3">
                 <Package className="h-5 w-5 text-muted-foreground" />
                 <div>
@@ -458,7 +458,7 @@ export function FinalizingResultsView({
                       {formData.selectedImages.map((url, i) => (
                         <div
                           key={i}
-                          className="relative aspect-square rounded border overflow-hidden bg-white group"
+                          className="relative aspect-square rounded border overflow-hidden bg-card group"
                         >
                           <img
                             src={url}
@@ -517,7 +517,7 @@ export function FinalizingResultsView({
                               key={i}
                               onClick={() => toggleImage(url)}
                               className={cn(
-                                "relative aspect-square rounded border overflow-hidden bg-white cursor-pointer hover:border-primary/50 transition-all",
+                                "relative aspect-square rounded border overflow-hidden bg-card cursor-pointer hover:border-primary/50 transition-all",
                                 isSelected
                                   ? "ring-2 ring-primary border-primary"
                                   : "opacity-60 grayscale hover:grayscale-0",
@@ -560,7 +560,7 @@ export function FinalizingResultsView({
                           <div className="text-xs font-bold text-primary uppercase">
                             {source}
                           </div>
-                          <pre className="text-[10px] bg-white p-3 rounded border overflow-x-auto">
+                          <pre className="text-[10px] bg-card p-3 rounded border overflow-x-auto">
                             {JSON.stringify(data, null, 2)}
                           </pre>
                         </div>

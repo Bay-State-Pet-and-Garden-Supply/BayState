@@ -106,20 +106,20 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
     }
 
     return (
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="rounded-lg border border-border bg-card shadow-sm">
             {/* Header */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="flex w-full items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+                className="flex w-full items-center justify-between px-4 py-3 hover:bg-muted transition-colors"
             >
                     <div className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-purple-600" />
-                        <h3 className="text-sm font-semibold text-gray-900">Consolidation History</h3>
-                        <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs py-0.5">
+                        <h3 className="text-sm font-semibold text-foreground">Consolidation History</h3>
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted text-xs py-0.5">
                             {jobs.length}
                         </Badge>
                     </div>
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className="flex items-center gap-2 text-muted-foreground">
                     {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </div>
@@ -127,7 +127,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
 
             {/* List */}
             {isExpanded && (
-                <div className="border-t border-gray-200 divide-y divide-gray-100">
+                <div className="border-t border-border divide-y divide-gray-100">
                     {jobs.map((job) => {
                         const status = statusConfig[job.status] || statusConfig.validating;
                         const StatusIcon = status.icon;
@@ -137,7 +137,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                         return (
                             <div 
                                 key={job.id} 
-                                className={`px-4 py-3 hover:bg-gray-50 transition-colors ${isActive ? 'bg-purple-50/50' : ''}`}
+                                className={`px-4 py-3 hover:bg-muted transition-colors ${isActive ? 'bg-purple-50/50' : ''}`}
                             >
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-3">
@@ -150,14 +150,14 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-gray-900">
+                                                <span className="text-sm font-medium text-foreground">
                                                     Batch #{job.id.slice(0, 8)}
                                                 </span>
                                                 <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${status.color}`}>
                                                     {status.label}
                                                 </span>
                                             </div>
-                                            <div className="text-xs text-gray-600 mt-0.5">
+                                            <div className="text-xs text-muted-foreground mt-0.5">
                                                 {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                                                 {' • '}
                                                 {job.total_products} products
@@ -171,7 +171,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                                             <button
                                                 onClick={() => handleApply(job.id)}
                                                 disabled={isApplying}
-                                                className="inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                                                className="inline-flex items-center gap-1.5 rounded-md bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-muted disabled:opacity-50 transition-colors"
                                             >
                                                 {isApplying ? (
                                                     <RefreshCw className="h-3 w-3 animate-spin" />
@@ -190,7 +190,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
 
                                 {/* Progress Bar for active/processing jobs */}
                                 {(job.status === 'in_progress' || job.status === 'validating') && (
-                                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                                         <div 
                                             className="h-full bg-purple-600 transition-all duration-500 ease-out"
                                             style={{ width: `${job.progress}%` }}

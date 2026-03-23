@@ -23,10 +23,10 @@ export function TimelineStepDisplayRealtime({
       <div className="mb-4 flex items-center gap-2 text-xs">
         <span
           className={`h-2 w-2 rounded-full ${
-            isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
+            isConnected ? 'bg-green-500 animate-pulse' : 'bg-muted'
           }`}
         />
-        <span className="text-gray-500">
+        <span className="text-muted-foreground">
           {isConnected
             ? 'Live updates active'
             : error

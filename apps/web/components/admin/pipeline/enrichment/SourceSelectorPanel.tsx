@@ -28,7 +28,7 @@ const STATUS_COLORS = {
   healthy: 'text-green-500',
   degraded: 'text-yellow-500',
   offline: 'text-red-500',
-  unknown: 'text-gray-600',
+  unknown: 'text-muted-foreground',
 };
 
 /**
@@ -52,7 +52,7 @@ export function SourceSelectorPanel({
     return (
       <div
         key={source.id}
-        className="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-md transition-colors group"
+        className="flex items-center justify-between py-2 px-3 hover:bg-muted rounded-md transition-colors group"
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <button
@@ -64,11 +64,11 @@ export function SourceSelectorPanel({
               ${isAI
                 ? `focus:ring-purple-500 ${isEnabled
                   ? 'bg-purple-600 border-purple-600 text-white'
-                  : 'border-gray-300 bg-white hover:border-purple-500'
+                  : 'border-border bg-card hover:border-purple-500'
                 }`
                 : `focus:ring-[#008850] ${isEnabled
                   ? 'bg-[#008850] border-[#008850] text-white'
-                  : 'border-gray-300 bg-white hover:border-[#008850]'
+                  : 'border-border bg-card hover:border-[#008850]'
                 }`
               }
               ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -83,11 +83,11 @@ export function SourceSelectorPanel({
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               {isAI && <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0" />}
-              <span className="text-sm font-medium text-gray-700 truncate block max-w-[140px]">
+              <span className="text-sm font-medium text-muted-foreground truncate block max-w-[140px]">
                 {source.displayName}
               </span>
               {source.requiresAuth && (
-                <Lock className="h-3 w-3 text-gray-600 shrink-0" aria-label="Requires authentication" />
+                <Lock className="h-3 w-3 text-muted-foreground shrink-0" aria-label="Requires authentication" />
               )}
             </div>
             {isAI && (
@@ -108,7 +108,7 @@ export function SourceSelectorPanel({
             <button
               onClick={() => onRefreshSource(source.id)}
               disabled={isLoading}
-              className="p-1 text-gray-600 hover:text-[#008850] opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none"
+              className="p-1 text-muted-foreground hover:text-[#008850] opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none"
               title="Refresh status"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -120,17 +120,17 @@ export function SourceSelectorPanel({
   };
 
   return (
-    <div className="w-full max-w-[280px] bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-        <h3 className="font-semibold text-gray-900">Data Sources</h3>
-        <p className="text-xs text-gray-600 mt-1">Select sources to enrich product data</p>
+    <div className="w-full max-w-[280px] bg-card border border-border rounded-lg shadow-sm overflow-hidden">
+      <div className="p-4 border-b border-border bg-muted/50">
+        <h3 className="font-semibold text-foreground">Data Sources</h3>
+        <p className="text-xs text-muted-foreground mt-1">Select sources to enrich product data</p>
       </div>
 
       <div className="p-2 space-y-4">
         {/* Scrapers Section */}
         {scrapers.length > 0 && (
           <div>
-            <h4 className="px-3 py-1 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            <h4 className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Scrapers
             </h4>
             <div className="mt-1 space-y-0.5">
@@ -153,7 +153,7 @@ export function SourceSelectorPanel({
         )}
 
         {sources.length === 0 && (
-          <div className="p-4 text-center text-sm text-gray-600 italic">
+          <div className="p-4 text-center text-sm text-muted-foreground italic">
             No sources available
           </div>
         )}

@@ -142,7 +142,7 @@ export function CategoryModal({
                         <FolderTree className="h-6 w-6 text-green-600" />
                         <div>
                             <DialogTitle>{isEditing ? 'Edit Category' : 'New Category'}</DialogTitle>
-                            {isEditing && <p className="text-sm text-gray-600 font-mono">{category?.slug}</p>}
+                            {isEditing && <p className="text-sm text-muted-foreground font-mono">{category?.slug}</p>}
                         </div>
                     </div>
                 </DialogHeader>
@@ -238,9 +238,9 @@ export function CategoryModal({
                 </div>
 
                 <DialogFooter className="flex-col sm:flex-row gap-2">
-                    <div className="flex-1 text-xs text-gray-600 flex items-center">
-                        Press <kbd className="mx-1 rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
-                        <kbd className="mx-1 rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
+                    <div className="flex-1 text-xs text-muted-foreground flex items-center">
+                        Press <kbd className="mx-1 rounded bg-muted px-1">Esc</kbd> to close,{' '}
+                        <kbd className="mx-1 rounded bg-muted px-1">Ctrl+S</kbd> to save
                     </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={onClose} disabled={saving}>

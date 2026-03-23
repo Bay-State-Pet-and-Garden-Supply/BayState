@@ -396,7 +396,7 @@ export function ScrapedResultsView({
                             href={currentSourceData.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute top-2 right-2 bg-white/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border"
+                            className="absolute top-2 right-2 bg-card/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border"
                           >
                             <ExternalLink className="h-4 w-4 text-primary" />
                           </a>

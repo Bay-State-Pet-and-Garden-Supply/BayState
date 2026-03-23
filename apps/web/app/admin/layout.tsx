@@ -29,7 +29,7 @@ export default async function AdminLayout({
   const role = 'admin';
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-muted selection:bg-primary/10">
+    <div className="dark fixed inset-0 flex overflow-hidden bg-background text-foreground selection:bg-primary/10">
       <AdminLayoutStyles />
       <SkipLink />
       <AdminSidebar userRole={role as 'admin' | 'staff'} />

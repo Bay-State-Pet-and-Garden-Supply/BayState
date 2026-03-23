@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
   healthy: 'bg-green-500',
   degraded: 'bg-yellow-500',
   offline: 'bg-red-500',
-  unknown: 'bg-gray-400',
+  unknown: 'bg-muted',
 };
 
 export function EnrichmentDefaultsCard() {

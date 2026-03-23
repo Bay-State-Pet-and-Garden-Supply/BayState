@@ -18,7 +18,7 @@ export default async function AdminPagesList() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden border border-border">
+      <div className="bg-card rounded-lg shadow overflow-hidden border border-border">
         <table className="w-full">
           <thead className="bg-muted">
             <tr>

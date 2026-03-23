@@ -96,8 +96,8 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
         return (
             <div className={`flex flex-col items-center justify-center py-12 text-center ${className}`}>
                 <ImageIcon className="h-12 w-12 text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">All products have images</h3>
-                <p className="text-sm text-gray-500 mt-1">No products need image selection</p>
+                <h3 className="text-lg font-medium text-foreground">All products have images</h3>
+                <p className="text-sm text-muted-foreground mt-1">No products need image selection</p>
             </div>
         );
     }
@@ -105,7 +105,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
     return (
         <div className={`space-y-6 ${className}`}>
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-foreground">
                     {products.length} product{products.length !== 1 ? 's' : ''} need{products.length === 1 ? 's' : ''} images
                 </h3>
             </div>
@@ -113,12 +113,12 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
             {products.map((product) => (
                 <div
                     key={product.sku}
-                    className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+                    className="rounded-lg border border-border bg-card p-4 shadow-sm"
                 >
                     <div className="flex items-center justify-between mb-3">
                         <div>
-                            <h4 className="font-medium text-gray-900">{product.sku}</h4>
-                            <p className="text-sm text-gray-500">
+                            <h4 className="font-medium text-foreground">{product.sku}</h4>
+                            <p className="text-sm text-muted-foreground">
                                 {typeof product.consolidated?.name === 'string' ? product.consolidated.name : 'Unnamed Product'}
                             </p>
                         </div>
@@ -149,7 +149,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
                                 className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
                                     selectedImages[product.sku]?.includes(url)
                                         ? 'border-[#008850] ring-2 ring-[#008850]/20'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                        : 'border-border hover:border-border'
                                 }`}
                             >
                                 <img

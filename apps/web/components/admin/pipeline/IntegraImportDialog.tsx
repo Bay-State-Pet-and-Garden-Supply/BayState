@@ -74,7 +74,7 @@ export function IntegraImportDialog({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col border border-zinc-200">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-card shadow-2xl flex flex-col border border-zinc-200">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-zinc-100 px-8 py-5 flex-shrink-0 bg-zinc-50/50">
                     <div className="flex items-center gap-3">
@@ -138,7 +138,7 @@ export function IntegraImportDialog({
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* Stats Cards */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+                                <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-card p-6 shadow-sm">
                                     <div className="absolute top-0 right-0 h-24 w-24 -mr-8 -mt-8 rounded-full bg-zinc-50 opacity-50" />
                                     <p className="text-sm font-semibold text-zinc-400 mb-1">Total in File</p>
                                     <h4 className="text-4xl font-black text-zinc-900">{analysis.totalInFile}</h4>
@@ -172,7 +172,7 @@ export function IntegraImportDialog({
                                         </p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-zinc-200 overflow-hidden bg-white shadow-sm">
+                                    <div className="rounded-2xl border border-zinc-200 overflow-hidden bg-card shadow-sm">
                                         <div className="max-h-72 overflow-auto scrollbar-thin scrollbar-thumb-zinc-200">
                                             <table className="w-full text-sm text-left border-collapse">
                                                 <thead className="bg-zinc-50/80 sticky top-0 backdrop-blur-md border-b border-zinc-200 z-10">

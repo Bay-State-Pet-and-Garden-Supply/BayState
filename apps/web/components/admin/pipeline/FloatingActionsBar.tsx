@@ -107,7 +107,7 @@ export function FloatingActionsBar({
 
   return (
     <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl ring-1 ring-black/5">
+      <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-card p-4 shadow-2xl ring-1 ring-black/5">
         {/* Selection Count */}
         <div className="flex items-center gap-3 border-r border-zinc-100 pr-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#008850] text-[13px] font-bold text-white tabular-nums">

@@ -47,7 +47,7 @@ export function UserModal({
                         <User className="h-6 w-6 text-blue-600" />
                         <div>
                             <DialogTitle>{user.full_name || 'User Profile'}</DialogTitle>
-                            <p className="text-sm text-gray-600 font-mono">{user.id}</p>
+                            <p className="text-sm text-muted-foreground font-mono">{user.id}</p>
                         </div>
                     </div>
                 </DialogHeader>
@@ -56,26 +56,26 @@ export function UserModal({
                 <div className="grid gap-6 py-4 md:grid-cols-2">
                     {/* Profile Info */}
                     <div className="space-y-4">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground flex items-center gap-2">
                             <Shield className="h-4 w-4" /> Account Details
                         </h3>
-                        <div className="rounded-lg border bg-gray-50 p-4 space-y-3">
+                        <div className="rounded-lg border bg-muted p-4 space-y-3">
                             <div>
-                                <span className="text-xs font-medium text-gray-600 uppercase">Email</span>
+                                <span className="text-xs font-medium text-muted-foreground uppercase">Email</span>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <Mail className="h-4 w-4 text-gray-600" />
+                                    <Mail className="h-4 w-4 text-muted-foreground" />
                                     <span className="text-sm">{user.email}</span>
                                 </div>
                             </div>
                             <div>
-                                <span className="text-xs font-medium text-gray-600 uppercase">Joined</span>
+                                <span className="text-xs font-medium text-muted-foreground uppercase">Joined</span>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <Calendar className="h-4 w-4 text-gray-600" />
+                                    <Calendar className="h-4 w-4 text-muted-foreground" />
                                     <span className="text-sm">{new Date(user.created_at).toLocaleDateString()}</span>
                                 </div>
                             </div>
                             <div>
-                                <span className="text-xs font-medium text-gray-600 uppercase">Role</span>
+                                <span className="text-xs font-medium text-muted-foreground uppercase">Role</span>
                                 <div className="mt-1">
                                     <UserRoleSelect userId={user.id} currentRole={user.role} />
                                 </div>
@@ -85,11 +85,11 @@ export function UserModal({
 
                     {/* Stats / History */}
                     <div className="space-y-4">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground flex items-center gap-2">
                             <ShoppingBag className="h-4 w-4" /> Activity
                         </h3>
                         <div className="rounded-lg border border-dashed p-8 text-center">
-                            <p className="text-sm text-gray-600">Order history and activity stats coming soon.</p>
+                            <p className="text-sm text-muted-foreground">Order history and activity stats coming soon.</p>
                         </div>
                     </div>
                 </div>

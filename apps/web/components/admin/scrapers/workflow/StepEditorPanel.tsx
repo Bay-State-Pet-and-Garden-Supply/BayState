@@ -45,11 +45,11 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
 
   if (!definition) {
     return (
-      <div className="w-80 border-l bg-white p-4">
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 hover:bg-gray-100" aria-label="Close">
+      <div className="w-80 border-l bg-card p-4">
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 hover:bg-muted" aria-label="Close">
           <X className="h-5 w-5" />
         </Button>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Action type &quot;{step.action}&quot; is not recognized.
         </p>
       </div>
@@ -238,14 +238,14 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
   };
 
   return (
-    <div className="w-80 border-l bg-white flex flex-col h-full">
+    <div className="w-80 border-l bg-card flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted">
         <div>
           <h3 className="font-semibold text-sm">{definition.label}</h3>
-          <p className="text-xs text-gray-600">{definition.description}</p>
+          <p className="text-xs text-muted-foreground">{definition.description}</p>
         </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 hover:bg-gray-100" aria-label="Close">
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 hover:bg-muted" aria-label="Close">
             <X className="h-5 w-5" />
           </Button>
       </div>
@@ -254,11 +254,11 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
       <div className="flex gap-2 px-4 py-2 border-b">
         <Badge
           variant="outline"
-          className={definition.browserBound ? 'border-blue-200 text-blue-700' : 'border-gray-200'}
+          className={definition.browserBound ? 'border-blue-200 text-blue-700' : 'border-border'}
         >
           {definition.browserBound ? 'Browser' : 'Local'}
         </Badge>
-        <Badge variant="outline" className="border-gray-200 capitalize">
+        <Badge variant="outline" className="border-border capitalize">
           {definition.category}
         </Badge>
       </div>
@@ -267,7 +267,7 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           {paramEntries.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <AlertCircle className="h-4 w-4" />
               <span>This action has no configurable parameters.</span>
             </div>
@@ -294,8 +294,8 @@ export function StepEditorPanel({ step, nodeId, onUpdate, onClose }: StepEditorP
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t px-4 py-3 bg-gray-50">
-        <p className="text-[10px] text-gray-600">
+      <div className="border-t px-4 py-3 bg-muted">
+        <p className="text-[10px] text-muted-foreground">
           Node: {nodeId} | Action: {step.action}
         </p>
       </div>
@@ -308,7 +308,7 @@ function ParamTooltip({ description }: { description: string }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Info className="h-3.5 w-3.5 text-gray-600 cursor-help" />
+          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-[200px]">
           <p className="text-xs">{description}</p>

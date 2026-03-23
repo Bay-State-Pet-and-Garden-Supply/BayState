@@ -23,11 +23,11 @@ interface ProgressBarProps {
 }
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  pending: 'bg-gray-400',
+  pending: 'bg-muted',
   running: 'bg-blue-600',
   completed: 'bg-green-600',
   failed: 'bg-red-600',
-  cancelled: 'bg-gray-400',
+  cancelled: 'bg-muted',
 };
 
 export function ProgressBar({
@@ -55,17 +55,17 @@ export function ProgressBar({
   return (
     <div className={cn('w-full', className)}>
       <div className="flex items-center justify-between text-xs mb-1">
-        <span className="text-gray-600">Progress</span>
-        <span className="font-medium text-gray-900">
+        <span className="text-muted-foreground">Progress</span>
+        <span className="font-medium text-foreground">
           {clampedProgress}%
           {eta && status === 'running' && (
-            <span className="ml-2 text-gray-500">{eta}</span>
+            <span className="ml-2 text-muted-foreground">{eta}</span>
           )}
         </span>
       </div>
       
       <div 
-        className="h-2 w-full overflow-hidden rounded-full bg-gray-100"
+        className="h-2 w-full overflow-hidden rounded-full bg-muted"
         role="progressbar"
         aria-valuenow={clampedProgress}
         aria-valuemin={0}

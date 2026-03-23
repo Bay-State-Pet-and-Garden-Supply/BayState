@@ -67,7 +67,7 @@ export function PipelineToolbar({
             id="source-filter"
             value={sourceFilter}
             onChange={(e) => onSourceFilterChange(e.target.value)}
-            className="h-9 rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="h-9 rounded-md border border-input bg-card px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <option value="">All Sources</option>
             {availableSourceFilters.map((s) => (
@@ -85,7 +85,7 @@ export function PipelineToolbar({
             placeholder="Search by SKU or name..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-md border border-input bg-white pl-9 pr-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="w-full rounded-md border border-input bg-card pl-9 pr-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
       </div>

@@ -150,9 +150,9 @@ export function ImageSelectionWorkspace({
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-8 flex items-center gap-4">
+        <div className="bg-card rounded-lg p-8 flex items-center gap-4">
           <Loader2 className="h-6 w-6 animate-spin text-[#008850]" />
-          <span className="text-gray-700">Loading product images…</span>
+          <span className="text-muted-foreground">Loading product images…</span>
         </div>
       </div>
     );
@@ -161,16 +161,16 @@ export function ImageSelectionWorkspace({
   if (error) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+        <div className="bg-card rounded-xl shadow-2xl max-w-lg w-full p-6">
           <div className="text-center">
             <div className="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
               <ImageOff className="h-6 w-6 text-red-600" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Product</h3>
-            <p className="text-sm text-gray-600 mb-4">{error}</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">Error Loading Product</h3>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors"
             >
               Close
             </button>
@@ -186,18 +186,18 @@ export function ImageSelectionWorkspace({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-card rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50/50">
+        <div className="flex items-center justify-between p-6 border-b border-border bg-muted/50">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Image Selection</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-xl font-bold text-foreground">Image Selection</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Select images for <span className="font-mono font-medium tabular-nums">{productName}</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -209,8 +209,8 @@ export function ImageSelectionWorkspace({
           {!hasImages ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <ImageOff className="h-12 w-12 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">No Image Candidates</h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <h3 className="text-lg font-medium text-foreground">No Image Candidates</h3>
+              <p className="text-sm text-muted-foreground mt-1">
                 This product has no image candidates available for selection.
               </p>
             </div>
@@ -218,8 +218,8 @@ export function ImageSelectionWorkspace({
             <>
               {/* Selection Counter */}
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-gray-900">{selectedUrls.length}</span>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{selectedUrls.length}</span>
                   {' of '}
                   <span className="font-medium">{MAX_IMAGES}</span>
                   {' images selected'}
@@ -257,8 +257,8 @@ export function ImageSelectionWorkspace({
                         ${isSelected
                           ? 'border-[#008850] ring-2 ring-[#008850]/20'
                           : isDisabled
-                            ? 'border-gray-200 opacity-50 cursor-not-allowed'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-border opacity-50 cursor-not-allowed'
+                            : 'border-border hover:border-border'
                         }
                       `}
                     >
@@ -285,21 +285,21 @@ export function ImageSelectionWorkspace({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50/50">
-          <p className="text-xs text-gray-600">
+        <div className="flex items-center justify-between p-6 border-t border-border bg-muted/50">
+          <p className="text-xs text-muted-foreground">
             Select up to {MAX_IMAGES} images for this product.
           </p>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSaveSelections}
               disabled={isSaving || selectedUrls.length === 0}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               Save Selections
