@@ -42,7 +42,7 @@ export function PipelineToolbar({
 
   return (
     <div
-      className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm"
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted px-4 py-3 shadow-sm"
       role="toolbar"
       aria-label="Pipeline toolbar"
     >
@@ -53,7 +53,7 @@ export function PipelineToolbar({
           size="sm"
           onClick={onSelectAll}
           disabled={isLoading || totalCount === 0}
-          className="h-9 border-zinc-200 text-zinc-600 hover:bg-zinc-100"
+          className="h-9 border-border text-muted-foreground hover:bg-muted"
         >
           <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
           Select All ({totalCount})
@@ -110,7 +110,7 @@ export function PipelineToolbar({
             size="sm"
             onClick={onManualAdd}
             disabled={isLoading}
-            className="h-9 border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+            className="h-9 border-border text-muted-foreground hover:bg-muted"
           >
             <Plus className="mr-1.5 h-4 w-4" />
             Add Product
