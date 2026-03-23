@@ -25,7 +25,7 @@ interface OrderModalProps {
 }
 
 const paymentStatusConfig = {
-    pending: { label: 'Pending', color: 'bg-zinc-100 text-zinc-800' },
+    pending: { label: 'Pending', color: 'bg-muted text-foreground' },
     processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800' },
     completed: { label: 'Paid', color: 'bg-green-100 text-green-800' },
     failed: { label: 'Failed', color: 'bg-red-100 text-red-800' },
@@ -142,18 +142,18 @@ export function OrderModal({
                                         {order.items?.map((item) => (
                                             <li key={item.id} className="flex items-center justify-between py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-100">
-                                                        <Package className="h-6 w-6 text-zinc-500" />
+                                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                                                        <Package className="h-6 w-6 text-muted-foreground" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-zinc-900">{item.item_name}</p>
-                                                        <p className="text-sm text-zinc-600">
+                                                        <p className="font-medium text-foreground">{item.item_name}</p>
+                                                        <p className="text-sm text-muted-foreground">
                                                             {item.item_type === 'service' ? 'Service' : 'Product'} •{' '}
                                                             {formatCurrency(item.unit_price)} × {item.quantity}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <p className="font-semibold text-zinc-900">
+                                                <p className="font-semibold text-foreground">
                                                     {formatCurrency(item.total_price)}
                                                 </p>
                                             </li>
@@ -163,11 +163,11 @@ export function OrderModal({
                                     {/* Totals */}
                                     <div className="mt-4 space-y-2 border-t pt-4">
                                         <div className="flex justify-between">
-                                            <span className="text-zinc-600">Subtotal</span>
+                                            <span className="text-muted-foreground">Subtotal</span>
                                             <span className="font-medium">{formatCurrency(order.subtotal)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-zinc-600">Tax</span>
+                                            <span className="text-muted-foreground">Tax</span>
                                             <span className="font-medium">{formatCurrency(order.tax)}</span>
                                         </div>
                                         <div className="flex justify-between border-t pt-2 text-lg font-semibold">
@@ -190,24 +190,24 @@ export function OrderModal({
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-zinc-600">Method</span>
+                                        <span className="text-sm text-muted-foreground">Method</span>
                                         <span className="font-medium">
                                             {paymentMethodLabels[order.payment_method] || order.payment_method}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-zinc-600">Status</span>
+                                        <span className="text-sm text-muted-foreground">Status</span>
                                         <Badge className={paymentStatusConfig[order.payment_status as keyof typeof paymentStatusConfig]?.color}>
                                             {paymentStatusConfig[order.payment_status as keyof typeof paymentStatusConfig]?.label || order.payment_status}
                                         </Badge>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-zinc-600">Total</span>
+                                        <span className="text-sm text-muted-foreground">Total</span>
                                         <span className="font-medium">{formatCurrency(order.total)}</span>
                                     </div>
                                     {order.refunded_amount && order.refunded_amount > 0 && (
                                         <div className="flex items-center justify-between text-sm">
-                                            <span className="text-zinc-600">Refunded</span>
+                                            <span className="text-muted-foreground">Refunded</span>
                                             <span className="font-medium text-red-600">
                                                 -{formatCurrency(order.refunded_amount)}
                                             </span>
@@ -222,7 +222,7 @@ export function OrderModal({
                                     {order.stripe_payment_intent_id && (
                                         <div className="pt-4 border-t">
                                             <p className="text-xs text-muted-foreground">Stripe ID</p>
-                                            <p className="text-xs font-mono text-zinc-500 truncate">
+                                            <p className="text-xs font-mono text-muted-foreground truncate">
                                                 {order.stripe_payment_intent_id}
                                             </p>
                                         </div>
@@ -237,11 +237,11 @@ export function OrderModal({
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="flex items-center gap-3">
-                                        <User className="h-5 w-5 text-zinc-500" />
+                                        <User className="h-5 w-5 text-muted-foreground" />
                                         <span className="font-medium">{order.customer_name}</span>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <Mail className="h-5 w-5 text-zinc-500" />
+                                        <Mail className="h-5 w-5 text-muted-foreground" />
                                         <a
                                             href={`mailto:${order.customer_email}`}
                                             className="text-blue-600 hover:underline break-all"
@@ -251,7 +251,7 @@ export function OrderModal({
                                     </div>
                                     {order.customer_phone && (
                                         <div className="flex items-center gap-3">
-                                            <Phone className="h-5 w-5 text-zinc-500" />
+                                            <Phone className="h-5 w-5 text-muted-foreground" />
                                             <a
                                                 href={`tel:${order.customer_phone}`}
                                                 className="text-blue-600 hover:underline"
@@ -284,7 +284,7 @@ export function OrderModal({
                                         <>
                                             {order.delivery_distance_miles !== null && (
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-zinc-600">Distance</span>
+                                                    <span className="text-sm text-muted-foreground">Distance</span>
                                                     <span className="font-medium">
                                                         {order.delivery_distance_miles.toFixed(1)} miles
                                                     </span>
@@ -292,13 +292,13 @@ export function OrderModal({
                                             )}
                                             {order.delivery_fee > 0 && (
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-zinc-600">Delivery Fee</span>
+                                                    <span className="text-sm text-muted-foreground">Delivery Fee</span>
                                                     <span className="font-medium">{formatCurrency(order.delivery_fee)}</span>
                                                 </div>
                                             )}
                                             {order.delivery_services && order.delivery_services.length > 0 && (
                                                 <div className="pt-4 border-t">
-                                                    <p className="text-sm text-zinc-600 mb-2">Delivery Services</p>
+                                                    <p className="text-sm text-muted-foreground mb-2">Delivery Services</p>
                                                     {order.delivery_services.map((service) => (
                                                         <div key={service.service} className="flex items-center justify-between text-sm">
                                                             <span className="capitalize">
@@ -313,7 +313,7 @@ export function OrderModal({
                                             )}
                                             {order.delivery_notes && (
                                                 <div className="pt-4 border-t">
-                                                    <p className="text-sm text-zinc-600 mb-1">Delivery Notes</p>
+                                                    <p className="text-sm text-muted-foreground mb-1">Delivery Notes</p>
                                                     <p className="text-sm">{order.delivery_notes}</p>
                                                 </div>
                                             )}
@@ -321,15 +321,15 @@ export function OrderModal({
                                     ) : (
                                         <>
                                             <div className="flex items-center gap-3">
-                                                <MapPin className="h-5 w-5 text-zinc-500" />
+                                                <MapPin className="h-5 w-5 text-muted-foreground" />
                                                 <div>
                                                     <p className="font-medium">Store Pickup</p>
-                                                    <p className="text-sm text-zinc-600">
+                                                    <p className="text-sm text-muted-foreground">
                                                         429 Winthrop Street, Taunton, MA 02780
                                                     </p>
                                                 </div>
                                             </div>
-                                            <p className="text-sm text-zinc-600 mt-2">
+                                            <p className="text-sm text-muted-foreground mt-2">
                                                 Customer will pick up at the store
                                             </p>
                                         </>
@@ -344,8 +344,8 @@ export function OrderModal({
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex items-start gap-3">
-                                            <FileText className="mt-0.5 h-5 w-5 text-zinc-500" />
-                                            <p className="text-zinc-600">{order.notes}</p>
+                                            <FileText className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                                            <p className="text-muted-foreground">{order.notes}</p>
                                         </div>
                                     </CardContent>
                                 </Card>

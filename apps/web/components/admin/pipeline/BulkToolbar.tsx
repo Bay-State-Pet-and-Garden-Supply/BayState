@@ -80,7 +80,7 @@ export function BulkToolbar({
 
   return (
     <div
-      className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm"
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted px-4 py-3 shadow-sm"
       role="toolbar"
       aria-label="Bulk actions toolbar"
     >
@@ -105,7 +105,7 @@ export function BulkToolbar({
             >
               {selectedCount}
             </span>
-            <span className="text-sm font-medium text-zinc-700">
+            <span className="text-sm font-medium text-muted-foreground">
               {selectedCount === 1 ? 'product' : 'products'} selected
             </span>
             <Button
@@ -113,7 +113,7 @@ export function BulkToolbar({
               size="sm"
               onClick={onClearSelection}
               disabled={isLoading}
-              className="text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <X className="mr-1 h-4 w-4" />
               Clear
@@ -123,7 +123,7 @@ export function BulkToolbar({
       </div>
 
       {/* Stage indicator */}
-      <div className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500">
+      <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
         <span>in</span>
         <span
           className="inline-flex items-center rounded-full px-2 py-0.5 font-medium"
@@ -155,7 +155,7 @@ export function BulkToolbar({
             size="sm"
             onClick={onSelectAll}
             disabled={isLoading}
-            className="h-8 text-xs text-zinc-600"
+            className="h-8 text-xs text-muted-foreground"
           >
             Select All ({totalCount})
           </Button>
@@ -167,7 +167,7 @@ export function BulkToolbar({
             size="sm"
             onClick={handleResetAction}
             disabled={isLoading}
-            className="h-9 border-zinc-300 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+            className="h-9 border-border text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             {bulkAction.resetLabel}
           </Button>

@@ -481,7 +481,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               Manufacturer Product #
                             </span>
-                            <span className="font-mono text-zinc-900 truncate">
+                            <span className="font-mono text-foreground truncate">
                               {currentSourceData.manufacturer_part_number ||
                                 currentSourceData.item_number ||
                                 "N/A"}
@@ -491,7 +491,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               Weight / Size
                             </span>
-                            <span className="text-zinc-900">
+                            <span className="text-foreground">
                               {currentSourceData.weight ||
                                 currentSourceData.size ||
                                 currentSourceData.unit_of_measure ||
@@ -504,7 +504,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               UPC / Barcode
                             </span>
-                            <span className="font-mono text-zinc-900">
+                            <span className="font-mono text-foreground">
                               {currentSourceData.upc || "N/A"}
                             </span>
                           </div>
@@ -512,7 +512,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               Category
                             </span>
-                            <span className="text-zinc-900 truncate">
+                            <span className="text-foreground truncate">
                               {currentSourceData.category ||
                                 currentSourceData.categories?.[0] ||
                                 "Uncategorized"}
@@ -525,7 +525,7 @@ export function ScrapedResultsView({
                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                           Description
                         </h3>
-                        <div className="text-sm leading-relaxed text-zinc-600 prose prose-sm max-w-none">
+                        <div className="text-sm leading-relaxed text-muted-foreground prose prose-sm max-w-none">
                           {currentSourceData.description ? (
                             <div
                               dangerouslySetInnerHTML={{

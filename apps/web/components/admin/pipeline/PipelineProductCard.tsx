@@ -31,7 +31,7 @@ interface PipelineProductCardProps {
 
 export function PipelineProductCardSkeleton() {
     return (
-        <div className="rounded-lg border border-zinc-200 bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-start gap-3">
                 <Skeleton className="h-4 w-4 rounded" />
                 <div className="flex-1 min-w-0 space-y-3">
@@ -56,8 +56,8 @@ export function PipelineProductCardSkeleton() {
 
 export function PipelineProductCardStorefrontSkeleton() {
     return (
-        <div className="rounded-xl border border-zinc-200 bg-card overflow-hidden">
-            <div className="relative aspect-square w-full bg-zinc-50">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="relative aspect-square w-full bg-muted">
                 <Skeleton className="h-full w-full" />
             </div>
             <div className="p-4 space-y-3">
@@ -122,7 +122,7 @@ export function PipelineProductCard({
                 }}
                 className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${showBatchSelect && isSelected
                     ? 'border-blue-500 bg-blue-50'
-                    : 'border-zinc-200 bg-card hover:border-zinc-300'
+                    : 'border-border bg-card hover:border-border'
                     }`}
             >
                 <div className="absolute right-2 top-2">
@@ -136,16 +136,16 @@ export function PipelineProductCard({
                             checked={isSelected}
                             onChange={handleCheckboxChange}
                             aria-label={`Select product ${product.sku}`}
-                            className="mt-1 h-5 w-5 rounded border-zinc-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                            className="mt-1 h-5 w-5 rounded border-border cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         />
                     )}
                     <div className="flex-1 min-w-0 pr-16">
                         <div className="flex items-center gap-1.5 mb-1">
-                            <Package className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
-                            <span className="text-[10px] font-mono tabular-nums text-zinc-500 truncate">{product.sku}</span>
+                            <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="text-[10px] font-mono tabular-nums text-muted-foreground truncate">{product.sku}</span>
                         </div>
 
-                        <p className="font-medium text-zinc-900 truncate mb-1" title={registerName}>
+                        <p className="font-medium text-foreground truncate mb-1" title={registerName}>
                             {registerName}
                         </p>
 
@@ -178,7 +178,7 @@ export function PipelineProductCard({
                         }
                     }
                 }}
-                className={`group relative h-full rounded-xl border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-zinc-200 bg-card hover:border-zinc-300 hover:shadow-lg'
+                className={`group relative h-full rounded-xl border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-border bg-card hover:border-border hover:shadow-lg'
                     }`}
             >
                 <div className="absolute top-3 left-3 z-20">
@@ -190,7 +190,7 @@ export function PipelineProductCard({
                             handleCheckboxChange(e);
                         }}
                         aria-label={`Select product ${product.sku}`}
-                        className="h-5 w-5 rounded border-zinc-300 shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        className="h-5 w-5 rounded border-border shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     />
                 </div>
 
@@ -198,7 +198,7 @@ export function PipelineProductCard({
                     className="flex h-full flex-col cursor-pointer"
                     onClick={() => onView(product.sku)}
                 >
-                    <div className="relative aspect-square w-full overflow-hidden bg-zinc-50 border-b border-zinc-100">
+                    <div className="relative aspect-square w-full overflow-hidden bg-muted border-b border-border">
                         {hasValidImage ? (
                             <Image
                                 src={imageSrc!}
@@ -208,9 +208,9 @@ export function PipelineProductCard({
                                 className="object-cover transition-transform duration-500 group-hover:scale-105"
                             />
                         ) : (
-                            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-zinc-300">
-                                <ImageIcon className="h-10 w-10 text-zinc-300" />
-                                <span className="text-xs font-medium text-zinc-400">No Image</span>
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                                <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                                <span className="text-xs font-medium text-muted-foreground">No Image</span>
                             </div>
                         )}
 
@@ -220,7 +220,7 @@ export function PipelineProductCard({
 
                         {confidenceScore !== undefined && confidenceScore > 0 && (
                             <div className="absolute top-12 right-3 z-10">
-                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-card/90 backdrop-blur-sm border border-zinc-200 ${getConfidenceColor(confidenceScore)}`}>
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-card/90 backdrop-blur-sm border border-border ${getConfidenceColor(confidenceScore)}`}>
                                     <TrendingUp className="h-2.5 w-2.5" />
                                     {(confidenceScore * 100).toFixed(0)}%
                                 </span>
@@ -230,15 +230,15 @@ export function PipelineProductCard({
 
                     <div className="flex flex-1 flex-col p-4 bg-card">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-mono tabular-nums font-semibold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">{product.sku}</span>
+                            <span className="text-[10px] font-mono tabular-nums font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{product.sku}</span>
                         </div>
 
-                        <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-zinc-900 group-hover:text-blue-600 transition-colors" title={cleanName || registerName}>
+                        <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-foreground group-hover:text-blue-600 transition-colors" title={cleanName || registerName}>
                             {cleanName || registerName}
                         </h3>
 
                         <div className="mt-auto pt-2 flex items-center justify-between">
-                            <span className="text-lg font-bold tabular-nums tracking-tight text-zinc-900">
+                            <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">
                                 {formatCurrency(price)}
                             </span>
 
@@ -268,7 +268,7 @@ export function PipelineProductCard({
                     }
                 }
             }}
-            className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-zinc-200 bg-card hover:border-zinc-300'
+            className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-border bg-card hover:border-border'
                 }`}
         >
             <div className="absolute right-3 top-3">
@@ -281,21 +281,21 @@ export function PipelineProductCard({
                     checked={isSelected}
                     onChange={handleCheckboxChange}
                     aria-label={`Select product ${product.sku}`}
-                    className="mt-1 h-5 w-5 rounded border-zinc-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    className="mt-1 h-5 w-5 rounded border-border cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 />
 
                 <div className="flex-1 min-w-0 pr-20">
                     <div className="flex items-center gap-1.5 mb-2">
-                        <Package className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
-                        <span className="text-[10px] font-mono tabular-nums text-zinc-500 truncate">{product.sku}</span>
+                        <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="text-[10px] font-mono tabular-nums text-muted-foreground truncate">{product.sku}</span>
                     </div>
 
                     <div className="space-y-1 mb-2">
-                        <p className="font-medium text-zinc-900 truncate" title={cleanName || registerName}>
+                        <p className="font-medium text-foreground truncate" title={cleanName || registerName}>
                             {cleanName || registerName}
                         </p>
                         {cleanName && registerName !== cleanName && (
-                            <p className="text-xs text-zinc-500 truncate" title={registerName}>
+                            <p className="text-xs text-muted-foreground truncate" title={registerName}>
                                 Original: {registerName}
                             </p>
                         )}
@@ -309,7 +309,7 @@ export function PipelineProductCard({
                         </div>
                     )}
 
-                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
                         <span className="font-semibold tabular-nums text-green-600">{formatCurrency(price)}</span>
                         <div className="flex items-center gap-1">
                             {showEnrichButton && onEnrich && (

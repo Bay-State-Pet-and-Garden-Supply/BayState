@@ -107,19 +107,19 @@ export function FloatingActionsBar({
 
   return (
     <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-card p-4 shadow-2xl ring-1 ring-black/5">
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-2xl ring-1 ring-black/5">
         {/* Selection Count */}
-        <div className="flex items-center gap-3 border-r border-zinc-100 pr-4">
+        <div className="flex items-center gap-3 border-r border-border pr-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#008850] text-[13px] font-bold text-white tabular-nums">
             {selectedCount}
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-zinc-900 leading-none">
+            <span className="text-xs font-bold text-foreground leading-none">
               {selectedCount === 1 ? "Product" : "Products"} Selected
             </span>
             <button
               onClick={onClearSelection}
-              className="text-[10px] font-bold text-zinc-400 hover:text-red-600 text-left transition-colors uppercase tracking-wider mt-1"
+              className="text-[10px] font-bold text-muted-foreground hover:text-red-600 text-left transition-colors uppercase tracking-wider mt-1"
             >
               Clear Selection
             </button>
@@ -134,7 +134,7 @@ export function FloatingActionsBar({
               size="sm"
               onClick={onSelectAll}
               disabled={isLoading}
-              className="h-10 text-xs font-bold text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+              className="h-10 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               Select All {totalCount}
             </Button>
@@ -146,7 +146,7 @@ export function FloatingActionsBar({
               size="sm"
               onClick={handleResetAction}
               disabled={isLoading}
-              className="h-10 border-zinc-200 text-xs font-bold text-zinc-600 hover:bg-zinc-50"
+              className="h-10 border-border text-xs font-bold text-muted-foreground hover:bg-muted"
             >
               {bulkAction.resetLabel}
             </Button>
