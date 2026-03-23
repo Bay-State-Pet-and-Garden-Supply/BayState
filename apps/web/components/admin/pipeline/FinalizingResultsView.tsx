@@ -32,6 +32,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
+import { extractImageCandidatesFromSources } from "@/lib/product-sources";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -43,12 +44,37 @@ interface Brand {
   name: string;
 }
 
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function extractSelectedImageUrls(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((entry) => {
+      if (typeof entry === "string") return entry;
+      if (entry && typeof entry === "object" && "url" in entry) {
+        const url = (entry as { url?: unknown }).url;
+        return typeof url === "string" ? url : null;
+      }
+      return null;
+    })
+    .filter((url): url is string => typeof url === "string");
+}
+
 export function FinalizingResultsView({
   products,
   onRefresh,
 }: FinalizingResultsViewProps) {
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
+  }, [products]);
+
   const [preferredSku, setPreferredSku] = useState<string | null>(
-    products.length > 0 ? products[0].sku : null,
+    sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
   const [brands, setBrands] = useState<Brand[]>([]);
   const [saving, setSaving] = useState(false);
@@ -77,10 +103,10 @@ export function FinalizingResultsView({
 
   const selectedProduct = useMemo(
     () =>
-      products.find((product) => product.sku === preferredSku) ??
-      products[0] ??
+      sortedProducts.find((product) => product.sku === preferredSku) ??
+      sortedProducts[0] ??
       null,
-    [preferredSku, products],
+    [preferredSku, sortedProducts],
   );
 
   const selectedSku = selectedProduct?.sku ?? null;
@@ -108,6 +134,14 @@ export function FinalizingResultsView({
       const input = selectedProduct.input || {};
 
       const cons = selectedProduct.consolidated || {} as Record<string, unknown>;
+      const consolidatedImages = toStringArray(consolidated.images);
+      const selectedImagesFromMetadata = extractSelectedImageUrls(
+        selectedProduct.selected_images,
+      );
+      const initialSelectedImages =
+        consolidatedImages.length > 0
+          ? consolidatedImages
+          : selectedImagesFromMetadata;
 
       setFormData({
         name: consolidated.name || input.name || "",
@@ -129,7 +163,7 @@ export function FinalizingResultsView({
         isSpecialOrder: !!(cons as Record<string, unknown>).is_special_order,
         isTaxable: (cons as Record<string, unknown>).is_taxable !== false,
         customImageUrl: "",
-        selectedImages: consolidated.images || [],
+        selectedImages: initialSelectedImages,
       });
     }
   }, [selectedProduct]);
@@ -146,24 +180,24 @@ export function FinalizingResultsView({
         return;
       }
 
-      if (products.length === 0) return;
+      if (sortedProducts.length === 0) return;
 
-      const currentIndex = products.findIndex((p) => p.sku === preferredSku);
+      const currentIndex = sortedProducts.findIndex((p) => p.sku === preferredSku);
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        const nextIndex = Math.min(currentIndex + 1, products.length - 1);
-        setPreferredSku(products[nextIndex].sku);
+        const nextIndex = Math.min(currentIndex + 1, sortedProducts.length - 1);
+        setPreferredSku(sortedProducts[nextIndex].sku);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         const nextIndex = Math.max(currentIndex - 1, 0);
-        setPreferredSku(products[nextIndex].sku);
+        setPreferredSku(sortedProducts[nextIndex].sku);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [preferredSku, products]);
+  }, [preferredSku, sortedProducts]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -295,10 +329,22 @@ export function FinalizingResultsView({
 
   const imageCandidates = useMemo(() => {
     if (!selectedProduct) return [];
-    const candidates = selectedProduct.image_candidates || [];
-    // Also include images already selected that might not be in candidates
-    const selected = formData.selectedImages;
-    return Array.from(new Set([...selected, ...candidates]));
+
+    const candidates = new Set<string>();
+
+    // 1. Add explicitly defined candidates
+    if (selectedProduct.image_candidates) {
+      selectedProduct.image_candidates.forEach(url => candidates.add(url));
+    }
+
+    extractImageCandidatesFromSources(selectedProduct.sources || {}, 48).forEach(
+      (url) => candidates.add(url),
+    );
+
+    // 3. Include currently selected images
+    formData.selectedImages.forEach(url => candidates.add(url));
+
+    return Array.from(candidates);
   }, [selectedProduct, formData.selectedImages]);
 
   return (
@@ -307,7 +353,7 @@ export function FinalizingResultsView({
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
           <div className="divide-y">
-            {products.map((product, index) => {
+            {sortedProducts.map((product, index) => {
               const name =
                 product.consolidated?.name || product.input?.name || "Unknown";
               const price = product.consolidated?.price ?? product.input?.price;
@@ -355,7 +401,7 @@ export function FinalizingResultsView({
         {selectedProduct ? (
           <>
             {/* Header */}
-            <div className="p-4 border-b flex justify-between items-center bg-card sticky top-0 z-10">
+            <div className="p-4 border-b flex justify-between items-center bg-card flex-shrink-0 z-10">
               <div className="flex items-center gap-3">
                 <Package className="h-5 w-5 text-muted-foreground" />
                 <div>

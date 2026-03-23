@@ -97,6 +97,13 @@ describe('consolidation batch service', () => {
                             images: ['https://cdn.example.com/existing.jpg'],
                             stock_status: 'in_stock',
                         },
+                        sources: {
+                            chewy: {
+                                images: ['https://cdn.example.com/source.jpg'],
+                            },
+                        },
+                        image_candidates: ['https://cdn.example.com/candidate.jpg'],
+                        selected_images: [{ url: 'https://cdn.example.com/selected.jpg' }],
                     },
                 ],
                 error: null,
@@ -117,7 +124,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated') {
+            if (columns === 'sku, consolidated, sources, image_candidates, selected_images') {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {

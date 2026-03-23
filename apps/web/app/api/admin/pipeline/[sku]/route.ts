@@ -10,6 +10,32 @@ import {
 } from '@/lib/pipeline';
 import type { PipelineStatus } from '@/lib/pipeline/types';
 
+function toImageUrlArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function extractSelectedImageUrls(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((entry) => {
+      if (typeof entry === 'string') return entry;
+      if (entry && typeof entry === 'object' && 'url' in entry) {
+        const url = (entry as { url?: unknown }).url;
+        return typeof url === 'string' ? url : null;
+      }
+      return null;
+    })
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ sku: string }> }
@@ -37,12 +63,19 @@ export async function GET(
     ? (data.consolidated as Record<string, unknown>)
     : {};
 
-  const consolidatedImages = Array.isArray(consolidated.images)
-    ? consolidated.images.filter((entry): entry is string => typeof entry === 'string')
-    : [];
+  const consolidatedImages = toImageUrlArray(consolidated.images);
+  const storedImageCandidates = toImageUrlArray(data.image_candidates);
+  const selectedImageUrls = extractSelectedImageUrls(data.selected_images);
   const sourceImageCandidates = extractImageCandidatesFromSources(data.sources, 24);
 
-  const mergedCandidates = Array.from(new Set([...consolidatedImages, ...sourceImageCandidates]));
+  const mergedCandidates = Array.from(
+    new Set([
+      ...storedImageCandidates,
+      ...consolidatedImages,
+      ...selectedImageUrls,
+      ...sourceImageCandidates,
+    ]),
+  );
 
   return NextResponse.json({
     product: {
