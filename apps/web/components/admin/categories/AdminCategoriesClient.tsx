@@ -133,17 +133,17 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
         return (
             <div key={node.id}>
                 <div
-                    className={`flex items-center gap-2 rounded-lg border bg-white p-3 hover:bg-gray-50 ${depth > 0 ? 'ml-6 border-l-4 border-l-gray-200' : ''
+                    className={`flex items-center gap-2 rounded-lg border bg-card p-3 hover:bg-muted ${depth > 0 ? 'ml-6 border-l-4 border-l-gray-200' : ''
                         }`}
                     style={{ marginLeft: depth > 0 ? `${depth * 24}px` : 0 }}
                 >
                     {/* Drag handle */}
-                    <GripVertical className="h-4 w-4 cursor-grab text-gray-600" />
+                    <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" />
 
                     {/* Expand/collapse */}
                     <button
                         onClick={() => toggleExpand(node.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded hover:bg-gray-200"
+                        className="flex h-6 w-6 items-center justify-center rounded hover:bg-muted"
                         disabled={!hasChildren}
                     >
                         {hasChildren ? (
@@ -158,7 +158,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                     </button>
 
                     {/* Image */}
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-gray-100">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
                         {node.image_url ? (
                             <Image
                                 src={node.image_url}
@@ -168,7 +168,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                                 className="h-10 w-10 object-cover"
                             />
                         ) : (
-                            <span className="text-lg font-bold text-gray-600">
+                            <span className="text-lg font-bold text-muted-foreground">
                                 {node.name.charAt(0).toUpperCase()}
                             </span>
                         )}
@@ -177,21 +177,21 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                     {/* Name and info */}
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">{node.name}</span>
+                            <span className="font-medium text-foreground">{node.name}</span>
                             {node.is_featured && (
                                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                             )}
                             {hasChildren && (
-                                <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs py-0.5">
+                                <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted text-xs py-0.5">
                                     {node.children.length} subcategories
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-sm text-gray-600">/{node.slug}</p>
+                        <p className="text-sm text-muted-foreground">/{node.slug}</p>
                     </div>
 
                     {/* Order */}
-                    <Badge variant="outline" className="bg-gray-100 text-gray-600 border-transparent text-xs py-0.5">
+                    <Badge variant="outline" className="bg-muted text-muted-foreground border-transparent text-xs py-0.5">
                         Order: {node.display_order}
                     </Badge>
 
@@ -241,9 +241,9 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
             </div>
 
             {initialCategories.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-16">
-                    <p className="text-lg font-medium text-gray-600">No categories yet</p>
-                    <p className="mt-1 text-sm text-gray-600">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted py-16">
+                    <p className="text-lg font-medium text-muted-foreground">No categories yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Create your first category to organize products
                     </p>
                     <Button className="mt-4" onClick={() => handleCreate(null)}>

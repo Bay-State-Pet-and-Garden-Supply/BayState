@@ -93,7 +93,7 @@ export function RetryButton({ product, onRetry }: RetryButtonProps) {
                     ) : null}
 
                     <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
                             Reason for retry (optional)
                         </label>
                         <textarea

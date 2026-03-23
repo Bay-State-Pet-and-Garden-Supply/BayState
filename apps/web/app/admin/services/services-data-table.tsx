@@ -125,9 +125,9 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
       searchable: true,
       render: (_, row) => (
         <div>
-          <p className="font-medium text-gray-900">{row.name}</p>
+          <p className="font-medium text-foreground">{row.name}</p>
           {row.description && (
-            <p className="text-xs text-gray-600 line-clamp-1">{row.description}</p>
+            <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
           )}
         </div>
       ),
@@ -158,7 +158,7 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
       sortable: true,
       searchable: true,
       render: (value) => (
-        <code className="rounded bg-gray-100 px-2 py-0.5 text-xs">{String(value)}</code>
+        <code className="rounded bg-muted px-2 py-0.5 text-xs">{String(value)}</code>
       ),
     },
     {
@@ -166,7 +166,7 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
       header: 'Created',
       sortable: true,
       render: (value) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {new Date(String(value)).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -189,7 +189,7 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
         {service.is_active ? (
           <ToggleRight className="h-4 w-4 text-green-600" />
         ) : (
-          <ToggleLeft className="h-4 w-4 text-gray-600" />
+          <ToggleLeft className="h-4 w-4 text-muted-foreground" />
         )}
       </Button>
       <Button variant="ghost" size="sm" asChild>

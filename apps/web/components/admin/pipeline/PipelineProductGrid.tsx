@@ -40,15 +40,15 @@ export function PipelineProductGrid({
     if (loading && products.length === 0) {
         return (
             <div className="flex h-64 items-center justify-center">
-                <RefreshCw className="h-8 w-8 animate-spin text-gray-600" aria-label="Loading products" />
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" aria-label="Loading products" />
             </div>
         );
     }
 
     if (products.length === 0) {
         return (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
-                <p className="text-gray-600">{emptyMessage}</p>
+            <div className="rounded-lg border border-dashed border-border bg-muted p-12 text-center">
+                <p className="text-muted-foreground">{emptyMessage}</p>
             </div>
         );
     }
@@ -79,7 +79,7 @@ export function PipelineProductGrid({
                         type="button"
                         onClick={onLoadMore}
                         disabled={loading}
-                        className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg border border-border px-6 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {loading ? 'Loading…' : 'Load More'}
                     </button>

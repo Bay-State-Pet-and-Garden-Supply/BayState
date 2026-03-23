@@ -123,7 +123,7 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-lg border bg-gray-100" />
+          <div key={i} className="h-16 animate-pulse rounded-lg border bg-muted" />
         ))}
       </div>
     );
@@ -202,7 +202,7 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
                       {product.pipeline_status}
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-none capitalize">
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border-none capitalize">
                       {product.pipeline_status}
                     </Badge>
                   )}
@@ -226,7 +226,7 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
                     </Badge>
                   ))}
                   {product.issues.length > 3 && (
-                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200">
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted">
                       +{product.issues.length - 3} more
                     </Badge>
                   )}

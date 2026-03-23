@@ -100,7 +100,7 @@ export function SelectorHelper({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-3 rounded-lg border p-3 bg-gray-50">
+        <div className="space-y-3 rounded-lg border p-3 bg-muted">
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label htmlFor="name" className="text-xs">Field Name</Label>
@@ -159,12 +159,12 @@ export function SelectorHelper({
 
         {selectors.length > 0 && (
           <div className="space-y-2">
-            <Label className="text-xs text-gray-600">Defined Selectors ({selectors.length})</Label>
+            <Label className="text-xs text-muted-foreground">Defined Selectors ({selectors.length})</Label>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {selectors.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-start justify-between gap-2 rounded border p-2 bg-white"
+                  className="flex items-start justify-between gap-2 rounded border p-2 bg-card"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -178,7 +178,7 @@ export function SelectorHelper({
                         </Badge>
                       )}
                     </div>
-                    <code className="text-xs font-mono text-gray-600 break-all">
+                    <code className="text-xs font-mono text-muted-foreground break-all">
                       {entry.selector}
                     </code>
                   </div>
@@ -222,7 +222,7 @@ export function SelectorHelper({
         )}
 
         {selectors.length === 0 && (
-          <p className="text-sm text-gray-600 text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-4">
             No selectors defined. Add your first selector above.
           </p>
         )}

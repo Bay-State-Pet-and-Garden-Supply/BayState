@@ -74,7 +74,7 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
                                     name="enabled"
                                     checked={enabled}
                                     onChange={(e) => setEnabled(e.target.checked)}
-                                    className="h-5 w-5 rounded border-gray-300"
+                                    className="h-5 w-5 rounded border-border"
                                 />
                                 <span className="sr-only">Enable banner</span>
                             </label>

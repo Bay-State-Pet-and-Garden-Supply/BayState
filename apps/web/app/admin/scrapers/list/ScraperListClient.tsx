@@ -39,7 +39,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
   });
 
   const getHealthColor = (score: number | null | undefined) => {
-    if (score === null || score === undefined) return 'bg-gray-100 text-gray-800 border-gray-200';
+    if (score === null || score === undefined) return 'bg-muted text-foreground border-border';
     if (score >= 90) return 'bg-green-100 text-green-800 border-green-200';
     if (score >= 60) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     return 'bg-red-100 text-red-800 border-red-200';
@@ -54,9 +54,9 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
 
   return (
     <div className="space-y-6" data-testid="scraper-list">
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg shadow-sm border" data-testid="scraper-filters">
+      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-lg shadow-sm border" data-testid="scraper-filters">
         <div className="flex-1">
-          <label className="text-sm font-medium mb-1.5 block text-gray-700">Status</label>
+          <label className="text-sm font-medium mb-1.5 block text-muted-foreground">Status</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="All Statuses" />
@@ -71,7 +71,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
         </div>
 
         <div className="flex-1">
-          <label className="text-sm font-medium mb-1.5 block text-gray-700">Health</label>
+          <label className="text-sm font-medium mb-1.5 block text-muted-foreground">Health</label>
           <Select value={healthFilter} onValueChange={setHealthFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="All Health" />
@@ -86,7 +86,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
         </div>
 
         <div className="flex-1">
-          <label className="text-sm font-medium mb-1.5 block text-gray-700">Type</label>
+          <label className="text-sm font-medium mb-1.5 block text-muted-foreground">Type</label>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="All Types" />
@@ -101,9 +101,9 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
       </div>
 
       {filteredScrapers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-xl border border-dashed" data-testid="scraper-list-empty">
-          <SearchX className="h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No scrapers found</h3>
+        <div className="flex flex-col items-center justify-center p-12 bg-muted rounded-xl border border-dashed" data-testid="scraper-list-empty">
+          <SearchX className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium text-foreground">No scrapers found</h3>
 
           <Button onClick={() => {
             setStatusFilter('all');
@@ -117,10 +117,10 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="scraper-card-grid">
           {filteredScrapers.map((scraper) => (
             <Card key={scraper.id} className="overflow-hidden border shadow-sm hover:shadow-md transition-shadow group" data-testid="scraper-card">
-              <CardHeader className="pb-3 border-b bg-gray-50/50">
+              <CardHeader className="pb-3 border-b bg-muted/50">
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-xl font-semibold leading-tight text-gray-900 group-hover:text-[#66161D] transition-colors">
+                    <CardTitle className="text-xl font-semibold leading-tight text-foreground group-hover:text-[#66161D] transition-colors">
                       <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-title-link">
                         {scraper.name || scraper.slug}
                       </Link>
@@ -131,7 +131,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 text-gray-500 hover:text-gray-900">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-foreground">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -149,7 +149,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                 <div className="flex flex-wrap gap-2 mb-4">
                   <Badge variant="outline" className={`capitalize ${
                     scraper.status === 'active' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                    scraper.status === 'draft' ? 'bg-gray-100 text-gray-700 border-gray-200' : 
+                    scraper.status === 'draft' ? 'bg-muted text-muted-foreground border-border' : 
                     'bg-slate-100 text-slate-700'
                   }`}>
                     {scraper.status || 'draft'}
@@ -162,14 +162,14 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                   </Badge>
                 </div>
                 
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   Last tested: {scraper.last_test_at 
                     ? new Date(scraper.last_test_at).toLocaleDateString() 
                     : 'Never'}
                 </div>
               </CardContent>
-              <CardFooter className="pt-2 pb-4 bg-white border-t flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 bg-white hover:bg-gray-50 text-gray-700" asChild>
+              <CardFooter className="pt-2 pb-4 bg-card border-t flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 bg-card hover:bg-muted text-muted-foreground" asChild>
                   <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-view-link">
                     <ExternalLink className="mr-2 h-3.5 w-3.5" />
                     View

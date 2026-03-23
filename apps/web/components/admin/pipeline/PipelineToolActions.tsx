@@ -57,7 +57,7 @@ export function PipelineToolActions({
                 variant="outline"
                 size="sm"
                 onClick={handleExport}
-                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-100"
+                className="flex items-center gap-2 border-border text-muted-foreground hover:bg-muted"
             >
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">Export</span>
@@ -67,7 +67,7 @@ export function PipelineToolActions({
                 variant="outline"
                 size="sm"
                 onClick={handleImages}
-                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-100"
+                className="flex items-center gap-2 border-border text-muted-foreground hover:bg-muted"
             >
                 <ImageIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">Images</span>

@@ -548,16 +548,16 @@ export function PipelineClient({
           </div>
         ) : currentStage === "monitoring" ? (
           <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="rounded-lg bg-[#008850]/10 p-2">
                   <Activity className="h-5 w-5 text-[#008850]" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Active Runs
                   </h2>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Live scraper jobs currently running or queued.
                   </p>
                 </div>
@@ -567,16 +567,16 @@ export function PipelineClient({
           </div>
         ) : currentStage === "consolidating" ? (
           <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="rounded-lg bg-brand-burgundy/10 p-2">
                   <Brain className="h-5 w-5 text-brand-burgundy" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-foreground">
                     AI Consolidations
                   </h2>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Active consolidation batches and history.
                   </p>
                 </div>

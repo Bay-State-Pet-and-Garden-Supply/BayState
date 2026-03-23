@@ -212,7 +212,7 @@ export function PresenceGrid({
                 placeholder="Search runners..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-card dark:bg-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           )}
@@ -225,7 +225,7 @@ export function PresenceGrid({
                 <select
                   value={filterBy}
                   onChange={(e) => setFilterBy(e.target.value as FilterOption)}
-                  className="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none"
+                  className="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-card dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none"
                 >
                   <option value="all">All ({counts.total})</option>
                   <option value="online">Online ({counts.online})</option>
@@ -242,7 +242,7 @@ export function PresenceGrid({
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none"
+                  className="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-card dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none"
                 >
                   <option value="status">Status</option>
                   <option value="name">Name</option>

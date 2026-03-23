@@ -78,7 +78,7 @@ export function BannersTab({ initialSettings }: BannersTabProps) {
                                 name="enabled"
                                 checked={enabled}
                                 onChange={(e) => setEnabled(e.target.checked)}
-                                className="h-5 w-5 rounded border-gray-300"
+                                className="h-5 w-5 rounded border-border"
                             />
                         </div>
                     </div>

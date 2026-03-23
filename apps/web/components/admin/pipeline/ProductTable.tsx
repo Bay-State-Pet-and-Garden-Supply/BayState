@@ -346,9 +346,9 @@ export function ProductTable({
   }, [focusedIndex]);
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-white shadow-sm" ref={containerRef}>
+    <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-card shadow-sm" ref={containerRef}>
       <Table>
-        <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => (

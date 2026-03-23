@@ -112,7 +112,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           {promoCodes.length} promo code{promoCodes.length !== 1 ? 's' : ''}
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -256,7 +256,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
         </Dialog>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -272,7 +272,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
           <TableBody>
             {promoCodes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-600">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No promo codes yet. Create your first one!
                 </TableCell>
               </TableRow>
@@ -281,12 +281,12 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                 <TableRow key={promo.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <code className="rounded bg-gray-100 px-2 py-1 text-sm font-mono">
+                      <code className="rounded bg-muted px-2 py-1 text-sm font-mono">
                         {promo.code}
                       </code>
                       <button
                         onClick={() => copyCode(promo.code)}
-                        className="text-gray-600 hover:text-gray-600"
+                        className="text-muted-foreground hover:text-muted-foreground"
                       >
                         {copiedCode === promo.code ? (
                           <Check className="h-4 w-4 text-green-500" />
@@ -296,7 +296,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                       </button>
                     </div>
                     {promo.description && (
-                      <p className="mt-1 text-xs text-gray-600">{promo.description}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{promo.description}</p>
                     )}
                   </TableCell>
                   <TableCell>{getDiscountDisplay(promo)}</TableCell>
@@ -315,7 +315,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleToggleActive(promo.id, promo.is_active)}
-                        className="text-gray-600 hover:text-gray-600"
+                        className="text-muted-foreground hover:text-muted-foreground"
                         title={promo.is_active ? 'Deactivate' : 'Activate'}
                       >
                         {promo.is_active ? (
@@ -326,7 +326,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                       </button>
                       <button
                         onClick={() => handleDelete(promo.id)}
-                        className="text-gray-600 hover:text-red-600"
+                        className="text-muted-foreground hover:text-red-600"
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />

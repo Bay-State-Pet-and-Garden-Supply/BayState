@@ -31,7 +31,7 @@ const logLevelConfig = {
   warn: { icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'WARN' },
   warning: { icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'WARN' },
   error: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', label: 'ERROR' },
-  debug: { icon: Terminal, color: 'text-gray-600', bg: 'bg-gray-50', label: 'DEBUG' },
+  debug: { icon: Terminal, color: 'text-muted-foreground', bg: 'bg-muted', label: 'DEBUG' },
   success: { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', label: 'SUCCESS' },
 } as const;
 
@@ -142,7 +142,7 @@ export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProp
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">No logs available for this run.</p>
+          <p className="text-sm text-muted-foreground">No logs available for this run.</p>
         </CardContent>
       </Card>
     );
@@ -183,7 +183,7 @@ export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProp
         {/* Filters */}
         <div className="flex gap-2 mt-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Filter logs..."
               value={filter}
@@ -194,7 +194,7 @@ export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProp
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
-            className="h-8 px-2 text-xs border rounded bg-white"
+            className="h-8 px-2 text-xs border rounded bg-card"
           >
             <option value="all">All ({logCounts.all})</option>
             <option value="info">Info ({logCounts.info})</option>
@@ -212,7 +212,7 @@ export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProp
             className="max-h-96 overflow-y-auto border rounded-lg bg-gray-900 text-gray-100 p-3"
           >
             {filteredLogs.length === 0 ? (
-              <p className="text-sm text-gray-600 text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-4">
                 No logs match your filters.
               </p>
             ) : (
@@ -221,7 +221,7 @@ export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProp
               ))
             )}
           </div>
-          <p className="text-xs text-gray-600 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Showing {filteredLogs.length} of {logs.length} logs
           </p>
         </CardContent>

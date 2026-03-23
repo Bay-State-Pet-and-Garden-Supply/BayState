@@ -100,7 +100,7 @@ export function ConfigListClient({ initialData }: ConfigListClientProps) {
             {status === 'healthy' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
             {status === 'degraded' && <AlertCircle className="h-4 w-4 text-yellow-500" />}
             {status === 'broken' && <XCircle className="h-4 w-4 text-red-500" />}
-            {status === 'unknown' && <AlertCircle className="h-4 w-4 text-gray-400" />}
+            {status === 'unknown' && <AlertCircle className="h-4 w-4 text-muted-foreground" />}
             <span className={cn(
               "text-sm font-medium",
               status === 'healthy' && "text-green-600",

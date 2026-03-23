@@ -39,13 +39,13 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
     const currentConfig = TAB_CONFIG[currentTab];
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     <Package className="h-5 w-5 text-[#008850]" />
                     Pipeline Flow
                 </h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                     Current: <span className="font-medium text-[#008850]">{currentConfig.label}</span>
                 </span>
             </div>
@@ -68,7 +68,7 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
                                                 ? 'bg-[#008850] border-[#008850] text-white ring-4 ring-[#008850]/20 scale-110' 
                                                 : isCompleted
                                                     ? 'bg-[#008850] border-[#008850] text-white'
-                                                    : 'bg-white border-gray-300 text-gray-400'
+                                                    : 'bg-card border-border text-muted-foreground'
                                         }`}
                                     >
                                         <Icon className="h-4 w-4" />
@@ -76,14 +76,14 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
                                             <span className={`absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${
                                                 isActive || isCompleted 
                                                     ? 'bg-gray-900 text-white' 
-                                                    : 'bg-gray-200 text-gray-600'
+                                                    : 'bg-muted text-muted-foreground'
                                             }`}>
                                                 {count > 99 ? '99+' : count}
                                             </span>
                                         )}
                                     </div>
                                     <span className={`mt-2 text-xs font-medium whitespace-nowrap ${
-                                        isActive ? 'text-[#008850]' : isCompleted ? 'text-[#008850]' : 'text-gray-400'
+                                        isActive ? 'text-[#008850]' : isCompleted ? 'text-[#008850]' : 'text-muted-foreground'
                                     }`}>
                                         {config.label}
                                     </span>

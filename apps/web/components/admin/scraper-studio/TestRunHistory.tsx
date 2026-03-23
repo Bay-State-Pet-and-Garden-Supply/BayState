@@ -79,7 +79,7 @@ function getStatusIcon(status: string) {
       return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
     case 'pending':
     default:
-      return <Clock className="h-5 w-5 text-gray-400" />;
+      return <Clock className="h-5 w-5 text-muted-foreground" />;
   }
 }
 
@@ -248,8 +248,8 @@ export function TestRunHistory() {
     return (
       <div className="text-center py-12">
         <Terminal className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500 mb-2">No test runs found</p>
-        <p className="text-sm text-gray-400">Test runs will appear here after you run tests</p>
+        <p className="text-muted-foreground mb-2">No test runs found</p>
+        <p className="text-sm text-muted-foreground">Test runs will appear here after you run tests</p>
       </div>
     );
   }
@@ -305,7 +305,7 @@ export function TestRunHistory() {
               />
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500">Failed to load step trace</p>
+                <p className="text-muted-foreground">Failed to load step trace</p>
               </div>
             )}
           </TabsContent>
@@ -336,25 +336,25 @@ export function TestRunHistory() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-gray-500">Started</p>
+                      <p className="text-sm text-muted-foreground">Started</p>
                       <p className="font-medium">{formatDate(selectedRun.started_at)}</p>
                     </div>
                   </div>
                   {selectedRun.completed_at && (
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-gray-500" />
+                      <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-sm text-gray-500">Completed</p>
+                        <p className="text-sm text-muted-foreground">Completed</p>
                         <p className="font-medium">{formatDate(selectedRun.completed_at)}</p>
                       </div>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-500" />
+                    <Clock className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-gray-500">Duration</p>
+                      <p className="text-sm text-muted-foreground">Duration</p>
                       <p className="font-medium">{formatDuration(selectedRun.duration_ms)}</p>
                     </div>
                   </div>
@@ -415,7 +415,7 @@ export function TestRunHistory() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <Hash className="h-4 w-4 text-gray-500" />
+                          <Hash className="h-4 w-4 text-muted-foreground" />
                           <span className="font-mono text-sm">{result.sku}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -528,7 +528,7 @@ export function TestRunHistory() {
                     <p className="font-medium">
                       Test Run {run.id.slice(0, 8)}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       {formatDate(run.started_at)}
                     </p>
                   </div>
@@ -536,20 +536,20 @@ export function TestRunHistory() {
 
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">SKUs</p>
+                    <p className="text-sm text-muted-foreground">SKUs</p>
                     <p className="font-medium">{run.skus_tested?.length || 0}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Duration</p>
+                    <p className="text-sm text-muted-foreground">Duration</p>
                     <p className="font-medium">{formatDuration(run.duration_ms)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Passed</p>
+                    <p className="text-sm text-muted-foreground">Passed</p>
                     <p className="font-medium text-green-600">
                       {run.results?.filter(r => r.status === 'success' || r.status === 'completed').length || 0}
                     </p>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>

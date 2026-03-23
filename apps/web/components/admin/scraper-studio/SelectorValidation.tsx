@@ -65,9 +65,9 @@ function getStatusIcon(status: string) {
     case 'ERROR':
       return <AlertCircle className="h-5 w-5 text-orange-500" />;
     case 'SKIPPED':
-      return <Minus className="h-5 w-5 text-gray-400" />;
+      return <Minus className="h-5 w-5 text-muted-foreground" />;
     default:
-      return <AlertCircle className="h-5 w-5 text-gray-400" />;
+      return <AlertCircle className="h-5 w-5 text-muted-foreground" />;
   }
 }
 
@@ -217,7 +217,7 @@ export function SelectorValidation({
           <CardTitle>Selector Validation</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
             <p>No selector validation data available</p>
             <p className="text-sm mt-1">Run a test to see selector results</p>
@@ -233,46 +233,46 @@ export function SelectorValidation({
         <Card className={cn(data.summary.requiredFailed > 0 && "border-red-300 bg-red-50")}>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{data.summary.total}</div>
-            <div className="text-sm text-gray-500">Total</div>
+            <div className="text-sm text-muted-foreground">Total</div>
           </CardContent>
         </Card>
         <Card className="border-green-200">
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">{data.summary.found}</div>
-            <div className="text-sm text-gray-500">Found</div>
+            <div className="text-sm text-muted-foreground">Found</div>
           </CardContent>
         </Card>
-        <Card className={cn(data.summary.missing > 0 ? "border-red-200" : "border-gray-200")}>
+        <Card className={cn(data.summary.missing > 0 ? "border-red-200" : "border-border")}>
           <CardContent className="p-4">
             <div className={cn(
               "text-2xl font-bold",
-              data.summary.missing > 0 ? "text-red-600" : "text-gray-600"
+              data.summary.missing > 0 ? "text-red-600" : "text-muted-foreground"
             )}>
               {data.summary.missing}
             </div>
-            <div className="text-sm text-gray-500">Missing</div>
+            <div className="text-sm text-muted-foreground">Missing</div>
           </CardContent>
         </Card>
-        <Card className={cn(data.summary.error > 0 ? "border-orange-200" : "border-gray-200")}>
+        <Card className={cn(data.summary.error > 0 ? "border-orange-200" : "border-border")}>
           <CardContent className="p-4">
             <div className={cn(
               "text-2xl font-bold",
-              data.summary.error > 0 ? "text-orange-600" : "text-gray-600"
+              data.summary.error > 0 ? "text-orange-600" : "text-muted-foreground"
             )}>
               {data.summary.error}
             </div>
-            <div className="text-sm text-gray-500">Errors</div>
+            <div className="text-sm text-muted-foreground">Errors</div>
           </CardContent>
         </Card>
         <Card className={cn(data.summary.requiredFailed > 0 && "border-red-300 bg-red-50")}>
           <CardContent className="p-4">
             <div className={cn(
               "text-2xl font-bold",
-              data.summary.requiredFailed > 0 ? "text-red-600" : "text-gray-600"
+              data.summary.requiredFailed > 0 ? "text-red-600" : "text-muted-foreground"
             )}>
               {data.summary.requiredFailed}
             </div>
-            <div className="text-sm text-gray-500 flex items-center gap-1">
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
               Required Failed
               {data.summary.requiredFailed > 0 && (
                 <AlertCircle className="h-3 w-3 text-red-500" />
@@ -286,7 +286,7 @@ export function SelectorValidation({
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search selectors..."
                 value={searchQuery}
@@ -356,14 +356,14 @@ export function SelectorValidation({
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Selector Results</span>
-            <span className="text-sm font-normal text-gray-500">
+            <span className="text-sm font-normal text-muted-foreground">
               {filteredSelectors.length} of {data.selectors.length}
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {filteredSelectors.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <Filter className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p>No selectors match the current filters</p>
             </div>
@@ -374,7 +374,7 @@ export function SelectorValidation({
               
               return (
                 <div key={status} className="space-y-2">
-                  <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                     {status} ({selectors.length})
                   </h4>
                   {selectors.map((selector) => (
@@ -384,7 +384,7 @@ export function SelectorValidation({
                         "border rounded-lg overflow-hidden transition-colors",
                         selector.required && (selector.status === 'MISSING' || selector.status === 'ERROR')
                           ? "border-red-300 bg-red-50/50"
-                          : "border-gray-200",
+                          : "border-border",
                         selector.status === 'FOUND' && "border-green-200"
                       )}
                     >
@@ -406,7 +406,7 @@ export function SelectorValidation({
                                   </Badge>
                                 )}
                               </div>
-                              <code className="text-xs text-gray-500 block mt-1">
+                              <code className="text-xs text-muted-foreground block mt-1">
                                 {selector.selector_value}
                               </code>
                             </div>
@@ -434,14 +434,14 @@ export function SelectorValidation({
                         </div>
 
                         {expandedSelector === selector.id && (
-                          <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                          <div className="mt-4 pt-4 border-t border-border space-y-3">
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               <div>
-                                <span className="text-gray-500">SKU:</span>{' '}
+                                <span className="text-muted-foreground">SKU:</span>{' '}
                                 <span className="font-mono">{selector.sku}</span>
                               </div>
                               <div>
-                                <span className="text-gray-500">Duration:</span>{' '}
+                                <span className="text-muted-foreground">Duration:</span>{' '}
                                 <span>{formatDuration(selector.duration_ms)}</span>
                               </div>
                             </div>

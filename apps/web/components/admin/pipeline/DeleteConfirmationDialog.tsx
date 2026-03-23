@@ -46,11 +46,11 @@ export const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> =
                     <DialogDescription className="pt-2">
                         {isBulk ? (
                             <>
-                                Are you sure you want to delete <span className="font-bold text-gray-900">{productCount}</span> selected products?
+                                Are you sure you want to delete <span className="font-bold text-foreground">{productCount}</span> selected products?
                             </>
                         ) : (
                             <>
-                                Are you sure you want to delete SKU <span className="font-mono font-bold tabular-nums text-gray-900">{sku}</span>?
+                                Are you sure you want to delete SKU <span className="font-mono font-bold tabular-nums text-foreground">{sku}</span>?
                             </>
                         )}
                         <br />

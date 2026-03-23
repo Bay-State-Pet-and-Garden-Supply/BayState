@@ -31,7 +31,7 @@ interface RunnerHealthCardProps {
 const STATUS_CONFIG: Record<RunnerStatus, { label: string; color: string; bgColor: string }> = {
   online: { label: 'Online', color: 'text-green-600', bgColor: 'bg-green-50' },
   busy: { label: 'Busy', color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
-  idle: { label: 'Idle', color: 'text-gray-600', bgColor: 'bg-gray-50' },
+  idle: { label: 'Idle', color: 'text-muted-foreground', bgColor: 'bg-muted' },
   offline: { label: 'Offline', color: 'text-red-600', bgColor: 'bg-red-50' },
 };
 
@@ -97,7 +97,7 @@ export function RunnerHealthCard({
                       </span>
                       <span className="font-medium">{runner.cpuUsage}%</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                       <div
                         className={cn(
                           'h-full rounded-full transition-all',
@@ -117,7 +117,7 @@ export function RunnerHealthCard({
                       </span>
                       <span className="font-medium">{runner.memoryUsage}%</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                       <div
                         className={cn(
                           'h-full rounded-full transition-all',

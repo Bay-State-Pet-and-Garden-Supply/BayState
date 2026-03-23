@@ -143,7 +143,7 @@ export function BulkToolbar({
           placeholder="Search by SKU or name..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full rounded-md border border-input bg-white px-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="w-full rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </div>
 

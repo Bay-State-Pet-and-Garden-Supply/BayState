@@ -24,7 +24,7 @@ interface TimelineViewProps {
 }
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  pending: 'bg-gray-400',
+  pending: 'bg-muted',
   running: 'bg-blue-500',
   completed: 'bg-green-500',
   failed: 'bg-red-500',

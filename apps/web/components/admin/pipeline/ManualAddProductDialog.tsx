@@ -54,16 +54,16 @@ export function ManualAddProductDialog({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="mx-4 w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <div className="mx-4 w-full max-w-md overflow-hidden rounded-xl bg-card shadow-xl">
+                <div className="flex items-center justify-between border-b border-border px-6 py-4">
                     <div className="flex items-center gap-2">
                         <Package className="h-5 w-5 text-[#008850]" />
-                        <h2 className="text-lg font-semibold text-gray-900">Add New Product</h2>
+                        <h2 className="text-lg font-semibold text-foreground">Add New Product</h2>
                     </div>
                     <button
                         onClick={onCancel}
                         disabled={isSubmitting}
-                        className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                        className="p-2 text-muted-foreground hover:text-muted-foreground disabled:opacity-50"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -107,7 +107,7 @@ export function ManualAddProductDialog({
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
+                    <div className="flex items-center justify-end gap-3 border-t border-border bg-muted px-6 py-4">
                         <Button
                             type="button"
                             variant="outline"

@@ -31,7 +31,7 @@ interface PipelineProductCardProps {
 
 export function PipelineProductCardSkeleton() {
     return (
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="rounded-lg border border-zinc-200 bg-card p-4">
             <div className="flex items-start gap-3">
                 <Skeleton className="h-4 w-4 rounded" />
                 <div className="flex-1 min-w-0 space-y-3">
@@ -56,7 +56,7 @@ export function PipelineProductCardSkeleton() {
 
 export function PipelineProductCardStorefrontSkeleton() {
     return (
-        <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-zinc-200 bg-card overflow-hidden">
             <div className="relative aspect-square w-full bg-zinc-50">
                 <Skeleton className="h-full w-full" />
             </div>
@@ -122,7 +122,7 @@ export function PipelineProductCard({
                 }}
                 className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${showBatchSelect && isSelected
                     ? 'border-blue-500 bg-blue-50'
-                    : 'border-zinc-200 bg-white hover:border-zinc-300'
+                    : 'border-zinc-200 bg-card hover:border-zinc-300'
                     }`}
             >
                 <div className="absolute right-2 top-2">
@@ -178,7 +178,7 @@ export function PipelineProductCard({
                         }
                     }
                 }}
-                className={`group relative h-full rounded-xl border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-lg'
+                className={`group relative h-full rounded-xl border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-zinc-200 bg-card hover:border-zinc-300 hover:shadow-lg'
                     }`}
             >
                 <div className="absolute top-3 left-3 z-20">
@@ -220,7 +220,7 @@ export function PipelineProductCard({
 
                         {confidenceScore !== undefined && confidenceScore > 0 && (
                             <div className="absolute top-12 right-3 z-10">
-                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/90 backdrop-blur-sm border border-zinc-200 ${getConfidenceColor(confidenceScore)}`}>
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-card/90 backdrop-blur-sm border border-zinc-200 ${getConfidenceColor(confidenceScore)}`}>
                                     <TrendingUp className="h-2.5 w-2.5" />
                                     {(confidenceScore * 100).toFixed(0)}%
                                 </span>
@@ -228,7 +228,7 @@ export function PipelineProductCard({
                         )}
                     </div>
 
-                    <div className="flex flex-1 flex-col p-4 bg-white">
+                    <div className="flex flex-1 flex-col p-4 bg-card">
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-[10px] font-mono tabular-nums font-semibold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">{product.sku}</span>
                         </div>
@@ -268,7 +268,7 @@ export function PipelineProductCard({
                     }
                 }
             }}
-            className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-zinc-200 bg-white hover:border-zinc-300'
+            className={`group relative rounded-lg border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-zinc-200 bg-card hover:border-zinc-300'
                 }`}
         >
             <div className="absolute right-3 top-3">

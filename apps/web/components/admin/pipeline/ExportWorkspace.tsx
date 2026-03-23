@@ -146,7 +146,7 @@ export function ExportWorkspace() {
       <CardContent className="space-y-6">
         {/* Status Filter */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-muted-foreground">
             Filter by Status
           </label>
           <Select
@@ -170,7 +170,7 @@ export function ExportWorkspace() {
 
         {/* Product Count */}
         {isLoadingCounts ? (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Spinner size="sm" />
             <span>Loading product counts…</span>
           </div>
@@ -180,9 +180,9 @@ export function ExportWorkspace() {
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm">
-            <Package className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-600">
-              <span className="font-semibold text-gray-900">{currentCount.toLocaleString()}</span>
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              <span className="font-semibold text-foreground">{currentCount.toLocaleString()}</span>
               {' products ready for export in '}
               <span className="font-medium">{STATUS_LABELS[selectedStatus].toLowerCase()}</span>
               {' status'}
@@ -233,13 +233,13 @@ export function ExportWorkspace() {
                 <p className="text-sm font-medium text-[#008850]">
                   Export generated successfully
                 </p>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   <span className="font-mono">{exportResult.filename}</span>
                   {' ('}
                   <span className="font-medium">{exportResult.productCount.toLocaleString()}</span>
                   {' products)'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Download should start automatically. Check your downloads folder.
                 </p>
               </div>

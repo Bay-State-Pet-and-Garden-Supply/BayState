@@ -24,7 +24,7 @@ export function ConsolidationProgressBanner({
     if (isDismissed) return null;
 
     return (
-        <div className="relative overflow-hidden rounded-lg bg-white border border-purple-100 shadow-sm ring-1 ring-purple-100">
+        <div className="relative overflow-hidden rounded-lg bg-card border border-purple-100 shadow-sm ring-1 ring-purple-100">
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#8b5cf61a_1px,transparent_1px),linear-gradient(to_bottom,#8b5cf61a_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_right,black,transparent)]" />
 
@@ -37,7 +37,7 @@ export function ConsolidationProgressBanner({
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900">
+                        <h3 className="text-sm font-semibold text-foreground">
                             AI Consolidation in Progress
                         </h3>
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
@@ -45,7 +45,7 @@ export function ConsolidationProgressBanner({
                         </Badge>
                     </div>
                     
-                    <div className="flex items-center gap-4 text-xs text-gray-600">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                             <div className="h-1.5 w-24 overflow-hidden rounded-full bg-purple-100">
                                 <div 
@@ -65,14 +65,14 @@ export function ConsolidationProgressBanner({
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onViewDetails}
-                        className="group flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 hover:text-purple-600 transition-colors"
+                        className="group flex items-center gap-1 rounded-full bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-muted hover:text-purple-600 transition-colors"
                     >
                         View Details
-                        <ChevronRight className="h-3 w-3 text-gray-600 group-hover:text-purple-500 transition-colors" />
+                        <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-purple-500 transition-colors" />
                     </button>
                     <button
                         onClick={onDismiss}
-                        className="rounded-full p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                        className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground transition-colors"
                     >
                         <X className="h-4 w-4" />
                         <span className="sr-only">Dismiss</span>

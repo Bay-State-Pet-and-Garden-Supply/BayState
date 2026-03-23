@@ -107,7 +107,7 @@ export function PipelineStatusTabs({
                         variant="secondary"
                         className={`px-2 py-0.5 text-xs ml-1 ${
                             isActive 
-                                ? 'bg-white/20 text-white' 
+                                ? 'bg-card/20 text-white' 
                                 : 'bg-current/10'
                         }`}
                     >
@@ -123,28 +123,28 @@ export function PipelineStatusTabs({
     const actionTabs = flowOrder.filter(isActionTab);
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-card rounded-xl border border-border p-4">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                         Pipeline
                     </h3>
                     <button
                         onClick={() => setShowLegend(!showLegend)}
-                        className="text-xs text-gray-500 hover:text-gray-700 underline"
+                        className="text-xs text-muted-foreground hover:text-muted-foreground underline"
                     >
                         {showLegend ? 'Hide' : 'Show'} legend
                     </button>
                 </div>
                 {showLegend && (
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                             <span className="w-2 h-2 rounded-full bg-blue-400" />
                             Monitoring
                         </span>
                         <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-gray-400" />
+                            <span className="w-2 h-2 rounded-full bg-muted" />
                             Status
                         </span>
                         <span className="flex items-center gap-1">
@@ -165,12 +165,12 @@ export function PipelineStatusTabs({
                     <div key={tab} className="flex items-center">
                         {renderTabButton(tab, flowOrder.indexOf(tab))}
                         {idx < monitoringTabs.length - 1 && (
-                            <span className="w-px h-6 bg-gray-200 mx-1" />
+                            <span className="w-px h-6 bg-muted mx-1" />
                         )}
                     </div>
                 ))}
                 
-                <span className="w-px h-6 bg-gray-300 mx-2" />
+                <span className="w-px h-6 bg-muted mx-2" />
                 
                 {statusTabs.map((tab, idx) => (
                     <div key={tab} className="flex items-center">
@@ -183,13 +183,13 @@ export function PipelineStatusTabs({
                     </div>
                 ))}
                 
-                <span className="w-px h-6 bg-gray-300 mx-2" />
+                <span className="w-px h-6 bg-muted mx-2" />
                 
                 {actionTabs.map((tab, idx) => (
                     <div key={tab} className="flex items-center">
                         {renderTabButton(tab, flowOrder.indexOf(tab))}
                         {idx < actionTabs.length - 1 && (
-                            <span className="w-px h-6 bg-gray-200 mx-1" />
+                            <span className="w-px h-6 bg-muted mx-1" />
                         )}
                     </div>
                 ))}

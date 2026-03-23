@@ -45,7 +45,7 @@ interface ActiveRunsTabProps {
 }
 
 const LOG_LEVEL_CONFIG: Record<string, { icon: typeof Info; color: string; bgColor: string }> = {
-    DEBUG: { icon: Bug, color: 'text-gray-500', bgColor: 'bg-gray-100' },
+    DEBUG: { icon: Bug, color: 'text-muted-foreground', bgColor: 'bg-muted' },
     INFO: { icon: Info, color: 'text-blue-600', bgColor: 'bg-blue-50' },
     WARN: { icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-50' },
     ERROR: { icon: AlertCircle, color: 'text-red-600', bgColor: 'bg-red-50' },
@@ -74,8 +74,8 @@ function ConnectionIndicator({ isConnected }: { isConnected: boolean }) {
                 </>
             ) : (
                 <>
-                    <WifiOff className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-gray-400">Disconnected</span>
+                    <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Disconnected</span>
                 </>
             )}
         </div>
@@ -90,7 +90,7 @@ function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
 
     if (jobLogs.length === 0) {
         return (
-            <div className="px-4 py-3 text-xs text-gray-400 italic text-center border-t border-dashed">
+            <div className="px-4 py-3 text-xs text-muted-foreground italic text-center border-t border-dashed">
                 No log entries yet — logs will stream in real time as the job runs.
             </div>
         );
@@ -103,13 +103,13 @@ function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
                     {jobLogs.map((log) => (
                         <div
                             key={log.id}
-                            className="flex items-start gap-2 px-4 py-2 text-xs hover:bg-gray-50/50 transition-colors"
+                            className="flex items-start gap-2 px-4 py-2 text-xs hover:bg-muted/50 transition-colors"
                         >
                             <LogLevelBadge level={log.level} />
-                            <span className="flex-1 text-gray-700 font-mono break-all leading-relaxed">
+                            <span className="flex-1 text-muted-foreground font-mono break-all leading-relaxed">
                                 {log.message}
                             </span>
-                            <span className="text-gray-400 tabular-nums shrink-0">
+                            <span className="text-muted-foreground tabular-nums shrink-0">
                                 {new Date(log.created_at).toLocaleTimeString()}
                             </span>
                         </div>
@@ -294,8 +294,8 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         return (
             <div className={`flex flex-col items-center justify-center py-12 text-center ${className}`}>
                 <Play className="h-12 w-12 text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">No active scraper jobs</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <h3 className="text-lg font-medium text-foreground">No active scraper jobs</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                     Scraper jobs will appear here when running
                 </p>
                 <div className="mt-4">
@@ -309,7 +309,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         <div className={`space-y-4 ${className}`}>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-muted-foreground">
                         {jobs.length} active job{jobs.length !== 1 ? 's' : ''}
                     </span>
                     <ConnectionIndicator isConnected={isRealtimeConnected} />
@@ -354,13 +354,13 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                         return (
                             <div
                                 key={job.id}
-                                className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden"
+                                className="rounded-lg border border-border bg-card shadow-sm overflow-hidden"
                             >
                                 <div className="p-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-medium text-gray-900">
+                                                <h3 className="font-medium text-foreground">
                                                     Job {job.id.slice(0, 8)}
                                                 </h3>
                                                 <span
@@ -371,7 +371,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                                                             ? 'bg-green-100 text-green-700'
                                                             : job.status === 'failed' || job.status === 'cancelled'
                                                             ? 'bg-red-100 text-red-700'
-                                                            : 'bg-gray-100 text-gray-600'
+                                                            : 'bg-muted text-muted-foreground'
                                                     }`}
                                                 >
                                                     {job.status === 'running' ? (
@@ -402,10 +402,10 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                                                     )}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-gray-500 mt-1">
+                                            <p className="text-sm text-muted-foreground mt-1">
                                                 {job.scrapers.join(', ')}
                                             </p>
-                                            <p className="text-xs text-gray-400 mt-1">
+                                            <p className="text-xs text-muted-foreground mt-1">
                                                 {job.skuCount} SKUs • Started{' '}
                                                 {new Date(job.createdAt).toLocaleString()}
                                             </p>
@@ -415,12 +415,12 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                                     <div className="mt-3 flex items-center justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between text-xs mb-1">
-                                                <span className="text-gray-600">Progress</span>
-                                                <span className="font-medium text-gray-900">
+                                                <span className="text-muted-foreground">Progress</span>
+                                                <span className="font-medium text-foreground">
                                                     {job.progress}%
                                                 </span>
                                             </div>
-                                            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                                            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                                                 <div
                                                     className="h-full rounded-full bg-[#008850] transition-all duration-500"
                                                     style={{ width: `${job.progress}%` }}
@@ -433,7 +433,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => toggleJobExpanded(job.id)}
-                                                className="text-gray-500 hover:text-gray-700"
+                                                className="text-muted-foreground hover:text-muted-foreground"
                                             >
                                                 {isExpanded ? (
                                                     <ChevronUp className="h-4 w-4" />

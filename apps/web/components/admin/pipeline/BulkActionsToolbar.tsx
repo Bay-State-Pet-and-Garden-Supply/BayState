@@ -124,7 +124,7 @@ export function BulkActionsToolbar({
                         {selectedCount} product{selectedCount > 1 ? 's' : ''} selected
                     </span>
                 ) : (
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm text-muted-foreground">
                         Pipeline Actions
                     </span>
                 )}

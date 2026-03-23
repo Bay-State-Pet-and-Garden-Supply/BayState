@@ -60,7 +60,7 @@ export function CustomersClient({ customers, count }: CustomersClientProps) {
                 </form>
             </div>
 
-            <div className="rounded-md border bg-white">
+            <div className="rounded-md border bg-card">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="border-b bg-muted/50">

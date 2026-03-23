@@ -14,7 +14,7 @@ function LoadingState() {
         <div className="flex items-center justify-center min-h-screen">
             <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#008850] mx-auto mb-4" />
-                <p className="text-gray-600">Loading...</p>
+                <p className="text-muted-foreground">Loading...</p>
             </div>
         </div>
     );
@@ -39,10 +39,10 @@ function ErrorState() {
                         />
                     </svg>
                 </div>
-                <h1 className="text-xl font-semibold text-gray-900 mb-2">
+                <h1 className="text-xl font-semibold text-foreground mb-2">
                     SKU Parameter Required
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                     Please provide a valid SKU parameter to access the image selection workspace.
                 </p>
             </div>

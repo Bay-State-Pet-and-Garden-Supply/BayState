@@ -66,7 +66,7 @@ export function FeedCard({ feed }: FeedCardProps) {
       case 'healthy': return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       case 'offline': return <XCircle className="h-4 w-4 text-red-500" />;
-      default: return <Activity className="h-4 w-4 text-gray-600" />;
+      default: return <Activity className="h-4 w-4 text-muted-foreground" />;
     }
   };
 

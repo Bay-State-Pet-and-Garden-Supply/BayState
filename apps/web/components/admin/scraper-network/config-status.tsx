@@ -50,7 +50,7 @@ export function ConfigStatus() {
     const hasWarnings = checks.some(c => c.status === 'warning');
 
     const getStatusSummary = () => {
-        if (loading) return { text: 'Checking...', color: 'text-gray-600' };
+        if (loading) return { text: 'Checking...', color: 'text-muted-foreground' };
         if (hasErrors) return { text: `${checks.filter(c => c.status === 'error').length} issue(s)`, color: 'text-red-600' };
         if (hasWarnings) return { text: `${checks.filter(c => c.status === 'warning').length} warning(s)`, color: 'text-yellow-600' };
         return { text: 'All systems operational', color: 'text-green-600' };
@@ -59,10 +59,10 @@ export function ConfigStatus() {
     const status = getStatusSummary();
 
     return (
-        <div className="rounded-lg border border-gray-200 bg-white">
+        <div className="rounded-lg border border-border bg-card">
             <div
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left cursor-pointer hover:bg-gray-50 transition-colors"
+                className="flex w-full items-center justify-between px-4 py-3 text-left cursor-pointer hover:bg-muted transition-colors"
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -73,16 +73,16 @@ export function ConfigStatus() {
                 }}
             >
                 <div className="flex items-center gap-3">
-                    <Settings className="h-5 w-5 text-gray-600" />
+                    <Settings className="h-5 w-5 text-muted-foreground" />
                     <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">Configuration Status</span>
+                        <span className="font-medium text-foreground">Configuration Status</span>
                         {!loading && (
                             <span className={`text-sm ${status.color}`}>
                                 — {status.text}
                             </span>
                         )}
                         {loading && (
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         )}
                     </div>
                 </div>
@@ -93,23 +93,23 @@ export function ConfigStatus() {
                             runChecks();
                         }}
                         disabled={loading}
-                        className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700 disabled:opacity-50 p-1 rounded hover:bg-gray-100"
+                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-muted-foreground disabled:opacity-50 p-1 rounded hover:bg-muted"
                     >
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     {isOpen ? (
-                        <ChevronUp className="h-5 w-5 text-gray-600" />
+                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
                     ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-600" />
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
                     )}
                 </div>
             </div>
 
             {isOpen && (
-                <div className="border-t border-gray-200 p-4">
+                <div className="border-t border-border p-4">
                     {loading ? (
                         <div className="flex items-center justify-center py-4">
-                            <Loader2 className="h-6 w-6 animate-spin text-gray-600" />
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -117,8 +117,8 @@ export function ConfigStatus() {
                                 <div key={check.name} className="flex items-start gap-3">
                                     {getIcon(check.status)}
                                     <div>
-                                        <p className="font-medium text-gray-900">{check.name}</p>
-                                        <p className="text-sm text-gray-600">{check.message}</p>
+                                        <p className="font-medium text-foreground">{check.name}</p>
+                                        <p className="text-sm text-muted-foreground">{check.message}</p>
                                     </div>
                                 </div>
                             ))}
