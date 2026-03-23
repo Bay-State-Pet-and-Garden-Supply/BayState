@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -58,10 +59,18 @@ export function FinalizingResultsView({
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    longDescription: "",
     price: "",
+    weight: "",
     brandId: "none",
+    category: "",
+    productType: "",
     stockStatus: "in_stock",
+    searchKeywords: "",
+    productOnPages: [] as string[],
     isFeatured: false,
+    isSpecialOrder: false,
+    isTaxable: true,
     customImageUrl: "",
     selectedImages: [] as string[],
   });
@@ -98,13 +107,27 @@ export function FinalizingResultsView({
       const consolidated = selectedProduct.consolidated || {};
       const input = selectedProduct.input || {};
 
+      const cons = selectedProduct.consolidated || {} as Record<string, unknown>;
+
       setFormData({
         name: consolidated.name || input.name || "",
         description: consolidated.description || "",
+        longDescription: (cons as Record<string, unknown>).long_description as string || "",
         price: String(consolidated.price ?? input.price ?? ""),
+        weight: (cons as Record<string, unknown>).weight as string || "",
         brandId: consolidated.brand_id || "none",
+        category: (cons as Record<string, unknown>).category as string || "",
+        productType: (cons as Record<string, unknown>).product_type as string || "",
         stockStatus: (consolidated as Record<string, unknown>).stock_status as string || "in_stock",
+        searchKeywords: (cons as Record<string, unknown>).search_keywords as string || "",
+        productOnPages: Array.isArray((cons as Record<string, unknown>).product_on_pages)
+          ? (cons as Record<string, unknown>).product_on_pages as string[]
+          : typeof (cons as Record<string, unknown>).product_on_pages === "string"
+            ? ((cons as Record<string, unknown>).product_on_pages as string).split("|").filter(Boolean)
+            : [],
         isFeatured: consolidated.is_featured || false,
+        isSpecialOrder: !!(cons as Record<string, unknown>).is_special_order,
+        isTaxable: (cons as Record<string, unknown>).is_taxable !== false,
         customImageUrl: "",
         selectedImages: consolidated.images || [],
       });
@@ -197,10 +220,18 @@ export function FinalizingResultsView({
       const consolidated = {
         name: formData.name.trim(),
         description: formData.description.trim(),
+        long_description: formData.longDescription.trim(),
         price: parseFloat(formData.price) || 0,
         brand_id: formData.brandId === "none" ? null : formData.brandId,
         stock_status: formData.stockStatus,
         is_featured: formData.isFeatured,
+        is_special_order: formData.isSpecialOrder,
+        is_taxable: formData.isTaxable,
+        weight: formData.weight.trim() || null,
+        category: formData.category.trim() || null,
+        product_type: formData.productType.trim() || null,
+        search_keywords: formData.searchKeywords.trim() || null,
+        product_on_pages: formData.productOnPages,
         images: formData.selectedImages,
       };
 
@@ -374,6 +405,12 @@ export function FinalizingResultsView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Core Details */}
                 <div className="space-y-6">
+                  {/* Product Info Group */}
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Product Info</h3>
+                    <Separator />
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="product-name">Product Name</Label>
                     <Input
@@ -382,11 +419,11 @@ export function FinalizingResultsView({
                       onChange={(e) =>
                         handleInputChange("name", e.target.value)
                       }
-                      placeholder="e.g. Science Diet Adult Dog Food 30lb"
+                      placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="product-price">Price ($)</Label>
                       <Input
@@ -398,6 +435,17 @@ export function FinalizingResultsView({
                           handleInputChange("price", e.target.value)
                         }
                         placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-weight">Weight</Label>
+                      <Input
+                        id="product-weight"
+                        value={formData.weight}
+                        onChange={(e) =>
+                          handleInputChange("weight", e.target.value)
+                        }
+                        placeholder="e.g. 30"
                       />
                     </div>
                     <div className="space-y-2">
@@ -421,30 +469,147 @@ export function FinalizingResultsView({
                     </div>
                   </div>
 
+                  {/* Descriptions Group */}
+                  <div className="space-y-1 pt-4">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Descriptions</h3>
+                    <Separator />
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="product-description">Description</Label>
+                    <Label htmlFor="product-description">Short Description <span className="text-muted-foreground font-normal">(listing page)</span></Label>
                     <Textarea
                       id="product-description"
                       value={formData.description}
                       onChange={(e) =>
                         handleInputChange("description", e.target.value)
                       }
-                      placeholder="Enter full product description..."
+                      placeholder="1-2 concise sentences for category/listing pages..."
+                      className="min-h-[100px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="product-long-description">Long Description <span className="text-muted-foreground font-normal">(detail page)</span></Label>
+                    <Textarea
+                      id="product-long-description"
+                      value={formData.longDescription}
+                      onChange={(e) =>
+                        handleInputChange("longDescription", e.target.value)
+                      }
+                      placeholder="3-5 detailed sentences for the product detail page..."
                       className="min-h-[200px]"
                     />
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="is-featured"
-                      checked={formData.isFeatured}
-                      onCheckedChange={(checked) =>
-                        handleInputChange("isFeatured", !!checked)
+                  {/* Classification Group */}
+                  <div className="space-y-1 pt-4">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Classification</h3>
+                    <Separator />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-category">Category</Label>
+                      <Input
+                        id="product-category"
+                        value={formData.category}
+                        onChange={(e) =>
+                          handleInputChange("category", e.target.value)
+                        }
+                        placeholder="e.g. Dog|Cat"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-type">Product Type</Label>
+                      <Input
+                        id="product-type"
+                        value={formData.productType}
+                        onChange={(e) =>
+                          handleInputChange("productType", e.target.value)
+                        }
+                        placeholder="e.g. Dry Dog Food"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="search-keywords">Search Keywords</Label>
+                    <Input
+                      id="search-keywords"
+                      value={formData.searchKeywords}
+                      onChange={(e) =>
+                        handleInputChange("searchKeywords", e.target.value)
                       }
+                      placeholder="dog food, dry kibble, chicken recipe..."
                     />
-                    <Label htmlFor="is-featured" className="cursor-pointer">
-                      Feature this product on the home page
-                    </Label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Store Pages</Label>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 border rounded-lg p-3 bg-muted/20">
+                      {SHOPSITE_PAGES.map((page) => (
+                        <div key={page} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`page-${page}`}
+                            checked={formData.productOnPages.includes(page)}
+                            onCheckedChange={(checked) => {
+                              const pages = checked
+                                ? [...formData.productOnPages, page]
+                                : formData.productOnPages.filter((p) => p !== page);
+                              handleInputChange("productOnPages", pages);
+                            }}
+                          />
+                          <Label htmlFor={`page-${page}`} className="text-sm cursor-pointer">
+                            {page}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Settings Group */}
+                  <div className="space-y-1 pt-4">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Settings</h3>
+                    <Separator />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="is-featured"
+                        checked={formData.isFeatured}
+                        onCheckedChange={(checked) =>
+                          handleInputChange("isFeatured", !!checked)
+                        }
+                      />
+                      <Label htmlFor="is-featured" className="cursor-pointer">
+                        Feature this product on the home page
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="is-taxable"
+                        checked={formData.isTaxable}
+                        onCheckedChange={(checked) =>
+                          handleInputChange("isTaxable", !!checked)
+                        }
+                      />
+                      <Label htmlFor="is-taxable" className="cursor-pointer">
+                        Taxable
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="is-special-order"
+                        checked={formData.isSpecialOrder}
+                        onCheckedChange={(checked) =>
+                          handleInputChange("isSpecialOrder", !!checked)
+                        }
+                      />
+                      <Label htmlFor="is-special-order" className="cursor-pointer">
+                        Special Order
+                      </Label>
+                    </div>
                   </div>
                 </div>
 

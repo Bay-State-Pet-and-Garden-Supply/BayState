@@ -628,11 +628,19 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                                 continue;
                             }
 
+                            // Convert product_on_pages array to pipe-delimited string
+                            const productOnPages = Array.isArray(validated.product_on_pages)
+                                ? (validated.product_on_pages as string[]).join('|')
+                                : typeof validated.product_on_pages === 'string'
+                                    ? validated.product_on_pages
+                                    : undefined;
+
                             results.push({
                                 sku,
                                 ...validated,
                                 category: normalizedCategory.join('|'),
                                 product_type: normalizedProductType.join('|'),
+                                ...(productOnPages ? { product_on_pages: productOnPages } : {}),
                             } as ConsolidationResult);
                         } else {
                             results.push({ sku, error: 'Failed to parse JSON response' });
@@ -810,6 +818,8 @@ export async function applyConsolidationResults(
             const nextFields: Record<string, unknown> = {
                 ...(result.name ? { name: result.name } : {}),
                 ...(result.description ? { description: result.description } : {}),
+                ...(result.long_description ? { long_description: result.long_description } : {}),
+                ...(result.search_keywords ? { search_keywords: result.search_keywords } : {}),
                 ...(result.weight ? { weight: result.weight } : {}),
                 ...(result.brand ? { brand: result.brand } : {}),
                 ...(resolvedBrandId ? { brand_id: resolvedBrandId } : {}),
@@ -819,6 +829,18 @@ export async function applyConsolidationResults(
                     ? { confidence_score: result.confidence_score }
                     : {}),
             };
+
+            // Handle product_on_pages (stored as array in consolidated jsonb)
+            if (result.product_on_pages) {
+                const pages = Array.isArray(result.product_on_pages)
+                    ? result.product_on_pages
+                    : typeof result.product_on_pages === 'string'
+                        ? result.product_on_pages.split('|').map(p => p.trim()).filter(Boolean)
+                        : [];
+                if (pages.length > 0) {
+                    nextFields.product_on_pages = pages;
+                }
+            }
 
             Object.entries(nextFields).forEach(([key, value]) => {
                 if (value === undefined || value === null) return;
