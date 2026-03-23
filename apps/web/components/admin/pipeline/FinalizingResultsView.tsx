@@ -11,13 +11,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import type {
-  PipelineProduct,
-  PipelineStatus,
-  SelectedImage,
-} from "@/lib/pipeline/types";
+import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +27,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
-import { extractImageCandidatesFromSources } from "@/lib/product-sources";
+import {
+  extractImageCandidatesFromSources,
+  normalizeProductSources,
+} from "@/lib/product-sources";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -42,6 +40,12 @@ interface FinalizingResultsViewProps {
 interface Brand {
   id: string;
   name: string;
+}
+
+interface ImageSourceOption {
+  id: string;
+  label: string;
+  candidates: string[];
 }
 
 function toStringArray(value: unknown): string[] {
@@ -63,6 +67,36 @@ function extractSelectedImageUrls(value: unknown): string[] {
       return null;
     })
     .filter((url): url is string => typeof url === "string");
+}
+
+function formatSourceLabel(sourceKey: string): string {
+  return sourceKey
+    .replace(/^source:/i, "")
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function isValidCustomImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+
+  if (/^data:image\//i.test(trimmed)) return true;
+  if (trimmed.startsWith("/")) return true;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  } catch {
+    return false;
+  }
+
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)(\?|#|$)/i.test(trimmed)) {
+    return true;
+  }
+
+  return /(?:image|img|photo|picture|thumbnail|cdn)/i.test(trimmed);
 }
 
 export function FinalizingResultsView({
@@ -100,6 +134,7 @@ export function FinalizingResultsView({
     customImageUrl: "",
     selectedImages: [] as string[],
   });
+  const [selectedImageSourceId, setSelectedImageSourceId] = useState("all");
 
   const selectedProduct = useMemo(
     () =>
@@ -165,6 +200,7 @@ export function FinalizingResultsView({
         customImageUrl: "",
         selectedImages: initialSelectedImages,
       });
+      setSelectedImageSourceId("all");
     }
   }, [selectedProduct]);
 
@@ -232,6 +268,12 @@ export function FinalizingResultsView({
   const addCustomImage = () => {
     if (!formData.customImageUrl.trim()) return;
     const url = formData.customImageUrl.trim();
+
+    if (!isValidCustomImageUrl(url)) {
+      toast.error("Enter a valid image URL");
+      return;
+    }
+
     if (!formData.selectedImages.includes(url)) {
       setFormData((prev) => ({
         ...prev,
@@ -327,25 +369,80 @@ export function FinalizingResultsView({
     }
   };
 
-  const imageCandidates = useMemo(() => {
+  const imageSourceOptions = useMemo<ImageSourceOption[]>(() => {
     if (!selectedProduct) return [];
 
-    const candidates = new Set<string>();
+    const allCandidates = new Set<string>();
+    const sourceOptions: ImageSourceOption[] = [];
+    let savedCandidatesOption: ImageSourceOption | null = null;
 
-    // 1. Add explicitly defined candidates
-    if (selectedProduct.image_candidates) {
-      selectedProduct.image_candidates.forEach(url => candidates.add(url));
+    const pipelineCandidates = toStringArray(selectedProduct.image_candidates);
+    if (pipelineCandidates.length > 0) {
+      pipelineCandidates.forEach((url) => allCandidates.add(url));
+      savedCandidatesOption = {
+        id: "saved",
+        label: "Saved Candidates",
+        candidates: pipelineCandidates,
+      };
     }
 
-    extractImageCandidatesFromSources(selectedProduct.sources || {}, 48).forEach(
-      (url) => candidates.add(url),
-    );
+    const normalizedSources = normalizeProductSources(selectedProduct.sources || {});
+    Object.entries(normalizedSources).forEach(([sourceKey, sourcePayload]) => {
+      const sourceCandidates = extractImageCandidatesFromSources(
+        { [sourceKey]: sourcePayload },
+        48,
+      );
+      if (sourceCandidates.length === 0) return;
 
-    // 3. Include currently selected images
-    formData.selectedImages.forEach(url => candidates.add(url));
+      sourceCandidates.forEach((url) => allCandidates.add(url));
+      sourceOptions.push({
+        id: `source:${sourceKey}`,
+        label: formatSourceLabel(sourceKey),
+        candidates: sourceCandidates,
+      });
+    });
 
-    return Array.from(candidates);
+    sourceOptions.sort((a, b) => a.label.localeCompare(b.label));
+
+    formData.selectedImages.forEach((url) => allCandidates.add(url));
+
+    return [
+      {
+        id: "all",
+        label: "All Sources",
+        candidates: Array.from(allCandidates),
+      },
+      ...(savedCandidatesOption ? [savedCandidatesOption] : []),
+      ...sourceOptions,
+      {
+        id: "custom",
+        label: "Custom Images",
+        candidates: [],
+      },
+    ];
   }, [selectedProduct, formData.selectedImages]);
+
+  useEffect(() => {
+    if (imageSourceOptions.length === 0) {
+      setSelectedImageSourceId("all");
+      return;
+    }
+
+    if (!imageSourceOptions.some((option) => option.id === selectedImageSourceId)) {
+      setSelectedImageSourceId(imageSourceOptions[0].id);
+    }
+  }, [imageSourceOptions, selectedImageSourceId]);
+
+  const activeImageSourceOption = useMemo(
+    () =>
+      imageSourceOptions.find((option) => option.id === selectedImageSourceId) ??
+      imageSourceOptions[0] ??
+      null,
+    [imageSourceOptions, selectedImageSourceId],
+  );
+
+  const imageCandidates = activeImageSourceOption?.candidates ?? [];
+  const isCustomImageSource = activeImageSourceOption?.id === "custom";
 
   return (
     <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
@@ -353,7 +450,7 @@ export function FinalizingResultsView({
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
           <div className="divide-y">
-            {sortedProducts.map((product, index) => {
+            {sortedProducts.map((product) => {
               const name =
                 product.consolidated?.name || product.input?.name || "Unknown";
               const price = product.consolidated?.price ?? product.input?.price;
@@ -664,11 +761,30 @@ export function FinalizingResultsView({
                   <div className="space-y-4">
                     <Label>Product Images</Label>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="image-source">Image Source</Label>
+                      <Select
+                        value={selectedImageSourceId}
+                        onValueChange={setSelectedImageSourceId}
+                      >
+                        <SelectTrigger id="image-source">
+                          <SelectValue placeholder="Select image source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {imageSourceOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     {/* Selected Images Grid */}
                     <div className="grid grid-cols-3 gap-2 border rounded-lg p-3 bg-muted/20 min-h-[100px]">
-                      {formData.selectedImages.map((url, i) => (
+                      {formData.selectedImages.map((url) => (
                         <div
-                          key={i}
+                          key={url}
                           className="relative aspect-square rounded border overflow-hidden bg-card group"
                         >
                           <img
@@ -693,61 +809,79 @@ export function FinalizingResultsView({
                     </div>
 
                     {/* Custom Image URL */}
-                    <div className="flex gap-2">
-                      <Input
-                        value={formData.customImageUrl}
-                        onChange={(e) =>
-                          handleInputChange("customImageUrl", e.target.value)
-                        }
-                        placeholder="Paste image URL..."
-                        onKeyDown={(e) => e.key === "Enter" && addCustomImage()}
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={addCustomImage}
-                        type="button"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {isCustomImageSource && (
+                      <div className="space-y-2">
+                        <Label htmlFor="custom-image-url">Custom Image URL</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="custom-image-url"
+                            value={formData.customImageUrl}
+                            onChange={(e) =>
+                              handleInputChange("customImageUrl", e.target.value)
+                            }
+                            placeholder="Paste image URL..."
+                            onKeyDown={(e) =>
+                              e.key === "Enter" && addCustomImage()
+                            }
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={addCustomImage}
+                            type="button"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     <Separator />
 
                     {/* Image Candidates */}
                     <div className="space-y-2">
                       <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                        Scraped Candidates
+                        {isCustomImageSource
+                          ? "Custom Source"
+                          : `${activeImageSourceOption?.label ?? "Image"} Candidates`}
                       </Label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {imageCandidates.map((url, i) => {
-                          const isSelected =
-                            formData.selectedImages.includes(url);
-                          return (
-                            <div
-                              key={i}
-                              onClick={() => toggleImage(url)}
-                              className={cn(
-                                "relative aspect-square rounded border overflow-hidden bg-card cursor-pointer hover:border-primary/50 transition-all",
-                                isSelected
-                                  ? "ring-2 ring-primary border-primary"
-                                  : "opacity-60 grayscale hover:grayscale-0",
-                              )}
-                            >
-                              <img
-                                src={url}
-                                alt=""
-                                className="w-full h-full object-contain"
-                              />
-                              {isSelected && (
-                                <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                                  <CheckCircle className="h-5 w-5 text-primary" />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {imageCandidates.length > 0 ? (
+                        <div className="grid grid-cols-4 gap-2">
+                          {imageCandidates.map((url) => {
+                            const isSelected =
+                              formData.selectedImages.includes(url);
+                            return (
+                              <div
+                                key={url}
+                                onClick={() => toggleImage(url)}
+                                className={cn(
+                                  "relative aspect-square rounded border overflow-hidden bg-card cursor-pointer hover:border-primary/50 transition-all",
+                                  isSelected
+                                    ? "ring-2 ring-primary border-primary"
+                                    : "opacity-60 grayscale hover:grayscale-0",
+                                )}
+                              >
+                                <img
+                                  src={url}
+                                  alt=""
+                                  className="w-full h-full object-contain"
+                                />
+                                {isSelected && (
+                                  <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                                    <CheckCircle className="h-5 w-5 text-primary" />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="border rounded-lg p-4 text-xs text-muted-foreground bg-muted/20">
+                          {isCustomImageSource
+                            ? "Paste a URL above and add it to selected images."
+                            : "No image candidates found for this source."}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

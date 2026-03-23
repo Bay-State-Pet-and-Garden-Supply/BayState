@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileSpreadsheet, FileText, ImageIcon, Loader2, Package } from 'lucide-react';
+import { FileSpreadsheet, FileText, ImageIcon, Loader2, Package, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,6 +47,7 @@ export function ExportWorkspace() {
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingXml, setIsGeneratingXml] = useState(false);
+  const [isGeneratingZip, setIsGeneratingZip] = useState(false);
   const [isGeneratingImageManifest, setIsGeneratingImageManifest] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +162,40 @@ export function ExportWorkspace() {
       toast.error(message);
     } finally {
       setIsGeneratingXml(false);
+    }
+  };
+
+  const handleGenerateZip = async () => {
+    setIsGeneratingZip(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/pipeline/export-zip?status=${selectedStatus}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate ZIP export');
+      }
+
+      const contentDisposition = res.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] || 'baystate-export.zip';
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('ZIP package downloaded successfully. This includes XML and resized images.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate ZIP';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsGeneratingZip(false);
     }
   };
 
@@ -297,6 +332,23 @@ export function ExportWorkspace() {
               <>
                 <FileText className="h-4 w-4" />
                 Export ShopSite XML
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleGenerateZip}
+            disabled={isGeneratingZip || isLoadingCounts || !hasProducts}
+            variant="outline"
+          >
+            {isGeneratingZip ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating ZIP…
+              </>
+            ) : (
+              <>
+                <Archive className="h-4 w-4" />
+                Export ZIP Package
               </>
             )}
           </Button>

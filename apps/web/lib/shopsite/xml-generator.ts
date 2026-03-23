@@ -94,7 +94,7 @@ function generateProductXml(product: ShopSiteExportProduct): string {
         lines.push(xmlElement('Graphic', primaryImage));
 
         // Show "More Information" page when we have content
-        lines.push(xmlElement('DisplayMoreInformationPage_', 'yes'));
+        lines.push(xmlElement('DisplayMoreInformationPage', 'checked'));
 
         // More Information page content
         if (product.long_description) {
@@ -109,7 +109,7 @@ function generateProductXml(product: ShopSiteExportProduct): string {
             lines.push(xmlElement(`MoreInfoImage${i + 1}`, additionalImages[i]));
         }
     } else if (product.long_description) {
-        lines.push(xmlElement('DisplayMoreInformationPage_', 'yes'));
+        lines.push(xmlElement('DisplayMoreInformationPage', 'checked'));
         lines.push(xmlCdataElement('MoreInformationText', product.long_description));
     }
 
@@ -156,6 +156,7 @@ export function generateShopSiteXml(products: ShopSiteExportProduct[]): string {
     const lines: string[] = [];
 
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+    lines.push('<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">');
     lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
     lines.push('<Products>');
 
@@ -177,6 +178,7 @@ export function* generateShopSiteXmlStream(
     products: Iterable<ShopSiteExportProduct>,
 ): Generator<string> {
     yield '<?xml version="1.0" encoding="UTF-8"?>\n';
+    yield '<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">\n';
     yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
     yield '<Products>\n';
 
