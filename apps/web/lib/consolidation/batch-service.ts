@@ -11,7 +11,7 @@ import { getOpenAIClient, CONSOLIDATION_CONFIG, getConsolidationConfig } from '.
 import { buildPromptContext } from './prompt-builder';
 import { buildResponseSchema, validateCategory, validateConsolidationTaxonomy, validateProductType } from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
-import { normalizeProductSources } from '@/lib/product-sources';
+import { extractImageCandidatesFromSources, normalizeProductSources } from '@/lib/product-sources';
 import type {
     BatchJob,
     BatchMetadata,
@@ -301,6 +301,36 @@ function parseDelimitedTaxonomy(value: string | undefined): string[] {
         .split('|')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
+}
+
+function toStringUrlArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    return value
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+}
+
+function extractSelectedImageUrls(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    return value
+        .map((entry) => {
+            if (typeof entry === 'string') {
+                return entry;
+            }
+
+            if (entry && typeof entry === 'object' && 'url' in entry) {
+                const url = (entry as { url?: unknown }).url;
+                return typeof url === 'string' ? url : null;
+            }
+
+            return null;
+        })
+        .filter((url): url is string => typeof url === 'string')
+        .map((url) => url.trim())
+        .filter((url) => url.length > 0);
 }
 
 /**
@@ -738,27 +768,71 @@ export async function applyConsolidationResults(
     const successfulResults = results.filter((result) => !result.error);
     const resultSkus = successfulResults.map((result) => result.sku);
 
-    let existingRows: Array<{ sku: string; consolidated: unknown }> = [];
+    let existingRows: Array<{
+        sku: string;
+        consolidated: unknown;
+        sources: unknown;
+        image_candidates: unknown;
+        selected_images: unknown;
+    }> = [];
     if (resultSkus.length > 0) {
         const existingRowsResponse = await supabase
             .from('products_ingestion')
-            .select('sku, consolidated')
+            .select('sku, consolidated, sources, image_candidates, selected_images')
             .in('sku', resultSkus);
 
         if (existingRowsResponse.error) {
             return { success: false, error: `Failed to load existing products: ${existingRowsResponse.error.message}` };
         }
 
-        existingRows = (existingRowsResponse.data || []) as Array<{ sku: string; consolidated: unknown }>;
+        existingRows = (existingRowsResponse.data || []) as Array<{
+            sku: string;
+            consolidated: unknown;
+            sources: unknown;
+            image_candidates: unknown;
+            selected_images: unknown;
+        }>;
     }
 
-    const existingBySku = new Map<string, Record<string, unknown>>();
+    const existingBySku = new Map<
+        string,
+        {
+            consolidated: Record<string, unknown>;
+            sources: Record<string, unknown>;
+            imageCandidates: string[];
+            selectedImages: string[];
+        }
+    >();
     for (const row of existingRows) {
         const consolidated = row.consolidated;
+        const sources = row.sources;
+        const imageCandidates = toStringUrlArray(row.image_candidates);
+        const selectedImages = extractSelectedImageUrls(row.selected_images);
+
+        const consolidatedRecord =
+            consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)
+                ? (consolidated as Record<string, unknown>)
+                : {};
+
+        const sourceRecord =
+            sources && typeof sources === 'object' && !Array.isArray(sources)
+                ? (sources as Record<string, unknown>)
+                : {};
+
         if (consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)) {
-            existingBySku.set(row.sku, consolidated as Record<string, unknown>);
+            existingBySku.set(row.sku, {
+                consolidated: consolidatedRecord,
+                sources: sourceRecord,
+                imageCandidates,
+                selectedImages,
+            });
         } else {
-            existingBySku.set(row.sku, {});
+            existingBySku.set(row.sku, {
+                consolidated: consolidatedRecord,
+                sources: sourceRecord,
+                imageCandidates,
+                selectedImages,
+            });
         }
     }
 
@@ -801,7 +875,8 @@ export async function applyConsolidationResults(
                 continue;
             }
 
-            const existingConsolidated = existingBySku.get(result.sku) || {};
+            const existingRecord = existingBySku.get(result.sku);
+            const existingConsolidated = existingRecord?.consolidated || {};
             const resolvedBrandId = result.brand ? brandIdByName.get(normalizeLookupKey(result.brand)) : undefined;
 
             if (result.brand) {
@@ -829,6 +904,28 @@ export async function applyConsolidationResults(
                     ? { confidence_score: result.confidence_score }
                     : {}),
             };
+
+            const existingConsolidatedImages = toStringUrlArray(existingConsolidated.images);
+            if (existingConsolidatedImages.length > 0) {
+                nextFields.images = existingConsolidatedImages;
+            } else {
+                const selectedImages = existingRecord?.selectedImages || [];
+                const imageCandidates = existingRecord?.imageCandidates || [];
+                const sourceCandidates = extractImageCandidatesFromSources(
+                    existingRecord?.sources || {},
+                    24,
+                );
+                const fallbackImages =
+                    selectedImages.length > 0
+                        ? selectedImages
+                        : imageCandidates.length > 0
+                            ? imageCandidates.slice(0, 10)
+                            : sourceCandidates.slice(0, 10);
+
+                if (fallbackImages.length > 0) {
+                    nextFields.images = fallbackImages;
+                }
+            }
 
             // Handle product_on_pages (stored as array in consolidated jsonb)
             if (result.product_on_pages) {
