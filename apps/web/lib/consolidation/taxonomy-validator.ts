@@ -159,7 +159,22 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                     },
                     description: {
                         type: 'string',
-                        description: 'Product description for the storefront',
+                        description: 'Short product description (1-2 sentences) for category/listing pages',
+                    },
+                    long_description: {
+                        type: 'string',
+                        description: 'Detailed product description (3-5 sentences) for the product detail page',
+                    },
+                    search_keywords: {
+                        type: 'string',
+                        description: 'Comma-separated search keywords (5-15 terms, lowercase)',
+                    },
+                    product_on_pages: {
+                        type: 'array',
+                        items: {
+                            type: 'string',
+                        },
+                        description: 'Store pages this product should appear on',
                     },
                     category: {
                         type: 'array',
@@ -182,7 +197,7 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                         description: 'Confidence score between 0.0 and 1.0',
                     },
                 },
-                required: ['name', 'brand', 'weight', 'description', 'category', 'product_type', 'confidence_score'],
+                required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'product_type', 'confidence_score'],
                 additionalProperties: false,
             },
         },

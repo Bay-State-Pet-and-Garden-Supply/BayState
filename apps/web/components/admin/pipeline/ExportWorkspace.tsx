@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Download, FileSpreadsheet, Loader2, Package } from 'lucide-react';
+import { FileSpreadsheet, FileText, ImageIcon, Loader2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +46,8 @@ export function ExportWorkspace() {
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingXml, setIsGeneratingXml] = useState(false);
+  const [isGeneratingImageManifest, setIsGeneratingImageManifest] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,6 +134,67 @@ export function ExportWorkspace() {
   const currentCount = getProductCount(selectedStatus);
   const hasProducts = currentCount > 0;
 
+  const handleGenerateXml = async () => {
+    setIsGeneratingXml(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/pipeline/export-xml');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate XML export');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'shopsite-products.xml';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('ShopSite XML export downloaded');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate XML';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsGeneratingXml(false);
+    }
+  };
+
+  const handleExportImageManifest = async () => {
+    setIsGeneratingImageManifest(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/pipeline/export-images');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate image manifest');
+      }
+
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'image-manifest.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Image manifest downloaded (${data.total_images} images across ${data.total_products} products)`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate image manifest';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsGeneratingImageManifest(false);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -140,7 +203,7 @@ export function ExportWorkspace() {
           Export Products
         </CardTitle>
         <CardDescription>
-          Generate Excel export of products from the pipeline
+          Export products as Excel spreadsheets, ShopSite XML, or image manifests
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -201,7 +264,7 @@ export function ExportWorkspace() {
           />
         )}
 
-        {/* Generate Button */}
+        {/* Generate Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={handleGenerateExport}
@@ -215,8 +278,42 @@ export function ExportWorkspace() {
               </>
             ) : (
               <>
-                <Download className="h-4 w-4" />
-                Generate Export
+                <FileSpreadsheet className="h-4 w-4" />
+                Export Excel
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleGenerateXml}
+            disabled={isGeneratingXml || isLoadingCounts}
+            variant="outline"
+          >
+            {isGeneratingXml ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                Export ShopSite XML
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleExportImageManifest}
+            disabled={isGeneratingImageManifest || isLoadingCounts}
+            variant="outline"
+          >
+            {isGeneratingImageManifest ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <ImageIcon className="h-4 w-4" />
+                Export Image Manifest
               </>
             )}
           </Button>

@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import type { PipelineProduct } from '@/lib/pipeline/types';
 
 /**
  * Publishes a product from the ingestion pipeline to the storefront catalog.
@@ -55,21 +54,32 @@ export async function publishToStorefront(sku: string) {
                 .filter((img): img is string => typeof img === 'string' && img.trim() !== '');
         }
 
+        // Resolve product_on_pages to shopsite_pages jsonb
+        let shopsitePages: string[] | null = null;
+        if (Array.isArray(consolidated.product_on_pages)) {
+            shopsitePages = consolidated.product_on_pages as string[];
+        } else if (typeof consolidated.product_on_pages === 'string' && consolidated.product_on_pages) {
+            shopsitePages = (consolidated.product_on_pages as string).split('|').map((p: string) => p.trim()).filter(Boolean);
+        }
+
         // Prepare product data for 'products' table
         const productData = {
             name,
             slug,
             description: consolidated.description || '',
+            long_description: consolidated.long_description || null,
             price: consolidated.price ?? input.price ?? 0,
             brand_id: consolidated.brand_id || null,
             stock_status: consolidated.stock_status || 'in_stock',
             images: images,
             is_featured: consolidated.is_featured || false,
-            is_special_order: false,
+            is_special_order: consolidated.is_special_order || false,
+            is_taxable: consolidated.is_taxable !== false,
             weight: consolidated.weight || null,
+            product_type: consolidated.product_type || null,
+            search_keywords: consolidated.search_keywords || null,
+            shopsite_pages: shopsitePages,
             published_at: new Date().toISOString(),
-            // Default/placeholder values for required or standard fields
-            is_taxable: true,
             quantity: 0,
             low_stock_threshold: 5,
         };
