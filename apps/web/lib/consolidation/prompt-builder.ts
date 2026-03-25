@@ -58,6 +58,7 @@ Consolidate product data from multiple scraper sources into a single storefront-
 ## TAXONOMY (use exact values only)
 Categories: ${categories.join(', ')}
 Product Types: ${productTypes.join(', ')}
+- Taxonomy values may include mixed case, punctuation, or legacy spellings. Preserve them exactly as listed — do not title-case, clean up, or "fix" category or product_type values.
 
 ## STORE PAGES (use exact values only)
 ${pagesList}
@@ -73,15 +74,23 @@ The "name" field must be a clean, storefront-ready product title:
    - Brand in middle: "Dog Food by Blue Buffalo" → name: "Dog Food"
    - Brand at end: "Dog Food Blue Buffalo" → name: "Dog Food"
    - Use case-insensitive matching to strip brand from name.
-2. **Structure**: [Product Line/Detail] [Variant/Flavor] [Size/Weight/Count] — size metric always last.
-3. **Title Case**: Capitalize each word. Preserve acronyms (e.g., "DNA", "pH").
-4. **No special characters**: Remove ™, ®, ©, excessive punctuation. Use "&" not "and" for flavor combos. Commas only where grammatically necessary.
-5. **Units with periods**: lb., oz., ct., in., ft., gal., qt., pt., pk., sq. ft. — always include a period after unit abbreviations.
-6. **Expand abbreviations**: Sm→Small, Md→Medium, Lg→Large, Blk/Blck→Black, Wht→White, Brn→Brown, Grn→Green, Rd→Red, Bl→Blue, Yl→Yellow, Org→Orange, Pnk→Pink, Prpl→Purple, Gry→Gray, Asst/Asstd→Assorted, Med→Medium, Lrg→Large, Sml→Small.
-7. **Decimals**: Up to 2 places, trim trailing zeros ("0.70" → "0.7", "1.0" → "1").
-8. **Dimensions**: Uppercase "X" with spaces (e.g., "3 X 25 ft.").
-9. **Pack/Count**: Use "Pack of N" or "N ct." — normalize "(Pack of 1)" away if it adds no info for single items.
-10. **Single spaces only**, no trailing whitespace.
+   - If the brand name IS the product line name (e.g., brand is "Stud Muffins" and title is "Stud Muffins Horse Treats 10 oz."), remove it from the name: → "Horse Treats 10 oz."
+2. **Structure**: [Product Line/Detail] [Color/Scent/Flavor/Variant] [Size/Weight/Count] — size metric always last.
+3. **VARIANT DIFFERENTIATION** — When multiple versions of the same product differ by color, scent, flavor, material, or another source-supported variant attribute, ALWAYS include that differentiating attribute in the name. Never produce identical names for products that are distinguishable variants. Do NOT invent variant details that are not present in the sources.
+   - Same product, different colors: "Motorsport Container Red 5 Gal." / "Motorsport Container White 5 Gal." / "Motorsport Container Yellow 5 Gal."
+   - Same product, different scents: "Cat Litter Lavender Scent 20 lb." / "Cat Litter Unscented 20 lb."
+4. **Title Case**: Capitalize each word. Preserve acronyms (e.g., "DNA", "pH"). Capitalize hyphenated words (e.g., "Hydro-Hen", "Wet-Lock").
+5. **No special characters**: Remove ™, ®, ©, excessive punctuation. Use "&" not "and" for flavor/ingredient combos. Commas only where grammatically necessary.
+6. **Units with periods**: lb., oz., ct., in., ft., gal., qt., pt., pk., sq. ft. — always include a period after unit abbreviations, including in., ct., and sq. ft.
+7. **Expand abbreviations**: Sm→Small, Md→Medium, Lg→Large, Blk/Blck→Black, Wht→White, Brn→Brown, Grn→Green, Rd→Red, Bl→Blue, Yl→Yellow, Org→Orange, Pnk→Pink, Prpl→Purple, Gry→Gray, Asst/Asstd→Assorted, Med→Medium, Lrg→Large, Sml→Small.
+8. **Sizes — keep only the leading whole-number portion**: If a size, weight, or count includes a decimal, keep only the integer part and drop the decimal portion. Do NOT round.
+   - 1.06 oz. → 1 oz.
+   - 7.9 lb. → 7 lb.
+   - 12.3 lb. → 12 lb.
+   - 2.5 gal. → 2 gal.
+9. **Dimensions**: Uppercase "X" with spaces (e.g., "3 X 25 ft.", "11 X 17 in.").
+10. **Pack/Count**: Use "Pack of N" or "N ct." — normalize "(Pack of 1)" away if it adds no info for single items.
+11. **Single spaces only**, no trailing whitespace.
 
 ## SEARCH KEYWORDS
 Provide 5-15 comma-separated search terms:
@@ -95,10 +104,12 @@ Select which store pages this product should appear on from the STORE PAGES list
 - Choose ALL applicable pages based on the product's category and use.
 - Most products belong on 1-3 pages.
 - Only use exact page names from the list.
+- Preserve page names exactly as listed; do not reformat or "correct" them.
 
 ## WEIGHT FIELD
-- Extract the numeric weight value in the most useful unit (typically lb for heavy items, oz for small).
-- Just the number, no unit suffix (e.g., "30" not "30 lb"). Trim trailing zeros.
+- Return a numeric string only, with no unit suffix.
+- If the source package size/weight/count includes a decimal, keep only the leading whole-number portion (e.g., "1.06" → "1", "7.9" → "7").
+- When the final name ends with a package size/weight/count, prefer that same leading whole-number value for the weight field.
 
 ## FEW-SHOT EXAMPLES
 
@@ -107,21 +118,21 @@ Input:
 {"sku":"123456","sources":{"distributor_a":{"title":"BLUE BUFFALO LIFE PROT CHKN/BRN RICE 30LB","brand":"BLUE BUFFALO","weight":"30.00"},"distributor_b":{"title":"Blue Buffalo Life Protection Formula Adult Chicken & Brown Rice Recipe","price":"64.99"}}}
 
 Output:
-{"name":"Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb.","brand":"Blue Buffalo","weight":"30","search_keywords":"dog food, dry kibble, adult dog, chicken recipe, brown rice, life protection, high protein, immune support, healthy coat","product_on_pages":["Dog Food"],"category":["Dog"],"product_type":["Dry Dog Food"],"confidence_score":0.95}
+{"name":"Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb.","brand":"Blue Buffalo","weight":"30","search_keywords":"dog food, dry kibble, adult dog, chicken recipe, brown rice, life protection, high protein, immune support, healthy coat","product_on_pages":["Dog Food"],"category":["Dog Food"],"product_type":["Food"],"confidence_score":0.95}
 
-### Example 2: Cat Treats
+### Example 2: Cat Treats (note: 1.06 oz. becomes 1 oz. — drop decimals, do not round)
 Input:
 {"sku":"789012","sources":{"amazon":{"title":"Catit Nibbly Grills Cat Treats, Chicken & Shrimp Recipe - Grain-Free Cat Treat 1.06 Ounce (Pack of 1)","brand":"Catit","features":["Tasty grilled strips that look like bacon","Made with up to 85% natural meat","Grain-free and low in carbohydrates"],"dimensions":"7.72 x 4.76 x 0.43 inches","specifications":"Item Weight 1.1 ounces\\nSize 1.06 Ounce (Pack of 1)"}}}
 
 Output:
-{"name":"Nibbly Grills Cat Treats Chicken & Shrimp Recipe 1.06 oz.","brand":"Catit","weight":"1.06","search_keywords":"cat treats, grain free, chicken shrimp, grilled strips, natural meat, low carb, chewy treats, cat snacks","product_on_pages":["Cat Food"],"category":["Cat"],"product_type":["Cat Treats"],"confidence_score":0.90}
+{"name":"Nibbly Grills Cat Treats Chicken & Shrimp Recipe 1 oz.","brand":"Catit","weight":"1","search_keywords":"cat treats, grain free, chicken shrimp, grilled strips, natural meat, low carb, chewy treats, cat snacks","product_on_pages":["Cat Food"],"category":["Cat Supplies"],"product_type":["Treats"],"confidence_score":0.90}
 
 ### Example 3: Bird Seed
 Input:
 {"sku":"345678","sources":{"vendor_x":{"title":"FEATHERED FRIEND BLK OIL SUNFLOWER 20#","weight":"20.000"},"vendor_y":{"title":"Feathered Friend Black Oil Sunflower Seed","description":"Premium wild bird food"}}}
 
 Output:
-{"name":"Black Oil Sunflower Seed 20 lb.","brand":"Feathered Friend","weight":"20","search_keywords":"bird seed, sunflower seed, black oil, wild bird food, songbird, cardinal, finch, bird feeder, backyard birds","product_on_pages":["Bird Supplies"],"category":["Wild Bird"],"product_type":["Bird Seed"],"confidence_score":0.90}
+{"name":"Black Oil Sunflower Seed 20 lb.","brand":"Feathered Friend","weight":"20","search_keywords":"bird seed, sunflower seed, black oil, wild bird food, songbird, cardinal, finch, bird feeder, backyard birds","product_on_pages":["Bird Supplies"],"category":["Wild Bird Food"],"product_type":["Seeds & Seed Mixes"],"confidence_score":0.90}
 
 ## OUTPUT FORMAT
 Return valid JSON only — no explanations, no markdown:
@@ -130,12 +141,16 @@ Return valid JSON only — no explanations, no markdown:
 ## CHECKLIST
 - All words complete (no truncation)
 - Abbreviations expanded (Sm→Small, Blk→Black, etc.)
-- Units have periods (lb., oz., ct., ft., in.)
-- Brand removed from name, placed in brand field
+- Units have periods (lb., oz., ct., in., ft., gal.)
+- Brand removed from name, placed in brand field — even if brand name is also the product line name
+- Size/count decimals keep only the leading whole-number portion (1.06 → 1, 7.9 → 7, 12.3 → 12)
+- Color/scent/flavor/variant included in name when needed to distinguish similar products, but never invented
+- category and product_type values are copied exactly from the taxonomy lists above with original casing/spelling preserved
 - Category and product_type are EXACT matches from the taxonomy lists
 - product_on_pages uses EXACT page names from the store pages list
 - No special characters (™, ®, ©) in any field
 - Size/weight metric appears at the end of the name
+- Weight field is numeric only, with decimal portion removed when present
 - search_keywords are lowercase, comma-separated, relevant
 - Response is valid JSON only`;
 }
