@@ -16,7 +16,7 @@ export default async function AdminProductsPage() {
   const [productsRes, brandsRes, categoriesRes, productTypesRes] = await Promise.all([
     supabase
       .from('products')
-      .select('*, brand:brands(id, name, slug), product_categories(category:categories(id, name))')
+      .select('*, brand:brands(id, name, slug), product_categories(category:categories(id, name))', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(50),
     supabase

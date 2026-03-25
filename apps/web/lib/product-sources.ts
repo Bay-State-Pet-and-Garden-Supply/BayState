@@ -120,7 +120,7 @@ function normalizeStringList(value: unknown): string[] {
 
     const normalized = entries
         .filter((entry): entry is string => typeof entry === 'string')
-        .map((entry) => entry.trim())
+        .map((entry) => normalizeImageUrl(entry))
         .filter((entry) => entry.length > 0);
 
     return Array.from(new Set(normalized));
@@ -290,6 +290,27 @@ function isImageLikeKey(key: string): boolean {
     return /image|img|photo|picture|thumbnail|gallery|hero/i.test(key);
 }
 
+/**
+ * Normalize image URLs, specifically stripping Amazon's resize parameters.
+ * e.g., https://m.media-amazon.com/images/I/71X..._AC_SL1500_.jpg -> https://m.media-amazon.com/images/I/71X....jpg
+ */
+export function normalizeImageUrl(url: string): string {
+    const trimmed = url.trim();
+    if (!trimmed) return trimmed;
+
+    // Handle Amazon media URLs
+    if (trimmed.includes('media-amazon.com/images/I/')) {
+        // Amazon URLs often have modifiers between two underscores after the image ID
+        // e.g., .../images/I/71X8k..._AC_SL1500_.jpg
+        const match = trimmed.match(/(.*\/images\/I\/[^._]+)(?:._.*_)?(\.[^.]+)$/);
+        if (match) {
+            return `${match[1]}${match[2]}`;
+        }
+    }
+
+    return trimmed;
+}
+
 export function extractSourceMetadata(rawSources: unknown): Record<string, unknown> {
     if (!isRecord(rawSources)) {
         return {};
@@ -398,18 +419,18 @@ export function extractImageCandidatesFromSources(rawSources: unknown, max: numb
     const deduped = new Set<string>();
 
     const addCandidate = (candidate: string) => {
-        const trimmed = candidate.trim();
-        if (!trimmed) {
+        const normalized = normalizeImageUrl(candidate);
+        if (!normalized) {
             return;
         }
-        if (isImageDataUri(trimmed)) {
-            deduped.add(trimmed);
+        if (isImageDataUri(normalized)) {
+            deduped.add(normalized);
             return;
         }
-        if (!isLikelyImageUrl(trimmed)) {
+        if (!isLikelyImageUrl(normalized)) {
             return;
         }
-        deduped.add(trimmed);
+        deduped.add(normalized);
     };
 
     const visit = (value: unknown, keyPath: string[] = [], depth: number = 0) => {

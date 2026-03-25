@@ -127,22 +127,27 @@ function toImageUrlArray(value: unknown): string[] {
 }
 
 function withMergedImageCandidates(product: PipelineProduct): PipelineProduct {
-    const consolidatedImages = toImageUrlArray(product.consolidated?.images);
-    const storedCandidates = toImageUrlArray(product.image_candidates);
-    const sourceCandidates = extractImageCandidatesFromSources(product.sources, 48);
+    try {
+        const consolidatedImages = toImageUrlArray(product.consolidated?.images);
+        const storedCandidates = toImageUrlArray(product.image_candidates);
+        const sourceCandidates = extractImageCandidatesFromSources(product.sources || {}, 48);
 
-    const mergedCandidates = Array.from(
-        new Set([...storedCandidates, ...consolidatedImages, ...sourceCandidates])
-    );
+        const mergedCandidates = Array.from(
+            new Set([...storedCandidates, ...consolidatedImages, ...sourceCandidates])
+        );
 
-    if (mergedCandidates.length === 0) {
+        if (mergedCandidates.length === 0) {
+            return product;
+        }
+
+        return {
+            ...product,
+            image_candidates: mergedCandidates,
+        };
+    } catch (error) {
+        console.error(`Error merging image candidates for SKU ${product.sku}:`, error);
         return product;
     }
-
-    return {
-        ...product,
-        image_candidates: mergedCandidates,
-    };
 }
 
 /**

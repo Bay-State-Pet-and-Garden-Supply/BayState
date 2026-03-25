@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useId } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Activity, Beaker, Settings, ShieldCheck } from 'lucide-react';
 
@@ -11,6 +12,7 @@ interface ScraperTabsClientProps {
 
 export function ScraperTabsClient({ slug }: ScraperTabsClientProps) {
   const pathname = usePathname();
+  const id = useId();
   
   // Determine active tab from pathname
   const segments = pathname.split('/').filter(Boolean);
@@ -18,7 +20,7 @@ export function ScraperTabsClient({ slug }: ScraperTabsClientProps) {
   const tabSegment = segments.length > 3 ? segments[3] : 'overview';
   
   return (
-    <Tabs value={tabSegment} className="w-full" data-testid="workbench-tabs">
+    <Tabs id={id} value={tabSegment} className="w-full" data-testid="workbench-tabs">
       <div className="overflow-x-auto">
         <TabsList className="inline-flex h-10 items-center justify-start rounded-none border-b bg-transparent p-0 text-muted-foreground" data-testid="workbench-tabs-list">
           <TabsTrigger 

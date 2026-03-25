@@ -51,6 +51,10 @@ export async function GET() {
             }
         });
 
+        // Merge consolidated count into finalized for the UI
+        countMap.finalized += countMap.consolidated;
+        countMap.consolidated = 0;
+
         const counts: StatusCount[] = PIPELINE_STATUS_VALUES.map(status => ({
             status,
             count: countMap[status],

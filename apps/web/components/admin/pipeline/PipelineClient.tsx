@@ -90,7 +90,7 @@ export function PipelineClient({
       setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          status: stage,
+          status: stage === "finalized" ? "finalized" : stage,
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
