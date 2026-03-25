@@ -155,7 +155,7 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                     },
                     weight: {
                         type: 'string',
-                        description: "Product weight as a string (e.g., '10.5')",
+                        description: "Primary package size/weight/count as a numeric string using only the leading whole-number portion (e.g., '10'). No units.",
                     },
                     description: {
                         type: 'string',
@@ -174,7 +174,7 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                         items: {
                             type: 'string',
                         },
-                        description: 'Store pages this product should appear on',
+                        description: 'Store pages this product should appear on, using exact page names from the provided list',
                     },
                     category: {
                         type: 'array',
@@ -182,7 +182,7 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                             type: 'string',
                             enum: categories,
                         },
-                        description: 'List of applicable product categories',
+                        description: 'List of applicable product categories using exact values from the provided taxonomy list',
                     },
                     product_type: {
                         type: 'array',
@@ -190,7 +190,7 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                             type: 'string',
                             enum: productTypes,
                         },
-                        description: 'List of applicable product types',
+                        description: 'List of applicable product types using exact values from the provided taxonomy list',
                     },
                     confidence_score: {
                         type: 'number',

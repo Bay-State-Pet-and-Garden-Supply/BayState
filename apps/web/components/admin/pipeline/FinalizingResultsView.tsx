@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Search,
   Check,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -133,6 +134,7 @@ export function FinalizingResultsView({
   const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredBrands = useMemo(() => {
@@ -441,6 +443,39 @@ export function FinalizingResultsView({
     }
   };
 
+  const handleReject = async () => {
+    if (!selectedSku) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to reject this product and send it back to the scraped stage? This will not clear your edits, but the product will move back to the manual review pipeline.",
+    );
+    if (!confirmed) return;
+
+    setRejecting(true);
+    try {
+      const res = await fetch(
+        `/api/admin/pipeline/${encodeURIComponent(selectedSku)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pipeline_status: "scraped" }),
+        },
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to reject product");
+      }
+
+      toast.success("Product rejected and sent back to scraped stage.");
+      onRefresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setRejecting(false);
+    }
+  };
+
   const imageSourceOptions = useMemo<ImageSourceOption[]>(() => {
     if (!selectedProduct) return [];
 
@@ -583,6 +618,21 @@ export function FinalizingResultsView({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReject}
+                  disabled={saving || publishing || rejecting}
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                >
+                  {rejecting ? (
+                    "Rejecting..."
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4 mr-2" /> Reject to Scraped
+                    </>
+                  )}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
