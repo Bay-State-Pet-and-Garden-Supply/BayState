@@ -198,7 +198,7 @@ export function ScrapedResultsView({
   }, [activeSource, sources]);
 
   return (
-    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>

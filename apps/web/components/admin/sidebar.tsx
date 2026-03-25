@@ -265,6 +265,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                   const content = (
                     <Link
                       href={item.href}
+                      aria-label={item.label}
                       className={cn(
                         "group relative flex items-center rounded-lg px-3 py-2 transition-all duration-200",
                         collapsed ? "justify-center" : "gap-2.5",

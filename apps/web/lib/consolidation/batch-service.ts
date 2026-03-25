@@ -11,7 +11,7 @@ import { getOpenAIClient, CONSOLIDATION_CONFIG, getConsolidationConfig } from '.
 import { buildPromptContext } from './prompt-builder';
 import { buildResponseSchema, validateCategory, validateConsolidationTaxonomy, validateProductType } from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
-import { extractImageCandidatesFromSources, normalizeProductSources } from '@/lib/product-sources';
+import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import type {
     BatchJob,
     BatchMetadata,
@@ -306,16 +306,18 @@ function parseDelimitedTaxonomy(value: string | undefined): string[] {
 function toStringUrlArray(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
 
-    return value
+    const urls = value
         .filter((entry): entry is string => typeof entry === 'string')
-        .map((entry) => entry.trim())
+        .map((entry) => normalizeImageUrl(entry))
         .filter((entry) => entry.length > 0);
+    
+    return Array.from(new Set(urls));
 }
 
 function extractSelectedImageUrls(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
 
-    return value
+    const urls = value
         .map((entry) => {
             if (typeof entry === 'string') {
                 return entry;
@@ -329,8 +331,10 @@ function extractSelectedImageUrls(value: unknown): string[] {
             return null;
         })
         .filter((url): url is string => typeof url === 'string')
-        .map((url) => url.trim())
+        .map((url) => normalizeImageUrl(url))
         .filter((url) => url.length > 0);
+    
+    return Array.from(new Set(urls));
 }
 
 /**
@@ -892,8 +896,8 @@ export async function applyConsolidationResults(
 
             const nextFields: Record<string, unknown> = {
                 ...(result.name ? { name: result.name } : {}),
-                ...(result.description ? { description: result.description } : {}),
-                ...(result.long_description ? { long_description: result.long_description } : {}),
+                description: result.name || existingConsolidated.name || '',
+                long_description: result.name || existingConsolidated.name || '',
                 ...(result.search_keywords ? { search_keywords: result.search_keywords } : {}),
                 ...(result.weight ? { weight: result.weight } : {}),
                 ...(result.brand ? { brand: result.brand } : {}),

@@ -9,6 +9,8 @@ import {
   Plus,
   X,
   ChevronRight,
+  Search,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -24,12 +26,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
 import {
   extractImageCandidatesFromSources,
   normalizeProductSources,
+  normalizeImageUrl,
 } from "@/lib/product-sources";
 
 interface FinalizingResultsViewProps {
@@ -51,13 +59,18 @@ interface ImageSourceOption {
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
-  return value.filter((entry): entry is string => typeof entry === "string");
+  const urls = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((url) => normalizeImageUrl(url))
+    .filter((url) => url.length > 0);
+
+  return Array.from(new Set(urls));
 }
 
 function extractSelectedImageUrls(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
-  return value
+  const urls = value
     .map((entry) => {
       if (typeof entry === "string") return entry;
       if (entry && typeof entry === "object" && "url" in entry) {
@@ -66,7 +79,11 @@ function extractSelectedImageUrls(value: unknown): string[] {
       }
       return null;
     })
-    .filter((url): url is string => typeof url === "string");
+    .filter((url): url is string => typeof url === "string")
+    .map((url) => normalizeImageUrl(url))
+    .filter((url) => url.length > 0);
+
+  return Array.from(new Set(urls));
 }
 
 function formatSourceLabel(sourceKey: string): string {
@@ -111,9 +128,45 @@ export function FinalizingResultsView({
     sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [brandSearch, setBrandSearch] = useState("");
+  const [creatingBrand, setCreatingBrand] = useState(false);
+  const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const filteredBrands = useMemo(() => {
+    if (!brandSearch.trim()) return brands;
+    const search = brandSearch.toLowerCase();
+    return brands.filter((b) => b.name.toLowerCase().includes(search));
+  }, [brands, brandSearch]);
+
+  const handleCreateBrand = async () => {
+    if (!brandSearch.trim()) return;
+    setCreatingBrand(true);
+    try {
+      const res = await fetch("/api/admin/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: brandSearch.trim() }),
+      });
+      if (res.ok) {
+        const { brand } = await res.json();
+        setBrands((prev) => [...prev, brand].sort((a, b) => a.name.localeCompare(b.name)));
+        handleInputChange("brandId", brand.id);
+        setBrandSearch("");
+        setBrandPopoverOpen(false);
+        toast.success(`Brand "${brand.name}" created`);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to create brand");
+      }
+    } catch {
+      toast.error("An error occurred while creating brand");
+    } finally {
+      setCreatingBrand(false);
+    }
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -173,15 +226,18 @@ export function FinalizingResultsView({
       const selectedImagesFromMetadata = extractSelectedImageUrls(
         selectedProduct.selected_images,
       );
-      const initialSelectedImages =
+      const initialSelectedImages = Array.from(new Set(
         consolidatedImages.length > 0
           ? consolidatedImages
-          : selectedImagesFromMetadata;
+          : selectedImagesFromMetadata
+      ));
+
+      const name = consolidated.name || input.name || "";
 
       setFormData({
-        name: consolidated.name || input.name || "",
-        description: consolidated.description || "",
-        longDescription: (cons as Record<string, unknown>).long_description as string || "",
+        name,
+        description: consolidated.description || name,
+        longDescription: (cons as Record<string, unknown>).long_description as string || name,
         price: String(consolidated.price ?? input.price ?? ""),
         weight: (cons as Record<string, unknown>).weight as string || "",
         brandId: consolidated.brand_id || "none",
@@ -203,6 +259,22 @@ export function FinalizingResultsView({
       setSelectedImageSourceId("all");
     }
   }, [selectedProduct]);
+
+  // Handle name change and auto-populate descriptions if they match name
+  const handleNameChange = (newName: string) => {
+    setFormData(prev => {
+      const updates: any = { name: newName };
+      // If description was empty or matched previous name, update it
+      if (!prev.description || prev.description === prev.name) {
+        updates.description = newName;
+      }
+      // If long description was empty or matched previous name, update it
+      if (!prev.longDescription || prev.longDescription === prev.name) {
+        updates.longDescription = newName;
+      }
+      return { ...prev, ...updates };
+    });
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -445,7 +517,7 @@ export function FinalizingResultsView({
   const isCustomImageSource = activeImageSourceOption?.id === "custom";
 
   return (
-    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
@@ -560,7 +632,7 @@ export function FinalizingResultsView({
                       id="product-name"
                       value={formData.name}
                       onChange={(e) =>
-                        handleInputChange("name", e.target.value)
+                        handleNameChange(e.target.value)
                       }
                       placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
                     />
@@ -593,22 +665,97 @@ export function FinalizingResultsView({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="product-brand">Brand</Label>
-                      <Select
-                        value={formData.brandId}
-                        onValueChange={(v) => handleInputChange("brandId", v)}
-                      >
-                        <SelectTrigger id="product-brand">
-                          <SelectValue placeholder="Select Brand" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No Brand</SelectItem>
-                          {brands.map((brand) => (
-                            <SelectItem key={brand.id} value={brand.id}>
-                              {brand.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="product-brand"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={brandPopoverOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {formData.brandId === "none"
+                              ? "No Brand"
+                              : brands.find((b) => b.id === formData.brandId)?.name || "Select Brand"}
+                            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                          <div className="flex flex-col">
+                            <div className="flex items-center border-b px-3 py-2">
+                              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                              <input
+                                className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Search brands..."
+                                value={brandSearch}
+                                onChange={(e) => setBrandSearch(e.target.value)}
+                              />
+                            </div>
+                            <div className="max-h-[200px] overflow-y-auto p-1">
+                              <div
+                                className={cn(
+                                  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                                  formData.brandId === "none" && "bg-accent text-accent-foreground"
+                                )}
+                                onClick={() => {
+                                  handleInputChange("brandId", "none");
+                                  setBrandPopoverOpen(false);
+                                  setBrandSearch("");
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.brandId === "none" ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                No Brand
+                              </div>
+                              {filteredBrands.map((brand) => (
+                                <div
+                                  key={brand.id}
+                                  className={cn(
+                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                    formData.brandId === brand.id && "bg-accent text-accent-foreground"
+                                  )}
+                                  onClick={() => {
+                                    handleInputChange("brandId", brand.id);
+                                    setBrandPopoverOpen(false);
+                                    setBrandSearch("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.brandId === brand.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {brand.name}
+                                </div>
+                              ))}
+                              {filteredBrands.length === 0 && brandSearch && (
+                                <div className="p-2 text-xs text-muted-foreground italic">
+                                  No brands found.
+                                </div>
+                              )}
+                            </div>
+                            {brandSearch.trim() && !brands.find(b => b.name.toLowerCase() === brandSearch.toLowerCase().trim()) && (
+                              <div className="border-t p-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start text-xs font-normal"
+                                  onClick={handleCreateBrand}
+                                  disabled={creatingBrand}
+                                >
+                                  <Plus className="mr-2 h-3 w-3" />
+                                  {creatingBrand ? "Creating..." : `Create "${brandSearch.trim()}"`}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
 
