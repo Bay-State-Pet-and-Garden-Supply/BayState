@@ -76,6 +76,40 @@ class TestSKUValidation:
         assert result[0] == False
         assert "Brand mismatch" in result[1]
 
+    def test_rejects_untrusted_domain_below_elevated_confidence_threshold(self, scraper):
+        result = scraper._validator.validate_extraction_match(
+            extraction_result={
+                "success": True,
+                "product_name": "Pro Plan Chicken",
+                "brand": "Purina",
+                "confidence": 0.74,
+                "images": ["http://example.com/img.jpg"],
+            },
+            sku="12345",
+            product_name="Pro Plan Chicken",
+            brand="Purina",
+            source_url="https://independent.example.com/product/pro-plan",
+        )
+        assert result[0] is False
+        assert "untrusted domain" in result[1].lower()
+
+    def test_accepts_trusted_retailer_without_specific_variant_token_overlap(self, scraper):
+        result = scraper._validator.validate_extraction_match(
+            extraction_result={
+                "success": True,
+                "product_name": "Purina Pro Plan Adult Formula",
+                "brand": "Purina",
+                "confidence": 0.82,
+                "description": "Chicken recipe dry dog food",
+                "images": ["https://chewy.com/img.jpg"],
+            },
+            sku="12345",
+            product_name="Purina Pro Plan Chicken",
+            brand="Purina",
+            source_url="https://www.chewy.com/purina-pro-plan-adult-formula/dp/12345",
+        )
+        assert result == (True, "ok")
+
 
 class TestQueryVariants:
     def test_sku_only_generates_single_variant(self, scraper):
@@ -92,6 +126,7 @@ class TestQueryVariants:
         variants = scraper._query_builder.build_query_variants(sku="12345", product_name="Pro Plan Chicken", brand="Purina", category="Dog Food")
         assert len(variants) >= 2
         assert "12345 product" in variants
+        assert "Purina Pro Plan Chicken" in variants
 
     def test_empty_inputs_returns_empty_list(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku=None, product_name=None, brand=None, category=None)
