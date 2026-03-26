@@ -248,7 +248,11 @@ export function FinalizingResultsView({
           );
         }
 
-        toast.success("Product finalized and published to website!");
+        toast.success(
+          selectedProduct?.pipeline_status === "published"
+            ? "Published product updated successfully!"
+            : "Product finalized and published to website!",
+        );
       } else {
         toast.success("Changes saved successfully");
       }
@@ -361,8 +365,10 @@ export function FinalizingResultsView({
                     "Publishing..."
                   ) : (
                     <>
-                      <CheckCircle className="h-4 w-4 mr-2" /> Finalize &
-                      Publish
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {selectedProduct?.pipeline_status === "published"
+                        ? "Update Published Product"
+                        : "Finalize & Publish"}
                     </>
                   )}
                 </Button>
