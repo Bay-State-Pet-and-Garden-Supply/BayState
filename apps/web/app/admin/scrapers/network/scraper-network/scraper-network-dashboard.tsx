@@ -214,7 +214,7 @@ export function ScraperNetworkDashboard() {
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-400">{stats.offline}</div>
+            <div className="text-2xl font-bold text-muted-foreground">{stats.offline}</div>
           </CardContent>
         </Card>
       </div>
@@ -265,7 +265,7 @@ export function ScraperNetworkDashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-gray-400" />
+                    <span className="h-2 w-2 rounded-full bg-muted" />
                     Idle
                   </span>
                   <span>
@@ -327,7 +327,7 @@ export function ScraperNetworkDashboard() {
                           : runner.status === "busy"
                             ? "bg-yellow-500"
                             : runner.status === "idle"
-                              ? "bg-gray-400"
+                              ? "bg-muted"
                               : "bg-red-400"
                       }`}
                     />

@@ -46,10 +46,18 @@ const ScraperResultsSchema = z.object({
     logs: z
         .array(
             z.object({
+                event_id: z.string().optional(),
                 level: z.string(),
                 message: z.string(),
                 timestamp: z.string().optional(),
                 details: z.record(z.string(), z.unknown()).optional(),
+                runner_id: z.string().optional(),
+                runner_name: z.string().optional(),
+                source: z.string().optional(),
+                scraper_name: z.string().optional(),
+                sku: z.string().optional(),
+                phase: z.string().optional(),
+                sequence: z.number().int().optional(),
             })
         )
         .optional(),
@@ -119,10 +127,18 @@ const ChunkResultsSchema = z.object({
     logs: z
         .array(
             z.object({
+                event_id: z.string().optional(),
                 level: z.string(),
                 message: z.string(),
                 timestamp: z.string().optional(),
                 details: z.record(z.string(), z.unknown()).optional(),
+                runner_id: z.string().optional(),
+                runner_name: z.string().optional(),
+                source: z.string().optional(),
+                scraper_name: z.string().optional(),
+                sku: z.string().optional(),
+                phase: z.string().optional(),
+                sequence: z.number().int().optional(),
             })
         )
         .optional(),

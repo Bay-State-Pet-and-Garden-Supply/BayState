@@ -1,0 +1,188 @@
+/**
+ * ShopSite XML Generator
+ *
+ * Generates a minimal ShopSite upload payload aligned to the current Bay State
+ * upload flow (DTD 2.9 / version 15.0).
+ */
+
+import {
+    SHOPSITE_XML_VERSION,
+    MAX_MORE_INFO_IMAGES,
+} from './constants';
+
+const SHOPSITE_DOCTYPE = 'http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd';
+const BAY_STATE_TIMEZONE = 'America/New_York';
+
+export interface ShopSiteExportProduct {
+    sku: string;
+    name: string;
+    price: number | string;
+    weight?: string | number | null;
+    brand_name?: string | null;
+    description?: string | null;
+    long_description?: string | null;
+    images: string[];
+    category?: string | null;
+    product_type?: string | null;
+    shopsite_pages?: string[] | null;
+    search_keywords?: string | null;
+    is_special_order?: boolean;
+    is_taxable?: boolean;
+    file_name?: string | null;
+    gtin?: string | null;
+    availability?: string | null;
+    minimum_quantity?: number | null;
+}
+
+export interface ShopSiteXmlOptions {
+    markerDate?: Date;
+    newProductTag?: string;
+}
+
+function escapeXml(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+function cdataWrap(text: string): string {
+    const sanitized = text.replace(/\]\]>/g, ']]>]]><![CDATA[');
+    return `<![CDATA[${sanitized}]]>`;
+}
+
+function xmlElement(tag: string, value: string | null | undefined): string {
+    return `    <${tag}>${escapeXml(value ?? '')}</${tag}>`;
+}
+
+function xmlCdataElement(tag: string, value: string): string {
+    return `    <${tag}>${cdataWrap(value)}</${tag}>`;
+}
+
+function formatPrice(value: string | number): string {
+    if (typeof value === 'number') {
+        return value.toFixed(2);
+    }
+
+    return value;
+}
+
+function getEasternDateParts(date: Date) {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: BAY_STATE_TIMEZONE,
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+    });
+
+    const parts = formatter.formatToParts(date);
+    const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+    const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+    const year = parts.find((part) => part.type === 'year')?.value ?? '00';
+
+    return { month, day, year };
+}
+
+export function buildShopSiteNewProductTag(date: Date = new Date()): string {
+    const { month, day, year } = getEasternDateParts(date);
+    return `new${month}${day}${year}`;
+}
+
+function generateProductXml(product: ShopSiteExportProduct, newProductTag: string): string {
+    const lines: string[] = [];
+    lines.push('  <Product>');
+    lines.push(xmlElement('Name', product.name));
+    lines.push(xmlElement('SKU', product.sku));
+    lines.push(xmlElement('Price', formatPrice(product.price)));
+    lines.push(xmlElement('ProductField1', newProductTag));
+
+    const description = product.description ?? product.long_description ?? null;
+    if (description) {
+        lines.push(xmlCdataElement('ProductDescription', description));
+    }
+
+    if (product.weight != null && product.weight !== '') {
+        lines.push(xmlElement('Weight', String(product.weight)));
+    }
+
+    const primaryImage = product.images[0] ?? null;
+    if (primaryImage) {
+        lines.push(xmlElement('Graphic', primaryImage));
+        lines.push(xmlElement('MoreInformationGraphic', primaryImage));
+    }
+
+    const additionalImages = product.images.slice(1, 1 + MAX_MORE_INFO_IMAGES);
+    for (let index = 0; index < additionalImages.length; index += 1) {
+        lines.push(xmlElement(`MoreInfoImage${index + 1}`, additionalImages[index]));
+    }
+
+    if (product.brand_name) {
+        lines.push(xmlElement('ProductField16', product.brand_name));
+    }
+
+    if (product.category) {
+        lines.push(xmlElement('ProductField24', product.category));
+    }
+
+    if (product.product_type) {
+        lines.push(xmlElement('ProductField25', product.product_type));
+    }
+
+    if (product.is_special_order) {
+        lines.push(xmlElement('ProductField11', 'yes'));
+    }
+
+    lines.push('  </Product>');
+    return lines.join('\n');
+}
+
+export function generateShopSiteXml(
+    products: ShopSiteExportProduct[],
+    options: ShopSiteXmlOptions = {},
+): string {
+    const lines: string[] = [];
+    const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
+
+    lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+    lines.push(`<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">`);
+    lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
+    lines.push('<Response>');
+    lines.push('<ResponseCode>1</ResponseCode>');
+    lines.push('<ResponseDescription>success</ResponseDescription>');
+    lines.push('</Response>');
+    lines.push('<Products>');
+
+    for (const product of products) {
+        lines.push(generateProductXml(product, newProductTag));
+    }
+
+    lines.push('</Products>');
+    lines.push('</ShopSiteProducts>');
+
+    return lines.join('\n');
+}
+
+export function* generateShopSiteXmlStream(
+    products: Iterable<ShopSiteExportProduct>,
+    options: ShopSiteXmlOptions = {},
+): Generator<string> {
+    const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
+
+    yield '<?xml version="1.0" encoding="UTF-8"?>\n';
+    yield `<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">\n`;
+    yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
+    yield '<Response>\n';
+    yield '<ResponseCode>1</ResponseCode>\n';
+    yield '<ResponseDescription>success</ResponseDescription>\n';
+    yield '</Response>\n';
+    yield '<Products>\n';
+
+    for (const product of products) {
+        yield `${generateProductXml(product, newProductTag)}\n`;
+    }
+
+    yield '</Products>\n';
+    yield '</ShopSiteProducts>\n';
+}

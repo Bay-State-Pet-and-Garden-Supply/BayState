@@ -166,7 +166,7 @@ export function GitHubSyncPanel({
         );
       default:
         return (
-          <Badge className="bg-gray-100 text-gray-700">
+          <Badge className="bg-muted text-muted-foreground">
             Not Configured
           </Badge>
         );
@@ -187,20 +187,20 @@ export function GitHubSyncPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Status</span>
+            <span className="text-sm text-muted-foreground">Status</span>
             {getStatusBadge()}
           </div>
 
           {lastSyncAt && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Last Sync</span>
+              <span className="text-muted-foreground">Last Sync</span>
               <span>{new Date(lastSyncAt).toLocaleString()}</span>
             </div>
           )}
 
           {lastCommitUrl && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Last Commit</span>
+              <span className="text-muted-foreground">Last Commit</span>
               <a 
                 href={lastCommitUrl} 
                 target="_blank" 
@@ -294,7 +294,7 @@ export function GitHubSyncPanel({
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-96 overflow-auto">
-            <pre className="text-xs font-mono bg-gray-100 p-3 rounded">
+            <pre className="text-xs font-mono bg-muted p-3 rounded">
               {pulledContent}
             </pre>
           </div>

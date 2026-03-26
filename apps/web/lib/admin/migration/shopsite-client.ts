@@ -30,6 +30,30 @@ interface FetchProductsOptions {
     includeRawXml?: boolean;
 }
 
+export interface ShopSitePublishOptions {
+    htmlpages?: boolean;
+    custompages?: boolean;
+    index?: boolean;
+    regen?: boolean;
+    sitemap?: boolean;
+}
+
+export interface ShopSiteUploadOptions {
+    uniqueName?: string;
+    batchSize?: number;
+    newRecords?: boolean;
+    deferLinking?: boolean;
+    useOptimizer?: boolean;
+    publish?: ShopSitePublishOptions | false;
+}
+
+export interface ShopSiteUploadResult {
+    dbmakeQuery: string;
+    uploadResponse: string;
+    dbmakeResponse: string;
+    publishResponse?: string;
+}
+
 const PRODUCT_XML_VERSION = '15.0';
 
 const PRODUCT_DOWNLOAD_FIELDS = [
@@ -104,6 +128,62 @@ export class ShopSiteClient {
         }
 
         return `${baseUrl}/${scriptName}?${queryParams}`;
+    }
+
+    private buildScriptUrl(scriptName: string): string {
+        return this.buildUrl('', scriptName).replace(/\?$/, '');
+    }
+
+    private buildRequestHeaders(cookieHeader?: string): HeadersInit {
+        const headers: Record<string, string> = {
+            Authorization: this.authHeader,
+        };
+
+        if (cookieHeader) {
+            headers.Cookie = cookieHeader;
+        }
+
+        return headers;
+    }
+
+    private extractCookieHeader(response: Response): string | undefined {
+        const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+        if (typeof headers.getSetCookie === 'function') {
+            const cookies = headers
+                .getSetCookie()
+                .map((cookie) => cookie.split(';', 1)[0]?.trim())
+                .filter(Boolean);
+
+            if (cookies.length > 0) {
+                return cookies.join('; ');
+            }
+        }
+
+        const rawSetCookie = response.headers.get('set-cookie');
+        if (!rawSetCookie) {
+            return undefined;
+        }
+
+        return rawSetCookie
+            .split(/,(?=[^;,]+=)/)
+            .map((cookie) => cookie.split(';', 1)[0]?.trim())
+            .filter(Boolean)
+            .join('; ');
+    }
+
+    private extractDbmakeQuery(uploadResponse: string): string {
+        const normalized = uploadResponse.trim().replace(/&amp;/g, '&');
+        const dbmakeUrlMatch = normalized.match(/dbmake\.cgi\?([^"'\\<>\s]+)/i);
+        if (dbmakeUrlMatch?.[1]) {
+            return dbmakeUrlMatch[1];
+        }
+
+        const directQuery = normalized.replace(/^[^?]*\?/, '').trim();
+        if (/^[A-Za-z0-9_.%-]+=[^<>\s]+(?:&[A-Za-z0-9_.%-]+=[^<>\s]+)*$/.test(directQuery)) {
+            return directQuery;
+        }
+
+        throw new Error('ShopSite upload did not return a dbmake query string');
     }
 
     /**
@@ -351,6 +431,97 @@ export class ShopSiteClient {
             console.error('Error fetching customers:', error);
             return [];
         }
+    }
+
+    async uploadProductsXml(
+        xml: string,
+        options: ShopSiteUploadOptions = {},
+    ): Promise<ShopSiteUploadResult> {
+        const formData = new FormData();
+        formData.append('clientApp', '1');
+        formData.append('dbname', 'products');
+        formData.append('uniqueName', options.uniqueName ?? 'SKU');
+        formData.append('batchsize', String(options.batchSize ?? 500));
+        formData.append('newRecords', options.newRecords === false ? 'no' : 'yes');
+        formData.append('use_optimizer', options.useOptimizer === true ? 'yes' : 'no');
+        formData.append('defer_linking', options.deferLinking === true ? 'yes' : 'no');
+        formData.append(
+            'Desktop',
+            new Blob([xml], { type: 'text/xml' }),
+            'shopsite-products.xml',
+        );
+
+        const uploadHttpResponse = await fetch(this.buildScriptUrl('dbupload.cgi'), {
+            method: 'POST',
+            headers: this.buildRequestHeaders(),
+            body: formData,
+            cache: 'no-store',
+        });
+
+        const uploadResponse = await uploadHttpResponse.text();
+        if (!uploadHttpResponse.ok) {
+            throw new Error(`ShopSite upload failed (${uploadHttpResponse.status}): ${uploadResponse || uploadHttpResponse.statusText}`);
+        }
+
+        const dbmakeQuery = this.extractDbmakeQuery(uploadResponse);
+        const uploadCookieHeader = this.extractCookieHeader(uploadHttpResponse);
+
+        const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeQuery, 'dbmake.cgi'), {
+            method: 'GET',
+            headers: this.buildRequestHeaders(uploadCookieHeader),
+            cache: 'no-store',
+        });
+
+        const dbmakeResponse = await dbmakeHttpResponse.text();
+        if (!dbmakeHttpResponse.ok) {
+            throw new Error(`ShopSite dbmake failed (${dbmakeHttpResponse.status}): ${dbmakeResponse || dbmakeHttpResponse.statusText}`);
+        }
+
+        let publishResponse: string | undefined;
+        if (options.publish !== false) {
+            const publishCookieHeader = this.extractCookieHeader(dbmakeHttpResponse) ?? uploadCookieHeader;
+            publishResponse = await this.publishStore(options.publish, publishCookieHeader);
+        }
+
+        return {
+            dbmakeQuery,
+            uploadResponse,
+            dbmakeResponse,
+            publishResponse,
+        };
+    }
+
+    async publishStore(
+        options: ShopSitePublishOptions = {},
+        cookieHeader?: string,
+    ): Promise<string> {
+        const params = new URLSearchParams({ clientApp: '1' });
+        const mergedOptions = {
+            htmlpages: options.htmlpages ?? true,
+            index: options.index ?? true,
+            custompages: options.custompages,
+            regen: options.regen,
+            sitemap: options.sitemap,
+        };
+
+        if (mergedOptions.htmlpages) params.append('htmlpages', '1');
+        if (mergedOptions.custompages) params.append('custompages', '1');
+        if (mergedOptions.index) params.append('index', '1');
+        if (mergedOptions.regen) params.append('regen', '1');
+        if (mergedOptions.sitemap) params.append('sitemap', '1');
+
+        const response = await fetch(this.buildUrl(params.toString(), 'generate.cgi'), {
+            method: 'GET',
+            headers: this.buildRequestHeaders(cookieHeader),
+            cache: 'no-store',
+        });
+
+        const responseText = await response.text();
+        if (!response.ok) {
+            throw new Error(`ShopSite publish failed (${response.status}): ${responseText || response.statusText}`);
+        }
+
+        return responseText;
     }
 
     // ============================================================================

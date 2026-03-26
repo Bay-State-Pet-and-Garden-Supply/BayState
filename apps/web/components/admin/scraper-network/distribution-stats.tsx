@@ -29,7 +29,7 @@ const statCardVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700',
+          'bg-card dark:bg-slate-800 border-slate-200 dark:border-slate-700',
         accent:
           'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700',
       },

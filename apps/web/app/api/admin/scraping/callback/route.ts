@@ -19,6 +19,7 @@ import {
     persistChunkTelemetry,
 } from '@/lib/scraper-callback/test-job-utils';
 import type { ChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
+import { toScrapeJobLogRow } from '@/lib/scraper-logs';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
@@ -110,23 +111,30 @@ function extractCrawl4AiMetadata(payload: ScraperCallbackPayload): Crawl4AiMetad
 async function persistJobLogs(
     supabase: SupabaseClient,
     jobId: string,
-    logs: Array<{ level: string; message: string; timestamp?: string; details?: Record<string, unknown> }>
+    logs: Array<{
+        event_id?: string;
+        level: string;
+        message: string;
+        timestamp?: string;
+        details?: Record<string, unknown>;
+        runner_id?: string;
+        runner_name?: string;
+        source?: string;
+        scraper_name?: string;
+        sku?: string;
+        phase?: string;
+        sequence?: number;
+    }>
 ): Promise<void> {
     if (!logs.length) {
         return;
     }
 
-    const logRows = logs.map((log) => ({
-        job_id: jobId,
-        level: (log.level || 'info').toLowerCase(),
-        message: log.message,
-        details: log.details ?? null,
-        created_at: log.timestamp ?? new Date().toISOString(),
-    }));
+    const logRows = logs.map((log) => toScrapeJobLogRow({ ...log, job_id: jobId }));
 
     const { error } = await supabase
         .from('scrape_job_logs')
-        .insert(logRows);
+        .upsert(logRows, { onConflict: 'job_id,event_id', ignoreDuplicates: true });
 
     if (error) {
         console.warn(`[Callback] Failed to persist job logs for job ${jobId}:`, error.message);

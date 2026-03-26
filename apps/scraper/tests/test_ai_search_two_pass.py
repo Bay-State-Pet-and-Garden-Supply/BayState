@@ -51,11 +51,12 @@ async def test_scrape_product_performs_two_pass_discovery() -> None:
         # The query builder should have been called with the consolidated name
         # We can check the logger or just trust the side_effect logic if it reached the end
         
-        # 4. Source selector called with targeted results
+        # 4. Source selector called with a merged candidate pool that includes the targeted result
         scraper._source_selector.select_best_url.assert_called_once()
         args, kwargs = scraper._source_selector.select_best_url.call_args
-        assert kwargs["results"] == mock_results_targeted
         assert kwargs["product_name"] == "Full Brand Name"
+        result_urls = [candidate["url"] for candidate in kwargs["results"]]
+        assert "https://official.com/product" in result_urls
         
         # 5. Telemetry recorded agreement
         assert len(scraper._telemetry["llm_heuristic_agreement"]) > 0

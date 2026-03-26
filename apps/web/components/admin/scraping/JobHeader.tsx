@@ -19,11 +19,11 @@ interface JobHeaderProps {
 type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 const STATUS_CONFIG: Record<JobStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
-    pending: { label: 'Pending', variant: 'secondary', className: 'bg-gray-100 text-gray-700' },
+    pending: { label: 'Pending', variant: 'secondary', className: 'bg-muted text-muted-foreground' },
     running: { label: 'Running', variant: 'default', className: 'bg-yellow-100 text-yellow-700' },
     completed: { label: 'Completed', variant: 'default', className: 'bg-green-100 text-green-700' },
     failed: { label: 'Failed', variant: 'destructive', className: 'bg-red-100 text-red-700' },
-    cancelled: { label: 'Cancelled', variant: 'secondary', className: 'bg-gray-100 text-gray-700' },
+    cancelled: { label: 'Cancelled', variant: 'secondary', className: 'bg-muted text-muted-foreground' },
 };
 
 export function JobHeader({ jobId, job: initialJob, className }: JobHeaderProps) {

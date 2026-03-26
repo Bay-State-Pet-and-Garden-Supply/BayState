@@ -123,7 +123,7 @@ export function ImageUpload({
         className={`relative overflow-hidden rounded-lg border-2 border-dashed transition-colors ${
           dragOver
             ? 'border-purple-500 bg-purple-50'
-            : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+            : 'border-border bg-muted hover:bg-muted'
         } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${
           aspectClasses[aspectRatio]
         }`}
@@ -170,17 +170,17 @@ export function ImageUpload({
         ) : uploading ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
             <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-            <p className="text-sm text-gray-600">Uploading...</p>
+            <p className="text-sm text-muted-foreground">Uploading...</p>
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
             {dragOver ? (
               <Upload className="h-8 w-8 text-purple-600" />
             ) : (
-              <ImageIcon className="h-8 w-8 text-gray-600" />
+              <ImageIcon className="h-8 w-8 text-muted-foreground" />
             )}
-            <p className="text-sm text-gray-600">{placeholder}</p>
-            <p className="text-xs text-gray-600">
+            <p className="text-sm text-muted-foreground">{placeholder}</p>
+            <p className="text-xs text-muted-foreground">
               Max size: {maxSizeMB}MB
             </p>
           </div>
@@ -233,7 +233,7 @@ export function ImageGallery({
         {images.map((url, index) => (
           <div
             key={url}
-            className="group relative aspect-square overflow-hidden rounded-lg border bg-gray-100"
+            className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
             draggable={!disabled}
             onDragStart={(e) => e.dataTransfer.setData('index', String(index))}
             onDragOver={(e) => e.preventDefault()}
@@ -280,7 +280,7 @@ export function ImageGallery({
       </div>
 
       {images.length > 0 && (
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-muted-foreground">
           {images.length} of {maxImages} images. Drag to reorder.
         </p>
       )}

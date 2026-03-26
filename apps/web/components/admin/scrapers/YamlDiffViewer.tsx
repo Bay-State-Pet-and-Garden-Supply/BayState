@@ -73,7 +73,7 @@ export function YamlDiffViewer({ original, modified, className }: YamlDiffViewer
 
   if (!stats.hasChanges) {
     return (
-      <div className={cn('text-sm text-gray-600 text-center py-8', className)}>
+      <div className={cn('text-sm text-muted-foreground text-center py-8', className)}>
         No changes detected
       </div>
     );
@@ -86,26 +86,26 @@ export function YamlDiffViewer({ original, modified, className }: YamlDiffViewer
         <span className="text-red-600">-{stats.removed} removed</span>
       </div>
       
-      <div className="font-mono text-xs overflow-auto max-h-96 border rounded bg-gray-50">
+      <div className="font-mono text-xs overflow-auto max-h-96 border rounded bg-muted">
         {diffLines.map((line, index) => {
           const bgColor = line.type === 'added' 
             ? 'bg-green-50' 
             : line.type === 'removed' 
               ? 'bg-red-50' 
-              : 'bg-white';
+              : 'bg-card';
           
           const textColor = line.type === 'added' 
             ? 'text-green-800' 
             : line.type === 'removed' 
               ? 'text-red-800' 
-              : 'text-gray-700';
+              : 'text-muted-foreground';
 
           const prefix = line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ';
           const prefixColor = line.type === 'added' 
             ? 'text-green-600' 
             : line.type === 'removed' 
               ? 'text-red-600' 
-              : 'text-gray-600';
+              : 'text-muted-foreground';
 
           return (
             <div key={index} className={cn('flex', bgColor)}>

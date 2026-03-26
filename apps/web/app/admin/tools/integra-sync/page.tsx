@@ -15,7 +15,7 @@ export default function IntegraSyncPage() {
                 </div>
                 <div>
                     <h1 className="text-3xl font-bold">Integra Register Sync</h1>
-                    <p className="text-gray-600">
+                    <p className="text-muted-foreground">
                         Compare store register data with website catalog to identify new products.
                     </p>
                 </div>

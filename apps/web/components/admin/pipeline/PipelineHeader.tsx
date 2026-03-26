@@ -21,7 +21,7 @@ export function PipelineHeader({
         <Icon className="h-8 w-8 text-[#008850]" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-          <p className="text-gray-600">{subtitle}</p>
+          <p className="text-muted-foreground">{subtitle}</p>
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

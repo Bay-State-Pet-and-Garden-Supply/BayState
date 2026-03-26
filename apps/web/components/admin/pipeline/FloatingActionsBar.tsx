@@ -1,8 +1,7 @@
 "use client";
 
-import { Loader2, X, CheckSquare, Plus, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, Archive, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
 
 /**
@@ -60,6 +59,9 @@ interface FloatingActionsBarProps {
   onResetStage?: (previousStage: PipelineStatus) => void;
   onOpenScrapeDialog?: () => void;
   onDelete?: () => void;
+  actionState?: "upload" | "zip" | null;
+  onUploadShopSite?: () => void;
+  onDownloadZip?: () => void;
 }
 
 export function FloatingActionsBar({
@@ -73,6 +75,9 @@ export function FloatingActionsBar({
   onResetStage,
   onOpenScrapeDialog,
   onDelete,
+  actionState = null,
+  onUploadShopSite,
+  onDownloadZip,
 }: FloatingActionsBarProps) {
   if (selectedCount === 0) return null;
 
@@ -107,19 +112,19 @@ export function FloatingActionsBar({
 
   return (
     <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl ring-1 ring-black/5">
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-2xl ring-1 ring-black/5">
         {/* Selection Count */}
-        <div className="flex items-center gap-3 border-r border-zinc-100 pr-4">
+        <div className="flex items-center gap-3 border-r border-border pr-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#008850] text-[13px] font-bold text-white tabular-nums">
             {selectedCount}
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-zinc-900 leading-none">
+            <span className="text-xs font-bold text-foreground leading-none">
               {selectedCount === 1 ? "Product" : "Products"} Selected
             </span>
             <button
               onClick={onClearSelection}
-              className="text-[10px] font-bold text-zinc-400 hover:text-red-600 text-left transition-colors uppercase tracking-wider mt-1"
+              className="text-[10px] font-bold text-muted-foreground hover:text-red-600 text-left transition-colors uppercase tracking-wider mt-1"
             >
               Clear Selection
             </button>
@@ -134,7 +139,7 @@ export function FloatingActionsBar({
               size="sm"
               onClick={onSelectAll}
               disabled={isLoading}
-              className="h-10 text-xs font-bold text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+              className="h-10 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               Select All {totalCount}
             </Button>
@@ -146,7 +151,7 @@ export function FloatingActionsBar({
               size="sm"
               onClick={handleResetAction}
               disabled={isLoading}
-              className="h-10 border-zinc-200 text-xs font-bold text-zinc-600 hover:bg-zinc-50"
+              className="h-10 border-border text-xs font-bold text-muted-foreground hover:bg-muted"
             >
               {bulkAction.resetLabel}
             </Button>
@@ -176,6 +181,48 @@ export function FloatingActionsBar({
               <Trash2 className="mr-1.5 h-4 w-4" />
               Delete
             </Button>
+          )}
+
+          {isTerminalStage && onUploadShopSite && onDownloadZip && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onUploadShopSite}
+                disabled={isLoading || actionState !== null}
+                className="h-10 border-[#008850]/20 text-xs font-bold text-[#008850] hover:bg-[#008850]/5"
+              >
+                {actionState === "upload" ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-1.5 h-4 w-4" />
+                    Upload to ShopSite
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={onDownloadZip}
+                disabled={isLoading || actionState !== null}
+                className="h-10 bg-[#008850] px-5 text-xs font-bold text-white hover:bg-[#008850]/90 shadow-lg shadow-[#008850]/20"
+              >
+                {actionState === "zip" ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    Downloading ZIP…
+                  </>
+                ) : (
+                  <>
+                    <Archive className="mr-1.5 h-4 w-4" />
+                    Download ZIP
+                  </>
+                )}
+              </Button>
+            </>
           )}
 
           {hasBulkAction && (

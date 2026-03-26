@@ -73,23 +73,23 @@ export function IntegraImportDialog({
     const hasNewProducts = analysis && analysis.newProducts.length > 0;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col border border-zinc-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-card shadow-2xl flex flex-col border border-border">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-zinc-100 px-8 py-5 flex-shrink-0 bg-zinc-50/50">
+                <div className="flex items-center justify-between border-b border-border px-8 py-5 flex-shrink-0 bg-muted/50">
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600 border border-orange-100">
                             <Database className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-zinc-900">Integra Register Sync</h2>
-                            <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Onboarding Pipeline</p>
+                            <h2 className="text-xl font-bold text-foreground">Integra Register Sync</h2>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Onboarding Pipeline</p>
                         </div>
                     </div>
                     <button
                         onClick={onCancel}
                         disabled={isBusy}
-                        className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors disabled:opacity-50"
+                        className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground transition-colors disabled:opacity-50"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -100,16 +100,16 @@ export function IntegraImportDialog({
                     {!analysis ? (
                         <div className="space-y-8 animate-in fade-in duration-500">
                             <div className="max-w-2xl">
-                                <h3 className="text-lg font-semibold text-zinc-900 mb-2">Upload Inventory Export</h3>
-                                <p className="text-zinc-600 leading-relaxed">
+                                <h3 className="text-lg font-semibold text-foreground mb-2">Upload Inventory Export</h3>
+                                <p className="text-muted-foreground leading-relaxed">
                                     Upload your Excel export from the Integra system. We&apos;ll cross-reference it with the website catalog to find missing items.
                                 </p>
-                                <div className="mt-4 flex items-center gap-4 text-xs font-medium text-zinc-400">
-                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-50 rounded border border-zinc-100">
+                                <div className="mt-4 flex items-center gap-4 text-xs font-medium text-muted-foreground">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded border border-border">
                                         <FileText className="h-3.5 w-3.5" />
                                         <span>.xlsx or .xls</span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-50 rounded border border-zinc-100">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded border border-border">
                                         <AlertCircle className="h-3.5 w-3.5" />
                                         <span>Required: SKU_NO, LIST_PRICE</span>
                                     </div>
@@ -125,10 +125,10 @@ export function IntegraImportDialog({
                                     selectedFile={file}
                                     label={
                                         <div className="py-4">
-                                            <p className="text-sm font-medium text-zinc-900">
+                                            <p className="text-sm font-medium text-foreground">
                                                 <span className="text-orange-600 font-bold underline decoration-orange-200 underline-offset-4 hover:decoration-orange-500 transition-colors">Click to upload</span> or drag and drop
                                             </p>
-                                            <p className="text-xs text-zinc-400 mt-2">Excel spreadsheet up to 20MB</p>
+                                            <p className="text-xs text-muted-foreground mt-2">Excel spreadsheet up to 20MB</p>
                                         </div>
                                     }
                                 />
@@ -138,11 +138,11 @@ export function IntegraImportDialog({
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* Stats Cards */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-                                    <div className="absolute top-0 right-0 h-24 w-24 -mr-8 -mt-8 rounded-full bg-zinc-50 opacity-50" />
-                                    <p className="text-sm font-semibold text-zinc-400 mb-1">Total in File</p>
-                                    <h4 className="text-4xl font-black text-zinc-900">{analysis.totalInFile}</h4>
-                                    <p className="text-xs text-zinc-500 mt-2">Unique SKUs analyzed</p>
+                                <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm">
+                                    <div className="absolute top-0 right-0 h-24 w-24 -mr-8 -mt-8 rounded-full bg-muted opacity-50" />
+                                    <p className="text-sm font-semibold text-muted-foreground mb-1">Total in File</p>
+                                    <h4 className="text-4xl font-black text-foreground">{analysis.totalInFile}</h4>
+                                    <p className="text-xs text-muted-foreground mt-2">Unique SKUs analyzed</p>
                                 </div>
 
                                 <div className="relative overflow-hidden rounded-2xl border border-green-100 bg-green-50/20 p-6 shadow-sm">
@@ -162,43 +162,43 @@ export function IntegraImportDialog({
 
                             {analysis.newProducts.length > 0 ? (
                                 <div className="space-y-6">
-                                    <div className="bg-zinc-900 rounded-2xl p-6 text-white shadow-xl">
+                                    <div className="bg-primary rounded-2xl p-6 text-white shadow-xl">
                                         <div className="flex items-center gap-3 mb-2">
                                             <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
                                             <h3 className="text-lg font-bold">Import Selection</h3>
                                         </div>
-                                        <p className="text-sm text-zinc-400">
+                                        <p className="text-sm text-muted-foreground">
                                             Found <span className="text-orange-400 font-bold">{analysis.newProducts.length}</span> items not in the live store. Review the list below before finalizing the import.
                                         </p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-zinc-200 overflow-hidden bg-white shadow-sm">
+                                    <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
                                         <div className="max-h-72 overflow-auto scrollbar-thin scrollbar-thumb-zinc-200">
                                             <table className="w-full text-sm text-left border-collapse">
-                                                <thead className="bg-zinc-50/80 sticky top-0 backdrop-blur-md border-b border-zinc-200 z-10">
+                                                <thead className="bg-muted/80 sticky top-0 backdrop-blur-md border-b border-border z-10">
                                                     <tr>
-                                                        <th className="px-6 py-4 font-bold text-zinc-500 text-[11px] uppercase tracking-widest">SKU</th>
-                                                        <th className="px-6 py-4 font-bold text-zinc-500 text-[11px] uppercase tracking-widest">Product Name</th>
-                                                        <th className="px-6 py-4 text-right font-bold text-zinc-500 text-[11px] uppercase tracking-widest">List Price</th>
+                                                        <th className="px-6 py-4 font-bold text-muted-foreground text-[11px] uppercase tracking-widest">SKU</th>
+                                                        <th className="px-6 py-4 font-bold text-muted-foreground text-[11px] uppercase tracking-widest">Product Name</th>
+                                                        <th className="px-6 py-4 text-right font-bold text-muted-foreground text-[11px] uppercase tracking-widest">List Price</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-zinc-100">
                                                     {analysis.newProducts.slice(0, 50).map((product) => (
-                                                        <tr key={product.sku} className="group hover:bg-zinc-50/50 transition-colors">
+                                                        <tr key={product.sku} className="group hover:bg-muted/50 transition-colors">
                                                             <td className="px-6 py-4">
-                                                                <span className="font-mono text-zinc-900 bg-zinc-100 px-2 py-1 rounded text-xs border border-zinc-200/50">{product.sku}</span>
+                                                                <span className="font-mono text-foreground bg-muted px-2 py-1 rounded text-xs border border-border/50">{product.sku}</span>
                                                             </td>
                                                             <td className="px-6 py-4">
-                                                                <span className="text-zinc-700 font-medium group-hover:text-zinc-900">{product.name}</span>
+                                                                <span className="text-muted-foreground font-medium group-hover:text-foreground">{product.name}</span>
                                                             </td>
-                                                            <td className="px-6 py-4 text-right font-bold text-zinc-900">
+                                                            <td className="px-6 py-4 text-right font-bold text-foreground">
                                                                 {formatCurrency(product.price)}
                                                             </td>
                                                         </tr>
                                                     ))}
                                                     {analysis.newProducts.length > 50 && (
                                                         <tr>
-                                                            <td colSpan={3} className="px-6 py-8 text-center text-zinc-400 text-xs italic bg-zinc-50/30">
+                                                            <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground text-xs italic bg-muted/30">
                                                                 Showing first 50 of {analysis.newProducts.length} products found in the export.
                                                             </td>
                                                         </tr>
@@ -214,7 +214,7 @@ export function IntegraImportDialog({
                                                 setAnalysis(null);
                                                 setFile(null);
                                             }}
-                                            className="text-xs font-bold text-zinc-400 hover:text-orange-600 transition-colors py-2 px-4 rounded-full hover:bg-orange-50"
+                                            className="text-xs font-bold text-muted-foreground hover:text-orange-600 transition-colors py-2 px-4 rounded-full hover:bg-orange-50"
                                         >
                                             Upload Different File
                                         </button>
@@ -225,8 +225,8 @@ export function IntegraImportDialog({
                                     <div className="h-20 w-20 rounded-full bg-green-50 flex items-center justify-center mb-6">
                                         <CheckCircle className="w-10 h-10 text-green-500" />
                                     </div>
-                                    <h3 className="text-2xl font-bold text-zinc-900">Database is Synchronized</h3>
-                                    <p className="text-zinc-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                                    <h3 className="text-2xl font-bold text-foreground">Database is Synchronized</h3>
+                                    <p className="text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
                                         Excellent! Every product found in this export is already present in your website catalog.
                                     </p>
                                 </div>
@@ -236,8 +236,8 @@ export function IntegraImportDialog({
                 </div>
 
                 {/* Footer Actions */}
-                <div className="flex items-center justify-between gap-3 border-t border-zinc-100 bg-zinc-50/50 px-8 py-5 flex-shrink-0 rounded-b-2xl">
-                    <p className="text-xs text-zinc-400 font-medium">
+                <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/50 px-8 py-5 flex-shrink-0 rounded-b-2xl">
+                    <p className="text-xs text-muted-foreground font-medium">
                         Supported formats: CSV, XLSX, XLS
                     </p>
                     <div className="flex items-center gap-3">
@@ -246,7 +246,7 @@ export function IntegraImportDialog({
                             variant="ghost"
                             onClick={onCancel}
                             disabled={isBusy}
-                            className="text-zinc-500 font-bold hover:bg-zinc-200/50"
+                            className="text-muted-foreground font-bold hover:bg-zinc-200/50"
                         >
                             Cancel
                         </Button>
@@ -293,7 +293,7 @@ export function IntegraImportDialog({
                             <Button
                                 onClick={onCancel}
                                 size="lg"
-                                className="bg-zinc-900 text-white hover:bg-zinc-800 font-bold px-8 h-11"
+                                className="bg-primary text-white hover:bg-zinc-800 font-bold px-8 h-11"
                             >
                                 Done
                             </Button>

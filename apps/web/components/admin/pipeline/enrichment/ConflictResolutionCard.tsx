@@ -49,21 +49,21 @@ export function ConflictResolutionCard({
   };
 
   return (
-    <div className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+    <div className="w-full max-w-md bg-card border border-border rounded-xl shadow-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-border bg-muted/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="bg-amber-100 p-1.5 rounded-md text-amber-600">
             <AlertTriangle className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-600">Resolve Conflict</h3>
-            <p className="text-lg font-bold text-gray-900 leading-tight">{field}</p>
+            <h3 className="text-sm font-medium text-muted-foreground">Resolve Conflict</h3>
+            <p className="text-lg font-bold text-foreground leading-tight">{field}</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-600 hover:text-gray-600 hover:bg-gray-100 p-1 rounded-full transition-colors"
+          className="text-muted-foreground hover:text-muted-foreground hover:bg-muted p-1 rounded-full transition-colors"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
@@ -72,7 +72,7 @@ export function ConflictResolutionCard({
 
       {/* Options List */}
       <div className="p-5 space-y-3">
-        <p className="text-sm text-gray-600 mb-2">
+        <p className="text-sm text-muted-foreground mb-2">
           Multiple sources provided different values. Select the correct one:
         </p>
 
@@ -83,15 +83,15 @@ export function ConflictResolutionCard({
               relative flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all
               ${selectedSourceId === option.sourceId
                 ? 'border-[#008850] bg-green-50/30'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                : 'border-border hover:border-border hover:bg-muted'
               }
             `}
           >
             <div className="flex-1 min-w-0 pr-4">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-0.5">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-0.5">
                 {option.sourceName}
               </span>
-              <span className="text-base font-medium text-gray-900 break-words">
+              <span className="text-base font-medium text-foreground break-words">
                 {formatValue(option.value)}
               </span>
             </div>
@@ -110,7 +110,7 @@ export function ConflictResolutionCard({
                   h-5 w-5 rounded-full border flex items-center justify-center transition-colors
                   ${selectedSourceId === option.sourceId
                     ? 'border-[#008850] bg-[#008850] text-white'
-                    : 'border-gray-300 bg-white'
+                    : 'border-border bg-card'
                   }
                 `}
               >
@@ -124,10 +124,10 @@ export function ConflictResolutionCard({
       </div>
 
       {/* Footer Actions */}
-      <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+      <div className="px-5 py-4 border-t border-border bg-muted flex justify-end gap-3">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-muted-foreground bg-card border border-border rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors"
         >
           Cancel
         </button>
@@ -138,7 +138,7 @@ export function ConflictResolutionCard({
             px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#008850]
             ${selectedSourceId
               ? 'bg-[#008850] hover:bg-[#006f41]'
-              : 'bg-gray-300 cursor-not-allowed'
+              : 'bg-muted cursor-not-allowed'
             }
           `}
         >

@@ -106,16 +106,30 @@ export const broadcastEventSchema = z.object({
 export interface ScrapeJobLog {
   /** Unique identifier for the log entry */
   id: string;
+  /** Stable runner-generated event identifier */
+  event_id?: string;
   /** Reference to the parent job */
   job_id: string;
   /** ID of the runner that generated this log */
-  runner_id: string;
+  runner_id?: string;
+  /** Human-readable runner name */
+  runner_name?: string;
   /** Log severity level */
-  level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+  level: 'debug' | 'info' | 'warning' | 'error' | 'critical';
   /** Log message content */
   message: string;
   /** ISO 8601 timestamp when the log was created */
   timestamp: string;
+  /** Optional logical source/logger name */
+  source?: string;
+  /** Optional scraper slug */
+  scraper_name?: string;
+  /** Optional active SKU */
+  sku?: string;
+  /** Optional execution phase */
+  phase?: string;
+  /** Optional per-job sequence number */
+  sequence?: number;
   /** Optional JSON payload with additional context (e.g. product data) */
   details?: Record<string, unknown>;
 }
@@ -125,11 +139,18 @@ export interface ScrapeJobLog {
  */
 export const scrapeJobLogSchema = z.object({
   id: z.string(),
+  event_id: z.string().optional(),
   job_id: z.string(),
-  runner_id: z.string(),
-  level: z.enum(['DEBUG', 'INFO', 'WARN', 'ERROR']),
+  runner_id: z.string().optional(),
+  runner_name: z.string().optional(),
+  level: z.enum(['debug', 'info', 'warning', 'error', 'critical']),
   message: z.string(),
   timestamp: z.string(),
+  source: z.string().optional(),
+  scraper_name: z.string().optional(),
+  sku: z.string().optional(),
+  phase: z.string().optional(),
+  sequence: z.number().optional(),
   details: z.record(z.string(), z.unknown()).optional(),
 });
 

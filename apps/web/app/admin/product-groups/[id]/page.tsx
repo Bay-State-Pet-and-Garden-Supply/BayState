@@ -123,7 +123,7 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
                     id="is_active"
                     name="is_active"
                     defaultChecked={group.is_active}
-                    className="h-4 w-4 rounded border-gray-300"
+                    className="h-4 w-4 rounded border-border"
                   />
                   <Label htmlFor="is_active" className="text-sm font-normal">
                     Active

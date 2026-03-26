@@ -29,3 +29,33 @@ npx tsx BayStateApp/scripts/verify_admin.ts
 
 - `repair_login.sql`: Restores the `profiles` table and forces admin role. Run in Supabase Dashboard.
 - `fix_profiles_schema.sql`: Adds missing columns (phone, preferences, etc.) if `repair_login.sql` recreated the table. Run AFTER repair.
+
+## Login-Protected Image Backfill (`backfill-login-protected-images.ts`)
+
+Use this script to clean broken login-only image URLs out of `products_ingestion` rows for login-protected scrapers, then queue replacement scrape jobs for the affected SKU/source combinations.
+
+### Usage
+
+Run from `apps/web` so local scraper configs resolve correctly:
+
+```bash
+cd apps/web
+bun scripts/backfill-login-protected-images.ts --limit 100
+```
+
+Dry runs are the default. Add `--execute` to persist the cleanup and queue the replacement scrapes.
+
+## Amazon Image Duplicate Backfill (`backfill-amazon-image-duplicates.ts`)
+
+Use this script to remove duplicate Amazon main images from already-scraped `products_ingestion` rows, prune stale derived image arrays, and sync published storefront product images when the pipeline row is already published.
+
+### Usage
+
+Run from `apps/web`:
+
+```bash
+cd apps/web
+bun scripts/backfill-amazon-image-duplicates.ts --limit 100
+```
+
+Dry runs are the default. Add `--execute` to persist the cleanup.

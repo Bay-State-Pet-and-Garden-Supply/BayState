@@ -27,7 +27,7 @@ function getStepStatusIcon(status: string) {
     case 'failed':
       return <XCircle className="h-5 w-5 text-red-500" />;
     case 'skipped':
-      return <Minus className="h-5 w-5 text-gray-400" />;
+      return <Minus className="h-5 w-5 text-muted-foreground" />;
     case 'pending':
     default:
       return <Clock className="h-5 w-5 text-gray-300" />;
@@ -91,7 +91,7 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
     return (
       <div className="text-center py-12">
         <Terminal className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">No step trace data available</p>
+        <p className="text-muted-foreground">No step trace data available</p>
       </div>
     );
   }
@@ -124,11 +124,11 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
               <div className="text-xs text-muted-foreground">Running</div>
             </div>
             <div className="space-y-1">
-              <div className="text-2xl font-bold text-gray-500">{stepSummary.skipped}</div>
+              <div className="text-2xl font-bold text-muted-foreground">{stepSummary.skipped}</div>
               <div className="text-xs text-muted-foreground">Skipped</div>
             </div>
             <div className="space-y-1">
-              <div className="text-2xl font-bold text-gray-400">{stepSummary.pending}</div>
+              <div className="text-2xl font-bold text-muted-foreground">{stepSummary.pending}</div>
               <div className="text-xs text-muted-foreground">Pending</div>
             </div>
           </div>
@@ -136,7 +136,7 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
       </Card>
 
       <div className="relative">
-        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
+        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-muted" />
 
         <div className="space-y-4">
           {steps.map((step, index) => {
@@ -146,11 +146,11 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
             return (
               <div key={step.id} className="relative flex gap-4">
                 <div className="relative z-10 flex-shrink-0">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 bg-white ${
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 bg-card ${
                     step.status === 'completed' ? 'border-green-500 bg-green-50' :
                     step.status === 'failed' ? 'border-red-500 bg-red-50' :
                     step.status === 'running' ? 'border-blue-500 bg-blue-50' :
-                    'border-gray-300 bg-white'
+                    'border-border bg-card'
                   }`}>
                     {getStepStatusIcon(step.status)}
                   </div>
@@ -161,7 +161,7 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-gray-500">
+                          <span className="text-sm font-medium text-muted-foreground">
                             Step {step.step_index}
                           </span>
                           <span className="text-lg font-semibold">
@@ -171,7 +171,7 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
                         </div>
                         <div className="flex items-center gap-3">
                           {step.duration_ms !== null && (
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               {formatDuration(step.duration_ms)}
                             </span>
                           )}
@@ -191,18 +191,18 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
                       </div>
 
                       {isExpanded && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+                        <div className="mt-4 pt-4 border-t border-border space-y-4">
                               <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <div className="text-gray-500 mb-1">Started</div>
+                            <div className="bg-muted rounded-lg p-3">
+                              <div className="text-muted-foreground mb-1">Started</div>
                               <div className="font-mono">{formatTimestamp(step.started_at)}</div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <div className="text-gray-500 mb-1">Completed</div>
+                            <div className="bg-muted rounded-lg p-3">
+                              <div className="text-muted-foreground mb-1">Completed</div>
                               <div className="font-mono">{formatTimestamp(step.completed_at)}</div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <div className="text-gray-500 mb-1">Duration</div>
+                            <div className="bg-muted rounded-lg p-3">
+                              <div className="text-muted-foreground mb-1">Duration</div>
                               <div className="font-mono">{formatDuration(step.duration_ms)}</div>
                             </div>
                           </div>
@@ -243,13 +243,13 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
 
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <Play className="h-4 w-4 text-gray-500" />
-                              <p className="text-sm font-medium text-gray-600">Step Context</p>
+                              <Play className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-sm font-medium text-muted-foreground">Step Context</p>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                            <div className="bg-muted rounded-lg p-3 text-sm">
                               <div className="grid grid-cols-2 gap-2">
-                                <div><span className="text-gray-500">Action:</span> {step.action_type}</div>
-                                <div><span className="text-gray-500">Index:</span> {step.step_index}</div>
+                                <div><span className="text-muted-foreground">Action:</span> {step.action_type}</div>
+                                <div><span className="text-muted-foreground">Index:</span> {step.step_index}</div>
                               </div>
                             </div>
                           </div>
@@ -257,8 +257,8 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
                           {step.extracted_data && Object.keys(step.extracted_data).length > 0 && (
                             <div>
                               <div className="flex items-center gap-2 mb-2">
-                                <ArrowRight className="h-4 w-4 text-gray-500" />
-                                <p className="text-sm font-medium text-gray-600">Extracted Data</p>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-sm font-medium text-muted-foreground">Extracted Data</p>
                               </div>
                               <pre className="bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto max-h-48">
                                 {JSON.stringify(step.extracted_data, null, 2)}
@@ -267,8 +267,8 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
                           )}
 
                           {configId && (
-                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                              <span className="text-sm text-gray-500">View in configuration:</span>
+                            <div className="flex items-center justify-between pt-2 border-t border-border">
+                              <span className="text-sm text-muted-foreground">View in configuration:</span>
                               <Button
                                 variant="outline"
                                 size="sm"

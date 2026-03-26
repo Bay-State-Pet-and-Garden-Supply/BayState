@@ -41,6 +41,9 @@ export function PipelineClient({
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
+  const [publishedActionState, setPublishedActionState] = useState<
+    "upload" | "zip" | null
+  >(null);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
@@ -90,7 +93,7 @@ export function PipelineClient({
       setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          status: stage,
+          status: stage === "finalized" ? "finalized" : stage,
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
@@ -340,6 +343,116 @@ export function PipelineClient({
     }
   }, [selectedSkus, refreshAll]);
 
+  const uploadPublishedProducts = useCallback(
+    async (skus?: string[]) => {
+      const uploadCount = skus?.length ?? totalCount;
+      if (uploadCount === 0) {
+        return;
+      }
+
+      setPublishedActionState("upload");
+      try {
+        const response = await fetch("/api/admin/pipeline/upload-shopsite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(skus && skus.length > 0 ? { skus } : {}),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error || "Failed to upload products to ShopSite");
+        }
+
+        const marker =
+          typeof payload.marker === "string" && payload.marker.length > 0
+            ? payload.marker
+            : null;
+        const uploadedCount =
+          typeof payload.uploadedCount === "number" ? payload.uploadedCount : uploadCount;
+
+        toast.success("Uploaded to ShopSite", {
+          description: `${uploadedCount} published product${uploadedCount === 1 ? "" : "s"}${marker ? ` tagged ${marker}` : ""}`,
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to upload products to ShopSite",
+        );
+      } finally {
+        setPublishedActionState(null);
+      }
+    },
+    [totalCount],
+  );
+
+  const downloadPublishedImageZip = useCallback(
+    async (skus?: string[]) => {
+      const exportCount = skus?.length ?? totalCount;
+      if (exportCount === 0) {
+        return;
+      }
+
+      setPublishedActionState("zip");
+      try {
+        const response =
+          skus && skus.length > 0
+            ? await fetch("/api/admin/pipeline/export-zip", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skus }),
+              })
+            : await fetch("/api/admin/pipeline/export-zip");
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "Failed to download image ZIP");
+        }
+
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get("Content-Disposition");
+        const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
+        const filename = filenameMatch?.[1] ?? "shopsite-images.zip";
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success("Image ZIP downloaded", {
+          description: `${exportCount} published product${exportCount === 1 ? "" : "s"}`,
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to download image ZIP",
+        );
+      } finally {
+        setPublishedActionState(null);
+      }
+    },
+    [totalCount],
+  );
+
+  const handleUploadAllShopSite = useCallback(() => {
+    void uploadPublishedProducts();
+  }, [uploadPublishedProducts]);
+
+  const handleDownloadAllZip = useCallback(() => {
+    void downloadPublishedImageZip();
+  }, [downloadPublishedImageZip]);
+
+  const handleUploadSelectedShopSite = useCallback(() => {
+    void uploadPublishedProducts(Array.from(selectedSkus));
+  }, [uploadPublishedProducts, selectedSkus]);
+
+  const handleDownloadSelectedZip = useCallback(() => {
+    void downloadPublishedImageZip(Array.from(selectedSkus));
+  }, [downloadPublishedImageZip, selectedSkus]);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -537,6 +650,15 @@ export function PipelineClient({
           onSourceFilterChange={setSourceFilter}
           availableSourceFilters={availableSourceFilters}
           selectedCount={selectedSkus.size}
+          actionState={
+            currentStage === "published" ? publishedActionState : null
+          }
+          onUploadShopSite={
+            currentStage === "published" ? handleUploadAllShopSite : undefined
+          }
+          onDownloadZip={
+            currentStage === "published" ? handleDownloadAllZip : undefined
+          }
         />
       )}
 
@@ -548,16 +670,16 @@ export function PipelineClient({
           </div>
         ) : currentStage === "monitoring" ? (
           <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="rounded-lg bg-[#008850]/10 p-2">
                   <Activity className="h-5 w-5 text-[#008850]" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Active Runs
                   </h2>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Live scraper jobs currently running or queued.
                   </p>
                 </div>
@@ -567,16 +689,16 @@ export function PipelineClient({
           </div>
         ) : currentStage === "consolidating" ? (
           <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="rounded-lg bg-brand-burgundy/10 p-2">
                   <Brain className="h-5 w-5 text-brand-burgundy" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-foreground">
                     AI Consolidations
                   </h2>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Active consolidation batches and history.
                   </p>
                 </div>
@@ -648,6 +770,17 @@ export function PipelineClient({
         onResetStage={handleResetStage}
         onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
         onDelete={handleDelete}
+        actionState={
+          currentStage === "published" ? publishedActionState : null
+        }
+        onUploadShopSite={
+          currentStage === "published"
+            ? handleUploadSelectedShopSite
+            : undefined
+        }
+        onDownloadZip={
+          currentStage === "published" ? handleDownloadSelectedZip : undefined
+        }
       />
     </div>
   );

@@ -115,8 +115,8 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
             <History className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Scraper Runs</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-2xl font-bold text-foreground">Scraper Runs</h1>
+            <p className="text-sm text-muted-foreground">
               {totalCount} scrape job{totalCount !== 1 ? 's' : ''} execution history
             </p>
           </div>
@@ -139,7 +139,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Total Jobs</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Total Jobs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{totalCount}</div>
@@ -148,7 +148,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Running</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Running</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">{runningCount}</div>
@@ -157,7 +157,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Completed</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Completed</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">{completedCount}</div>
@@ -166,7 +166,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Failed</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Failed</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">{failedCount}</div>
@@ -193,7 +193,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
             <TableBody>
               {runs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-600">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No scraper runs found.
                   </TableCell>
                 </TableRow>
@@ -287,7 +287,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
           </DialogHeader>
           <div className="py-4">
             {retryTarget && (
-              <div className="rounded-lg bg-gray-50 p-3 text-sm">
+              <div className="rounded-lg bg-muted p-3 text-sm">
                 <p><strong>Job ID:</strong> {retryTarget.id.slice(0, 8)}...</p>
                 <p><strong>Scraper:</strong> {retryTarget.scraper_name}</p>
                 <p><strong>SKUs:</strong> {retryTarget.total_skus}</p>
@@ -316,7 +316,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
           </DialogHeader>
           <div className="py-4">
             {cancelTarget && (
-              <div className="rounded-lg bg-gray-50 p-3 text-sm">
+              <div className="rounded-lg bg-muted p-3 text-sm">
                 <p><strong>Job ID:</strong> {cancelTarget.id.slice(0, 8)}...</p>
                 <p><strong>Scraper:</strong> {cancelTarget.scraper_name}</p>
                 <p><strong>Status:</strong> {cancelTarget.status}</p>

@@ -19,7 +19,7 @@ function getStepStatusIcon(status: string) {
     case 'failed':
       return <XCircle className="h-5 w-5 text-red-500" />;
     case 'skipped':
-      return <Minus className="h-5 w-5 text-gray-400" />;
+      return <Minus className="h-5 w-5 text-muted-foreground" />;
     case 'pending':
     default:
       return <Clock className="h-5 w-5 text-gray-300" />;
@@ -49,7 +49,7 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
 
   if (steps.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         No workflow steps available
       </div>
     );
@@ -57,7 +57,7 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
 
   return (
     <div className="relative">
-      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
+      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-muted" />
 
       <div className="space-y-4">
         {steps.map((step, index) => {
@@ -67,11 +67,11 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
           return (
             <div key={step.id} className="relative flex gap-4">
               <div className="relative z-10 flex-shrink-0">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 bg-white ${
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 bg-card ${
                   step.status === 'completed' ? 'border-green-500 bg-green-50' :
                   step.status === 'failed' ? 'border-red-500 bg-red-50' :
                   step.status === 'running' ? 'border-blue-500 bg-blue-50' :
-                  'border-gray-300 bg-white'
+                  'border-border bg-card'
                 }`}>
                   {getStepStatusIcon(step.status)}
                 </div>
@@ -82,14 +82,14 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-gray-500">
+                        <span className="text-sm font-medium text-muted-foreground">
                           Step {step.step_index}
                         </span>
                         <span className="text-lg font-semibold">
                           {formatActionType(step.action_type)}
                         </span>
                         {isPlaceholder && (
-                          <span className="text-xs text-gray-400 italic">
+                          <span className="text-xs text-muted-foreground italic">
                             (expected)
                           </span>
                         )}
@@ -99,12 +99,12 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
                           step.status === 'completed' ? 'text-green-600' :
                           step.status === 'failed' ? 'text-red-600' :
                           step.status === 'running' ? 'text-blue-600' :
-                          'text-gray-400'
+                          'text-muted-foreground'
                         }`}>
                           {step.status}
                         </span>
                         {step.duration_ms !== null && (
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-muted-foreground">
                             {formatDuration(step.duration_ms)}
                           </span>
                         )}
@@ -126,11 +126,11 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
                     </div>
 
                     {isExpanded && !isPlaceholder && (
-                      <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                      <div className="mt-4 pt-4 border-t border-border space-y-3">
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           {step.started_at && (
                             <div>
-                              <span className="text-gray-500">Started:</span>{' '}
+                              <span className="text-muted-foreground">Started:</span>{' '}
                               <span className="font-mono">
                                 {new Date(step.started_at).toLocaleTimeString()}
                               </span>
@@ -138,7 +138,7 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
                           )}
                           {step.completed_at && (
                             <div>
-                              <span className="text-gray-500">Completed:</span>{' '}
+                              <span className="text-muted-foreground">Completed:</span>{' '}
                               <span className="font-mono">
                                 {new Date(step.completed_at).toLocaleTimeString()}
                               </span>
@@ -162,7 +162,7 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
 
                         {step.extracted_data && Object.keys(step.extracted_data).length > 0 && (
                           <div>
-                            <p className="text-sm font-medium text-gray-600 mb-2">
+                            <p className="text-sm font-medium text-muted-foreground mb-2">
                               Extracted Data
                             </p>
                             <pre className="bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto max-h-48">

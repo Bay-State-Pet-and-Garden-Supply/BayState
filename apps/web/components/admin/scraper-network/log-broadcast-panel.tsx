@@ -1,140 +1,107 @@
 /**
- * LogBroadcastPanel - Real-time log display from runner broadcasts
- *
- * Displays transient log events received via Supabase Broadcast API
- * from scraper runners during job execution.
+ * LogBroadcastPanel - real-time log display from runner broadcasts
  */
 
 'use client';
 
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import type { ScrapeJobLog } from '@/lib/realtime/types';
 import { useJobBroadcasts } from '@/lib/realtime';
-import { Terminal, Filter, X, Search, Clock, AlertTriangle, Info, XCircle, Bug } from 'lucide-react';
+import type { ScrapeJobLogEntry } from '@/lib/scraper-logs';
+import { Terminal, X, AlertTriangle, Info, XCircle, Bug } from 'lucide-react';
 
-const logLevelVariants = cva(
-  'px-2 py-0.5 rounded text-xs font-medium uppercase',
-  {
-    variants: {
-      level: {
-        DEBUG: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-        INFO: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-        WARN: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
-        ERROR: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-      },
+const logLevelVariants = cva('rounded px-2 py-0.5 text-xs font-medium uppercase', {
+  variants: {
+    level: {
+      debug: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+      info: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+      warning: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+      error: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+      critical: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
     },
-    defaultVariants: {
-      level: 'INFO',
-    },
-  }
-);
+  },
+  defaultVariants: {
+    level: 'info',
+  },
+});
 
 interface LogBroadcastPanelProps {
-  /** Filter by specific job IDs */
   jobIds?: string[];
-  /** Filter by runner IDs */
   runnerIds?: string[];
-  /** Maximum logs to keep */
   maxLogs?: number;
-  /** Show compact variant */
   compact?: boolean;
-  /** Auto-scroll to new logs */
   autoScroll?: boolean;
-  /** Click handler for log details */
-  onLogClick?: (log: ScrapeJobLog) => void;
-  /** Clear logs handler */
+  onLogClick?: (log: ScrapeJobLogEntry) => void;
   onClear?: () => void;
 }
 
-interface LogItemProps {
-  log: ScrapeJobLog;
-  compact?: boolean;
-  onClick?: () => void;
-}
-
-/**
- * Get icon for log level
- */
-function getLevelIcon(level: ScrapeJobLog['level']) {
+function getLevelIcon(level: ScrapeJobLogEntry['level']) {
   switch (level) {
-    case 'DEBUG':
+    case 'debug':
       return <Bug className="h-3.5 w-3.5" />;
-    case 'INFO':
-      return <Info className="h-3.5 w-3.5" />;
-    case 'WARN':
+    case 'warning':
       return <AlertTriangle className="h-3.5 w-3.5" />;
-    case 'ERROR':
+    case 'error':
+    case 'critical':
       return <XCircle className="h-3.5 w-3.5" />;
     default:
       return <Info className="h-3.5 w-3.5" />;
   }
 }
 
-/**
- * Format timestamp
- */
 function formatTime(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return new Date(isoString).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
-/**
- * Log Item Component
- */
-function LogItem({ log, compact = false, onClick }: LogItemProps) {
+function LogItem({
+  log,
+  compact = false,
+  onClick,
+}: {
+  log: ScrapeJobLogEntry;
+  compact?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <div
       onClick={onClick}
       className={cn(
-        'flex items-start gap-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
-        compact && 'py-1'
+        'cursor-pointer rounded py-1.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
+        compact && 'py-1',
       )}
     >
-      {/* Timestamp */}
-      <span className="flex-shrink-0 text-xs text-slate-400 font-mono">
-        {formatTime(log.timestamp)}
-      </span>
-
-      {/* Level Badge */}
-      <span className={cn(logLevelVariants({ level: log.level }))}>
-        {getLevelIcon(log.level)}
-      </span>
-
-      {/* Job ID (if not filtering) */}
-      {!compact && (
-        <span className="flex-shrink-0 text-xs text-slate-400 font-mono">
-          [{log.job_id.slice(0, 8)}]
+      <div className="flex items-start gap-2">
+        <span className="shrink-0 font-mono text-xs text-slate-400">{formatTime(log.timestamp)}</span>
+        <span className={cn(logLevelVariants({ level: log.level }))}>{getLevelIcon(log.level)}</span>
+        {!compact ? (
+          <span className="shrink-0 font-mono text-xs text-slate-400">[{log.job_id.slice(0, 8)}]</span>
+        ) : null}
+        {!compact ? (
+          <span className="shrink-0 font-mono text-xs text-slate-400">
+            {(log.runner_name || log.runner_id || 'runner').slice(0, 8)}
+          </span>
+        ) : null}
+        <span className="flex-1 break-all font-mono text-sm text-slate-700 dark:text-slate-300">
+          {log.message}
         </span>
-      )}
+      </div>
 
-      {/* Runner ID */}
-      {!compact && (
-        <span className="flex-shrink-0 text-xs text-slate-400 font-mono">
-          {log.runner_id.slice(0, 8)}
-        </span>
-      )}
-
-      {/* Message */}
-      <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 font-mono break-all">
-        {log.message}
-      </span>
+      {(log.scraper_name || log.sku || log.phase) && !compact ? (
+        <div className="ml-[7.5rem] mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
+          {log.phase ? <span>{log.phase}</span> : null}
+          {log.scraper_name ? <span className="font-mono">{log.scraper_name}</span> : null}
+          {log.sku ? <span className="font-mono text-amber-500">{log.sku}</span> : null}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/**
- * LogBroadcastPanel Component
- *
- * @example
- * ```tsx
- * <LogBroadcastPanel
- *   jobIds={['job-123']}
- *   onLogClick={(log) => setSelectedLog(log)}
- * />
- * ```
- */
 export function LogBroadcastPanel({
   jobIds,
   runnerIds,
@@ -144,138 +111,106 @@ export function LogBroadcastPanel({
   onLogClick,
   onClear,
 }: LogBroadcastPanelProps) {
-  const {
-    logs,
-    isConnected,
-    clearLogs,
-  } = useJobBroadcasts({
+  const { logs, isConnected, clearLogs } = useJobBroadcasts({
     autoConnect: true,
     maxLogs,
   });
 
-  // Filter logs
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
-      if (jobIds && jobIds.length > 0 && !jobIds.includes(log.job_id)) {
+      if (jobIds?.length && !jobIds.includes(log.job_id)) {
         return false;
       }
-      if (runnerIds && runnerIds.length > 0 && !runnerIds.includes(log.runner_id)) {
+      if (runnerIds?.length && log.runner_id && !runnerIds.includes(log.runner_id)) {
         return false;
       }
       return true;
     });
-  }, [logs, jobIds, runnerIds]);
+  }, [jobIds, logs, runnerIds]);
 
-  // Count by level
-  const counts = useMemo(() => {
-    return {
+  const counts = useMemo(
+    () => ({
       total: filteredLogs.length,
-      DEBUG: filteredLogs.filter((l) => l.level === 'DEBUG').length,
-      INFO: filteredLogs.filter((l) => l.level === 'INFO').length,
-      WARN: filteredLogs.filter((l) => l.level === 'WARN').length,
-      ERROR: filteredLogs.filter((l) => l.level === 'ERROR').length,
-    };
-  }, [filteredLogs]);
+      debug: filteredLogs.filter((log) => log.level === 'debug').length,
+      info: filteredLogs.filter((log) => log.level === 'info').length,
+      warning: filteredLogs.filter((log) => log.level === 'warning').length,
+      error: filteredLogs.filter((log) => ['error', 'critical'].includes(log.level)).length,
+    }),
+    [filteredLogs],
+  );
 
-  // Auto-scroll ref
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [filteredLogs, autoScroll]);
+  }, [autoScroll, filteredLogs]);
 
-  // Clear handler
   const handleClear = useCallback(() => {
     clearLogs();
     onClear?.();
   }, [clearLogs, onClear]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <Terminal className="h-5 w-5 text-slate-500" />
           <h3 className="font-semibold text-slate-900 dark:text-slate-100">Live Logs</h3>
-          <span className="text-xs text-slate-500">
-            ({counts.total})
-          </span>
+          <span className="text-xs text-slate-500">({counts.total})</span>
         </div>
 
-        {/* Level Filters */}
         <div className="flex items-center gap-2">
-          {(['DEBUG', 'INFO', 'WARN', 'ERROR'] as const).map((level) => (
+          {(['debug', 'info', 'warning', 'error'] as const).map((level) => (
             <button
               key={level}
-              className={cn(
-                'px-2 py-0.5 rounded text-xs font-medium transition-colors',
-                logLevelVariants({ level }),
-                'hover:opacity-80'
-              )}
+              className={cn('rounded px-2 py-0.5 text-xs font-medium transition-colors hover:opacity-80', logLevelVariants({ level }))}
             >
-              {level} {counts[level]}
+              {level.toUpperCase()} {counts[level]}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Log Count */}
       <div className="flex items-center gap-4 py-2 text-xs">
         <span className="text-slate-500">
           {counts.total} log{counts.total !== 1 ? 's' : ''}
         </span>
-        {counts.ERROR > 0 && (
-          <span className="text-red-600 font-medium">
-            {counts.ERROR} error{counts.ERROR !== 1 ? 's' : ''}
+        {counts.error > 0 ? (
+          <span className="font-medium text-red-600">
+            {counts.error} error{counts.error !== 1 ? 's' : ''}
           </span>
-        )}
+        ) : null}
       </div>
 
-      {/* Logs Container */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto font-mono text-sm space-y-0.5 pr-2"
+        className="flex-1 overflow-y-auto space-y-0.5 pr-2 font-mono text-sm"
         style={{ maxHeight: 'calc(100vh - 250px)' }}
       >
         {filteredLogs.length > 0 ? (
           filteredLogs.map((log) => (
-            <LogItem
-              key={log.id}
-              log={log}
-              compact={compact}
-              onClick={() => onLogClick?.(log)}
-            />
+            <LogItem key={log.id} log={log} compact={compact} onClick={() => onLogClick?.(log)} />
           ))
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Terminal className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
+            <Terminal className="mb-4 h-12 w-12 text-slate-300 dark:text-slate-600" />
             <p className="text-slate-500">No logs yet</p>
-            <p className="text-xs text-slate-400 mt-1">
-              Logs will appear when runners broadcast events
-            </p>
+            <p className="mt-1 text-xs text-slate-400">Logs will appear when runners broadcast events</p>
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
+      <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'inline-block h-2 w-2 rounded-full',
-              isConnected ? 'bg-emerald-500' : 'bg-amber-500'
-            )}
-          />
-          <span className="text-xs text-slate-500">
-            {isConnected ? 'Connected' : 'Connecting...'}
-          </span>
+          <span className={cn('inline-block h-2 w-2 rounded-full', isConnected ? 'bg-emerald-500' : 'bg-amber-500')} />
+          <span className="text-xs text-slate-500">{isConnected ? 'Connected' : 'Connecting...'}</span>
         </div>
 
         <button
           onClick={handleClear}
-          className="flex items-center gap-1 px-3 py-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+          className="flex items-center gap-1 px-3 py-1 text-xs text-slate-500 transition-colors hover:text-slate-700 dark:hover:text-slate-300"
         >
           <X className="h-3 w-3" />
           Clear

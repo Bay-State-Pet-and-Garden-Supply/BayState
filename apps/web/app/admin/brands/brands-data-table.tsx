@@ -84,7 +84,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       key: 'logo_url',
       header: 'Logo',
       render: (value, row) => (
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-100">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
           {value ? (
             <Image
               src={String(value)}
@@ -94,7 +94,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
               className="h-10 w-10 object-contain"
             />
           ) : (
-            <span className="text-lg font-bold text-gray-600">
+            <span className="text-lg font-bold text-muted-foreground">
               {row.name.charAt(0).toUpperCase()}
             </span>
           )}
@@ -108,9 +108,9 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       searchable: true,
       render: (_, row) => (
         <div>
-          <p className="font-medium text-gray-900">{row.name}</p>
+          <p className="font-medium text-foreground">{row.name}</p>
           {row.description && (
-            <p className="text-xs text-gray-600 line-clamp-1">{row.description}</p>
+            <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
           )}
         </div>
       ),
@@ -121,7 +121,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       sortable: true,
       searchable: true,
       render: (value) => (
-        <code className="rounded bg-gray-100 px-2 py-0.5 text-xs">{String(value)}</code>
+        <code className="rounded bg-muted px-2 py-0.5 text-xs">{String(value)}</code>
       ),
     },
     {
@@ -129,7 +129,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       header: 'Created',
       sortable: true,
       render: (value) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {new Date(String(value)).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',

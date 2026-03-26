@@ -48,20 +48,20 @@ export default async function B2BPage() {
           <Database className="h-5 w-5 text-[#008850]" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">B2B Data Feeds</h1>
-          <p className="text-sm text-gray-600">Monitor and manage distributor product data streams</p>
+          <h1 className="text-2xl font-bold text-foreground">B2B Data Feeds</h1>
+          <p className="text-sm text-muted-foreground">Monitor and manage distributor product data streams</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Feed Status</h2>
+        <h2 className="text-lg font-semibold text-foreground">Feed Status</h2>
         <Suspense fallback={<FeedGridSkeleton />}>
           <FeedGrid feeds={feeds} />
         </Suspense>
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Recent Sync Activity</h2>
+        <h2 className="text-lg font-semibold text-foreground">Recent Sync Activity</h2>
         <Suspense fallback={<SyncHistorySkeleton />}>
            <SyncHistory jobs={jobs} feeds={feeds} />
         </Suspense>

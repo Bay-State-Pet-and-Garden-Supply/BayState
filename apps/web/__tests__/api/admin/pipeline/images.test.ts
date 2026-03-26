@@ -74,6 +74,14 @@ describe('Images Pipeline API', () => {
             or: jest.fn().mockReturnThis(),
             order: jest.fn().mockReturnThis(),
             single: jest.fn(),
+            storage: {
+                from: jest.fn(() => ({
+                    upload: jest.fn().mockResolvedValue({ error: null }),
+                    getPublicUrl: jest.fn((path: string) => ({
+                        data: { publicUrl: `https://cdn.example.com/${path}` },
+                    })),
+                })),
+            },
         };
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
@@ -255,6 +263,50 @@ describe('Images Pipeline API', () => {
             expect(json.error).toContain('Invalid image');
         });
 
+        it('should accept selected images that are present in sources even when image_candidates is empty', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
+            });
+
+            const sourceUrl = 'https://example.com/source-only.jpg';
+            const mockProduct = {
+                sku: 'SKU-001',
+                image_candidates: [],
+                selected_images: [],
+                sources: {
+                    chewy: {
+                        image_url: sourceUrl,
+                    },
+                },
+                consolidated: {},
+            };
+
+            const selectMock = {
+                eq: jest.fn().mockReturnThis(),
+                single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
+            };
+            mockSupabase.select.mockReturnValue(selectMock);
+
+            const updateEqMock = jest.fn().mockResolvedValue({ error: null });
+            mockSupabase.update.mockReturnValue({ eq: updateEqMock });
+
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001', selectedImages: [sourceUrl] };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
+                method: 'POST',
+            });
+            const res = await POST(req);
+
+            expect(res.status).toBe(200);
+            const json = await res.json();
+            expect(json.success).toBe(true);
+        });
+
         it('should successfully save selected images', async () => {
             (requireAdminAuth as jest.Mock).mockResolvedValue({
                 authorized: true,
@@ -290,6 +342,52 @@ describe('Images Pipeline API', () => {
             expect(res.status).toBe(200);
             const json = await res.json();
             expect(json.success).toBe(true);
+        });
+
+        it('should migrate inline image data URLs to storage-backed URLs before saving', async () => {
+            (requireAdminAuth as jest.Mock).mockResolvedValue({
+                authorized: true,
+                user: { id: 'user-123' },
+                role: 'admin',
+            });
+
+            const dataUrl = 'data:image/png;base64,QUJD';
+            const mockProduct = {
+                sku: 'SKU-001',
+                image_candidates: [dataUrl],
+                selected_images: [],
+                sources: {},
+                consolidated: { name: 'Product 1' },
+            };
+
+            const selectMock = {
+                eq: jest.fn().mockReturnThis(),
+                single: jest.fn().mockResolvedValue({ data: mockProduct, error: null }),
+            };
+            mockSupabase.select.mockReturnValue(selectMock);
+
+            const updateEqMock = jest.fn().mockResolvedValue({ error: null });
+            mockSupabase.update.mockReturnValue({ eq: updateEqMock });
+
+            const testReq = class extends NextRequest {
+                async json() {
+                    return { sku: 'SKU-001', selectedImages: [dataUrl] };
+                }
+            };
+            const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
+                method: 'POST',
+            });
+            const res = await POST(req);
+
+            expect(res.status).toBe(200);
+            expect(mockSupabase.storage.from).toHaveBeenCalledWith('product-images');
+            expect(mockSupabase.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    consolidated: expect.objectContaining({
+                        images: ['https://cdn.example.com/pipeline-selected/sku-001/b5d4045c3f466fa91fe2cc6a.png'],
+                    }),
+                })
+            );
         });
 
         it('should handle update errors', async () => {

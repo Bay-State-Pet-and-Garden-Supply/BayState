@@ -12,7 +12,7 @@ function ExportLoadingState() {
     return (
         <div className="flex items-center justify-center p-8">
             <Spinner size="lg" className="text-[#008850]" />
-            <span className="ml-3 text-gray-600">Loading export workspace...</span>
+            <span className="ml-3 text-muted-foreground">Loading export workspace...</span>
         </div>
     );
 }

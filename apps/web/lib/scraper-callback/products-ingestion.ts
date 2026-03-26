@@ -3,6 +3,10 @@ import {
   hasMeaningfulProductSourceData,
   mergeProductSources,
 } from '@/lib/product-sources';
+import {
+  buildProductImageStorageFolder,
+  replaceInlineImageDataUrls,
+} from '@/lib/product-image-storage';
 
 type SourcePayloadBySku = Record<string, Record<string, unknown>>;
 
@@ -20,6 +24,19 @@ export class MissingProductsIngestionSkusError extends Error {
 export interface PartialPersistenceResult {
   persisted: string[];
   missing: string[];
+}
+
+async function makeIncomingSourcesDurable(
+  supabase: Pick<SupabaseClient, 'storage'>,
+  sku: string,
+  sources: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  return replaceInlineImageDataUrls(supabase, sources, {
+    folderPath: buildProductImageStorageFolder('pipeline-sources', sku),
+    onError: (message, error) => {
+      console.warn(`[Products Ingestion] ${message}`, error);
+    },
+  });
 }
 
 /**
@@ -74,8 +91,8 @@ export async function persistProductsIngestionSourcesStrict(
     throw new MissingProductsIngestionSkusError(missingSkus);
   }
 
-  const updateRows = skus.map((sku) => {
-    const scrapedData = skuData[sku];
+  const updateRows = await Promise.all(skus.map(async (sku) => {
+    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, skuData[sku]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData);
@@ -92,7 +109,7 @@ export async function persistProductsIngestionSourcesStrict(
           }
         : {}),
     };
-  });
+  }));
 
   const { error: updateError } = await supabase
     .from('products_ingestion')
@@ -135,8 +152,8 @@ export async function persistProductsIngestionSourcesPartial(
     return { persisted: [], missing };
   }
 
-  const updateRows = toUpdateSkus.map((sku) => {
-    const scrapedData = skuData[sku];
+  const updateRows = await Promise.all(toUpdateSkus.map(async (sku) => {
+    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, skuData[sku]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData);
@@ -153,7 +170,7 @@ export async function persistProductsIngestionSourcesPartial(
           }
         : {}),
     };
-  });
+  }));
 
   const { error: updateError } = await supabase
     .from('products_ingestion')

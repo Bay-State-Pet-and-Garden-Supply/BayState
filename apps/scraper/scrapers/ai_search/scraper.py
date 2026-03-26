@@ -149,6 +149,66 @@ class AISearchScraper:
         }
         logger.info(f"[AI Search] Job telemetry summary: {json.dumps(summary)}")
 
+    async def _collect_search_candidates(
+        self,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        category: Optional[str],
+    ) -> tuple[list[dict[str, Any]], Optional[str], Optional[str]]:
+        """Search across the primary query and variants, then rank one merged candidate pool."""
+        initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
+        logger.info(f"[AI Search] Primary search: {initial_query}")
+
+        seen_queries: set[str] = set()
+        aggregated_results: list[dict[str, Any]] = []
+        search_error: Optional[str] = None
+
+        async def run_query(query: str) -> None:
+            nonlocal search_error
+            if not query or query in seen_queries:
+                return
+            seen_queries.add(query)
+            raw_results, raw_error = await self._search_client.search(query)
+            if raw_results:
+                aggregated_results.extend(raw_results)
+                search_error = None
+            elif raw_error:
+                search_error = raw_error
+
+        await run_query(initial_query)
+
+        working_name = product_name
+        if self.use_ai_source_selection and aggregated_results and product_name:
+            logger.info(f"[AI Search] Consolidating product name for '{product_name}'")
+            working_name, _ = await self._name_consolidator.consolidate_name(
+                sku=sku,
+                abbreviated_name=product_name,
+                search_snippets=aggregated_results[:5],
+            )
+
+        query_plan = [
+            self._query_builder.build_search_query(sku, working_name, brand, category),
+            *self._query_builder.build_query_variants(
+                sku=sku,
+                product_name=working_name,
+                brand=brand,
+                category=category,
+            ),
+        ]
+
+        for query in query_plan:
+            await run_query(query)
+
+        prepared_results = self._scoring.prepare_search_results(
+            aggregated_results,
+            sku,
+            brand,
+            working_name,
+            category,
+        )
+        return prepared_results, working_name, search_error
+
     async def scrape_products_batch(
         self,
         items: list[dict[str, Any]],
@@ -239,40 +299,17 @@ class AISearchScraper:
         if strong_url:
             return strong_url
 
-        ranked_candidates: list[tuple[float, str]] = []
-        filtered_results: list[dict[str, Any]] = []
-        for result in search_results:
-            url = str(result.get("url") or "").strip()
-            if not url:
-                continue
+        ranked_results = self._scoring.prepare_search_results(
+            search_results=search_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+        )
+        if ranked_results:
+            return str(ranked_results[0].get("url") or "") or None
 
-            domain = self._scoring.domain_from_url(url.lower())
-            if domain and any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self._scoring.BLOCKED_DOMAINS):
-                continue
-
-            filtered_results.append(result)
-
-        for result in filtered_results:
-            url = str(result.get("url") or "").strip()
-            domain = self._scoring.domain_from_url(url.lower())
-            if domain and any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self._scoring.BLOCKED_DOMAINS):
-                continue
-            if self._scoring.is_low_quality_result(result):
-                continue
-            score = self._scoring.score_search_result(
-                result=result,
-                sku=sku,
-                brand=brand,
-                product_name=product_name,
-                category=category,
-            )
-            ranked_candidates.append((score, url))
-
-        if ranked_candidates:
-            ranked_candidates.sort(key=lambda item: item[0], reverse=True)
-            return ranked_candidates[0][1]
-
-        logger.warning("[AI Search] No valid sources found after filtering")
+        logger.warning("[AI Search] No valid sources found after ranking")
         return None
 
     async def scrape_product(
@@ -294,90 +331,17 @@ class AISearchScraper:
             AISearchResult with extracted data
         """
         try:
-            # Step 1: Reconnaissance Search (Initial Pass)
-            # Use SKU and abbreviated name to gather context
-            initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
-            logger.info(f"[AI Search] Phase 1 Reconnaissance: {initial_query}")
-            
-            raw_results, _ = await self._search_client.search(initial_query)
-            
-            # Step 2: Name Consolidation
-            # Use LLM to infer the canonical "real" name from search snippets
-            consolidated_name = product_name
-            if self.use_ai_source_selection and raw_results:
-                logger.info(f"[AI Search] Consolidating name for '{product_name}'...")
-                consolidated_name, _ = await self._name_consolidator.consolidate_name(
-                    sku=sku,
-                    abbreviated_name=product_name or "",
-                    search_snippets=raw_results
-                )
-            
-            # Step 3: Targeted Search (Final Pass)
-            # Conduct another search using the new consolidated name for better manufacturer targeting
-            search_query = self._query_builder.build_search_query(sku, consolidated_name, brand, category)
-            
-            # Step 4: Search for product pages (Targeted)
-            search_results: list[dict[str, Any]] = []
-            search_error: Optional[str] = None
-            best_score_seen = float("-inf")
-            
-            # Optimization: If the targeted query is identical to reconnaissance, skip the first variant search
-            # as it's already in raw_results from Phase 1.
-            skip_initial_variant = search_query == initial_query
-            if skip_initial_variant:
-                logger.info(f"[AI Search] Phase 2: Query unchanged ('{search_query}'), skipping redundant search.")
-                prepared_results = self._scoring.prepare_search_results(raw_results, sku, brand, consolidated_name, category)
-                if prepared_results:
-                    search_results = prepared_results
-                    best_score_seen = self._scoring.score_search_result(
-                        result=prepared_results[0],
-                        sku=sku,
-                        brand=brand,
-                        product_name=consolidated_name,
-                        category=category,
-                    )
-            else:
-                logger.info(f"[AI Search] Phase 2 Targeted Search: {search_query}")
-
-            # Try variants if we don't have a strong result yet (score < 8.0)
-            if best_score_seen < 8.0:
-                for query_variant in self._query_builder.build_query_variants(
-                    sku=sku,
-                    product_name=consolidated_name,
-                    brand=brand,
-                    category=category,
-                ):
-                    # Skip if this variant is the same as what we already searched in Phase 1
-                    if skip_initial_variant and query_variant == initial_query:
-                        continue
-                        
-                    raw_results, raw_error = await self._search_client.search(query_variant)
-                    prepared_results = self._scoring.prepare_search_results(raw_results, sku, brand, consolidated_name, category)
-                    if prepared_results:
-                        top_score = self._scoring.score_search_result(
-                            result=prepared_results[0],
-                            sku=sku,
-                            brand=brand,
-                            product_name=consolidated_name,
-                            category=category,
-                        )
-                        if top_score > best_score_seen:
-                            best_score_seen = top_score
-                            search_results = prepared_results
-                            search_error = None
-                        if top_score >= 8.0:
-                            break
-                    search_error = raw_error
+            search_results, product_name, search_error = await self._collect_search_candidates(
+                sku=sku,
+                product_name=product_name,
+                brand=brand,
+                category=category,
+            )
 
             if not search_results:
                 error_msg = search_error or "No search results found"
                 return AISearchResult(success=False, sku=sku, error=error_msg)
 
-            # Update working name for the rest of the flow
-            product_name = consolidated_name
-
-            # Step 5: Optimization - If brand is missing, use PARALLEL discovery
-            # We crawl the top 3 results simultaneously using arun_many
             if not brand:
                 logger.info("[AI Search] Brand missing - initiating parallel candidate discovery")
                 top_candidates = search_results[:3]
@@ -404,66 +368,55 @@ class AISearchScraper:
                 if accepted_result:
                     return self._build_discovery_result(accepted_result, sku, product_name, brand, target_url)
 
-            # Step 4: Serial fallback / brand-aware discovery (existing logic)
-            max_attempts = 3
+            ordered_results = list(search_results)
+            prioritized_url = None
+            if self.use_ai_source_selection:
+                prioritized_url = await self._identify_best_source(
+                    ordered_results[:5],
+                    sku,
+                    brand,
+                    product_name,
+                )
+            if not prioritized_url:
+                prioritized_url = self._heuristic_source_selection(
+                    ordered_results,
+                    sku,
+                    brand,
+                    product_name,
+                    category,
+                )
+
+            if prioritized_url:
+                ordered_results.sort(
+                    key=lambda result: 0 if str(result.get("url") or "") == prioritized_url else 1
+                )
+
+            max_attempts = min(3, len(ordered_results))
             extraction_result: Optional[dict[str, Any]] = None
             accepted_result: Optional[dict[str, Any]] = None
             last_rejection_reason: Optional[str] = None
-            target_url = None
+            target_url: Optional[str] = None
             tried_urls: set[str] = set()
 
-            for attempt in range(max_attempts):
-                if attempt == 0:
-                    target_url = self._scoring.pick_strong_candidate_url(
-                        search_results=search_results,
-                        sku=sku,
-                        brand=brand,
-                        product_name=product_name,
-                        category=category,
-                    )
-                    if not target_url:
-                        if self.use_ai_source_selection:
-                            target_url = await self._identify_best_source(search_results, sku, brand, product_name)
-                        else:
-                            target_url = self._heuristic_source_selection(
-                                search_results,
-                                sku,
-                                brand,
-                                product_name,
-                            )
-                else:
-                    if not search_results:
-                        break
-                    target_url = str(search_results[0].get("url") or "")
-
+            for attempt, candidate in enumerate(ordered_results[:max_attempts], start=1):
+                target_url = str(candidate.get("url") or "").strip()
                 if not target_url or target_url in tried_urls:
-                    if attempt < max_attempts - 1:
-                        search_results = [r for r in search_results if r.get("url") != target_url]
-                        continue
-                # Telemetry: source selected
-                self._log_telemetry(sku, target_url, "source_selected", True, f"attempt {attempt + 1}")
-                logger.info(f"[AI Search] Selected source (attempt {attempt + 1}): {target_url}")
+                    continue
 
-                logger.info(f"[AI Search] Selected source (attempt {attempt + 1}): {target_url}")
+                self._log_telemetry(sku, target_url, "source_selected", True, f"attempt {attempt}")
+                logger.info(f"[AI Search] Selected source (attempt {attempt}): {target_url}")
 
-                selected_result = next((result for result in search_results if result.get("url") == target_url), None)
-                if selected_result and self._scoring.is_low_quality_result(selected_result):
+                if self._scoring.is_low_quality_result(candidate):
                     last_rejection_reason = "Selected source appears to be a non-product/review/aggregator page"
                     self._log_telemetry(sku, target_url, "source_selected", False, last_rejection_reason)
-                    search_results = [r for r in search_results if r.get("url") != target_url]
-                    continue
-                    last_rejection_reason = "Selected source appears to be a non-product/review/aggregator page"
-                    search_results = [r for r in search_results if r.get("url") != target_url]
                     continue
 
                 tried_urls.add(target_url)
-                # Telemetry: fetch attempt
                 self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
                 extraction_result = await self._extract_product_data(target_url, sku, product_name, brand)
-                # Telemetry: extraction result
                 fetch_ok = extraction_result is not None and extraction_result.get("success")
-                self._log_telemetry(sku, target_url, "fetch_attempt", fetch_ok, extraction_result.get("error") if not fetch_ok else "ok")
-                # Telemetry: validation attempt
+                fetch_details = extraction_result.get("error") if extraction_result and not fetch_ok else "ok"
+                self._log_telemetry(sku, target_url, "fetch_attempt", fetch_ok, fetch_details)
                 self._log_telemetry(sku, target_url, "validation", True, "initiated")
                 is_acceptable, rejection_reason = self._validator.validate_extraction_match(
                     extraction_result=extraction_result,
@@ -472,14 +425,12 @@ class AISearchScraper:
                     brand=brand,
                     source_url=target_url,
                 )
-                # Telemetry: validation result
                 self._log_telemetry(sku, target_url, "validation", is_acceptable, rejection_reason if not is_acceptable else "ok")
                 if is_acceptable:
                     accepted_result = extraction_result
                     break
 
                 last_rejection_reason = rejection_reason
-                search_results = [r for r in search_results if r.get("url") != target_url]
 
             if not accepted_result:
                 if extraction_result and extraction_result.get("error"):

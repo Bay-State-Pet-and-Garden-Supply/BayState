@@ -86,7 +86,7 @@ export function DesignTabs({
                                 ${activeTab === tab.id
                                     ? 'border-primary text-primary'
                                     : tab.available
-                                        ? 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
+                                        ? 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
                                         : 'border-transparent text-muted-foreground/50 cursor-not-allowed'
                                 }
                             `}

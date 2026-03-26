@@ -6,9 +6,36 @@
  * Ported from BayStateTools.
  */
 
+import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
+
 /**
- * Convert text to title case, preserving all-caps brand acronyms.
+ * Common abbreviations found in distributor product names.
  */
+const ABBREVIATION_MAP: Record<string, string> = {
+    'sm': 'Small', 'sml': 'Small', 'med': 'Medium', 'md': 'Medium',
+    'lg': 'Large', 'lrg': 'Large', 'xl': 'XL', 'xxl': 'XXL',
+    'blk': 'Black', 'blck': 'Black', 'wht': 'White', 'brn': 'Brown',
+    'grn': 'Green', 'rd': 'Red', 'bl': 'Blue', 'yl': 'Yellow',
+    'org': 'Orange', 'pnk': 'Pink', 'prpl': 'Purple', 'gry': 'Gray',
+    'asst': 'Assorted', 'asstd': 'Assorted', 'chkn': 'Chicken',
+    'slmn': 'Salmon', 'trky': 'Turkey', 'bf': 'Beef', 'lmb': 'Lamb',
+    'wld': 'Wild', 'nat': 'Natural', 'orig': 'Original', 'reg': 'Regular',
+    'unscnt': 'Unscented', 'flvr': 'Flavor',
+};
+
+/**
+ * Expand common distributor abbreviations in product names.
+ */
+function expandAbbreviations(text: string): string {
+    return text.split(' ').map((word) => {
+        const stripped = word.replace(/[^a-zA-Z]/g, '');
+        const replacement = ABBREVIATION_MAP[stripped.toLowerCase()];
+        if (replacement) {
+            return word.replace(stripped, replacement);
+        }
+        return word;
+    }).join(' ');
+}
 function toTitleCasePreserveBrand(text: string): string {
     return text
         .split(' ')
@@ -23,17 +50,21 @@ function toTitleCasePreserveBrand(text: string): string {
 }
 
 /**
- * Normalize unit names to canonical forms.
+ * Normalize unit names to canonical forms with trailing periods.
  */
 function normalizeUnits(text: string): string {
     const replacements: [RegExp, string][] = [
-        [/\b(lbs?\.?)/gi, 'lb'],
-        [/\b(pounds?)\b/gi, 'lb'],
-        [/\b(ounces?|oz\.?)/gi, 'oz'],
-        [/\b(count|ct\.?)/gi, 'ct'],
-        [/\b(feet|ft\.?)/gi, 'ft'],
-        [/\b(inches?|in\.?)/gi, 'in'],
-        [/"/g, ' in '],
+        [/\b(lbs?\.?)/gi, 'lb.'],
+        [/\b(pounds?)\b/gi, 'lb.'],
+        [/\b(ounces?|oz\.?)/gi, 'oz.'],
+        [/\b(count|ct\.?)/gi, 'ct.'],
+        [/\b(feet|ft\.?)/gi, 'ft.'],
+        [/\b(inches?|in\.?)/gi, 'in.'],
+        [/"/g, ' in. '],
+        [/\b(gallons?|gal\.?)/gi, 'gal.'],
+        [/\b(quarts?|qt\.?)/gi, 'qt.'],
+        [/\b(pints?|pt\.?)/gi, 'pt.'],
+        [/\b(packs?|pk\.?)/gi, 'pk.'],
         [/\b(liters?|l\.?)/gi, 'L'],
     ];
     let output = text;
@@ -66,7 +97,7 @@ function ensureInchesSpacing(text: string): string {
  * Normalize decimal values (trim trailing zeros, max 2 decimal places).
  */
 function normalizeDecimals(text: string): string {
-    return text.replace(/(\d+\.\d+|\d+)(?=\s?(lb|oz|ct|in|ft|L)\b)/gi, (match) => {
+    return text.replace(/(\d+\.\d+|\d+)(?=\s?(lb\.|oz\.|ct\.|in\.|ft\.|gal\.|qt\.|pt\.|pk\.|L)\b)/gi, (match) => {
         const num = Number(match);
         if (Number.isNaN(num)) return match;
         const fixed = num.toFixed(2);
@@ -76,10 +107,10 @@ function normalizeDecimals(text: string): string {
 }
 
 /**
- * Strip trailing periods from unit abbreviations.
+ * Ensure unit abbreviations have trailing periods.
  */
-function stripTrailingUnitPeriods(text: string): string {
-    return text.replace(/\b(lb|oz|ct|in|ft|L)\./gi, '$1');
+function ensureUnitPeriods(text: string): string {
+    return text.replace(/\b(lb|oz|ct|in|ft|gal|qt|pt|pk)(?!\.)\b/gi, '$1.');
 }
 
 /**
@@ -87,13 +118,17 @@ function stripTrailingUnitPeriods(text: string): string {
  */
 function normalizeUnitCasing(text: string): string {
     return text
-        .replace(/\b(LB)\b/g, 'lb')
-        .replace(/\b(OZ)\b/g, 'oz')
-        .replace(/\b(CT)\b/g, 'ct')
-        .replace(/\b(FT)\b/g, 'ft')
-        .replace(/\b(IN)\b/g, 'in')
+        .replace(/\b(LB)\./g, 'lb.')
+        .replace(/\b(OZ)\./g, 'oz.')
+        .replace(/\b(CT)\./g, 'ct.')
+        .replace(/\b(FT)\./g, 'ft.')
+        .replace(/\b(IN)\./g, 'in.')
+        .replace(/\b(GAL)\./g, 'gal.')
+        .replace(/\b(QT)\./g, 'qt.')
+        .replace(/\b(PT)\./g, 'pt.')
+        .replace(/\b(PK)\./g, 'pk.')
         .replace(/\b(l)\b/g, 'L')
-        .replace(/\b(Lb)\b/g, 'lb');
+        .replace(/\b(Lb)\./g, 'lb.');
 }
 
 /**
@@ -116,17 +151,18 @@ export function normalizeConsolidationResult(data: Record<string, unknown>): Rec
 
     if (typeof normalized.name === 'string') {
         let name = normalized.name;
+        name = expandAbbreviations(name);
         name = normalizeDimensions(name);
         name = normalizeUnits(name);
         name = normalizeDecimals(name);
-        name = stripTrailingUnitPeriods(name);
+        name = ensureUnitPeriods(name);
         name = normalizeUnitCasing(name);
         name = ensureInchesSpacing(name);
         name = normalizeSpacing(name);
         name = toTitleCasePreserveBrand(name);
         // Re-assert canonical units after title case
         name = normalizeUnitCasing(normalizeUnits(name));
-        name = stripTrailingUnitPeriods(name);
+        name = ensureUnitPeriods(name);
         name = ensureInchesSpacing(name);
         name = normalizeSpacing(name);
         normalized.name = name;
@@ -138,6 +174,23 @@ export function normalizeConsolidationResult(data: Record<string, unknown>): Rec
         if (converted !== null) {
             normalized.weight = converted;
         }
+    }
+
+    // Normalize search_keywords: lowercase, deduplicate, trim
+    if (typeof normalized.search_keywords === 'string') {
+        const keywords = normalized.search_keywords
+            .split(',')
+            .map((kw: string) => kw.trim().toLowerCase())
+            .filter((kw: string) => kw.length > 0);
+        const unique = [...new Set(keywords)];
+        normalized.search_keywords = unique.join(', ');
+    }
+
+    // Validate product_on_pages against valid ShopSite pages
+    if (Array.isArray(normalized.product_on_pages)) {
+        const validPages = new Set(SHOPSITE_PAGES as readonly string[]);
+        normalized.product_on_pages = (normalized.product_on_pages as string[])
+            .filter((page: string) => validPages.has(page));
     }
 
     return normalized;

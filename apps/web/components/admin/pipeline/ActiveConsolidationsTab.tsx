@@ -95,14 +95,14 @@ const STATUS_CONFIG: Record<
 > = {
   validating: {
     label: "Validating",
-    color: "text-gray-700",
-    bgColor: "bg-gray-100",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted",
     icon: Clock,
   },
   pending: {
     label: "Pending",
-    color: "text-gray-700",
-    bgColor: "bg-gray-100",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted",
     icon: Clock,
   },
   in_progress: {
@@ -137,8 +137,8 @@ const STATUS_CONFIG: Record<
   },
   cancelled: {
     label: "Cancelled",
-    color: "text-gray-700",
-    bgColor: "bg-gray-100",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted",
     icon: XCircle,
   },
 };
@@ -208,17 +208,17 @@ function ActiveJobCard({
   syncingId: string | null;
 }) {
   return (
-    <div className="rounded-lg border border-purple-100 bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-purple-100 bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-brand-burgundy" />
-            <h3 className="font-medium text-gray-900">
+            <h3 className="font-medium text-foreground">
               Batch {job.id.slice(0, 12)}
             </h3>
             <StatusBadge status={job.status} />
           </div>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Started {formatTimestamp(job.createdAt)} •{" "}
             {formatElapsed(job.createdAt)} ago
           </p>
@@ -232,7 +232,7 @@ function ActiveJobCard({
             onClick={() => onSyncStatus(job.id)}
             disabled={syncingId === job.id}
             title="Refresh status from OpenAI"
-            className="text-gray-500 hover:text-gray-700"
+            className="text-muted-foreground hover:text-muted-foreground"
           >
             <RefreshCw
               className={`h-4 w-4 ${syncingId === job.id ? "animate-spin" : ""}`}
@@ -260,30 +260,30 @@ function ActiveJobCard({
       {/* Stats Grid */}
       <div className="mt-3 grid grid-cols-4 gap-4 text-center">
         <div>
-          <p className="text-2xl font-semibold text-gray-900">
+          <p className="text-2xl font-semibold text-foreground">
             {job.totalProducts}
           </p>
-          <p className="text-xs text-gray-500">Total</p>
+          <p className="text-xs text-muted-foreground">Total</p>
         </div>
         <div>
           <p className="text-2xl font-semibold text-blue-600">
             {job.processedCount}
           </p>
-          <p className="text-xs text-gray-500">Processed</p>
+          <p className="text-xs text-muted-foreground">Processed</p>
         </div>
         <div>
           <p className="text-2xl font-semibold text-green-600">
             {job.successCount}
           </p>
-          <p className="text-xs text-gray-500">Success</p>
+          <p className="text-xs text-muted-foreground">Success</p>
         </div>
         <div>
           <p
-            className={`text-2xl font-semibold ${job.errorCount > 0 ? "text-red-600" : "text-gray-900"}`}
+            className={`text-2xl font-semibold ${job.errorCount > 0 ? "text-red-600" : "text-foreground"}`}
           >
             {job.errorCount}
           </p>
-          <p className="text-xs text-gray-500">Errors</p>
+          <p className="text-xs text-muted-foreground">Errors</p>
         </div>
       </div>
 
@@ -299,10 +299,10 @@ function ActiveJobCard({
       {/* Progress Bar */}
       <div className="mt-3">
         <div className="flex items-center justify-between text-xs mb-1">
-          <span className="text-gray-600">Progress</span>
-          <span className="font-medium text-gray-900">{job.progress}%</span>
+          <span className="text-muted-foreground">Progress</span>
+          <span className="font-medium text-foreground">{job.progress}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-brand-burgundy transition-all duration-500"
             style={{ width: `${job.progress}%` }}
@@ -362,11 +362,11 @@ function BatchHistoryCard({
   const canApply = job.status === "completed" && !isApplied;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <StatusBadge status={job.status} />
-          <span className="text-sm font-medium text-gray-900 truncate">
+          <span className="text-sm font-medium text-foreground truncate">
             {job.description || `Batch ${job.id.slice(0, 12)}`}
           </span>
           {job.auto_apply && (
@@ -408,7 +408,7 @@ function BatchHistoryCard({
             variant="ghost"
             size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-muted-foreground hover:text-muted-foreground"
           >
             {expanded ? (
               <ChevronUp className="h-4 w-4" />
@@ -420,7 +420,7 @@ function BatchHistoryCard({
       </div>
 
       {/* Summary stats */}
-      <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-500">
+      <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
         <span>{formatTimestamp(job.created_at)}</span>
         <span>•</span>
         <span>{job.total_requests} products</span>
@@ -451,15 +451,15 @@ function BatchHistoryCard({
         <div className="mt-3 space-y-2 border-t pt-3">
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <span className="text-gray-500">Batch ID:</span>
-              <span className="ml-1 font-mono text-gray-700">
+              <span className="text-muted-foreground">Batch ID:</span>
+              <span className="ml-1 font-mono text-muted-foreground">
                 {job.openai_batch_id || job.id}
               </span>
             </div>
             {job.completed_at && (
               <div>
-                <span className="text-gray-500">Completed:</span>
-                <span className="ml-1 text-gray-700">
+                <span className="text-muted-foreground">Completed:</span>
+                <span className="ml-1 text-muted-foreground">
                   {formatTimestamp(job.completed_at)}
                 </span>
               </div>
@@ -468,11 +468,11 @@ function BatchHistoryCard({
 
           {/* Quality Metrics */}
           {qualityMetrics && (
-            <div className="rounded-md bg-gray-50 p-2">
-              <p className="text-xs font-medium text-gray-700 mb-1">
+            <div className="rounded-md bg-muted p-2">
+              <p className="text-xs font-medium text-muted-foreground mb-1">
                 Quality Metrics
               </p>
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <span>
                   Matched brands: {qualityMetrics.matched_brand_count ?? 0}
                 </span>
@@ -615,14 +615,14 @@ function AISettingsDialog() {
               <h4 className="text-sm font-semibold">OpenAI API Key</h4>
             </div>
 
-            <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+            <div className="rounded-md border border-border bg-muted p-3">
               {settings?.statuses.openai.configured ? (
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5 text-xs text-green-700">
                     <CheckCircle className="h-3.5 w-3.5" />
                     <span>Configured (Ends in {settings.statuses.openai.last4})</span>
                   </div>
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[10px] text-muted-foreground">
                     Updated {settings.statuses.openai.updated_at ? new Date(settings.statuses.openai.updated_at).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
@@ -675,7 +675,7 @@ function AISettingsDialog() {
                             ...prev,
                             defaults: {
                               ...prev.defaults,
-                              llm_model: e.target.value as any,
+                              llm_model: e.target.value as "gpt-4o" | "gpt-4o-mini",
                             },
                           }
                         : null
@@ -907,7 +907,7 @@ export function ActiveConsolidationsTab({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {jobs.length > 0 && (
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-muted-foreground">
               {jobs.length} active batch{jobs.length !== 1 ? "es" : ""}
             </span>
           )}
@@ -943,10 +943,10 @@ export function ActiveConsolidationsTab({
       {jobs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Brain className="h-12 w-12 text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-foreground">
             No active consolidation jobs
           </h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             AI consolidation jobs will appear here when running
           </p>
         </div>
@@ -969,15 +969,15 @@ export function ActiveConsolidationsTab({
       {showHistory && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 border-t pt-4">
-            <History className="h-4 w-4 text-gray-400" />
-            <h3 className="text-sm font-semibold text-gray-700">
+            <History className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-muted-foreground">
               Recent Batches
             </h3>
-            <span className="text-xs text-gray-400">Last 20</span>
+            <span className="text-xs text-muted-foreground">Last 20</span>
           </div>
 
           {historyJobs.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">
+            <p className="text-sm text-muted-foreground text-center py-4">
               No batch history yet
             </p>
           ) : (

@@ -24,7 +24,7 @@ interface ChunkWithStatus extends ScrapeJobChunk {
 }
 
 const STATUS_CONFIG: Record<ChunkStatus, { label: string; color: string; bgColor: string }> = {
-    pending: { label: 'Pending', color: 'text-gray-600', bgColor: 'bg-gray-200 hover:bg-gray-300' },
+    pending: { label: 'Pending', color: 'text-muted-foreground', bgColor: 'bg-muted hover:bg-muted' },
     active: { label: 'Active', color: 'text-blue-700', bgColor: 'bg-blue-200 hover:bg-blue-300' },
     done: { label: 'Done', color: 'text-green-700', bgColor: 'bg-green-200 hover:bg-green-300' },
     failed: { label: 'Failed', color: 'text-red-700', bgColor: 'bg-red-200 hover:bg-red-300' },
