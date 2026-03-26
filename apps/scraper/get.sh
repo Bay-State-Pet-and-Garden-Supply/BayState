@@ -81,9 +81,13 @@ detect_watchtower_api_version() {
     fi
 
     if [ -z "$detected_version" ] || [ "$detected_version" = "<no value>" ]; then
-        WATCHTOWER_DOCKER_API_VERSION="1.24"
-        echo -e "${YELLOW}Warning:${NC} Could not detect the Docker API version; Watchtower will default to ${CYAN}${WATCHTOWER_DOCKER_API_VERSION}${NC}"
-        return
+        echo -e "${RED}Error:${NC} Could not detect the Docker API version."
+        echo "This is required for Watchtower auto-updates to work correctly."
+        echo "Please ensure Docker is properly installed and accessible."
+        echo ""
+        echo "To continue without auto-updates, set:"
+        echo "  export SCRAPER_AUTO_UPDATE=false"
+        exit 1
     fi
 
     WATCHTOWER_DOCKER_API_VERSION="$detected_version"

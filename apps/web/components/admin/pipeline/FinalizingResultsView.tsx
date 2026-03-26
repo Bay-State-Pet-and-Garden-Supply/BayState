@@ -548,7 +548,12 @@ export function FinalizingResultsView({
     [imageSourceOptions, selectedImageSourceId],
   );
 
-  const imageCandidates = activeImageSourceOption?.candidates ?? [];
+  // Filter out already-selected images from candidates to prevent duplication
+  const imageCandidates = useMemo(() => {
+    const candidates = activeImageSourceOption?.candidates ?? [];
+    const selectedSet = new Set(formData.selectedImages);
+    return candidates.filter((url) => !selectedSet.has(url));
+  }, [activeImageSourceOption?.candidates, formData.selectedImages]);
   const isCustomImageSource = activeImageSourceOption?.id === "custom";
 
   return (
