@@ -44,3 +44,18 @@ bun scripts/backfill-login-protected-images.ts --limit 100
 ```
 
 Dry runs are the default. Add `--execute` to persist the cleanup and queue the replacement scrapes.
+
+## Amazon Image Duplicate Backfill (`backfill-amazon-image-duplicates.ts`)
+
+Use this script to remove duplicate Amazon main images from already-scraped `products_ingestion` rows, prune stale derived image arrays, and sync published storefront product images when the pipeline row is already published.
+
+### Usage
+
+Run from `apps/web`:
+
+```bash
+cd apps/web
+bun scripts/backfill-amazon-image-duplicates.ts --limit 100
+```
+
+Dry runs are the default. Add `--execute` to persist the cleanup.
