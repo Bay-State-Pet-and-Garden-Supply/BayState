@@ -591,7 +591,7 @@ export function PipelineClient({
             onSelectSku={handleSelectSku}
             onRefresh={refreshAll}
           />
-        ) : currentStage === "finalized" ? (
+        ) : currentStage === "finalized" || currentStage === "published" ? (
           <FinalizingResultsView
             products={filteredProducts}
             onRefresh={refreshAll}
