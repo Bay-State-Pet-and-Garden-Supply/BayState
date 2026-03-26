@@ -21,6 +21,7 @@ AUTO_UPDATE_CRON_MARKER="baystate-scraper-auto-update"
 
 AUTO_UPDATES_ENABLED="false"
 DOCKER_COMPOSE_CMD=()
+WATCHTOWER_DOCKER_API_VERSION=""
 
 print_banner() {
     echo ""
@@ -69,6 +70,24 @@ detect_compose() {
     fi
 
     echo -e "${GREEN}✓${NC} Docker Compose is available"
+}
+
+detect_watchtower_api_version() {
+    local detected_version
+    detected_version="$(docker version --format '{{.Server.MinAPIVersion}}' 2>/dev/null || true)"
+
+    if [ -z "$detected_version" ] || [ "$detected_version" = "<no value>" ]; then
+        detected_version="$(docker version --format '{{.Server.APIVersion}}' 2>/dev/null || true)"
+    fi
+
+    if [ -z "$detected_version" ] || [ "$detected_version" = "<no value>" ]; then
+        WATCHTOWER_DOCKER_API_VERSION="1.24"
+        echo -e "${YELLOW}Warning:${NC} Could not detect the Docker API version; Watchtower will default to ${CYAN}${WATCHTOWER_DOCKER_API_VERSION}${NC}"
+        return
+    fi
+
+    WATCHTOWER_DOCKER_API_VERSION="$detected_version"
+    echo -e "${GREEN}✓${NC} Watchtower will use Docker API ${CYAN}${WATCHTOWER_DOCKER_API_VERSION}${NC}"
 }
 
 compose() {
@@ -271,7 +290,10 @@ EOF
       - --cleanup
       - --interval
       - "3600"
+      - --api-version
+      - "$WATCHTOWER_DOCKER_API_VERSION"
     environment:
+      DOCKER_API_VERSION: "$WATCHTOWER_DOCKER_API_VERSION"
       WATCHTOWER_INCLUDE_RESTARTING: "true"
     labels:
       com.centurylinklabs.watchtower.enable: "false"
@@ -399,6 +421,9 @@ main() {
     detect_compose
     get_config
     get_auto_update_preference
+    if [ "$AUTO_UPDATES_ENABLED" = "true" ]; then
+        detect_watchtower_api_version
+    fi
     persist_config
     write_compose_file
     cleanup_legacy_install

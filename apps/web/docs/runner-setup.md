@@ -113,6 +113,8 @@ docker compose -p baystate-scraper -f compose.yml up -d
 
 If you enable auto-updates during install, the stack includes a `watchtower` sidecar. It only watches containers labeled for the Bay State scraper runner, checks GHCR hourly, and recreates the scraper container when a newer image is available.
 
+The installer also sets Watchtower's `DOCKER_API_VERSION` from the host daemon so it stays compatible with newer Docker Engine releases that no longer accept Watchtower's legacy default API version.
+
 This replaces the older cron-based updater, so there is no host-level cron job or handwritten update script to maintain.
 
 ### View Real-Time Events (v0.2.0+)
@@ -180,6 +182,7 @@ Site passwords are **never stored on the runner**:
 | Jobs stuck in "queued" | Verify API key is valid in Admin Panel |
 | "Permission denied" on Docker | Run `sudo usermod -aG docker $USER` and log out/in |
 | Auto-updates aren't happening | Check `cd ~/.baystate-scraper && docker compose -p baystate-scraper -f compose.yml logs watchtower` and verify the runner can pull from GHCR |
+| `client version 1.25 is too old` in Watchtower logs | Re-run the installer so it regenerates `compose.yml` with `DOCKER_API_VERSION` set for your Docker daemon |
 
 ---
 
