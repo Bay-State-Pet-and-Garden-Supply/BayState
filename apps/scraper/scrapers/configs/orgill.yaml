@@ -1,5 +1,6 @@
 schema_version: "1.0"
 name: orgill
+requires_login: true
 display_name: Orgill
 base_url: https://www.orgill.com
 scraper_type: static

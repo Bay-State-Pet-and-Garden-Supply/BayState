@@ -18,7 +18,10 @@ jest.mock("@supabase/supabase-js", () => ({
 }));
 
 describe("POST /api/scraper/v1/logs", () => {
-  let mockSupabase: any;
+  let mockSupabase: {
+    from: jest.Mock;
+    upsert: jest.Mock;
+  };
 
   beforeEach(() => {
     process.env.SUPABASE_URL = "http://localhost:54321";
@@ -27,13 +30,12 @@ describe("POST /api/scraper/v1/logs", () => {
 
     mockSupabase = {
       from: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
+      upsert: jest.fn(),
     };
     (createClient as jest.Mock).mockReturnValue(mockSupabase);
   });
 
-  const createRequest = (body: any, headers: Record<string, string> = {}) => {
+  const createRequest = (body: Record<string, unknown>, headers: Record<string, string> = {}) => {
     const reqHeaders = new Map(Object.entries(headers));
     if (!reqHeaders.has("Content-Type")) {
       reqHeaders.set("Content-Type", "application/json");
@@ -88,16 +90,22 @@ describe("POST /api/scraper/v1/logs", () => {
     (validateRunnerAuth as jest.Mock).mockResolvedValue({
       runnerName: "test-runner",
     });
-    mockSupabase.insert.mockResolvedValue({ error: null });
+    mockSupabase.upsert.mockResolvedValue({ error: null });
 
     const logs = [
       {
+        event_id: "evt-1",
         level: "INFO",
         message: "Log 1",
         timestamp: "2023-01-01T00:00:00Z",
         details: { step: 1 },
       },
-      { level: "ERROR", message: "Log 2", timestamp: "2023-01-01T00:00:01Z" },
+      {
+        event_id: "evt-2",
+        level: "ERROR",
+        message: "Log 2",
+        timestamp: "2023-01-01T00:00:01Z",
+      },
     ];
     const req = createRequest({ job_id: "job-123", logs });
     const res = await POST(req);
@@ -107,23 +115,28 @@ describe("POST /api/scraper/v1/logs", () => {
     expect(data.success).toBe(true);
 
     expect(mockSupabase.from).toHaveBeenCalledWith("scrape_job_logs");
-    expect(mockSupabase.insert).toHaveBeenCalledWith(
+    expect(mockSupabase.upsert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           job_id: "job-123",
+          event_id: "evt-1",
           level: "info",
           message: "Log 1",
+          runner_name: "test-runner",
           details: { step: 1 },
           created_at: "2023-01-01T00:00:00Z",
         }),
         expect.objectContaining({
           job_id: "job-123",
+          event_id: "evt-2",
           level: "error",
           message: "Log 2",
+          runner_name: "test-runner",
           details: null,
           created_at: "2023-01-01T00:00:01Z",
         }),
       ]),
+      { onConflict: "job_id,event_id", ignoreDuplicates: true },
     );
   });
 
@@ -131,7 +144,7 @@ describe("POST /api/scraper/v1/logs", () => {
     (validateRunnerAuth as jest.Mock).mockResolvedValue({
       runnerName: "test-runner",
     });
-    mockSupabase.insert.mockResolvedValue({ error: { message: "DB Error" } });
+    mockSupabase.upsert.mockResolvedValue({ error: { message: "DB Error" } });
 
     const req = createRequest({
       job_id: "job-123",

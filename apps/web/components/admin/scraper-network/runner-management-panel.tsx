@@ -298,7 +298,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Type <code className="bg-gray-100 px-1">{runner.name}</code> to confirm
+                  Type <code className="bg-muted px-1">{runner.name}</code> to confirm
                 </label>
                 <Input
                   value={deleteConfirmName}

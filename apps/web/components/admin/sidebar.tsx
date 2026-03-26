@@ -188,7 +188,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
               : "opacity-100 visible w-full",
           )}
         >
-          <div className="bg-white/10 p-1.5 rounded-lg shadow-inner border border-white/20 shrink-0">
+          <div className="bg-card/10 p-1.5 rounded-lg shadow-inner border border-white/20 shrink-0">
             <Image
               src="/icon.png"
               alt="Bay State app icon"
@@ -252,7 +252,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                 </h2>
               )}
               {section.title && collapsed && (
-                <div className="h-px bg-white/10 mx-2 my-4" />
+                <div className="h-px bg-card/10 mx-2 my-4" />
               )}
 
               <div className="space-y-0.5">
@@ -265,12 +265,13 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                   const content = (
                     <Link
                       href={item.href}
+                      aria-label={item.label}
                       className={cn(
                         "group relative flex items-center rounded-lg px-3 py-2 transition-all duration-200",
                         collapsed ? "justify-center" : "gap-2.5",
                         isActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-1 ring-white/10"
-                          : "text-white/70 hover:bg-white/5 hover:text-white",
+                          : "text-white/70 hover:bg-card/5 hover:text-white",
                       )}
                     >
                       <Icon
@@ -328,7 +329,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
               <User className="h-4 w-4 text-white" />
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-brand-forest-green border-2 border-sidebar flex items-center justify-center">
-              <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
+              <div className="h-1 w-1 rounded-full bg-card animate-pulse" />
             </div>
           </div>
 

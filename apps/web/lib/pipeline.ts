@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import type { PipelineStatus, StatusCount } from '@/lib/pipeline/types';
+import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 
 /**
  * Legacy pipeline status types (for backward compatibility during migration).
@@ -117,6 +118,38 @@ export interface PipelineProduct {
     updated_at: string;
 }
 
+function toImageUrlArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+}
+
+function withMergedImageCandidates(product: PipelineProduct): PipelineProduct {
+    try {
+        const consolidatedImages = toImageUrlArray(product.consolidated?.images);
+        const storedCandidates = toImageUrlArray(product.image_candidates);
+        const sourceCandidates = extractImageCandidatesFromSources(product.sources || {}, 48);
+
+        const mergedCandidates = Array.from(
+            new Set([...storedCandidates, ...consolidatedImages, ...sourceCandidates])
+        );
+
+        if (mergedCandidates.length === 0) {
+            return product;
+        }
+
+        return {
+            ...product,
+            image_candidates: mergedCandidates,
+        };
+    } catch (error) {
+        console.error(`Error merging image candidates for SKU ${product.sku}:`, error);
+        return product;
+    }
+}
+
 /**
  * @deprecated Use StatusCount from '@/lib/pipeline/types'
  */
@@ -195,7 +228,8 @@ export async function getProductsByStatus(
         return { products: [], count: 0 };
     }
 
-    return { products: (data as PipelineProduct[]) || [], count: count || 0 };
+    const products = ((data as PipelineProduct[]) || []).map(withMergedImageCandidates);
+    return { products, count: count || 0 };
 }
 
 /**

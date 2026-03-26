@@ -181,7 +181,7 @@ export function WorkflowBuilderClient({ scraper }: WorkflowBuilderClientProps) {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b bg-white px-6 py-3">
+      <div className="flex items-center justify-between border-b bg-card px-6 py-3">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/admin/scrapers/${scraper.id}`}>
@@ -189,14 +189,14 @@ export function WorkflowBuilderClient({ scraper }: WorkflowBuilderClientProps) {
               Back to Editor
             </Link>
           </Button>
-          <div className="h-6 w-px bg-gray-300" />
+          <div className="h-6 w-px bg-muted" />
           <div className="flex items-center gap-3">
             <FileCode className="h-5 w-5 text-purple-600" />
             <div>
               <h1 className="text-lg font-semibold">
                 Workflow Builder: {scraper.display_name || scraper.name}
               </h1>
-              <p className="text-xs text-gray-600">{nodes.length} steps</p>
+              <p className="text-xs text-muted-foreground">{nodes.length} steps</p>
             </div>
           </div>
           <ScraperStatusBadge status={scraper.status} />
@@ -287,7 +287,7 @@ export function WorkflowBuilderClient({ scraper }: WorkflowBuilderClientProps) {
           <Controls />
           <MiniMap />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-            <Panel position="bottom-left" className="bg-white p-2 rounded shadow text-xs text-gray-600">
+            <Panel position="bottom-left" className="bg-card p-2 rounded shadow text-xs text-muted-foreground">
               Drag to reorder. Click node to select. Use + Add Step to add actions.
             </Panel>
           </ReactFlow>

@@ -38,24 +38,24 @@ export function EnrichmentDataPreview({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden w-full">
+    <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden w-full">
       {/* Header Section */}
-      <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 border-b border-border bg-muted/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Golden Record Preview</h2>
+          <h2 className="text-xl font-bold text-foreground tracking-tight">Golden Record Preview</h2>
           <div className="flex items-center gap-2 mt-1">
-            <span className="font-mono text-sm text-gray-600 bg-gray-200 px-2 py-0.5 rounded tabular-nums">
+            <span className="font-mono text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded tabular-nums">
               {sku}
             </span>
           </div>
         </div>
         
-        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-md border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-3 bg-card px-4 py-2 rounded-md border border-border shadow-sm">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold text-gray-600 tracking-wider">Original Price</span>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Original Price</span>
             <span className="text-lg font-bold text-[#66161D]">{formatCurrency(originalPrice)}</span>
           </div>
-          <span className="bg-gray-100 text-gray-600 text-[10px] font-medium px-2 py-1 rounded-full whitespace-nowrap border border-gray-200">
+          <span className="bg-muted text-muted-foreground text-[10px] font-medium px-2 py-1 rounded-full whitespace-nowrap border border-border">
             From Import
           </span>
         </div>
@@ -69,7 +69,7 @@ export function EnrichmentDataPreview({
             onClick={() => onFieldClick?.(item.field)}
             className={`
               group flex items-center justify-between p-4 transition-colors
-              ${onFieldClick ? 'cursor-pointer hover:bg-gray-50' : ''}
+              ${onFieldClick ? 'cursor-pointer hover:bg-muted' : ''}
               ${item.hasConflict ? 'bg-amber-50/40 hover:bg-amber-50' : ''}
             `}
             role={onFieldClick ? 'button' : undefined}
@@ -83,7 +83,7 @@ export function EnrichmentDataPreview({
           >
             <div className="flex-1 min-w-0 pr-4">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {item.field}
                 </span>
                 {item.hasConflict && (
@@ -93,7 +93,7 @@ export function EnrichmentDataPreview({
                   </div>
                 )}
               </div>
-              <div className="text-sm font-medium text-gray-900 truncate" title={String(item.value)}>
+              <div className="text-sm font-medium text-foreground truncate" title={String(item.value)}>
                 {formatValue(item.value)}
               </div>
             </div>
@@ -103,8 +103,8 @@ export function EnrichmentDataPreview({
                 className={`
                   inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
                   ${item.hasConflict 
-                    ? 'bg-white border-amber-200 text-amber-700' 
-                    : 'bg-white border-gray-200 text-gray-600 group-hover:border-[#008850] group-hover:text-[#008850] transition-colors'
+                    ? 'bg-card border-amber-200 text-amber-700' 
+                    : 'bg-card border-border text-muted-foreground group-hover:border-[#008850] group-hover:text-[#008850] transition-colors'
                   }
                 `}
               >
@@ -116,7 +116,7 @@ export function EnrichmentDataPreview({
         ))}
 
         {resolvedData.length === 0 && (
-          <div className="p-8 text-center text-gray-600 italic">
+          <div className="p-8 text-center text-muted-foreground italic">
             No enriched data available yet. Select sources to begin enrichment.
           </div>
         )}

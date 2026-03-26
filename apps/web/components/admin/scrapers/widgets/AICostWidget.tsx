@@ -49,13 +49,13 @@ export function AICostWidget() {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-gray-600 flex items-center gap-2">
+          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
             <Brain className="h-4 w-4" />
             AI Scraper Costs
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-gray-500">Loading...</div>
+          <div className="text-sm text-muted-foreground">Loading...</div>
         </CardContent>
       </Card>
     );
@@ -65,7 +65,7 @@ export function AICostWidget() {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-gray-600 flex items-center gap-2">
+          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
             <Brain className="h-4 w-4" />
             AI Scraper Costs
           </CardTitle>
@@ -83,7 +83,7 @@ export function AICostWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm text-gray-600 flex items-center justify-between">
+        <CardTitle className="text-sm text-muted-foreground flex items-center justify-between">
           <span className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-purple-600" />
             AI Scraper Costs
@@ -96,7 +96,7 @@ export function AICostWidget() {
           <>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="flex items-center gap-1 text-xs text-gray-600">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <DollarSign className="h-3 w-3" />
                   Total Cost
                 </div>
@@ -105,7 +105,7 @@ export function AICostWidget() {
                 </div>
               </div>
               <div>
-                <div className="flex items-center gap-1 text-xs text-gray-600">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Activity className="h-3 w-3" />
                   Total Runs
                 </div>
@@ -116,7 +116,7 @@ export function AICostWidget() {
             </div>
 
             <div className="pt-2 border-t">
-              <div className="flex items-center gap-1 text-xs text-gray-600">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <TrendingUp className="h-3 w-3" />
                 Avg Cost per Run
               </div>
@@ -127,11 +127,11 @@ export function AICostWidget() {
 
             {Object.keys(data.byModel).length > 0 && (
               <div className="pt-2 border-t">
-                <div className="text-xs text-gray-600 mb-2">By Model</div>
+                <div className="text-xs text-muted-foreground mb-2">By Model</div>
                 <div className="space-y-1">
                   {Object.entries(data.byModel).map(([model, stats]) => (
                     <div key={model} className="flex justify-between text-xs">
-                      <span className="text-gray-600">{model}</span>
+                      <span className="text-muted-foreground">{model}</span>
                       <span className="font-medium">
                         {stats.runs} runs · ${stats.cost.toFixed(4)}
                       </span>
@@ -142,7 +142,7 @@ export function AICostWidget() {
             )}
           </>
         ) : (
-          <div className="text-sm text-gray-500 text-center py-4">
+          <div className="text-sm text-muted-foreground text-center py-4">
             No AI scraper runs in the last 30 days
           </div>
         )}

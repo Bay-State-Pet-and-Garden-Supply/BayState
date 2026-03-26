@@ -78,7 +78,7 @@ export function BannersTab({ initialSettings }: BannersTabProps) {
                                 name="enabled"
                                 checked={enabled}
                                 onChange={(e) => setEnabled(e.target.checked)}
-                                className="h-5 w-5 rounded border-gray-300"
+                                className="h-5 w-5 rounded border-border"
                             />
                         </div>
                     </div>
@@ -190,9 +190,9 @@ export function BannersTab({ initialSettings }: BannersTabProps) {
                             <Label>Preview (First Message)</Label>
                             <div
                                 className={`rounded-lg py-2.5 px-4 text-center text-sm font-medium ${variant === 'info'
-                                        ? 'bg-zinc-900 text-white'
+                                        ? 'bg-primary text-white'
                                         : variant === 'promo'
-                                            ? 'bg-amber-500 text-zinc-900'
+                                            ? 'bg-amber-500 text-foreground'
                                             : 'bg-green-600 text-white'
                                     }`}
                             >

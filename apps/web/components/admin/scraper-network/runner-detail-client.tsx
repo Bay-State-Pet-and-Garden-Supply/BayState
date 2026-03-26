@@ -107,8 +107,8 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{runner.name}</h1>
-          <p className="text-sm text-gray-500">Runner ID: {runner.id}</p>
+          <h1 className="text-2xl font-bold text-foreground">{runner.name}</h1>
+          <p className="text-sm text-muted-foreground">Runner ID: {runner.id}</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={statusVariants[runner.status]}>
@@ -142,7 +142,7 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
                 {statusLabels[runner.status]}
               </Badge>
             </div>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               {runner.enabled
                 ? `${runner.active_jobs} active job${runner.active_jobs !== 1 ? 's' : ''}`
                 : 'Job pickup disabled from the admin panel'}
@@ -237,7 +237,7 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Type <code className="bg-gray-100 px-1 rounded">{runner.name}</code> to confirm
+                Type <code className="bg-muted px-1 rounded">{runner.name}</code> to confirm
               </label>
               <Input
                 value={deleteConfirmName}

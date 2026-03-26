@@ -77,7 +77,7 @@ export function SyncClient() {
                                     label={
                                         <>
                                             <span className="font-semibold text-purple-600">Click to upload</span> or drag and drop
-                                            <div className="text-xs text-gray-500 font-normal mt-1">
+                                            <div className="text-xs text-muted-foreground font-normal mt-1">
                                                 Excel files (.xlsx, .xls)
                                             </div>
                                         </>
@@ -111,7 +111,7 @@ export function SyncClient() {
                             <CardTitle className="text-3xl">{analysis.totalInFile}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-gray-600">Total products found in the uploaded export.</p>
+                            <p className="text-sm text-muted-foreground">Total products found in the uploaded export.</p>
                         </CardContent>
                     </Card>
 
@@ -121,7 +121,7 @@ export function SyncClient() {
                             <CardTitle className="text-3xl text-green-700">{analysis.existingOnWebsite}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-gray-600">Products already found in the live catalog.</p>
+                            <p className="text-sm text-muted-foreground">Products already found in the live catalog.</p>
                         </CardContent>
                     </Card>
 
@@ -131,7 +131,7 @@ export function SyncClient() {
                             <CardTitle className="text-3xl text-orange-700">{analysis.newProducts.length}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-gray-600">Products missing from the website.</p>
+                            <p className="text-sm text-muted-foreground">Products missing from the website.</p>
                         </CardContent>
                     </Card>
 
@@ -161,13 +161,13 @@ export function SyncClient() {
                                 </Button>
                             </CardHeader>
                             <CardContent>
-                                <div className="max-h-96 overflow-auto rounded-md border border-gray-200">
+                                <div className="max-h-96 overflow-auto rounded-md border border-border">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-gray-50 sticky top-0">
+                                        <thead className="bg-muted sticky top-0">
                                             <tr>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-600">SKU</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-600">Name</th>
-                                                <th className="px-4 py-2 text-right font-medium text-gray-600">Price</th>
+                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">SKU</th>
+                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Name</th>
+                                                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Price</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -180,7 +180,7 @@ export function SyncClient() {
                                             ))}
                                             {analysis.newProducts.length > 100 && (
                                                 <tr>
-                                                    <td colSpan={3} className="px-4 py-4 text-center text-gray-600 italic">
+                                                    <td colSpan={3} className="px-4 py-4 text-center text-muted-foreground italic">
                                                         Showing first 100 of {analysis.newProducts.length} new products...
                                                     </td>
                                                 </tr>
@@ -197,7 +197,7 @@ export function SyncClient() {
                             <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
                                 <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
                                 <h3 className="text-xl font-semibold text-green-900">All products are up to date!</h3>
-                                <p className="text-gray-600 mt-2">No new products were found in the export that aren&apos;t already on the website.</p>
+                                <p className="text-muted-foreground mt-2">No new products were found in the export that aren&apos;t already on the website.</p>
                             </CardContent>
                         </Card>
                     )}

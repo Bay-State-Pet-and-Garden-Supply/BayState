@@ -11,7 +11,8 @@ import { getOpenAIClient, CONSOLIDATION_CONFIG, getConsolidationConfig } from '.
 import { buildPromptContext } from './prompt-builder';
 import { buildResponseSchema, validateCategory, validateConsolidationTaxonomy, validateProductType } from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
-import { normalizeProductSources } from '@/lib/product-sources';
+import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
+import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
 import type {
     BatchJob,
     BatchMetadata,
@@ -303,6 +304,40 @@ function parseDelimitedTaxonomy(value: string | undefined): string[] {
         .filter((entry) => entry.length > 0);
 }
 
+function toStringUrlArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    const urls = value
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => normalizeImageUrl(entry))
+        .filter((entry) => entry.length > 0);
+    
+    return Array.from(new Set(urls));
+}
+
+function extractSelectedImageUrls(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    const urls = value
+        .map((entry) => {
+            if (typeof entry === 'string') {
+                return entry;
+            }
+
+            if (entry && typeof entry === 'object' && 'url' in entry) {
+                const url = (entry as { url?: unknown }).url;
+                return typeof url === 'string' ? url : null;
+            }
+
+            return null;
+        })
+        .filter((url): url is string => typeof url === 'string')
+        .map((url) => normalizeImageUrl(url))
+        .filter((url) => url.length > 0);
+    
+    return Array.from(new Set(urls));
+}
+
 /**
  * Create a JSONL batch file content for product consolidation.
  */
@@ -485,9 +520,9 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
                 requestCounts.total > 0
                     ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
                     : 0,
-            prompt_tokens: (batch as any).usage?.prompt_tokens,
-            completion_tokens: (batch as any).usage?.completion_tokens,
-            total_tokens: (batch as any).usage?.total_tokens,
+            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens,
+            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens,
+            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens,
             created_at: batch.created_at,
             completed_at: batch.completed_at,
             metadata: (batch.metadata || {}) as BatchMetadata,
@@ -501,9 +536,9 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
             total_requests: requestCounts.total || 0,
             completed_requests: requestCounts.completed || 0,
             failed_requests: requestCounts.failed || 0,
-            prompt_tokens: (batch as any).usage?.prompt_tokens || 0,
-            completion_tokens: (batch as any).usage?.completion_tokens || 0,
-            total_tokens: (batch as any).usage?.total_tokens || 0,
+            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0,
+            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0,
+            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0,
             output_file_id: batch.output_file_id,
             error_file_id: batch.error_file_id,
         };
@@ -628,11 +663,19 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                                 continue;
                             }
 
+                            // Convert product_on_pages array to pipe-delimited string
+                            const productOnPages = Array.isArray(validated.product_on_pages)
+                                ? (validated.product_on_pages as string[]).join('|')
+                                : typeof validated.product_on_pages === 'string'
+                                    ? validated.product_on_pages
+                                    : undefined;
+
                             results.push({
                                 sku,
                                 ...validated,
                                 category: normalizedCategory.join('|'),
                                 product_type: normalizedProductType.join('|'),
+                                ...(productOnPages ? { product_on_pages: productOnPages } : {}),
                             } as ConsolidationResult);
                         } else {
                             results.push({ sku, error: 'Failed to parse JSON response' });
@@ -730,41 +773,169 @@ export async function applyConsolidationResults(
     const successfulResults = results.filter((result) => !result.error);
     const resultSkus = successfulResults.map((result) => result.sku);
 
-    let existingRows: Array<{ sku: string; consolidated: unknown }> = [];
+    let existingRows: Array<{
+        sku: string;
+        consolidated: unknown;
+        sources: unknown;
+        image_candidates: unknown;
+        selected_images: unknown;
+    }> = [];
     if (resultSkus.length > 0) {
         const existingRowsResponse = await supabase
             .from('products_ingestion')
-            .select('sku, consolidated')
+            .select('sku, consolidated, sources, image_candidates, selected_images')
             .in('sku', resultSkus);
 
         if (existingRowsResponse.error) {
             return { success: false, error: `Failed to load existing products: ${existingRowsResponse.error.message}` };
         }
 
-        existingRows = (existingRowsResponse.data || []) as Array<{ sku: string; consolidated: unknown }>;
+        existingRows = (existingRowsResponse.data || []) as Array<{
+            sku: string;
+            consolidated: unknown;
+            sources: unknown;
+            image_candidates: unknown;
+            selected_images: unknown;
+        }>;
     }
 
-    const existingBySku = new Map<string, Record<string, unknown>>();
+    const existingBySku = new Map<
+        string,
+        {
+            consolidated: Record<string, unknown>;
+            sources: Record<string, unknown>;
+            imageCandidates: string[];
+            selectedImages: string[];
+        }
+    >();
     for (const row of existingRows) {
         const consolidated = row.consolidated;
+        const sources = row.sources;
+        const imageCandidates = toStringUrlArray(row.image_candidates);
+        const selectedImages = extractSelectedImageUrls(row.selected_images);
+
+        const consolidatedRecord =
+            consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)
+                ? (consolidated as Record<string, unknown>)
+                : {};
+
+        const sourceRecord =
+            sources && typeof sources === 'object' && !Array.isArray(sources)
+                ? (sources as Record<string, unknown>)
+                : {};
+
         if (consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)) {
-            existingBySku.set(row.sku, consolidated as Record<string, unknown>);
+            existingBySku.set(row.sku, {
+                consolidated: consolidatedRecord,
+                sources: sourceRecord,
+                imageCandidates,
+                selectedImages,
+            });
         } else {
-            existingBySku.set(row.sku, {});
+            existingBySku.set(row.sku, {
+                consolidated: consolidatedRecord,
+                sources: sourceRecord,
+                imageCandidates,
+                selectedImages,
+            });
         }
     }
 
-    const { data: brands, error: brandsError } = await supabase.from('brands').select('id, name');
+    const { data: brands, error: brandsError } = await supabase.from('brands').select('id, name, slug');
     if (brandsError) {
         return { success: false, error: `Failed to load brands: ${brandsError.message}` };
     }
 
     const brandIdByName = new Map<string, string>();
+    const brandIdBySlug = new Map<string, string>();
     for (const brand of brands || []) {
         if (typeof brand.name === 'string' && typeof brand.id === 'string') {
             brandIdByName.set(normalizeLookupKey(brand.name), brand.id);
+            const brandSlug =
+                typeof brand.slug === 'string' && brand.slug.length > 0
+                    ? brand.slug
+                    : buildFacetSlug(brand.name);
+            if (brandSlug) {
+                brandIdBySlug.set(brandSlug, brand.id);
+            }
         }
     }
+
+    const resolveBrand = async (
+        rawBrandName: string | undefined
+    ): Promise<{ brandId?: string; brandName?: string }> => {
+        const normalizedBrand = normalizeBrandName(rawBrandName);
+        if (!normalizedBrand) {
+            return {};
+        }
+
+        const lookupKey = normalizeLookupKey(normalizedBrand);
+        const existingBrandId = brandIdByName.get(lookupKey);
+        if (existingBrandId) {
+            return {
+                brandId: existingBrandId,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const slug = buildFacetSlug(normalizedBrand);
+        if (!slug) {
+            throw new Error(`Invalid brand name: "${normalizedBrand}"`);
+        }
+
+        const existingBrandIdBySlug = brandIdBySlug.get(slug);
+        if (existingBrandIdBySlug) {
+            brandIdByName.set(lookupKey, existingBrandIdBySlug);
+            return {
+                brandId: existingBrandIdBySlug,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const { data: createdBrand, error: createBrandError } = await supabase
+            .from('brands')
+            .insert({
+                name: normalizedBrand,
+                slug,
+            })
+            .select('id')
+            .single();
+
+        const createdBrandId = createdBrand?.id;
+        if (typeof createdBrandId === 'string' && createdBrandId.length > 0) {
+            brandIdByName.set(lookupKey, createdBrandId);
+            brandIdBySlug.set(slug, createdBrandId);
+            return {
+                brandId: createdBrandId,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const { data: existingBrand, error: existingBrandError } = await supabase
+            .from('brands')
+            .select('id')
+            .eq('slug', slug)
+            .maybeSingle();
+
+        const existingBrandIdAfterInsert = existingBrand?.id;
+        if (typeof existingBrandIdAfterInsert === 'string' && existingBrandIdAfterInsert.length > 0) {
+            brandIdByName.set(lookupKey, existingBrandIdAfterInsert);
+            brandIdBySlug.set(slug, existingBrandIdAfterInsert);
+            return {
+                brandId: existingBrandIdAfterInsert,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const details = [
+            createBrandError?.message ? `create failed: ${createBrandError.message}` : null,
+            existingBrandError?.message ? `lookup failed: ${existingBrandError.message}` : null,
+        ]
+            .filter(Boolean)
+            .join('; ');
+
+        throw new Error(`Failed to resolve brand "${normalizedBrand}"${details ? ` (${details})` : ''}`);
+    };
 
     const updateRows: Array<{
         sku: string;
@@ -793,10 +964,15 @@ export async function applyConsolidationResults(
                 continue;
             }
 
-            const existingConsolidated = existingBySku.get(result.sku) || {};
-            const resolvedBrandId = result.brand ? brandIdByName.get(normalizeLookupKey(result.brand)) : undefined;
+            const existingRecord = existingBySku.get(result.sku);
+            const existingConsolidated = existingRecord?.consolidated || {};
+            const normalizedBrand = normalizeBrandName(result.brand);
+            const {
+                brandId: resolvedBrandId,
+                brandName: resolvedBrandName,
+            } = await resolveBrand(result.brand);
 
-            if (result.brand) {
+            if (normalizedBrand) {
                 if (resolvedBrandId) {
                     matchedBrandCount += 1;
                 } else {
@@ -809,9 +985,11 @@ export async function applyConsolidationResults(
 
             const nextFields: Record<string, unknown> = {
                 ...(result.name ? { name: result.name } : {}),
-                ...(result.description ? { description: result.description } : {}),
+                description: result.name || existingConsolidated.name || '',
+                long_description: result.name || existingConsolidated.name || '',
+                ...(result.search_keywords ? { search_keywords: result.search_keywords } : {}),
                 ...(result.weight ? { weight: result.weight } : {}),
-                ...(result.brand ? { brand: result.brand } : {}),
+                ...(resolvedBrandName ? { brand: resolvedBrandName } : {}),
                 ...(resolvedBrandId ? { brand_id: resolvedBrandId } : {}),
                 ...(nextCategory.length > 0 ? { category: nextCategory.join('|') } : {}),
                 ...(nextProductType.length > 0 ? { product_type: nextProductType.join('|') } : {}),
@@ -819,6 +997,40 @@ export async function applyConsolidationResults(
                     ? { confidence_score: result.confidence_score }
                     : {}),
             };
+
+            const existingConsolidatedImages = toStringUrlArray(existingConsolidated.images);
+            if (existingConsolidatedImages.length > 0) {
+                nextFields.images = existingConsolidatedImages;
+            } else {
+                const selectedImages = existingRecord?.selectedImages || [];
+                const imageCandidates = existingRecord?.imageCandidates || [];
+                const sourceCandidates = extractImageCandidatesFromSources(
+                    existingRecord?.sources || {},
+                    24,
+                );
+                const fallbackImages =
+                    selectedImages.length > 0
+                        ? selectedImages
+                        : imageCandidates.length > 0
+                            ? imageCandidates.slice(0, 10)
+                            : sourceCandidates.slice(0, 10);
+
+                if (fallbackImages.length > 0) {
+                    nextFields.images = fallbackImages;
+                }
+            }
+
+            // Handle product_on_pages (stored as array in consolidated jsonb)
+            if (result.product_on_pages) {
+                const pages = Array.isArray(result.product_on_pages)
+                    ? result.product_on_pages
+                    : typeof result.product_on_pages === 'string'
+                        ? result.product_on_pages.split('|').map(p => p.trim()).filter(Boolean)
+                        : [];
+                if (pages.length > 0) {
+                    nextFields.product_on_pages = pages;
+                }
+            }
 
             Object.entries(nextFields).forEach(([key, value]) => {
                 if (value === undefined || value === null) return;

@@ -1,12 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { extractImageCandidatesFromSources } from '@/lib/product-sources';
+import {
+    buildProductImageStorageFolder,
+    replaceInlineImageDataUrls,
+} from '@/lib/product-image-storage';
 
 interface ProductImageRow {
     sku: string;
     image_candidates: string[] | null;
     consolidated: Record<string, unknown> | null;
     pipeline_status: string | null;
+}
+
+interface ProductImageValidationRow {
+    sku: string;
+    image_candidates: unknown;
+    selected_images: unknown;
+    sources: unknown;
+    consolidated: unknown;
+}
+
+function toImageUrlArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    return value
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+}
+
+function extractSelectedImageUrls(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    return value
+        .map((entry) => {
+            if (typeof entry === 'string') return entry;
+            if (entry && typeof entry === 'object' && 'url' in entry) {
+                const url = (entry as { url?: unknown }).url;
+                return typeof url === 'string' ? url : null;
+            }
+            return null;
+        })
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
 }
 
 export async function GET(request: NextRequest) {
@@ -84,7 +123,7 @@ export async function POST(request: NextRequest) {
 
         const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('sku, image_candidates, consolidated')
+            .select('sku, image_candidates, selected_images, sources, consolidated')
             .eq('sku', sku)
             .single();
 
@@ -95,9 +134,20 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const imageCandidates = Array.isArray(products.image_candidates)
-            ? products.image_candidates
-            : [];
+        const productRow = products as ProductImageValidationRow;
+        const consolidated =
+            productRow.consolidated && typeof productRow.consolidated === 'object'
+                ? (productRow.consolidated as Record<string, unknown>)
+                : {};
+
+        const imageCandidates = Array.from(
+            new Set([
+                ...toImageUrlArray(productRow.image_candidates),
+                ...toImageUrlArray(consolidated.images),
+                ...extractSelectedImageUrls(productRow.selected_images),
+                ...extractImageCandidatesFromSources(productRow.sources, 24),
+            ])
+        );
 
         for (const img of selectedImages) {
             if (!imageCandidates.includes(img)) {
@@ -108,13 +158,17 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const currentConsolidated = (products.consolidated && typeof products.consolidated === 'object')
-            ? (products.consolidated as Record<string, unknown>)
-            : {};
+        const currentConsolidated = consolidated;
+        const durableSelectedImages = await replaceInlineImageDataUrls(supabase, selectedImages, {
+            folderPath: buildProductImageStorageFolder('pipeline-selected', sku),
+            onError: (message, error) => {
+                console.error(`[Pipeline Images] ${message}`, error);
+            },
+        });
 
         const updatedConsolidated = {
             ...currentConsolidated,
-            images: selectedImages,
+            images: durableSelectedImages,
         };
 
         const { error: updateError } = await supabase

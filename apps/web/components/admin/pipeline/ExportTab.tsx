@@ -60,13 +60,13 @@ export const ExportTab: React.FC<ExportTabProps> = ({ count, filters }) => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                    <div className="rounded-lg border border-border bg-muted p-4">
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium text-foreground">
                                     Current Filtered Dataset
                                 </p>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-muted-foreground">
                                     Includes {count} products matching your active filters.
                                 </p>
                             </div>
@@ -112,16 +112,16 @@ export const ExportTab: React.FC<ExportTabProps> = ({ count, filters }) => {
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" checked readOnly className="rounded border-gray-300" />
-                            <span className="text-sm text-gray-600">Include all available fields</span>
+                            <input type="checkbox" checked readOnly className="rounded border-border" />
+                            <span className="text-sm text-muted-foreground">Include all available fields</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" checked readOnly className="rounded border-gray-300" />
-                            <span className="text-sm text-gray-600">Format for Shopify Import</span>
+                            <input type="checkbox" checked readOnly className="rounded border-border" />
+                            <span className="text-sm text-muted-foreground">Format for Shopify Import</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" checked readOnly className="rounded border-gray-300" />
-                            <span className="text-sm text-gray-600">Include image URLs</span>
+                            <input type="checkbox" checked readOnly className="rounded border-border" />
+                            <span className="text-sm text-muted-foreground">Include image URLs</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -131,7 +131,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({ count, filters }) => {
                         <CardTitle className="text-sm">Recent Exports</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-xs text-gray-500 italic">No recent exports in this session.</p>
+                        <p className="text-xs text-muted-foreground italic">No recent exports in this session.</p>
                     </CardContent>
                 </Card>
             </div>

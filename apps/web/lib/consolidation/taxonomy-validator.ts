@@ -155,11 +155,26 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                     },
                     weight: {
                         type: 'string',
-                        description: "Product weight as a string (e.g., '10.5')",
+                        description: "Primary package size/weight/count as a numeric string using only the leading whole-number portion (e.g., '10'). No units.",
                     },
                     description: {
                         type: 'string',
-                        description: 'Product description for the storefront',
+                        description: 'Short product description (1-2 sentences) for category/listing pages',
+                    },
+                    long_description: {
+                        type: 'string',
+                        description: 'Detailed product description (3-5 sentences) for the product detail page',
+                    },
+                    search_keywords: {
+                        type: 'string',
+                        description: 'Comma-separated search keywords (5-15 terms, lowercase)',
+                    },
+                    product_on_pages: {
+                        type: 'array',
+                        items: {
+                            type: 'string',
+                        },
+                        description: 'Store pages this product should appear on, using exact page names from the provided list',
                     },
                     category: {
                         type: 'array',
@@ -167,7 +182,7 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                             type: 'string',
                             enum: categories,
                         },
-                        description: 'List of applicable product categories',
+                        description: 'List of applicable product categories using exact values from the provided taxonomy list',
                     },
                     product_type: {
                         type: 'array',
@@ -175,14 +190,14 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                             type: 'string',
                             enum: productTypes,
                         },
-                        description: 'List of applicable product types',
+                        description: 'List of applicable product types using exact values from the provided taxonomy list',
                     },
                     confidence_score: {
                         type: 'number',
                         description: 'Confidence score between 0.0 and 1.0',
                     },
                 },
-                required: ['name', 'brand', 'weight', 'description', 'category', 'product_type', 'confidence_score'],
+                required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'product_type', 'confidence_score'],
                 additionalProperties: false,
             },
         },

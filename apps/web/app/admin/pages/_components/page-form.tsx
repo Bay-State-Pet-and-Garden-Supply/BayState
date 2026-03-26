@@ -19,7 +19,7 @@ export default function PageForm({ page }: { page?: Page }) {
   }
 
   return (
-    <form action={handleSubmit} className="space-y-6 max-w-4xl bg-white p-6 rounded-lg shadow border border-border">
+    <form action={handleSubmit} className="space-y-6 max-w-4xl bg-card p-6 rounded-lg shadow border border-border">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label className="text-sm font-medium">Page Title</label>
@@ -70,7 +70,7 @@ export default function PageForm({ page }: { page?: Page }) {
             name="is_published"
             id="is_published"
             defaultChecked={page?.is_published}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary accent-primary"
           />
           <label htmlFor="is_published" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:text-muted-foreground">
             Publish Page

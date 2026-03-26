@@ -102,7 +102,7 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
             sortable: true,
             searchable: true,
             render: (_, row) => (
-                <span className="font-mono font-medium text-gray-900">{row.order_number}</span>
+                <span className="font-mono font-medium text-foreground">{row.order_number}</span>
             ),
         },
         {
@@ -112,8 +112,8 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
             searchable: true,
             render: (_, row) => (
                 <div>
-                    <p className="font-medium text-gray-900">{row.customer_name}</p>
-                    <p className="text-xs text-gray-600">{row.customer_email}</p>
+                    <p className="font-medium text-foreground">{row.customer_name}</p>
+                    <p className="text-xs text-muted-foreground">{row.customer_email}</p>
                 </div>
             ),
         },
@@ -156,8 +156,8 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
             sortable: true,
             render: (value) => (
                 <div className="text-sm">
-                    <p className="text-gray-900">{formatDate(String(value))}</p>
-                    <p className="text-xs text-gray-600">{formatTime(String(value))}</p>
+                    <p className="text-foreground">{formatDate(String(value))}</p>
+                    <p className="text-xs text-muted-foreground">{formatTime(String(value))}</p>
                 </div>
             ),
         },

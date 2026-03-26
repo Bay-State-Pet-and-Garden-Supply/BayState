@@ -84,7 +84,7 @@ try:
     from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig
     from core.realtime_manager import RealtimeManager
     from utils.logger import setup_logging
-    from utils.logging_handlers import RealtimeLogHandler
+    from utils.logging_handlers import JobLoggingSession
     from utils.sentry import (
         init_sentry,
         set_job_context,
@@ -122,7 +122,7 @@ except Exception:
     setup_logging = getattr(utils_logger_mod, "setup_logging")
 
     utils_handlers_mod = importlib.import_module("apps.scraper.utils.logging_handlers")
-    RealtimeLogHandler = getattr(utils_handlers_mod, "RealtimeLogHandler")
+    JobLoggingSession = getattr(utils_handlers_mod, "JobLoggingSession")
 
     sentry_mod = importlib.import_module("apps.scraper.utils.sentry")
     init_sentry = getattr(sentry_mod, "init_sentry")
@@ -150,7 +150,7 @@ if TYPE_CHECKING:
     # Provide typed references; prefer infra but allow core for compatibility.
     from core.api_client import ScraperAPIClient  # type: ignore
     from core.realtime_manager import RealtimeManager  # type: ignore
-    from utils.logging_handlers import RealtimeLogHandler  # type: ignore
+    from utils.logging_handlers import JobLoggingSession  # type: ignore
 
 
 # Configuration
@@ -174,15 +174,7 @@ def signal_handler(signum, frame):
     _shutdown_requested = True
 
 
-def _create_log_entry(level: str, message: str) -> dict[str, str]:
-    return {
-        "level": level,
-        "message": message,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-def run_job(job_config, client, log_buffer=None) -> dict[str, Any]:
+def run_job(job_config, client, log_buffer=None, job_logging=None) -> dict[str, Any]:
     """
     Execute a scrape job using the existing runner logic.
 
@@ -200,12 +192,26 @@ def run_job(job_config, client, log_buffer=None) -> dict[str, Any]:
                 if scraper.options is None:
                     scraper.options = {}
                 scraper.options["_credentials"] = creds
-                logger.debug(f"Injected credentials for {scraper.name}")
+                logger.debug(
+                    f"Injected credentials for {scraper.name}",
+                    extra={
+                        "job_id": job_config.job_id,
+                        "runner_name": client.runner_name,
+                        "scraper_name": scraper.name,
+                        "phase": "configuring",
+                    },
+                )
 
-    return run_job(job_config, runner_name=client.runner_name, log_buffer=log_buffer, api_client=client)
+    return run_job(
+        job_config,
+        runner_name=client.runner_name,
+        log_buffer=log_buffer,
+        api_client=client,
+        job_logging=job_logging,
+    )
 
 
-def run_claimed_chunk(chunk, client, log_buffer=None) -> dict[str, Any]:
+def run_claimed_chunk(chunk, client, log_buffer=None, job_logging=None) -> dict[str, Any]:
     job_config = client.get_job_config(chunk.job_id)
     if not job_config:
         raise RuntimeError(f"Failed to fetch job config for chunk job {chunk.job_id}")
@@ -217,7 +223,7 @@ def run_claimed_chunk(chunk, client, log_buffer=None) -> dict[str, Any]:
     if chunk.scrapers:
         job_config.scrapers = [s for s in job_config.scrapers if s.name in chunk.scrapers or (s.display_name and s.display_name in chunk.scrapers)]
 
-    return run_job(job_config, client, log_buffer)
+    return run_job(job_config, client, log_buffer, job_logging=job_logging)
 
 
 def needs_credentials(scraper_name: str) -> bool:
@@ -320,70 +326,106 @@ async def main_async():
             if chunk:
                 logger.info(f"[Chunk {chunk.chunk_id}] Claimed - job={chunk.job_id}, skus={len(chunk.skus)}")
 
-                rt_handler = None
                 try:
                     await asyncio.to_thread(client.heartbeat, current_job_id=chunk.job_id, lease_token=chunk.lease_token, status="busy")
-                    if rm and rm.is_connected:
-                        await rm.broadcast_job_progress(chunk.job_id, "started", 0, "Chunk processing started")
-                        try:
-                            rt_handler = RealtimeLogHandler(realtime_manager=rm, job_id=chunk.job_id)
-                            rt_handler.setLevel(logging.INFO)
-                            formatter = logging.Formatter("%(message)s")
-                            rt_handler.setFormatter(formatter)
-                            logging.getLogger().addHandler(rt_handler)
-                        except Exception as e:
-                            logger.warning(f"Failed to attach RealtimeLogHandler: {e}")
+                    with JobLoggingSession(
+                        job_id=chunk.job_id,
+                        runner_name=client.runner_name,
+                        api_client=client,
+                        realtime_manager=rm,
+                    ) as job_logging:
+                        logger.info(
+                            f"Claimed chunk {chunk.chunk_id}",
+                            extra={
+                                "job_id": chunk.job_id,
+                                "runner_name": client.runner_name,
+                                "phase": "claimed",
+                                "details": {
+                                    "chunk_id": chunk.chunk_id,
+                                    "chunk_index": chunk.chunk_index,
+                                    "sku_count": len(chunk.skus),
+                                    "scrapers": chunk.scrapers,
+                                },
+                                "flush_immediately": True,
+                            },
+                        )
+                        job_logging.emit_progress(
+                            status="running",
+                            progress=0,
+                            message="Chunk processing started",
+                            phase="claimed",
+                            details={
+                                "chunk_id": chunk.chunk_id,
+                                "chunk_index": chunk.chunk_index,
+                                "sku_count": len(chunk.skus),
+                            },
+                            items_total=len(chunk.skus),
+                        )
 
-                    chunk_logs: list[dict[str, Any]] = []
-                    chunk_logs.append(_create_log_entry("info", f"Daemon claimed chunk {chunk.chunk_id} for job {chunk.job_id}"))
-                    start_time = time.time()
-                    results = await asyncio.to_thread(run_claimed_chunk, chunk, client, chunk_logs)
-                    elapsed = time.time() - start_time
-                    chunk_logs.append(_create_log_entry("info", f"Daemon completed chunk in {elapsed:.1f}s"))
+                        start_time = time.time()
+                        results = await asyncio.to_thread(run_claimed_chunk, chunk, client, None, job_logging)
+                        elapsed = time.time() - start_time
 
-                    chunk_results = {
-                        "skus_processed": results.get("skus_processed", 0),
-                        "skus_successful": len(results.get("data", {})),
-                        "skus_failed": results.get("skus_processed", 0) - len(results.get("data", {})),
-                        "data": results.get("data", {}),
-                        "telemetry": results.get("telemetry", {}),
-                        "logs": results.get("logs", []),
-                    }
+                        logger.info(
+                            f"Chunk {chunk.chunk_id} completed",
+                            extra={
+                                "job_id": chunk.job_id,
+                                "runner_name": client.runner_name,
+                                "phase": "completed",
+                                "details": {
+                                    "chunk_id": chunk.chunk_id,
+                                    "elapsed_seconds": round(elapsed, 2),
+                                    "skus_processed": results.get("skus_processed", 0),
+                                },
+                                "flush_immediately": True,
+                            },
+                        )
 
-                    await asyncio.to_thread(
-                        client.submit_chunk_results,
-                        chunk.chunk_id,
-                        "completed",
-                        results=chunk_results,
-                    )
+                        chunk_results = {
+                            "skus_processed": results.get("skus_processed", 0),
+                            "skus_successful": len(results.get("data", {})),
+                            "skus_failed": results.get("skus_processed", 0) - len(results.get("data", {})),
+                            "data": results.get("data", {}),
+                            "telemetry": results.get("telemetry", {}),
+                            "logs": results.get("logs", []) or job_logging.snapshot(),
+                        }
 
-                    if chunk_logs:
-                        try:
-                            await asyncio.to_thread(client.post_logs, chunk.job_id, chunk_logs)
-                        except Exception as log_error:
-                            logger.warning(f"[Chunk {chunk.chunk_id}] Failed to send logs: {log_error}")
+                        await asyncio.to_thread(
+                            client.submit_chunk_results,
+                            chunk.chunk_id,
+                            "completed",
+                            results=chunk_results,
+                        )
 
-                    chunks_completed += 1
-                    logger.info(f"[Chunk {chunk.chunk_id}] Completed in {elapsed:.1f}s - {results.get('skus_processed', 0)} SKUs processed")
+                        chunks_completed += 1
+                        logger.info(
+                            f"Chunk {chunk.chunk_id} completed in {elapsed:.1f}s",
+                            extra={
+                                "job_id": chunk.job_id,
+                                "runner_name": client.runner_name,
+                                "phase": "completed",
+                                "details": {"skus_processed": results.get("skus_processed", 0)},
+                            },
+                        )
 
                 except Exception as e:
-                    failure_logs = [
-                        _create_log_entry("error", f"Daemon failed chunk {chunk.chunk_id}: {type(e).__name__} - {e}"),
-                    ]
-                    logger.exception(f"[Chunk {chunk.chunk_id}] Failed with error")
+                    logger.exception(
+                        f"Chunk {chunk.chunk_id} failed",
+                        extra={
+                            "job_id": chunk.job_id,
+                            "runner_name": client.runner_name,
+                            "phase": "failed",
+                            "chunk_id": chunk.chunk_id,
+                            "chunk_index": chunk.chunk_index,
+                            "flush_immediately": True,
+                        },
+                    )
                     await asyncio.to_thread(
                         client.submit_chunk_results,
                         chunk.chunk_id,
                         "failed",
                         error_message=str(e),
                     )
-                    try:
-                        await asyncio.to_thread(client.post_logs, chunk.job_id, failure_logs)
-                    except Exception as log_error:
-                        logger.warning(f"[Chunk {chunk.chunk_id}] Failed to send error logs: {log_error}")
-                finally:
-                    if rt_handler:
-                        logging.getLogger().removeHandler(rt_handler)
 
             else:
                 now = time.time()

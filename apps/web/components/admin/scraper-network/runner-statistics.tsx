@@ -24,7 +24,7 @@ interface RunnerStatisticsProps {
 
 export function RunnerStatistics({ runnerId, runnerName, stats }: RunnerStatisticsProps) {
   const uptimeStatus = useMemo(() => {
-    if (!stats.lastSeenRelative) return { label: 'Unknown', color: 'bg-gray-100' };
+    if (!stats.lastSeenRelative) return { label: 'Unknown', color: 'bg-muted' };
     
     const match = stats.lastSeenRelative.match(/(\d+)\s*(minute|hour|day)/i);
     if (!match) return { label: 'Online', color: 'bg-green-100' };

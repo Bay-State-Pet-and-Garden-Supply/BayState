@@ -8,15 +8,9 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { normalizeScrapeLogEntry, mergeScrapeJobLogs, type ScrapeJobLogEntry } from '@/lib/scraper-logs';
 
-export interface LogEntry {
-    id: string;
-    job_id: string;
-    level: string;
-    message: string;
-    details?: Record<string, unknown> | null;
-    created_at: string;
-}
+export type LogEntry = ScrapeJobLogEntry;
 
 export interface UseLogSubscriptionOptions {
     /** Filter logs to a specific job ID */
@@ -104,14 +98,14 @@ export function useLogSubscription(
                     ...(filter ? { filter } : {}),
                 },
                 (payload) => {
-                    const newLog = payload.new as LogEntry;
+                    const newLog = normalizeScrapeLogEntry(payload.new as Record<string, unknown>, {
+                        persisted: true,
+                        jobId,
+                    });
                     if (!newLog) return;
 
                     setLogs((prev) => {
-                        const updated = [newLog, ...prev];
-                        return updated.length > maxEntries
-                            ? updated.slice(0, maxEntries)
-                            : updated;
+                        return mergeScrapeJobLogs(prev, [newLog], maxEntries);
                     });
 
                     onLogRef.current?.(newLog);

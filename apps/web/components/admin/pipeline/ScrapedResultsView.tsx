@@ -60,15 +60,19 @@ export function ScrapedResultsView({
   onSelectSku,
   onRefresh,
 }: ScrapedResultsViewProps) {
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
+  }, [products]);
+
   const [preferredSku, setPreferredSku] = useState<string | null>(
-    products.length > 0 ? products[0].sku : null,
+    sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
   const [preferredSource, setPreferredSource] = useState<string>("");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedProduct =
-    products.find((product) => product.sku === preferredSku) ??
-    products[0] ??
+    sortedProducts.find((product) => product.sku === preferredSku) ??
+    sortedProducts[0] ??
     null;
   const selectedSku = selectedProduct?.sku ?? null;
   const sources = selectedProduct?.sources ?? EMPTY_SOURCES;
@@ -97,19 +101,19 @@ export function ScrapedResultsView({
         return;
       }
 
-      if (products.length === 0) return;
+      if (sortedProducts.length === 0) return;
 
-      const currentIndex = products.findIndex((p) => p.sku === preferredSku);
+      const currentIndex = sortedProducts.findIndex((p) => p.sku === preferredSku);
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        const nextIndex = Math.min(currentIndex + 1, products.length - 1);
-        const nextSku = products[nextIndex].sku;
+        const nextIndex = Math.min(currentIndex + 1, sortedProducts.length - 1);
+        const nextSku = sortedProducts[nextIndex].sku;
         setPreferredSku(nextSku);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         const nextIndex = Math.max(currentIndex - 1, 0);
-        const nextSku = products[nextIndex].sku;
+        const nextSku = sortedProducts[nextIndex].sku;
         setPreferredSku(nextSku);
       } else if (e.key === " ") {
         if (preferredSku) {
@@ -120,7 +124,7 @@ export function ScrapedResultsView({
             !isChecked,
             currentIndex,
             e.shiftKey,
-            products
+            sortedProducts
           );
         }
       }
@@ -128,7 +132,7 @@ export function ScrapedResultsView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [preferredSku, products, selectedSkus, onSelectSku]);
+  }, [preferredSku, sortedProducts, selectedSkus, onSelectSku]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -194,12 +198,12 @@ export function ScrapedResultsView({
   }, [activeSource, sources]);
 
   return (
-    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
           <div className="divide-y">
-            {products.map((product, index) => {
+            {sortedProducts.map((product, index) => {
               const name =
                 product.consolidated?.name || product.input?.name || "Unknown";
               const price = product.consolidated?.price ?? product.input?.price;
@@ -228,7 +232,7 @@ export function ScrapedResultsView({
                           !isChecked,
                           index,
                           e.shiftKey,
-                          products,
+                          sortedProducts,
                         );
                       }}
                     >
@@ -242,7 +246,7 @@ export function ScrapedResultsView({
                               !isChecked,
                               index,
                               false,
-                              products,
+                              sortedProducts,
                             )
                           }
                         }}
@@ -253,7 +257,7 @@ export function ScrapedResultsView({
                             !isChecked,
                             index,
                             e.shiftKey,
-                            products,
+                            sortedProducts,
                           );
                         }}
                         className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
@@ -298,7 +302,7 @@ export function ScrapedResultsView({
                 </div>
               );
             })}
-            {products.length === 0 && (
+            {sortedProducts.length === 0 && (
               <div className="p-12 text-center text-muted-foreground text-sm">
                 <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
                 No products found matching your search.
@@ -396,7 +400,7 @@ export function ScrapedResultsView({
                             href={currentSourceData.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute top-2 right-2 bg-white/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border"
+                            className="absolute top-2 right-2 bg-card/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border"
                           >
                             <ExternalLink className="h-4 w-4 text-primary" />
                           </a>
@@ -481,7 +485,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               Manufacturer Product #
                             </span>
-                            <span className="font-mono text-zinc-900 truncate">
+                            <span className="font-mono text-foreground truncate">
                               {currentSourceData.manufacturer_part_number ||
                                 currentSourceData.item_number ||
                                 "N/A"}
@@ -491,7 +495,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               Weight / Size
                             </span>
-                            <span className="text-zinc-900">
+                            <span className="text-foreground">
                               {currentSourceData.weight ||
                                 currentSourceData.size ||
                                 currentSourceData.unit_of_measure ||
@@ -504,7 +508,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               UPC / Barcode
                             </span>
-                            <span className="font-mono text-zinc-900">
+                            <span className="font-mono text-foreground">
                               {currentSourceData.upc || "N/A"}
                             </span>
                           </div>
@@ -512,7 +516,7 @@ export function ScrapedResultsView({
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                               Category
                             </span>
-                            <span className="text-zinc-900 truncate">
+                            <span className="text-foreground truncate">
                               {currentSourceData.category ||
                                 currentSourceData.categories?.[0] ||
                                 "Uncategorized"}
@@ -525,7 +529,7 @@ export function ScrapedResultsView({
                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                           Description
                         </h3>
-                        <div className="text-sm leading-relaxed text-zinc-600 prose prose-sm max-w-none">
+                        <div className="text-sm leading-relaxed text-muted-foreground prose prose-sm max-w-none">
                           {currentSourceData.description ? (
                             <div
                               dangerouslySetInnerHTML={{

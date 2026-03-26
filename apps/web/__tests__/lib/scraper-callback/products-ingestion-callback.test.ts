@@ -10,13 +10,21 @@ function createSupabaseMock() {
   const select = jest.fn(() => ({ in: selectIn }));
   const upsert = jest.fn();
   const from = jest.fn(() => ({ select, upsert }));
+  const upload = jest.fn().mockResolvedValue({ error: null });
+  const getPublicUrl = jest.fn((path: string) => ({
+    data: { publicUrl: `https://cdn.example.com/${path}` },
+  }));
+  const storageFrom = jest.fn(() => ({ upload, getPublicUrl }));
 
   return {
-    supabase: { from } as unknown as SupabaseClient,
+    supabase: { from, storage: { from: storageFrom } } as unknown as SupabaseClient,
     from,
     select,
     selectIn,
     upsert,
+    upload,
+    getPublicUrl,
+    storageFrom,
   };
 }
 
@@ -258,6 +266,45 @@ describe('persistProductsIngestionSourcesPartial', () => {
     expect(result.persisted).toEqual(['SKU-1', 'SKU-2']);
     expect(result.missing).toEqual([]);
     expect(upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('uploads inline image data URLs before persisting sources', async () => {
+    const { supabase, selectIn, upsert, upload, getPublicUrl } = createSupabaseMock();
+    const nowIso = '2026-02-17T00:00:00.000Z';
+
+    selectIn.mockResolvedValue({
+      data: [{ sku: 'SKU-1', sources: {} }],
+      error: null,
+    });
+    upsert.mockResolvedValue({ error: null });
+
+    await persistProductsIngestionSourcesPartial(
+      supabase,
+      {
+        'SKU-1': {
+          phillips: {
+            images: ['data:image/png;base64,QUJD'],
+          },
+        },
+      },
+      false,
+      nowIso
+    );
+
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(getPublicUrl).toHaveBeenCalledTimes(1);
+    expect(upsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sources: {
+            phillips: {
+              images: ['https://cdn.example.com/pipeline-sources/sku-1/b5d4045c3f466fa91fe2cc6a.png'],
+            },
+          },
+        }),
+      ]),
+      { onConflict: 'sku' }
+    );
   });
 
   it('throws on bulk update errors', async () => {

@@ -130,7 +130,7 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
                                 className="flex-1"
                             />
                             {logoUrl && (
-                                <div className="h-10 w-10 rounded border bg-white p-1 flex items-center justify-center">
+                                <div className="h-10 w-10 rounded border bg-card p-1 flex items-center justify-center">
                                     <Image
                                         src={logoUrl}
                                         alt="Logo preview"

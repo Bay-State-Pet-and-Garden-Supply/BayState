@@ -94,13 +94,13 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
     if (credentials) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+                <div className="w-full max-w-lg rounded-lg bg-card shadow-xl">
                     <div className="flex items-center justify-between border-b px-6 py-4">
                         <div className="flex items-center gap-3">
                             <Key className="h-6 w-6 text-green-600" />
                             <div>
                                 <h2 className="text-lg font-semibold">API Key Created</h2>
-                                <p className="text-sm text-gray-600">{credentials.runner_name}</p>
+                                <p className="text-sm text-muted-foreground">{credentials.runner_name}</p>
                             </div>
                         </div>
                     </div>
@@ -123,8 +123,8 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                                     {copied === 'key' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                                 </Button>
                             </div>
-                            <p className="text-xs text-gray-600">
-                                Keys start with <code className="bg-gray-100 px-1 rounded">bsr_</code> for easy identification.
+                            <p className="text-xs text-muted-foreground">
+                                Keys start with <code className="bg-muted px-1 rounded">bsr_</code> for easy identification.
                             </p>
                         </div>
 
@@ -143,11 +143,11 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                         </Button>
 
                         <div className="pt-4 border-t space-y-3">
-                            <h4 className="text-sm font-semibold text-gray-900">Next Steps:</h4>
-                            <ul className="text-sm text-gray-600 space-y-2 list-disc ml-5">
+                            <h4 className="text-sm font-semibold text-foreground">Next Steps:</h4>
+                            <ul className="text-sm text-muted-foreground space-y-2 list-disc ml-5">
                                 <li>Copy the API key above and save it securely.</li>
                                 <li>On the new machine, run the one-line installer below.</li>
-                                <li>Paste this key when the setup wizard prompts for <code className="bg-gray-100 px-1 rounded">SCRAPER_API_KEY</code>.</li>
+                                <li>Paste this key when the setup wizard prompts for <code className="bg-muted px-1 rounded">SCRAPER_API_KEY</code>.</li>
                                 <li>The runner will appear as <strong>Ready</strong> once connected.</li>
                             </ul>
 
@@ -168,7 +168,7 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                         </div>
                     </div>
 
-                    <div className="border-t bg-gray-50 px-6 py-4">
+                    <div className="border-t bg-muted px-6 py-4">
                         <Button className="w-full" onClick={onClose}>
                             Done
                         </Button>
@@ -180,7 +180,7 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+            <div className="w-full max-w-lg rounded-lg bg-card shadow-xl">
                 <div className="flex items-center justify-between border-b px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Key className="h-6 w-6 text-purple-600" />
@@ -188,7 +188,7 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                             {initialRunnerName ? 'Generate New API Key' : 'Create Runner Account'}
                         </h2>
                     </div>
-                    <button onClick={onClose} className="rounded-full p-2 hover:bg-gray-100">
+                    <button onClick={onClose} className="rounded-full p-2 hover:bg-muted">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -209,9 +209,9 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                             placeholder="e.g. home-server-1"
                             autoFocus={!initialRunnerName}
                             readOnly={!!initialRunnerName}
-                            className={initialRunnerName ? 'bg-gray-100 text-gray-600' : ''}
+                            className={initialRunnerName ? 'bg-muted text-muted-foreground' : ''}
                         />
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-muted-foreground">
                             {initialRunnerName 
                                 ? 'Runner name cannot be changed. Create a new runner for a different name.'
                                 : 'Lowercase letters, numbers, and hyphens only. 3-50 characters.'}
@@ -228,7 +228,7 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                     </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 border-t bg-gray-50 px-6 py-4">
+                <div className="flex items-center justify-end gap-3 border-t bg-muted px-6 py-4">
                     <Button variant="outline" onClick={onClose} disabled={saving}>
                         Cancel
                     </Button>

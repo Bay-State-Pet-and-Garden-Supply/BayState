@@ -109,7 +109,7 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 text-gray-500">
+            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin mb-4" />
                 <p>Loading products...</p>
             </div>
@@ -131,7 +131,7 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
             <div className="flex flex-col sm:flex-row gap-4 items-end justify-between border-b pb-4">
                 <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                     <div className="space-y-1.5 min-w-[150px]">
-                        <label className="text-sm font-medium text-gray-700">Brand</label>
+                        <label className="text-sm font-medium text-muted-foreground">Brand</label>
                         <Select value={brandFilter} onValueChange={setBrandFilter}>
                             <SelectTrigger data-testid="brand-filter">
                                 <SelectValue placeholder="All Brands" />
@@ -146,7 +146,7 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                     </div>
 
                     <div className="space-y-1.5 min-w-[150px]">
-                        <label className="text-sm font-medium text-gray-700">Status</label>
+                        <label className="text-sm font-medium text-muted-foreground">Status</label>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger data-testid="status-filter">
                                 <SelectValue placeholder="All Statuses" />
@@ -177,7 +177,7 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
-                    <div className="text-sm text-gray-500 font-medium" data-testid="selected-count">
+                    <div className="text-sm text-muted-foreground font-medium" data-testid="selected-count">
                         {selectedSkus.size} selected
                     </div>
                     <Button 
@@ -191,9 +191,9 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                 </div>
             </div>
 
-            <div className="rounded-md border bg-white overflow-hidden">
+            <div className="rounded-md border bg-card overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-gray-50">
+                    <TableHeader className="bg-muted">
                         <TableRow>
                             <TableHead className="w-[50px]">
                                 <Checkbox 
@@ -202,17 +202,17 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                                     aria-label="Select all"
                                 />
                             </TableHead>
-                            <TableHead className="w-[120px] font-semibold text-gray-900">SKU</TableHead>
-                            <TableHead className="font-semibold text-gray-900">Name</TableHead>
-                            <TableHead className="w-[150px] font-semibold text-gray-900">Brand</TableHead>
-                            <TableHead className="w-[120px] font-semibold text-gray-900">Status</TableHead>
-                            <TableHead className="w-[150px] font-semibold text-gray-900 text-right">Last Enriched</TableHead>
+                            <TableHead className="w-[120px] font-semibold text-foreground">SKU</TableHead>
+                            <TableHead className="font-semibold text-foreground">Name</TableHead>
+                            <TableHead className="w-[150px] font-semibold text-foreground">Brand</TableHead>
+                            <TableHead className="w-[120px] font-semibold text-foreground">Status</TableHead>
+                            <TableHead className="w-[150px] font-semibold text-foreground text-right">Last Enriched</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredProducts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-gray-500">
+                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                     No products found matching filters.
                                 </TableCell>
                             </TableRow>
@@ -225,7 +225,7 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                                 return (
                                     <TableRow 
                                         key={product.sku}
-                                        className="hover:bg-gray-50 transition-colors"
+                                        className="hover:bg-muted transition-colors"
                                     >
                                         <TableCell>
                                             <Checkbox 
@@ -235,18 +235,18 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                                                 aria-label={`Select ${product.sku}`}
                                             />
                                         </TableCell>
-                                        <TableCell className="font-mono text-sm text-gray-600">{product.sku}</TableCell>
-                                        <TableCell className="font-medium text-gray-900 truncate max-w-[300px]" title={name}>
+                                        <TableCell className="font-mono text-sm text-muted-foreground">{product.sku}</TableCell>
+                                        <TableCell className="font-medium text-foreground truncate max-w-[300px]" title={name}>
                                             {name}
                                         </TableCell>
-                                        <TableCell className="text-gray-600 truncate" title={brand}>
+                                        <TableCell className="text-muted-foreground truncate" title={brand}>
                                             {brand}
                                         </TableCell>
                                         <TableCell>
                                             <Badge 
                                                 variant="outline" 
                                                 className={`
-                                                    ${status === 'staging' ? 'bg-gray-100 text-gray-700 border-gray-200' : ''}
+                                                    ${status === 'staging' ? 'bg-muted text-muted-foreground border-border' : ''}
                                                     ${status === 'scraped' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}
                                                     ${status === 'failed' ? 'bg-red-100 text-red-700 border-red-200' : ''}
                                                 `}
@@ -254,7 +254,7 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                                                 {status}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right text-gray-500 text-sm">
+                                        <TableCell className="text-right text-muted-foreground text-sm">
                                             {product.last_enriched_at 
                                                 ? new Date(product.last_enriched_at).toLocaleDateString()
                                                 : '-'}

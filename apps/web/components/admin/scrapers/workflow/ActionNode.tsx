@@ -54,7 +54,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const colorMap: Record<string, string> = {
   blue: 'bg-blue-100 border-blue-300 text-blue-700',
-  gray: 'bg-gray-100 border-gray-300 text-gray-700',
+  gray: 'bg-muted border-border text-muted-foreground',
   purple: 'bg-purple-100 border-purple-300 text-purple-700',
   green: 'bg-green-100 border-green-300 text-green-700',
   teal: 'bg-teal-100 border-teal-300 text-teal-700',
@@ -68,7 +68,7 @@ const colorMap: Record<string, string> = {
   stone: 'bg-stone-100 border-stone-300 text-stone-700',
   emerald: 'bg-emerald-100 border-emerald-300 text-emerald-700',
   amber: 'bg-amber-100 border-amber-300 text-amber-700',
-  zinc: 'bg-zinc-100 border-zinc-300 text-zinc-700',
+  zinc: 'bg-muted border-border text-muted-foreground',
   pink: 'bg-pink-100 border-pink-300 text-pink-700',
   rose: 'bg-rose-100 border-rose-300 text-rose-700',
   lime: 'bg-lime-100 border-lime-300 text-lime-700',
@@ -111,7 +111,7 @@ function ActionNodeComponent({ data, selected }: ActionNodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 !bg-gray-400"
+        className="w-3 h-3 !bg-muted"
       />
       
       <div className="p-3">
@@ -133,7 +133,7 @@ function ActionNodeComponent({ data, selected }: ActionNodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3 !bg-gray-400"
+        className="w-3 h-3 !bg-muted"
       />
     </div>
   );

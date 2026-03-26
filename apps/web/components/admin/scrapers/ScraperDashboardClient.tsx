@@ -153,7 +153,7 @@ export function ScraperDashboardClient({
       case 'broken':
         return <XCircle className="h-5 w-5 text-red-500" />;
       default:
-        return <HelpCircle className="h-5 w-5 text-gray-600" />;
+        return <HelpCircle className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
@@ -163,7 +163,7 @@ export function ScraperDashboardClient({
       failed: 'bg-red-100 text-red-700',
       partial: 'bg-yellow-100 text-yellow-700',
       running: 'bg-blue-100 text-blue-700',
-      pending: 'bg-gray-100 text-gray-700',
+      pending: 'bg-muted text-muted-foreground',
     };
     return (
       <Badge variant="outline" className={colors[status] || colors.pending}>
@@ -175,10 +175,10 @@ export function ScraperDashboardClient({
   return (
     <div className="space-y-6 p-6">
       {/* Realtime Status Banner */}
-      <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2">
+      <div className="flex items-center justify-between bg-muted rounded-lg px-4 py-2">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Jobs:</span>
+            <span className="text-sm text-muted-foreground">Jobs:</span>
             {isJobsConnected ? (
               <Badge variant="default" className="gap-1 text-xs">
                 <RefreshCw className="h-3 w-3 animate-spin" />
@@ -191,7 +191,7 @@ export function ScraperDashboardClient({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Runners:</span>
+            <span className="text-sm text-muted-foreground">Runners:</span>
             {isRunnersConnected ? (
               <Badge variant="default" className="gap-1 text-xs">
                 <RefreshCw className="h-3 w-3 animate-pulse" />
@@ -216,8 +216,8 @@ export function ScraperDashboardClient({
             <BarChart3 className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Scraper Dashboard</h1>
-            <p className="text-sm text-gray-600">Overview of all scrapers and test results</p>
+            <h1 className="text-2xl font-bold text-foreground">Scraper Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Overview of all scrapers and test results</p>
           </div>
         </div>
         <Button asChild>
@@ -233,7 +233,7 @@ export function ScraperDashboardClient({
             <CardContent className="flex flex-col items-center justify-center p-4">
               <FileCode2 className="h-8 w-8 text-blue-600 mb-2" />
               <span className="font-medium">Scrapers</span>
-              <span className="text-xs text-gray-600">List & Edit</span>
+              <span className="text-xs text-muted-foreground">List & Edit</span>
             </CardContent>
           </Card>
         </Link>
@@ -242,7 +242,7 @@ export function ScraperDashboardClient({
             <CardContent className="flex flex-col items-center justify-center p-4">
               <History className="h-8 w-8 text-green-600 mb-2" />
               <span className="font-medium">Runs</span>
-              <span className="text-xs text-gray-600">Job History</span>
+              <span className="text-xs text-muted-foreground">Job History</span>
             </CardContent>
           </Card>
         </Link>
@@ -251,16 +251,16 @@ export function ScraperDashboardClient({
             <CardContent className="flex flex-col items-center justify-center p-4">
               <Server className="h-8 w-8 text-orange-600 mb-2" />
               <span className="font-medium">Network</span>
-              <span className="text-xs text-gray-600">{realtimeRunnerCount} Runners</span>
+              <span className="text-xs text-muted-foreground">{realtimeRunnerCount} Runners</span>
             </CardContent>
           </Card>
         </Link>
         <Link href="/admin/scrapers/new">
           <Card className="hover:border-purple-400 transition-colors cursor-pointer h-full border-dashed">
             <CardContent className="flex flex-col items-center justify-center p-4">
-              <Plus className="h-8 w-8 text-gray-600 mb-2" />
+              <Plus className="h-8 w-8 text-muted-foreground mb-2" />
               <span className="font-medium">New</span>
-              <span className="text-xs text-gray-600">Add Scraper</span>
+              <span className="text-xs text-muted-foreground">Add Scraper</span>
             </CardContent>
           </Card>
         </Link>
@@ -269,11 +269,11 @@ export function ScraperDashboardClient({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Total Scrapers</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Total Scrapers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{totalScrapers}</div>
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {statusCounts.active} active, {statusCounts.draft} draft
             </p>
           </CardContent>
@@ -281,7 +281,7 @@ export function ScraperDashboardClient({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Avg Health Score</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Avg Health Score</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{avgHealthScore}%</div>
@@ -294,7 +294,7 @@ export function ScraperDashboardClient({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Healthy Scrapers</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Healthy Scrapers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -306,7 +306,7 @@ export function ScraperDashboardClient({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Needs Attention</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Needs Attention</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -331,14 +331,14 @@ export function ScraperDashboardClient({
                 <Link
                   key={scraper.id}
                   href={`/admin/scrapers/${scraper.name}`}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     {getHealthIcon(scraper.health_status)}
                     <span className="font-medium">{scraper.display_name || scraper.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{scraper.health_score}%</span>
+                    <span className="text-sm text-muted-foreground">{scraper.health_score}%</span>
                     <Badge variant="outline" className="text-xs">
                       {scraper.status}
                     </Badge>
@@ -404,10 +404,10 @@ export function ScraperDashboardClient({
                             )}
                           </>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-600">
+                      <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(job.created_at), 'MMM d, h:mm a')}
                       </TableCell>
                     </TableRow>
@@ -415,7 +415,7 @@ export function ScraperDashboardClient({
                 </TableBody>
               </Table>
             ) : (
-              <p className="text-sm text-gray-600 text-center py-8">
+              <p className="text-sm text-muted-foreground text-center py-8">
                 No recent jobs. Start a new scrape job to see activity here.
               </p>
             )}

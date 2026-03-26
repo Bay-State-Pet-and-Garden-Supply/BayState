@@ -54,7 +54,7 @@ export function ImageSelector({ images, onSave }: ImageSelectorProps) {
               ${
                 selected.includes(imageUrl)
                   ? 'border-[#008850] ring-2 ring-[#008850]'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-border hover:border-border'
               }
             `}
           >

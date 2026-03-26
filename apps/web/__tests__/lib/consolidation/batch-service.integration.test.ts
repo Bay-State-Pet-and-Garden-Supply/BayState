@@ -5,11 +5,12 @@ import {
     retrieveResults,
     submitBatch,
 } from '@/lib/consolidation/batch-service';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { buildPromptContext } from '@/lib/consolidation/prompt-builder';
-import { getOpenAIClient } from '@/lib/consolidation/openai-client';
+import { getConsolidationConfig, getOpenAIClient } from '@/lib/consolidation/openai-client';
 
 jest.mock('@/lib/supabase/server', () => ({
+    createAdminClient: jest.fn(),
     createClient: jest.fn(),
 }));
 
@@ -19,6 +20,7 @@ jest.mock('@/lib/consolidation/prompt-builder', () => ({
 
 jest.mock('@/lib/consolidation/openai-client', () => ({
     getOpenAIClient: jest.fn(),
+    getConsolidationConfig: jest.fn(),
     CONSOLIDATION_CONFIG: {
         model: 'gpt-4o-mini',
         maxTokens: 1024,
@@ -30,6 +32,13 @@ jest.mock('@/lib/consolidation/openai-client', () => ({
 describe('consolidation batch integration behavior', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        (getConsolidationConfig as jest.Mock).mockResolvedValue({
+            model: 'gpt-4o-mini',
+            maxTokens: 1024,
+            temperature: 0.1,
+            completionWindow: '24h',
+            confidence_threshold: 0.7,
+        });
     });
 
     it('submitBatch persists OpenAI batch id and string metadata', async () => {
@@ -154,7 +163,13 @@ describe('consolidation batch integration behavior', () => {
     it('applyConsolidationResults stores quality metrics into batch metadata', async () => {
         const productsIngestionSelectBySkuIn = {
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', consolidated: { images: ['https://cdn.example.com/1.jpg'] } }],
+                data: [{
+                    sku: 'SKU-1',
+                    consolidated: { images: ['https://cdn.example.com/1.jpg'] },
+                    sources: {},
+                    image_candidates: [],
+                    selected_images: [],
+                }],
                 error: null,
             }),
         };
@@ -184,7 +199,7 @@ describe('consolidation batch integration behavior', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated') {
+            if (columns === 'sku, consolidated, sources, image_candidates, selected_images') {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -231,7 +246,7 @@ describe('consolidation batch integration behavior', () => {
                 throw new Error(`Unexpected table ${table}`);
             }),
         };
-        (createClient as jest.Mock).mockResolvedValue(supabaseMock);
+        (createAdminClient as jest.Mock).mockResolvedValue(supabaseMock);
 
         const response = await applyConsolidationResults(
             [
@@ -272,39 +287,59 @@ describe('consolidation batch integration behavior', () => {
     it('cancelBatch resolves legacy UUID id to OpenAI batch id before cancellation', async () => {
         const legacyId = '550e8400-e29b-41d4-a716-446655440000';
 
-        let selectCallCount = 0;
-
         const batchJobsUpdateEq = jest.fn().mockResolvedValue({ error: null });
         const batchJobsUpdate = jest.fn(() => ({ eq: batchJobsUpdateEq }));
 
-        const makeSelectChain = () => ({
-            eq: jest.fn().mockReturnThis(),
-            limit: jest.fn().mockReturnThis(),
-            maybeSingle: jest.fn().mockImplementation(async () => {
-                selectCallCount += 1;
-                if (selectCallCount === 1) {
-                    return { data: { openai_batch_id: 'batch_resolved' }, error: null };
-                }
-                if (selectCallCount === 2) {
-                    return { data: null, error: null };
-                }
-                return { data: { id: legacyId, metadata: {} }, error: null };
-            }),
-        });
-
-        const supabaseMock = {
+        const adminSupabaseMock = {
             from: jest.fn((table: string) => {
                 if (table !== 'batch_jobs') {
                     throw new Error(`Unexpected table ${table}`);
                 }
 
                 return {
-                    select: jest.fn(() => makeSelectChain()),
+                    select: jest.fn((columns: string) => {
+                        if (columns === 'openai_batch_id') {
+                            return {
+                                eq: jest.fn().mockReturnThis(),
+                                limit: jest.fn().mockReturnThis(),
+                                maybeSingle: jest.fn().mockResolvedValue({
+                                    data: { openai_batch_id: 'batch_resolved' },
+                                    error: null,
+                                }),
+                            };
+                        }
+
+                        if (columns === 'id, metadata') {
+                            return {
+                                eq: jest.fn().mockReturnThis(),
+                                limit: jest.fn().mockReturnThis(),
+                                maybeSingle: jest.fn().mockResolvedValue({
+                                    data: { id: legacyId, metadata: {} },
+                                    error: null,
+                                }),
+                            };
+                        }
+
+                        throw new Error(`Unexpected select columns ${columns}`);
+                    }),
+                };
+            }),
+        };
+
+        const clientSupabaseMock = {
+            from: jest.fn((table: string) => {
+                if (table !== 'batch_jobs') {
+                    throw new Error(`Unexpected table ${table}`);
+                }
+
+                return {
                     update: batchJobsUpdate,
                 };
             }),
         };
-        (createClient as jest.Mock).mockResolvedValue(supabaseMock);
+
+        (createAdminClient as jest.Mock).mockResolvedValue(adminSupabaseMock);
+        (createClient as jest.Mock).mockResolvedValue(clientSupabaseMock);
 
         const cancel = jest.fn().mockResolvedValue({ id: 'batch_resolved', status: 'cancelled' });
         (getOpenAIClient as jest.Mock).mockReturnValue({
@@ -334,24 +369,32 @@ describe('consolidation batch integration behavior', () => {
             metadata: { description: 'batch' },
         };
 
-        const selectQuery = {
-            eq: jest.fn().mockReturnThis(),
-            limit: jest.fn().mockReturnThis(),
-            maybeSingle: jest.fn().mockResolvedValue({ data: { openai_batch_id: 'batch_resolved' }, error: null }),
-        };
         const upsert = jest.fn().mockResolvedValue({ error: null });
-        const supabaseMock = {
+        const adminSupabaseMock = {
             from: jest.fn((table: string) => {
                 if (table !== 'batch_jobs') {
                     throw new Error(`Unexpected table ${table}`);
                 }
                 return {
-                    select: jest.fn(() => selectQuery),
+                    select: jest.fn((columns: string) => {
+                        if (columns !== 'openai_batch_id') {
+                            throw new Error(`Unexpected select columns ${columns}`);
+                        }
+
+                        return {
+                            eq: jest.fn().mockReturnThis(),
+                            limit: jest.fn().mockReturnThis(),
+                            maybeSingle: jest.fn().mockResolvedValue({
+                                data: { openai_batch_id: 'batch_resolved' },
+                                error: null,
+                            }),
+                        };
+                    }),
                     upsert,
                 };
             }),
         };
-        (createClient as jest.Mock).mockResolvedValue(supabaseMock);
+        (createAdminClient as jest.Mock).mockResolvedValue(adminSupabaseMock);
 
         const retrieve = jest.fn().mockResolvedValue(batchResponse);
         (getOpenAIClient as jest.Mock).mockReturnValue({

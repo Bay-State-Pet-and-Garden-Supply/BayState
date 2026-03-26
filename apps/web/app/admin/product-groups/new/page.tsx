@@ -125,7 +125,7 @@ export default async function NewProductGroupPage() {
                 id="is_active"
                 name="is_active"
                 defaultChecked
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border-border"
               />
               <Label htmlFor="is_active" className="text-sm font-normal">
                 Active (visible on storefront)

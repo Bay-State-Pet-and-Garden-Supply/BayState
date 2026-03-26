@@ -6,8 +6,8 @@ from typing import Any
 
 from core.api_client import *
 from core.config_fetcher import *
-from core.events import *
 from core.realtime_manager import *
+from utils.logging_handlers import JobLoggingSession
 from utils.structured_logging import generate_trace_id
 
 from runner import run_job
@@ -27,29 +27,44 @@ async def run_realtime_mode(client: ScraperAPIClient, runner_name: str) -> None:
         config_source = "env"
 
     if not realtime_key:
-        logger.error("[Realtime Runner] Supabase realtime key not configured", extra={"runner_name": runner_name})
+        logger.error(
+            "Supabase realtime key not configured",
+            extra={"runner_name": runner_name, "phase": "startup"},
+        )
         return
     if not supabase_url:
-        logger.error("[Realtime Runner] Supabase URL not configured", extra={"runner_name": runner_name})
+        logger.error(
+            "Supabase URL not configured",
+            extra={"runner_name": runner_name, "phase": "startup"},
+        )
         return
 
     realtime_trace_id = generate_trace_id()
     logger.info(
-        f"[Realtime Runner] Starting with runner name: {runner_name} ({config_source})",
-        extra={"runner_name": runner_name, "trace_id": realtime_trace_id},
+        f"Starting realtime runner: {runner_name} ({config_source})",
+        extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "startup"},
     )
 
     rm = RealtimeManager(supabase_url, realtime_key, runner_name)
 
     connected = await rm.connect()
     if not connected:
-        logger.error("[Realtime Runner] Failed to connect to Supabase Realtime", extra={"runner_name": runner_name, "trace_id": realtime_trace_id})
+        logger.error(
+            "Failed to connect to Supabase Realtime",
+            extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "startup"},
+        )
         return
 
     if not await rm.enable_presence():
-        logger.warning("[Realtime Runner] Failed to enable presence tracking", extra={"runner_name": runner_name, "trace_id": realtime_trace_id})
+        logger.warning(
+            "Failed to enable presence tracking",
+            extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "startup"},
+        )
     if not await rm.enable_broadcast():
-        logger.warning("[Realtime Runner] Failed to enable broadcast channels", extra={"runner_name": runner_name, "trace_id": realtime_trace_id})
+        logger.warning(
+            "Failed to enable broadcast channels",
+            extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "startup"},
+        )
 
     if rm.is_connected:
         await rm.broadcast_runner_status(
@@ -60,166 +75,201 @@ async def run_realtime_mode(client: ScraperAPIClient, runner_name: str) -> None:
     async def handle_job(job_data: dict[str, Any]) -> None:
         job_id = job_data.get("job_id")
         if not job_id:
-            logger.warning("[Realtime Runner] Received job without job_id", extra={"runner_name": runner_name, "trace_id": realtime_trace_id})
+            logger.warning(
+                "Received job without job_id",
+                extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "idle"},
+            )
             return
 
         job_trace_id = generate_trace_id()
         lease_token: str | None = None
 
-        logger.info(
-            f"[Realtime Runner] Received job: {job_id}",
-            extra={
-                "job_id": job_id,
-                "runner_name": runner_name,
-                "trace_id": realtime_trace_id,
-                "job_trace_id": job_trace_id,
-            },
-        )
+        with JobLoggingSession(
+            job_id=job_id,
+            runner_name=runner_name,
+            api_client=client,
+            realtime_manager=rm,
+        ) as job_logging:
+            logger.info(
+                f"Received realtime job: {job_id}",
+                extra={
+                    "job_id": job_id,
+                    "runner_name": runner_name,
+                    "trace_id": realtime_trace_id,
+                    "job_trace_id": job_trace_id,
+                    "phase": "received",
+                    "flush_immediately": True,
+                },
+            )
+            job_logging.emit_progress(
+                status="running",
+                progress=0,
+                message="Job received",
+                phase="received",
+            )
 
-        if rm.is_connected:
-            await rm.broadcast_job_progress(job_id=job_id, status="started", progress=0, message="Job received")
-            await rm.broadcast_job_log(job_id=job_id, level="info", message=f"Runner {runner_name} started processing job")
+            try:
+                client.update_status(job_id, "running", runner_name=runner_name)
+                job_logging.emit_progress(
+                    status="running",
+                    progress=5,
+                    message="Fetching job configuration",
+                    phase="configuring",
+                )
 
-        try:
-            client.update_status(job_id, "running", runner_name=runner_name)
+                job_config = client.get_job_config(job_id)
+                if not job_config:
+                    logger.error(
+                        "Failed to fetch job configuration",
+                        extra={
+                            "job_id": job_id,
+                            "runner_name": runner_name,
+                            "trace_id": realtime_trace_id,
+                            "job_trace_id": job_trace_id,
+                            "phase": "configuring",
+                            "flush_immediately": True,
+                        },
+                    )
+                    job_logging.emit_progress(
+                        status="failed",
+                        progress=0,
+                        message="Failed to fetch job configuration",
+                        phase="configuring",
+                    )
+                    client.submit_results(
+                        job_id,
+                        "failed",
+                        runner_name=runner_name,
+                        lease_token=job_data.get("lease_token"),
+                        error_message="Failed to fetch job configuration",
+                    )
+                    return
 
-            if rm.is_connected:
-                await rm.broadcast_job_progress(job_id=job_id, status="running", progress=10, message="Fetching job configuration")
+                lease_token = job_config.lease_token
+                job_logging.emit_progress(
+                    status="running",
+                    progress=10,
+                    message="Configuration loaded",
+                    phase="configuring",
+                    details={"skus": len(job_config.skus), "scrapers": [s.name for s in job_config.scrapers]},
+                    items_total=len(job_config.skus),
+                )
 
-            job_config = client.get_job_config(job_id)
-            if not job_config:
-                if rm.is_connected:
-                    await rm.broadcast_job_progress(job_id=job_id, status="failed", progress=0, message="Failed to fetch job configuration")
-                    await rm.broadcast_job_log(job_id=job_id, level="error", message="Failed to fetch job configuration")
+                results = run_job(
+                    job_config,
+                    runner_name=runner_name,
+                    api_client=client,
+                    job_logging=job_logging,
+                )
+
+                client.submit_results(
+                    job_id,
+                    "completed",
+                    runner_name=runner_name,
+                    lease_token=lease_token,
+                    results=results,
+                )
+            except ConfigValidationError as e:
+                logger.error(
+                    f"Config validation failed: {e}",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": runner_name,
+                        "trace_id": realtime_trace_id,
+                        "job_trace_id": job_trace_id,
+                        "phase": "configuring",
+                        "error_type": "ConfigValidationError",
+                        "flush_immediately": True,
+                    },
+                )
+                job_logging.emit_progress(
+                    status="failed",
+                    progress=0,
+                    message=f"Config validation failed: {e}",
+                    phase="configuring",
+                )
                 client.submit_results(
                     job_id,
                     "failed",
                     runner_name=runner_name,
-                    lease_token=job_data.get("lease_token"),
-                    error_message="Failed to fetch job configuration",
+                    lease_token=lease_token,
+                    error_message=f"Config validation failed: {e}",
                 )
-                return
-
-            lease_token = job_config.lease_token
-
-            if rm.is_connected:
-                await rm.broadcast_job_progress(
-                    job_id=job_id,
-                    status="running",
-                    progress=20,
-                    message="Configuration loaded",
-                    details={"skus": len(job_config.skus), "scrapers": [s.name for s in job_config.scrapers]},
-                )
-
-            def _on_scraper_event(event: ScraperEvent) -> None:
-                if event.job_id != job_id:
-                    return
-                # We want to capture the SYSTEM_INFO events that carry our product data details
-                if event.event_type.value in ("system.info", "system.warning", "system.error"):
-                    try:
-                        import asyncio
-                        
-                        level_map = {
-                            "system.info": "info",
-                            "system.warning": "warning",
-                            "system.error": "error"
-                        }
-                        
-                        # Only broadcast if there are actual details to share, 
-                        # to avoid duplicating the standard logger info messages already being sent elsewhere
-                        if event.data:
-                            asyncio.create_task(
-                                rm.broadcast_job_log(
-                                    job_id=job_id, 
-                                    level=level_map.get(event.event_type.value, "info"), 
-                                    message=event.data.get("message", "Product data found"), 
-                                    details=event.data
-                                )
-                            )
-                    except Exception as e:
-                        logger.error(f"[Realtime Runner] Failed to handle event payload: {e}")
-
-            event_bus.subscribe(_on_scraper_event)
-            
-            try:
-                results = run_job(job_config, runner_name=runner_name)
-            finally:
-                event_bus.unsubscribe(_on_scraper_event)
-
-            if rm.is_connected:
-                await rm.broadcast_job_progress(
-                    job_id=job_id,
-                    status="completed",
-                    progress=100,
-                    message="Job completed successfully",
-                    details={
-                        "skus_processed": results.get("skus_processed", 0),
-                        "scrapers_run": results.get("scrapers_run", []),
+            except ConfigFetchError as e:
+                logger.error(
+                    f"Config fetch failed: {e}",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": runner_name,
+                        "trace_id": realtime_trace_id,
+                        "job_trace_id": job_trace_id,
+                        "phase": "configuring",
+                        "error_type": "ConfigFetchError",
+                        "flush_immediately": True,
                     },
                 )
-                await rm.broadcast_job_log(job_id=job_id, level="info", message=f"Job completed: {results.get('skus_processed', 0)} SKUs processed")
-
-            client.submit_results(
-                job_id,
-                "completed",
-                runner_name=runner_name,
-                lease_token=lease_token,
-                results=results,
-            )
-        except ConfigValidationError as e:
-            if rm.is_connected:
-                await rm.broadcast_job_progress(job_id=job_id, status="failed", progress=0, message=f"Config validation failed: {e}")
-                await rm.broadcast_job_log(job_id=job_id, level="error", message=f"Config validation failed: {e}")
-            client.submit_results(
-                job_id,
-                "failed",
-                runner_name=runner_name,
-                lease_token=lease_token,
-                error_message=f"Config validation failed: {e}",
-            )
-        except ConfigFetchError as e:
-            if rm.is_connected:
-                await rm.broadcast_job_progress(job_id=job_id, status="failed", progress=0, message=f"Config fetch failed: {e}")
-                await rm.broadcast_job_log(job_id=job_id, level="error", message=f"Config fetch failed: {e}")
-            client.submit_results(
-                job_id,
-                "failed",
-                runner_name=runner_name,
-                lease_token=lease_token,
-                error_message=f"Config fetch failed: {e}",
-            )
-        except Exception as e:
-            logger.exception(
-                f"[Realtime Runner] Job {job_id} failed with error",
-                extra={"job_id": job_id, "runner_name": runner_name, "trace_id": realtime_trace_id, "job_trace_id": job_trace_id},
-            )
-            if rm.is_connected:
-                await rm.broadcast_job_progress(job_id=job_id, status="failed", progress=0, message=f"Job failed: {e}")
-                await rm.broadcast_job_log(job_id=job_id, level="error", message=f"Job failed with error: {e}")
-            client.submit_results(
-                job_id,
-                "failed",
-                runner_name=runner_name,
-                lease_token=lease_token,
-                error_message=str(e),
-            )
+                job_logging.emit_progress(
+                    status="failed",
+                    progress=0,
+                    message=f"Config fetch failed: {e}",
+                    phase="configuring",
+                )
+                client.submit_results(
+                    job_id,
+                    "failed",
+                    runner_name=runner_name,
+                    lease_token=lease_token,
+                    error_message=f"Config fetch failed: {e}",
+                )
+            except Exception as e:
+                logger.exception(
+                    "Realtime job failed with error",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": runner_name,
+                        "trace_id": realtime_trace_id,
+                        "job_trace_id": job_trace_id,
+                        "phase": "failed",
+                        "error_type": type(e).__name__,
+                        "flush_immediately": True,
+                    },
+                )
+                job_logging.emit_progress(
+                    status="failed",
+                    progress=0,
+                    message=f"Job failed: {e}",
+                    phase="failed",
+                    details={"error_type": type(e).__name__},
+                )
+                client.submit_results(
+                    job_id,
+                    "failed",
+                    runner_name=runner_name,
+                    lease_token=lease_token,
+                    error_message=str(e),
+                )
 
     def on_job(job_data: dict[str, Any]) -> None:
-        import asyncio
-
         asyncio.create_task(handle_job(job_data))
 
     await rm.subscribe_to_jobs(on_job)
-    logger.info("[Realtime Runner] Waiting for jobs... Press Ctrl+C to stop", extra={"runner_name": runner_name, "trace_id": realtime_trace_id})
+    logger.info(
+        "Realtime runner waiting for jobs",
+        extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "idle"},
+    )
 
     try:
-        import asyncio
-
         await asyncio.Future()
     except KeyboardInterrupt:
-        logger.info("[Realtime Runner] Interrupted, shutting down...", extra={"runner_name": runner_name, "trace_id": realtime_trace_id})
+        logger.info(
+            "Realtime runner interrupted, shutting down",
+            extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "shutdown"},
+        )
     finally:
         if rm.is_connected:
             await rm.broadcast_runner_status(status="stopping", details={"message": "Runner shutting down"})
         await rm.disconnect()
-        logger.info("[Realtime Runner] Disconnected", extra={"runner_name": runner_name, "trace_id": realtime_trace_id})
+        logger.info(
+            "Realtime runner disconnected",
+            extra={"runner_name": runner_name, "trace_id": realtime_trace_id, "phase": "shutdown"},
+        )

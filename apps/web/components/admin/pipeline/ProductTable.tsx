@@ -2,7 +2,9 @@
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
+  Column,
   ColumnDef,
+  Row,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
@@ -62,7 +64,7 @@ function getSourceCount(
 
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
-  column: any;
+  column: Column<TData, TValue>;
   title: string;
 }
 
@@ -216,10 +218,10 @@ export function ProductTable({
     ...(showSources ? [{
       id: "sources",
       accessorFn: (p: PipelineProduct) => getSourceCount(p.sources),
-      header: ({ column }: { column: any }) => (
+      header: ({ column }: { column: Column<PipelineProduct, unknown> }) => (
         <DataTableColumnHeader column={column} title="Sources" className="justify-center text-center" />
       ),
-      cell: ({ row }: { row: any }) => {
+      cell: ({ row }: { row: Row<PipelineProduct> }) => {
         const count = row.getValue("sources") as number;
         return (
           <div className="flex justify-center">
@@ -236,10 +238,10 @@ export function ProductTable({
     }] : []),
     ...(showConfidence ? [{
       accessorKey: "confidence_score",
-      header: ({ column }: { column: any }) => (
+      header: ({ column }: { column: Column<PipelineProduct, unknown> }) => (
         <DataTableColumnHeader column={column} title="Confidence" className="justify-center text-center" />
       ),
-      cell: ({ row }: { row: any }) => {
+      cell: ({ row }: { row: Row<PipelineProduct> }) => {
         const confidence = row.getValue("confidence_score") as number;
         if (confidence === undefined || confidence === null) return <div className="text-center text-xs text-muted-foreground">—</div>;
         
@@ -344,9 +346,9 @@ export function ProductTable({
   }, [focusedIndex]);
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-white shadow-sm" ref={containerRef}>
+    <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-card shadow-sm" ref={containerRef}>
       <Table>
-        <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => (

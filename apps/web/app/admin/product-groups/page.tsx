@@ -70,7 +70,7 @@ export default async function ProductGroupsPage() {
                         {memberCountMap.get(group.id) || 0} products
                       </Badge>
                       {!group.is_active && (
-                        <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200">
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted">
                           Inactive
                         </Badge>
                       )}

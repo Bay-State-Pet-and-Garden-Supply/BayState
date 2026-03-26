@@ -45,12 +45,12 @@ interface RunFilters {
 }
 
 const statusConfig = {
-  pending: { label: 'Pending', color: 'bg-gray-100 text-gray-700', icon: Clock },
+  pending: { label: 'Pending', color: 'bg-muted text-muted-foreground', icon: Clock },
   claimed: { label: 'Claimed', color: 'bg-blue-100 text-blue-700', icon: Loader2 },
   running: { label: 'Running', color: 'bg-yellow-100 text-yellow-700', icon: Loader2 },
   completed: { label: 'Completed', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
   failed: { label: 'Failed', color: 'bg-red-100 text-red-700', icon: AlertCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-700', icon: XCircle },
+  cancelled: { label: 'Cancelled', color: 'bg-muted text-muted-foreground', icon: XCircle },
 } as const;
 
 function StatusBadge({ status }: { status: string }) {
@@ -58,7 +58,7 @@ function StatusBadge({ status }: { status: string }) {
   const Icon = config?.icon || Clock;
 
   return (
-    <Badge className={config?.color || 'bg-gray-100 text-gray-700'}>
+    <Badge className={config?.color || 'bg-muted text-muted-foreground'}>
       <Icon className="mr-1 h-3 w-3" />
       {config?.label || status}
     </Badge>

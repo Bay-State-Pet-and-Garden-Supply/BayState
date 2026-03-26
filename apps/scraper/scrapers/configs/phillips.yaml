@@ -1,5 +1,6 @@
 schema_version: "1.0"
 name: phillips
+requires_login: true
 display_name: Phillips Pet
 base_url: https://shop.phillipspet.com
 scraper_type: static

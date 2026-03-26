@@ -221,7 +221,7 @@ export function PipelineProductDetail({
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="rounded-lg bg-white p-8">
+        <div className="rounded-lg bg-card p-8">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
         </div>
       </div>
@@ -231,7 +231,7 @@ export function PipelineProductDetail({
   if (!product) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="rounded-lg bg-white p-8">
+        <div className="rounded-lg bg-card p-8">
           <p className="text-red-600">Product not found</p>
           <Button onClick={onClose} className="mt-4">
             Close
@@ -258,19 +258,19 @@ export function PipelineProductDetail({
         aria-labelledby="modal-title"
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-card shadow-xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-6 py-4">
           <div className="flex items-center gap-3">
-            <Package className="h-6 w-6 text-gray-600" />
+            <Package className="h-6 w-6 text-muted-foreground" />
             <div>
               <h2 id="modal-title" className="text-lg font-semibold">Edit Product</h2>
-              <p className="text-sm text-gray-600 font-mono tabular-nums">{sku}</p>
+              <p className="text-sm text-muted-foreground font-mono tabular-nums">{sku}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 hover:bg-gray-100"
+            className="rounded-full p-2 hover:bg-muted"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -287,7 +287,7 @@ export function PipelineProductDetail({
         {/* Form Content */}
         <div className="p-6 space-y-6">
           {/* Pipeline Status */}
-          <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50">
+          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted">
             <Label className="w-32">Product Stage</Label>
             <Select value={pipelineStatus} onValueChange={(v) => setPipelineStatus(v as PipelineStatus)}>
               <SelectTrigger className="w-48" aria-label="Product Stage">
@@ -377,7 +377,7 @@ export function PipelineProductDetail({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Final Images</Label>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {selectedImages.length} selected
                     </span>
                   </div>
@@ -394,16 +394,16 @@ export function PipelineProductDetail({
 
           {/* Source Data (Read-only) */}
           <details className="rounded-lg border p-4">
-            <summary className="cursor-pointer font-medium text-gray-700">
+            <summary className="cursor-pointer font-medium text-muted-foreground">
               Source Data (Read-only)
             </summary>
             <div className="mt-4 space-y-4">
               {/* Input Data */}
               <div>
-                <h4 className="text-sm font-medium text-gray-600 mb-2">
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">
                   Original Input (ShopSite)
                 </h4>
-                <pre className="rounded bg-gray-50 p-3 text-xs overflow-x-auto">
+                <pre className="rounded bg-muted p-3 text-xs overflow-x-auto">
                   {JSON.stringify(product.input, null, 2)}
                 </pre>
               </div>
@@ -411,10 +411,10 @@ export function PipelineProductDetail({
               {/* Scraped Sources */}
               {Object.keys(product.sources || {}).length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">
                     Scraped Data
                   </h4>
-                  <pre className="rounded bg-gray-50 p-3 text-xs overflow-x-auto">
+                  <pre className="rounded bg-muted p-3 text-xs overflow-x-auto">
                     {JSON.stringify(product.sources, null, 2)}
                   </pre>
                 </div>
@@ -424,10 +424,10 @@ export function PipelineProductDetail({
         </div>
 
         {/* Footer Actions */}
-        <div className="sticky bottom-0 flex items-center justify-between border-t bg-gray-50 px-6 py-4">
-          <p className="text-xs text-gray-600">
-            Press <kbd className="rounded bg-gray-200 px-1">Esc</kbd> to close,{' '}
-            <kbd className="rounded bg-gray-200 px-1">Ctrl+S</kbd> to save
+        <div className="sticky bottom-0 flex items-center justify-between border-t bg-muted px-6 py-4">
+          <p className="text-xs text-muted-foreground">
+            Press <kbd className="rounded bg-muted px-1">Esc</kbd> to close,{' '}
+            <kbd className="rounded bg-muted px-1">Ctrl+S</kbd> to save
           </p>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={onClose} disabled={saving}>

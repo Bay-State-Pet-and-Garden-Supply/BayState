@@ -250,7 +250,6 @@ class SearchScorer:
         if not search_results:
             return []
 
-        # Dedupe by URL
         deduped: list[dict[str, Any]] = []
         seen_urls: set[str] = set()
 
@@ -261,23 +260,22 @@ class SearchScorer:
             seen_urls.add(url)
             deduped.append(result)
 
-        # Sort by score
-        ranked = sorted(
-            deduped,
-            key=lambda result: self.score_search_result(result, sku, brand, product_name, category),
-            reverse=True,
-        )
+        scored = [
+            (
+                result,
+                self.score_search_result(
+                    result,
+                    sku,
+                    brand,
+                    product_name,
+                    category,
+                ),
+            )
+            for result in deduped
+        ]
 
-        # Prefer trusted retailers and brand domains
-        if brand:
-            preferred = []
-            for result in ranked:
-                domain = self.domain_from_url(str(result.get("url") or ""))
-                if self.is_trusted_retailer(domain) or self.is_brand_domain(domain, brand):
-                    preferred.append(result)
-            if preferred:
-                ranked = preferred
+        scored.sort(key=lambda item: item[1], reverse=True)
+        ranked = [item[0] for item in scored]
 
-        # Filter out low quality results, but keep all if everything is filtered
         high_signal = [result for result in ranked if not self.is_low_quality_result(result)]
         return high_signal or ranked

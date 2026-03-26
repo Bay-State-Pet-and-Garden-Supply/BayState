@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Download, FileSpreadsheet, Loader2, Package } from 'lucide-react';
+import { FileSpreadsheet, FileText, ImageIcon, Loader2, Package, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +46,9 @@ export function ExportWorkspace() {
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingXml, setIsGeneratingXml] = useState(false);
+  const [isGeneratingZip, setIsGeneratingZip] = useState(false);
+  const [isGeneratingImageManifest, setIsGeneratingImageManifest] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,6 +135,101 @@ export function ExportWorkspace() {
   const currentCount = getProductCount(selectedStatus);
   const hasProducts = currentCount > 0;
 
+  const handleGenerateXml = async () => {
+    setIsGeneratingXml(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/pipeline/export-xml');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate XML export');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'shopsite-products.xml';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('ShopSite XML export downloaded');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate XML';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsGeneratingXml(false);
+    }
+  };
+
+  const handleGenerateZip = async () => {
+    setIsGeneratingZip(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/pipeline/export-zip?status=${selectedStatus}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate ZIP export');
+      }
+
+      const contentDisposition = res.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] || 'baystate-export.zip';
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('ZIP package downloaded successfully. This includes XML and resized images.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate ZIP';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsGeneratingZip(false);
+    }
+  };
+
+  const handleExportImageManifest = async () => {
+    setIsGeneratingImageManifest(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/pipeline/export-images');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate image manifest');
+      }
+
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'image-manifest.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Image manifest downloaded (${data.total_images} images across ${data.total_products} products)`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate image manifest';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsGeneratingImageManifest(false);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -140,13 +238,13 @@ export function ExportWorkspace() {
           Export Products
         </CardTitle>
         <CardDescription>
-          Generate Excel export of products from the pipeline
+          Export products as Excel spreadsheets, ShopSite XML, or image manifests
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Status Filter */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-muted-foreground">
             Filter by Status
           </label>
           <Select
@@ -170,7 +268,7 @@ export function ExportWorkspace() {
 
         {/* Product Count */}
         {isLoadingCounts ? (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Spinner size="sm" />
             <span>Loading product counts…</span>
           </div>
@@ -180,9 +278,9 @@ export function ExportWorkspace() {
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm">
-            <Package className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-600">
-              <span className="font-semibold text-gray-900">{currentCount.toLocaleString()}</span>
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              <span className="font-semibold text-foreground">{currentCount.toLocaleString()}</span>
               {' products ready for export in '}
               <span className="font-medium">{STATUS_LABELS[selectedStatus].toLowerCase()}</span>
               {' status'}
@@ -201,7 +299,7 @@ export function ExportWorkspace() {
           />
         )}
 
-        {/* Generate Button */}
+        {/* Generate Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={handleGenerateExport}
@@ -215,8 +313,59 @@ export function ExportWorkspace() {
               </>
             ) : (
               <>
-                <Download className="h-4 w-4" />
-                Generate Export
+                <FileSpreadsheet className="h-4 w-4" />
+                Export Excel
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleGenerateXml}
+            disabled={isGeneratingXml || isLoadingCounts}
+            variant="outline"
+          >
+            {isGeneratingXml ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                Export ShopSite XML
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleGenerateZip}
+            disabled={isGeneratingZip || isLoadingCounts || !hasProducts}
+            variant="outline"
+          >
+            {isGeneratingZip ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating ZIP…
+              </>
+            ) : (
+              <>
+                <Archive className="h-4 w-4" />
+                Export ZIP Package
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleExportImageManifest}
+            disabled={isGeneratingImageManifest || isLoadingCounts}
+            variant="outline"
+          >
+            {isGeneratingImageManifest ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <ImageIcon className="h-4 w-4" />
+                Export Image Manifest
               </>
             )}
           </Button>
@@ -233,13 +382,13 @@ export function ExportWorkspace() {
                 <p className="text-sm font-medium text-[#008850]">
                   Export generated successfully
                 </p>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   <span className="font-mono">{exportResult.filename}</span>
                   {' ('}
                   <span className="font-medium">{exportResult.productCount.toLocaleString()}</span>
                   {' products)'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Download should start automatically. Check your downloads folder.
                 </p>
               </div>
