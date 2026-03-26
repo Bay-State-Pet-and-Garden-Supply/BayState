@@ -11,6 +11,110 @@ from scrapers.exceptions import WorkflowExecutionError
 logger = logging.getLogger(__name__)
 
 
+async def _capture_authenticated_images_as_data_urls(ctx: Any, image_urls: list[str]) -> list[str]:
+    page = getattr(getattr(ctx, "browser", None), "page", None)
+    if page is None or not image_urls:
+        return image_urls
+
+    captured_images = await page.evaluate(
+        """
+        async (urls) => {
+            const toDataUrl = async (response) => {
+                const blob = await response.blob();
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        if (typeof reader.result === 'string') {
+                            resolve(reader.result);
+                            return;
+                        }
+                        reject(new Error('FileReader did not produce a string result.'));
+                    };
+                    reader.onerror = () => reject(reader.error || new Error('Failed to read image blob.'));
+                    reader.readAsDataURL(blob);
+                });
+            };
+
+            const results = [];
+
+            for (const rawUrl of urls) {
+                if (typeof rawUrl !== 'string') {
+                    continue;
+                }
+
+                const trimmed = rawUrl.trim();
+                if (!trimmed) {
+                    continue;
+                }
+
+                if (trimmed.startsWith('data:image/')) {
+                    results.push({ original_url: trimmed, data_url: trimmed, error: null });
+                    continue;
+                }
+
+                try {
+                    const absoluteUrl = new URL(trimmed, window.location.href).toString();
+                    const response = await fetch(absoluteUrl, { credentials: 'include' });
+
+                    if (!response.ok) {
+                        results.push({
+                            original_url: trimmed,
+                            data_url: absoluteUrl,
+                            error: `HTTP ${response.status}`,
+                        });
+                        continue;
+                    }
+
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!contentType.toLowerCase().startsWith('image/')) {
+                        results.push({
+                            original_url: trimmed,
+                            data_url: absoluteUrl,
+                            error: `Unexpected content type: ${contentType || 'unknown'}`,
+                        });
+                        continue;
+                    }
+
+                    results.push({
+                        original_url: trimmed,
+                        data_url: await toDataUrl(response),
+                        error: null,
+                    });
+                } catch (error) {
+                    const message =
+                        error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error';
+                    results.push({
+                        original_url: trimmed,
+                        data_url: trimmed,
+                        error: message,
+                    });
+                }
+            }
+
+            return results;
+        }
+        """,
+        image_urls,
+    )
+
+    processed_urls: list[str] = []
+    for entry in captured_images:
+        data_url = entry.get("data_url") if isinstance(entry, dict) else None
+        if isinstance(data_url, str) and data_url.strip():
+            processed_urls.append(data_url)
+
+        error = entry.get("error") if isinstance(entry, dict) else None
+        original_url = entry.get("original_url") if isinstance(entry, dict) else None
+        if error:
+            logger.warning(
+                "Failed to convert authenticated image %s to data URL: %s",
+                original_url or "<unknown>",
+                error,
+            )
+
+    return processed_urls
+
+
 @ActionRegistry.register("process_images")
 class ProcessImagesAction(BaseAction):
     """Action to process, filter, and upgrade image URLs."""
@@ -76,6 +180,11 @@ class ProcessImagesAction(BaseAction):
                     seen.add(img)
                     unique_images.append(img)
             filtered_images = unique_images
+
+        config = getattr(self.ctx, "config", None)
+        requires_login = bool(config.requires_login()) if config and hasattr(config, "requires_login") else False
+        if requires_login:
+            filtered_images = await _capture_authenticated_images_as_data_urls(self.ctx, filtered_images)
 
         self.ctx.results[field] = filtered_images
         logger.debug(f"Processed images for {field}: {len(filtered_images)} remaining")
