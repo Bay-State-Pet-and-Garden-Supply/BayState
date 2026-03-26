@@ -220,6 +220,82 @@ describe('ShopSiteClient', () => {
         });
     });
 
+    describe('uploadProductsXml', () => {
+        it('uploads XML, processes dbmake, and publishes the store', async () => {
+            mockFetch
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('clientApp=1&token=abc123'),
+                    headers: new Headers({ 'set-cookie': 'session=shopsite123; Path=/; HttpOnly' }),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('dbmake complete'),
+                    headers: new Headers(),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('publish complete'),
+                    headers: new Headers(),
+                });
+
+            const client = new ShopSiteClient(validConfig);
+            const result = await client.uploadProductsXml('<ShopSiteProducts />');
+
+            expect(result.dbmakeQuery).toBe('clientApp=1&token=abc123');
+            expect(mockFetch).toHaveBeenNthCalledWith(
+                1,
+                'https://example.shopsite.com/dbupload.cgi',
+                expect.objectContaining({
+                    method: 'POST',
+                    headers: expect.objectContaining({
+                        Authorization: expect.stringContaining('Basic'),
+                    }),
+                }),
+            );
+            expect(mockFetch).toHaveBeenNthCalledWith(
+                2,
+                'https://example.shopsite.com/dbmake.cgi?clientApp=1&token=abc123',
+                expect.objectContaining({
+                    method: 'GET',
+                    headers: expect.objectContaining({
+                        Authorization: expect.stringContaining('Basic'),
+                        Cookie: 'session=shopsite123',
+                    }),
+                }),
+            );
+            expect(mockFetch).toHaveBeenNthCalledWith(
+                3,
+                'https://example.shopsite.com/generate.cgi?clientApp=1&htmlpages=1&index=1',
+                expect.objectContaining({
+                    method: 'GET',
+                }),
+            );
+        });
+
+        it('throws when the upload response does not contain a dbmake query', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                text: () => Promise.resolve('unexpected response'),
+                headers: new Headers(),
+            });
+
+            const client = new ShopSiteClient(validConfig);
+
+            await expect(client.uploadProductsXml('<ShopSiteProducts />')).rejects.toThrow(
+                'ShopSite upload did not return a dbmake query string',
+            );
+        });
+    });
+
     describe('sanitizeXml', () => {
         it('should fix unencoded ampersands', () => {
             const input = '<Name>Ben & Jerry\'s</Name>';

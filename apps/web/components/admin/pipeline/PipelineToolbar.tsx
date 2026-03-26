@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Plus, Database, CheckSquare, FileText, Archive, Loader2 } from "lucide-react";
+import { Search, Plus, Database, CheckSquare, Archive, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PipelineStage } from "@/lib/pipeline/types";
 
@@ -20,9 +20,9 @@ interface PipelineToolbarProps {
   onSourceFilterChange?: (value: string) => void;
   availableSourceFilters?: string[];
   selectedCount: number;
-  exportState?: "xml" | "zip" | null;
-  onExportXml?: () => void;
-  onExportZip?: () => void;
+  actionState?: "upload" | "zip" | null;
+  onUploadShopSite?: () => void;
+  onDownloadZip?: () => void;
 }
 
 export function PipelineToolbar({
@@ -38,9 +38,9 @@ export function PipelineToolbar({
   onSourceFilterChange,
   availableSourceFilters = [],
   selectedCount,
-  exportState = null,
-  onExportXml,
-  onExportZip,
+  actionState = null,
+  onUploadShopSite,
+  onDownloadZip,
 }: PipelineToolbarProps) {
   const isImported = currentStage === "imported";
   const isScrapedStage = currentStage === "scraped";
@@ -99,42 +99,42 @@ export function PipelineToolbar({
 
       {/* Static Actions (Import/Add) */}
       <div className="flex items-center gap-2">
-        {isPublished && selectedCount === 0 && onExportXml && onExportZip && (
+        {isPublished && selectedCount === 0 && onUploadShopSite && onDownloadZip && (
           <>
             <Button
               variant="outline"
               size="sm"
-              onClick={onExportXml}
-              disabled={isLoading || totalCount === 0 || exportState !== null}
+              onClick={onUploadShopSite}
+              disabled={isLoading || totalCount === 0 || actionState !== null}
               className="h-9 border-[#008850]/20 text-[#008850] hover:bg-[#008850]/5 hover:text-[#008850]"
             >
-              {exportState === "xml" ? (
+              {actionState === "upload" ? (
                 <>
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                  Exporting XML…
+                  Uploading…
                 </>
               ) : (
                 <>
-                  <FileText className="mr-1.5 h-4 w-4" />
-                  Export ShopSite XML
+                  <Upload className="mr-1.5 h-4 w-4" />
+                  Upload to ShopSite
                 </>
               )}
             </Button>
             <Button
               size="sm"
-              onClick={onExportZip}
-              disabled={isLoading || totalCount === 0 || exportState !== null}
+              onClick={onDownloadZip}
+              disabled={isLoading || totalCount === 0 || actionState !== null}
               className="h-9 bg-[#008850] text-white hover:bg-[#008850]/90"
             >
-              {exportState === "zip" ? (
+              {actionState === "zip" ? (
                 <>
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                  Exporting ZIP…
+                  Downloading ZIP…
                 </>
               ) : (
                 <>
                   <Archive className="mr-1.5 h-4 w-4" />
-                  Export Image ZIP
+                  Download Image ZIP
                 </>
               )}
             </Button>

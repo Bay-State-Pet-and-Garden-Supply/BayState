@@ -46,6 +46,7 @@ export const SHOPSITE_XML_VERSION = '15.0';
  * Maps custom ProductField numbers to their business meanings.
  */
 export const SHOPSITE_FIELD_MAP = {
+    ProductField1: 'Upload_Tag',
     ProductField11: 'Special_Order',
     ProductField16: 'Brand',
     ProductField24: 'Category',

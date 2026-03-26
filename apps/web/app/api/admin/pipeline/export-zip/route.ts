@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { loadPublishedShopSiteExport } from '@/lib/shopsite/export-builder';
-import { generateShopSiteXml } from '@/lib/shopsite/xml-generator';
 import archiver from 'archiver';
 import sharp from 'sharp';
 import { PassThrough } from 'node:stream';
@@ -53,9 +52,6 @@ async function buildZipResponse(skus?: string[]) {
 
     void (async () => {
         try {
-            const xmlContent = generateShopSiteXml(products);
-            archive.append(xmlContent, { name: 'shopsite-products.xml' });
-
             const seenPaths = new Set<string>();
             for (const product of products) {
                 for (let index = 0; index < product.image_sources.length; index += 1) {
@@ -104,7 +100,7 @@ async function buildZipResponse(skus?: string[]) {
     return new NextResponse(stream, {
         headers: {
             'Content-Type': 'application/zip',
-            'Content-Disposition': `attachment; filename="shopsite-export-${dateStr}.zip"`,
+            'Content-Disposition': `attachment; filename="shopsite-images-${dateStr}.zip"`,
             'Cache-Control': 'no-store',
         },
     });
