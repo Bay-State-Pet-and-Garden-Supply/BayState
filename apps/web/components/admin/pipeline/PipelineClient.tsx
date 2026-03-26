@@ -203,7 +203,7 @@ export function PipelineClient({
     // Update URL to persist stage on refresh
     const params = new URLSearchParams(searchParams.toString());
     params.set("stage", stage);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    window.history.pushState(null, '', `${pathname}?${params.toString()}`);
   };
 
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
@@ -329,7 +329,7 @@ export function PipelineClient({
           // Update URL
           const params = new URLSearchParams(searchParams.toString());
           params.set("stage", "consolidating");
-          router.push(`${pathname}?${params.toString()}`, { scroll: false });
+          window.history.pushState(null, '', `${pathname}?${params.toString()}`);
         } else {
           const error = await res.json();
           toast.error(error.error || "Failed to submit consolidation");
@@ -658,7 +658,7 @@ export function PipelineClient({
           // Update URL
           const params = new URLSearchParams(searchParams.toString());
           params.set("stage", "monitoring");
-          router.push(`${pathname}?${params.toString()}`, { scroll: false });
+          window.history.pushState(null, '', `${pathname}?${params.toString()}`);
         }
       } else {
         const error = await res.json();
