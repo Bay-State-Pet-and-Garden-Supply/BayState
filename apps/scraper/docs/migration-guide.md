@@ -171,6 +171,8 @@ docker run -d \
   -e SCRAPER_API_URL=https://app.baystatepet.com \
   -e SCRAPER_API_KEY=bsr_your_key \
   -e RUNNER_NAME=my-runner \
+  -e SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states \
+  -v baystate-crawl4ai-browser-state:/app/.browser_storage_states \
   baystate-scraper:crawl4ai
 ```
 
@@ -447,6 +449,8 @@ docker run -d \
   --name baystate-legacy-runner \
   -e SCRAPER_API_URL=$SCRAPER_API_URL \
   -e SCRAPER_API_KEY=$SCRAPER_API_KEY \
+  -e SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states \
+  -v baystate-legacy-browser-state:/app/.browser_storage_states \
   baystate-scraper:v0.2.0
 ```
 

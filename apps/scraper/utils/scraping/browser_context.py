@@ -37,6 +37,7 @@ class ManagedBrowser:
         custom_options: list[str] | None = None,
         timeout: int = 30,
         cleanup_timeout: float = 10.0,
+        storage_state_path: str | None = None,
     ) -> None:
         if cleanup_timeout <= 0:
             raise ValueError("cleanup_timeout must be greater than zero")
@@ -47,6 +48,7 @@ class ManagedBrowser:
         self.custom_options = custom_options
         self.timeout = timeout
         self.cleanup_timeout = cleanup_timeout
+        self.storage_state_path = storage_state_path
         self.browser: _ManagedPlaywright | None = None
 
     async def __aenter__(self) -> _ManagedPlaywright:
@@ -57,6 +59,7 @@ class ManagedBrowser:
             profile_suffix=self.profile_suffix,
             custom_options=self.custom_options,
             timeout=self.timeout,
+            storage_state_path=self.storage_state_path,
         )
         if self.browser is None:
             raise RuntimeError(f"[{self.site_name}] Managed browser factory returned no browser")
@@ -145,6 +148,7 @@ def managed_playwright_browser(
     custom_options: list[str] | None = None,
     timeout: int = 30,
     cleanup_timeout: float = 10.0,
+    storage_state_path: str | None = None,
 ) -> ManagedBrowser:
     """Factory helper for a managed Playwright browser context."""
     return ManagedBrowser(
@@ -154,4 +158,5 @@ def managed_playwright_browser(
         custom_options=custom_options,
         timeout=timeout,
         cleanup_timeout=cleanup_timeout,
+        storage_state_path=storage_state_path,
     )

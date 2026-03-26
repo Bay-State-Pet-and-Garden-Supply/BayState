@@ -5,12 +5,16 @@
 #   docker run -d --restart unless-stopped \
 #     -e SCRAPER_API_URL=https://app.baystatepet.com \
 #     -e SCRAPER_API_KEY=bsr_xxxx \
+#     -e SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states \
+#     -v baystate-scraper-browser-state:/app/.browser_storage_states \
 #     baystate-scraper:latest
 #
 # Usage (single job mode - legacy):
 #   docker run --rm \
 #     -e SCRAPER_API_URL=https://app.baystatepet.com \
 #     -e SCRAPER_API_KEY=bsr_xxxx \
+#     -e SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states \
+#     -v baystate-scraper-browser-state:/app/.browser_storage_states \
 #     baystate-scraper:latest \
 #     python runner.py --job-id <uuid>
 
@@ -38,6 +42,7 @@ ENV PYTHONPATH=/app
 ENV POLL_INTERVAL=30
 ENV MAX_JOBS_BEFORE_RESTART=100
 ENV HEALTH_CHECK_MEMORY_LIMIT_MB=1800
+ENV SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states
 
 # Default command runs the polling daemon
 # Override with: docker run ... python runner.py --job-id <uuid>

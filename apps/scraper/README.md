@@ -261,9 +261,14 @@ SCRAPER_API_KEY=bsr_your_key_here
 RUNNER_NAME=$(hostname)
 EOF
 
+# Create browser-state directory (cookies/session storage persist here)
+mkdir -p .browser_storage_states
+
 # Start
 docker compose up -d
 ```
+
+Browser session data will be persisted in `apps/scraper/.browser_storage_states/` by default.
 
 ## Environment Variables
 
