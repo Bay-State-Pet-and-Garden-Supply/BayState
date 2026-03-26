@@ -47,6 +47,7 @@ from scrapers.executor.selector_resolver import SelectorResolver
 from scrapers.executor.debug_capture import DebugArtifactCapture
 from scrapers.executor.normalization import NormalizationEngine
 from scrapers.executor.step_executor import StepExecutor
+from utils.scraping.browser_persistence import resolve_browser_state_location
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,8 @@ class WorkflowExecutor:
         self.max_retries = max_retries if max_retries is not None else (config.retries if config.retries is not None else 0)
 
         self.browser: Any = None
+        self.browser_state_key: str | None = None
+        self.browser_state_path: str | None = None
         self.results: dict[str, Any] = {}
         self.context: dict[str, Any] = {}  # Store execution context
         # Data shared with extracted modules via context object
@@ -192,6 +195,22 @@ class WorkflowExecutor:
 
             profile_suffix = f"workflow_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
+            if self.config.requires_login():
+                browser_state_location = resolve_browser_state_location(
+                    self.config.name,
+                    self.config.base_url,
+                )
+                self.browser_state_key = browser_state_location.key
+                self.browser_state_path = browser_state_location.storage_state_path
+                logger.info(
+                    "Browser state persistence enabled for scraper %s (key=%s)",
+                    self.config.name,
+                    self.browser_state_key,
+                )
+            else:
+                self.browser_state_key = None
+                self.browser_state_path = None
+
             from utils.scraping.playwright_browser import create_playwright_browser
 
             logger.info(f"Initializing Playwright browser for scraper: {self.config.name}")
@@ -201,6 +220,7 @@ class WorkflowExecutor:
                 profile_suffix=profile_suffix,
                 timeout=self.timeout,
                 use_stealth=self.config.use_stealth,
+                storage_state_path=self.browser_state_path,
             )
 
             logger.info(f"Browser initialized for scraper: {self.config.name}")

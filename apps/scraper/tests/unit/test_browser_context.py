@@ -27,6 +27,7 @@ async def test_managed_browser_returns_playwright_browser() -> None:
         profile_suffix=None,
         custom_options=None,
         timeout=30,
+        storage_state_path=None,
     )
     browser.quit.assert_awaited_once()
 
@@ -85,6 +86,26 @@ async def test_cleanup_failure_triggers_force_cleanup() -> None:
                 pass
 
     force_cleanup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_managed_browser_passes_storage_state_path() -> None:
+    browser = AsyncMock()
+    storage_state_path = "C:\\browser-state\\coastal.json"
+
+    with patch("utils.scraping.browser_context._create_playwright_browser", AsyncMock(return_value=browser)) as create_browser:
+        async with ManagedBrowser("coastal", storage_state_path=storage_state_path) as managed:
+            assert managed is browser
+
+    create_browser.assert_awaited_once_with(
+        site_name="coastal",
+        headless=True,
+        profile_suffix=None,
+        custom_options=None,
+        timeout=30,
+        storage_state_path=storage_state_path,
+    )
+    browser.quit.assert_awaited_once()
 
 
 @pytest.mark.asyncio

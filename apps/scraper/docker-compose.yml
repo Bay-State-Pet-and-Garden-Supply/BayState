@@ -22,18 +22,15 @@ services:
       - RUNNER_NAME=${RUNNER_NAME:-default-runner}
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - MAX_JOBS_BEFORE_RESTART=${MAX_JOBS_BEFORE_RESTART:-100}
+      - SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states
       - HEALTHCHECK_MAX_MEMORY_PERCENT=${HEALTHCHECK_MAX_MEMORY_PERCENT:-90}
       - LOG_LEVEL=DEBUG
       # YAML-only mode: load configs from local files instead of API
       - USE_YAML_CONFIGS=true
-    healthcheck:
-      test: ["CMD", "python", "scripts/health_check.py"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    mem_limit: 4g
-    mem_reservation: 1g
+    volumes:
+      - ./.browser_storage_states:/app/.browser_storage_states
+    mem_limit: 2g
+    mem_reservation: 512m
     deploy:
       restart_policy:
         condition: on-failure

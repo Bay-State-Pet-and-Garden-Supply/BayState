@@ -6,17 +6,23 @@ from typing_extensions import override
 
 from scrapers.actions.base import BaseAction
 
-from scrapers.models.config import ScraperConfig, SelectorConfig, WorkflowStep
+from scrapers.models.config import LoginConfig, ScraperConfig, SelectorConfig, WorkflowStep
+from utils.scraping.browser_persistence import build_browser_state_key
 
 
-def _build_config(*, workflows: list[WorkflowStep] | None = None, selectors: list[SelectorConfig] | None = None) -> ScraperConfig:
+def _build_config(
+    *,
+    workflows: list[WorkflowStep] | None = None,
+    selectors: list[SelectorConfig] | None = None,
+    login: LoginConfig | None = None,
+) -> ScraperConfig:
     return ScraperConfig(
         schema_version="1.0",
         name="char-test-scraper",
         base_url="https://example.com",
         display_name=None,
         normalization=None,
-        login=None,
+        login=login,
         timeout=30,
         retries=2,
         anti_detection=None,
@@ -230,3 +236,48 @@ async def test_agentic_initialize_sets_provider_context_without_dedicated_ai_bro
     assert executor.ai_context["scraper_type"] == "agentic"
     assert executor.ai_context["provider"] == "crawl4ai"
     assert executor.ai_context["browser_initialized"] is False
+
+
+@pytest.mark.anyio
+async def test_initialize_enables_browser_state_persistence_for_login_scrapers(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    from scrapers.executor.workflow_executor import WorkflowExecutor
+
+    storage_root = tmp_path / "browser-state"
+    monkeypatch.setenv("SCRAPER_BROWSER_STATE_DIR", str(storage_root))
+
+    config = _build_config(
+        login=LoginConfig(
+            url="https://portal.example.com/login",
+            username_field="#username",
+            password_field="#password",
+            submit_button="button[type='submit']",
+            success_indicator=".account-nav",
+        )
+    )
+    fake_browser = _DummyBrowser()
+
+    with patch("utils.scraping.playwright_browser.create_playwright_browser", return_value=fake_browser) as create_browser:
+        executor = WorkflowExecutor(config=config)
+        await executor.initialize()
+
+    expected_path = storage_root / f"{build_browser_state_key(config.name, config.base_url)}.json"
+    assert create_browser.await_args.kwargs["storage_state_path"] == str(expected_path)
+    assert executor.browser_state_path == str(expected_path)
+
+
+@pytest.mark.anyio
+async def test_initialize_disables_browser_state_persistence_for_non_login_scrapers() -> None:
+    from scrapers.executor.workflow_executor import WorkflowExecutor
+
+    config = _build_config()
+    fake_browser = _DummyBrowser()
+
+    with patch("utils.scraping.playwright_browser.create_playwright_browser", return_value=fake_browser) as create_browser:
+        executor = WorkflowExecutor(config=config)
+        await executor.initialize()
+
+    assert create_browser.await_args.kwargs["storage_state_path"] is None
+    assert executor.browser_state_path is None

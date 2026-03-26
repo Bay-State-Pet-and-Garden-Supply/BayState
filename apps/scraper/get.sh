@@ -16,6 +16,7 @@ INSTALL_COMMAND="curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-
 CONFIG_DIR="$HOME/.baystate-scraper"
 CONFIG_FILE="$CONFIG_DIR/runner.env"
 COMPOSE_FILE="$CONFIG_DIR/compose.yml"
+BROWSER_STATE_DIR="$CONFIG_DIR/browser-state"
 LEGACY_UPDATE_SCRIPT="$CONFIG_DIR/update-runner.sh"
 AUTO_UPDATE_CRON_MARKER="baystate-scraper-auto-update"
 
@@ -250,7 +251,7 @@ get_auto_update_preference() {
 }
 
 write_compose_file() {
-    mkdir -p "$CONFIG_DIR"
+    mkdir -p "$CONFIG_DIR" "$BROWSER_STATE_DIR"
 
     cat > "$COMPOSE_FILE" <<EOF
 services:
@@ -262,6 +263,10 @@ services:
     shm_size: 2g
     env_file:
       - ./runner.env
+    environment:
+      SCRAPER_BROWSER_STATE_DIR: /app/.browser_storage_states
+    volumes:
+      - "$BROWSER_STATE_DIR:/app/.browser_storage_states"
     healthcheck:
       test: ["CMD", "python", "/app/scripts/health_check.py"]
       interval: 60s
@@ -407,6 +412,7 @@ verify_running() {
     echo -e "  Stop stack:     ${CYAN}${compose_cmd} stop${NC}"
     echo -e "  Start stack:    ${CYAN}${compose_cmd} start${NC}"
     echo -e "  Update:         ${CYAN}$INSTALL_COMMAND${NC}"
+    echo -e "  Browser state:  ${CYAN}$BROWSER_STATE_DIR${NC}"
 
     if [ "$AUTO_UPDATES_ENABLED" = "true" ]; then
         echo -e "  Auto-update:    ${CYAN}Enabled via Watchtower (hourly checks)${NC}"

@@ -8,10 +8,9 @@ from __future__ import annotations
 
 
 import asyncio
-import os
-import shutil
 import time
 import inspect
+from pathlib import Path
 from typing import Any
 
 from playwright.async_api import (
@@ -57,6 +56,7 @@ class PlaywrightScraperBrowser:
         timeout: int = 30,
         block_resources: bool = False,
         use_stealth: bool = True,
+        storage_state_path: str | None = None,
     ) -> None:
         """
         Initialize browser for scraping.
@@ -78,6 +78,7 @@ class PlaywrightScraperBrowser:
         # Whether to enable resource blocking (disabled by default)
         self.block_resources = block_resources
         self.use_stealth = use_stealth
+        self.storage_state_path = storage_state_path
         self.is_stealth_active = False
 
         self.playwright: Playwright | None = None
@@ -121,15 +122,37 @@ class PlaywrightScraperBrowser:
             )
 
             # Create context with standard viewport and user agent
-            self.context = await self.browser.new_context(
-                viewport={"width": 1920, "height": 1080},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                device_scale_factor=1,
-            )
+            context_options = {
+                "viewport": {"width": 1920, "height": 1080},
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                "device_scale_factor": 1,
+            }
 
+            if self.storage_state_path:
+                storage_state_file = Path(self.storage_state_path)
+                if storage_state_file.is_file():
+                    context_options["storage_state"] = str(storage_state_file)
+                    print(f"[WEB] [{self.site_name}] Reusing browser state from {storage_state_file}")
+
+            try:
+                self.context = await self.browser.new_context(
+                    **context_options,
+                )
+            except Exception as e:
+                if "storage_state" not in context_options:
+                    raise
+
+                print(f"[WARN] [{self.site_name}] Failed to reuse browser state: {e}")
+                context_options.pop("storage_state", None)
+                self.context = await self.browser.new_context(
+                    **context_options,
+                )
+
+            # Create context with standard viewport and user agent
+            # State reuse is optional and only applied when a saved storage_state exists.
             # Initialize page
             self.page = await self.context.new_page()
-
+ 
             # Configure resource blocking after page creation if requested
             if self.block_resources:
                 try:
@@ -256,6 +279,14 @@ class PlaywrightScraperBrowser:
     async def quit(self) -> None:
         """Close the browser and cleanup resources."""
         try:
+            if self.context and self.storage_state_path:
+                try:
+                    storage_state_file = Path(self.storage_state_path)
+                    storage_state_file.parent.mkdir(parents=True, exist_ok=True)
+                    await self.context.storage_state(path=str(storage_state_file))
+                    print(f"[WEB] [{self.site_name}] Saved browser state to {storage_state_file}")
+                except Exception as e:
+                    print(f"[WARN] [{self.site_name}] Failed to save browser state: {e}")
             if self.context:
                 await self.context.close()
             if self.browser:
@@ -412,6 +443,7 @@ async def create_playwright_browser(
     timeout: int = 30,
     block_resources: bool = False,
     use_stealth: bool = True,
+    storage_state_path: str | None = None,
 ) -> PlaywrightScraperBrowser:
     """Factory for Async Browser."""
     browser = PlaywrightScraperBrowser(
@@ -422,6 +454,7 @@ async def create_playwright_browser(
         timeout,
         block_resources=block_resources,
         use_stealth=use_stealth,
+        storage_state_path=storage_state_path,
     )
     await browser.initialize()
     return browser
