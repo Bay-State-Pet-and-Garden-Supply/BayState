@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, CheckCircle, Package } from 'lucide-react';
+import { X, Save, CheckCircle, Package, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
+import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -16,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImageSelector } from './ImageSelector';
+import { Badge } from '@/components/ui/badge';
 
 interface Brand {
   id: string;
@@ -28,13 +31,6 @@ interface PipelineProductDetailProps {
   onClose: () => void;
   onSave: () => void;
 }
-
-const stockStatusOptions = [
-  { value: 'in_stock', label: 'In Stock' },
-  { value: 'low_stock', label: 'Low Stock' },
-  { value: 'out_of_stock', label: 'Out of Stock' },
-  { value: 'pre_order', label: 'Pre-Order' },
-];
 
 const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
   { value: 'imported', label: 'Imported' },
@@ -59,9 +55,11 @@ export function PipelineProductDetail({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [weight, setWeight] = useState('');
   const [brandId, setBrandId] = useState('none');
-  const [stockStatus, setStockStatus] = useState('in_stock');
-  const [isFeatured, setIsFeatured] = useState(false);
+  const [category, setCategory] = useState('');
+  const [productType, setProductType] = useState('');
+  const [productOnPages, setProductOnPages] = useState<string[]>([]);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('imported');
   const [imageCandidates, setImageCandidates] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -97,11 +95,24 @@ export function PipelineProductDetail({
           : [];
 
         setName(consolidated.name || input.name || '');
-        setDescription(consolidated.description || '');
+        setDescription(consolidated.description || input.description || '');
         setPrice(String(consolidated.price ?? input.price ?? ''));
+        setWeight(consolidated.weight || input.weight || '');
         setBrandId(consolidated.brand_id || 'none');
-        setStockStatus(consolidated.stock_status || 'in_stock');
-        setIsFeatured(consolidated.is_featured || false);
+        setCategory(consolidated.category || input.category || '');
+        setProductType(consolidated.product_type || input.product_type || '');
+        
+        // Handle pages (product_on_pages is the internal field name)
+        let pages: string[] = [];
+        if (Array.isArray(consolidated.product_on_pages)) {
+            pages = consolidated.product_on_pages;
+        } else if (Array.isArray(input.product_on_pages)) {
+            pages = input.product_on_pages;
+        } else if (typeof (consolidated.product_on_pages || input.product_on_pages) === 'string') {
+            pages = (consolidated.product_on_pages || input.product_on_pages).split('|').map((p: string) => p.trim()).filter(Boolean);
+        }
+        setProductOnPages(pages);
+
         setPipelineStatus(productData.product?.pipeline_status || 'imported');
         setImageCandidates(candidates);
         setSelectedImages(currentImages);
@@ -186,8 +197,10 @@ export function PipelineProductDetail({
         description: description.trim(),
         price: parseFloat(price) || 0,
         brand_id: brandId === 'none' ? null : brandId,
-        stock_status: stockStatus,
-        is_featured: isFeatured,
+        weight: weight.trim(),
+        category: category.trim(),
+        product_type: productType.trim(),
+        product_on_pages: productOnPages,
         images: selectedImages
           .map((img) => img.trim())
           .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/')),
@@ -241,13 +254,12 @@ export function PipelineProductDetail({
     );
   }
 
-  const toggleImageSelection = (imageUrl: string) => {
-    setSelectedImages((current) => {
-      if (current.includes(imageUrl)) {
-        return current.filter((entry) => entry !== imageUrl);
-      }
-      return [...current, imageUrl];
-    });
+  const togglePage = (page: string) => {
+    setProductOnPages(prev => 
+      prev.includes(page) 
+        ? prev.filter(p => p !== page) 
+        : [...prev, page]
+    );
   };
 
   return (
@@ -258,7 +270,7 @@ export function PipelineProductDetail({
         aria-labelledby="modal-title"
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-card shadow-xl">
+      <div className="max-h-[95vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-card shadow-xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-6 py-4">
           <div className="flex items-center gap-3">
@@ -285,12 +297,12 @@ export function PipelineProductDetail({
         )}
 
         {/* Form Content */}
-        <div className="p-6 space-y-6">
-          {/* Pipeline Status */}
-          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted">
-            <Label className="w-32">Product Stage</Label>
+        <div className="p-6 space-y-8">
+          {/* Stage */}
+          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 border">
+            <Label className="w-32 font-semibold">Product Stage</Label>
             <Select value={pipelineStatus} onValueChange={(v) => setPipelineStatus(v as PipelineStatus)}>
-              <SelectTrigger className="w-48" aria-label="Product Stage">
+              <SelectTrigger className="w-full bg-background" aria-label="Product Stage">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -303,81 +315,123 @@ export function PipelineProductDetail({
             </Select>
           </div>
 
-          {/* Main Form Grid */}
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Left Column */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Product Name *</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter product name"
-                />
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Left Column: Core Fields */}
+            <div className="space-y-6">
+              <div className="space-y-4 rounded-xl border bg-card p-5">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Core Information</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-sm font-medium">Product Name *</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter product name"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-sm font-medium">Price ($) *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="weight" className="text-sm font-medium">Weight (lb)</Label>
+                    <Input
+                      id="weight"
+                      value={weight}
+                      onChange={(e) => setWeight(e.target.value)}
+                      placeholder="e.g. 30"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="brand" className="text-sm font-medium">Brand</Label>
+                  <Select value={brandId} onValueChange={setBrandId}>
+                    <SelectTrigger aria-label="Brand">
+                      <SelectValue placeholder="Select a brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No brand</SelectItem>
+                      {brands.map((brand) => (
+                        <SelectItem key={brand.id} value={brand.id}>
+                          {brand.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                    <Input
+                      id="category"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      placeholder="e.g. Dog Food"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="productType" className="text-sm font-medium">Product Type</Label>
+                    <Input
+                      id="productType"
+                      value={productType}
+                      onChange={(e) => setProductType(e.target.value)}
+                      placeholder="e.g. Kibble"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="price">Price ($) *</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="brand">Brand</Label>
-                <Select value={brandId} onValueChange={setBrandId}>
-                  <SelectTrigger aria-label="Brand">
-                    <SelectValue placeholder="Select a brand" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No brand</SelectItem>
-                    {brands.map((brand) => (
-                      <SelectItem key={brand.id} value={brand.id}>
-                        {brand.name}
-                      </SelectItem>
+              <div className="space-y-4 rounded-xl border bg-card p-5">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">ShopSite Pages</h3>
+                <div className="flex flex-wrap gap-2 p-3 rounded-md border bg-muted/30 min-h-[80px]">
+                    {SHOPSITE_PAGES.map(page => (
+                        <Badge
+                            key={page}
+                            variant={productOnPages.includes(page) ? "default" : "outline"}
+                            className="cursor-pointer select-none transition-colors"
+                            onClick={() => togglePage(page)}
+                        >
+                            {page}
+                        </Badge>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <Checkbox
-                  id="featured"
-                  checked={isFeatured}
-                  onCheckedChange={(checked) => setIsFeatured(checked === true)}
-                />
-                <Label htmlFor="featured" className="cursor-pointer">
-                  Featured Product
-                </Label>
+                </div>
               </div>
             </div>
 
-            {/* Right Column - Description */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter product description"
-                  rows={8}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
+            {/* Right Column: Description & Images */}
+            <div className="space-y-6">
+              <div className="space-y-4 rounded-xl border bg-card p-5">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Display Content</h3>
+                <div className="space-y-2">
+                    <Label htmlFor="description" className="text-sm font-medium">Product Description</Label>
+                    <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Storefront description"
+                    rows={8}
+                    />
+                </div>
               </div>
 
-{imageCandidates.length > 0 && (
-                <div className="space-y-2">
+              {imageCandidates.length > 0 && (
+                <div className="space-y-4 rounded-xl border bg-card p-5">
                   <div className="flex items-center justify-between">
-                    <Label>Final Images</Label>
-                    <span className="text-xs text-muted-foreground">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Product Images</h3>
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                       {selectedImages.length} selected
                     </span>
                   </div>
@@ -393,17 +447,18 @@ export function PipelineProductDetail({
           </div>
 
           {/* Source Data (Read-only) */}
-          <details className="rounded-lg border p-4">
-            <summary className="cursor-pointer font-medium text-muted-foreground">
-              Source Data (Read-only)
+          <details className="group rounded-xl border bg-muted/30 overflow-hidden">
+            <summary className="cursor-pointer font-bold text-sm text-muted-foreground p-4 hover:bg-muted/50 transition-colors flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Technical Source Data (Read-only)
             </summary>
-            <div className="mt-4 space-y-4">
+            <div className="p-4 border-t bg-background/50 space-y-4">
               {/* Input Data */}
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                  Original Input (ShopSite)
+                <h4 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-tight">
+                  Original ShopSite Input
                 </h4>
-                <pre className="rounded bg-muted p-3 text-xs overflow-x-auto">
+                <pre className="rounded-lg bg-muted p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border">
                   {JSON.stringify(product.input, null, 2)}
                 </pre>
               </div>
@@ -411,10 +466,10 @@ export function PipelineProductDetail({
               {/* Scraped Sources */}
               {Object.keys(product.sources || {}).length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                    Scraped Data
+                  <h4 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-tight">
+                    Multi-Source Scraped Data
                   </h4>
-                  <pre className="rounded bg-muted p-3 text-xs overflow-x-auto">
+                  <pre className="rounded-lg bg-muted p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border">
                     {JSON.stringify(product.sources, null, 2)}
                   </pre>
                 </div>
@@ -424,25 +479,25 @@ export function PipelineProductDetail({
         </div>
 
         {/* Footer Actions */}
-        <div className="sticky bottom-0 flex items-center justify-between border-t bg-muted px-6 py-4">
-          <p className="text-xs text-muted-foreground">
-            Press <kbd className="rounded bg-muted px-1">Esc</kbd> to close,{' '}
-            <kbd className="rounded bg-muted px-1">Ctrl+S</kbd> to save
+        <div className="sticky bottom-0 flex items-center justify-between border-t bg-muted/80 backdrop-blur-sm px-6 py-4">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold hidden sm:block">
+            Esc to close • Ctrl+S to save
           </p>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={onClose} disabled={saving}>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Button variant="ghost" onClick={onClose} disabled={saving} className="flex-1 sm:flex-none">
               Cancel
             </Button>
             <Button
               variant="outline"
               onClick={() => handleSave(false)}
               disabled={saving}
+              className="flex-1 sm:flex-none"
             >
               <Save className="mr-2 h-4 w-4" />
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? 'Saving…' : 'Save Draft'}
             </Button>
             {pipelineStatus !== 'finalized' && pipelineStatus !== 'published' && (
-              <Button onClick={() => handleSave(true)} disabled={saving}>
+              <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1 sm:flex-none">
                 <CheckCircle className="mr-2 h-4 w-4" />
                 {saving ? 'Saving…' : 'Save & Verify'}
               </Button>
@@ -452,4 +507,4 @@ export function PipelineProductDetail({
       </div>
     </div>
   );
-}
+};

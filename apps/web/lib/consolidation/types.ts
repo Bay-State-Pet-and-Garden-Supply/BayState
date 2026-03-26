@@ -111,7 +111,6 @@ export interface ConsolidationResult {
     product_on_pages?: string;
     description?: string;
     long_description?: string;
-    search_keywords?: string;
     confidence_score?: number;
     error?: string;
 }
@@ -129,11 +128,9 @@ export interface ConsolidatedData {
     stock_status?: string;
     is_featured?: boolean;
     is_special_order?: boolean;
-    is_taxable?: boolean;
     category?: string;
     product_type?: string;
     product_on_pages?: string[];
-    search_keywords?: string;
     weight?: string;
     confidence_score?: number;
 }

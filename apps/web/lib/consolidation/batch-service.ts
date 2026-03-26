@@ -112,6 +112,13 @@ function isExcludedKeyName(key: string): boolean {
     return (
         normalized.includes('image') ||
         normalized.includes('url') ||
+        normalized.includes('search_keyword') ||
+        normalized.includes('searchkeyword') ||
+        normalized.includes('taxable') ||
+        normalized.includes('special_order') ||
+        normalized.includes('specialorder') ||
+        normalized.includes('special order') ||
+        normalized.includes('manual') ||
         normalized === 'scraped_at' ||
         normalized === '_scraped_at' ||
         normalized.startsWith('_')
@@ -123,7 +130,27 @@ const EXCLUDED_FROM_LLM = new Set([
     'reviews_count',
     'availability',
     'scraped_at',
+    'search_keywords',
+    'is_taxable',
+    'taxable',
+    'is_special_order',
+    'special_order',
+    'specialorder',
+    'selected_images',
+    'manual_selection',
 ]);
+
+const EXCLUDED_FROM_CONSOLIDATED_MERGE = new Set([
+    'search_keywords',
+    'is_taxable',
+    'taxable',
+]);
+
+function pruneExcludedConsolidatedFields(value: Record<string, unknown>): Record<string, unknown> {
+    return Object.fromEntries(
+        Object.entries(value).filter(([key]) => !EXCLUDED_FROM_CONSOLIDATED_MERGE.has(key))
+    );
+}
 
 function isEmptyValue(value: unknown): boolean {
     if (value === null || value === undefined) return true;
@@ -137,6 +164,41 @@ function truncateSpecifications(value: string, maxLength = 500): string {
     return value.slice(0, maxLength).replace(/\s+\S*$/, '…');
 }
 
+function sanitizeNestedComposite(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        const sanitizedItems = value
+            .map((entry) => sanitizeNestedComposite(entry))
+            .filter((entry) => !isEmptyValue(entry));
+        return sanitizedItems.length > 0 ? sanitizedItems : undefined;
+    }
+
+    if (!value || typeof value !== 'object') {
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed.length === 0 || trimmed.startsWith('http')) {
+                return undefined;
+            }
+            return trimmed;
+        }
+
+        return isEmptyValue(value) ? undefined : value;
+    }
+
+    const sanitizedObject: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, nestedValue]) => {
+        if (isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) {
+            return;
+        }
+
+        const sanitizedValue = sanitizeNestedComposite(nestedValue);
+        if (!isEmptyValue(sanitizedValue)) {
+            sanitizedObject[key] = sanitizedValue;
+        }
+    });
+
+    return Object.keys(sanitizedObject).length > 0 ? sanitizedObject : undefined;
+}
+
 function filterSourceData(sourceData: Record<string, unknown>): Record<string, unknown> {
     const filteredData: Record<string, unknown> = {};
 
@@ -148,7 +210,12 @@ function filterSourceData(sourceData: Record<string, unknown>): Record<string, u
         if (field === 'specifications' && typeof value === 'string') {
             value = truncateSpecifications(value);
         }
-        filteredData[field] = value;
+
+        const sanitizedValue =
+            value && typeof value === 'object' ? sanitizeNestedComposite(value) : value;
+        if (!isEmptyValue(sanitizedValue)) {
+            filteredData[field] = sanitizedValue;
+        }
     });
 
     Object.entries(sourceData).forEach(([key, value]) => {
@@ -181,10 +248,15 @@ function filterSourceData(sourceData: Record<string, unknown>): Record<string, u
         }
 
         if (typeof value === 'object' && value !== null) {
+            const sanitizedValue = sanitizeNestedComposite(value);
+            if (isEmptyValue(sanitizedValue)) {
+                return;
+            }
+
             try {
-                const json = JSON.stringify(value);
+                const json = JSON.stringify(sanitizedValue);
                 if (json.length > 2 && json.length < 1000 && hasRelevantKeyName(key)) {
-                    filteredData[key] = value;
+                    filteredData[key] = sanitizedValue;
                 }
             } catch (serializationError: unknown) {
                 const fallback = Object.prototype.toString.call(serializationError);
@@ -987,7 +1059,6 @@ export async function applyConsolidationResults(
                 ...(result.name ? { name: result.name } : {}),
                 description: result.name || existingConsolidated.name || '',
                 long_description: result.name || existingConsolidated.name || '',
-                ...(result.search_keywords ? { search_keywords: result.search_keywords } : {}),
                 ...(result.weight ? { weight: result.weight } : {}),
                 ...(resolvedBrandName ? { brand: resolvedBrandName } : {}),
                 ...(resolvedBrandId ? { brand_id: resolvedBrandId } : {}),
@@ -1095,9 +1166,12 @@ export async function applyConsolidationResults(
                         ? (latestRow.consolidated as Record<string, unknown>)
                         : {};
 
+                const prunedCurrentConsolidated = pruneExcludedConsolidatedFields(currentConsolidated);
+                const prunedNextFields = pruneExcludedConsolidatedFields(row.next_fields);
+
                 const mergedConsolidated = {
-                    ...currentConsolidated,
-                    ...row.next_fields,
+                    ...prunedCurrentConsolidated,
+                    ...prunedNextFields,
                 };
 
                 const applyTimestamp = new Date().toISOString();

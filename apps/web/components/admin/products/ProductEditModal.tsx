@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Save, Package, AlertCircle } from 'lucide-react';
+import { Save, Package, AlertCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
+import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
+import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -44,14 +45,24 @@ export interface PublishedProduct {
     name: string;
     slug: string;
     description: string | null;
+    long_description?: string | null;
     price: number;
-    stock_status: string;
-    is_featured: boolean;
-    images: string[] | null;
+    weight?: string | null;
     brand_id: string | null;
     brand_name: string | null;
     brand_slug: string | null;
+    category?: string | null;
     product_type?: string | null;
+    search_keywords?: string | null;
+    gtin?: string | null;
+    availability?: string | null;
+    minimum_quantity?: number | null;
+    is_special_order?: boolean;
+    is_taxable?: boolean;
+    product_on_pages?: string[] | string | null;
+    stock_status: string;
+    is_featured: boolean;
+    images: string[] | null;
     category_ids?: string[];
     created_at: string;
 }
@@ -61,13 +72,6 @@ interface ProductEditModalProps {
     onClose: () => void;
     onSave: () => void;
 }
-
-const stockStatusOptions = [
-    { value: 'in_stock', label: 'In Stock' },
-    { value: 'low_stock', label: 'Low Stock' },
-    { value: 'out_of_stock', label: 'Out of Stock' },
-    { value: 'pre_order', label: 'Pre-Order' },
-];
 
 export function ProductEditModal({
     product,
@@ -83,10 +87,25 @@ export function ProductEditModal({
     const [name, setName] = useState(product.name);
     const [slug, setSlug] = useState(product.slug);
     const [description, setDescription] = useState(product.description || '');
+    const [longDescription, setLongDescription] = useState(product.long_description || '');
     const [price, setPrice] = useState(String(product.price));
+    const [weight, setWeight] = useState(product.weight || '');
     const [brandId, setBrandId] = useState(product.brand_id || 'none');
-    const [stockStatus, setStockStatus] = useState(product.stock_status);
-    const [isFeatured, setIsFeatured] = useState(product.is_featured);
+    const [category, setCategory] = useState(product.category || '');
+    const [productType, setProductType] = useState(product.product_type || '');
+    const [searchKeywords, setSearchKeywords] = useState(product.search_keywords || '');
+    const [gtin, setGtin] = useState(product.gtin || '');
+    const [availability, setAvailability] = useState(product.availability || 'in stock');
+    const [minQty, setMinQty] = useState(String(product.minimum_quantity || '0'));
+    const [isSpecialOrder, setIsSpecialOrder] = useState(product.is_special_order || false);
+    const [isTaxable, setIsTaxable] = useState(product.is_taxable ?? true);
+    
+    const initialPages = Array.isArray(product.product_on_pages) 
+        ? product.product_on_pages 
+        : typeof product.product_on_pages === 'string' 
+            ? product.product_on_pages.split('|').map(p => p.trim()).filter(Boolean)
+            : [];
+    const [productOnPages, setProductOnPages] = useState<string[]>(initialPages);
     const [selectedPetTypes, setSelectedPetTypes] = useState<ProductPetType[]>([]);
 
     const parseImages = (images: unknown): string[] => {
@@ -168,6 +187,14 @@ export function ProductEditModal({
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
 
+    const togglePage = (page: string) => {
+        setProductOnPages(prev => 
+            prev.includes(page) 
+                ? prev.filter(p => p !== page) 
+                : [...prev, page]
+        );
+    };
+
     const handleSave = async () => {
         setSaving(true);
         setError(null);
@@ -177,12 +204,23 @@ export function ProductEditModal({
             formData.append('name', name.trim());
             formData.append('slug', slug.trim());
             formData.append('description', description.trim());
+            formData.append('long_description', longDescription.trim());
             formData.append('price', price);
-            formData.append('stock_status', stockStatus);
-            formData.append('is_featured', String(isFeatured));
+            formData.append('weight', weight.trim());
+            formData.append('category', category.trim());
+            formData.append('product_type', productType.trim());
+            formData.append('search_keywords', searchKeywords.trim());
+            formData.append('gtin', gtin.trim());
+            formData.append('availability', availability.trim());
+            formData.append('minimum_quantity', minQty);
+            formData.append('is_special_order', String(isSpecialOrder));
+            formData.append('is_taxable', String(isTaxable));
+            formData.append('product_on_pages', JSON.stringify(productOnPages));
 
             if (brandId !== 'none') {
                 formData.append('brand_id', brandId);
+            } else {
+                formData.append('brand_id', '');
             }
 
             const [productResult, petTypesRes] = await Promise.all([
@@ -218,14 +256,14 @@ export function ProductEditModal({
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0">
                 <DialogHeader className="p-6 pb-0">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
                             <Package className="size-6 text-muted-foreground" />
                         </div>
                         <div>
-                            <DialogTitle className="text-xl">Edit Product</DialogTitle>
+                            <DialogTitle className="text-xl">Edit Published Product</DialogTitle>
                             <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">{product.sku}</p>
                         </div>
                     </div>
@@ -242,51 +280,57 @@ export function ProductEditModal({
                     )}
 
                     {/* Form Content */}
-                    <div className="grid gap-8 md:grid-cols-2">
-                        {/* Left Column */}
-                        <div className="flex flex-col gap-5">
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="name">Product Name *</Label>
-                                <Input
-                                    id="name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Enter product name"
-                                    aria-required="true"
-                                />
-                            </div>
+                    <div className="grid gap-8 lg:grid-cols-2">
+                        {/* Left Column: Core Fields */}
+                        <div className="space-y-6">
+                            <div className="space-y-4 rounded-xl border bg-card p-5">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Core Information</h3>
+                                
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Product Name *</Label>
+                                    <Input
+                                        id="name"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        placeholder="Enter product name"
+                                    />
+                                </div>
 
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="slug">Slug *</Label>
-                                <Input
-                                    id="slug"
-                                    value={slug}
-                                    onChange={(e) => setSlug(e.target.value)}
-                                    placeholder="product-slug"
-                                    aria-describedby="slug-help"
-                                    aria-required="true"
-                                />
-                                <p id="slug-help" className="text-xs text-muted-foreground">
-                                    URL-friendly version of the name.
-                                </p>
-                            </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="slug">Storefront Slug *</Label>
+                                    <Input
+                                        id="slug"
+                                        value={slug}
+                                        onChange={(e) => setSlug(e.target.value)}
+                                        placeholder="product-url-slug"
+                                    />
+                                </div>
 
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="price">Price ($) *</Label>
-                                <Input
-                                    id="price"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
-                                    placeholder="0.00"
-                                    aria-required="true"
-                                />
-                            </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="price">Price ($) *</Label>
+                                        <Input
+                                            id="price"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={price}
+                                            onChange={(e) => setPrice(e.target.value)}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="weight">Weight (lb)</Label>
+                                        <Input
+                                            id="weight"
+                                            value={weight}
+                                            onChange={(e) => setWeight(e.target.value)}
+                                            placeholder="e.g. 30"
+                                        />
+                                    </div>
+                                </div>
 
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="flex flex-col gap-2">
+                                <div className="space-y-2">
                                     <Label htmlFor="brand">Brand</Label>
                                     <Select value={brandId} onValueChange={setBrandId}>
                                         <SelectTrigger id="brand">
@@ -303,62 +347,149 @@ export function ProductEditModal({
                                     </Select>
                                 </div>
 
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="stockStatus">Stock Status</Label>
-                                    <Select value={stockStatus} onValueChange={setStockStatus}>
-                                        <SelectTrigger id="stockStatus">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {stockStatusOptions.map((opt) => (
-                                                <SelectItem key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="gtin">GTIN / UPC</Label>
+                                        <Input
+                                            id="gtin"
+                                            value={gtin}
+                                            onChange={(e) => setGtin(e.target.value)}
+                                            placeholder="Barcode"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="minQty">Min. Quantity</Label>
+                                        <Input
+                                            id="minQty"
+                                            type="number"
+                                            min="0"
+                                            value={minQty}
+                                            onChange={(e) => setMinQty(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2 py-1">
-                                <Checkbox
-                                    id="featured"
-                                    checked={isFeatured}
-                                    onCheckedChange={(checked) => setIsFeatured(checked === true)}
-                                />
-                                <Label htmlFor="featured" className="cursor-pointer font-medium">
-                                    Featured Product
-                                </Label>
-                            </div>
+                            <div className="space-y-4 rounded-xl border bg-card p-5">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Taxonomy & Meta</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="category">Category</Label>
+                                        <Input
+                                            id="category"
+                                            value={category}
+                                            onChange={(e) => setCategory(e.target.value)}
+                                            placeholder="e.g. Dog Food"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="productType">Product Type</Label>
+                                        <Input
+                                            id="productType"
+                                            value={productType}
+                                            onChange={(e) => setProductType(e.target.value)}
+                                            placeholder="e.g. Kibble"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="keywords">Search Keywords</Label>
+                                    <Input
+                                        id="keywords"
+                                        value={searchKeywords}
+                                        onChange={(e) => setSearchKeywords(e.target.value)}
+                                        placeholder="comma-separated terms"
+                                    />
+                                </div>
+                                
+                                <div className="flex gap-6 pt-2">
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="specialOrder"
+                                            checked={isSpecialOrder}
+                                            onCheckedChange={(checked) => setIsSpecialOrder(checked === true)}
+                                        />
+                                        <Label htmlFor="specialOrder" className="cursor-pointer text-sm">
+                                            Special Order
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="taxable"
+                                            checked={isTaxable}
+                                            onCheckedChange={(checked) => setIsTaxable(checked === true)}
+                                        />
+                                        <Label htmlFor="taxable" className="cursor-pointer text-sm">
+                                            Taxable
+                                        </Label>
+                                    </div>
+                                </div>
 
-                            <PetTypeSelector
-                                selectedPetTypes={selectedPetTypes}
-                                onChange={setSelectedPetTypes}
-                            />
+                                <div className="pt-4 border-t">
+                                    <PetTypeSelector
+                                        selectedPetTypes={selectedPetTypes}
+                                        onChange={setSelectedPetTypes}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Right Column - Description */}
-                        <div className="flex flex-col gap-5">
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Textarea
-                                    id="description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Enter product description…"
-                                    rows={10}
-                                    className="min-h-[240px] resize-none"
-                                />
+                        {/* Right Column: Descriptions & Images */}
+                        <div className="space-y-6">
+                            <div className="space-y-4 rounded-xl border bg-card p-5">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">ShopSite Display</h3>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Assign to Pages</Label>
+                                    <div className="flex flex-wrap gap-2 p-3 rounded-md border bg-muted/30 min-h-[80px]">
+                                        {SHOPSITE_PAGES.map(page => (
+                                            <Badge
+                                                key={page}
+                                                variant={productOnPages.includes(page) ? "default" : "outline"}
+                                                className="cursor-pointer select-none transition-colors"
+                                                onClick={() => togglePage(page)}
+                                            >
+                                                {page}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">Short Description</Label>
+                                    <Textarea
+                                        id="description"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Brief summary"
+                                        rows={3}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="longDescription">Long Description</Label>
+                                    <Textarea
+                                        id="longDescription"
+                                        value={longDescription}
+                                        onChange={(e) => setLongDescription(e.target.value)}
+                                        placeholder="Detailed features and information"
+                                        rows={8}
+                                    />
+                                </div>
                             </div>
 
                             {/* Images Preview - Read Only for now */}
                             {images.length > 0 && (
-                                <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
-                                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Images (Read-only)</Label>
+                                <div className="space-y-4 rounded-xl border bg-card p-5">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Product Images</h3>
+                                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                            {images.length} total
+                                        </span>
+                                    </div>
                                     <div className="flex gap-2 flex-wrap">
                                         {images
                                             .filter(isValidImageUrl)
-                                            .slice(0, 4)
+                                            .slice(0, 8)
                                             .map((img, idx) => (
                                                 <div
                                                     key={idx}
@@ -371,13 +502,16 @@ export function ProductEditModal({
                                                     />
                                                 </div>
                                             ))}
-                                        {images.length > 4 && (
+                                        {images.length > 8 && (
                                             <div className="flex size-16 items-center justify-center rounded-md border bg-muted text-xs font-medium">
-                                                +{images.length - 4}
+                                                +{images.length - 8}
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground italic">Image management coming soon…</p>
+                                    <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                                        <Info className="h-3 w-3" />
+                                        Image management coming soon
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -385,13 +519,13 @@ export function ProductEditModal({
                 </div>
 
                 <DialogFooter className="flex-col sm:flex-row gap-4 bg-muted/50 p-6">
-                    <div className="flex-1 text-[10px] text-muted-foreground flex items-center gap-1.5">
+                    <div className="flex-1 text-[10px] text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider font-semibold">
                         <span className="flex items-center gap-1">
-                            Press <kbd className="rounded bg-muted-foreground/20 px-1 font-sans text-[9px] uppercase">Esc</kbd> to close
+                            Esc to close
                         </span>
                         <span className="text-muted-foreground/30">•</span>
                         <span className="flex items-center gap-1">
-                            <kbd className="rounded bg-muted-foreground/20 px-1 font-sans text-[9px] uppercase">Ctrl+S</kbd> to save
+                            Ctrl+S to save
                         </span>
                     </div>
                     <div className="flex items-center gap-3">

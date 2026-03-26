@@ -92,13 +92,6 @@ The "name" field must be a clean, storefront-ready product title:
 10. **Pack/Count**: Use "Pack of N" or "N ct." — normalize "(Pack of 1)" away if it adds no info for single items.
 11. **Single spaces only**, no trailing whitespace.
 
-## SEARCH KEYWORDS
-Provide 5-15 comma-separated search terms:
-- Include common synonyms, misspellings, related terms.
-- Include species names, use cases, ingredient highlights.
-- All lowercase, no duplicates.
-- Example: "dog food, dry kibble, adult dog, chicken recipe, brown rice, high protein"
-
 ## PRODUCT ON PAGES
 Select which store pages this product should appear on from the STORE PAGES list above.
 - Choose ALL applicable pages based on the product's category and use.
@@ -115,28 +108,58 @@ Select which store pages this product should appear on from the STORE PAGES list
 
 ### Example 1: Dog Food
 Input:
-{"sku":"123456","sources":{"distributor_a":{"title":"BLUE BUFFALO LIFE PROT CHKN/BRN RICE 30LB","brand":"BLUE BUFFALO","weight":"30.00"},"distributor_b":{"title":"Blue Buffalo Life Protection Formula Adult Chicken & Brown Rice Recipe","price":"64.99"}}}
+{"sku":"123456","sources":{"distributor_a":{"title":"BLUE BUFFALO LIFE PROT CHKN/BRN RICE 30LB","brand":"BLUE BUFFALO","weight":"30.00"},"distributor_b":{"title":"Blue Buffalo Life Protection Formula Adult Chicken & Brown Rice Recipe","price":"64.99","description":"Blue Buffalo Life Protection Formula Dog Food is made with the finest natural ingredients."}}}
 
 Output:
-{"name":"Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb.","brand":"Blue Buffalo","weight":"30","search_keywords":"dog food, dry kibble, adult dog, chicken recipe, brown rice, life protection, high protein, immune support, healthy coat","product_on_pages":["Dog Food"],"category":["Dog Food"],"product_type":["Food"],"confidence_score":0.95}
+{
+  "name": "Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb.",
+  "brand": "Blue Buffalo",
+  "price": 64.99,
+  "weight": "30",
+  "description": "Natural adult dog food with chicken and brown rice.",
+  "product_on_pages": ["Dog Food"],
+  "category": ["Dog Food"],
+  "product_type": ["Food"],
+  "confidence_score": 0.95
+}
 
 ### Example 2: Cat Treats (note: 1.06 oz. becomes 1 oz. — drop decimals, do not round)
 Input:
-{"sku":"789012","sources":{"amazon":{"title":"Catit Nibbly Grills Cat Treats, Chicken & Shrimp Recipe - Grain-Free Cat Treat 1.06 Ounce (Pack of 1)","brand":"Catit","features":["Tasty grilled strips that look like bacon","Made with up to 85% natural meat","Grain-free and low in carbohydrates"],"dimensions":"7.72 x 4.76 x 0.43 inches","specifications":"Item Weight 1.1 ounces\\nSize 1.06 Ounce (Pack of 1)"}}}
+{"sku":"789012","sources":{"amazon":{"title":"Catit Nibbly Grills Cat Treats, Chicken & Shrimp Recipe - Grain-Free Cat Treat 1.06 Ounce (Pack of 1)","brand":"Catit","price":"3.49","features":["Tasty grilled strips that look like bacon","Made with up to 85% natural meat","Grain-free and low in carbohydrates"],"dimensions":"7.72 x 4.76 x 0.43 inches","specifications":"Item Weight 1.1 ounces\\nSize 1.06 Ounce (Pack of 1)"}}}
 
 Output:
-{"name":"Nibbly Grills Cat Treats Chicken & Shrimp Recipe 1 oz.","brand":"Catit","weight":"1","search_keywords":"cat treats, grain free, chicken shrimp, grilled strips, natural meat, low carb, chewy treats, cat snacks","product_on_pages":["Cat Food"],"category":["Cat Supplies"],"product_type":["Treats"],"confidence_score":0.90}
+{
+  "name": "Nibbly Grills Cat Treats Chicken & Shrimp Recipe 1 oz.",
+  "brand": "Catit",
+  "price": 3.49,
+  "weight": "1",
+  "description": "Grain-free cat treats with chicken and shrimp.",
+  "product_on_pages": ["Cat Food"],
+  "category": ["Cat Supplies"],
+  "product_type": ["Treats"],
+  "confidence_score": 0.90
+}
 
 ### Example 3: Bird Seed
 Input:
 {"sku":"345678","sources":{"vendor_x":{"title":"FEATHERED FRIEND BLK OIL SUNFLOWER 20#","weight":"20.000"},"vendor_y":{"title":"Feathered Friend Black Oil Sunflower Seed","description":"Premium wild bird food"}}}
 
 Output:
-{"name":"Black Oil Sunflower Seed 20 lb.","brand":"Feathered Friend","weight":"20","search_keywords":"bird seed, sunflower seed, black oil, wild bird food, songbird, cardinal, finch, bird feeder, backyard birds","product_on_pages":["Bird Supplies"],"category":["Wild Bird Food"],"product_type":["Seeds & Seed Mixes"],"confidence_score":0.90}
+{"name":"Black Oil Sunflower Seed 20 lb.","brand":"Feathered Friend","weight":"20","product_on_pages":["Bird Supplies"],"category":["Wild Bird Food"],"product_type":["Seeds & Seed Mixes"],"confidence_score":0.90}
 
 ## OUTPUT FORMAT
 Return valid JSON only — no explanations, no markdown:
-{"name":"Product Detail Size","brand":"Brand Name","weight":"30","search_keywords":"keyword1, keyword2, keyword3","product_on_pages":["Page1","Page2"],"category":["Category1"],"product_type":["Type1"],"confidence_score":0.85}
+{
+  "name": "Product Detail Size",
+  "brand": "Brand Name",
+  "price": 29.99,
+  "weight": "30",
+  "description": "Short summary",
+  "product_on_pages": ["Page1", "Page2"],
+  "category": ["Category1"],
+  "product_type": ["Type1"],
+  "confidence_score": 0.85
+}
 
 ## CHECKLIST
 - All words complete (no truncation)
@@ -151,7 +174,7 @@ Return valid JSON only — no explanations, no markdown:
 - No special characters (™, ®, ©) in any field
 - Size/weight metric appears at the end of the name
 - Weight field is numeric only, with decimal portion removed when present
-- search_keywords are lowercase, comma-separated, relevant
+- price is a number, not a string
 - Response is valid JSON only`;
 }
 

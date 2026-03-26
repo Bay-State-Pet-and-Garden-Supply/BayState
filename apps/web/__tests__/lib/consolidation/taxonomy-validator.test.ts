@@ -1,4 +1,4 @@
-import { validateConsolidationTaxonomy } from '@/lib/consolidation/taxonomy-validator';
+import { buildResponseSchema, validateConsolidationTaxonomy } from '@/lib/consolidation/taxonomy-validator';
 
 describe('validateConsolidationTaxonomy', () => {
     it('deduplicates category and product_type arrays', () => {
@@ -37,5 +37,22 @@ describe('validateConsolidationTaxonomy', () => {
                 ['Dry Dog Food']
             )
         ).toThrow('product_type is required');
+    });
+
+    it('buildResponseSchema does not include search_keywords field', () => {
+        const schema = buildResponseSchema(['Dog'], ['Food']) as {
+            json_schema?: {
+                schema?: {
+                    properties?: Record<string, unknown>;
+                    required?: string[];
+                };
+            };
+        };
+
+        const properties = schema.json_schema?.schema?.properties || {};
+        const required = schema.json_schema?.schema?.required || [];
+
+        expect(properties).not.toHaveProperty('search_keywords');
+        expect(required).not.toContain('search_keywords');
     });
 });

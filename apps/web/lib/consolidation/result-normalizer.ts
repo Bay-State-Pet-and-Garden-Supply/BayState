@@ -176,16 +176,6 @@ export function normalizeConsolidationResult(data: Record<string, unknown>): Rec
         }
     }
 
-    // Normalize search_keywords: lowercase, deduplicate, trim
-    if (typeof normalized.search_keywords === 'string') {
-        const keywords = normalized.search_keywords
-            .split(',')
-            .map((kw: string) => kw.trim().toLowerCase())
-            .filter((kw: string) => kw.length > 0);
-        const unique = [...new Set(keywords)];
-        normalized.search_keywords = unique.join(', ');
-    }
-
     // Validate product_on_pages against valid ShopSite pages
     if (Array.isArray(normalized.product_on_pages)) {
         const validPages = new Set(SHOPSITE_PAGES as readonly string[]);

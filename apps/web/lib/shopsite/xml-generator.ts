@@ -134,6 +134,34 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('ProductField11', 'yes'));
     }
 
+    if (product.gtin) {
+        lines.push(xmlElement('Google_GTIN', product.gtin));
+    }
+
+    if (product.is_taxable !== undefined) {
+        lines.push(xmlElement('Taxable', product.is_taxable ? 'yes' : 'no'));
+    }
+
+    if (product.availability) {
+        lines.push(xmlElement('Availability', product.availability));
+    }
+
+    if (product.minimum_quantity != null) {
+        lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity)));
+    }
+
+    if (product.search_keywords) {
+        lines.push(xmlCdataElement('SearchKeywords', product.search_keywords));
+    }
+
+    if (product.shopsite_pages && product.shopsite_pages.length > 0) {
+        lines.push('    <ProductOnPages>');
+        for (const pageName of product.shopsite_pages) {
+            lines.push(`      <PageName>${escapeXml(pageName)}</PageName>`);
+        }
+        lines.push('    </ProductOnPages>');
+    }
+
     lines.push('  </Product>');
     return lines.join('\n');
 }
