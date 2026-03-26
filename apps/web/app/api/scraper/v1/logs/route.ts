@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { validateRunnerAuth } from "@/lib/scraper-auth";
+import { toScrapeJobLogRow } from "@/lib/scraper-logs";
 
 function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
@@ -12,10 +13,18 @@ function getSupabaseAdmin(): SupabaseClient {
 }
 
 interface LogEntry {
+  event_id?: string;
   level: string;
   message: string;
   timestamp?: string;
   details?: Record<string, unknown>;
+  runner_id?: string;
+  runner_name?: string;
+  source?: string;
+  scraper_name?: string;
+  sku?: string;
+  phase?: string;
+  sequence?: number;
 }
 
 interface LogIngestRequest {
@@ -69,17 +78,18 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    const logsToInsert = logs.map((log) => ({
-      job_id,
-      level: normalizeLevel(log.level),
-      message: log.message,
-      details: log.details ?? null,
-      created_at: log.timestamp || new Date().toISOString(),
-    }));
+    const logsToInsert = logs.map((log) =>
+      toScrapeJobLogRow({
+        ...log,
+        job_id,
+        level: normalizeLevel(log.level),
+        runner_name: log.runner_name ?? runner.runnerName,
+      }),
+    );
 
     const { error } = await supabase
       .from("scrape_job_logs")
-      .insert(logsToInsert);
+      .upsert(logsToInsert, { onConflict: "job_id,event_id", ignoreDuplicates: true });
 
     if (error) {
       console.error("[Logs API] Insert failed:", error);

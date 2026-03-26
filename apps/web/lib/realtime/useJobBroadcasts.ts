@@ -9,7 +9,14 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import type { BroadcastEvent, ScrapeJobLog } from './types';
+import type { BroadcastEvent } from './types';
+import {
+  mergeScrapeJobLogs,
+  normalizeScrapeLogEntry,
+  normalizeScrapeProgressUpdate,
+  type ScrapeJobLogEntry,
+  type ScrapeJobProgressUpdate,
+} from '@/lib/scraper-logs';
 
 /**
  * Broadcast subscription state
@@ -20,9 +27,9 @@ export interface JobBroadcastState {
   /** Most recent broadcast for each event type */
   latest: Record<string, BroadcastEvent | null>;
   /** Log events from runners */
-  logs: ScrapeJobLog[];
+  logs: ScrapeJobLogEntry[];
   /** Progress updates from runners */
-  progress: Record<string, number>;
+  progress: Record<string, ScrapeJobProgressUpdate>;
   /** Whether the broadcast channel is connected */
   isConnected: boolean;
   /** Connection error if any */
@@ -42,9 +49,9 @@ export interface UseJobBroadcastOptions {
   /** Callback when a broadcast event is received */
   onBroadcast?: (event: string, payload: unknown) => void;
   /** Callback when a log event is received */
-  onLog?: (log: ScrapeJobLog) => void;
+  onLog?: (log: ScrapeJobLogEntry) => void;
   /** Callback when a progress update is received */
-  onProgress?: (jobId: string, progress: number) => void;
+  onProgress?: (jobId: string, progress: ScrapeJobProgressUpdate) => void;
 }
 
 /**
@@ -58,7 +65,7 @@ export interface BroadcastEventFilters {
   /** Subscribe to custom runner events */
   customEvents?: string[];
   /** Filter logs by level */
-  logLevels?: ('DEBUG' | 'INFO' | 'WARN' | 'ERROR')[];
+  logLevels?: ('debug' | 'info' | 'warning' | 'error' | 'critical')[];
 }
 
 /**
@@ -87,7 +94,7 @@ export interface UseJobBroadcastsReturn extends JobBroadcastState {
   /** Clear logs */
   clearLogs: () => void;
   /** Get logs for a specific job */
-  getLogsForJob: (jobId: string) => ScrapeJobLog[];
+  getLogsForJob: (jobId: string) => ScrapeJobLogEntry[];
 }
 
 /**
@@ -124,6 +131,7 @@ export function useJobBroadcasts(
     includeLogs = true,
     includeProgress = true,
     customEvents = [],
+    logLevels,
   } = filters;
 
   const channelName = useMemo(() => providedChannelName ?? 'job-broadcast', [providedChannelName]);
@@ -142,15 +150,15 @@ export function useJobBroadcasts(
   const subscribedEvents = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
   const callbacksRef = useRef({ onBroadcast, onLog, onProgress });
-  const eventConfigRef = useRef({ includeLogs, includeProgress, customEvents, maxLogs });
+  const eventConfigRef = useRef({ includeLogs, includeProgress, customEvents, maxLogs, logLevels });
 
   useEffect(() => {
     callbacksRef.current = { onBroadcast, onLog, onProgress };
   }, [onBroadcast, onLog, onProgress]);
 
   useEffect(() => {
-    eventConfigRef.current = { includeLogs, includeProgress, customEvents, maxLogs };
-  }, [includeLogs, includeProgress, customEvents, maxLogs]);
+    eventConfigRef.current = { includeLogs, includeProgress, customEvents, maxLogs, logLevels };
+  }, [includeLogs, includeProgress, customEvents, maxLogs, logLevels]);
 
   useEffect(() => {
     return () => {
@@ -173,14 +181,15 @@ export function useJobBroadcasts(
    */
   const processBroadcast = useCallback(
     (event: string, payload: unknown) => {
-      const { includeLogs, includeProgress, customEvents, maxLogs } = eventConfigRef.current;
+      const { includeLogs, includeProgress, customEvents, maxLogs, logLevels } = eventConfigRef.current;
       const { onBroadcast, onLog, onProgress } = callbacksRef.current;
+      const payloadRecord = payload as Record<string, unknown>;
 
       const broadcast: BroadcastEvent = {
         event,
-        payload: payload as Record<string, unknown>,
+        payload: payloadRecord,
         timestamp: new Date().toISOString(),
-        runner_id: (payload as Record<string, unknown>).runner_id as string || 'unknown',
+        runner_id: String(payloadRecord.runner_id || 'unknown'),
       };
 
       setState((prev) => {
@@ -203,17 +212,18 @@ export function useJobBroadcasts(
 
         // Handle log events
         if (includeLogs && event === 'runner_log') {
-          const log = payload as ScrapeJobLog;
-          const newLogs = [log, ...prev.logs].slice(0, maxLogs);
-          updates.logs = newLogs;
-          onLog?.(log);
+          const log = normalizeScrapeLogEntry(payloadRecord, { persisted: false });
+          if (!logLevels || logLevels.includes(log.level)) {
+            updates.logs = mergeScrapeJobLogs(prev.logs, [log], maxLogs);
+            onLog?.(log);
+          }
         }
 
         // Handle progress events
         if (includeProgress && event === 'job_progress') {
-          const { job_id, progress: progressValue } = payload as { job_id: string; progress: number };
-          updates.progress = { ...prev.progress, [job_id]: progressValue };
-          onProgress?.(job_id, progressValue);
+          const progressUpdate = normalizeScrapeProgressUpdate(payloadRecord);
+          updates.progress = { ...prev.progress, [progressUpdate.job_id]: progressUpdate };
+          onProgress?.(progressUpdate.job_id, progressUpdate);
         }
 
         // Handle custom events
@@ -267,7 +277,6 @@ export function useJobBroadcasts(
 
         if (status === 'SUBSCRIBED') {
           setState((prev) => ({ ...prev, isConnected: true, error: null }));
-          console.log('[useJobBroadcasts] Connected to broadcast channel');
         } else if (status === 'CHANNEL_ERROR') {
           const lowerTopic = String((channel as unknown as { topic?: string }).topic || '').toLowerCase();
           if (lowerTopic.includes('phoenix') || lowerTopic.includes('realtime')) {
@@ -315,7 +324,6 @@ export function useJobBroadcasts(
           processBroadcast(event, payload);
         });
         subscribedEvents.current.add(event);
-        console.log(`[useJobBroadcasts] Subscribed to event: ${event}`);
       }
     },
     [processBroadcast]
@@ -328,7 +336,6 @@ export function useJobBroadcasts(
     // Note: unsubscribing from individual events in Supabase requires re-creating the channel
     // For now, we just track it locally
     subscribedEvents.current.delete(event);
-    console.log(`[useJobBroadcasts] Unsubscribed from event: ${event}`);
   }, []);
 
   /**
@@ -356,7 +363,7 @@ export function useJobBroadcasts(
    * Get logs for a specific job
    */
   const getLogsForJob = useCallback(
-    (jobId: string): ScrapeJobLog[] => {
+    (jobId: string): ScrapeJobLogEntry[] => {
       return state.logs.filter((log) => log.job_id === jobId);
     },
     [state.logs]

@@ -265,7 +265,7 @@ export function FinalizingResultsView({
   // Handle name change and auto-populate descriptions if they match name
   const handleNameChange = (newName: string) => {
     setFormData(prev => {
-      const updates: any = { name: newName };
+      const updates: Partial<typeof prev> = { name: newName };
       // If description was empty or matched previous name, update it
       if (!prev.description || prev.description === prev.name) {
         updates.description = newName;

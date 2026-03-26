@@ -43,32 +43,41 @@ export interface JobProgressPayload {
   /** The job being processed */
   job_id: string;
   /** Runner processing the job */
-  runner_id: string;
+  runner_id?: string;
+  /** Human-readable runner name */
+  runner_name?: string;
+  /** Current job status */
+  status?: string;
   /** Progress percentage (0-100) */
   progress: number;
+  /** Optional human-readable progress message */
+  message?: string;
   /** Current SKU being processed */
   current_sku?: string;
   /** Phase of execution */
-  phase: 'initializing' | 'scraping' | 'processing' | 'uploading' | 'complete';
+  phase?: string;
   /** Items processed so far */
   items_processed?: number;
   /** Total items expected */
   items_total?: number;
-  /** Any error message if failed */
-  error?: string;
+  /** Additional structured context */
+  details?: Record<string, unknown>;
   /** Timestamp of update */
   timestamp: string;
 }
 
 export const jobProgressPayloadSchema = z.object({
   job_id: z.string(),
-  runner_id: z.string(),
+  runner_id: z.string().optional(),
+  runner_name: z.string().optional(),
+  status: z.string().optional(),
   progress: z.number().min(0).max(100),
+  message: z.string().optional(),
   current_sku: z.string().optional(),
-  phase: z.enum(['initializing', 'scraping', 'processing', 'uploading', 'complete']),
+  phase: z.string().optional(),
   items_processed: z.number().optional(),
   items_total: z.number().optional(),
-  error: z.string().optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
   timestamp: z.string(),
 });
 
@@ -114,29 +123,44 @@ export interface RunnerLogPayload {
   /** The job generating the log */
   job_id: string;
   /** Runner generating the log */
-  runner_id: string;
+  runner_id?: string;
+  /** Stable event identifier for dedupe */
+  event_id?: string;
+  /** Human-readable runner name */
+  runner_name?: string;
   /** Log severity level */
-  level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+  level: 'debug' | 'info' | 'warning' | 'error' | 'critical';
   /** Log message */
   message: string;
   /** Optional: source component */
   source?: string;
+  /** Optional: scraper name */
+  scraper_name?: string;
   /** Optional: related SKU */
   sku?: string;
-  /** Optional: related selector */
-  selector?: string;
+  /** Optional: execution phase */
+  phase?: string;
+  /** Optional: per-job sequence */
+  sequence?: number;
+  /** Optional: extra structured details */
+  details?: Record<string, unknown>;
   /** Timestamp of log */
   timestamp: string;
 }
 
 export const runnerLogPayloadSchema = z.object({
   job_id: z.string(),
-  runner_id: z.string(),
-  level: z.enum(['DEBUG', 'INFO', 'WARN', 'ERROR']),
+  runner_id: z.string().optional(),
+  event_id: z.string().optional(),
+  runner_name: z.string().optional(),
+  level: z.enum(['debug', 'info', 'warning', 'error', 'critical']),
   message: z.string(),
   source: z.string().optional(),
+  scraper_name: z.string().optional(),
   sku: z.string().optional(),
-  selector: z.string().optional(),
+  phase: z.string().optional(),
+  sequence: z.number().optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
   timestamp: z.string(),
 });
 
