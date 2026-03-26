@@ -44,11 +44,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
@@ -127,7 +123,8 @@ function isValidCustomImageUrl(url: string): boolean {
 
   try {
     const parsed = new URL(trimmed);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+      return false;
   } catch {
     return false;
   }
@@ -150,7 +147,7 @@ export function FinalizingResultsView({
   const [preferredSku, setPreferredSku] = useState<string | null>(
     sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
-  
+
   // Carousel state
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -205,7 +202,9 @@ export function FinalizingResultsView({
       });
       if (res.ok) {
         const { brand } = await res.json();
-        setBrands((prev) => [...prev, brand].sort((a, b) => a.name.localeCompare(b.name)));
+        setBrands((prev) =>
+          [...prev, brand].sort((a, b) => a.name.localeCompare(b.name)),
+        );
         handleInputChange("brandId", brand.id);
         setBrandSearch("");
         setBrandPopoverOpen(false);
@@ -232,7 +231,9 @@ export function FinalizingResultsView({
       });
       if (res.ok) {
         const { category } = await res.json();
-        setCategories((prev) => [...prev, category].sort((a, b) => a.name.localeCompare(b.name)));
+        setCategories((prev) =>
+          [...prev, category].sort((a, b) => a.name.localeCompare(b.name)),
+        );
         handleInputChange("category", category.name);
         setCategorySearch("");
         setCategoryPopoverOpen(false);
@@ -265,7 +266,7 @@ export function FinalizingResultsView({
     customImageUrl: "",
     selectedImages: [] as string[],
   });
-  const [selectedImageSourceId, setSelectedImageSourceId] = useState("all");
+  const [selectedImageSourceId, setSelectedImageSourceId] = useState("");
 
   // Track carousel index
   useEffect(() => {
@@ -294,14 +295,14 @@ export function FinalizingResultsView({
       try {
         const [brandsRes, categoriesRes] = await Promise.all([
           fetch("/api/admin/brands"),
-          fetch("/api/admin/categories")
+          fetch("/api/admin/categories"),
         ]);
-        
+
         if (brandsRes.ok) {
           const data = await brandsRes.json();
           setBrands(data.brands || []);
         }
-        
+
         if (categoriesRes.ok) {
           const data = await categoriesRes.json();
           setCategories(data.categories || []);
@@ -319,46 +320,59 @@ export function FinalizingResultsView({
       const consolidated = selectedProduct.consolidated || {};
       const input = selectedProduct.input || {};
 
-      const cons = selectedProduct.consolidated || {} as Record<string, unknown>;
+      const cons =
+        selectedProduct.consolidated || ({} as Record<string, unknown>);
       const consolidatedImages = toStringArray(consolidated.images);
       const selectedImagesFromMetadata = extractSelectedImageUrls(
         selectedProduct.selected_images,
       );
-      const initialSelectedImages = Array.from(new Set(
-        consolidatedImages.length > 0
-          ? consolidatedImages
-          : selectedImagesFromMetadata
-      ));
+      const initialSelectedImages = Array.from(
+        new Set(
+          consolidatedImages.length > 0
+            ? consolidatedImages
+            : selectedImagesFromMetadata,
+        ),
+      );
 
       const name = consolidated.name || input.name || "";
 
       setFormData({
         name,
         description: consolidated.description || name,
-        longDescription: (cons as Record<string, unknown>).long_description as string || name,
+        longDescription:
+          ((cons as Record<string, unknown>).long_description as string) ||
+          name,
         price: String(consolidated.price ?? input.price ?? ""),
-        weight: (cons as Record<string, unknown>).weight as string || "",
+        weight: ((cons as Record<string, unknown>).weight as string) || "",
         brandId: consolidated.brand_id || "none",
-        category: (cons as Record<string, unknown>).category as string || "",
-        productType: (cons as Record<string, unknown>).product_type as string || "",
-        stockStatus: (consolidated as Record<string, unknown>).stock_status as string || "in_stock",
-        productOnPages: Array.isArray((cons as Record<string, unknown>).product_on_pages)
-          ? (cons as Record<string, unknown>).product_on_pages as string[]
-          : typeof (cons as Record<string, unknown>).product_on_pages === "string"
-            ? ((cons as Record<string, unknown>).product_on_pages as string).split("|").filter(Boolean)
+        category: ((cons as Record<string, unknown>).category as string) || "",
+        productType:
+          ((cons as Record<string, unknown>).product_type as string) || "",
+        stockStatus:
+          ((consolidated as Record<string, unknown>).stock_status as string) ||
+          "in_stock",
+        productOnPages: Array.isArray(
+          (cons as Record<string, unknown>).product_on_pages,
+        )
+          ? ((cons as Record<string, unknown>).product_on_pages as string[])
+          : typeof (cons as Record<string, unknown>).product_on_pages ===
+              "string"
+            ? ((cons as Record<string, unknown>).product_on_pages as string)
+                .split("|")
+                .filter(Boolean)
             : [],
         isFeatured: consolidated.is_featured || false,
         isSpecialOrder: !!(cons as Record<string, unknown>).is_special_order,
         customImageUrl: "",
-        selectedImages: initialSelectedImages,
+        selectedImages: [],
       });
-      setSelectedImageSourceId("all");
+      setSelectedImageSourceId("");
     }
   }, [selectedProduct]);
 
   // Handle name change and auto-populate descriptions if they match name
   const handleNameChange = (newName: string) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const updates: Partial<typeof prev> = { name: newName };
       // If description was empty or matched previous name, update it
       if (!prev.description || prev.description === prev.name) {
@@ -386,7 +400,9 @@ export function FinalizingResultsView({
 
       if (sortedProducts.length === 0) return;
 
-      const currentIndex = sortedProducts.findIndex((p) => p.sku === preferredSku);
+      const currentIndex = sortedProducts.findIndex(
+        (p) => p.sku === preferredSku,
+      );
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -415,7 +431,10 @@ export function FinalizingResultsView({
     }
   }, [preferredSku]);
 
-  const handleInputChange = (field: string, value: string | boolean | string[]) => {
+  const handleInputChange = (
+    field: string,
+    value: string | boolean | string[],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -575,13 +594,11 @@ export function FinalizingResultsView({
   const imageSourceOptions = useMemo<ImageSourceOption[]>(() => {
     if (!selectedProduct) return [];
 
-    const allCandidates = new Set<string>();
     const sourceOptions: ImageSourceOption[] = [];
     let savedCandidatesOption: ImageSourceOption | null = null;
 
     const pipelineCandidates = toStringArray(selectedProduct.image_candidates);
     if (pipelineCandidates.length > 0) {
-      pipelineCandidates.forEach((url) => allCandidates.add(url));
       savedCandidatesOption = {
         id: "saved",
         label: "Saved Candidates",
@@ -589,7 +606,9 @@ export function FinalizingResultsView({
       };
     }
 
-    const normalizedSources = normalizeProductSources(selectedProduct.sources || {});
+    const normalizedSources = normalizeProductSources(
+      selectedProduct.sources || {},
+    );
     Object.entries(normalizedSources).forEach(([sourceKey, sourcePayload]) => {
       const sourceCandidates = extractImageCandidatesFromSources(
         { [sourceKey]: sourcePayload },
@@ -597,7 +616,6 @@ export function FinalizingResultsView({
       );
       if (sourceCandidates.length === 0) return;
 
-      sourceCandidates.forEach((url) => allCandidates.add(url));
       sourceOptions.push({
         id: `source:${sourceKey}`,
         label: formatSourceLabel(sourceKey),
@@ -607,14 +625,7 @@ export function FinalizingResultsView({
 
     sourceOptions.sort((a, b) => a.label.localeCompare(b.label));
 
-    formData.selectedImages.forEach((url) => allCandidates.add(url));
-
     return [
-      {
-        id: "all",
-        label: "All Sources",
-        candidates: Array.from(allCandidates),
-      },
       ...(savedCandidatesOption ? [savedCandidatesOption] : []),
       ...sourceOptions,
       {
@@ -623,22 +634,52 @@ export function FinalizingResultsView({
         candidates: [],
       },
     ];
-  }, [selectedProduct, formData.selectedImages]);
+  }, [selectedProduct]);
 
   useEffect(() => {
     if (imageSourceOptions.length === 0) {
-      setSelectedImageSourceId("all");
+      setSelectedImageSourceId("");
       return;
     }
 
-    if (!imageSourceOptions.some((option) => option.id === selectedImageSourceId)) {
-      setSelectedImageSourceId(imageSourceOptions[0].id);
+    const foundOption = imageSourceOptions.find(
+      (option) => option.id === selectedImageSourceId,
+    );
+    if (!foundOption) {
+      const preferredOption = imageSourceOptions
+        .filter((option) => option.id !== "custom")
+        .reduce((best, option) => {
+          if (!best || option.candidates.length > best.candidates.length) {
+            return option;
+          }
+          return best;
+        }, imageSourceOptions[0]);
+
+      setSelectedImageSourceId(preferredOption.id);
+    }
+  }, [imageSourceOptions, selectedImageSourceId]);
+
+  useEffect(() => {
+    const activeOption = imageSourceOptions.find(
+      (option) => option.id === selectedImageSourceId,
+    );
+    if (!activeOption) return;
+
+    if (activeOption.id === "custom") {
+      setFormData((prev) => ({ ...prev, selectedImages: [] }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        selectedImages: activeOption.candidates,
+      }));
     }
   }, [imageSourceOptions, selectedImageSourceId]);
 
   const activeImageSourceOption = useMemo(
     () =>
-      imageSourceOptions.find((option) => option.id === selectedImageSourceId) ??
+      imageSourceOptions.find(
+        (option) => option.id === selectedImageSourceId,
+      ) ??
       imageSourceOptions[0] ??
       null,
     [imageSourceOptions, selectedImageSourceId],
@@ -775,7 +816,9 @@ export function FinalizingResultsView({
                 <div className="space-y-6">
                   {/* Product Info Group */}
                   <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Product Info</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Product Info
+                    </h3>
                     <Separator />
                   </div>
 
@@ -784,9 +827,7 @@ export function FinalizingResultsView({
                     <Input
                       id="product-name"
                       value={formData.name}
-                      onChange={(e) =>
-                        handleNameChange(e.target.value)
-                      }
+                      onChange={(e) => handleNameChange(e.target.value)}
                       placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
                     />
                   </div>
@@ -818,7 +859,10 @@ export function FinalizingResultsView({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="product-brand">Brand</Label>
-                      <Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}>
+                      <Popover
+                        open={brandPopoverOpen}
+                        onOpenChange={setBrandPopoverOpen}
+                      >
                         <PopoverTrigger asChild>
                           <Button
                             id="product-brand"
@@ -829,11 +873,15 @@ export function FinalizingResultsView({
                           >
                             {formData.brandId === "none"
                               ? "No Brand"
-                              : brands.find((b) => b.id === formData.brandId)?.name || "Select Brand"}
+                              : brands.find((b) => b.id === formData.brandId)
+                                  ?.name || "Select Brand"}
                             <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <PopoverContent
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          align="start"
+                        >
                           <div className="flex flex-col">
                             <div className="flex items-center border-b px-3 py-2">
                               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -848,7 +896,8 @@ export function FinalizingResultsView({
                               <div
                                 className={cn(
                                   "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                                  formData.brandId === "none" && "bg-accent text-accent-foreground"
+                                  formData.brandId === "none" &&
+                                    "bg-accent text-accent-foreground",
                                 )}
                                 onClick={() => {
                                   handleInputChange("brandId", "none");
@@ -859,7 +908,9 @@ export function FinalizingResultsView({
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    formData.brandId === "none" ? "opacity-100" : "opacity-0"
+                                    formData.brandId === "none"
+                                      ? "opacity-100"
+                                      : "opacity-0",
                                   )}
                                 />
                                 No Brand
@@ -869,7 +920,8 @@ export function FinalizingResultsView({
                                   key={brand.id}
                                   className={cn(
                                     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                    formData.brandId === brand.id && "bg-accent text-accent-foreground"
+                                    formData.brandId === brand.id &&
+                                      "bg-accent text-accent-foreground",
                                   )}
                                   onClick={() => {
                                     handleInputChange("brandId", brand.id);
@@ -880,7 +932,9 @@ export function FinalizingResultsView({
                                   <Check
                                     className={cn(
                                       "mr-2 h-4 w-4",
-                                      formData.brandId === brand.id ? "opacity-100" : "opacity-0"
+                                      formData.brandId === brand.id
+                                        ? "opacity-100"
+                                        : "opacity-0",
                                     )}
                                   />
                                   {brand.name}
@@ -892,20 +946,27 @@ export function FinalizingResultsView({
                                 </div>
                               )}
                             </div>
-                            {brandSearch.trim() && !brands.find(b => b.name.toLowerCase() === brandSearch.toLowerCase().trim()) && (
-                              <div className="border-t p-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start text-xs font-normal"
-                                  onClick={handleCreateBrand}
-                                  disabled={creatingBrand}
-                                >
-                                  <Plus className="mr-2 h-3 w-3" />
-                                  {creatingBrand ? "Creating..." : `Create "${brandSearch.trim()}"`}
-                                </Button>
-                              </div>
-                            )}
+                            {brandSearch.trim() &&
+                              !brands.find(
+                                (b) =>
+                                  b.name.toLowerCase() ===
+                                  brandSearch.toLowerCase().trim(),
+                              ) && (
+                                <div className="border-t p-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs font-normal"
+                                    onClick={handleCreateBrand}
+                                    disabled={creatingBrand}
+                                  >
+                                    <Plus className="mr-2 h-3 w-3" />
+                                    {creatingBrand
+                                      ? "Creating..."
+                                      : `Create "${brandSearch.trim()}"`}
+                                  </Button>
+                                </div>
+                              )}
                           </div>
                         </PopoverContent>
                       </Popover>
@@ -914,12 +975,19 @@ export function FinalizingResultsView({
 
                   {/* Descriptions Group */}
                   <div className="space-y-1 pt-4">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Descriptions</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Descriptions
+                    </h3>
                     <Separator />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="product-description">Short Description <span className="text-muted-foreground font-normal">(listing page)</span></Label>
+                    <Label htmlFor="product-description">
+                      Short Description{" "}
+                      <span className="text-muted-foreground font-normal">
+                        (listing page)
+                      </span>
+                    </Label>
                     <Textarea
                       id="product-description"
                       value={formData.description}
@@ -932,7 +1000,12 @@ export function FinalizingResultsView({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="product-long-description">Long Description <span className="text-muted-foreground font-normal">(detail page)</span></Label>
+                    <Label htmlFor="product-long-description">
+                      Long Description{" "}
+                      <span className="text-muted-foreground font-normal">
+                        (detail page)
+                      </span>
+                    </Label>
                     <Textarea
                       id="product-long-description"
                       value={formData.longDescription}
@@ -946,14 +1019,19 @@ export function FinalizingResultsView({
 
                   {/* Classification Group */}
                   <div className="space-y-1 pt-4">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Classification</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Classification
+                    </h3>
                     <Separator />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="product-category">Category</Label>
-                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                      <Popover
+                        open={categoryPopoverOpen}
+                        onOpenChange={setCategoryPopoverOpen}
+                      >
                         <PopoverTrigger asChild>
                           <Button
                             id="product-category"
@@ -966,7 +1044,10 @@ export function FinalizingResultsView({
                             <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <PopoverContent
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          align="start"
+                        >
                           <div className="flex flex-col">
                             <div className="flex items-center border-b px-3 py-2">
                               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -974,14 +1055,17 @@ export function FinalizingResultsView({
                                 className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                                 placeholder="Search categories..."
                                 value={categorySearch}
-                                onChange={(e) => setCategorySearch(e.target.value)}
+                                onChange={(e) =>
+                                  setCategorySearch(e.target.value)
+                                }
                               />
                             </div>
                             <div className="max-h-[200px] overflow-y-auto p-1">
                               <div
                                 className={cn(
                                   "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                                  !formData.category && "bg-accent text-accent-foreground"
+                                  !formData.category &&
+                                    "bg-accent text-accent-foreground",
                                 )}
                                 onClick={() => {
                                   handleInputChange("category", "");
@@ -992,7 +1076,9 @@ export function FinalizingResultsView({
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    !formData.category ? "opacity-100" : "opacity-0"
+                                    !formData.category
+                                      ? "opacity-100"
+                                      : "opacity-0",
                                   )}
                                 />
                                 No Category
@@ -1002,7 +1088,8 @@ export function FinalizingResultsView({
                                   key={cat.id}
                                   className={cn(
                                     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                    formData.category === cat.name && "bg-accent text-accent-foreground"
+                                    formData.category === cat.name &&
+                                      "bg-accent text-accent-foreground",
                                   )}
                                   onClick={() => {
                                     handleInputChange("category", cat.name);
@@ -1013,32 +1100,42 @@ export function FinalizingResultsView({
                                   <Check
                                     className={cn(
                                       "mr-2 h-4 w-4",
-                                      formData.category === cat.name ? "opacity-100" : "opacity-0"
+                                      formData.category === cat.name
+                                        ? "opacity-100"
+                                        : "opacity-0",
                                     )}
                                   />
                                   {cat.name}
                                 </div>
                               ))}
-                              {filteredCategories.length === 0 && categorySearch && (
-                                <div className="p-2 text-xs text-muted-foreground italic">
-                                  No categories found.
+                              {filteredCategories.length === 0 &&
+                                categorySearch && (
+                                  <div className="p-2 text-xs text-muted-foreground italic">
+                                    No categories found.
+                                  </div>
+                                )}
+                            </div>
+                            {categorySearch.trim() &&
+                              !categories.find(
+                                (c) =>
+                                  c.name.toLowerCase() ===
+                                  categorySearch.toLowerCase().trim(),
+                              ) && (
+                                <div className="border-t p-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs font-normal"
+                                    onClick={handleCreateCategory}
+                                    disabled={creatingCategory}
+                                  >
+                                    <Plus className="mr-2 h-3 w-3" />
+                                    {creatingCategory
+                                      ? "Creating..."
+                                      : `Create "${categorySearch.trim()}"`}
+                                  </Button>
                                 </div>
                               )}
-                            </div>
-                            {categorySearch.trim() && !categories.find(c => c.name.toLowerCase() === categorySearch.toLowerCase().trim()) && (
-                              <div className="border-t p-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start text-xs font-normal"
-                                  onClick={handleCreateCategory}
-                                  disabled={creatingCategory}
-                                >
-                                  <Plus className="mr-2 h-3 w-3" />
-                                  {creatingCategory ? "Creating..." : `Create "${categorySearch.trim()}"`}
-                                </Button>
-                              </div>
-                            )}
                           </div>
                         </PopoverContent>
                       </Popover>
@@ -1058,7 +1155,10 @@ export function FinalizingResultsView({
 
                   <div className="space-y-2">
                     <Label>Store Pages</Label>
-                    <Popover open={pagePopoverOpen} onOpenChange={setPagePopoverOpen}>
+                    <Popover
+                      open={pagePopoverOpen}
+                      onOpenChange={setPagePopoverOpen}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -1078,20 +1178,31 @@ export function FinalizingResultsView({
                                     className="h-2 w-2 cursor-pointer hover:text-destructive"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const pages = formData.productOnPages.filter((p) => p !== page);
-                                      handleInputChange("productOnPages", pages);
+                                      const pages =
+                                        formData.productOnPages.filter(
+                                          (p) => p !== page,
+                                        );
+                                      handleInputChange(
+                                        "productOnPages",
+                                        pages,
+                                      );
                                     }}
                                   />
                                 </div>
                               ))
                             ) : (
-                              <span className="text-muted-foreground">Select Store Pages</span>
+                              <span className="text-muted-foreground">
+                                Select Store Pages
+                              </span>
                             )}
                           </div>
                           <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                      <PopoverContent
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                        align="start"
+                      >
                         <div className="flex flex-col">
                           <div className="flex items-center border-b px-3 py-2">
                             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1104,17 +1215,21 @@ export function FinalizingResultsView({
                           </div>
                           <div className="max-h-[300px] overflow-y-auto p-1">
                             {filteredPages.map((page) => {
-                              const isSelected = formData.productOnPages.includes(page);
+                              const isSelected =
+                                formData.productOnPages.includes(page);
                               return (
                                 <div
                                   key={page}
                                   className={cn(
                                     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                    isSelected && "bg-accent text-accent-foreground"
+                                    isSelected &&
+                                      "bg-accent text-accent-foreground",
                                   )}
                                   onClick={() => {
                                     const pages = isSelected
-                                      ? formData.productOnPages.filter((p) => p !== page)
+                                      ? formData.productOnPages.filter(
+                                          (p) => p !== page,
+                                        )
                                       : [...formData.productOnPages, page];
                                     handleInputChange("productOnPages", pages);
                                   }}
@@ -1122,7 +1237,7 @@ export function FinalizingResultsView({
                                   <Check
                                     className={cn(
                                       "mr-2 h-4 w-4",
-                                      isSelected ? "opacity-100" : "opacity-0"
+                                      isSelected ? "opacity-100" : "opacity-0",
                                     )}
                                   />
                                   {page}
@@ -1142,7 +1257,9 @@ export function FinalizingResultsView({
 
                   {/* Settings Group */}
                   <div className="space-y-1 pt-4">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Settings</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Settings
+                    </h3>
                     <Separator />
                   </div>
 
@@ -1167,7 +1284,10 @@ export function FinalizingResultsView({
                           handleInputChange("isSpecialOrder", !!checked)
                         }
                       />
-                      <Label htmlFor="is-special-order" className="cursor-pointer">
+                      <Label
+                        htmlFor="is-special-order"
+                        className="cursor-pointer"
+                      >
                         Special Order
                       </Label>
                     </div>
@@ -1178,7 +1298,9 @@ export function FinalizingResultsView({
                 <div className="space-y-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Product Media</Label>
+                      <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                        Product Media
+                      </Label>
                       <span className="text-xs text-muted-foreground">
                         {formData.selectedImages.length > 0
                           ? `${currentImageIndex + 1} of ${formData.selectedImages.length} selected`
@@ -1224,7 +1346,7 @@ export function FinalizingResultsView({
                                         />
                                         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/80 backdrop-blur px-4 py-2 rounded-full border shadow-sm">
                                           <span className="text-xs font-mono font-bold text-primary truncate max-w-[300px]">
-                                            {url.split('/').pop()}
+                                            {url.split("/").pop()}
                                           </span>
                                         </div>
                                       </div>
@@ -1251,8 +1373,12 @@ export function FinalizingResultsView({
                       ) : (
                         <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-muted/10 border-2 border-dashed rounded-xl m-2">
                           <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
-                          <p className="text-sm font-medium">No images selected</p>
-                          <p className="text-xs opacity-60 mt-1">Select from candidates below</p>
+                          <p className="text-sm font-medium">
+                            No images selected
+                          </p>
+                          <p className="text-xs opacity-60 mt-1">
+                            Select from candidates below
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1268,17 +1394,26 @@ export function FinalizingResultsView({
                               "relative flex-shrink-0 w-16 h-16 rounded-md border-2 overflow-hidden cursor-pointer transition-all",
                               currentImageIndex === index
                                 ? "border-primary ring-2 ring-primary/20 scale-105"
-                                : "border-transparent opacity-60 hover:opacity-100"
+                                : "border-transparent opacity-60 hover:opacity-100",
                             )}
                           >
-                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                         ))}
                       </div>
                     )}
 
                     <div className="space-y-2 pt-2">
-                      <Label htmlFor="image-source" className="text-xs uppercase font-bold text-muted-foreground">Candidate Sources</Label>
+                      <Label
+                        htmlFor="image-source"
+                        className="text-xs uppercase font-bold text-muted-foreground"
+                      >
+                        Candidate Sources
+                      </Label>
                       <Select
                         value={selectedImageSourceId}
                         onValueChange={setSelectedImageSourceId}
@@ -1299,13 +1434,18 @@ export function FinalizingResultsView({
                     {/* Custom Image URL */}
                     {isCustomImageSource && (
                       <div className="space-y-2">
-                        <Label htmlFor="custom-image-url">Custom Image URL</Label>
+                        <Label htmlFor="custom-image-url">
+                          Custom Image URL
+                        </Label>
                         <div className="flex gap-2">
                           <Input
                             id="custom-image-url"
                             value={formData.customImageUrl}
                             onChange={(e) =>
-                              handleInputChange("customImageUrl", e.target.value)
+                              handleInputChange(
+                                "customImageUrl",
+                                e.target.value,
+                              )
                             }
                             placeholder="Paste image URL..."
                             onKeyDown={(e) =>

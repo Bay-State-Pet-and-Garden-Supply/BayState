@@ -102,7 +102,9 @@ Select which store pages this product should appear on from the STORE PAGES list
 ## WEIGHT FIELD
 - Return a numeric string only, with no unit suffix.
 - If the source package size/weight/count includes a decimal, keep only the leading whole-number portion (e.g., "1.06" → "1", "7.9" → "7").
-- When the final name ends with a package size/weight/count, prefer that same leading whole-number value for the weight field.
+- When the final name ends with a package size/weight (e.g. "50 lb." or "12 oz."), prefer that same leading whole-number value for the weight field.
+- If the final name ends with a count (e.g. "12 ct.") and NO separate weight is given, or if no weight information is present in any source, return null for the weight field.
+- NEVER default to "1" for weight if no weight information is available.
 
 ## FEW-SHOT EXAMPLES
 
@@ -147,13 +149,30 @@ Input:
 Output:
 {"name":"Black Oil Sunflower Seed 20 lb.","brand":"Feathered Friend","weight":"20","product_on_pages":["Bird Supplies"],"category":["Wild Bird Food"],"product_type":["Seeds & Seed Mixes"],"confidence_score":0.90}
 
+### Example 4: Toy (No weight or size metric)
+Input:
+{"sku":"901234","sources":{"distributor_z":{"title":"KONG CLASSIC DOG TOY MEDIUM","brand":"KONG","price":"12.99"}}}
+
+Output:
+{
+  "name": "Classic Dog Toy Medium",
+  "brand": "KONG",
+  "price": 12.99,
+  "weight": null,
+  "description": "Durable rubber dog toy for chewing and fetching.",
+  "product_on_pages": ["Dog Supplies"],
+  "category": ["Dog Supplies"],
+  "product_type": ["Toys"],
+  "confidence_score": 0.95
+}
+
 ## OUTPUT FORMAT
 Return valid JSON only — no explanations, no markdown:
 {
   "name": "Product Detail Size",
   "brand": "Brand Name",
   "price": 29.99,
-  "weight": "30",
+  "weight": "30" or null,
   "description": "Short summary",
   "product_on_pages": ["Page1", "Page2"],
   "category": ["Category1"],
@@ -173,7 +192,7 @@ Return valid JSON only — no explanations, no markdown:
 - product_on_pages uses EXACT page names from the store pages list
 - No special characters (™, ®, ©) in any field
 - Size/weight metric appears at the end of the name
-- Weight field is numeric only, with decimal portion removed when present
+- Weight field is numeric only, with decimal portion removed when present. If no weight, use null.
 - price is a number, not a string
 - Response is valid JSON only`;
 }
