@@ -8,8 +8,8 @@ import { PipelineToolbar } from '@/components/admin/pipeline/PipelineToolbar';
 
 describe('published export actions', () => {
     it('renders publish-stage toolbar export actions when nothing is selected', () => {
-        const onExportXml = jest.fn();
-        const onExportZip = jest.fn();
+        const onUploadShopSite = jest.fn();
+        const onDownloadZip = jest.fn();
 
         render(
             <PipelineToolbar
@@ -20,21 +20,21 @@ describe('published export actions', () => {
                 onSearchChange={() => {}}
                 onSelectAll={() => {}}
                 selectedCount={0}
-                onExportXml={onExportXml}
-                onExportZip={onExportZip}
+                onUploadShopSite={onUploadShopSite}
+                onDownloadZip={onDownloadZip}
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Export ShopSite XML' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Export Image ZIP' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Download Image ZIP' }));
 
-        expect(onExportXml).toHaveBeenCalledTimes(1);
-        expect(onExportZip).toHaveBeenCalledTimes(1);
+        expect(onUploadShopSite).toHaveBeenCalledTimes(1);
+        expect(onDownloadZip).toHaveBeenCalledTimes(1);
     });
 
     it('renders selected export actions in the published floating action bar', () => {
-        const onExportXml = jest.fn();
-        const onExportZip = jest.fn();
+        const onUploadShopSite = jest.fn();
+        const onDownloadZip = jest.fn();
 
         render(
             <FloatingActionsBar
@@ -46,15 +46,15 @@ describe('published export actions', () => {
                 onSelectAll={() => {}}
                 onBulkAction={() => {}}
                 onDelete={() => {}}
-                onExportXml={onExportXml}
-                onExportZip={onExportZip}
+                onUploadShopSite={onUploadShopSite}
+                onDownloadZip={onDownloadZip}
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Export XML' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Export ZIP' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Download ZIP' }));
 
-        expect(onExportXml).toHaveBeenCalledTimes(1);
-        expect(onExportZip).toHaveBeenCalledTimes(1);
+        expect(onUploadShopSite).toHaveBeenCalledTimes(1);
+        expect(onDownloadZip).toHaveBeenCalledTimes(1);
     });
 });

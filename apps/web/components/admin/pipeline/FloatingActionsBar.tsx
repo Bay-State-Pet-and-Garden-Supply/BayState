@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Trash2, Search, FileText, Archive } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, Archive, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
 
@@ -59,9 +59,9 @@ interface FloatingActionsBarProps {
   onResetStage?: (previousStage: PipelineStatus) => void;
   onOpenScrapeDialog?: () => void;
   onDelete?: () => void;
-  exportState?: "xml" | "zip" | null;
-  onExportXml?: () => void;
-  onExportZip?: () => void;
+  actionState?: "upload" | "zip" | null;
+  onUploadShopSite?: () => void;
+  onDownloadZip?: () => void;
 }
 
 export function FloatingActionsBar({
@@ -75,9 +75,9 @@ export function FloatingActionsBar({
   onResetStage,
   onOpenScrapeDialog,
   onDelete,
-  exportState = null,
-  onExportXml,
-  onExportZip,
+  actionState = null,
+  onUploadShopSite,
+  onDownloadZip,
 }: FloatingActionsBarProps) {
   if (selectedCount === 0) return null;
 
@@ -183,42 +183,42 @@ export function FloatingActionsBar({
             </Button>
           )}
 
-          {isTerminalStage && onExportXml && onExportZip && (
+          {isTerminalStage && onUploadShopSite && onDownloadZip && (
             <>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onExportXml}
-                disabled={isLoading || exportState !== null}
+                onClick={onUploadShopSite}
+                disabled={isLoading || actionState !== null}
                 className="h-10 border-[#008850]/20 text-xs font-bold text-[#008850] hover:bg-[#008850]/5"
               >
-                {exportState === "xml" ? (
+                {actionState === "upload" ? (
                   <>
                     <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    Exporting XML…
+                    Uploading…
                   </>
                 ) : (
                   <>
-                    <FileText className="mr-1.5 h-4 w-4" />
-                    Export XML
+                    <Upload className="mr-1.5 h-4 w-4" />
+                    Upload to ShopSite
                   </>
                 )}
               </Button>
               <Button
                 size="sm"
-                onClick={onExportZip}
-                disabled={isLoading || exportState !== null}
+                onClick={onDownloadZip}
+                disabled={isLoading || actionState !== null}
                 className="h-10 bg-[#008850] px-5 text-xs font-bold text-white hover:bg-[#008850]/90 shadow-lg shadow-[#008850]/20"
               >
-                {exportState === "zip" ? (
+                {actionState === "zip" ? (
                   <>
                     <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    Exporting ZIP…
+                    Downloading ZIP…
                   </>
                 ) : (
                   <>
                     <Archive className="mr-1.5 h-4 w-4" />
-                    Export ZIP
+                    Download ZIP
                   </>
                 )}
               </Button>
