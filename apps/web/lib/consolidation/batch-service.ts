@@ -12,6 +12,7 @@ import { buildPromptContext } from './prompt-builder';
 import { buildResponseSchema, validateCategory, validateConsolidationTaxonomy, validateProductType } from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
+import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
 import type {
     BatchJob,
     BatchMetadata,
@@ -840,17 +841,101 @@ export async function applyConsolidationResults(
         }
     }
 
-    const { data: brands, error: brandsError } = await supabase.from('brands').select('id, name');
+    const { data: brands, error: brandsError } = await supabase.from('brands').select('id, name, slug');
     if (brandsError) {
         return { success: false, error: `Failed to load brands: ${brandsError.message}` };
     }
 
     const brandIdByName = new Map<string, string>();
+    const brandIdBySlug = new Map<string, string>();
     for (const brand of brands || []) {
         if (typeof brand.name === 'string' && typeof brand.id === 'string') {
             brandIdByName.set(normalizeLookupKey(brand.name), brand.id);
+            const brandSlug =
+                typeof brand.slug === 'string' && brand.slug.length > 0
+                    ? brand.slug
+                    : buildFacetSlug(brand.name);
+            if (brandSlug) {
+                brandIdBySlug.set(brandSlug, brand.id);
+            }
         }
     }
+
+    const resolveBrand = async (
+        rawBrandName: string | undefined
+    ): Promise<{ brandId?: string; brandName?: string }> => {
+        const normalizedBrand = normalizeBrandName(rawBrandName);
+        if (!normalizedBrand) {
+            return {};
+        }
+
+        const lookupKey = normalizeLookupKey(normalizedBrand);
+        const existingBrandId = brandIdByName.get(lookupKey);
+        if (existingBrandId) {
+            return {
+                brandId: existingBrandId,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const slug = buildFacetSlug(normalizedBrand);
+        if (!slug) {
+            throw new Error(`Invalid brand name: "${normalizedBrand}"`);
+        }
+
+        const existingBrandIdBySlug = brandIdBySlug.get(slug);
+        if (existingBrandIdBySlug) {
+            brandIdByName.set(lookupKey, existingBrandIdBySlug);
+            return {
+                brandId: existingBrandIdBySlug,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const { data: createdBrand, error: createBrandError } = await supabase
+            .from('brands')
+            .insert({
+                name: normalizedBrand,
+                slug,
+            })
+            .select('id')
+            .single();
+
+        const createdBrandId = createdBrand?.id;
+        if (typeof createdBrandId === 'string' && createdBrandId.length > 0) {
+            brandIdByName.set(lookupKey, createdBrandId);
+            brandIdBySlug.set(slug, createdBrandId);
+            return {
+                brandId: createdBrandId,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const { data: existingBrand, error: existingBrandError } = await supabase
+            .from('brands')
+            .select('id')
+            .eq('slug', slug)
+            .maybeSingle();
+
+        const existingBrandIdAfterInsert = existingBrand?.id;
+        if (typeof existingBrandIdAfterInsert === 'string' && existingBrandIdAfterInsert.length > 0) {
+            brandIdByName.set(lookupKey, existingBrandIdAfterInsert);
+            brandIdBySlug.set(slug, existingBrandIdAfterInsert);
+            return {
+                brandId: existingBrandIdAfterInsert,
+                brandName: normalizedBrand,
+            };
+        }
+
+        const details = [
+            createBrandError?.message ? `create failed: ${createBrandError.message}` : null,
+            existingBrandError?.message ? `lookup failed: ${existingBrandError.message}` : null,
+        ]
+            .filter(Boolean)
+            .join('; ');
+
+        throw new Error(`Failed to resolve brand "${normalizedBrand}"${details ? ` (${details})` : ''}`);
+    };
 
     const updateRows: Array<{
         sku: string;
@@ -881,9 +966,13 @@ export async function applyConsolidationResults(
 
             const existingRecord = existingBySku.get(result.sku);
             const existingConsolidated = existingRecord?.consolidated || {};
-            const resolvedBrandId = result.brand ? brandIdByName.get(normalizeLookupKey(result.brand)) : undefined;
+            const normalizedBrand = normalizeBrandName(result.brand);
+            const {
+                brandId: resolvedBrandId,
+                brandName: resolvedBrandName,
+            } = await resolveBrand(result.brand);
 
-            if (result.brand) {
+            if (normalizedBrand) {
                 if (resolvedBrandId) {
                     matchedBrandCount += 1;
                 } else {
@@ -900,7 +989,7 @@ export async function applyConsolidationResults(
                 long_description: result.name || existingConsolidated.name || '',
                 ...(result.search_keywords ? { search_keywords: result.search_keywords } : {}),
                 ...(result.weight ? { weight: result.weight } : {}),
-                ...(result.brand ? { brand: result.brand } : {}),
+                ...(resolvedBrandName ? { brand: resolvedBrandName } : {}),
                 ...(resolvedBrandId ? { brand_id: resolvedBrandId } : {}),
                 ...(nextCategory.length > 0 ? { category: nextCategory.join('|') } : {}),
                 ...(nextProductType.length > 0 ? { product_type: nextProductType.join('|') } : {}),
