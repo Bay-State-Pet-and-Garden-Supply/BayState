@@ -1,5 +1,11 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { parse as parseYaml } from 'yaml';
 import {
   getRetryDelay,
   ImageCaptureErrorType,
@@ -16,22 +22,63 @@ const DEFAULT_CONCURRENCY = 3;
 const CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
 const CIRCUIT_BREAKER_WINDOW_MS = 60_000;
 const CIRCUIT_BREAKER_OPEN_MS = 5 * 60_000;
+const MAX_RELOGIN_ATTEMPTS = 2;
+const AUTH_METADATA_PREFIX = '[image-retry-auth]';
+const execFileAsync = promisify(execFile);
+
+function resolveScraperRoot(): string {
+  const workspaceCandidate = path.resolve(process.cwd(), 'apps', 'scraper');
+  if (existsSync(workspaceCandidate)) {
+    return workspaceCandidate;
+  }
+
+  return path.resolve(process.cwd(), '..', 'scraper');
+}
+
+const SCRAPER_ROOT = resolveScraperRoot();
 
 interface ProductRetryContext {
   id: string;
   sku: string;
   sources: Record<string, unknown>;
-  scraperSlug: string | null;
+  scraper: ScraperRuntimeConfig | null;
 }
 
 interface ScraperConfigMatch {
   slug: string;
-  base_url: string | null;
+  file_path: string;
+}
+
+interface ScraperYamlConfig {
+  base_url?: string;
+  requires_login?: boolean;
+}
+
+interface ScraperRuntimeConfig {
+  slug: string;
+  filePath: string;
+  baseUrl: string | null;
+  requiresLogin: boolean;
 }
 
 interface DomainCircuitState {
   openUntil: number | null;
   failures: number[];
+}
+
+interface BrowserSessionState {
+  sessionExpiresAt: string | null;
+  storageStatePath: string;
+}
+
+interface RetryAuthMetadata {
+  reloginAttempts: number;
+  sessionExpiresAt: string | null;
+}
+
+interface RetryErrorEnvelope {
+  message: string;
+  auth?: RetryAuthMetadata;
 }
 
 export interface ImageRetryCaptureRequest {
@@ -63,10 +110,97 @@ export type ImageRetryEntry = PendingImageRetry;
 export interface ImageRetryProcessorOptions {
   supabase?: Pick<SupabaseClient, 'rpc' | 'from'>;
   captureImage?: (request: ImageRetryCaptureRequest) => Promise<ImageRetryCaptureResult>;
+  readBrowserSession?: (scraper: ScraperRuntimeConfig) => Promise<BrowserSessionState>;
+  reauthenticate?: (context: ProductRetryContext, session: BrowserSessionState) => Promise<BrowserSessionState>;
   now?: () => Date;
   logger?: Pick<Console, 'info' | 'warn' | 'error'>;
   batchSize?: number;
   concurrency?: number;
+}
+
+function slugify(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return normalized.replace(/^-+|-+$/g, '') || 'default';
+}
+
+function buildBrowserStatePath(scraper: ScraperRuntimeConfig): string {
+  const siteKey = slugify(scraper.slug);
+  if (!scraper.baseUrl) {
+    return path.join(SCRAPER_ROOT, '.browser_storage_states', `${siteKey}.json`);
+  }
+
+  let domainSource = scraper.baseUrl;
+  try {
+    const parsed = new URL(scraper.baseUrl);
+    domainSource = parsed.host || parsed.pathname || scraper.baseUrl;
+  } catch {}
+
+  const domainKey = slugify(domainSource);
+  const browserStateKey = domainKey === siteKey ? siteKey : `${siteKey}--${domainKey}`;
+  return path.join(SCRAPER_ROOT, '.browser_storage_states', `${browserStateKey}.json`);
+}
+
+function parseRetryErrorEnvelope(lastError: string | null | undefined): RetryErrorEnvelope {
+  if (!lastError) {
+    return { message: '' };
+  }
+
+  if (!lastError.startsWith(AUTH_METADATA_PREFIX)) {
+    return { message: lastError };
+  }
+
+  const payload = lastError.slice(AUTH_METADATA_PREFIX.length);
+  try {
+    const parsed = JSON.parse(payload) as Partial<RetryErrorEnvelope>;
+    return {
+      message: typeof parsed.message === 'string' ? parsed.message : '',
+      auth: parsed.auth
+        ? {
+            reloginAttempts:
+              typeof parsed.auth.reloginAttempts === 'number' ? parsed.auth.reloginAttempts : 0,
+            sessionExpiresAt:
+              typeof parsed.auth.sessionExpiresAt === 'string' ? parsed.auth.sessionExpiresAt : null,
+          }
+        : undefined,
+    };
+  } catch {
+    return { message: lastError };
+  }
+}
+
+function formatRetryError(message: string, auth?: RetryAuthMetadata): string {
+  if (!auth) {
+    return message;
+  }
+
+  return `${AUTH_METADATA_PREFIX}${JSON.stringify({ message, auth })}`;
+}
+
+function isExpired(sessionExpiresAt: string | null, now: Date): boolean {
+  if (!sessionExpiresAt) {
+    return true;
+  }
+
+  const expiresAtMs = new Date(sessionExpiresAt).getTime();
+  return Number.isNaN(expiresAtMs) || expiresAtMs <= now.getTime();
+}
+
+function getSessionExpiryFromStorageState(storageState: string): string | null {
+  const parsed = JSON.parse(storageState) as { cookies?: Array<{ expires?: number }> };
+  if (!Array.isArray(parsed.cookies)) {
+    return null;
+  }
+
+  const expiries = parsed.cookies
+    .map((cookie) => (typeof cookie.expires === 'number' ? cookie.expires : Number.NaN))
+    .filter((expires) => Number.isFinite(expires) && expires > 0)
+    .sort((left, right) => left - right);
+
+  if (expiries.length === 0) {
+    return null;
+  }
+
+  return new Date(expiries[0] * 1000).toISOString();
 }
 
 function toImageCaptureErrorType(errorType: ImageErrorType): ImageCaptureErrorType {
@@ -140,6 +274,11 @@ function getSupabaseAdmin(): Pick<SupabaseClient, 'rpc' | 'from'> {
 export class ImageRetryProcessor {
   private readonly supabase: Pick<SupabaseClient, 'rpc' | 'from'>;
   private readonly captureImage: (request: ImageRetryCaptureRequest) => Promise<ImageRetryCaptureResult>;
+  private readonly readBrowserSession: (scraper: ScraperRuntimeConfig) => Promise<BrowserSessionState>;
+  private readonly reauthenticate: (
+    context: ProductRetryContext,
+    session: BrowserSessionState
+  ) => Promise<BrowserSessionState>;
   private readonly now: () => Date;
   private readonly logger: Pick<Console, 'info' | 'warn' | 'error'>;
   private readonly batchSize: number;
@@ -149,6 +288,8 @@ export class ImageRetryProcessor {
   constructor(options: ImageRetryProcessorOptions = {}) {
     this.supabase = options.supabase ?? getSupabaseAdmin();
     this.captureImage = options.captureImage ?? this.defaultCaptureImage;
+    this.readBrowserSession = options.readBrowserSession ?? this.defaultReadBrowserSession;
+    this.reauthenticate = options.reauthenticate ?? this.defaultReauthenticate;
     this.now = options.now ?? (() => new Date());
     this.logger = options.logger ?? console;
     this.batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
@@ -219,13 +360,9 @@ export class ImageRetryProcessor {
       }
 
       const context = await this.loadProductRetryContext(entry.product_id, entry.image_url);
-      const capture = await this.captureImage({
-        productId: context.id,
-        sku: context.sku,
-        imageUrl: entry.image_url,
-        scraperSlug: context.scraperSlug,
-        domain,
-      });
+      const authEnvelope = parseRetryErrorEnvelope(entry.last_error);
+      const authMetadata = await this.refreshAuthSessionIfNeeded(entry, context, authEnvelope.auth);
+      const capture = await this.captureWithReauthentication(entry, context, domain, authMetadata);
 
       if (capture.success && capture.imageUrl) {
         await this.persistRetrySuccess(entry, context, capture.imageUrl);
@@ -236,17 +373,62 @@ export class ImageRetryProcessor {
       const errorType = capture.errorType ?? toImageCaptureErrorType(entry.error_type);
       const errorMessage = capture.errorMessage ?? 'Image capture retry failed';
 
-      return await this.handleRetryFailure(entry, errorType, errorMessage, domain);
+      return await this.handleRetryFailure(entry, errorType, errorMessage, domain, capture.authMetadata);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorType = toImageCaptureErrorType(entry.error_type);
 
-      return await this.handleRetryFailure(entry, errorType, errorMessage, domain);
+      return await this.handleRetryFailure(
+        entry,
+        errorType,
+        errorMessage,
+        domain,
+        parseRetryErrorEnvelope(entry.last_error).auth
+      );
     }
   }
 
   private readonly defaultCaptureImage = async (): Promise<ImageRetryCaptureResult> => {
     throw new Error('Image retry capture client is not configured');
+  };
+
+  private readonly defaultReadBrowserSession = async (
+    scraper: ScraperRuntimeConfig
+  ): Promise<BrowserSessionState> => {
+    const storageStatePath = buildBrowserStatePath(scraper);
+
+    try {
+      const storageState = await readFile(storageStatePath, 'utf8');
+      return {
+        sessionExpiresAt: getSessionExpiryFromStorageState(storageState),
+        storageStatePath,
+      };
+    } catch {
+      return {
+        sessionExpiresAt: null,
+        storageStatePath,
+      };
+    }
+  };
+
+  private readonly defaultReauthenticate = async (
+    context: ProductRetryContext,
+    _session: BrowserSessionState
+  ): Promise<BrowserSessionState> => {
+    if (!context.scraper?.filePath) {
+      throw new Error('Cannot re-authenticate without a scraper config file');
+    }
+
+    const configPath = path.resolve(SCRAPER_ROOT, context.scraper.filePath);
+    await execFileAsync('python', ['runner.py', '--local', '--config', configPath, '--sku', context.sku], {
+      cwd: SCRAPER_ROOT,
+      env: {
+        ...process.env,
+        USE_YAML_CONFIGS: 'true',
+      },
+    });
+
+    return this.readBrowserSession(context.scraper);
   };
 
   private async loadProductRetryContext(productId: string, imageUrl: string): Promise<ProductRetryContext> {
@@ -262,35 +444,130 @@ export class ImageRetryProcessor {
 
     const sources = isRecord(product.sources) ? product.sources : {};
     const sourceNames = Object.keys(sources).filter((sourceName) => !sourceName.startsWith('_'));
-    const scraperSlug = await this.resolveScraperSlug(sourceNames, imageUrl);
 
     return {
       id: product.id,
       sku: product.sku,
       sources,
-      scraperSlug,
+      scraper: await this.loadScraperRuntimeConfig(sourceNames, imageUrl),
     };
   }
 
-  private async resolveScraperSlug(sourceNames: string[], imageUrl: string): Promise<string | null> {
+  private async loadScraperRuntimeConfig(
+    sourceNames: string[],
+    imageUrl: string
+  ): Promise<ScraperRuntimeConfig | null> {
     if (sourceNames.length === 0) {
       return null;
     }
 
     const { data, error } = await this.supabase
       .from('scraper_configs')
-      .select('slug, base_url')
+      .select('slug, file_path')
       .in('slug', sourceNames);
 
     if (error || !Array.isArray(data) || data.length === 0) {
-      return sourceNames[0] ?? null;
+      return null;
     }
 
-    const domain = parseDomain(imageUrl);
     const configs = data as ScraperConfigMatch[];
-    const directMatch = configs.find((config) => parseDomain(config.base_url ?? '') === domain);
+    const yamlConfigs = await Promise.all(
+      configs.map(async (config) => {
+        const filePath = path.resolve(SCRAPER_ROOT, config.file_path);
+        const rawConfig = await readFile(filePath, 'utf8');
+        const parsed = parseYaml(rawConfig) as ScraperYamlConfig;
+        return {
+          slug: config.slug,
+          filePath: config.file_path,
+          baseUrl: typeof parsed.base_url === 'string' ? parsed.base_url : null,
+          requiresLogin: Boolean(parsed.requires_login),
+        } satisfies ScraperRuntimeConfig;
+      })
+    );
 
-    return directMatch?.slug ?? configs[0]?.slug ?? sourceNames[0] ?? null;
+    const domain = parseDomain(imageUrl);
+    const directMatch = yamlConfigs.find((config) => parseDomain(config.baseUrl ?? '') === domain);
+
+    return directMatch ?? yamlConfigs[0] ?? null;
+  }
+
+  private async refreshAuthSessionIfNeeded(
+    entry: ImageRetryEntry,
+    context: ProductRetryContext,
+    authMetadata?: RetryAuthMetadata
+  ): Promise<RetryAuthMetadata | undefined> {
+    if (toImageCaptureErrorType(entry.error_type) !== ImageCaptureErrorType.AUTH_401 || !context.scraper?.requiresLogin) {
+      return authMetadata;
+    }
+
+    const session = await this.readBrowserSession(context.scraper);
+    const nextMetadata: RetryAuthMetadata = {
+      reloginAttempts: authMetadata?.reloginAttempts ?? 0,
+      sessionExpiresAt: session.sessionExpiresAt,
+    };
+
+    if (!isExpired(session.sessionExpiresAt, this.now())) {
+      return nextMetadata;
+    }
+
+    if (nextMetadata.reloginAttempts >= MAX_RELOGIN_ATTEMPTS) {
+      return nextMetadata;
+    }
+
+    const refreshedSession = await this.reauthenticate(context, session);
+    return {
+      reloginAttempts: nextMetadata.reloginAttempts + 1,
+      sessionExpiresAt: refreshedSession.sessionExpiresAt,
+    };
+  }
+
+  private async captureWithReauthentication(
+    entry: ImageRetryEntry,
+    context: ProductRetryContext,
+    domain: string,
+    authMetadata?: RetryAuthMetadata
+  ): Promise<ImageRetryCaptureResult & { authMetadata?: RetryAuthMetadata }> {
+    let currentAuthMetadata = authMetadata;
+    let capture = await this.captureImage({
+      productId: context.id,
+      sku: context.sku,
+      imageUrl: entry.image_url,
+      scraperSlug: context.scraper?.slug ?? null,
+      domain,
+    });
+
+    while (
+      capture.errorType === ImageCaptureErrorType.AUTH_401 &&
+      context.scraper?.requiresLogin &&
+      (currentAuthMetadata?.reloginAttempts ?? 0) < MAX_RELOGIN_ATTEMPTS
+    ) {
+      const refreshedSession = await this.reauthenticate(context, {
+        sessionExpiresAt: currentAuthMetadata?.sessionExpiresAt ?? null,
+        storageStatePath: buildBrowserStatePath(context.scraper),
+      });
+
+      currentAuthMetadata = {
+        reloginAttempts: (currentAuthMetadata?.reloginAttempts ?? 0) + 1,
+        sessionExpiresAt: refreshedSession.sessionExpiresAt,
+      };
+
+      capture = await this.captureImage({
+        productId: context.id,
+        sku: context.sku,
+        imageUrl: entry.image_url,
+        scraperSlug: context.scraper.slug,
+        domain,
+      });
+
+      if (capture.success) {
+        return { ...capture, authMetadata: currentAuthMetadata };
+      }
+    }
+
+    return {
+      ...capture,
+      authMetadata: currentAuthMetadata,
+    };
   }
 
   private async persistRetrySuccess(
@@ -323,19 +600,23 @@ export class ImageRetryProcessor {
     entry: ImageRetryEntry,
     errorType: ImageCaptureErrorType,
     errorMessage: string,
-    domain: string
+    domain: string,
+    authMetadata?: RetryAuthMetadata
   ): Promise<'failed' | 'rescheduled'> {
     const nextRetryCount = entry.retry_count + 1;
     const canRetry = shouldRetry(errorType, nextRetryCount, entry.max_retries);
+    const exhaustedReloginAttempts =
+      errorType === ImageCaptureErrorType.AUTH_401 &&
+      (authMetadata?.reloginAttempts ?? 0) >= MAX_RELOGIN_ATTEMPTS;
 
     this.recordDomainFailure(domain, this.now().getTime());
 
-    if (!canRetry || errorType === ImageCaptureErrorType.NOT_FOUND_404) {
+    if (!canRetry || errorType === ImageCaptureErrorType.NOT_FOUND_404 || exhaustedReloginAttempts) {
       await this.updateRetryEntry(entry.retry_id, {
         error_type: errorType,
         retry_count: nextRetryCount,
         status: 'failed',
-        last_error: errorMessage,
+        last_error: formatRetryError(errorMessage, authMetadata),
       });
 
       this.logger.error(
@@ -353,7 +634,7 @@ export class ImageRetryProcessor {
       retry_count: nextRetryCount,
       status: 'pending',
       scheduled_for: scheduledFor,
-      last_error: errorMessage,
+      last_error: formatRetryError(errorMessage, authMetadata),
     });
 
     this.logger.warn(

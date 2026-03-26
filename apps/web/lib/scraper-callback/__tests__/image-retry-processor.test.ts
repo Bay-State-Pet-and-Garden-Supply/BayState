@@ -9,6 +9,7 @@ import {
 } from '@/lib/scraper-callback/image-retry-processor';
 
 const FIXED_NOW = new Date('2026-03-26T12:00:00.000Z');
+const AUTH_METADATA_PREFIX = '[image-retry-auth]';
 
 function buildMarker(imageUrl: string, errorType: string): string {
   const hash = createHash('sha256').update(imageUrl).digest('hex').slice(0, 16);
@@ -25,6 +26,16 @@ function createEntry(overrides: Partial<ImageRetryEntry> = {}): ImageRetryEntry 
     max_retries: 3,
     ...overrides,
   };
+}
+
+function buildAuthLastError(message: string, reloginAttempts: number, sessionExpiresAt: string | null): string {
+  return `${AUTH_METADATA_PREFIX}${JSON.stringify({
+    message,
+    auth: {
+      reloginAttempts,
+      sessionExpiresAt,
+    },
+  })}`;
 }
 
 function createSupabaseMock(entries: ImageRetryEntry[]) {
@@ -82,7 +93,7 @@ function createSupabaseMock(entries: ImageRetryEntry[]) {
             data: [
               {
                 slug: 'phillips',
-                base_url: 'https://private.example.com',
+                file_path: 'scrapers/configs/phillips.yaml',
               },
             ],
             error: null,
@@ -115,6 +126,10 @@ describe('ImageRetryProcessor', () => {
     const processor = new ImageRetryProcessor({
       supabase: mock.supabase as never,
       captureImage,
+      readBrowserSession: jest.fn(async () => ({
+        sessionExpiresAt: '2026-03-26T14:00:00.000Z',
+        storageStatePath: 'C:/browser-state/phillips.json',
+      })),
       now: () => FIXED_NOW,
     });
 
@@ -184,6 +199,10 @@ describe('ImageRetryProcessor', () => {
     const processor = new ImageRetryProcessor({
       supabase: mock.supabase as never,
       captureImage,
+      readBrowserSession: jest.fn(async () => ({
+        sessionExpiresAt: '2026-03-26T14:00:00.000Z',
+        storageStatePath: 'C:/browser-state/phillips.json',
+      })),
       now: () => FIXED_NOW,
     });
 
@@ -225,6 +244,10 @@ describe('ImageRetryProcessor', () => {
     const processor = new ImageRetryProcessor({
       supabase: mock.supabase as never,
       captureImage,
+      readBrowserSession: jest.fn(async () => ({
+        sessionExpiresAt: '2026-03-26T14:00:00.000Z',
+        storageStatePath: 'C:/browser-state/phillips.json',
+      })),
       now: () => FIXED_NOW,
     });
 
@@ -254,6 +277,10 @@ describe('ImageRetryProcessor', () => {
     const processor = new ImageRetryProcessor({
       supabase: mock.supabase as never,
       captureImage,
+      readBrowserSession: jest.fn(async () => ({
+        sessionExpiresAt: '2026-03-26T14:00:00.000Z',
+        storageStatePath: 'C:/browser-state/phillips.json',
+      })),
       now: () => FIXED_NOW,
     });
 
@@ -270,6 +297,115 @@ describe('ImageRetryProcessor', () => {
         status: 'pending',
         scheduled_for: '2026-03-26T12:05:00.000Z',
         last_error: 'Circuit breaker open for private.example.com',
+        updated_at: '2026-03-26T12:00:00.000Z',
+      },
+    });
+  });
+
+  it('re-authenticates expired auth sessions before retrying capture', async () => {
+    const entry = createEntry({ error_type: 'auth_401' });
+    const mock = createSupabaseMock([]);
+    const captureImage = jest.fn(async (): Promise<ImageRetryCaptureResult> => ({
+      success: true,
+      imageUrl: 'https://cdn.example.com/refreshed-image.jpg',
+    }));
+    const readBrowserSession = jest
+      .fn()
+      .mockResolvedValueOnce({
+        sessionExpiresAt: '2026-03-26T11:55:00.000Z',
+        storageStatePath: 'C:/browser-state/phillips.json',
+      })
+      .mockResolvedValueOnce({
+        sessionExpiresAt: '2026-03-26T13:00:00.000Z',
+        storageStatePath: 'C:/browser-state/phillips.json',
+      });
+    const reauthenticate = jest.fn(async () => ({
+      sessionExpiresAt: '2026-03-26T13:00:00.000Z',
+      storageStatePath: 'C:/browser-state/phillips.json',
+    }));
+
+    const processor = new ImageRetryProcessor({
+      supabase: mock.supabase as never,
+      captureImage,
+      readBrowserSession,
+      reauthenticate,
+      now: () => FIXED_NOW,
+    });
+
+    const status = await processor.processRetry(entry);
+
+    expect(status).toBe('completed');
+    expect(reauthenticate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sku: 'SKU-1',
+        scraper: expect.objectContaining({
+          slug: 'phillips',
+          requiresLogin: true,
+        }),
+      }),
+      {
+        sessionExpiresAt: '2026-03-26T11:55:00.000Z',
+        storageStatePath: 'C:/browser-state/phillips.json',
+      }
+    );
+    expect(captureImage).toHaveBeenCalledTimes(1);
+    expect(mock.retryQueueUpdates).toEqual([
+      {
+        id: 'retry-1',
+        payload: {
+          status: 'processing',
+          last_error: null,
+          updated_at: '2026-03-26T12:00:00.000Z',
+        },
+      },
+      {
+        id: 'retry-1',
+        payload: {
+          status: 'completed',
+          last_error: null,
+          updated_at: '2026-03-26T12:00:00.000Z',
+        },
+      },
+    ]);
+  });
+
+  it('fails auth retries after two relogin attempts', async () => {
+    const entry = createEntry({
+      error_type: 'auth_401',
+      last_error: buildAuthLastError('Previous auth failure', 2, '2026-03-26T11:50:00.000Z'),
+    });
+    const mock = createSupabaseMock([]);
+    const captureImage = jest.fn(async (): Promise<ImageRetryCaptureResult> => ({
+      success: false,
+      errorType: ImageCaptureErrorType.AUTH_401,
+      errorMessage: 'HTTP 401',
+    }));
+    const readBrowserSession = jest.fn(async () => ({
+      sessionExpiresAt: '2026-03-26T11:55:00.000Z',
+      storageStatePath: 'C:/browser-state/phillips.json',
+    }));
+    const reauthenticate = jest.fn();
+
+    const processor = new ImageRetryProcessor({
+      supabase: mock.supabase as never,
+      captureImage,
+      readBrowserSession,
+      reauthenticate,
+      now: () => FIXED_NOW,
+    });
+
+    const status = await processor.processRetry(entry);
+
+    expect(status).toBe('failed');
+    expect(reauthenticate).not.toHaveBeenCalled();
+    expect(captureImage).toHaveBeenCalledTimes(1);
+    expect(mock.retryQueueUpdates[1]).toEqual({
+      id: 'retry-1',
+      payload: {
+        error_type: 'auth_401',
+        retry_count: 1,
+        status: 'failed',
+        last_error: buildAuthLastError('HTTP 401', 2, '2026-03-26T11:55:00.000Z'),
         updated_at: '2026-03-26T12:00:00.000Z',
       },
     });
