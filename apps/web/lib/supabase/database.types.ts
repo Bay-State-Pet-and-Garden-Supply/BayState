@@ -79,6 +79,7 @@ export interface PendingImageRetry {
   error_type: ImageErrorType;
   retry_count: number;
   max_retries: number;
+  last_error?: string | null;
 }
 
 export interface ProductImageRetryHistory {
