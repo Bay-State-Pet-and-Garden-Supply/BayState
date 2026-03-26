@@ -1,4 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
+import {
+    buildProductImageStorageFolder,
+    replaceInlineImageDataUrls,
+} from '@/lib/product-image-storage';
 
 /**
  * Publishes a product from the ingestion pipeline to the storefront catalog.
@@ -50,8 +54,31 @@ export async function publishToStorefront(sku: string) {
         // Prepare images array
         let images: string[] = [];
         if (Array.isArray(consolidated.images)) {
-            images = (consolidated.images as unknown[])
+            const sourceImages = (consolidated.images as unknown[])
                 .filter((img): img is string => typeof img === 'string' && img.trim() !== '');
+            images = await replaceInlineImageDataUrls(supabase, sourceImages, {
+                folderPath: buildProductImageStorageFolder('pipeline-published', sku),
+                onError: (message, error) => {
+                    console.error(`[Publish] ${message}`, error);
+                },
+            });
+
+            if (images.some((image, index) => image !== sourceImages[index])) {
+                const { error: persistenceError } = await supabase
+                    .from('products_ingestion')
+                    .update({
+                        consolidated: {
+                            ...(consolidated as Record<string, unknown>),
+                            images,
+                        },
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('sku', sku);
+
+                if (persistenceError) {
+                    console.error(`[Publish] Failed to persist durable pipeline images for ${sku}:`, persistenceError);
+                }
+            }
         }
 
         // Resolve product_on_pages to shopsite_pages jsonb

@@ -290,6 +290,86 @@ function isImageLikeKey(key: string): boolean {
     return /image|img|photo|picture|thumbnail|gallery|hero/i.test(key);
 }
 
+function collectImageCandidates(value: unknown, max: number): string[] {
+    const deduped = new Set<string>();
+
+    const addCandidate = (candidate: string) => {
+        const normalized = normalizeImageUrl(candidate);
+        if (!normalized) {
+            return;
+        }
+        if (isImageDataUri(normalized)) {
+            deduped.add(normalized);
+            return;
+        }
+        if (!isLikelyImageUrl(normalized)) {
+            return;
+        }
+        deduped.add(normalized);
+    };
+
+    const visit = (entry: unknown, keyPath: string[] = [], depth: number = 0) => {
+        if (deduped.size >= max || depth > 6) {
+            return;
+        }
+
+        const latestKey = keyPath[keyPath.length - 1] || '';
+        const imageKeyContext = keyPath.some((key) => isImageLikeKey(key));
+
+        if (typeof entry === 'string') {
+            if (imageKeyContext || isImageLikeKey(latestKey) || isLikelyImageUrl(entry)) {
+                addCandidate(entry);
+            }
+            return;
+        }
+
+        if (Array.isArray(entry)) {
+            entry.forEach((arrayEntry) => visit(arrayEntry, keyPath, depth + 1));
+            return;
+        }
+
+        if (isRecord(entry)) {
+            Object.entries(entry).forEach(([key, nestedEntry]) => {
+                if (isIgnoredDataKey(key)) {
+                    return;
+                }
+                visit(nestedEntry, [...keyPath, key], depth + 1);
+            });
+        }
+    };
+
+    visit(value);
+
+    return Array.from(deduped).slice(0, max);
+}
+
+function stripImageLikeFields(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map((entry) => stripImageLikeFields(entry));
+    }
+
+    if (!isRecord(value)) {
+        return value;
+    }
+
+    const stripped: Record<string, unknown> = {};
+
+    for (const [key, entry] of Object.entries(value)) {
+        if (isIgnoredDataKey(key)) {
+            stripped[key] = entry;
+            continue;
+        }
+
+        if (isImageLikeKey(key)) {
+            continue;
+        }
+
+        stripped[key] = stripImageLikeFields(entry);
+    }
+
+    return stripped;
+}
+
 /**
  * Normalize image URLs, specifically stripping Amazon's resize parameters.
  * e.g., https://m.media-amazon.com/images/I/71X..._AC_SL1500_.jpg -> https://m.media-amazon.com/images/I/71X....jpg
@@ -324,6 +404,14 @@ export function extractSourceMetadata(rawSources: unknown): Record<string, unkno
     }
 
     return metadata;
+}
+
+export function extractImageCandidatesFromSourcePayload(rawSource: unknown, max: number = 24): string[] {
+    return collectImageCandidates(normalizeSourcePayload(rawSource), max);
+}
+
+export function removeImageFieldsFromSourcePayload(rawSource: unknown): Record<string, unknown> {
+    return stripImageLikeFields(normalizeSourcePayload(rawSource)) as Record<string, unknown>;
 }
 
 export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
@@ -418,52 +506,13 @@ export function extractImageCandidatesFromSources(rawSources: unknown, max: numb
     const normalizedSources = normalizeProductSources(rawSources);
     const deduped = new Set<string>();
 
-    const addCandidate = (candidate: string) => {
-        const normalized = normalizeImageUrl(candidate);
-        if (!normalized) {
-            return;
-        }
-        if (isImageDataUri(normalized)) {
-            deduped.add(normalized);
-            return;
-        }
-        if (!isLikelyImageUrl(normalized)) {
-            return;
-        }
-        deduped.add(normalized);
-    };
-
-    const visit = (value: unknown, keyPath: string[] = [], depth: number = 0) => {
-        if (deduped.size >= max || depth > 6) {
-            return;
-        }
-
-        const latestKey = keyPath[keyPath.length - 1] || '';
-        const imageKeyContext = keyPath.some((key) => isImageLikeKey(key));
-
-        if (typeof value === 'string') {
-            if (imageKeyContext || isImageLikeKey(latestKey) || isLikelyImageUrl(value)) {
-                addCandidate(value);
+    Object.values(normalizedSources).forEach((sourcePayload) => {
+        extractImageCandidatesFromSourcePayload(sourcePayload, max).forEach((candidate) => {
+            if (deduped.size < max) {
+                deduped.add(candidate);
             }
-            return;
-        }
-
-        if (Array.isArray(value)) {
-            value.forEach((entry) => visit(entry, keyPath, depth + 1));
-            return;
-        }
-
-        if (isRecord(value)) {
-            Object.entries(value).forEach(([key, entry]) => {
-                if (isIgnoredDataKey(key)) {
-                    return;
-                }
-                visit(entry, [...keyPath, key], depth + 1);
-            });
-        }
-    };
-
-    Object.values(normalizedSources).forEach((sourcePayload) => visit(sourcePayload));
+        });
+    });
 
     return Array.from(deduped).slice(0, max);
 }

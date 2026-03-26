@@ -1,7 +1,9 @@
 import {
+    extractImageCandidatesFromSourcePayload,
     filterMeaningfulProductSources,
     hasMeaningfulProductSourceData,
     normalizeProductSources,
+    removeImageFieldsFromSourcePayload,
 } from '@/lib/product-sources';
 
 describe('hasMeaningfulProductSourceData', () => {
@@ -102,6 +104,50 @@ describe('normalizeProductSources', () => {
                 images: ['https://cdn.example.com/legacy.jpg'],
                 scraped_at: '2026-03-19T00:00:00.000Z',
             },
+        });
+    });
+});
+
+describe('image source helpers', () => {
+    it('extracts image candidates from a single normalized source payload', () => {
+        const result = extractImageCandidatesFromSourcePayload({
+            title: 'Protected Product',
+            images: ['https://private.example.com/hero.jpg', 'https://private.example.com/hero.jpg'],
+            gallery: [
+                {
+                    thumbnail: 'https://private.example.com/thumb.png',
+                },
+            ],
+            documents: ['https://private.example.com/spec-sheet.pdf'],
+            scraped_at: '2026-03-22T00:00:00.000Z',
+        });
+
+        expect(result).toEqual([
+            'https://private.example.com/hero.jpg',
+            'https://private.example.com/thumb.png',
+        ]);
+    });
+
+    it('removes image-like fields while preserving non-image data and scrape metadata', () => {
+        const result = removeImageFieldsFromSourcePayload({
+            title: 'Protected Product',
+            price: '12.99',
+            images: ['https://private.example.com/hero.jpg'],
+            gallery: [{ thumbnail: 'https://private.example.com/thumb.png' }],
+            attributes: {
+                hero_image: 'https://private.example.com/detail.jpg',
+                size: '40 lb.',
+            },
+            scraped_at: '2026-03-22T00:00:00.000Z',
+        });
+
+        expect(result).toEqual({
+            title: 'Protected Product',
+            price: '12.99',
+            attributes: {
+                size: '40 lb.',
+            },
+            scraped_at: '2026-03-22T00:00:00.000Z',
         });
     });
 });

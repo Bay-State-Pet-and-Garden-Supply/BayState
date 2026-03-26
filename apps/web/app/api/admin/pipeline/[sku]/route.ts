@@ -3,6 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 import {
+  buildProductImageStorageFolder,
+  replaceInlineImageDataUrls,
+} from '@/lib/product-image-storage';
+import {
   isLegacyPipelineStatus,
   toNewPipelineStatus,
   validateStatusTransition,
@@ -108,7 +112,20 @@ export async function PATCH(
     };
 
     if (consolidated !== undefined) {
-      updateData.consolidated = consolidated;
+      if (consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)) {
+        updateData.consolidated = await replaceInlineImageDataUrls(
+          supabase,
+          consolidated as Record<string, unknown>,
+          {
+            folderPath: buildProductImageStorageFolder('pipeline-consolidated', sku),
+            onError: (message, error) => {
+              console.error(`[Pipeline SKU] ${message}`, error);
+            },
+          }
+        );
+      } else {
+        updateData.consolidated = consolidated;
+      }
     }
 
     if (sources !== undefined) {
