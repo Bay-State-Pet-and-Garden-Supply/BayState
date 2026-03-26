@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,7 +57,7 @@ import {
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
-  onRefresh: () => void;
+  onRefresh: (silent?: boolean) => void;
 }
 
 interface Brand {
@@ -148,6 +149,9 @@ export function FinalizingResultsView({
     sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
 
+  // track previous products to detect when a product is removed (published/rejected)
+  const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
+
   // Carousel state
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -169,6 +173,8 @@ export function FinalizingResultsView({
   const [pagePopoverOpen, setPagePopoverOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedData, setLastSavedData] = useState<string>("");
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -289,6 +295,32 @@ export function FinalizingResultsView({
 
   const selectedSku = selectedProduct?.sku ?? null;
 
+  // Intelligent selection: When products change, if the current selection is gone,
+  // select the next product that was after it.
+  useEffect(() => {
+    const prevProducts = prevProductsRef.current;
+    if (prevProducts !== sortedProducts) {
+      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
+      if (!currentExists && preferredSku) {
+        // Current SKU was removed (published or rejected).
+        // Find where it was in the PREVIOUS list.
+        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
+        if (prevIndex !== -1) {
+          // Select the product that is now at that same index (or the one before if it was last)
+          const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
+          if (nextIndex >= 0) {
+            setPreferredSku(sortedProducts[nextIndex].sku);
+          } else {
+            setPreferredSku(null);
+          }
+        }
+      } else if (!preferredSku && sortedProducts.length > 0) {
+        setPreferredSku(sortedProducts[0].sku);
+      }
+      prevProductsRef.current = sortedProducts;
+    }
+  }, [sortedProducts, preferredSku]);
+
   // Fetch brands and categories
   useEffect(() => {
     async function fetchData() {
@@ -336,7 +368,7 @@ export function FinalizingResultsView({
 
       const name = consolidated.name || input.name || "";
 
-      setFormData({
+      const initialData = {
         name,
         description: consolidated.description || name,
         longDescription:
@@ -364,11 +396,21 @@ export function FinalizingResultsView({
         isFeatured: consolidated.is_featured || false,
         isSpecialOrder: !!(cons as Record<string, unknown>).is_special_order,
         customImageUrl: "",
-        selectedImages: [],
-      });
+        selectedImages: initialSelectedImages,
+      };
+
+      setFormData(initialData);
+      setLastSavedData(JSON.stringify(initialData));
+      setIsDirty(false);
       setSelectedImageSourceId("");
     }
   }, [selectedProduct]);
+
+  // Track dirtiness
+  useEffect(() => {
+    const currentData = JSON.stringify(formData);
+    setIsDirty(currentData !== lastSavedData);
+  }, [formData, lastSavedData]);
 
   // Handle name change and auto-populate descriptions if they match name
   const handleNameChange = (newName: string) => {
@@ -386,17 +428,39 @@ export function FinalizingResultsView({
     });
   };
 
-  // Keyboard navigation
+  // Keyboard navigation and shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
-      if (
+      const isInput =
         activeElement?.tagName === "INPUT" ||
         activeElement?.tagName === "TEXTAREA" ||
-        activeElement?.getAttribute("contenteditable") === "true"
-      ) {
+        activeElement?.getAttribute("contenteditable") === "true";
+
+      // Ctrl+S to save
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleSave(false);
         return;
       }
+
+      // Enter to finalize (only if not in a textarea)
+      if (
+        e.key === "Enter" &&
+        !e.shiftKey &&
+        activeElement?.tagName !== "TEXTAREA" &&
+        !e.ctrlKey &&
+        !e.metaKey
+      ) {
+        // Only if we are not in an input that handles Enter differently
+        if (!isInput || activeElement?.id === "product-name") {
+          e.preventDefault();
+          handleSave(true);
+          return;
+        }
+      }
+
+      if (isInput) return;
 
       if (sortedProducts.length === 0) return;
 
@@ -417,7 +481,7 @@ export function FinalizingResultsView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [preferredSku, sortedProducts]);
+  }, [preferredSku, sortedProducts, isDirty, formData]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -472,12 +536,12 @@ export function FinalizingResultsView({
     }
   };
 
-  const handleSave = async (andPublish = false) => {
+  const handleSave = async (andPublish = false, silent = false) => {
     if (!selectedSku) return;
 
     const isSaveAction = !andPublish;
-    if (isSaveAction) setSaving(true);
-    else setPublishing(true);
+    if (isSaveAction && !silent) setSaving(true);
+    else if (andPublish) setPublishing(true);
 
     try {
       const consolidated = {
@@ -510,6 +574,9 @@ export function FinalizingResultsView({
         const data = await patchRes.json();
         throw new Error(data.error || "Failed to save changes");
       }
+
+      setLastSavedData(JSON.stringify(formData));
+      setIsDirty(false);
 
       if (andPublish) {
         // 2. Trigger publishing to storefront
@@ -545,18 +612,33 @@ export function FinalizingResultsView({
             ? "Published product updated successfully!"
             : "Product finalized and published to website!",
         );
-      } else {
+      } else if (!silent) {
         toast.success("Changes saved successfully");
       }
 
-      onRefresh();
+      // If we published, we need to refresh (silent refresh if possible)
+      // If we just saved, we can silent refresh to update the parent's data
+      onRefresh(isSaveAction); 
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred");
+      if (!silent) {
+        toast.error(err instanceof Error ? err.message : "An error occurred");
+      }
     } finally {
       setSaving(false);
       setPublishing(false);
     }
   };
+
+  // Debounced auto-save
+  useEffect(() => {
+    if (!isDirty || !selectedSku || saving || publishing) return;
+
+    const timer = setTimeout(() => {
+      handleSave(false, true);
+    }, 2000); // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(timer);
+  }, [formData, isDirty, selectedSku]);
 
   const handleReject = async () => {
     if (!selectedSku) return;
@@ -583,7 +665,7 @@ export function FinalizingResultsView({
       }
 
       toast.success("Product rejected and sent back to scraped stage.");
-      onRefresh();
+      onRefresh(false); // full refresh for reject as it moves out
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -656,22 +738,6 @@ export function FinalizingResultsView({
         }, imageSourceOptions[0]);
 
       setSelectedImageSourceId(preferredOption.id);
-    }
-  }, [imageSourceOptions, selectedImageSourceId]);
-
-  useEffect(() => {
-    const activeOption = imageSourceOptions.find(
-      (option) => option.id === selectedImageSourceId,
-    );
-    if (!activeOption) return;
-
-    if (activeOption.id === "custom") {
-      setFormData((prev) => ({ ...prev, selectedImages: [] }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        selectedImages: activeOption.candidates,
-      }));
     }
   }, [imageSourceOptions, selectedImageSourceId]);
 
@@ -758,6 +824,16 @@ export function FinalizingResultsView({
                     {selectedSku}
                   </div>
                 </div>
+                {isDirty && (
+                  <Badge variant="outline" className="ml-2 h-5 text-[10px] font-normal border-amber-200 bg-amber-50 text-amber-700 animate-pulse">
+                    Unsaved Changes
+                  </Badge>
+                )}
+                {saving && (
+                  <Badge variant="outline" className="ml-2 h-5 text-[10px] font-normal border-primary/20 bg-primary/5 text-primary">
+                    Saving...
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button

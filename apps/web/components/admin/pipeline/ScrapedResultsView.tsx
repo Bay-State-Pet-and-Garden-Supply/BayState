@@ -26,7 +26,7 @@ interface ScrapedResultsViewProps {
     isShiftClick?: boolean,
     visibleProducts?: PipelineProduct[],
   ) => void;
-  onRefresh: () => void;
+  onRefresh: (silent?: boolean) => void;
 }
 
 interface SourceDetails extends Record<string, unknown> {
@@ -67,6 +67,10 @@ export function ScrapedResultsView({
   const [preferredSku, setPreferredSku] = useState<string | null>(
     sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
+
+  // track previous products to detect when a product is removed
+  const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
+
   const [preferredSource, setPreferredSource] = useState<string>("");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +92,30 @@ export function ScrapedResultsView({
 
     return sourceKeys[0] ?? "";
   }, [preferredSource, sourceKeys]);
+
+  // Intelligent selection: When products change, if the current selection is gone,
+  // select the next product that was after it.
+  useEffect(() => {
+    const prevProducts = prevProductsRef.current;
+    if (prevProducts !== sortedProducts) {
+      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
+      if (!currentExists && preferredSku) {
+        // Current SKU was removed.
+        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
+        if (prevIndex !== -1) {
+          const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
+          if (nextIndex >= 0) {
+            setPreferredSku(sortedProducts[nextIndex].sku);
+          } else {
+            setPreferredSku(null);
+          }
+        }
+      } else if (!preferredSku && sortedProducts.length > 0) {
+        setPreferredSku(sortedProducts[0].sku);
+      }
+      prevProductsRef.current = sortedProducts;
+    }
+  }, [sortedProducts, preferredSku]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -178,7 +206,7 @@ export function ScrapedResultsView({
 
       if (res.ok) {
         toast.success(`Source "${sourceKey}" deleted`);
-        onRefresh();
+        onRefresh(true); // Silent refresh as we are just updating source list
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to delete source");
