@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
 
         const updatedConsolidated = {
             ...currentConsolidated,
-            images: durableSelectedImages,
+            images: durableSelectedImages.value,
         };
 
         const { error: updateError } = await supabase
