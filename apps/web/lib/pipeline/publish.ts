@@ -91,6 +91,7 @@ export async function publishToStorefront(sku: string) {
 
         // Prepare product data for 'products' table
         const productData = {
+            sku,
             name,
             slug,
             description: consolidated.description || '',
@@ -107,8 +108,28 @@ export async function publishToStorefront(sku: string) {
             search_keywords: consolidated.search_keywords || null,
             shopsite_pages: shopsitePages,
             published_at: new Date().toISOString(),
+            gtin: consolidated.gtin || input.gtin || null,
+            availability: consolidated.availability || input.availability || 'in stock',
+            minimum_quantity: Math.max(
+                Number.parseInt(String(consolidated.minimum_quantity ?? input.minimum_quantity ?? 0), 10) || 0,
+                0,
+            ),
             quantity: 0,
             low_stock_threshold: 5,
+        };
+
+        const markPipelinePublished = async () => {
+            const { error: pipelineError } = await supabase
+                .from('products_ingestion')
+                .update({
+                    pipeline_status: 'published',
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('sku', sku);
+
+            if (pipelineError) {
+                console.error(`[Publish] Failed to update pipeline status for ${sku}:`, pipelineError);
+            }
         };
 
         // Check if product already exists in products table by slug
@@ -130,6 +151,7 @@ export async function publishToStorefront(sku: string) {
                 return { success: false, error: 'Failed to update product in storefront' };
             }
 
+            await markPipelinePublished();
             return { success: true, action: 'updated', productId: existingProduct.id };
         } else {
             // Insert new product
@@ -144,6 +166,7 @@ export async function publishToStorefront(sku: string) {
                 return { success: false, error: 'Failed to create product in storefront' };
             }
 
+            await markPipelinePublished();
             return { success: true, action: 'created', productId: insertedProduct?.id };
         }
     } catch (err) {
