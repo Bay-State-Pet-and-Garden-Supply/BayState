@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import {
   Terminal,
@@ -9,16 +9,21 @@ import {
   Info,
   AlertTriangle,
   AlertCircle,
-  CheckCircle2,
   Search,
+  Loader2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ScrapeJobLog } from '@/app/admin/scrapers/runs/actions';
 import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
+import { useLogSubscription } from '@/lib/realtime/useLogSubscription';
+import {
+  mergeScrapeJobLogs,
+  type ScrapeJobProgressUpdate,
+} from '@/lib/scraper-logs';
+import type { ScrapeJobLog } from '@/app/admin/scrapers/runs/actions';
 
 interface LogViewerProps {
   jobId: string;
@@ -28,204 +33,254 @@ interface LogViewerProps {
 
 const logLevelConfig = {
   info: { icon: Info, color: 'text-blue-600', bg: 'bg-blue-50', label: 'INFO' },
-  warn: { icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'WARN' },
-  warning: { icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'WARN' },
+  warning: { icon: AlertTriangle, color: 'text-yellow-700', bg: 'bg-yellow-50', label: 'WARN' },
   error: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', label: 'ERROR' },
   debug: { icon: Terminal, color: 'text-muted-foreground', bg: 'bg-muted', label: 'DEBUG' },
-  success: { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', label: 'SUCCESS' },
+  critical: { icon: AlertCircle, color: 'text-red-700', bg: 'bg-red-100', label: 'CRITICAL' },
 } as const;
 
 type LogLevel = keyof typeof logLevelConfig;
 
 function getLogLevel(level: string): LogLevel {
-  return level.toLowerCase() as LogLevel;
+  return (level.toLowerCase() in logLevelConfig
+    ? level.toLowerCase()
+    : 'info') as LogLevel;
+}
+
+function formatProgressLabel(progress: ScrapeJobProgressUpdate | undefined): string {
+  if (!progress) {
+    return 'Waiting for live progress...';
+  }
+
+  const segments = [progress.status];
+  if (progress.phase) {
+    segments.push(progress.phase);
+  }
+  if (progress.current_sku) {
+    segments.push(progress.current_sku);
+  }
+  if (typeof progress.items_processed === 'number' && typeof progress.items_total === 'number') {
+    segments.push(`${progress.items_processed}/${progress.items_total}`);
+  }
+  return segments.join(' • ');
 }
 
 function LogEntry({ log }: { log: ScrapeJobLog }) {
   const level = getLogLevel(log.level);
-  const config = logLevelConfig[level] || logLevelConfig.info;
+  const config = logLevelConfig[level];
   const Icon = config.icon;
 
   return (
-    <div className="flex gap-3 py-2 hover:bg-gray-800 px-2 rounded">
-      <div className="flex-shrink-0 w-20 flex items-center gap-1">
+    <div className="flex gap-3 rounded px-2 py-2 hover:bg-slate-800/60">
+      <div className="w-20 shrink-0">
         <span className={`text-xs font-mono ${config.color}`}>
-          {format(new Date(log.created_at), 'HH:mm:ss')}
+          {format(new Date(log.timestamp), 'HH:mm:ss')}
         </span>
       </div>
-      <div className="flex-shrink-0 w-16">
-        <Badge variant="outline" className={`text-xs ${config.bg} ${config.color} border-0`}>
+
+      <div className="w-16 shrink-0">
+        <Badge variant="outline" className={`border-0 text-xs ${config.bg} ${config.color}`}>
           <Icon className="mr-1 h-3 w-3" />
           {config.label}
         </Badge>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-mono text-sm text-gray-100 break-all">
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          {log.phase ? (
+            <Badge variant="secondary" className="text-[10px] uppercase">
+              {log.phase}
+            </Badge>
+          ) : null}
+          {log.scraper_name ? (
+            <span className="text-[11px] font-mono text-slate-400">{log.scraper_name}</span>
+          ) : null}
+          {log.sku ? (
+            <span className="text-[11px] font-mono text-amber-300">{log.sku}</span>
+          ) : null}
+          {log.runner_name ? (
+            <span className="text-[11px] text-slate-500">{log.runner_name}</span>
+          ) : null}
+          {typeof log.sequence === 'number' ? (
+            <span className="text-[11px] text-slate-500">#{log.sequence}</span>
+          ) : null}
+        </div>
+
+        <div className="mt-1 font-mono text-sm break-all text-slate-100">
           {log.message}
         </div>
-        {log.details && Object.keys(log.details).length > 0 && typeof log.details === 'object' && (
-          <div className="mt-2 text-xs bg-gray-950 p-2 rounded border border-gray-800 overflow-x-auto text-gray-300">
-            <pre className="font-mono">
+
+        {log.source ? (
+          <div className="mt-1 text-[11px] text-slate-500">
+            Source: <span className="font-mono">{log.source}</span>
+          </div>
+        ) : null}
+
+        {log.details && Object.keys(log.details).length > 0 ? (
+          <div className="mt-2 overflow-x-auto rounded border border-slate-800 bg-slate-950 p-2 text-xs text-slate-300">
+            <pre className="font-mono whitespace-pre-wrap">
               {JSON.stringify(log.details, null, 2)}
             </pre>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
 }
 
 export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProps) {
-  const [logs, setLogs] = useState<ScrapeJobLog[]>(initialLogs);
   const [isExpanded, setIsExpanded] = useState(true);
   const [filter, setFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setLogs(initialLogs);
-  }, [initialLogs]);
-
-  const { isConnected } = useJobBroadcasts({
-    onLog: (log) => {
-      if (log.job_id === jobId) {
-        setLogs((prev) => {
-          // Normalize realtime log to match DB ScrapeJobLog type
-          const normalizedLog: ScrapeJobLog = {
-            id: log.id || `temp-${Date.now()}`,
-            job_id: log.job_id,
-            level: log.level,
-            message: log.message,
-            details: log.details,
-            created_at: log.timestamp || new Date().toISOString(),
-          };
-          
-          // Prevent duplicates
-          if (prev.some((existingLog: ScrapeJobLog) => existingLog.id === normalizedLog.id)) {
-            return prev;
-          }
-          return [...prev, normalizedLog];
-        });
-      }
-    }
+  const { logs: persistedRealtimeLogs, isConnected: dbConnected } = useLogSubscription({
+    jobId,
+    maxEntries: 2000,
   });
 
-  // Auto-scroll to bottom when new logs arrive
+  const { logs: broadcastLogs, progress, isConnected: broadcastConnected } = useJobBroadcasts({
+    autoConnect: true,
+    maxLogs: 2000,
+  });
+
+  const mergedLogs = useMemo(() => {
+    return mergeScrapeJobLogs(
+      initialLogs,
+      [
+        ...persistedRealtimeLogs,
+        ...broadcastLogs.filter((log) => log.job_id === jobId),
+      ],
+      2000,
+    );
+  }, [broadcastLogs, initialLogs, jobId, persistedRealtimeLogs]);
+
+  const liveProgress = progress[jobId];
+  const isConnected = dbConnected || broadcastConnected;
+
   useEffect(() => {
     if (isExpanded && logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [logs, isExpanded]);
+  }, [mergedLogs, isExpanded]);
 
-  const filteredLogs = logs.filter((log: ScrapeJobLog) => {
-    const matchesSearch = filter === '' || 
-      log.message.toLowerCase().includes(filter.toLowerCase());
-    const matchesLevel = levelFilter === 'all' || log.level.toLowerCase() === levelFilter.toLowerCase();
-    return matchesSearch && matchesLevel;
-  });
+  const filteredLogs = useMemo(() => {
+    return mergedLogs.filter((log) => {
+      const haystack = [
+        log.message,
+        log.runner_name,
+        log.scraper_name,
+        log.sku,
+        log.phase,
+        log.source,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
 
-  const logCounts = {
-    all: logs.length,
-    info: logs.filter((l: ScrapeJobLog) => l.level.toLowerCase() === 'info').length,
-    warn: logs.filter((l: ScrapeJobLog) => ['warn', 'warning'].includes(l.level.toLowerCase())).length,
-    error: logs.filter((l: ScrapeJobLog) => l.level.toLowerCase() === 'error').length,
-    success: logs.filter((l: ScrapeJobLog) => l.level.toLowerCase() === 'success').length,
-  };
+      const matchesSearch = filter === '' || haystack.includes(filter.toLowerCase());
+      const matchesLevel = levelFilter === 'all' || log.level === levelFilter;
+      return matchesSearch && matchesLevel;
+    });
+  }, [filter, levelFilter, mergedLogs]);
 
-  if (logs.length === 0) {
-    return (
-      <Card className={className}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Terminal className="h-4 w-4" />
-            Execution Logs
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No logs available for this run.</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const logCounts = useMemo(
+    () => ({
+      all: mergedLogs.length,
+      info: mergedLogs.filter((log) => log.level === 'info').length,
+      warning: mergedLogs.filter((log) => log.level === 'warning').length,
+      error: mergedLogs.filter((log) => ['error', 'critical'].includes(log.level)).length,
+      debug: mergedLogs.filter((log) => log.level === 'debug').length,
+    }),
+    [mergedLogs],
+  );
 
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <Terminal className="h-4 w-4" />
-            Execution Logs ({logs.length})
+            Execution Logs ({mergedLogs.length})
             {isConnected ? (
-              <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200 text-[10px] h-5 px-1.5 gap-1 ml-2">
+              <Badge
+                variant="outline"
+                className="ml-2 h-5 gap-1 border-green-200 bg-green-50 px-1.5 text-[10px] text-green-600"
+              >
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
                 </span>
                 Live
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-muted-foreground text-[10px] h-5 px-1.5 ml-2">Offline</Badge>
+              <Badge variant="outline" className="ml-2 h-5 px-1.5 text-[10px] text-muted-foreground">
+                Offline
+              </Badge>
             )}
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
+
+          <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)}>
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </div>
-        
-        {/* Filters */}
-        <div className="flex gap-2 mt-2">
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <div className="flex items-center gap-2 font-medium text-slate-700">
+            <Loader2 className={`h-3.5 w-3.5 ${isConnected ? 'animate-spin text-[#008850]' : 'text-slate-400'}`} />
+            {formatProgressLabel(liveProgress)}
+          </div>
+          {liveProgress?.message ? (
+            <p className="mt-1 text-slate-500">{liveProgress.message}</p>
+          ) : null}
+        </div>
+
+        <div className="mt-2 flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Filter logs..."
+              placeholder="Filter logs, SKUs, scrapers, or phases..."
               value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="pl-8 h-8 text-xs"
+              onChange={(event) => setFilter(event.target.value)}
+              className="h-8 pl-8 text-xs"
             />
           </div>
+
           <select
             value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value)}
-            className="h-8 px-2 text-xs border rounded bg-card"
+            onChange={(event) => setLevelFilter(event.target.value)}
+            className="h-8 rounded border bg-card px-2 text-xs"
           >
             <option value="all">All ({logCounts.all})</option>
             <option value="info">Info ({logCounts.info})</option>
-            <option value="warn">Warn ({logCounts.warn})</option>
+            <option value="warning">Warn ({logCounts.warning})</option>
             <option value="error">Error ({logCounts.error})</option>
-            <option value="success">Success ({logCounts.success})</option>
+            <option value="debug">Debug ({logCounts.debug})</option>
           </select>
         </div>
       </CardHeader>
-      
-      {isExpanded && (
+
+      {isExpanded ? (
         <CardContent>
           <div
             ref={logContainerRef}
-            className="max-h-96 overflow-y-auto border rounded-lg bg-gray-900 text-gray-100 p-3"
+            className="max-h-[32rem] overflow-y-auto rounded-lg border bg-slate-900 p-3 text-slate-100"
           >
             {filteredLogs.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No logs match your filters.
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                {mergedLogs.length === 0
+                  ? 'No logs available for this run yet.'
+                  : 'No logs match your filters.'}
               </p>
             ) : (
-              filteredLogs.map((log: ScrapeJobLog) => (
-                <LogEntry key={log.id} log={log} />
-              ))
+              filteredLogs.map((log) => <LogEntry key={log.id} log={log} />)
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Showing {filteredLogs.length} of {logs.length} logs
+          <p className="mt-2 text-xs text-muted-foreground">
+            Showing {filteredLogs.length} of {mergedLogs.length} logs
           </p>
         </CardContent>
-      )}
+      ) : null}
     </Card>
   );
 }

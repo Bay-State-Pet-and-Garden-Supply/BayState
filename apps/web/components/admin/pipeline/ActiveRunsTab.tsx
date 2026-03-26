@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { TimelineView } from './TimelineView';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 import { useLogSubscription } from '@/lib/realtime/useLogSubscription';
+import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 import type { LogEntry } from '@/lib/realtime/useLogSubscription';
 
 interface ActiveJob {
@@ -45,14 +46,15 @@ interface ActiveRunsTabProps {
 }
 
 const LOG_LEVEL_CONFIG: Record<string, { icon: typeof Info; color: string; bgColor: string }> = {
-    DEBUG: { icon: Bug, color: 'text-muted-foreground', bgColor: 'bg-muted' },
-    INFO: { icon: Info, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-    WARN: { icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-50' },
-    ERROR: { icon: AlertCircle, color: 'text-red-600', bgColor: 'bg-red-50' },
+    debug: { icon: Bug, color: 'text-muted-foreground', bgColor: 'bg-muted' },
+    info: { icon: Info, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    warning: { icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+    error: { icon: AlertCircle, color: 'text-red-600', bgColor: 'bg-red-50' },
+    critical: { icon: AlertCircle, color: 'text-red-700', bgColor: 'bg-red-100' },
 };
 
 function LogLevelBadge({ level }: { level: string }) {
-    const config = LOG_LEVEL_CONFIG[level] || LOG_LEVEL_CONFIG.INFO;
+    const config = LOG_LEVEL_CONFIG[level.toLowerCase()] || LOG_LEVEL_CONFIG.info;
     const Icon = config.icon;
     return (
         <span
@@ -110,7 +112,7 @@ function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
                                 {log.message}
                             </span>
                             <span className="text-muted-foreground tabular-nums shrink-0">
-                                {new Date(log.created_at).toLocaleTimeString()}
+                                {new Date(log.created_at ?? log.timestamp).toLocaleTimeString()}
                             </span>
                         </div>
                     ))}
@@ -154,8 +156,14 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     } = useLogSubscription({
         maxEntries: 500,
     });
+    const {
+        progress,
+        isConnected: broadcastsConnected,
+    } = useJobBroadcasts({
+        autoConnect: true,
+    });
 
-    const isRealtimeConnected = jobsConnected && logsConnected;
+    const isRealtimeConnected = jobsConnected && (logsConnected || broadcastsConnected);
 
     // Initial fetch + periodic refresh (as fallback alongside realtime)
     const fetchJobs = useCallback(async () => {
@@ -223,6 +231,21 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
             });
         }
     }, [pendingJobs, runningJobs, completedJobs, failedJobs, cancelledJobs]);
+
+    useEffect(() => {
+        setJobs((prev) =>
+            prev.map((job) => {
+                const liveProgress = progress[job.id];
+                if (!liveProgress || job.progress === liveProgress.progress) {
+                    return job;
+                }
+                return {
+                    ...job,
+                    progress: liveProgress.progress,
+                };
+            })
+        );
+    }, [progress]);
 
     const handleCancel = async (jobId: string) => {
         if (!confirm('Are you sure you want to cancel this job?')) return;

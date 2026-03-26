@@ -12,6 +12,7 @@ import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import type { JobAssignment } from '@/lib/realtime/types';
 import { useJobSubscription, useJobBroadcasts } from '@/lib/realtime';
+import type { ScrapeJobProgressUpdate } from '@/lib/scraper-logs';
 import { Progress } from '@/components/ui/progress';
 import {
   Clock,
@@ -40,7 +41,8 @@ const statusVariants = cva('flex items-center gap-1.5', {
 
 interface JobProgressItemProps {
   job: JobAssignment;
-  progress: number;
+  progress: ScrapeJobProgressUpdate | undefined;
+  showProgress?: boolean;
   showDetails?: boolean;
   showElapsed?: boolean;
   onClick?: () => void;
@@ -83,6 +85,7 @@ function getStatusIcon(status: JobAssignment['status']) {
 function JobProgressItem({
   job,
   progress,
+  showProgress = true,
   showDetails = true,
   showElapsed = true,
   onClick,
@@ -95,9 +98,11 @@ function JobProgressItem({
 
   return (
     <div
+      onClick={onClick}
       className={cn(
         'p-4 rounded-xl border border-slate-200 dark:border-slate-700',
-        'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors'
+        'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors',
+        onClick ? 'cursor-pointer' : undefined
       )}
     >
       {/* Header */}
@@ -119,7 +124,10 @@ function JobProgressItem({
             <span className="text-xs text-slate-500">{elapsed}</span>
           )}
           <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded(!expanded);
+            }}
             className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
           >
             {expanded ? (
@@ -132,15 +140,20 @@ function JobProgressItem({
       </div>
 
       {/* Progress Bar (for running jobs) */}
-      {job.status === 'running' && (
+      {showProgress && job.status === 'running' && (
         <div className="mt-3">
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-slate-500">Progress</span>
             <span className="font-medium text-slate-700 dark:text-slate-300">
-              {progress}%
+              {progress?.progress ?? 0}%
             </span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress?.progress ?? 0} className="h-2" />
+          {progress?.message ? (
+            <p className="mt-2 text-xs text-slate-500">
+              {progress.message}
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -224,9 +237,8 @@ export function JobProgressIndicator({
 
   // Get progress for each job
   const getProgressForJob = useCallback(
-    (jobId: string): number => {
-      const jobProgress = progress[`job-${jobId}`];
-      return jobProgress || 0;
+    (jobId: string): ScrapeJobProgressUpdate | undefined => {
+      return progress[jobId];
     },
     [progress]
   );
@@ -276,6 +288,7 @@ export function JobProgressIndicator({
               key={job.id}
               job={job}
               progress={getProgressForJob(job.id)}
+              showProgress={showProgress}
               showElapsed={showElapsed}
               onClick={() => onJobClick?.(job)}
             />

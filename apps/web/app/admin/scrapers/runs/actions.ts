@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { createClient } from '@/lib/supabase/server';
 import { ScraperRunRecord } from '@/lib/admin/scrapers/runs-types';
+import { normalizeScrapeLogEntry, type ScrapeJobLogEntry } from '@/lib/scraper-logs';
 
 export async function getScraperRuns(options?: {
   limit?: number;
@@ -207,30 +208,24 @@ export async function retryScraperRun(jobId: string) {
   return { success: true, newJobId: newJob.id };
 }
 
-export interface ScrapeJobLog {
-  id: string;
-  job_id: string;
-  runner_id?: string;
-  level: string;
-  message: string;
-  created_at: string;
-  timestamp?: string;
-  details?: Record<string, unknown>;
-}
+export type ScrapeJobLog = ScrapeJobLogEntry;
 
 export async function getScraperRunLogs(jobId: string): Promise<ScrapeJobLog[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('scrape_job_logs')
-    .select('id, job_id, level, message, details, created_at')
+    .select(
+      'id, event_id, job_id, level, message, details, created_at, runner_id, runner_name, source, scraper_name, sku, phase, sequence'
+    )
     .eq('job_id', jobId)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true })
+    .order('sequence', { ascending: true });
 
   if (error) {
     console.error(`Error fetching logs for job ${jobId}:`, error);
     return [];
   }
 
-  return data || [];
+  return (data || []).map((row) => normalizeScrapeLogEntry(row as Record<string, unknown>, { persisted: true }));
 }

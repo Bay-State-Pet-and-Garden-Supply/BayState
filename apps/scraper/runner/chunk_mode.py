@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from core.api_client import *
+from utils.logging_handlers import JobLoggingSession
 
 from runner import run_job
 
@@ -10,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: str) -> None:
-    logger.info(f"[Chunk Worker] Starting for job {job_id}")
+    logger.info(
+        f"Chunk worker starting for job {job_id}",
+        extra={"job_id": job_id, "runner_name": runner_name, "phase": "starting"},
+    )
 
     chunks_processed = 0
     total_skus_processed = 0
@@ -21,13 +25,19 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
     if not base_job_config:
         raise RuntimeError("Failed to fetch initial job config")
 
-    logger.info(f"[Chunk Worker] Loaded job config: {len(base_job_config.skus)} SKUs, {len(base_job_config.scrapers)} scrapers")
+    logger.info(
+        f"Loaded base job config: {len(base_job_config.skus)} SKUs, {len(base_job_config.scrapers)} scrapers",
+        extra={"job_id": job_id, "runner_name": runner_name, "phase": "configuring"},
+    )
     base_scrapers_by_name = {scraper.name: scraper for scraper in base_job_config.scrapers}
 
     while True:
         chunk = client.claim_chunk(job_id=job_id, runner_name=runner_name)
         if not chunk:
-            logger.info(f"[Chunk Worker] No more chunks. Processed {chunks_processed} chunks, {total_skus_processed} SKUs")
+            logger.info(
+                f"No more chunks. Processed {chunks_processed} chunks, {total_skus_processed} SKUs",
+                extra={"job_id": job_id, "runner_name": runner_name, "phase": "completed"},
+            )
             break
 
         chunk_id = chunk.chunk_id
@@ -36,10 +46,22 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
         scrapers_filter = chunk.scrapers
 
         if chunk.job_id != job_id:
-            logger.info(f"[Chunk Worker] Skipping chunk from job {chunk.job_id}; expected {job_id}")
+            logger.info(
+                f"Skipping chunk from job {chunk.job_id}; expected {job_id}",
+                extra={"job_id": job_id, "runner_name": runner_name, "phase": "claimed"},
+            )
             continue
 
-        logger.info(f"[Chunk Worker] Processing chunk {chunk_index} with {len(skus)} SKUs")
+        logger.info(
+            f"Processing chunk {chunk_index} with {len(skus)} SKUs",
+            extra={
+                "job_id": job_id,
+                "runner_name": runner_name,
+                "phase": "claimed",
+                "chunk_id": chunk_id,
+                "chunk_index": chunk_index,
+            },
+        )
 
         # Track partial results for incremental saving
         partial_results: dict[str, dict[str, dict]] = {}
@@ -56,10 +78,32 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
             # Submit progress to API (fire and forget - don't block on failure)
             try:
                 client.submit_chunk_progress(chunk_id, sku, scraper_name, data)
-                logger.debug(f"[Chunk Worker] Saved progress for {scraper_name}/{sku}")
+                logger.debug(
+                    f"Saved progress for {scraper_name}/{sku}",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": runner_name,
+                        "scraper_name": scraper_name,
+                        "sku": sku,
+                        "phase": "scraping",
+                        "chunk_id": chunk_id,
+                        "chunk_index": chunk_index,
+                    },
+                )
                 return True
             except Exception as e:
-                logger.warning(f"[Chunk Worker] Failed to save progress for {scraper_name}/{sku}: {e}")
+                logger.warning(
+                    f"Failed to save progress for {scraper_name}/{sku}: {e}",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": runner_name,
+                        "scraper_name": scraper_name,
+                        "sku": sku,
+                        "phase": "scraping",
+                        "chunk_id": chunk_id,
+                        "chunk_index": chunk_index,
+                    },
+                )
                 return False
 
         try:
@@ -71,7 +115,14 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                 if missing_scrapers:
                     logger.warning(
                         f"[Chunk Worker] Chunk {chunk_index} referenced unknown scrapers: {missing_scrapers}. "
-                        f"Available scrapers: {list(base_scrapers_by_name.keys())}"
+                        f"Available scrapers: {list(base_scrapers_by_name.keys())}",
+                        extra={
+                            "job_id": job_id,
+                            "runner_name": runner_name,
+                            "phase": "configuring",
+                            "chunk_id": chunk_id,
+                            "chunk_index": chunk_index,
+                        },
                     )
 
             if not selected_scrapers:
@@ -92,12 +143,29 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
             )
 
             # Run job with progress callback for incremental saving
-            results = run_job(
-                chunk_job_config,
+            with JobLoggingSession(
+                job_id=job_id,
                 runner_name=runner_name,
-                progress_callback=progress_callback,
                 api_client=client,
-            )
+            ) as job_logging:
+                logger.info(
+                    f"Running chunk {chunk_index}",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": runner_name,
+                        "phase": "claimed",
+                        "chunk_id": chunk_id,
+                        "chunk_index": chunk_index,
+                        "flush_immediately": True,
+                    },
+                )
+                results = run_job(
+                    chunk_job_config,
+                    runner_name=runner_name,
+                    progress_callback=progress_callback,
+                    api_client=client,
+                    job_logging=job_logging,
+                )
 
             # Calculate final results (including any SKUs that weren't captured by callback)
             final_data = results.get("data", {})
@@ -121,6 +189,7 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                 "skus_successful": skus_successful,
                 "skus_failed": skus_failed,
                 "data": partial_results,
+                "logs": results.get("logs", []),
             }
 
             if not client.submit_chunk_results(chunk_id, "completed", results=chunk_results):
@@ -130,12 +199,40 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
             total_skus_processed += skus_processed
             total_successful += skus_successful
 
-            logger.info(f"[Chunk Worker] Completed chunk {chunk_index}: {skus_successful}/{skus_processed} successful")
+            logger.info(
+                f"Completed chunk {chunk_index}: {skus_successful}/{skus_processed} successful",
+                extra={
+                    "job_id": job_id,
+                    "runner_name": runner_name,
+                    "phase": "completed",
+                    "chunk_id": chunk_id,
+                    "chunk_index": chunk_index,
+                },
+            )
         except Exception as e:
-            logger.exception(f"[Chunk Worker] Chunk {chunk_index} failed")
+            logger.exception(
+                f"Chunk {chunk_index} failed",
+                extra={
+                    "job_id": job_id,
+                    "runner_name": runner_name,
+                    "phase": "failed",
+                    "chunk_id": chunk_id,
+                    "chunk_index": chunk_index,
+                    "flush_immediately": True,
+                },
+            )
             # Even on failure, save any partial results we collected
             if partial_results:
-                logger.info(f"[Chunk Worker] Saving {len(partial_results)} partial results before failing")
+                logger.info(
+                    f"Saving {len(partial_results)} partial results before failing",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": runner_name,
+                        "phase": "failed",
+                        "chunk_id": chunk_id,
+                        "chunk_index": chunk_index,
+                    },
+                )
                 skus_successful = len(successful_skus)
                 partial_chunk_results = {
                     "skus_processed": len(skus),
@@ -144,12 +241,21 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                     "data": partial_results,
                 }
                 if not client.submit_chunk_results(chunk_id, "failed", results=partial_chunk_results, error_message=str(e)):
-                     logger.error(f"[Chunk Worker] CRITICAL: Failed to submit failure results for chunk {chunk_id}")
+                     logger.error(
+                         f"CRITICAL: Failed to submit failure results for chunk {chunk_id}",
+                         extra={"job_id": job_id, "runner_name": runner_name, "phase": "failed"},
+                     )
             else:
                 if not client.submit_chunk_results(chunk_id, "failed", error_message=str(e)):
-                    logger.error(f"[Chunk Worker] CRITICAL: Failed to submit failure status for chunk {chunk_id}")
+                    logger.error(
+                        f"CRITICAL: Failed to submit failure status for chunk {chunk_id}",
+                        extra={"job_id": job_id, "runner_name": runner_name, "phase": "failed"},
+                    )
             
             # Re-raise to stop the worker from claiming more chunks if we can't report status
             raise
 
-    logger.info(f"[Chunk Worker] Finished. Total: {chunks_processed} chunks, {total_successful}/{total_skus_processed} successful")
+    logger.info(
+        f"Chunk worker finished. Total: {chunks_processed} chunks, {total_successful}/{total_skus_processed} successful",
+        extra={"job_id": job_id, "runner_name": runner_name, "phase": "completed"},
+    )

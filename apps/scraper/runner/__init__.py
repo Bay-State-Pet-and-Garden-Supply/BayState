@@ -33,6 +33,107 @@ def create_log_entry(level: str, message: str) -> Dict[str, Any]:
     }
 
 
+LOG_LEVEL_NUMBERS = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+}
+
+
+def _append_result_log(
+    log_buffer: list[dict[str, Any]],
+    level: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> None:
+    entry = create_log_entry(level, message)
+    if details:
+        entry["details"] = details
+    log_buffer.append(entry)
+
+
+def _emit_runner_log(
+    *,
+    job_id: str,
+    runner_name: str | None,
+    job_logging: Any | None,
+    log_buffer: list[dict[str, Any]],
+    level: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+    scraper_name: str | None = None,
+    sku: str | None = None,
+    phase: str = "running",
+    flush_immediately: bool = False,
+) -> None:
+    logger.log(
+        LOG_LEVEL_NUMBERS[level],
+        message,
+        extra={
+            "job_id": job_id,
+            "runner_name": runner_name,
+            "scraper_name": scraper_name,
+            "sku": sku,
+            "phase": phase,
+            "details": details,
+            "flush_immediately": flush_immediately,
+        },
+    )
+
+    if job_logging is None:
+        _append_result_log(log_buffer, level, message, details)
+
+
+def _emit_job_progress(
+    *,
+    job_logging: Any | None,
+    status: str,
+    progress: int,
+    message: str | None,
+    phase: str,
+    details: dict[str, Any] | None = None,
+    current_sku: str | None = None,
+    items_processed: int | None = None,
+    items_total: int | None = None,
+) -> None:
+    if job_logging is None:
+        return
+
+    job_logging.emit_progress(
+        status=status,
+        progress=progress,
+        message=message,
+        phase=phase,
+        details=details,
+        current_sku=current_sku,
+        items_processed=items_processed,
+        items_total=items_total,
+    )
+
+
+def _progress_from_units(processed_units: int, total_units: int) -> int:
+    if total_units <= 0:
+        return 95
+    return min(95, 10 + int((processed_units / total_units) * 85))
+
+
+def _build_data_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    images = payload.get("images")
+    image_count = len(images) if isinstance(images, list) else 0
+
+    return {
+        "title": payload.get("title"),
+        "brand": payload.get("brand"),
+        "weight": payload.get("weight"),
+        "availability": payload.get("availability"),
+        "category": payload.get("category"),
+        "product_type": payload.get("product_type"),
+        "image_count": image_count,
+    }
+
+
 def _normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
     """Normalize API selectors payload into list format expected by ScraperConfig."""
     if isinstance(raw_selectors, list):
@@ -188,6 +289,7 @@ def run_job(
     log_buffer: Optional[List[Dict[str, Any]]] = None,
     progress_callback: Optional[Callable[[str, str, dict[str, Any]], bool]] = None,
     api_client: Optional[Any] = None,
+    job_logging: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Execute a scrape job.
 
@@ -203,8 +305,6 @@ def run_job(
     Returns:
         Dictionary with job results
     """
-    del runner_name
-
     job_id = job_config.job_id
     emitter = create_emitter(job_id)
     parser = ScraperConfigParser()
@@ -219,13 +319,32 @@ def run_job(
     if log_buffer is None:
         log_buffer = []
 
-    log_buffer.append(create_log_entry("info", f"Job {job_id} started"))
-    log_buffer.append(create_log_entry("info", f"Processing {len(job_config.skus)} SKUs with {len(job_config.scrapers)} scrapers"))
-    log_buffer.append(create_log_entry("info", f"Test mode: {job_config.test_mode}, Max workers: {job_config.max_workers}"))
-
-    logger.info(f"[Runner] Starting job {job_id}")
-    logger.info(f"[Runner] SKUs: {len(job_config.skus)}, Scrapers: {len(job_config.scrapers)}")
-    logger.info(f"[Runner] Test mode: {job_config.test_mode}, Max workers: {job_config.max_workers}")
+    initial_details = {
+        "declared_sku_count": len(job_config.skus),
+        "declared_scraper_count": len(job_config.scrapers),
+        "test_mode": job_config.test_mode,
+        "max_workers": job_config.max_workers,
+    }
+    _emit_runner_log(
+        job_id=job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"Job {job_id} started",
+        details=initial_details,
+        phase="starting",
+        flush_immediately=True,
+    )
+    _emit_job_progress(
+        job_logging=job_logging,
+        status="running",
+        progress=0,
+        message="Job started",
+        phase="starting",
+        details=initial_details,
+        items_total=len(job_config.skus),
+    )
 
     skus = job_config.skus
     if not skus and job_config.test_mode:
@@ -233,13 +352,29 @@ def run_job(
             if scraper.test_skus:
                 skus.extend(scraper.test_skus)
         skus = list(set(skus))
-        log_buffer.append(create_log_entry("info", f"Test mode: using {len(skus)} test SKUs from job payload"))
-        logger.info(f"[Runner] Test mode: using {len(skus)} test SKUs from job payload")
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="info",
+            message=f"Test mode: using {len(skus)} test SKUs from job payload",
+            details={"sku_count": len(skus)},
+            phase="starting",
+        )
 
     if not skus:
-        log_buffer.append(create_log_entry("warning", "No SKUs to process"))
-        logger.warning("[Runner] No SKUs to process")
-        results["logs"] = log_buffer
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="warning",
+            message="No SKUs to process",
+            phase="starting",
+            flush_immediately=True,
+        )
+        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
         results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
         return results
 
@@ -248,7 +383,14 @@ def run_job(
     )
 
     if is_ai_search_job:
-        return _run_ai_search_job(job_config, skus, results, log_buffer)
+        return _run_ai_search_job(
+            job_config,
+            skus,
+            results,
+            log_buffer,
+            runner_name=runner_name,
+            job_logging=job_logging,
+        )
 
     configs: list[Any] = []
     config_errors: list[tuple[str, str]] = []
@@ -278,20 +420,49 @@ def run_job(
             configs.append(config)
             cfg_name = getattr(config, "name", "unknown")
             credential_refs = getattr(config, "credential_refs", []) or []
-            log_buffer.append(create_log_entry("info", f"Loaded scraper config: {cfg_name}"))
-            logger.info(f"[Runner] Loaded scraper config: {cfg_name}")
-            if credential_refs:
-                logger.info(f"[Runner]   credential_refs: {credential_refs}")
-            else:
-                logger.info(f"[Runner]   no credential_refs defined")
+            _emit_runner_log(
+                job_id=job_id,
+                runner_name=runner_name,
+                job_logging=job_logging,
+                log_buffer=log_buffer,
+                level="info",
+                message=f"Loaded scraper config: {cfg_name}",
+                details={
+                    "credential_refs": credential_refs,
+                    "workflow_count": len(config_dict["workflows"]),
+                    "use_stealth": config_dict["use_stealth"],
+                },
+                scraper_name=cfg_name,
+                phase="configuring",
+            )
         except Exception as e:
             config_errors.append((scraper_cfg.name, str(e)))
-            log_buffer.append(create_log_entry("error", f"Failed to parse config for {scraper_cfg.name}: {e}"))
-            logger.error(f"[Runner] Failed to parse config for {scraper_cfg.name}: {e}")
+            _emit_runner_log(
+                job_id=job_id,
+                runner_name=runner_name,
+                job_logging=job_logging,
+                log_buffer=log_buffer,
+                level="error",
+                message=f"Failed to parse config for {scraper_cfg.name}: {e}",
+                details={"error_type": type(e).__name__},
+                scraper_name=scraper_cfg.name,
+                phase="configuring",
+                flush_immediately=True,
+            )
 
     if config_errors:
         error_details = "; ".join([f"{name}: {err}" for name, err in config_errors])
-        log_buffer.append(create_log_entry("error", f"Configuration parsing failed for {len(config_errors)} scraper(s): {error_details}"))
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=f"Configuration parsing failed for {len(config_errors)} scraper(s): {error_details}",
+            details={"config_errors": config_errors},
+            phase="configuring",
+            flush_immediately=True,
+        )
         raise ConfigurationError(f"[Runner] Configuration parsing failed for {len(config_errors)} scraper(s): {error_details}")
 
     if not configs:
@@ -299,21 +470,64 @@ def run_job(
             error_msg = "No scrapers specified in job configuration (missing chunks?)"
         else:
             error_msg = f"No valid scraper configurations after filtering. Original scrapers: {[s.name for s in job_config.scrapers]}"
-        log_buffer.append(create_log_entry("error", error_msg))
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=error_msg,
+            phase="configuring",
+            flush_immediately=True,
+        )
         raise ConfigurationError(f"[Runner] {error_msg}")
+
+    total_work_units = max(1, len(skus) * max(1, len(configs)))
+    processed_work_units = 0
+
+    _emit_job_progress(
+        job_logging=job_logging,
+        status="running",
+        progress=5,
+        message="Configuration loaded",
+        phase="configuring",
+        details={"scrapers": [getattr(config, "name", "unknown") for config in configs]},
+        items_processed=0,
+        items_total=total_work_units,
+    )
 
     for config in configs:
         cfg_name = getattr(config, "name", "unknown")
-        log_buffer.append(create_log_entry("info", f"Starting scraper: {cfg_name}"))
-        logger.info(f"[Runner] Running scraper: {cfg_name}")
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="info",
+            message=f"Starting scraper: {cfg_name}",
+            details={"sku_count": len(skus)},
+            scraper_name=cfg_name,
+            phase="scraper-start",
+            flush_immediately=True,
+        )
         results["scrapers_run"].append(cfg_name)
 
         executor = None
+        scraper_processed_units = 0
+        scraper_failed_units = 0
         try:
             headless = settings.browser_settings["headless"]
             if not headless:
-                logger.warning("[Runner] Running in VISIBLE mode (HEADLESS=false) - browser will be visible for debugging")
-                log_buffer.append(create_log_entry("warning", "Running in VISIBLE mode - browser will be visible"))
+                _emit_runner_log(
+                    job_id=job_id,
+                    runner_name=runner_name,
+                    job_logging=job_logging,
+                    log_buffer=log_buffer,
+                    level="warning",
+                    message="Running in VISIBLE mode - browser will be visible",
+                    scraper_name=cfg_name,
+                    phase="scraper-start",
+                )
 
             executor = WorkflowExecutor(
                 config,
@@ -335,6 +549,28 @@ def run_job(
                 try:
                     await executor.initialize()
                     for sku in skus:
+                        _emit_runner_log(
+                            job_id=job_id,
+                            runner_name=runner_name,
+                            job_logging=job_logging,
+                            log_buffer=log_buffer,
+                            level="info",
+                            message=f"{cfg_name}/{sku}: Processing",
+                            scraper_name=cfg_name,
+                            sku=sku,
+                            phase="scraping",
+                        )
+                        _emit_job_progress(
+                            job_logging=job_logging,
+                            status="running",
+                            progress=_progress_from_units(processed_work_units, total_work_units),
+                            message=f"Processing {cfg_name}/{sku}",
+                            phase="scraping",
+                            details={"scraper_name": cfg_name},
+                            current_sku=sku,
+                            items_processed=processed_work_units,
+                            items_total=total_work_units,
+                        )
                         try:
                             result = await executor.execute_workflow(
                                 context={"sku": sku, "test_mode": job_config.test_mode},
@@ -342,8 +578,19 @@ def run_job(
                             )
                             scrape_results.append((sku, result))
                         except Exception as e:
-                            log_buffer.append(create_log_entry("error", f"{cfg_name}/{sku}: {type(e).__name__} - {e}"))
-                            logger.error(f"[Runner] {cfg_name}/{sku}: Error - {e}")
+                            _emit_runner_log(
+                                job_id=job_id,
+                                runner_name=runner_name,
+                                job_logging=job_logging,
+                                log_buffer=log_buffer,
+                                level="error",
+                                message=f"{cfg_name}/{sku}: {type(e).__name__} - {e}",
+                                details={"error_type": type(e).__name__},
+                                scraper_name=cfg_name,
+                                sku=sku,
+                                phase="scraping",
+                                flush_immediately=True,
+                            )
                             scrape_results.append((sku, None))
                 finally:
                     # Ensure browser is properly quit inside the async context
@@ -358,7 +605,22 @@ def run_job(
 
             # Process results after async loop completes
             for sku, result in scrape_results:
+                processed_work_units += 1
+                scraper_processed_units += 1
+
                 if result is None:
+                    scraper_failed_units += 1
+                    _emit_job_progress(
+                        job_logging=job_logging,
+                        status="running",
+                        progress=_progress_from_units(processed_work_units, total_work_units),
+                        message=f"Failed while processing {cfg_name}/{sku}",
+                        phase="scraping",
+                        details={"scraper_name": cfg_name},
+                        current_sku=sku,
+                        items_processed=processed_work_units,
+                        items_total=total_work_units,
+                    )
                     continue
 
                 results["skus_processed"] += 1
@@ -442,9 +704,18 @@ def run_job(
 
                         for quality_warning in quality_warnings:
                             message = f"{cfg_name}/{sku}: {quality_warning}"
-                            log_buffer.append(create_log_entry("warning", message))
                             emitter.warning(message, scraper=cfg_name, sku=sku)
-                            logger.warning(f"[Runner] {message}")
+                            _emit_runner_log(
+                                job_id=job_id,
+                                runner_name=runner_name,
+                                job_logging=job_logging,
+                                log_buffer=log_buffer,
+                                level="warning",
+                                message=message,
+                                scraper_name=cfg_name,
+                                sku=sku,
+                                phase="scraping",
+                            )
 
                         collector.add_result(sku, cfg_name, extracted_data)
 
@@ -453,26 +724,140 @@ def run_job(
                             try:
                                 progress_callback(sku, cfg_name, results["data"][sku][cfg_name])
                             except Exception as e:
-                                logger.warning(f"[Runner] Progress callback failed for {config.name}/{sku}: {e}")
+                                _emit_runner_log(
+                                    job_id=job_id,
+                                    runner_name=runner_name,
+                                    job_logging=job_logging,
+                                    log_buffer=log_buffer,
+                                    level="warning",
+                                    message=f"Progress callback failed for {cfg_name}/{sku}: {e}",
+                                    details={"error_type": type(e).__name__},
+                                    scraper_name=cfg_name,
+                                    sku=sku,
+                                    phase="scraping",
+                                )
 
-                        log_buffer.append(create_log_entry("info", f"{cfg_name}/{sku}: Found data"))
                         emitter.info(f"{cfg_name}/{sku}: Found data", data=results["data"][sku][cfg_name])
-                        logger.info(f"[Runner] {cfg_name}/{sku}: Found data")
+                        _emit_runner_log(
+                            job_id=job_id,
+                            runner_name=runner_name,
+                            job_logging=job_logging,
+                            log_buffer=log_buffer,
+                            level="info",
+                            message=f"{cfg_name}/{sku}: Found data",
+                            details=_build_data_summary(sanitized_payload),
+                            scraper_name=cfg_name,
+                            sku=sku,
+                            phase="scraping",
+                        )
                     else:
-                        log_buffer.append(create_log_entry("info", f"{cfg_name}/{sku}: No data found"))
-                        logger.info(f"[Runner] {cfg_name}/{sku}: No data found")
+                        _emit_runner_log(
+                            job_id=job_id,
+                            runner_name=runner_name,
+                            job_logging=job_logging,
+                            log_buffer=log_buffer,
+                            level="info",
+                            message=f"{cfg_name}/{sku}: No data found",
+                            scraper_name=cfg_name,
+                            sku=sku,
+                            phase="scraping",
+                        )
                 else:
-                    log_buffer.append(create_log_entry("warning", f"{cfg_name}/{sku}: Workflow failed"))
-                    logger.warning(f"[Runner] {cfg_name}/{sku}: Workflow failed")
+                    scraper_failed_units += 1
+                    _emit_runner_log(
+                        job_id=job_id,
+                        runner_name=runner_name,
+                        job_logging=job_logging,
+                        log_buffer=log_buffer,
+                        level="warning",
+                        message=f"{cfg_name}/{sku}: Workflow failed",
+                        scraper_name=cfg_name,
+                        sku=sku,
+                        phase="scraping",
+                    )
+
+                _emit_job_progress(
+                    job_logging=job_logging,
+                    status="running",
+                    progress=_progress_from_units(processed_work_units, total_work_units),
+                    message=f"Processed {processed_work_units}/{total_work_units} work items",
+                    phase="scraping",
+                    details={"scraper_name": cfg_name},
+                    current_sku=sku,
+                    items_processed=processed_work_units,
+                    items_total=total_work_units,
+                )
+
+            _emit_runner_log(
+                job_id=job_id,
+                runner_name=runner_name,
+                job_logging=job_logging,
+                log_buffer=log_buffer,
+                level="info",
+                message=f"Completed scraper: {cfg_name}",
+                details={
+                    "processed_units": scraper_processed_units,
+                    "failed_units": scraper_failed_units,
+                    "successful_units": scraper_processed_units - scraper_failed_units,
+                },
+                scraper_name=cfg_name,
+                phase="scraper-complete",
+            )
 
         except Exception as e:
-            log_buffer.append(create_log_entry("error", f"Failed to initialize {cfg_name}: {e}"))
-            logger.error(f"[Runner] Failed to initialize {cfg_name}: {e}")
+            remaining_units = max(0, len(skus) - scraper_processed_units)
+            processed_work_units += remaining_units
+            scraper_failed_units += remaining_units
+            _emit_runner_log(
+                job_id=job_id,
+                runner_name=runner_name,
+                job_logging=job_logging,
+                log_buffer=log_buffer,
+                level="error",
+                message=f"Failed to initialize {cfg_name}: {e}",
+                details={"error_type": type(e).__name__},
+                scraper_name=cfg_name,
+                phase="scraper-start",
+                flush_immediately=True,
+            )
+            _emit_job_progress(
+                job_logging=job_logging,
+                status="running",
+                progress=_progress_from_units(processed_work_units, total_work_units),
+                message=f"{cfg_name} failed during startup",
+                phase="scraper-start",
+                details={"scraper_name": cfg_name, "error_type": type(e).__name__},
+                items_processed=processed_work_units,
+                items_total=total_work_units,
+            )
 
-    log_buffer.append(create_log_entry("info", f"Job complete. Processed {results['skus_processed']} SKUs"))
-    logger.info(f"[Runner] Job complete. Processed {results['skus_processed']} SKUs")
+    _emit_runner_log(
+        job_id=job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"Job complete. Processed {results['skus_processed']} SKUs",
+        details={
+            "processed_work_units": processed_work_units,
+            "total_work_units": total_work_units,
+            "scrapers_run": results["scrapers_run"],
+        },
+        phase="completed",
+        flush_immediately=True,
+    )
+    _emit_job_progress(
+        job_logging=job_logging,
+        status="completed",
+        progress=100,
+        message="Job completed",
+        phase="complete",
+        details={"scrapers_run": results["scrapers_run"]},
+        items_processed=processed_work_units,
+        items_total=total_work_units,
+    )
     captured_events = event_bus.get_events(job_id=job_id, limit=2000)
-    results["logs"] = log_buffer
+    results["logs"] = job_logging.snapshot() if job_logging else log_buffer
     results["telemetry"] = _build_telemetry_from_events(captured_events)
     return results
 
@@ -482,6 +867,8 @@ def _run_ai_search_job(
     skus: List[str],
     results: Dict[str, Any],
     log_buffer: List[Dict[str, Any]],
+    runner_name: str | None = None,
+    job_logging: Any | None = None,
 ) -> Dict[str, Any]:
     search_cfg = job_config.job_config or {}
     scraper_name = "ai_search"
@@ -547,8 +934,35 @@ def _run_ai_search_job(
             }
         )
 
-    log_buffer.append(create_log_entry("info", f"Starting AI Search scraper for {len(items)} SKUs"))
-    logger.info(f"[Runner] Starting AI Search job for {len(items)} SKUs")
+    _emit_runner_log(
+        job_id=job_config.job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"Starting AI Search scraper for {len(items)} SKUs",
+        details={
+            "max_concurrency": max_concurrency,
+            "max_search_results": max_search_results,
+            "max_steps": max_steps,
+            "confidence_threshold": confidence_threshold,
+            "llm_model": llm_model,
+            "cache_enabled": cache_enabled,
+            "extraction_strategy": extraction_strategy,
+        },
+        scraper_name=scraper_name,
+        phase="starting",
+        flush_immediately=True,
+    )
+    _emit_job_progress(
+        job_logging=job_logging,
+        status="running",
+        progress=5,
+        message="Starting AI Search scraper",
+        phase="starting",
+        details={"scraper_name": scraper_name},
+        items_total=len(items),
+    )
     results["scrapers_run"].append(scraper_name)
 
     async def _run() -> list[Any]:
@@ -600,20 +1014,77 @@ def _run_ai_search_job(
                 "cost_usd": search_result.cost_usd,
                 "scraped_at": datetime.now().isoformat(),
             }
-            log_buffer.append(create_log_entry("info", f"{scraper_name}/{sku}: Found data"))
-            logger.info(f"[Runner] {scraper_name}/{sku}: Found data")
+            _emit_runner_log(
+                job_id=job_config.job_id,
+                runner_name=runner_name,
+                job_logging=job_logging,
+                log_buffer=log_buffer,
+                level="info",
+                message=f"{scraper_name}/{sku}: Found data",
+                details={
+                    "confidence": search_result.confidence,
+                    "source_website": search_result.source_website,
+                    "image_count": len(search_result.images or []),
+                    "cost_usd": search_result.cost_usd,
+                },
+                scraper_name=scraper_name,
+                sku=sku,
+                phase="scraping",
+            )
         else:
             results["data"][sku][scraper_name] = {
                 "error": search_result.error,
                 "cost_usd": search_result.cost_usd,
                 "scraped_at": datetime.now().isoformat(),
             }
-            log_buffer.append(create_log_entry("warning", f"{scraper_name}/{sku}: {search_result.error or 'Failed'}"))
-            logger.warning(f"[Runner] {scraper_name}/{sku}: {search_result.error or 'Failed'}")
+            _emit_runner_log(
+                job_id=job_config.job_id,
+                runner_name=runner_name,
+                job_logging=job_logging,
+                log_buffer=log_buffer,
+                level="warning",
+                message=f"{scraper_name}/{sku}: {search_result.error or 'Failed'}",
+                details={"cost_usd": search_result.cost_usd},
+                scraper_name=scraper_name,
+                sku=sku,
+                phase="scraping",
+            )
 
-    log_buffer.append(create_log_entry("info", f"AI Search job complete. Processed {results['skus_processed']} SKUs"))
-    logger.info(f"[Runner] AI Search job complete. Processed {results['skus_processed']} SKUs")
-    results["logs"] = log_buffer
+        _emit_job_progress(
+            job_logging=job_logging,
+            status="running",
+            progress=_progress_from_units(results["skus_processed"], max(1, len(items))),
+            message=f"Processed {results['skus_processed']}/{len(items)} AI Search items",
+            phase="scraping",
+            details={"scraper_name": scraper_name},
+            current_sku=sku,
+            items_processed=results["skus_processed"],
+            items_total=len(items),
+        )
+
+    _emit_runner_log(
+        job_id=job_config.job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"AI Search job complete. Processed {results['skus_processed']} SKUs",
+        details={"scraper_name": scraper_name},
+        scraper_name=scraper_name,
+        phase="completed",
+        flush_immediately=True,
+    )
+    _emit_job_progress(
+        job_logging=job_logging,
+        status="completed",
+        progress=100,
+        message="AI Search job completed",
+        phase="complete",
+        details={"scraper_name": scraper_name},
+        items_processed=results["skus_processed"],
+        items_total=len(items),
+    )
+    results["logs"] = job_logging.snapshot() if job_logging else log_buffer
     results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
     return results
 

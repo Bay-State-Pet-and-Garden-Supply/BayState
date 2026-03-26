@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 
@@ -346,6 +347,10 @@ class RealtimeManager:
         progress: int,
         message: str | None = None,
         details: dict[str, Any] | None = None,
+        phase: str | None = None,
+        current_sku: str | None = None,
+        items_processed: int | None = None,
+        items_total: int | None = None,
     ) -> None:
         """
         Broadcast job progress to the admin dashboard.
@@ -360,21 +365,32 @@ class RealtimeManager:
         if not self._broadcast_channel or not self._connected:
             return
 
+        payload = {
+            "job_id": job_id,
+            "runner_id": self.runner_id,
+            "runner_name": self.runner_name,
+            "status": status,
+            "progress": progress,
+            "message": message,
+            "phase": phase,
+            "details": details or {},
+            "current_sku": current_sku,
+            "items_processed": items_processed,
+            "items_total": items_total,
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        await self.broadcast_job_progress_update(payload)
+
+    async def broadcast_job_progress_update(self, payload: dict[str, Any]) -> None:
+        """Broadcast a normalized job progress payload."""
+        if not self._broadcast_channel or not self._connected:
+            return
+
         try:
-            await self._broadcast_channel.send_broadcast(
-                "job_progress",
-                {
-                    "job_id": job_id,
-                    "runner_id": self.runner_id,
-                    "runner_name": self.runner_name,
-                    "status": status,
-                    "progress": progress,
-                    "message": message,
-                    "details": details or {},
-                    "timestamp": time.time(),
-                },
+            await self._broadcast_channel.send_broadcast("job_progress", payload)
+            logger.debug(
+                f"[{self.runner_name}] Broadcast job progress: {payload.get('job_id')} {payload.get('status')}"
             )
-            logger.debug(f"[{self.runner_name}] Broadcast job progress: {job_id} {status}")
         except Exception as e:
             logger.warning(f"[{self.runner_name}] Failed to broadcast job progress: {e}")
 
@@ -384,6 +400,12 @@ class RealtimeManager:
         level: str,
         message: str,
         details: dict[str, Any] | None = None,
+        event_id: str | None = None,
+        source: str | None = None,
+        scraper_name: str | None = None,
+        sku: str | None = None,
+        phase: str | None = None,
+        sequence: int | None = None,
     ) -> None:
         """
         Broadcast a log message to the admin dashboard.
@@ -397,20 +419,34 @@ class RealtimeManager:
         if not self._broadcast_channel or not self._connected:
             return
 
+        payload = {
+            "id": event_id,
+            "event_id": event_id,
+            "job_id": job_id,
+            "runner_id": self.runner_id,
+            "runner_name": self.runner_name,
+            "level": level,
+            "message": message,
+            "source": source,
+            "scraper_name": scraper_name,
+            "sku": sku,
+            "phase": phase,
+            "sequence": sequence,
+            "details": details or {},
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        await self.broadcast_job_log_entry(payload)
+
+    async def broadcast_job_log_entry(self, payload: dict[str, Any]) -> None:
+        """Broadcast a normalized runner log payload."""
+        if not self._broadcast_channel or not self._connected:
+            return
+
         try:
-            await self._broadcast_channel.send_broadcast(
-                "runner_log",
-                {
-                    "job_id": job_id,
-                    "runner_id": self.runner_id,
-                    "runner_name": self.runner_name,
-                    "level": level,
-                    "message": message,
-                    "details": details or {},
-                    "timestamp": time.time(),
-                },
+            await self._broadcast_channel.send_broadcast("runner_log", payload)
+            logger.debug(
+                f"[{self.runner_name}] Broadcast log: {payload.get('level')} {payload.get('message')}"
             )
-            logger.debug(f"[{self.runner_name}] Broadcast log: {level} {message}")
         except Exception as e:
             logger.warning(f"[{self.runner_name}] Failed to broadcast log: {e}")
 
