@@ -27,12 +27,15 @@ export const PipelineProductInputSchema = z.object({
 
 export const PipelineProductConsolidatedSchema = z.object({
     name: z.string().optional(),
-    description: z.string().optional(),
     price: z.number().optional(),
     images: z.array(z.string().url()).optional(),
     brand_id: z.string().optional(),
     stock_status: z.string().optional(),
-    is_featured: z.boolean().optional(),
+    category: z.string().optional(),
+    product_type: z.string().optional(),
+    product_on_pages: z.array(z.string()).optional(),
+    weight: z.string().optional(),
+    is_special_order: z.boolean().optional(),
 });
 
 export const PipelineProductSchema = z.object({

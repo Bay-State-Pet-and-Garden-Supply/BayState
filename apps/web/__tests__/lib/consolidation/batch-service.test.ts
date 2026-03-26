@@ -13,14 +13,16 @@ describe('consolidation batch service', () => {
                     sku: 'SKU-1',
                     sources: {
                         ai_discovery: {
-                            Name: 'KONG Air Dog Squeaker Tennis Ball',
-                            Brand: 'KONG',
-                            confidence: 0.88,
-                            categories: ['Dog Toys', 'Fetch Toys'],
-                            source_url: 'https://example.com/product',
-                            images: ['https://example.com/image.jpg'],
-                        },
+                        Name: 'KONG Air Dog Squeaker Tennis Ball',
+                        Brand: 'KONG',
+                        confidence: 0.88,
+                        search_keywords: 'fetch toy, tennis ball',
+                        is_taxable: true,
+                        categories: ['Dog Toys', 'Fetch Toys'],
+                        source_url: 'https://example.com/product',
+                        images: ['https://example.com/image.jpg'],
                     },
+                },
                 },
             ],
             'system prompt'
@@ -38,6 +40,89 @@ describe('consolidation batch service', () => {
         expect(userContent).toContain('"categories": [');
         expect(userContent).not.toContain('source_url');
         expect(userContent).not.toContain('"images"');
+        expect(userContent).not.toContain('search_keywords');
+        expect(userContent).not.toContain('is_taxable');
+    });
+
+    it('createBatchContent excludes manual-selection fields like special order', () => {
+        const content = createBatchContent(
+            [
+                {
+                    sku: 'SKU-MANUAL',
+                    sources: {
+                        distributor_a: {
+                            title: 'Acme Deluxe Bird Seed 10 lb.',
+                            brand: 'Acme',
+                            is_special_order: true,
+                            special_order: 'yes',
+                            manual_selection: 'keep for admin review',
+                            selected_images: ['https://cdn.example.com/keep-out.jpg'],
+                        },
+                    },
+                },
+            ],
+            'system prompt'
+        );
+
+        const firstLine = content.split('\n')[0];
+        const parsed = JSON.parse(firstLine) as {
+            body: {
+                messages: Array<{ role: string; content: string }>;
+            };
+        };
+        const userContent = parsed.body.messages.find((message) => message.role === 'user')?.content || '';
+
+        expect(userContent).toContain('"title": "Acme Deluxe Bird Seed 10 lb."');
+        expect(userContent).not.toContain('is_special_order');
+        expect(userContent).not.toContain('special_order');
+        expect(userContent).not.toContain('manual_selection');
+        expect(userContent).not.toContain('selected_images');
+    });
+
+    it('createBatchContent strips excluded nested keys from relevant object fields', () => {
+        const content = createBatchContent(
+            [
+                {
+                    sku: 'SKU-NESTED',
+                    sources: {
+                        distributor_b: {
+                            title: 'Garden Bucket 5 gal.',
+                            attributes: {
+                                finish: 'Matte',
+                                image_url: 'https://cdn.example.com/image.jpg',
+                                manual_selection: 'requires admin pick',
+                                taxable: true,
+                                is_special_order: true,
+                                nested: {
+                                    Special_Order: 'yes',
+                                    search_keywords: 'bucket, garden',
+                                    color: 'Green',
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+            'system prompt'
+        );
+
+        const firstLine = content.split('\n')[0];
+        const parsed = JSON.parse(firstLine) as {
+            body: {
+                messages: Array<{ role: string; content: string }>;
+            };
+        };
+        const userContent = parsed.body.messages.find((message) => message.role === 'user')?.content || '';
+
+        expect(userContent).toContain('"attributes": {');
+        expect(userContent).toContain('"finish": "Matte"');
+        expect(userContent).toContain('"color": "Green"');
+        expect(userContent).not.toContain('image_url');
+        expect(userContent).not.toContain('manual_selection');
+        expect(userContent).not.toContain('special_order');
+        expect(userContent).not.toContain('is_special_order');
+        expect(userContent).not.toContain('taxable');
+        expect(userContent).not.toContain('search_keywords');
     });
 
     it('createBatchContent preserves legacy flat payloads as _legacy source and strips image/url keys', () => {
@@ -96,6 +181,8 @@ describe('consolidation batch service', () => {
                         consolidated: {
                             images: ['https://cdn.example.com/existing.jpg'],
                             stock_status: 'in_stock',
+                            search_keywords: 'legacy keywords',
+                            is_taxable: true,
                         },
                         sources: {
                             chewy: {
@@ -115,6 +202,8 @@ describe('consolidation batch service', () => {
                 consolidated: {
                     images: ['https://cdn.example.com/existing.jpg'],
                     stock_status: 'in_stock',
+                    search_keywords: 'legacy keywords',
+                    is_taxable: true,
                 },
                 updated_at: '2026-03-18T00:00:00.000Z',
             },
@@ -161,7 +250,7 @@ describe('consolidation batch service', () => {
 
         (createAdminClient as jest.Mock).mockResolvedValue(supabaseMock);
 
-        const response = await applyConsolidationResults([
+        const resultWithLegacyKeywordField = [
             {
                 sku: 'SKU-1',
                 name: 'KONG Air Dog Squeaker Tennis Ball 3 ct',
@@ -170,9 +259,14 @@ describe('consolidation batch service', () => {
                 weight: '3',
                 category: 'Dog',
                 product_type: 'Dog Toys',
+                search_keywords: 'fetch toy, tennis ball',
                 confidence_score: 0.94,
             },
-        ]);
+        ] as unknown;
+
+        const response = await applyConsolidationResults(
+            resultWithLegacyKeywordField as Parameters<typeof applyConsolidationResults>[0]
+        );
 
         expect('status' in response && response.status === 'applied').toBe(true);
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
@@ -191,6 +285,13 @@ describe('consolidation batch service', () => {
         );
         expect(productsIngestionUpdateEq).toHaveBeenCalledWith('sku', 'SKU-1');
         expect(productsIngestionUpdateEq).toHaveBeenCalledWith('updated_at', '2026-03-18T00:00:00.000Z');
+
+        const updatePayload = (productsIngestionUpdate as jest.Mock).mock.calls[0]?.[0] as {
+            consolidated?: Record<string, unknown>;
+        };
+        expect(updatePayload.consolidated).not.toHaveProperty('search_keywords');
+        expect(updatePayload.consolidated).not.toHaveProperty('is_taxable');
+        expect(updatePayload.consolidated).not.toHaveProperty('taxable');
     });
 
     it('applyConsolidationResults creates a missing brand and writes the new brand id', async () => {

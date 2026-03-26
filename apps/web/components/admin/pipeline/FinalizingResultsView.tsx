@@ -12,6 +12,10 @@ import {
   Search,
   Check,
   RotateCcw,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
+  ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -32,6 +36,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
@@ -47,6 +64,11 @@ interface FinalizingResultsViewProps {
 }
 
 interface Brand {
+  id: string;
+  name: string;
+}
+
+interface Category {
   id: string;
   name: string;
 }
@@ -128,10 +150,27 @@ export function FinalizingResultsView({
   const [preferredSku, setPreferredSku] = useState<string | null>(
     sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
+  
+  // Carousel state
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Brand state
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandSearch, setBrandSearch] = useState("");
   const [creatingBrand, setCreatingBrand] = useState(false);
   const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
+
+  // Category state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+
+  // Store Pages (Product Pages) state
+  const [pageSearch, setPageSearch] = useState("");
+  const [pagePopoverOpen, setPagePopoverOpen] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -142,6 +181,18 @@ export function FinalizingResultsView({
     const search = brandSearch.toLowerCase();
     return brands.filter((b) => b.name.toLowerCase().includes(search));
   }, [brands, brandSearch]);
+
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return categories;
+    const search = categorySearch.toLowerCase();
+    return categories.filter((c) => c.name.toLowerCase().includes(search));
+  }, [categories, categorySearch]);
+
+  const filteredPages = useMemo(() => {
+    if (!pageSearch.trim()) return SHOPSITE_PAGES;
+    const search = pageSearch.toLowerCase();
+    return SHOPSITE_PAGES.filter((p) => p.toLowerCase().includes(search));
+  }, [pageSearch]);
 
   const handleCreateBrand = async () => {
     if (!brandSearch.trim()) return;
@@ -170,6 +221,33 @@ export function FinalizingResultsView({
     }
   };
 
+  const handleCreateCategory = async () => {
+    if (!categorySearch.trim()) return;
+    setCreatingCategory(true);
+    try {
+      const res = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: categorySearch.trim() }),
+      });
+      if (res.ok) {
+        const { category } = await res.json();
+        setCategories((prev) => [...prev, category].sort((a, b) => a.name.localeCompare(b.name)));
+        handleInputChange("category", category.name);
+        setCategorySearch("");
+        setCategoryPopoverOpen(false);
+        toast.success(`Category "${category.name}" created`);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to create category");
+      }
+    } catch {
+      toast.error("An error occurred while creating category");
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -181,15 +259,24 @@ export function FinalizingResultsView({
     category: "",
     productType: "",
     stockStatus: "in_stock",
-    searchKeywords: "",
     productOnPages: [] as string[],
     isFeatured: false,
     isSpecialOrder: false,
-    isTaxable: true,
     customImageUrl: "",
     selectedImages: [] as string[],
   });
   const [selectedImageSourceId, setSelectedImageSourceId] = useState("all");
+
+  // Track carousel index
+  useEffect(() => {
+    if (!carouselApi) return;
+
+    setCurrentImageIndex(carouselApi.selectedScrollSnap());
+
+    carouselApi.on("select", () => {
+      setCurrentImageIndex(carouselApi.selectedScrollSnap());
+    });
+  }, [carouselApi]);
 
   const selectedProduct = useMemo(
     () =>
@@ -201,20 +288,29 @@ export function FinalizingResultsView({
 
   const selectedSku = selectedProduct?.sku ?? null;
 
-  // Fetch brands
+  // Fetch brands and categories
   useEffect(() => {
-    async function fetchBrands() {
+    async function fetchData() {
       try {
-        const res = await fetch("/api/admin/brands");
-        if (res.ok) {
-          const data = await res.json();
+        const [brandsRes, categoriesRes] = await Promise.all([
+          fetch("/api/admin/brands"),
+          fetch("/api/admin/categories")
+        ]);
+        
+        if (brandsRes.ok) {
+          const data = await brandsRes.json();
           setBrands(data.brands || []);
         }
+        
+        if (categoriesRes.ok) {
+          const data = await categoriesRes.json();
+          setCategories(data.categories || []);
+        }
       } catch (err) {
-        console.error("Failed to fetch brands:", err);
+        console.error("Failed to fetch reference data:", err);
       }
     }
-    fetchBrands();
+    fetchData();
   }, []);
 
   // Initialize form when selected product changes
@@ -246,7 +342,6 @@ export function FinalizingResultsView({
         category: (cons as Record<string, unknown>).category as string || "",
         productType: (cons as Record<string, unknown>).product_type as string || "",
         stockStatus: (consolidated as Record<string, unknown>).stock_status as string || "in_stock",
-        searchKeywords: (cons as Record<string, unknown>).search_keywords as string || "",
         productOnPages: Array.isArray((cons as Record<string, unknown>).product_on_pages)
           ? (cons as Record<string, unknown>).product_on_pages as string[]
           : typeof (cons as Record<string, unknown>).product_on_pages === "string"
@@ -254,7 +349,6 @@ export function FinalizingResultsView({
             : [],
         isFeatured: consolidated.is_featured || false,
         isSpecialOrder: !!(cons as Record<string, unknown>).is_special_order,
-        isTaxable: (cons as Record<string, unknown>).is_taxable !== false,
         customImageUrl: "",
         selectedImages: initialSelectedImages,
       });
@@ -376,11 +470,9 @@ export function FinalizingResultsView({
         stock_status: formData.stockStatus,
         is_featured: formData.isFeatured,
         is_special_order: formData.isSpecialOrder,
-        is_taxable: formData.isTaxable,
         weight: formData.weight.trim() || null,
         category: formData.category.trim() || null,
         product_type: formData.productType.trim() || null,
-        search_keywords: formData.searchKeywords.trim() || null,
         product_on_pages: formData.productOnPages,
         images: formData.selectedImages,
       };
@@ -861,14 +953,95 @@ export function FinalizingResultsView({
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="product-category">Category</Label>
-                      <Input
-                        id="product-category"
-                        value={formData.category}
-                        onChange={(e) =>
-                          handleInputChange("category", e.target.value)
-                        }
-                        placeholder="e.g. Dog|Cat"
-                      />
+                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="product-category"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={categoryPopoverOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {formData.category || "Select Category"}
+                            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                          <div className="flex flex-col">
+                            <div className="flex items-center border-b px-3 py-2">
+                              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                              <input
+                                className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Search categories..."
+                                value={categorySearch}
+                                onChange={(e) => setCategorySearch(e.target.value)}
+                              />
+                            </div>
+                            <div className="max-h-[200px] overflow-y-auto p-1">
+                              <div
+                                className={cn(
+                                  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                                  !formData.category && "bg-accent text-accent-foreground"
+                                )}
+                                onClick={() => {
+                                  handleInputChange("category", "");
+                                  setCategoryPopoverOpen(false);
+                                  setCategorySearch("");
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    !formData.category ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                No Category
+                              </div>
+                              {filteredCategories.map((cat) => (
+                                <div
+                                  key={cat.id}
+                                  className={cn(
+                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                    formData.category === cat.name && "bg-accent text-accent-foreground"
+                                  )}
+                                  onClick={() => {
+                                    handleInputChange("category", cat.name);
+                                    setCategoryPopoverOpen(false);
+                                    setCategorySearch("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.category === cat.name ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {cat.name}
+                                </div>
+                              ))}
+                              {filteredCategories.length === 0 && categorySearch && (
+                                <div className="p-2 text-xs text-muted-foreground italic">
+                                  No categories found.
+                                </div>
+                              )}
+                            </div>
+                            {categorySearch.trim() && !categories.find(c => c.name.toLowerCase() === categorySearch.toLowerCase().trim()) && (
+                              <div className="border-t p-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start text-xs font-normal"
+                                  onClick={handleCreateCategory}
+                                  disabled={creatingCategory}
+                                >
+                                  <Plus className="mr-2 h-3 w-3" />
+                                  {creatingCategory ? "Creating..." : `Create "${categorySearch.trim()}"`}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="product-type">Product Type</Label>
@@ -884,38 +1057,87 @@ export function FinalizingResultsView({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="search-keywords">Search Keywords</Label>
-                    <Input
-                      id="search-keywords"
-                      value={formData.searchKeywords}
-                      onChange={(e) =>
-                        handleInputChange("searchKeywords", e.target.value)
-                      }
-                      placeholder="dog food, dry kibble, chicken recipe..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
                     <Label>Store Pages</Label>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 border rounded-lg p-3 bg-muted/20">
-                      {SHOPSITE_PAGES.map((page) => (
-                        <div key={page} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`page-${page}`}
-                            checked={formData.productOnPages.includes(page)}
-                            onCheckedChange={(checked) => {
-                              const pages = checked
-                                ? [...formData.productOnPages, page]
-                                : formData.productOnPages.filter((p) => p !== page);
-                              handleInputChange("productOnPages", pages);
-                            }}
-                          />
-                          <Label htmlFor={`page-${page}`} className="text-sm cursor-pointer">
-                            {page}
-                          </Label>
+                    <Popover open={pagePopoverOpen} onOpenChange={setPagePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={pagePopoverOpen}
+                          className="w-full justify-between font-normal min-h-[40px] h-auto"
+                        >
+                          <div className="flex flex-wrap gap-1">
+                            {formData.productOnPages.length > 0 ? (
+                              formData.productOnPages.map((page) => (
+                                <div
+                                  key={page}
+                                  className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1"
+                                >
+                                  {page}
+                                  <X
+                                    className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const pages = formData.productOnPages.filter((p) => p !== page);
+                                      handleInputChange("productOnPages", pages);
+                                    }}
+                                  />
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground">Select Store Pages</span>
+                            )}
+                          </div>
+                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <div className="flex flex-col">
+                          <div className="flex items-center border-b px-3 py-2">
+                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                            <input
+                              className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                              placeholder="Search pages..."
+                              value={pageSearch}
+                              onChange={(e) => setPageSearch(e.target.value)}
+                            />
+                          </div>
+                          <div className="max-h-[300px] overflow-y-auto p-1">
+                            {filteredPages.map((page) => {
+                              const isSelected = formData.productOnPages.includes(page);
+                              return (
+                                <div
+                                  key={page}
+                                  className={cn(
+                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                    isSelected && "bg-accent text-accent-foreground"
+                                  )}
+                                  onClick={() => {
+                                    const pages = isSelected
+                                      ? formData.productOnPages.filter((p) => p !== page)
+                                      : [...formData.productOnPages, page];
+                                    handleInputChange("productOnPages", pages);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      isSelected ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {page}
+                                </div>
+                              );
+                            })}
+                            {filteredPages.length === 0 && (
+                              <div className="p-2 text-xs text-muted-foreground italic text-center">
+                                No pages found.
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   {/* Settings Group */}
@@ -939,18 +1161,6 @@ export function FinalizingResultsView({
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
-                        id="is-taxable"
-                        checked={formData.isTaxable}
-                        onCheckedChange={(checked) =>
-                          handleInputChange("isTaxable", !!checked)
-                        }
-                      />
-                      <Label htmlFor="is-taxable" className="cursor-pointer">
-                        Taxable
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
                         id="is-special-order"
                         checked={formData.isSpecialOrder}
                         onCheckedChange={(checked) =>
@@ -967,15 +1177,113 @@ export function FinalizingResultsView({
                 {/* Media Management */}
                 <div className="space-y-6">
                   <div className="space-y-4">
-                    <Label>Product Images</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Product Media</Label>
+                      <span className="text-xs text-muted-foreground">
+                        {formData.selectedImages.length > 0
+                          ? `${currentImageIndex + 1} of ${formData.selectedImages.length} selected`
+                          : "No images selected"}
+                      </span>
+                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="image-source">Image Source</Label>
+                    {/* Large Image Carousel */}
+                    <div className="relative group rounded-xl border bg-card overflow-hidden shadow-sm">
+                      {formData.selectedImages.length > 0 ? (
+                        <Carousel
+                          setApi={setCarouselApi}
+                          className="w-full"
+                          opts={{
+                            loop: true,
+                          }}
+                        >
+                          <CarouselContent>
+                            {formData.selectedImages.map((url, index) => (
+                              <CarouselItem key={url}>
+                                <div className="relative aspect-square flex items-center justify-center p-4 bg-white">
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <div className="relative w-full h-full cursor-zoom-in group/image">
+                                        <img
+                                          src={url}
+                                          alt={`Product image ${index + 1}`}
+                                          className="w-full h-full object-contain"
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100">
+                                          <div className="bg-white/90 p-2 rounded-full shadow-lg">
+                                            <Maximize2 className="h-5 w-5 text-primary" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-white/95 backdrop-blur-sm border-none shadow-2xl">
+                                      <div className="relative w-full h-[90vh] flex items-center justify-center p-8">
+                                        <img
+                                          src={url}
+                                          alt={`Product image ${index + 1} (Zoomed)`}
+                                          className="max-w-full max-h-full object-contain drop-shadow-2xl"
+                                        />
+                                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/80 backdrop-blur px-4 py-2 rounded-full border shadow-sm">
+                                          <span className="text-xs font-mono font-bold text-primary truncate max-w-[300px]">
+                                            {url.split('/').pop()}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                  <button
+                                    onClick={() => toggleImage(url)}
+                                    className="absolute top-4 right-4 bg-destructive text-destructive-foreground rounded-full p-1.5 shadow-md hover:scale-110 transition-transform z-20"
+                                    title="Remove this image"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </CarouselItem>
+                            ))}
+                          </CarouselContent>
+                          {formData.selectedImages.length > 1 && (
+                            <>
+                              <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80" />
+                              <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80" />
+                            </>
+                          )}
+                        </Carousel>
+                      ) : (
+                        <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-muted/10 border-2 border-dashed rounded-xl m-2">
+                          <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
+                          <p className="text-sm font-medium">No images selected</p>
+                          <p className="text-xs opacity-60 mt-1">Select from candidates below</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Thumbnails of selected images */}
+                    {formData.selectedImages.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide px-1">
+                        {formData.selectedImages.map((url, index) => (
+                          <div
+                            key={`thumb-${url}`}
+                            onClick={() => carouselApi?.scrollTo(index)}
+                            className={cn(
+                              "relative flex-shrink-0 w-16 h-16 rounded-md border-2 overflow-hidden cursor-pointer transition-all",
+                              currentImageIndex === index
+                                ? "border-primary ring-2 ring-primary/20 scale-105"
+                                : "border-transparent opacity-60 hover:opacity-100"
+                            )}
+                          >
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="space-y-2 pt-2">
+                      <Label htmlFor="image-source" className="text-xs uppercase font-bold text-muted-foreground">Candidate Sources</Label>
                       <Select
                         value={selectedImageSourceId}
                         onValueChange={setSelectedImageSourceId}
                       >
-                        <SelectTrigger id="image-source">
+                        <SelectTrigger id="image-source" className="h-9">
                           <SelectValue placeholder="Select image source" />
                         </SelectTrigger>
                         <SelectContent>
@@ -986,34 +1294,6 @@ export function FinalizingResultsView({
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    {/* Selected Images Grid */}
-                    <div className="grid grid-cols-3 gap-2 border rounded-lg p-3 bg-muted/20 min-h-[100px]">
-                      {formData.selectedImages.map((url) => (
-                        <div
-                          key={url}
-                          className="relative aspect-square rounded border overflow-hidden bg-card group"
-                        >
-                          <img
-                            src={url}
-                            alt=""
-                            className="w-full h-full object-contain"
-                          />
-                          <button
-                            onClick={() => toggleImage(url)}
-                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                      {formData.selectedImages.length === 0 && (
-                        <div className="col-span-3 flex flex-col items-center justify-center text-muted-foreground text-xs py-4">
-                          <ImageIcon className="h-6 w-6 mb-1 opacity-20" />
-                          No images selected
-                        </div>
-                      )}
                     </div>
 
                     {/* Custom Image URL */}
