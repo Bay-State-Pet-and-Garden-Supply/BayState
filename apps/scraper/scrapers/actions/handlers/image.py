@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 from scrapers.actions.base import BaseAction
 from scrapers.actions.registry import ActionRegistry
@@ -10,15 +11,55 @@ from scrapers.exceptions import WorkflowExecutionError
 
 logger = logging.getLogger(__name__)
 
+SCROLL_STEP_PX = 500
+SCROLL_WAIT_MS = 100
+POST_SCROLL_SETTLE_SECONDS = 0.5
+FETCH_TIMEOUT_MS = 15_000
+MAX_CAPTURE_RETRIES = 2
+INITIAL_RETRY_DELAY_SECONDS = 1
 
-async def _capture_authenticated_images_as_data_urls(ctx: Any, image_urls: list[str]) -> list[str]:
+ERROR_AUTH_401 = "auth_401"
+ERROR_NOT_FOUND_404 = "not_found_404"
+ERROR_NETWORK_TIMEOUT = "network_timeout"
+ERROR_CORS_BLOCKED = "cors_blocked"
+
+
+class ImageCaptureResult(TypedDict):
+    status: Literal["success", "error"]
+    data_url: str | None
+    error_type: Literal["auth_401", "not_found_404", "network_timeout", "cors_blocked"] | None
+    error_message: str | None
+    original_url: str
+
+
+def _build_success_result(url: str) -> ImageCaptureResult:
+    return {
+        "status": "success",
+        "data_url": url,
+        "error_type": None,
+        "error_message": None,
+        "original_url": url,
+    }
+
+
+async def _capture_authenticated_images_as_data_urls(ctx: Any, image_urls: list[str]) -> list[ImageCaptureResult]:
     page = getattr(getattr(ctx, "browser", None), "page", None)
-    if page is None or not image_urls:
-        return image_urls
+    if not image_urls:
+        return []
+
+    if page is None:
+        return [_build_success_result(url) for url in image_urls if isinstance(url, str) and url.strip()]
+
+    max_attempts = MAX_CAPTURE_RETRIES + 1
 
     captured_images = await page.evaluate(
         """
-        async (urls) => {
+        async (urls, fetchTimeoutMs, maxAttempts, initialRetryDelayMs, scrollStep, scrollWaitMs) => {
+            for (let y = 0; y < document.body.scrollHeight; y += scrollStep) {
+                window.scrollTo(0, y);
+                await new Promise(resolve => setTimeout(resolve, scrollWaitMs));
+            }
+
             const toDataUrl = async (response) => {
                 const blob = await response.blob();
                 return await new Promise((resolve, reject) => {
@@ -35,6 +76,29 @@ async def _capture_authenticated_images_as_data_urls(ctx: Any, image_urls: list[
                 });
             };
 
+            const classifyHttpError = (statusCode) => {
+                if (statusCode === 401) {
+                    return 'auth_401';
+                }
+                if (statusCode === 404) {
+                    return 'not_found_404';
+                }
+                return 'network_timeout';
+            };
+
+            const classifyFetchError = (message) => {
+                const lower = String(message || '').toLowerCase();
+                if (lower.includes('cors')) {
+                    return 'cors_blocked';
+                }
+                if (lower.includes('timeout') || lower.includes('aborted') || lower.includes('failed to fetch')) {
+                    return 'network_timeout';
+                }
+                return 'network_timeout';
+            };
+
+            const shouldRetry = (errorType) => errorType === 'network_timeout';
+
             const results = [];
 
             for (const rawUrl of urls) {
@@ -48,71 +112,164 @@ async def _capture_authenticated_images_as_data_urls(ctx: Any, image_urls: list[
                 }
 
                 if (trimmed.startsWith('data:image/')) {
-                    results.push({ original_url: trimmed, data_url: trimmed, error: null });
+                    results.push({
+                        status: 'success',
+                        data_url: trimmed,
+                        error_type: null,
+                        error_message: null,
+                        original_url: trimmed,
+                    });
                     continue;
                 }
 
-                try {
-                    const absoluteUrl = new URL(trimmed, window.location.href).toString();
-                    const response = await fetch(absoluteUrl, { credentials: 'include' });
+                const absoluteUrl = new URL(trimmed, window.location.href).toString();
+                let finalResult = {
+                    status: 'error',
+                    data_url: null,
+                    error_type: 'network_timeout',
+                    error_message: 'Unknown capture error',
+                    original_url: trimmed,
+                };
 
-                    if (!response.ok) {
-                        results.push({
-                            original_url: trimmed,
-                            data_url: absoluteUrl,
-                            error: `HTTP ${response.status}`,
+                for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
+
+                    try {
+                        const response = await fetch(absoluteUrl, {
+                            credentials: 'include',
+                            signal: controller.signal,
                         });
-                        continue;
-                    }
 
-                    const contentType = response.headers.get('content-type') || '';
-                    if (!contentType.toLowerCase().startsWith('image/')) {
-                        results.push({
+                        if (!response.ok) {
+                            const errorType = classifyHttpError(response.status);
+                            finalResult = {
+                                status: 'error',
+                                data_url: null,
+                                error_type: errorType,
+                                error_message: `HTTP ${response.status}`,
+                                original_url: trimmed,
+                            };
+                            break;
+                        }
+
+                        const contentType = response.headers.get('content-type') || '';
+                        if (!contentType.toLowerCase().startsWith('image/')) {
+                            finalResult = {
+                                status: 'error',
+                                data_url: null,
+                                error_type: 'cors_blocked',
+                                error_message: `Unexpected content type: ${contentType || 'unknown'}`,
+                                original_url: trimmed,
+                            };
+                            break;
+                        }
+
+                        finalResult = {
+                            status: 'success',
+                            data_url: await toDataUrl(response),
+                            error_type: null,
+                            error_message: null,
                             original_url: trimmed,
-                            data_url: absoluteUrl,
-                            error: `Unexpected content type: ${contentType || 'unknown'}`,
-                        });
-                        continue;
-                    }
+                        };
+                        break;
+                    } catch (error) {
+                        const message =
+                            error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error';
+                        const errorType = classifyFetchError(message);
 
-                    results.push({
-                        original_url: trimmed,
-                        data_url: await toDataUrl(response),
-                        error: null,
-                    });
-                } catch (error) {
-                    const message =
-                        error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error';
-                    results.push({
-                        original_url: trimmed,
-                        data_url: trimmed,
-                        error: message,
-                    });
+                        finalResult = {
+                            status: 'error',
+                            data_url: null,
+                            error_type: errorType,
+                            error_message: message,
+                            original_url: trimmed,
+                        };
+
+                        if (!shouldRetry(errorType) || attempt === maxAttempts - 1) {
+                            break;
+                        }
+
+                        const backoffMs = initialRetryDelayMs * (2 ** attempt);
+                        await new Promise(resolve => setTimeout(resolve, backoffMs));
+                    } finally {
+                        clearTimeout(timeoutId);
+                    }
                 }
+
+                results.push(finalResult);
             }
 
             return results;
         }
         """,
         image_urls,
+        FETCH_TIMEOUT_MS,
+        max_attempts,
+        INITIAL_RETRY_DELAY_SECONDS * 1000,
+        SCROLL_STEP_PX,
+        SCROLL_WAIT_MS,
     )
 
-    processed_urls: list[str] = []
+    if hasattr(page, "wait_for_load_state"):
+        await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(POST_SCROLL_SETTLE_SECONDS)
+
+    processed_results: list[ImageCaptureResult] = []
     for entry in captured_images:
         data_url = entry.get("data_url") if isinstance(entry, dict) else None
-        if isinstance(data_url, str) and data_url.strip():
-            processed_urls.append(data_url)
-
-        error = entry.get("error") if isinstance(entry, dict) else None
+        status = entry.get("status") if isinstance(entry, dict) else None
+        error_type = entry.get("error_type") if isinstance(entry, dict) else None
+        error_message = entry.get("error_message") if isinstance(entry, dict) else None
+        legacy_error = entry.get("error") if isinstance(entry, dict) else None
         original_url = entry.get("original_url") if isinstance(entry, dict) else None
-        if error:
+
+        if status is None:
+            status = "success" if not legacy_error else "error"
+            if error_message is None and isinstance(legacy_error, str):
+                error_message = legacy_error
+
+        if status == "success" and isinstance(data_url, str) and data_url.strip():
+            processed_results.append(
+                {
+                    "status": "success",
+                    "data_url": data_url,
+                    "error_type": None,
+                    "error_message": None,
+                    "original_url": str(original_url or data_url),
+                }
+            )
+            continue
+
+        normalized_error_type: ImageCaptureResult["error_type"]
+        if error_type == ERROR_AUTH_401:
+            normalized_error_type = ERROR_AUTH_401
+        elif error_type == ERROR_NOT_FOUND_404:
+            normalized_error_type = ERROR_NOT_FOUND_404
+        elif error_type == ERROR_CORS_BLOCKED:
+            normalized_error_type = ERROR_CORS_BLOCKED
+        else:
+            normalized_error_type = ERROR_NETWORK_TIMEOUT
+
+        processed_results.append(
+            {
+                "status": "error",
+                "data_url": None,
+                "error_type": normalized_error_type,
+                "error_message": str(error_message or "Unknown capture error"),
+                "original_url": str(original_url or "<unknown>"),
+            }
+        )
+
+        if error_message:
             logger.warning(
-                "Failed to convert authenticated image %s to data URL: %s",
+                "Failed to convert authenticated image %s to data URL [%s]: %s",
                 original_url or "<unknown>",
-                error,
+                normalized_error_type,
+                error_message,
             )
 
-    return processed_urls
+    return processed_results
 
 
 @ActionRegistry.register("process_images")
@@ -184,7 +341,9 @@ class ProcessImagesAction(BaseAction):
         config = getattr(self.ctx, "config", None)
         requires_login = bool(config.requires_login()) if config and hasattr(config, "requires_login") else False
         if requires_login:
-            filtered_images = await _capture_authenticated_images_as_data_urls(self.ctx, filtered_images)
+            capture_results = await _capture_authenticated_images_as_data_urls(self.ctx, filtered_images)
+            self.ctx.results[f"{field}_capture_metadata"] = capture_results
+            filtered_images = [result["data_url"] for result in capture_results if result["status"] == "success" and isinstance(result["data_url"], str)]
 
         self.ctx.results[field] = filtered_images
         logger.debug(f"Processed images for {field}: {len(filtered_images)} remaining")
