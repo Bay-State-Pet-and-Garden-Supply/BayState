@@ -113,7 +113,7 @@ export async function PATCH(
 
     if (consolidated !== undefined) {
       if (consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)) {
-        updateData.consolidated = await replaceInlineImageDataUrls(
+        const durableConsolidated = await replaceInlineImageDataUrls(
           supabase,
           consolidated as Record<string, unknown>,
           {
@@ -123,6 +123,7 @@ export async function PATCH(
             },
           }
         );
+        updateData.consolidated = durableConsolidated.value;
       } else {
         updateData.consolidated = consolidated;
       }

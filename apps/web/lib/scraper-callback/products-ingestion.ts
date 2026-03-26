@@ -26,17 +26,26 @@ export interface PartialPersistenceResult {
   missing: string[];
 }
 
+interface ProductsIngestionSourceRow {
+  id: string;
+  sources: Record<string, unknown>;
+}
+
 async function makeIncomingSourcesDurable(
-  supabase: Pick<SupabaseClient, 'storage'>,
+  supabase: Pick<SupabaseClient, 'from' | 'storage'>,
+  productId: string,
   sku: string,
   sources: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-  return replaceInlineImageDataUrls(supabase, sources, {
+  const durableSources = await replaceInlineImageDataUrls(supabase, sources, {
     folderPath: buildProductImageStorageFolder('pipeline-sources', sku),
+    productId,
     onError: (message, error) => {
       console.warn(`[Products Ingestion] ${message}`, error);
     },
   });
+
+  return durableSources.value;
 }
 
 /**
@@ -46,7 +55,7 @@ async function makeIncomingSourcesDurable(
 export async function loadProductsIngestionSourcesBySku(
   supabase: SupabaseClient,
   skus: string[]
-): Promise<Map<string, Record<string, unknown>>> {
+): Promise<Map<string, ProductsIngestionSourceRow>> {
   if (skus.length === 0) {
     return new Map();
   }
@@ -54,16 +63,19 @@ export async function loadProductsIngestionSourcesBySku(
   const uniqueSkus = [...new Set(skus)];
   const { data, error } = await supabase
     .from('products_ingestion')
-    .select('sku, sources')
+    .select('id, sku, sources')
     .in('sku', uniqueSkus);
 
   if (error) {
     throw new Error(`Failed to fetch products_ingestion SKUs: ${error.message}`);
   }
 
-  const sourcesBySku = new Map<string, Record<string, unknown>>();
+  const sourcesBySku = new Map<string, ProductsIngestionSourceRow>();
   for (const row of data || []) {
-    sourcesBySku.set(row.sku, (row.sources as Record<string, unknown>) || {});
+    sourcesBySku.set(row.sku, {
+      id: row.id,
+      sources: (row.sources as Record<string, unknown>) || {},
+    });
   }
 
   return sourcesBySku;
@@ -92,10 +104,11 @@ export async function persistProductsIngestionSourcesStrict(
   }
 
   const updateRows = await Promise.all(skus.map(async (sku) => {
-    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, skuData[sku]);
+    const existingRow = existingSourcesBySku.get(sku)!;
+    const scrapedData = await makeIncomingSourcesDurable(supabase, existingRow.id, sku, skuData[sku]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
-    const updatedSources = mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData);
+    const updatedSources = mergeProductSources(existingRow.sources, scrapedData);
 
     return {
       sku,
@@ -153,10 +166,11 @@ export async function persistProductsIngestionSourcesPartial(
   }
 
   const updateRows = await Promise.all(toUpdateSkus.map(async (sku) => {
-    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, skuData[sku]);
+    const existingRow = existingSourcesBySku.get(sku)!;
+    const scrapedData = await makeIncomingSourcesDurable(supabase, existingRow.id, sku, skuData[sku]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
-    const updatedSources = mergeProductSources(existingSourcesBySku.get(sku) || {}, scrapedData);
+    const updatedSources = mergeProductSources(existingRow.sources, scrapedData);
 
     return {
       sku,

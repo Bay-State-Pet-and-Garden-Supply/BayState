@@ -56,12 +56,13 @@ export async function publishToStorefront(sku: string) {
         if (Array.isArray(consolidated.images)) {
             const sourceImages = (consolidated.images as unknown[])
                 .filter((img): img is string => typeof img === 'string' && img.trim() !== '');
-            images = await replaceInlineImageDataUrls(supabase, sourceImages, {
+            const durableImages = await replaceInlineImageDataUrls(supabase, sourceImages, {
                 folderPath: buildProductImageStorageFolder('pipeline-published', sku),
                 onError: (message, error) => {
                     console.error(`[Publish] ${message}`, error);
                 },
             });
+            images = durableImages.value;
 
             if (images.some((image, index) => image !== sourceImages[index])) {
                 const { error: persistenceError } = await supabase
