@@ -113,7 +113,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                 className="flex w-full items-center justify-between px-4 py-3 hover:bg-muted transition-colors"
             >
                     <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-purple-600" />
+                        <Sparkles className="h-4 w-4 text-accent" />
                         <h3 className="text-sm font-semibold text-foreground">Consolidation History</h3>
                         <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted text-xs py-0.5">
                             {jobs.length}
@@ -137,14 +137,14 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                         return (
                             <div 
                                 key={job.id} 
-                                className={`px-4 py-3 hover:bg-muted transition-colors ${isActive ? 'bg-purple-50/50' : ''}`}
+                                className={`px-4 py-3 hover:bg-muted transition-colors ${isActive ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
                             >
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
                                             job.status === 'completed' ? 'bg-green-100 text-green-600' :
                                             job.status === 'failed' ? 'bg-red-100 text-red-600' :
-                                            'bg-purple-100 text-purple-600'
+                                            'bg-primary/10 text-primary'
                                         }`}>
                                             <StatusIcon className="h-4 w-4" />
                                         </div>
@@ -192,7 +192,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                                 {(job.status === 'in_progress' || job.status === 'validating') && (
                                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                                         <div 
-                                            className="h-full bg-purple-600 transition-all duration-500 ease-out"
+                                            className="h-full bg-primary transition-all duration-500 ease-out"
                                             style={{ width: `${job.progress}%` }}
                                         />
                                     </div>

@@ -218,10 +218,10 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
 
             <div className="space-y-4">
                 {selected.length > 0 && (
-                    <div className="flex items-center justify-between rounded-lg bg-purple-50 px-4 py-2">
-                        <span className="text-sm text-purple-700">
+                    <div className="flex items-center justify-between rounded-lg bg-primary/5 border border-primary/10 px-4 py-2">
+                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
                             {selected.length} service(s) selected
-                        </span>
+                        </Badge>
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"

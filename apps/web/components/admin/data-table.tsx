@@ -217,7 +217,7 @@ export function DataTable<T extends { id: string | number }>({
 
       {/* Selection info */}
       {selectable && selectedIds.size > 0 && (
-        <div className="rounded-md bg-purple-50 px-4 py-2 text-sm text-purple-700">
+        <div className="rounded-md bg-primary/10 border border-primary/20 px-4 py-2 text-sm text-primary font-medium">
           {selectedIds.size} row(s) selected
         </div>
       )}
