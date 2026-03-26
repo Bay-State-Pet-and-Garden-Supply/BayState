@@ -115,15 +115,30 @@ function trimStringValue(value: string): string | undefined {
     return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function buildImageDedupKey(value: string): string {
+    const normalized = normalizeImageUrl(value);
+    if (/amazon\./i.test(normalized) && /\/images\/I\//i.test(normalized)) {
+        return normalized.replace(/^https?:\/\/[^/]+/i, '').toLowerCase();
+    }
+    return normalized;
+}
+
 function normalizeStringList(value: unknown): string[] {
     const entries = Array.isArray(value) ? value : [value];
+    const deduped = new Map<string, string>();
 
-    const normalized = entries
+    entries
         .filter((entry): entry is string => typeof entry === 'string')
         .map((entry) => normalizeImageUrl(entry))
-        .filter((entry) => entry.length > 0);
+        .filter((entry) => entry.length > 0)
+        .forEach((entry) => {
+            const key = buildImageDedupKey(entry);
+            if (!deduped.has(key)) {
+                deduped.set(key, entry);
+            }
+        });
 
-    return Array.from(new Set(normalized));
+    return Array.from(deduped.values());
 }
 
 function normalizeSourceFieldValue(field: string, value: unknown): unknown {
@@ -291,7 +306,7 @@ function isImageLikeKey(key: string): boolean {
 }
 
 function collectImageCandidates(value: unknown, max: number): string[] {
-    const deduped = new Set<string>();
+    const deduped = new Map<string, string>();
 
     const addCandidate = (candidate: string) => {
         const normalized = normalizeImageUrl(candidate);
@@ -299,13 +314,19 @@ function collectImageCandidates(value: unknown, max: number): string[] {
             return;
         }
         if (isImageDataUri(normalized)) {
-            deduped.add(normalized);
+            const key = buildImageDedupKey(normalized);
+            if (!deduped.has(key)) {
+                deduped.set(key, normalized);
+            }
             return;
         }
         if (!isLikelyImageUrl(normalized)) {
             return;
         }
-        deduped.add(normalized);
+        const key = buildImageDedupKey(normalized);
+        if (!deduped.has(key)) {
+            deduped.set(key, normalized);
+        }
     };
 
     const visit = (entry: unknown, keyPath: string[] = [], depth: number = 0) => {
@@ -340,7 +361,7 @@ function collectImageCandidates(value: unknown, max: number): string[] {
 
     visit(value);
 
-    return Array.from(deduped).slice(0, max);
+    return Array.from(deduped.values()).slice(0, max);
 }
 
 function stripImageLikeFields(value: unknown): unknown {
@@ -372,19 +393,23 @@ function stripImageLikeFields(value: unknown): unknown {
 
 /**
  * Normalize image URLs, specifically stripping Amazon's resize parameters.
- * e.g., https://m.media-amazon.com/images/I/71X..._AC_SL1500_.jpg -> https://m.media-amazon.com/images/I/71X....jpg
  */
 export function normalizeImageUrl(url: string): string {
     const trimmed = url.trim();
     if (!trimmed) return trimmed;
 
-    // Handle Amazon media URLs
-    if (trimmed.includes('media-amazon.com/images/I/')) {
-        // Amazon URLs often have modifiers between two underscores after the image ID
-        // e.g., .../images/I/71X8k..._AC_SL1500_.jpg
-        const match = trimmed.match(/(.*\/images\/I\/[^._]+)(?:._.*_)?(\.[^.]+)$/);
-        if (match) {
-            return `${match[1]}${match[2]}`;
+    try {
+        const parsed = new URL(trimmed);
+        if (/amazon\./i.test(parsed.hostname) && /\/images\/I\//i.test(parsed.pathname)) {
+            const cleanedPath = parsed.pathname.replace(
+                /(\._[^/?#]+_)(?=\.[^.\/?#]+$)/i,
+                ''
+            );
+            return `${parsed.protocol}//${parsed.host}${cleanedPath}`;
+        }
+    } catch {
+        if (/amazon\./i.test(trimmed) && /\/images\/I\//i.test(trimmed)) {
+            return trimmed.replace(/(\._[^/?#]+_)(?=\.[^.\/?#]+(?:[?#].*)?$)/i, '');
         }
     }
 

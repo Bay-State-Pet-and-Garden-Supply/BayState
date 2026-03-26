@@ -2,6 +2,7 @@ import {
     extractImageCandidatesFromSourcePayload,
     filterMeaningfulProductSources,
     hasMeaningfulProductSourceData,
+    normalizeImageUrl,
     normalizeProductSources,
     removeImageFieldsFromSourcePayload,
 } from '@/lib/product-sources';
@@ -106,9 +107,36 @@ describe('normalizeProductSources', () => {
             },
         });
     });
+
+    it('dedupes Amazon image variants by underlying image path while preserving the first host', () => {
+        const result = normalizeProductSources({
+            amazon: {
+                images: [
+                    'https://m.media-amazon.com/images/I/71hero._AC_SL1500_.jpg',
+                    'https://images-na.ssl-images-amazon.com/images/I/71hero._AC_US100_.jpg',
+                    'https://m.media-amazon.com/images/I/81alt._SX38_SY50_CR,0,0,38,50_.jpg',
+                ],
+            },
+        });
+
+        expect(result).toEqual({
+            amazon: {
+                images: [
+                    'https://m.media-amazon.com/images/I/71hero.jpg',
+                    'https://m.media-amazon.com/images/I/81alt.jpg',
+                ],
+            },
+        });
+    });
 });
 
 describe('image source helpers', () => {
+    it('normalizes Amazon image URLs across multiple Amazon hosts', () => {
+        expect(
+            normalizeImageUrl('https://images-na.ssl-images-amazon.com/images/I/71hero._AC_US100_.jpg')
+        ).toBe('https://images-na.ssl-images-amazon.com/images/I/71hero.jpg');
+    });
+
     it('extracts image candidates from a single normalized source payload', () => {
         const result = extractImageCandidatesFromSourcePayload({
             title: 'Protected Product',

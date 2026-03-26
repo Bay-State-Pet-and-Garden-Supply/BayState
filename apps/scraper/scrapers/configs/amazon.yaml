@@ -15,7 +15,7 @@ selectors:
     multiple: false
     required: true
   - name: Image URLs
-    selector: "#altImages li.imageThumbnail img"
+    selector: "#landingImage, #altImages li.imageThumbnail:not(:first-child) img"
     attribute: src
     multiple: true
     required: true
@@ -137,7 +137,7 @@ workflows:
               pattern: Visit the (.+) Store
         - name: Images
           multiple: true
-          selector: "#altImages li.imageThumbnail img, #landingImage"
+          selector: "#landingImage, #altImages li.imageThumbnail:not(:first-child) img"
           attribute: src
           transform:
             - type: replace
