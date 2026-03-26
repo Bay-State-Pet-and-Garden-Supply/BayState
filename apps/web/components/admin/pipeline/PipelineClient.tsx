@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Activity, Brain } from "lucide-react";
 import { StageTabs } from "./StageTabs";
@@ -25,14 +26,20 @@ interface PipelineClientProps {
   initialCounts: StatusCount[];
   initialProducts: PipelineProduct[];
   initialTotal: number;
+  initialStage?: PipelineStage;
 }
 
 export function PipelineClient({
   initialCounts,
   initialProducts,
   initialTotal,
+  initialStage = "imported",
 }: PipelineClientProps) {
-  const [currentStage, setCurrentStage] = useState<PipelineStage>("imported");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  const [currentStage, setCurrentStage] = useState<PipelineStage>(initialStage);
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
@@ -44,8 +51,8 @@ export function PipelineClient({
   const [publishedActionState, setPublishedActionState] = useState<
     "upload" | "zip" | null
   >(null);
-  const [search, setSearch] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
 
   const availableSourceFilters = useMemo(() => {
     const all = new Set<string>();
@@ -81,7 +88,7 @@ export function PipelineClient({
 
   // Fetch products for a specific stage
   const fetchProducts = useCallback(
-    async (stage: PipelineStage, searchTerm?: string) => {
+    async (stage: PipelineStage, searchTerm?: string, silent = false) => {
       // Monitoring and consolidating are live views, not product index queries.
       if (stage === "monitoring" || stage === "consolidating") {
         setProducts([]);
@@ -90,10 +97,10 @@ export function PipelineClient({
         return;
       }
 
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          status: stage === "finalized" ? "finalized" : stage,
+          status: stage === "finalized" ? "consolidated,finalized" : stage,
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
@@ -106,7 +113,7 @@ export function PipelineClient({
       } catch {
         toast.error("Failed to fetch products");
       } finally {
-        setIsLoading(false);
+        if (!silent) setIsLoading(false);
       }
     },
     [],
@@ -126,8 +133,8 @@ export function PipelineClient({
   }, []);
 
   // Refresh everything
-  const refreshAll = useCallback(async () => {
-    await Promise.all([fetchProducts(currentStage, search), fetchCounts()]);
+  const refreshAll = useCallback(async (silent = false) => {
+    await Promise.all([fetchProducts(currentStage, search, silent), fetchCounts()]);
   }, [currentStage, search, fetchProducts, fetchCounts]);
 
   const isFirstMount = useRef(true);
@@ -165,12 +172,38 @@ export function PipelineClient({
     };
   }, [currentStage, search, fetchProducts]);
 
+  // Sync currentStage with URL when it changes
+  useEffect(() => {
+    const stageParam = searchParams.get("stage") || searchParams.get("status");
+    if (stageParam && stageParam !== currentStage) {
+      const validStages = ["imported", "monitoring", "scraped", "consolidating", "finalized", "published"];
+      if (validStages.includes(stageParam)) {
+        setCurrentStage(stageParam as PipelineStage);
+      }
+    }
+    
+    const searchParam = searchParams.get("search") || "";
+    if (searchParam !== search) {
+      setSearch(searchParam);
+    }
+    
+    const sourceParam = searchParams.get("source") || "";
+    if (sourceParam !== sourceFilter) {
+      setSourceFilter(sourceParam);
+    }
+  }, [searchParams, currentStage, search, sourceFilter]);
+
   // Handle stage tab change
   const handleStageChange = (stage: PipelineStage) => {
     setCurrentStage(stage);
     setSearch("");
     setSourceFilter("");
     setLastSelectedIndex(null);
+
+    // Update URL to persist stage on refresh
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("stage", stage);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
@@ -292,6 +325,11 @@ export function PipelineClient({
           setCurrentStage("consolidating");
           setSearch("");
           await fetchCounts();
+
+          // Update URL
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("stage", "consolidating");
+          router.push(`${pathname}?${params.toString()}`, { scroll: false });
         } else {
           const error = await res.json();
           toast.error(error.error || "Failed to submit consolidation");
@@ -616,6 +654,11 @@ export function PipelineClient({
           setCurrentStage("monitoring");
           setSearch("");
           await Promise.all([fetchCounts(), fetchProducts("monitoring")]);
+
+          // Update URL
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("stage", "monitoring");
+          router.push(`${pathname}?${params.toString()}`, { scroll: false });
         }
       } else {
         const error = await res.json();
