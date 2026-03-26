@@ -37,18 +37,19 @@ curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayS
 The script will prompt you for:
 - **API URL**: Your BayStateApp URL (e.g., `https://app.baystatepet.com`)
 - **API Key**: Paste the key from Step 1
-
-- **SCRAPER_API_URL** (defaults to `https://app.baystatepet.com`)
-- **SCRAPER_API_KEY** (paste the key you generated)
 - It auto-detects **RUNNER_NAME** from hostname
-- Optional prompt: enable auto-updates
+- Optional prompt: enable Docker-native auto-updates via Watchtower
 
 The runner should connect automatically. Check the Admin Panel → Scraper Network to see the runner status.
 
-1. Validates Docker installation/daemon
-2. Pulls `ghcr.io/bay-state-pet-and-garden-supply/baystatescraper:latest`
-3. Starts container `baystate-scraper` with `--restart unless-stopped`
-4. Passes `SCRAPER_API_URL`, `SCRAPER_API_KEY`, and `RUNNER_NAME`
+The installer then:
+
+1. Validates Docker and Docker Compose
+2. Writes runner config to `~/.baystate-scraper/runner.env`
+3. Writes a Compose stack to `~/.baystate-scraper/compose.yml`
+4. Pulls `ghcr.io/bay-state-pet-and-garden-supply/baystate/scraper:latest`
+5. Starts the `baystate-scraper` service in a Compose-managed stack
+6. If enabled, starts a scoped `watchtower` sidecar that checks for new images hourly
 
 ## Architecture Overview
 
@@ -84,21 +85,35 @@ The runner should connect automatically. Check the Admin Panel → Scraper Netwo
 
 ## Managing Your Runner
 
-### Docker Commands
+### Docker Compose Commands
 
 ```bash
+cd ~/.baystate-scraper
+
+# View stack status
+docker compose -p baystate-scraper -f compose.yml ps
+
 # View logs
-docker logs -f baystate-scraper
+docker compose -p baystate-scraper -f compose.yml logs -f scraper
 
-# Stop the runner
-docker stop baystate-scraper
+# Stop the stack
+docker compose -p baystate-scraper -f compose.yml stop
 
-# Start the runner
-docker start baystate-scraper
+# Start the stack
+docker compose -p baystate-scraper -f compose.yml start
 
-# Restart (after config changes)
-docker restart baystate-scraper
+# Manually pull and restart with the latest image
+docker compose -p baystate-scraper -f compose.yml pull
+docker compose -p baystate-scraper -f compose.yml up -d
 ```
+
+`docker logs -f baystate-scraper` still works, but Compose commands are the source of truth for managing the installed stack.
+
+### Automatic Updates
+
+If you enable auto-updates during install, the stack includes a `watchtower` sidecar. It only watches containers labeled for the Bay State scraper runner, checks GHCR hourly, and recreates the scraper container when a newer image is available.
+
+This replaces the older cron-based updater, so there is no host-level cron job or handwritten update script to maintain.
 
 ### View Real-Time Events (v0.2.0+)
 
@@ -111,7 +126,13 @@ docker exec baystate-scraper python -c "from scrapers.events.emitter import Even
 ### Update the Runner
 
 ```bash
+# Re-run the installer (safe and idempotent)
 curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
+
+# Or update manually via Compose
+cd ~/.baystate-scraper
+docker compose -p baystate-scraper -f compose.yml pull
+docker compose -p baystate-scraper -f compose.yml up -d
 ```
 
 ---
@@ -119,8 +140,8 @@ curl -sSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayS
 ## Useful Commands
 
 ```bash
-docker stop baystate-scraper
-docker rm baystate-scraper
+cd ~/.baystate-scraper
+docker compose -p baystate-scraper -f compose.yml down
 ```
 
 ---
@@ -155,9 +176,10 @@ Site passwords are **never stored on the runner**:
 | Issue | Solution |
 |-------|----------|
 | "Docker not running" | Open Docker Desktop (macOS) or `sudo systemctl start docker` (Linux) |
-| Runner shows offline | Check logs: `docker logs baystate-scraper` |
+| Runner shows offline | Check logs: `cd ~/.baystate-scraper && docker compose -p baystate-scraper -f compose.yml logs scraper` |
 | Jobs stuck in "queued" | Verify API key is valid in Admin Panel |
 | "Permission denied" on Docker | Run `sudo usermod -aG docker $USER` and log out/in |
+| Auto-updates aren't happening | Check `cd ~/.baystate-scraper && docker compose -p baystate-scraper -f compose.yml logs watchtower` and verify the runner can pull from GHCR |
 
 ---
 
