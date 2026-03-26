@@ -41,6 +41,7 @@ export function PipelineClient({
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
+  const [exportState, setExportState] = useState<"xml" | "zip" | null>(null);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
@@ -340,6 +341,87 @@ export function PipelineClient({
     }
   }, [selectedSkus, refreshAll]);
 
+  const downloadPublishedExport = useCallback(
+    async (format: "xml" | "zip", skus?: string[]) => {
+      const exportCount = skus?.length ?? totalCount;
+      if (exportCount === 0) {
+        return;
+      }
+
+      setExportState(format);
+      try {
+        const endpoint =
+          format === "xml"
+            ? "/api/admin/pipeline/export-xml"
+            : "/api/admin/pipeline/export-zip";
+        const response =
+          skus && skus.length > 0
+            ? await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skus }),
+              })
+            : await fetch(endpoint);
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(
+            payload.error ||
+              `Failed to export ${format === "xml" ? "ShopSite XML" : "ShopSite ZIP"}`,
+          );
+        }
+
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get("Content-Disposition");
+        const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
+        const filename =
+          filenameMatch?.[1] ??
+          (format === "xml" ? "shopsite-products.xml" : "shopsite-export.zip");
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success(
+          `${format === "xml" ? "ShopSite XML" : "ShopSite ZIP"} export downloaded`,
+          {
+            description: `${exportCount} published product${exportCount === 1 ? "" : "s"}`,
+          },
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : `Failed to export ${format === "xml" ? "ShopSite XML" : "ShopSite ZIP"}`,
+        );
+      } finally {
+        setExportState(null);
+      }
+    },
+    [totalCount],
+  );
+
+  const handleExportAllXml = useCallback(() => {
+    void downloadPublishedExport("xml");
+  }, [downloadPublishedExport]);
+
+  const handleExportAllZip = useCallback(() => {
+    void downloadPublishedExport("zip");
+  }, [downloadPublishedExport]);
+
+  const handleExportSelectedXml = useCallback(() => {
+    void downloadPublishedExport("xml", Array.from(selectedSkus));
+  }, [downloadPublishedExport, selectedSkus]);
+
+  const handleExportSelectedZip = useCallback(() => {
+    void downloadPublishedExport("zip", Array.from(selectedSkus));
+  }, [downloadPublishedExport, selectedSkus]);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -537,6 +619,9 @@ export function PipelineClient({
           onSourceFilterChange={setSourceFilter}
           availableSourceFilters={availableSourceFilters}
           selectedCount={selectedSkus.size}
+          exportState={currentStage === "published" ? exportState : null}
+          onExportXml={currentStage === "published" ? handleExportAllXml : undefined}
+          onExportZip={currentStage === "published" ? handleExportAllZip : undefined}
         />
       )}
 
@@ -648,6 +733,9 @@ export function PipelineClient({
         onResetStage={handleResetStage}
         onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
         onDelete={handleDelete}
+        exportState={currentStage === "published" ? exportState : null}
+        onExportXml={currentStage === "published" ? handleExportSelectedXml : undefined}
+        onExportZip={currentStage === "published" ? handleExportSelectedZip : undefined}
       />
     </div>
   );

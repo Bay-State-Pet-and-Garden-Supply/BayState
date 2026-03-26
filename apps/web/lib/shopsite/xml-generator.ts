@@ -1,7 +1,8 @@
 /**
  * ShopSite XML Generator
  *
- * Generates valid ShopSite DTD v1.9 XML for product export.
+ * Generates ShopSite XML aligned to the current Bay State sample export
+ * (DTD 2.9 / version 15.0).
  * Handles image mapping, custom fields, and ProductOnPages structure.
  */
 
@@ -9,6 +10,8 @@ import {
     SHOPSITE_XML_VERSION,
     MAX_MORE_INFO_IMAGES,
 } from './constants';
+
+const SHOPSITE_DOCTYPE = 'http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -27,6 +30,10 @@ export interface ShopSiteExportProduct {
     search_keywords?: string | null;
     is_special_order?: boolean;
     is_taxable?: boolean;
+    file_name?: string | null;
+    gtin?: string | null;
+    availability?: string | null;
+    minimum_quantity?: number | null;
 }
 
 // ─── XML Helpers ─────────────────────────────────────────────────────────────
@@ -59,6 +66,22 @@ function xmlCdataElement(tag: string, value: string | null | undefined): string 
     return `    <${tag}>${cdataWrap(value)}</${tag}>`;
 }
 
+function xmlLiteralElement(tag: string, value: string | null | undefined, emptyValue: string): string {
+    if (value === null || value === undefined || value === '') {
+        return `    <${tag}>${escapeXml(emptyValue)}</${tag}>`;
+    }
+
+    return `    <${tag}>${escapeXml(value)}</${tag}>`;
+}
+
+function formatPrice(value: string | number): string {
+    if (typeof value === 'number') {
+        return value.toFixed(2);
+    }
+
+    return value;
+}
+
 // ─── Product XML Generation ──────────────────────────────────────────────────
 
 function generateProductXml(product: ShopSiteExportProduct): string {
@@ -68,7 +91,9 @@ function generateProductXml(product: ShopSiteExportProduct): string {
     // Core fields
     lines.push(xmlElement('Name', product.name));
     lines.push(xmlElement('SKU', product.sku));
-    lines.push(xmlElement('Price', String(product.price)));
+    lines.push(xmlElement('Price', formatPrice(product.price)));
+    lines.push(xmlElement('ProductDisabled', 'uncheck'));
+    lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity ?? 0)));
 
     // Weight
     if (product.weight != null && product.weight !== '') {
@@ -76,7 +101,17 @@ function generateProductXml(product: ShopSiteExportProduct): string {
     }
 
     // Taxable
-    lines.push(xmlElement('Taxable', product.is_taxable !== false ? 'yes' : 'no'));
+    lines.push(xmlElement('Taxable', product.is_taxable !== false ? 'checked' : 'uncheck'));
+
+    lines.push(xmlElement('ProductType', 'Tangible'));
+
+    if (product.gtin) {
+        lines.push(xmlElement('GTIN', product.gtin));
+    }
+
+    if (product.availability) {
+        lines.push(xmlElement('Availability', product.availability));
+    }
 
     // Product description (short - shown on category pages)
     if (product.description) {
@@ -89,29 +124,8 @@ function generateProductXml(product: ShopSiteExportProduct): string {
     }
 
     // Images: Graphic + MoreInformationGraphic = first image
-    if (product.images.length > 0) {
-        const primaryImage = product.images[0];
-        lines.push(xmlElement('Graphic', primaryImage));
-
-        // Show "More Information" page when we have content
-        lines.push(xmlElement('DisplayMoreInformationPage', 'checked'));
-
-        // More Information page content
-        if (product.long_description) {
-            lines.push(xmlCdataElement('MoreInformationText', product.long_description));
-        }
-
-        lines.push(xmlElement('MoreInformationGraphic', primaryImage));
-
-        // Additional images: MoreInfoImage1 through MoreInfoImage7
-        const additionalImages = product.images.slice(1, 1 + MAX_MORE_INFO_IMAGES);
-        for (let i = 0; i < additionalImages.length; i++) {
-            lines.push(xmlElement(`MoreInfoImage${i + 1}`, additionalImages[i]));
-        }
-    } else if (product.long_description) {
-        lines.push(xmlElement('DisplayMoreInformationPage', 'checked'));
-        lines.push(xmlCdataElement('MoreInformationText', product.long_description));
-    }
+    const primaryImage = product.images[0] ?? null;
+    lines.push(xmlElement('Graphic', primaryImage));
 
     // ProductOnPages
     if (product.shopsite_pages && product.shopsite_pages.length > 0) {
@@ -120,6 +134,24 @@ function generateProductXml(product: ShopSiteExportProduct): string {
             lines.push(`      <Name>${escapeXml(page)}</Name>`);
         }
         lines.push('    </ProductOnPages>');
+    } else {
+        lines.push('    <ProductOnPages/>');
+    }
+
+    lines.push(xmlElement('DisplayMoreInformationPage', 'checked'));
+
+    if (product.long_description) {
+        lines.push(xmlCdataElement('MoreInformationText', product.long_description));
+    } else {
+        lines.push('    <MoreInformationText/>');
+    }
+
+    lines.push(xmlLiteralElement('MoreInformationGraphic', primaryImage, 'none'));
+    lines.push(xmlElement('FileName', product.file_name ?? `${product.sku}.html`));
+
+    const additionalImages = product.images.slice(1, 1 + MAX_MORE_INFO_IMAGES);
+    for (let i = 0; i < MAX_MORE_INFO_IMAGES; i++) {
+        lines.push(xmlLiteralElement(`MoreInfoImage${i + 1}`, additionalImages[i], 'none'));
     }
 
     // Brand (both native field and legacy ProductField16)
@@ -156,8 +188,12 @@ export function generateShopSiteXml(products: ShopSiteExportProduct[]): string {
     const lines: string[] = [];
 
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
-    lines.push('<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">');
+    lines.push(`<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">`);
     lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
+    lines.push('<Response>');
+    lines.push('<ResponseCode>1</ResponseCode>');
+    lines.push('<ResponseDescription>success</ResponseDescription>');
+    lines.push('</Response>');
     lines.push('<Products>');
 
     for (const product of products) {
@@ -178,8 +214,12 @@ export function* generateShopSiteXmlStream(
     products: Iterable<ShopSiteExportProduct>,
 ): Generator<string> {
     yield '<?xml version="1.0" encoding="UTF-8"?>\n';
-    yield '<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">\n';
+    yield `<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">\n`;
     yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
+    yield '<Response>\n';
+    yield '<ResponseCode>1</ResponseCode>\n';
+    yield '<ResponseDescription>success</ResponseDescription>\n';
+    yield '</Response>\n';
     yield '<Products>\n';
 
     for (const product of products) {

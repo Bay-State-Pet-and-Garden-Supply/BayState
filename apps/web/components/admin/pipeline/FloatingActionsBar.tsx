@@ -1,8 +1,7 @@
 "use client";
 
-import { Loader2, X, CheckSquare, Plus, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, FileText, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
 
 /**
@@ -60,6 +59,9 @@ interface FloatingActionsBarProps {
   onResetStage?: (previousStage: PipelineStatus) => void;
   onOpenScrapeDialog?: () => void;
   onDelete?: () => void;
+  exportState?: "xml" | "zip" | null;
+  onExportXml?: () => void;
+  onExportZip?: () => void;
 }
 
 export function FloatingActionsBar({
@@ -73,6 +75,9 @@ export function FloatingActionsBar({
   onResetStage,
   onOpenScrapeDialog,
   onDelete,
+  exportState = null,
+  onExportXml,
+  onExportZip,
 }: FloatingActionsBarProps) {
   if (selectedCount === 0) return null;
 
@@ -176,6 +181,48 @@ export function FloatingActionsBar({
               <Trash2 className="mr-1.5 h-4 w-4" />
               Delete
             </Button>
+          )}
+
+          {isTerminalStage && onExportXml && onExportZip && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExportXml}
+                disabled={isLoading || exportState !== null}
+                className="h-10 border-[#008850]/20 text-xs font-bold text-[#008850] hover:bg-[#008850]/5"
+              >
+                {exportState === "xml" ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    Exporting XML…
+                  </>
+                ) : (
+                  <>
+                    <FileText className="mr-1.5 h-4 w-4" />
+                    Export XML
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={onExportZip}
+                disabled={isLoading || exportState !== null}
+                className="h-10 bg-[#008850] px-5 text-xs font-bold text-white hover:bg-[#008850]/90 shadow-lg shadow-[#008850]/20"
+              >
+                {exportState === "zip" ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    Exporting ZIP…
+                  </>
+                ) : (
+                  <>
+                    <Archive className="mr-1.5 h-4 w-4" />
+                    Export ZIP
+                  </>
+                )}
+              </Button>
+            </>
           )}
 
           {hasBulkAction && (

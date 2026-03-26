@@ -2,7 +2,8 @@
  * ShopSite Constants
  *
  * Configuration constants for ShopSite XML export.
- * Based on ShopSite DTD v1.9 and field mappings from BayStateTools.
+ * Based on the current Bay State ShopSite sample export (DTD 2.9 / version 15.0)
+ * and field mappings from BayStateTools.
  */
 
 /**
@@ -32,14 +33,13 @@ export type ShopSitePage = (typeof SHOPSITE_PAGES)[number];
 
 /**
  * Maximum number of additional images ShopSite supports (MoreInfoImage1-20).
- * We cap at 7 to keep uploads manageable and match the old BayStateTools behavior.
  */
-export const MAX_MORE_INFO_IMAGES = 7;
+export const MAX_MORE_INFO_IMAGES = 20;
 
 /**
  * ShopSite XML version for the export format.
  */
-export const SHOPSITE_XML_VERSION = '14.0';
+export const SHOPSITE_XML_VERSION = '15.0';
 
 /**
  * ShopSite custom field mappings.
@@ -57,7 +57,7 @@ export const SHOPSITE_FIELD_MAP = {
  *
  * - Graphic: Main product image shown on category/listing pages (thumbnail)
  * - MoreInformationGraphic: Main product image on the detail page
- * - MoreInfoImage1-7: Additional images shown on the detail page
+ * - MoreInfoImage1-20: Additional images shown on the detail page
  *
  * Both Graphic and MoreInformationGraphic use the first product image.
  */
@@ -71,5 +71,18 @@ export const IMAGE_FIELD_MAPPING = {
         'MoreInfoImage5',
         'MoreInfoImage6',
         'MoreInfoImage7',
+        'MoreInfoImage8',
+        'MoreInfoImage9',
+        'MoreInfoImage10',
+        'MoreInfoImage11',
+        'MoreInfoImage12',
+        'MoreInfoImage13',
+        'MoreInfoImage14',
+        'MoreInfoImage15',
+        'MoreInfoImage16',
+        'MoreInfoImage17',
+        'MoreInfoImage18',
+        'MoreInfoImage19',
+        'MoreInfoImage20',
     ] as const,
 };
