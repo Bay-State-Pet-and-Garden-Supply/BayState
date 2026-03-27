@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   Package,
   ExternalLink,
@@ -49,6 +49,8 @@ interface SourceDetails extends Record<string, unknown> {
 }
 
 const EMPTY_SOURCES: Record<string, unknown> = {};
+const IMAGE_RETRY_DEBOUNCE_MS = 5 * 60 * 1000;
+const imageRetryAttemptTimestamps = new Map<string, number>();
 
 function isSourceDetails(value: unknown): value is SourceDetails {
   return typeof value === "object" && value !== null;
@@ -224,6 +226,60 @@ export function ScrapedResultsView({
     const sourceValue = sources[activeSource];
     return isSourceDetails(sourceValue) ? sourceValue : null;
   }, [activeSource, sources]);
+
+  const handleImageError = useCallback(
+    (imageUrl: string | undefined) => {
+      const productId = selectedProduct?.id;
+      const normalizedImageUrl = imageUrl?.trim();
+
+      if (!productId || !normalizedImageUrl) {
+        return;
+      }
+
+      const retryKey = `${productId}:${normalizedImageUrl}`;
+      const now = Date.now();
+      const lastAttemptAt = imageRetryAttemptTimestamps.get(retryKey);
+
+      if (
+        typeof lastAttemptAt === "number" &&
+        now - lastAttemptAt < IMAGE_RETRY_DEBOUNCE_MS
+      ) {
+        console.info(
+          `[ScrapedResultsView] Debounced retry trigger for ${normalizedImageUrl}`,
+        );
+        return;
+      }
+
+      imageRetryAttemptTimestamps.set(retryKey, now);
+
+      void fetch("/api/admin/scraping/retry-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: productId,
+          image_url: normalizedImageUrl,
+        }),
+      })
+        .then(async (response) => {
+          if (response.ok || response.status === 202) {
+            return;
+          }
+
+          const payload = await response.json().catch(() => null);
+          console.warn(
+            `[ScrapedResultsView] Failed to enqueue retry for ${normalizedImageUrl}`,
+            payload,
+          );
+        })
+        .catch((error) => {
+          console.warn(
+            `[ScrapedResultsView] Error enqueuing retry for ${normalizedImageUrl}`,
+            error,
+          );
+        });
+    },
+    [selectedProduct?.id],
+  );
 
   return (
     <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
@@ -415,7 +471,14 @@ export function ScrapedResultsView({
                             alt={
                               currentSourceData.title || currentSourceData.name
                             }
+                            data-testid="scraped-primary-image"
                             className="w-full h-full object-contain"
+                            onError={() =>
+                              handleImageError(
+                                currentSourceData.images?.[0] ||
+                                  currentSourceData.image_url,
+                              )
+                            }
                           />
                         ) : (
                           <div className="flex flex-col items-center text-muted-foreground">
@@ -449,7 +512,9 @@ export function ScrapedResultsView({
                                   <img
                                     src={img}
                                     alt=""
+                                    data-testid={`scraped-secondary-image-${i}`}
                                     className="w-full h-full object-contain"
+                                    onError={() => handleImageError(img)}
                                   />
                                 </div>
                               ))}

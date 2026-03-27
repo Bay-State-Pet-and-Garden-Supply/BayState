@@ -92,6 +92,7 @@ export interface SelectedImage {
  * Represents a product in the ingestion pipeline.
  */
 export interface PipelineProduct {
+    id?: string;
     sku: string;
     input: {
         name?: string;
