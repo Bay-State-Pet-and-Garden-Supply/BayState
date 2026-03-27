@@ -10,11 +10,11 @@ Usage:
   cd apps/web && bun scripts/backfill-login-protected-images.ts [options]
 
 Options:
-  --execute                 Apply the cleanup and queue replacement scrape jobs
+  --execute                 Insert queue entries for non-durable images (default)
+  --dry-run                 Scan and report without creating queue entries
   --sku <sku>               Limit to a single SKU (repeatable)
   --limit <number>          Max products_ingestion rows to scan when not targeting SKUs
-  --max-workers <number>    Workers per queued scrape job
-  --chunk-size <number>     SKUs per scrape_job_chunks row
+  --batch-size <number>     Products processed per batch (default: 100)
   --help                    Show this help text
 `.trim());
 }
@@ -34,7 +34,8 @@ function parseIntegerOption(flag: string, value: string | undefined): number {
 
 function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
   const options: LoginProtectedImageBackfillOptions = {
-    mode: 'dry-run',
+    mode: 'execute',
+    batchSize: 100,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -43,6 +44,9 @@ function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
     switch (arg) {
       case '--execute':
         options.mode = 'execute';
+        break;
+      case '--dry-run':
+        options.mode = 'dry-run';
         break;
       case '--sku': {
         const sku = argv[index + 1]?.trim();
@@ -57,12 +61,8 @@ function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
         options.limit = parseIntegerOption('--limit', argv[index + 1]);
         index += 1;
         break;
-      case '--max-workers':
-        options.maxWorkers = parseIntegerOption('--max-workers', argv[index + 1]);
-        index += 1;
-        break;
-      case '--chunk-size':
-        options.chunkSize = parseIntegerOption('--chunk-size', argv[index + 1]);
+      case '--batch-size':
+        options.batchSize = parseIntegerOption('--batch-size', argv[index + 1]);
         index += 1;
         break;
       case '--help':
@@ -85,17 +85,14 @@ async function main(): Promise<void> {
 
   console.log(
     JSON.stringify(
-      {
-        ...result,
-        candidateSkus: result.candidates.map((candidate) => candidate.sku),
-      },
+      result,
       null,
       2,
     ),
   );
 
   if (result.mode === 'dry-run') {
-    console.log('\nDry run only. Re-run with --execute to apply the cleanup and queue replacement scrapes.');
+    console.log('\nDry run only. Re-run with --execute to create retry queue entries.');
   }
 }
 
