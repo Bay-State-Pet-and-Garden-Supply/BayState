@@ -244,6 +244,7 @@ async function enqueueImageRetry(
   supabase: Pick<SupabaseClient, 'from'>,
   options: ReplaceInlineImageDataUrlOptions,
   cache: Map<string, QueuedInlineImageCacheEntry>,
+  inflightCache: Map<string, Promise<QueuedInlineImageCacheEntry>>,
   imageUrl: string,
   errorType: ImageErrorType,
   errorMessage: string | null | undefined
@@ -255,35 +256,50 @@ async function enqueueImageRetry(
     return cached;
   }
 
-  const captureErrorType = errorType as ImageCaptureErrorType;
-  const scheduledFor = new Date(Date.now() + getRetryDelay(captureErrorType, 0)).toISOString();
-  const marker = buildPendingRetryMarker(imageUrl, errorType);
-  const payload: ImageRetryQueueInsert = {
-    product_id: options.productId ?? null,
-    image_url: imageUrl,
-    error_type: errorType,
-    retry_count: 0,
-    max_retries: MAX_RETRIES[captureErrorType],
-    status: 'pending',
-    scheduled_for: scheduledFor,
-    last_error: errorMessage ?? null,
-  };
-
-  const { error } = await supabase.from('image_retry_queue').insert(payload);
-
-  if (error) {
-    throw new Error(`Failed to enqueue image retry: ${error.message}`);
+  const inflight = inflightCache.get(cacheKey);
+  if (inflight) {
+    return inflight;
   }
 
-  const queuedEntry: QueuedInlineImageCacheEntry = {
-    errorType,
-    imageUrl,
-    marker,
-    scheduledFor,
-  };
+  const enqueuePromise = (async () => {
+    const captureErrorType = errorType as ImageCaptureErrorType;
+    const scheduledFor = new Date(Date.now() + getRetryDelay(captureErrorType, 0)).toISOString();
+    const marker = buildPendingRetryMarker(imageUrl, errorType);
+    const payload: ImageRetryQueueInsert = {
+      product_id: options.productId ?? null,
+      image_url: imageUrl,
+      error_type: errorType,
+      retry_count: 0,
+      max_retries: MAX_RETRIES[captureErrorType],
+      status: 'pending',
+      scheduled_for: scheduledFor,
+      last_error: errorMessage ?? null,
+    };
 
-  cache.set(cacheKey, queuedEntry);
-  return queuedEntry;
+    const { error } = await supabase.from('image_retry_queue').insert(payload);
+
+    if (error) {
+      throw new Error(`Failed to enqueue image retry: ${error.message}`);
+    }
+
+    const queuedEntry: QueuedInlineImageCacheEntry = {
+      errorType,
+      imageUrl,
+      marker,
+      scheduledFor,
+    };
+
+    cache.set(cacheKey, queuedEntry);
+    return queuedEntry;
+  })();
+
+  inflightCache.set(cacheKey, enqueuePromise);
+
+  try {
+    return await enqueuePromise;
+  } finally {
+    inflightCache.delete(cacheKey);
+  }
 }
 
 export async function replaceInlineImageDataUrls<T>(
@@ -295,6 +311,7 @@ export async function replaceInlineImageDataUrls<T>(
   const cache = new Map<string, string>();
   const queuedImages: QueuedInlineImage[] = [];
   const queuedRetryCache = new Map<string, QueuedInlineImageCacheEntry>();
+  const queuedRetryInflightCache = new Map<string, Promise<QueuedInlineImageCacheEntry>>();
   const metadataByDataUrl = new Map<string, ScraperImageCaptureResult>();
 
   for (const metadata of options.scraperImageMetadata ?? []) {
@@ -309,7 +326,15 @@ export async function replaceInlineImageDataUrls<T>(
     errorMessage: string | null | undefined,
     path: string[]
   ): Promise<string> => {
-    const queuedImage = await enqueueImageRetry(supabase, options, queuedRetryCache, imageUrl, errorType, errorMessage);
+    const queuedImage = await enqueueImageRetry(
+      supabase,
+      options,
+      queuedRetryCache,
+      queuedRetryInflightCache,
+      imageUrl,
+      errorType,
+      errorMessage
+    );
 
     queuedImages.push({
       ...queuedImage,
