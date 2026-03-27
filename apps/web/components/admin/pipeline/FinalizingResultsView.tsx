@@ -355,13 +355,18 @@ export function FinalizingResultsView({
       const selectedImagesFromMetadata = extractSelectedImageUrls(
         selectedProduct.selected_images,
       );
-      const initialSelectedImages = Array.from(
-        new Set(
-          consolidatedImages.length > 0
+      // Merge both sources and deduplicate to prevent duplicates when
+      // consolidated.images and selected_images contain the same image URLs
+      const mergedImages = toStringArray([
+        ...consolidatedImages,
+        ...selectedImagesFromMetadata,
+      ]);
+      const initialSelectedImages =
+        mergedImages.length > 0
+          ? mergedImages
+          : consolidatedImages.length > 0
             ? consolidatedImages
-            : selectedImagesFromMetadata,
-        ),
-      );
+            : selectedImagesFromMetadata;
 
       const name = consolidated.name || input.name || "";
 
