@@ -41,7 +41,7 @@ describe('Issue #4: Type Assertion in Admin Products Page - FIXED', () => {
         const content = readFileSync(adminProductsPath, 'utf-8');
         
         // The new query uses proper join instead of select('*')
-        expect(content).toContain('brand:brands!inner');
+        expect(content).toContain('brand:brands(id, name, slug)');
         expect(content).toContain('brand_name');
         expect(content).toContain('brand_slug');
         
@@ -54,8 +54,9 @@ describe('Issue #4: Type Assertion in Admin Products Page - FIXED', () => {
         const content = readFileSync(adminProductsPath, 'utf-8');
         
         // Verify transformation logic
-        expect(content).toContain('product.brand?.name');
-        expect(content).toContain('product.brand?.slug');
+        expect(content).toContain('const brand = Array.isArray(product.brand)');
+        expect(content).toContain('brand?.name');
+        expect(content).toContain('brand?.slug');
         expect(content).toContain('|| null');
         
         // The fix properly handles the nested brand object and flattens it

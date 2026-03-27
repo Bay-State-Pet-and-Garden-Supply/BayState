@@ -193,7 +193,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   // Transform product for the edit modal (add missing fields with defaults)
   const editableProduct = {
     id: product.id,
-    sku: product.slug, // Using slug as SKU since that's the current pattern
+    sku: product.sku ?? product.slug,
     name: product.name,
     slug: product.slug,
     description: product.description,

@@ -150,7 +150,10 @@ export async function importShopSiteProducts({
     for (const shopSiteProduct of shopSiteProducts) {
         try {
             const { brand_name, category_name, ...transformed } = transformShopSiteProduct(shopSiteProduct);
-            const productRecord: Record<string, unknown> = { ...transformed };
+            const productRecord: Record<string, unknown> = {
+                ...transformed,
+                category: category_name || null,
+            };
 
             if (brand_name) {
                 const brandId = brandMap.get(brand_name);
@@ -196,16 +199,6 @@ export async function importShopSiteProducts({
                         }
                     }
 
-                    if (primaryCategoryId) {
-                        const { error: primaryCategoryError } = await supabase
-                            .from('products')
-                            .update({ category_id: primaryCategoryId } as never)
-                            .eq('id', upserted.id);
-
-                        if (primaryCategoryError) {
-                            addError(shopSiteProduct.sku, `Failed to set primary category: ${primaryCategoryError.message}`);
-                        }
-                    }
                 }
 
                 if (upserted) {

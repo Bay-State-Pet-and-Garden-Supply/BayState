@@ -13,40 +13,36 @@ export interface Brand {
 
 export interface Product {
   id: string;
+  sku?: string | null;
   brand_id: string | null;
   name: string;
   slug: string;
   description: string | null;
+  long_description?: string | null;
   price: number;
-  sale_price: number | null;
   stock_status: 'in_stock' | 'out_of_stock' | 'pre_order';
   images: string[];
   is_featured: boolean;
-  is_special_order: boolean;
+  is_special_order?: boolean;
   pickup_only?: boolean;
-  weight: number | null;
-  search_keywords: string | null;
-  category_id: string | null;
+  weight?: number | null;
+  search_keywords?: string | null;
+  category?: string | null;
+  category_ids?: string[];
   created_at: string;
-  // New enrichment fields
-  compare_at_price: number | null;
-  cost_price: number | null;
-  quantity: number;
-  low_stock_threshold: number;
-  is_taxable: boolean;
-  tax_code: string | null;
-  barcode: string | null;
-  meta_title: string | null;
-  meta_description: string | null;
-  dimensions: { length?: number; width?: number; height?: number; unit?: string } | null;
-  origin_country: string | null;
-  vendor: string | null;
-  published_at: string | null;
-  avg_rating: number | null;
-  review_count: number;
+  updated_at?: string;
+  quantity?: number;
+  low_stock_threshold?: number;
+  is_taxable?: boolean;
+  published_at?: string | null;
+  gtin?: string | null;
+  availability?: string | null;
+  minimum_quantity?: number | null;
+  product_type?: string | null;
+  shopsite_pages?: string[] | null;
   // Relations
   brand?: Brand;
-  category?: Category;
+  primary_category?: Category;
   variants?: ProductVariant[];
   product_images?: ProductImage[];
   reviews?: ProductReview[];

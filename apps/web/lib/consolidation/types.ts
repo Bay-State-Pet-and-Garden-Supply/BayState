@@ -126,12 +126,16 @@ export interface ConsolidatedData {
     images?: string[];
     brand_id?: string;
     stock_status?: string;
-    is_featured?: boolean;
     is_special_order?: boolean;
     category?: string;
     product_type?: string;
     product_on_pages?: string[];
     weight?: string;
+    search_keywords?: string;
+    gtin?: string;
+    availability?: string;
+    minimum_quantity?: number;
+    is_taxable?: boolean;
     confidence_score?: number;
 }
 

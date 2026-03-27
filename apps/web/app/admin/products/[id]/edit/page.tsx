@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { normalizeProductStorefrontSettings } from '@/lib/product-storefront-settings'
 import { notFound } from 'next/navigation'
 import { PickupOnlyToggle } from './pickup-only-toggle'
 
@@ -14,7 +15,14 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   
   const { data: product } = await supabase
     .from('products')
-    .select('*')
+    .select(`
+      id,
+      name,
+      slug,
+      price,
+      stock_status,
+      storefront_settings:product_storefront_settings(is_featured, pickup_only)
+    `)
     .eq('id', id)
     .single()
 
@@ -24,6 +32,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   const groups = await getPreorderGroups()
   const assignment = await getProductPreorderAssignment(id)
+  const storefrontSettings = normalizeProductStorefrontSettings(product.storefront_settings)
 
   const updateProductWithId = updateProduct.bind(null, id)
   const assignGroup = assignProductToPreorderGroup
@@ -76,7 +85,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <PickupOnlyToggle
-              initialValue={product.pickup_only || false}
+              initialValue={storefrontSettings.pickup_only}
               productId={id}
               action={setPickupOnly}
             />

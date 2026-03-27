@@ -47,7 +47,10 @@ describe('Products Data Functions', () => {
       await getProductBySlug('test-product');
 
       expect(mockFrom).toHaveBeenCalledWith('products');
-      expect(mockSelect).toHaveBeenCalledWith('*, brand:brands(id, name, slug, logo_url)');
+      expect(mockSelect.mock.calls[0][0]).toContain('brand:brands(id, name, slug, logo_url)');
+      expect(mockSelect.mock.calls[0][0]).toContain(
+        'storefront_settings:product_storefront_settings(is_featured, pickup_only)'
+      );
       expect(mockEq).toHaveBeenCalledWith('slug', 'test-product');
     });
 
@@ -62,15 +65,34 @@ describe('Products Data Functions', () => {
     it('returns transformed product when found', async () => {
       const mockProduct = {
         id: 'sku-123',
+        sku: 'SKU-123',
         name: 'Test Product',
         slug: 'test-product',
         description: 'A test product',
+        long_description: null,
         price: 19.99,
         images: [],
         stock_status: 'in_stock',
         brand_id: null,
-        is_featured: false,
+        is_special_order: false,
+        is_taxable: true,
+        category: null,
+        product_type: null,
+        weight: null,
+        search_keywords: null,
+        shopsite_pages: [],
+        published_at: null,
+        gtin: null,
+        availability: null,
+        minimum_quantity: 0,
+        quantity: 0,
+        low_stock_threshold: 5,
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+        storefront_settings: {
+          is_featured: false,
+          pickup_only: false,
+        },
       };
       mockSingle.mockResolvedValue({ data: mockProduct, error: null });
 

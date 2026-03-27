@@ -82,20 +82,29 @@ export const ConsolidationResultSchema = z.object({
     product_type: z.string().optional(),
     product_on_pages: z.string().optional(),
     description: z.string().optional(),
+    long_description: z.string().optional(),
     confidence_score: z.number().min(0).max(1).optional(),
     error: z.string().optional(),
 });
 
 export const ConsolidatedDataSchema = z.object({
     name: z.string().optional(),
+    description: z.string().optional(),
+    long_description: z.string().optional(),
     price: z.number().min(0).optional(),
     images: z.array(z.string().url()).optional(),
     brand_id: z.string().optional(),
+    stock_status: z.string().optional(),
     category: z.string().optional(),
     product_type: z.string().optional(),
     weight: z.string().optional(),
     product_on_pages: z.array(z.string()).optional(),
     is_special_order: z.boolean().optional(),
+    search_keywords: z.string().optional(),
+    gtin: z.string().optional(),
+    availability: z.string().optional(),
+    minimum_quantity: z.number().int().min(0).optional(),
+    is_taxable: z.boolean().optional(),
     confidence_score: z.number().min(0).max(1).optional(),
 });
 

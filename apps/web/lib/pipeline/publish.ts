@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { syncProductCategoryLinks } from '@/lib/product-category-sync';
 import {
     buildProductImageStorageFolder,
     replaceInlineImageDataUrls,
@@ -83,7 +84,7 @@ export async function publishToStorefront(sku: string) {
         }
 
         // Resolve product_on_pages to shopsite_pages jsonb
-        let shopsitePages: string[] | null = null;
+        let shopsitePages: string[] = [];
         if (Array.isArray(consolidated.product_on_pages)) {
             shopsitePages = consolidated.product_on_pages as string[];
         } else if (typeof consolidated.product_on_pages === 'string' && consolidated.product_on_pages) {
@@ -154,6 +155,13 @@ export async function publishToStorefront(sku: string) {
                 return { success: false, error: 'Failed to update product in storefront' };
             }
 
+            try {
+                await syncProductCategoryLinks(supabase, existingProduct.id, productData.category);
+            } catch (categoryError) {
+                console.error(`[Publish] Error syncing categories for ${sku}:`, categoryError);
+                return { success: false, error: 'Failed to sync product categories in storefront' };
+            }
+
             await markPipelinePublished();
             return { success: true, action: 'updated', productId: existingProduct.id };
         } else {
@@ -167,6 +175,15 @@ export async function publishToStorefront(sku: string) {
             if (insertError) {
                 console.error(`[Publish] Error inserting product ${sku}:`, insertError);
                 return { success: false, error: 'Failed to create product in storefront' };
+            }
+
+            try {
+                if (insertedProduct?.id) {
+                    await syncProductCategoryLinks(supabase, insertedProduct.id, productData.category);
+                }
+            } catch (categoryError) {
+                console.error(`[Publish] Error syncing categories for ${sku}:`, categoryError);
+                return { success: false, error: 'Failed to sync product categories in storefront' };
             }
 
             await markPipelinePublished();
