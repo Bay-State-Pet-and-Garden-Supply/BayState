@@ -50,7 +50,7 @@ function getLogLevel(level: string): LogLevel {
     : 'info') as LogLevel;
 }
 
-function formatProgressLabel(progress: ScrapeJobProgressUpdate | undefined): string {
+function formatProgressLabel(progress: ScrapeJobProgressUpdate | null | undefined): string {
   if (!progress) {
     return 'Waiting for live progress...';
   }

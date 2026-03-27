@@ -29,6 +29,8 @@ const feedItemVariants = cva(
       status: {
         pending:
           'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800',
+        claimed:
+          'bg-sky-50 border-sky-200 dark:bg-sky-900/20 dark:border-sky-800',
         running:
           'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800',
         completed:
@@ -47,7 +49,7 @@ const feedItemVariants = cva(
 
 interface JobAssignmentFeedProps {
   /** Filter by specific status */
-  statusFilter?: ('pending' | 'running' | 'completed' | 'failed' | 'cancelled')[];
+  statusFilter?: ('pending' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled')[];
   /** Filter by scraper names */
   scraperNames?: string[];
   /** Maximum items to show */
@@ -82,6 +84,8 @@ function getStatusIcon(status: JobAssignment['status']) {
   switch (status) {
     case 'pending':
       return <Clock className="h-4 w-4 text-amber-500" />;
+    case 'claimed':
+      return <ArrowRight className="h-4 w-4 text-sky-500" />;
     case 'running':
       return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
     case 'completed':
@@ -101,6 +105,7 @@ function getStatusIcon(status: JobAssignment['status']) {
 function FeedItem({ job, compact = false, showTimestamp = true, onClick }: FeedItemProps) {
   const statusColor = {
     pending: 'text-amber-600 dark:text-amber-400',
+    claimed: 'text-sky-600 dark:text-sky-400',
     running: 'text-violet-600 dark:text-violet-400',
     completed: 'text-emerald-600 dark:text-emerald-400',
     failed: 'text-red-600 dark:text-red-400',
@@ -112,7 +117,7 @@ function FeedItem({ job, compact = false, showTimestamp = true, onClick }: FeedI
       <div className="flex-shrink-0 mt-0.5">{getStatusIcon(job.status)}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-500 truncate">{job.job_id.slice(0, 8)}</span>
+          <span className="font-mono text-xs text-slate-500 truncate">{(job.job_id || job.id).slice(0, 8)}</span>
           <span className={cn('text-xs font-medium uppercase', statusColor[job.status])}>
             {job.status}
           </span>

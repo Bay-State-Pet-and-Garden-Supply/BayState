@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
 
         const callbackLogs = Array.isArray(results?.logs)
             ? results.logs.filter(
-                (entry): entry is Record<string, unknown> =>
+                (entry) =>
                     Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry)
             )
             : [];
