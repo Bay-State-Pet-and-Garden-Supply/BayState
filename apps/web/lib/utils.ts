@@ -25,3 +25,15 @@ export function formatCurrency(amount: number | string, options: { showFree?: bo
     currency: 'USD',
   }).format(value);
 }
+
+export function formatImageUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return null;
+  
+  if (trimmedUrl.startsWith('http') || trimmedUrl.startsWith('/')) {
+    return trimmedUrl;
+  }
+  
+  return `https://www.baystatepet.com/media/${trimmedUrl}`;
+}

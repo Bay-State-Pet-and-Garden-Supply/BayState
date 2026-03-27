@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCartStore } from '@/lib/cart-store'
+import { formatImageUrl } from '@/lib/utils'
 import { PreorderBatchSelector } from './preorder-batch-selector'
 import type { PreorderBatch, PreorderGroup } from '@/lib/types'
 
@@ -50,7 +51,7 @@ export function AddToCartButton({
       name: product.name,
       slug: product.slug,
       price: product.price,
-      imageUrl: product.images?.[0] || null,
+      imageUrl: formatImageUrl(product.images?.[0]) || null,
       preorderBatchId: selectedBatchId,
       pickup_only: isPickupOnly,
     })

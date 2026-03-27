@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { useCartStore, type CartItem } from '@/lib/cart-store';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatImageUrl } from '@/lib/utils';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -118,7 +118,7 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
       <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100">
         {item.imageUrl ? (
           <img
-            src={item.imageUrl}
+            src={formatImageUrl(item.imageUrl) || undefined}
             alt={item.name}
             className="h-full w-full object-cover"
           />

@@ -8,7 +8,7 @@ import {
     CarouselItem,
     type CarouselApi,
 } from '@/components/ui/carousel';
-import { cn } from '@/lib/utils';
+import { cn, formatImageUrl } from '@/lib/utils';
 
 interface ProductImageCarouselProps {
     images: string[];
@@ -46,8 +46,8 @@ export function ProductImageCarousel({
     );
 
     const cleanImages = images
-        .map((img) => img.trim())
-        .filter((img) => img.startsWith('/') || img.startsWith('http'));
+        .map((img) => formatImageUrl(img))
+        .filter((img): img is string => Boolean(img));
 
     if (cleanImages.length === 0) {
         return (
