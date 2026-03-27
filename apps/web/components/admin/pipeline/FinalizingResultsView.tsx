@@ -76,15 +76,40 @@ interface ImageSourceOption {
   candidates: string[];
 }
 
+/**
+ * Build a deduplication key for image URLs.
+ * For Amazon images, strips the host to handle same image from different CDNs.
+ * This matches the logic in product-sources.ts buildImageDedupKey.
+ */
+function buildImageDedupKey(value: string): string {
+  const normalized = normalizeImageUrl(value);
+  if (/amazon\./i.test(normalized) && /\/images\/I\//i.test(normalized)) {
+    return normalized.replace(/^https?:\/\/[^/]+/i, "").toLowerCase();
+  }
+  return normalized;
+}
+
+/**
+ * Convert array to string array with Amazon-aware deduplication.
+ * Handles case where same Amazon image comes from different hosts/CDNs.
+ */
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
-  const urls = value
+  const deduped = new Map<string, string>();
+
+  value
     .filter((entry): entry is string => typeof entry === "string")
     .map((url) => normalizeImageUrl(url))
-    .filter((url) => url.length > 0);
+    .filter((url) => url.length > 0)
+    .forEach((url) => {
+      const key = buildImageDedupKey(url);
+      if (!deduped.has(key)) {
+        deduped.set(key, url);
+      }
+    });
 
-  return Array.from(new Set(urls));
+  return Array.from(deduped.values());
 }
 
 function extractSelectedImageUrls(value: unknown): string[] {
@@ -355,18 +380,12 @@ export function FinalizingResultsView({
       const selectedImagesFromMetadata = extractSelectedImageUrls(
         selectedProduct.selected_images,
       );
-      // Merge both sources and deduplicate to prevent duplicates when
-      // consolidated.images and selected_images contain the same image URLs
-      const mergedImages = toStringArray([
-        ...consolidatedImages,
-        ...selectedImagesFromMetadata,
-      ]);
+      // Use consolidated.images as primary source (authoritative), fallback to selected_images
+      // toStringArray now uses Amazon-aware dedup to handle same image from different hosts
       const initialSelectedImages =
-        mergedImages.length > 0
-          ? mergedImages
-          : consolidatedImages.length > 0
-            ? consolidatedImages
-            : selectedImagesFromMetadata;
+        consolidatedImages.length > 0
+          ? consolidatedImages
+          : selectedImagesFromMetadata;
 
       const name = consolidated.name || input.name || "";
 
