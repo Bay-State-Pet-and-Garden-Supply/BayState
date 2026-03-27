@@ -1,0 +1,199 @@
+schema_version: "1.0"
+name: petswarehouse
+display_name: Pets Warehouse
+base_url: https://petswarehouse.com
+scraper_type: static
+use_stealth: false
+selectors:
+  - name: search_result_link
+    selector: "main article a[href*='/products/'] >> nth=0"
+    fallback_selectors:
+      - "main .card-wrapper a[href*='/products/'] >> nth=0"
+      - "a[href*='/products/'] >> nth=0"
+    attribute: href
+    multiple: false
+    required: true
+  - name: Name
+    selector: "main h1"
+    fallback_selectors:
+      - "h1.product__title"
+      - "h1"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "main .product__text.caption-with-letter-spacing"
+    fallback_selectors:
+      - "main .product__vendor"
+      - "main *:has-text('Vendor:')"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "main .product__description, main [class*='product__description'], main .rte"
+    fallback_selectors:
+      - "main :has-text('Product Details')"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Item Number
+    selector: "main :has-text('ITEM#'), main :has-text('ITEM #')"
+    fallback_selectors:
+      - "main :has-text('Item#')"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: "main .product__media img, main .product__media-item img, main [data-media-id] img"
+    fallback_selectors:
+      - "main .product-gallery img"
+      - "main img[src*='cdn.shopify.com']"
+    attribute: src
+    multiple: true
+    required: true
+workflows:
+  - action: navigate
+    name: search_page
+    params:
+      url: "https://petswarehouse.com/search?q={sku}%3Bsd&options%5Bprefix%5D=last"
+  - action: conditional_click
+    name: accept_cookies_if_present
+    params:
+      selector: "#onetrust-accept-btn-handler, button:has-text('Accept'), button:has-text('Allow all')"
+      timeout: 2
+  - action: wait_for
+    name: wait_for_search_or_no_results
+    params:
+      timeout: 15
+      selector:
+        - "main article a[href*='/products/']"
+        - "h1:has-text('0 results found for')"
+        - "main :has-text('No results found for')"
+  - action: check_no_results
+    name: detect_no_results
+    params: {}
+  - action: conditional
+    name: retry_without_sd_suffix_when_no_results
+    params:
+      condition_type: value_match
+      field: no_results_found
+      value: true
+      then:
+        - action: navigate
+          name: search_page_fallback
+          params:
+            url: "https://petswarehouse.com/search?q={sku}&options%5Bprefix%5D=last"
+        - action: wait_for
+          name: wait_for_search_or_no_results_fallback
+          params:
+            timeout: 15
+            selector:
+              - "main article a[href*='/products/']"
+              - "h1:has-text('0 results found for')"
+              - "main :has-text('No results found for')"
+        - action: check_no_results
+          name: detect_no_results_fallback
+          params: {}
+  - action: conditional_skip
+    name: stop_when_no_results
+    params:
+      if_flag: no_results_found
+  - action: extract_single
+    name: extract_product_url
+    params:
+      field: product_url
+      selector_id: search_result_link
+  - action: navigate
+    name: product_page
+    params:
+      url: "{{product_url}}"
+  - action: wait_for
+    name: wait_for_product_details
+    params:
+      timeout: 15
+      selector:
+        - "main h1"
+        - "main :has-text('Product Details')"
+  - action: extract
+    name: extract_fields
+    params:
+      fields:
+        - Name
+        - Brand
+        - Description
+        - Item Number
+        - Image URLs
+  - action: transform_value
+    name: normalize_brand
+    params:
+      field: Brand
+      transformations:
+        - type: regex_extract
+          pattern: "Vendor:\\s*(.+)$"
+          group: 1
+  - action: transform_value
+    name: normalize_item_number
+    params:
+      field: Item Number
+      transformations:
+        - type: regex_extract
+          pattern: "(?:ITEM\\s*#|ITEM#|Item\\s*#)\\s*([A-Za-z0-9-]+)"
+          group: 1
+  - action: process_images
+    name: clean_images
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "&width=\\d+"
+          replacement: ""
+      filters:
+        - type: require_text
+          text: cdn.shopify.com
+        - type: exclude_text
+          text: logo
+        - type: exclude_text
+          text: icon
+        - type: exclude_text
+          text: applepay
+        - type: exclude_text
+          text: mastercard
+        - type: exclude_text
+          text: visa
+      deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - "h1:has-text('0 results found for')"
+    - "main :has-text('No results found for')"
+    - "main :has-text('Check the spelling or use a different word or phrase')"
+  no_results_text_patterns:
+    - "0 results found for"
+    - "No results found for"
+    - "Check the spelling or use a different word or phrase"
+login: null
+http_status: null
+normalization: null
+timeout: 25
+retries: 2
+image_quality: 60
+test_skus:
+  - "042055302456"
+  - "000945651107"
+  - "042055309202"
+fake_skus:
+  - "xyzabc123notexist456"
+  - "999999999999"
+  - "000000000000"
+edge_case_skus:
+  - "A"
+  - "SD-5"
