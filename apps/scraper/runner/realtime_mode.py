@@ -87,6 +87,7 @@ async def run_realtime_mode(client: ScraperAPIClient, runner_name: str) -> None:
         with JobLoggingSession(
             job_id=job_id,
             runner_name=runner_name,
+            lease_token=job_data.get("lease_token"),
             api_client=client,
             realtime_manager=rm,
         ) as job_logging:

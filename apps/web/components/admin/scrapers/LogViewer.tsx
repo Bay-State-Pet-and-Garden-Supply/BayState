@@ -18,9 +18,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
+import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 import { useLogSubscription } from '@/lib/realtime/useLogSubscription';
 import {
   mergeScrapeJobLogs,
+  progressUpdateFromJobRecord,
   type ScrapeJobProgressUpdate,
 } from '@/lib/scraper-logs';
 import type { ScrapeJobLog } from '@/app/admin/scrapers/runs/actions';
@@ -28,6 +30,7 @@ import type { ScrapeJobLog } from '@/app/admin/scrapers/runs/actions';
 interface LogViewerProps {
   jobId: string;
   logs: ScrapeJobLog[];
+  initialProgress?: ScrapeJobProgressUpdate | null;
   className?: string;
 }
 
@@ -128,7 +131,12 @@ function LogEntry({ log }: { log: ScrapeJobLog }) {
   );
 }
 
-export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProps) {
+export function LogViewer({
+  jobId,
+  logs: initialLogs,
+  initialProgress = null,
+  className,
+}: LogViewerProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [filter, setFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
@@ -139,9 +147,21 @@ export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProp
     maxEntries: 2000,
   });
 
-  const { logs: broadcastLogs, progress, isConnected: broadcastConnected } = useJobBroadcasts({
+  const { logs: broadcastLogs, isConnected: broadcastConnected } = useJobBroadcasts(
+    {
+      autoConnect: true,
+      maxLogs: 2000,
+    },
+    { includeProgress: false },
+  );
+
+  const {
+    isConnected: jobConnected,
+    getJob,
+  } = useJobSubscription({
     autoConnect: true,
-    maxLogs: 2000,
+    jobIds: [jobId],
+    maxJobsPerStatus: 10,
   });
 
   const mergedLogs = useMemo(() => {
@@ -155,8 +175,11 @@ export function LogViewer({ jobId, logs: initialLogs, className }: LogViewerProp
     );
   }, [broadcastLogs, initialLogs, jobId, persistedRealtimeLogs]);
 
-  const liveProgress = progress[jobId];
-  const isConnected = dbConnected || broadcastConnected;
+  const currentJob = getJob(jobId);
+  const liveProgress = currentJob
+    ? progressUpdateFromJobRecord(currentJob)
+    : initialProgress;
+  const isConnected = dbConnected || broadcastConnected || jobConnected;
 
   useEffect(() => {
     if (isExpanded && logContainerRef.current) {

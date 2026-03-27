@@ -146,6 +146,7 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
             with JobLoggingSession(
                 job_id=job_id,
                 runner_name=runner_name,
+                lease_token=chunk_job_config.lease_token,
                 api_client=client,
             ) as job_logging:
                 logger.info(

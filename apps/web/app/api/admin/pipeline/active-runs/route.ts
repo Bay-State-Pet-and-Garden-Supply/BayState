@@ -9,6 +9,17 @@ interface ActiveJob {
     status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
     createdAt: string;
     progress: number;
+    runnerName: string | null;
+    progressMessage: string | null;
+    progressPhase: string | null;
+    currentSku: string | null;
+    itemsProcessed: number | null;
+    itemsTotal: number | null;
+    lastLogMessage: string | null;
+    lastLogLevel: string | null;
+    lastLogAt: string | null;
+    lastUpdateAt: string | null;
+    heartbeatAt: string | null;
 }
 
 export async function GET() {
@@ -22,8 +33,8 @@ export async function GET() {
 
     const { data: jobs, error: jobsError } = await supabase
         .from('scrape_jobs')
-        .select('id, status, created_at, scrapers, skus')
-        .or(`status.in.(pending,running),and(status.in.(completed,failed),created_at.gt.${last24Hours})`)
+        .select('id, status, created_at, updated_at, scrapers, skus, runner_name, heartbeat_at, progress_percent, progress_message, progress_phase, progress_updated_at, current_sku, items_processed, items_total, last_event_at, last_log_at, last_log_level, last_log_message')
+        .or(`status.in.(pending,claimed,running),and(status.in.(completed,failed,cancelled),created_at.gt.${last24Hours})`)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -61,17 +72,33 @@ export async function GET() {
 
     const response: ActiveJob[] = jobs.map((job) => {
         const chunkProgress = chunksByJob.get(job.id) || { completed: 0, total: 0 };
-        const progress = chunkProgress.total > 0
+        const fallbackProgress = chunkProgress.total > 0
             ? Math.round((chunkProgress.completed / chunkProgress.total) * 100)
             : 0;
+
+        const status = job.status === 'claimed' ? 'running' : job.status;
+        const progress = typeof job.progress_percent === 'number'
+            ? job.progress_percent
+            : fallbackProgress;
 
         return {
             id: job.id,
             skuCount: Array.isArray(job.skus) ? job.skus.length : 0,
             scrapers: job.scrapers || [],
-            status: job.status,
+            status,
             createdAt: job.created_at,
             progress,
+            runnerName: job.runner_name || null,
+            progressMessage: job.progress_message || null,
+            progressPhase: job.progress_phase || null,
+            currentSku: job.current_sku || null,
+            itemsProcessed: typeof job.items_processed === 'number' ? job.items_processed : null,
+            itemsTotal: typeof job.items_total === 'number' ? job.items_total : null,
+            lastLogMessage: job.last_log_message || null,
+            lastLogLevel: job.last_log_level || null,
+            lastLogAt: job.last_log_at || null,
+            lastUpdateAt: job.progress_updated_at || job.last_event_at || job.updated_at || job.created_at,
+            heartbeatAt: job.heartbeat_at || null,
         };
     });
 

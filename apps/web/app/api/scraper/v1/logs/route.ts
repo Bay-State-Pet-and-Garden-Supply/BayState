@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { validateRunnerAuth } from "@/lib/scraper-auth";
-import { toScrapeJobLogRow } from "@/lib/scraper-logs";
+import {
+  persistScrapeJobLogs,
+  updateScrapeJobLogSummary,
+} from "@/lib/scraper-log-persistence";
 
 function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
@@ -78,25 +81,21 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    const logsToInsert = logs.map((log) =>
-      toScrapeJobLogRow({
+    const latestLog = await persistScrapeJobLogs(
+      supabase,
+      job_id,
+      logs.map((log) => ({
         ...log,
-        job_id,
         level: normalizeLevel(log.level),
         runner_name: log.runner_name ?? runner.runnerName,
-      }),
+      })),
+      { fallbackRunnerName: runner.runnerName },
     );
 
-    const { error } = await supabase
-      .from("scrape_job_logs")
-      .upsert(logsToInsert, { onConflict: "job_id,event_id", ignoreDuplicates: true });
-
-    if (error) {
-      console.error("[Logs API] Insert failed:", error);
-      return NextResponse.json(
-        { error: "Failed to insert logs" },
-        { status: 500 },
-      );
+    try {
+      await updateScrapeJobLogSummary(supabase, job_id, latestLog);
+    } catch (summaryError) {
+      console.warn("[Logs API] Failed to update job log summary:", summaryError);
     }
 
     return NextResponse.json({
@@ -106,7 +105,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[Logs API] Error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to insert logs" },
       { status: 500 },
     );
   }

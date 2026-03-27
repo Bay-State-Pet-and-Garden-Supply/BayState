@@ -47,6 +47,8 @@ export interface UseJobSubscriptionOptions {
   channelName?: string;
   /** Whether to automatically connect on mount (default: true) */
   autoConnect?: boolean;
+  /** Filter by specific job ids */
+  jobIds?: string[];
   /** Filter by specific scraper names */
   scraperNames?: string[];
   /** Filter by test mode jobs only */
@@ -122,6 +124,7 @@ export function useJobSubscription(
   const {
     channelName: providedChannelName,
     autoConnect = true,
+    jobIds,
     scraperNames,
     testModeOnly,
     maxJobsPerStatus = 50,
@@ -166,6 +169,7 @@ export function useJobSubscription(
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const callbacksRef = useRef({ onJobCreated, onJobUpdated, onJobDeleted });
   const subscriptionConfigRef = useRef({
+    jobIds,
     scraperNames,
     testModeOnly,
     includeInsert,
@@ -179,13 +183,27 @@ export function useJobSubscription(
 
   useEffect(() => {
     subscriptionConfigRef.current = {
+      jobIds,
       scraperNames,
       testModeOnly,
       includeInsert,
       includeUpdate,
       includeDelete,
     };
-  }, [scraperNames, testModeOnly, includeInsert, includeUpdate, includeDelete]);
+  }, [jobIds, scraperNames, testModeOnly, includeInsert, includeUpdate, includeDelete]);
+
+  const normalizeStatus = useCallback(
+    (status: string | undefined): keyof JobSubscriptionState['jobs'] => {
+      if (status === 'claimed') {
+        return 'running';
+      }
+      if (status === 'completed' || status === 'failed' || status === 'cancelled' || status === 'running') {
+        return status;
+      }
+      return 'pending';
+    },
+    []
+  );
 
   /**
    * Get the Supabase client (lazy initialization)
@@ -228,7 +246,7 @@ export function useJobSubscription(
           });
           onJobDeleted?.(oldJob.id);
         } else if (job) {
-          const status = job.status as keyof typeof newJobs;
+          const status = normalizeStatus(job.status);
           const existingIndex = allJobs.findIndex((j) => j.id === job.id);
 
           if (existingIndex >= 0) {
@@ -240,9 +258,9 @@ export function useJobSubscription(
           }
 
           if (newJobs[status]) {
-            newJobs[status as keyof typeof newJobs] = [
+            newJobs[status] = [
               job,
-              ...newJobs[status as keyof typeof newJobs],
+              ...newJobs[status],
             ].slice(0, maxJobsPerStatus);
           }
 
@@ -284,7 +302,7 @@ export function useJobSubscription(
         };
       });
     },
-    [maxJobsPerStatus]
+    [maxJobsPerStatus, normalizeStatus]
   );
 
   /**
@@ -310,6 +328,7 @@ export function useJobSubscription(
         },
         (payload) => {
           const {
+            jobIds,
             scraperNames,
             testModeOnly,
             includeInsert,
@@ -319,6 +338,10 @@ export function useJobSubscription(
           const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
           const candidate = ((payload.new as JobAssignment | null) ||
             (payload.old as JobAssignment | null)) as JobAssignment | null;
+
+          if (candidate && jobIds && jobIds.length > 0 && !jobIds.includes(candidate.id)) {
+            return;
+          }
 
           if (candidate && scraperNames && scraperNames.length > 0) {
             const hasMatchingScraper = scraperNames.some((name) =>
@@ -391,6 +414,10 @@ export function useJobSubscription(
         .order('created_at', { ascending: false })
         .limit(200);
 
+      if (jobIds && jobIds.length > 0) {
+        query = query.in('id', jobIds);
+      }
+
       if (scraperNames && scraperNames.length > 0) {
         query = query.in('scrapers', scraperNames);
       }
@@ -412,9 +439,9 @@ export function useJobSubscription(
       };
 
       (data || []).forEach((job) => {
-        const status = (job.status as string) || 'pending';
-        if (jobs[status as keyof typeof jobs]) {
-          jobs[status as keyof typeof jobs].push(job as JobAssignment);
+        const status = normalizeStatus(job.status as string);
+        if (jobs[status]) {
+          jobs[status].push(job as JobAssignment);
         }
       });
 
@@ -441,7 +468,7 @@ export function useJobSubscription(
       console.error('[useJobSubscription] Refetch error:', error);
       setState((prev) => ({ ...prev, error }));
     }
-  }, [getSupabase, scraperNames, testModeOnly]);
+  }, [getSupabase, jobIds, normalizeStatus, scraperNames, testModeOnly]);
 
   /**
    * Get a specific job by ID
@@ -479,13 +506,14 @@ export function useJobSubscription(
   useEffect(() => {
     if (autoConnect) {
       connect();
+      void refetch();
     }
 
     // Cleanup on unmount
     return () => {
       disconnect();
     };
-  }, [autoConnect, connect, disconnect]);
+  }, [autoConnect, connect, disconnect, refetch]);
 
   return useMemo(
     () => ({

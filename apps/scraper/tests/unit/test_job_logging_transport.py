@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 
 from utils.logging_handlers import JobLogEntry, JobLogTransport, RunnerLogHandler
@@ -183,3 +184,58 @@ def test_transport_broadcasts_normalized_log_and_progress(monkeypatch):
     assert realtime_manager.progress_payloads[0]["items_processed"] == 7
     assert realtime_manager.progress_payloads[0]["items_total"] == 20
     assert realtime_manager.progress_payloads[0]["details"] == {"chunk_index": 1}
+
+
+class FakeApiClient:
+    def __init__(self) -> None:
+        self.log_batches: list[tuple[str, list[dict]]] = []
+        self.progress_payloads: list[dict] = []
+
+    def post_logs(self, job_id: str, payload: list[dict]) -> bool:
+        self.log_batches.append((job_id, payload))
+        return True
+
+    def post_progress(self, payload: dict) -> bool:
+        self.progress_payloads.append(payload)
+        return True
+
+
+def test_transport_persists_latest_progress_snapshot():
+    api_client = FakeApiClient()
+    transport = JobLogTransport(
+        job_id="job-123",
+        runner_id="runner-1",
+        runner_name="runner-one",
+        lease_token="lease-123",
+        api_client=api_client,
+        flush_interval=0.01,
+    )
+
+    entry = transport.capture(
+        build_record(
+            level=logging.INFO,
+            message="Runner started",
+            job_id="job-123",
+        )
+    )
+    assert entry is not None
+
+    transport.enqueue(entry, flush_immediately=True)
+    transport.emit_progress(
+        status="running",
+        progress=60,
+        message="Processing SKU-60",
+        phase="scraping",
+        current_sku="SKU-60",
+        items_processed=6,
+        items_total=10,
+    )
+    transport.flush()
+    time.sleep(0.05)
+    transport.close()
+
+    assert api_client.log_batches
+    assert api_client.log_batches[0][0] == "job-123"
+    assert api_client.progress_payloads[-1]["job_id"] == "job-123"
+    assert api_client.progress_payloads[-1]["lease_token"] == "lease-123"
+    assert api_client.progress_payloads[-1]["progress"] == 60

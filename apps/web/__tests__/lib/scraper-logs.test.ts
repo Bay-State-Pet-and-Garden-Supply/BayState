@@ -1,8 +1,10 @@
 import {
+  getLatestScrapeJobLog,
   mergeScrapeJobLogs,
   normalizeScrapeLogEntry,
   normalizeScrapeProgressUpdate,
   normalizeScrapeTimestamp,
+  progressUpdateFromJobRecord,
   toScrapeJobLogRow,
 } from "@/lib/scraper-logs";
 
@@ -116,6 +118,60 @@ describe("scraper-logs", () => {
       sequence: 9,
       details: { attempt: 2 },
     });
+  });
+
+  it("derives durable progress from a scrape_jobs row", () => {
+    const progress = progressUpdateFromJobRecord({
+      id: "job-7",
+      status: "running",
+      runner_name: "runner-seven",
+      progress_percent: 55,
+      progress_message: "Parsing product page",
+      progress_phase: "scraping",
+      current_sku: "SKU-7",
+      items_processed: 11,
+      items_total: 20,
+      progress_details: { chunk_index: 2 },
+      progress_updated_at: "2024-01-01T00:00:07Z",
+    });
+
+    expect(progress).toEqual({
+      job_id: "job-7",
+      runner_id: undefined,
+      runner_name: "runner-seven",
+      status: "running",
+      progress: 55,
+      message: "Parsing product page",
+      phase: "scraping",
+      current_sku: "SKU-7",
+      items_processed: 11,
+      items_total: 20,
+      details: { chunk_index: 2 },
+      timestamp: "2024-01-01T00:00:07Z",
+    });
+  });
+
+  it("returns the latest log using timestamp and sequence ordering", () => {
+    const latest = getLatestScrapeJobLog([
+      normalizeScrapeLogEntry({
+        event_id: "evt-1",
+        job_id: "job-1",
+        level: "info",
+        message: "first",
+        timestamp: "2024-01-01T00:00:00Z",
+        sequence: 1,
+      }),
+      normalizeScrapeLogEntry({
+        event_id: "evt-2",
+        job_id: "job-1",
+        level: "warning",
+        message: "latest",
+        timestamp: "2024-01-01T00:00:00Z",
+        sequence: 2,
+      }),
+    ]);
+
+    expect(latest?.event_id).toBe("evt-2");
   });
 
   it("keeps string timestamps unchanged", () => {

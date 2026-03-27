@@ -95,15 +95,43 @@ describe('Active Runs API', () => {
                 id: 'job-1',
                 status: 'running',
                 created_at: '2024-01-15T10:00:00Z',
+                updated_at: '2024-01-15T10:01:00Z',
                 scrapers: ['amazon', 'walmart'],
                 skus: ['SKU-001', 'SKU-002', 'SKU-003'],
+                runner_name: 'runner-a',
+                heartbeat_at: '2024-01-15T10:01:00Z',
+                progress_percent: 67,
+                progress_message: 'Processing SKU-003',
+                progress_phase: 'scraping',
+                progress_updated_at: '2024-01-15T10:01:00Z',
+                current_sku: 'SKU-003',
+                items_processed: 2,
+                items_total: 3,
+                last_event_at: '2024-01-15T10:01:00Z',
+                last_log_at: '2024-01-15T10:01:00Z',
+                last_log_level: 'info',
+                last_log_message: 'Parsed price',
             },
             {
                 id: 'job-2',
                 status: 'pending',
                 created_at: '2024-01-15T09:00:00Z',
+                updated_at: '2024-01-15T09:00:00Z',
                 scrapers: ['target'],
                 skus: ['SKU-004', 'SKU-005'],
+                runner_name: null,
+                heartbeat_at: null,
+                progress_percent: null,
+                progress_message: null,
+                progress_phase: null,
+                progress_updated_at: null,
+                current_sku: null,
+                items_processed: null,
+                items_total: null,
+                last_event_at: null,
+                last_log_at: null,
+                last_log_level: null,
+                last_log_message: null,
             },
         ];
 
@@ -132,7 +160,18 @@ describe('Active Runs API', () => {
             createdAt: '2024-01-15T10:00:00Z',
             scrapers: ['amazon', 'walmart'],
             skuCount: 3,
-            progress: 50,
+            progress: 67,
+            runnerName: 'runner-a',
+            progressMessage: 'Processing SKU-003',
+            progressPhase: 'scraping',
+            currentSku: 'SKU-003',
+            itemsProcessed: 2,
+            itemsTotal: 3,
+            lastLogMessage: 'Parsed price',
+            lastLogLevel: 'info',
+            lastLogAt: '2024-01-15T10:01:00Z',
+            lastUpdateAt: '2024-01-15T10:01:00Z',
+            heartbeatAt: '2024-01-15T10:01:00Z',
         });
 
         expect(json.jobs[1]).toEqual({
@@ -142,6 +181,17 @@ describe('Active Runs API', () => {
             scrapers: ['target'],
             skuCount: 2,
             progress: 0,
+            runnerName: null,
+            progressMessage: null,
+            progressPhase: null,
+            currentSku: null,
+            itemsProcessed: null,
+            itemsTotal: null,
+            lastLogMessage: null,
+            lastLogLevel: null,
+            lastLogAt: null,
+            lastUpdateAt: '2024-01-15T09:00:00Z',
+            heartbeatAt: null,
         });
     });
 
@@ -158,7 +208,7 @@ describe('Active Runs API', () => {
         const req = new NextRequest('http://localhost/api/admin/pipeline/active-runs');
         await GET(req);
 
-        expect(mockSupabase.or).toHaveBeenCalledWith(expect.stringContaining('status.in.(pending,running)'));
+        expect(mockSupabase.or).toHaveBeenCalledWith(expect.stringContaining('status.in.(pending,claimed,running)'));
     });
 
     it('should order by created_at DESC', async () => {

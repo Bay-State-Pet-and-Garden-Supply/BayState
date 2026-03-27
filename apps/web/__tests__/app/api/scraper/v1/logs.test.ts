@@ -21,6 +21,8 @@ describe("POST /api/scraper/v1/logs", () => {
   let mockSupabase: {
     from: jest.Mock;
     upsert: jest.Mock;
+    update: jest.Mock;
+    eq: jest.Mock;
   };
 
   beforeEach(() => {
@@ -31,6 +33,8 @@ describe("POST /api/scraper/v1/logs", () => {
     mockSupabase = {
       from: jest.fn().mockReturnThis(),
       upsert: jest.fn(),
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
     };
     (createClient as jest.Mock).mockReturnValue(mockSupabase);
   });
@@ -115,6 +119,7 @@ describe("POST /api/scraper/v1/logs", () => {
     expect(data.success).toBe(true);
 
     expect(mockSupabase.from).toHaveBeenCalledWith("scrape_job_logs");
+    expect(mockSupabase.from).toHaveBeenCalledWith("scrape_jobs");
     expect(mockSupabase.upsert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
@@ -138,6 +143,13 @@ describe("POST /api/scraper/v1/logs", () => {
       ]),
       { onConflict: "job_id,event_id", ignoreDuplicates: true },
     );
+    expect(mockSupabase.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        last_log_message: "Log 2",
+        last_log_level: "error",
+      }),
+    );
+    expect(mockSupabase.eq).toHaveBeenCalledWith("id", "job-123");
   });
 
   it("should handle database errors gracefully", async () => {

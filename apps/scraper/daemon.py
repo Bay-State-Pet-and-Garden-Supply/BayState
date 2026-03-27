@@ -331,6 +331,7 @@ async def main_async():
                     with JobLoggingSession(
                         job_id=chunk.job_id,
                         runner_name=client.runner_name,
+                        lease_token=chunk.lease_token,
                         api_client=client,
                         realtime_manager=rm,
                     ) as job_logging:
