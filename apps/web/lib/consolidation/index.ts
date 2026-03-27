@@ -44,6 +44,7 @@ export {
     validateCategory,
     validateProductType,
     buildResponseSchema,
+    validateRequiredConsolidationFields,
     validateConsolidationTaxonomy,
 } from './taxonomy-validator';
 

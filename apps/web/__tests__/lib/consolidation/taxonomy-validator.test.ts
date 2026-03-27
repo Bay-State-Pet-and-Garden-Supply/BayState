@@ -1,4 +1,8 @@
-import { buildResponseSchema, validateConsolidationTaxonomy } from '@/lib/consolidation/taxonomy-validator';
+import {
+    buildResponseSchema,
+    validateConsolidationTaxonomy,
+    validateRequiredConsolidationFields,
+} from '@/lib/consolidation/taxonomy-validator';
 
 describe('validateConsolidationTaxonomy', () => {
     it('deduplicates category and product_type arrays', () => {
@@ -39,7 +43,7 @@ describe('validateConsolidationTaxonomy', () => {
         ).toThrow('product_type is required');
     });
 
-    it('buildResponseSchema does not include search_keywords field', () => {
+    it('buildResponseSchema includes search_keywords as a required field', () => {
         const schema = buildResponseSchema(['Dog'], ['Food']) as {
             json_schema?: {
                 schema?: {
@@ -52,7 +56,20 @@ describe('validateConsolidationTaxonomy', () => {
         const properties = schema.json_schema?.schema?.properties || {};
         const required = schema.json_schema?.schema?.required || [];
 
-        expect(properties).not.toHaveProperty('search_keywords');
-        expect(required).not.toContain('search_keywords');
+        expect(properties).toHaveProperty('search_keywords');
+        expect(required).toContain('search_keywords');
+    });
+
+    it('validateRequiredConsolidationFields rejects blank required strings', () => {
+        expect(() =>
+            validateRequiredConsolidationFields({
+                name: 'Valid Name',
+                brand: 'Valid Brand',
+                description: 'Valid description.',
+                long_description: 'Valid long description.',
+                search_keywords: '   ',
+                confidence_score: 0.8,
+            })
+        ).toThrow('search_keywords is required');
     });
 });

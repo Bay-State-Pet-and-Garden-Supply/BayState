@@ -29,7 +29,7 @@ const gridVariants = cva('grid gap-3', {
 });
 
 type SortOption = 'name' | 'status' | 'lastSeen' | 'activeJobs';
-type FilterOption = 'all' | 'online' | 'busy' | 'idle' | 'offline';
+type FilterOption = 'all' | 'online' | 'busy' | 'idle' | 'offline' | 'disabled';
 
 interface PresenceGridProps {
   /** Initial runners to show before connection */
@@ -77,6 +77,7 @@ function sortRunners(runners: RunnerPresence[], sortBy: SortOption): RunnerPrese
  */
 function filterRunners(runners: RunnerPresence[], filterBy: FilterOption): RunnerPresence[] {
   if (filterBy === 'all') return runners;
+  if (filterBy === 'disabled') return runners.filter((r) => r.enabled === false);
   return runners.filter((r) => r.status === filterBy);
 }
 
@@ -160,6 +161,7 @@ export function PresenceGrid({
       busy: allRunners.filter((r) => r.status === 'busy').length,
       idle: allRunners.filter((r) => r.status === 'idle').length,
       offline: allRunners.filter((r) => r.status === 'offline').length,
+      disabled: allRunners.filter((r) => r.enabled === false).length,
     };
   }, [allRunners]);
 
@@ -232,6 +234,7 @@ export function PresenceGrid({
                   <option value="busy">Busy ({counts.busy})</option>
                   <option value="idle">Idle ({counts.idle})</option>
                   <option value="offline">Offline ({counts.offline})</option>
+                  <option value="disabled">Disabled ({counts.disabled})</option>
                 </select>
               </div>
             )}

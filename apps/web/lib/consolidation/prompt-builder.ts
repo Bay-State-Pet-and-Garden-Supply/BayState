@@ -49,13 +49,27 @@ export async function getProductTypes(): Promise<ProductType[]> {
  * Includes taxonomy constraints and formatting rules.
  */
 export function generateSystemPrompt(categories: string[], productTypes: string[]): string {
-    void categories;
-    void productTypes;
+    const categoryGuidance =
+        categories.length > 0
+            ? categories.join(', ')
+            : 'No category values were provided.';
+    const productTypeGuidance =
+        productTypes.length > 0
+            ? productTypes.join(', ')
+            : 'No product_type values were provided.';
+    const pageGuidance = SHOPSITE_PAGES.join(', ');
 
     return `You consolidate multi-source product data into one storefront-ready canonical record.
 
 Use only values allowed by the response schema for category, product_type, and product_on_pages.
-If a source named "shopsite_input" includes product_on_pages, treat those as the current ShopSite assignments and preserve them unless the other source evidence clearly supports adding or removing a page.
+
+Source trust rules:
+- Highest trust: "shopsite_input" because it reflects the current storefront record.
+- High trust: manufacturer and distributor/catalog sources.
+- Lower trust: marketplace and retailer listings such as Amazon, Walmart, eBay, and seller-provided labels.
+- When sources conflict on brand, category, product_type, or product_on_pages, prefer the highest-trust source with direct evidence.
+- Never let a marketplace seller label, alias, or "Brand: ..." prefix override higher-trust brand evidence.
+- If a source named "shopsite_input" includes product_on_pages, treat those as the current ShopSite assignments and preserve them unless higher-trust source evidence clearly supports a change.
 
 Product-name rules:
 - Exclude brand from the product name; put it only in brand.
@@ -70,14 +84,20 @@ Product-name rules:
 - Remove special characters like TM, R, and C marks.
 - Use unit periods: lb., oz., ct., in., ft., gal., qt., pt., pk., sq. ft.
 - Expand common abbreviations like Sm, Md, Lg, Blk, Wht, Brn, Grn, Rd, Bl, Yl, Org, Pnk, Prpl, Gry, Asst, Asstd, Med, Lrg, Sml.
-- For decimal size, weight, or count values, keep only the leading whole-number portion and do not round: 1.06 oz. → 1 oz., 7.9 lb. → 7 lb., 2.5 gal. → 2 gal.
+- Preserve source-supported decimal size, weight, and count values in names. Do not round or truncate 1.06 oz. to 1 oz. or 4.5 lb. to 4 lb.
 - Use uppercase X with spaces for dimensions, for example 3 X 25 ft. or 11 X 17 in.
 
 Field rules:
-- description: 1-2 concise storefront sentences.
-- long_description: 3-5 concise detail-page sentences.
-- weight: numeric string only, no units. If there is no weight, return null.
-- Return valid JSON only through the response schema.`;
+- description: 1-2 concise storefront sentences. It must be non-empty.
+- long_description: 3-5 concise detail-page sentences. It must be non-empty.
+- search_keywords: a comma-separated string of 6-12 concise site-search phrases. Keep it source-supported, avoid duplicate phrases, avoid URLs, and do not stuff the brand repeatedly.
+- weight: numeric string only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
+
+Allowed category values: ${categoryGuidance}
+Allowed product_type values: ${productTypeGuidance}
+Allowed product_on_pages values: ${pageGuidance}
+
+Return valid JSON only through the response schema. Every required string field must be non-empty.`;
 }
 
 /**

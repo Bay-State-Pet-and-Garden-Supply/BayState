@@ -132,6 +132,43 @@ export function validateProductType(value: string | undefined | null, validTypes
     return findClosestMatch(value, validTypes);
 }
 
+const REQUIRED_STRING_FIELDS = [
+    'name',
+    'brand',
+    'description',
+    'long_description',
+    'search_keywords',
+] as const;
+
+export function validateRequiredConsolidationFields(result: Record<string, unknown>): Record<string, unknown> {
+    const validated = { ...result };
+
+    for (const field of REQUIRED_STRING_FIELDS) {
+        const rawValue = validated[field];
+        if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
+            throw new Error(`Invalid consolidation output: ${field} is required`);
+        }
+
+        validated[field] = rawValue.trim();
+    }
+
+    const confidenceScore = validated.confidence_score;
+    if (
+        typeof confidenceScore !== 'number'
+        || !Number.isFinite(confidenceScore)
+        || confidenceScore < 0
+        || confidenceScore > 1
+    ) {
+        throw new Error('Invalid consolidation output: confidence_score must be between 0 and 1');
+    }
+
+    if (typeof validated.weight === 'string') {
+        validated.weight = validated.weight.trim();
+    }
+
+    return validated;
+}
+
 /**
  * Build a JSON schema for OpenAI Structured Outputs with enum constraints.
  * This enforces that the LLM can only return values from the provided taxonomy.
@@ -151,26 +188,36 @@ export function buildResponseSchema(
                 properties: {
                     name: {
                         type: 'string',
+                        minLength: 1,
                         description: 'Formatted product name following naming conventions',
                     },
                     brand: {
                         type: 'string',
+                        minLength: 1,
                         description: 'Brand name',
                     },
                     weight: {
-                        type: 'string',
-                        description: "Primary package size/weight/count as a numeric string using only the leading whole-number portion (e.g., '10'). No units.",
+                        type: ['string', 'null'],
+                        description: 'Primary package size/weight/count as a numeric string with up to 2 decimal places and no units. Use null when no trustworthy weight is available.',
                     },
                     description: {
                         type: 'string',
+                        minLength: 1,
                         description: 'Short product description (1-2 sentences) for category/listing pages',
                     },
                     long_description: {
                         type: 'string',
+                        minLength: 1,
                         description: 'Detailed product description (3-5 sentences) for the product detail page',
+                    },
+                    search_keywords: {
+                        type: 'string',
+                        minLength: 1,
+                        description: 'Comma-separated site-search phrases, source-supported and concise',
                     },
                     product_on_pages: {
                         type: 'array',
+                        uniqueItems: true,
                         items: {
                             type: 'string',
                             ...(shopsitePages.length > 0 ? { enum: shopsitePages } : {}),
@@ -179,6 +226,8 @@ export function buildResponseSchema(
                     },
                     category: {
                         type: 'array',
+                        minItems: 1,
+                        uniqueItems: true,
                         items: {
                             type: 'string',
                             enum: categories,
@@ -187,6 +236,8 @@ export function buildResponseSchema(
                     },
                     product_type: {
                         type: 'array',
+                        minItems: 1,
+                        uniqueItems: true,
                         items: {
                             type: 'string',
                             enum: productTypes,
@@ -195,10 +246,12 @@ export function buildResponseSchema(
                     },
                     confidence_score: {
                         type: 'number',
+                        minimum: 0,
+                        maximum: 1,
                         description: 'Confidence score between 0.0 and 1.0',
                     },
                 },
-                required: ['name', 'brand', 'weight', 'description', 'long_description', 'product_on_pages', 'category', 'product_type', 'confidence_score'],
+                required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'product_type', 'confidence_score'],
                 additionalProperties: false,
             },
         },

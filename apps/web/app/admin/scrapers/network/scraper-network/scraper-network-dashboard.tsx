@@ -35,6 +35,7 @@ import {
   Plus,
   Copy,
   Key,
+  ShieldAlert,
 } from "lucide-react";
 import { SetupGuide } from "@/components/admin/scraper-network/setup-guide";
 
@@ -44,6 +45,7 @@ interface NetworkStats {
   busy: number;
   idle: number;
   offline: number;
+  disabled: number;
 }
 
 export function ScraperNetworkDashboard() {
@@ -61,6 +63,7 @@ export function ScraperNetworkDashboard() {
     busy: 0,
     idle: 0,
     offline: 0,
+    disabled: 0,
   });
 
   // Add Runner Modal State
@@ -136,6 +139,7 @@ export function ScraperNetworkDashboard() {
     const offline = runnersArray.filter(
       (r) => r.status === "offline"
     ).length;
+    const disabled = runnersArray.filter((r) => r.enabled === false).length;
 
     setStats({
       totalRunners: runnersArray.length,
@@ -143,6 +147,7 @@ export function ScraperNetworkDashboard() {
       busy,
       idle,
       offline,
+      disabled,
     });
   }, [runners]);
 
@@ -180,7 +185,7 @@ export function ScraperNetworkDashboard() {
       </div>
 
       {/* Network Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Runners</CardTitle>
@@ -206,6 +211,15 @@ export function ScraperNetworkDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{stats.busy}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Disabled</CardTitle>
+            <ShieldAlert className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.disabled}</div>
           </CardContent>
         </Card>
         <Card>
@@ -259,6 +273,21 @@ export function ScraperNetworkDashboard() {
                 </div>
                 <Progress
                   value={(stats.busy / stats.totalRunners) * 100}
+                  className="h-2"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-orange-400" />
+                    Disabled
+                  </span>
+                  <span>
+                    {stats.disabled} / {stats.totalRunners}
+                  </span>
+                </div>
+                <Progress
+                  value={(stats.disabled / stats.totalRunners) * 100}
                   className="h-2"
                 />
               </div>

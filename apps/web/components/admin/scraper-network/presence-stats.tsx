@@ -12,7 +12,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import type { RunnerPresence } from '@/lib/realtime/types';
 import { useRunnerPresence } from '@/lib/realtime';
-import { Users, Zap, Coffee, Power, Activity } from 'lucide-react';
+import { Users, Zap, Coffee, Power, Activity, ShieldAlert } from 'lucide-react';
 
 const statCardVariants = cva(
   'flex flex-col p-4 rounded-xl border transition-all',
@@ -23,6 +23,8 @@ const statCardVariants = cva(
           'bg-card dark:bg-slate-800 border-slate-200 dark:border-slate-700',
         accent:
           'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700',
+        warning:
+          'bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900/30',
       },
     },
     defaultVariants: {
@@ -36,7 +38,7 @@ interface StatCardProps {
   value: number | string;
   icon: React.ReactNode;
   description?: string;
-  variant?: 'default' | 'accent';
+  variant?: 'default' | 'accent' | 'warning';
   trend?: {
     direction: 'up' | 'down' | 'stable';
     value: string;
@@ -53,7 +55,10 @@ function StatCard({ title, value, icon, description, variant = 'default', trend 
             {value}
           </p>
         </div>
-        <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+        <div className={cn(
+          "p-2 rounded-lg text-slate-600 dark:text-slate-400",
+          variant === 'warning' ? "bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400" : "bg-slate-100 dark:bg-slate-700"
+        )}>
           {icon}
         </div>
       </div>
@@ -100,6 +105,7 @@ function calculateStats(runners: RunnerPresence[]) {
   const busy = runners.filter((r) => r.status === 'busy').length;
   const idle = runners.filter((r) => r.status === 'idle').length;
   const offline = runners.filter((r) => r.status === 'offline').length;
+  const disabled = runners.filter((r) => r.enabled === false).length;
 
   const totalActiveRunners = online + busy + idle;
   const totalActiveJobs = runners.reduce((sum, r) => sum + r.active_jobs, 0);
@@ -112,6 +118,7 @@ function calculateStats(runners: RunnerPresence[]) {
     busy,
     idle,
     offline,
+    disabled,
     totalActive: totalActiveJobs,
     avgActivePerBusy,
     utilizationPercent: total > 0 ? Math.round((totalActiveRunners / total) * 100) : 0,
@@ -178,7 +185,7 @@ export function PresenceStats({
         className={cn(
           'grid gap-3',
           detailed
-            ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4'
+            ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5'
             : 'grid-cols-2 md:grid-cols-4'
         )}
       >
@@ -220,6 +227,17 @@ export function PresenceStats({
           icon={<Coffee className="h-5 w-5" />}
           description="waiting for work"
         />
+
+        {/* Disabled (only in detailed view) */}
+        {detailed && (
+          <StatCard
+            title="Disabled"
+            value={stats.disabled}
+            icon={<ShieldAlert className="h-5 w-5" />}
+            description="pickup restricted"
+            variant="warning"
+          />
+        )}
 
         {/* Offline (only in detailed view) */}
         {detailed && (
