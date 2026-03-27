@@ -15,3 +15,12 @@
 
 - `bun run web build` remains blocked by the same pre-existing `archiver` declaration/type failure in `apps/web/app/api/admin/pipeline/export-zip/route.ts:4`; this is unrelated to Task 8 files.
 - Workspace `bun run test -- <path>` currently ignores the path argument and executes a broad suite in this environment; targeted verification was run via direct Jest `--runTestsByPath` invocation.
+
+
+- Compliance audit found missing planned evidence artifacts for tasks 2-7 and missing task requirements around scheduled polling and retry priority handling.
+
+## 2026-03-26 - Task F2 code quality review
+
+- Current diff includes unrelated pipeline UI/category edits in `apps/web/components/admin/pipeline/FinalizingResultsView.tsx`, `apps/web/components/admin/pipeline/PipelineProductDetail.tsx`, and `apps/web/lib/pipeline/publish.ts`, which conflicts with the protected-images-fix plan guardrail forbidding image selection/approval UI changes.
+- `apps/web/components/admin/pipeline/FinalizingResultsView.tsx` now mixes `category: string[]` state with legacy string handling in the "No Category" option, creating an inconsistent value shape during editing.
+- Verification commands are not green for this review pass: `bun run tsc --noEmit` at repo root does not typecheck a project, `bun run web lint` reports 241 warnings, and `bun test` finishes with 391 failing tests.

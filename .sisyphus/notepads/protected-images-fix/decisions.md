@@ -36,3 +36,9 @@
 
 - Reused the storage helper for both structured scraper error objects and plain inline data URLs plus optional metadata, instead of creating a scraper-only persistence path.
 - Stored retry placeholders as deterministic strings rather than nested objects because current source normalization only preserves string image entries.
+
+- 2026-03-26: Kept Task 9 coverage in one integration-focused test file and exercised helper branches there so bun test v1.3.3 (274e01c7) reports 93.20% line coverage for the scoped flow.
+- 2026-03-26: Task 9 keeps all retry-flow verification in one integration-oriented test file and uses the exact bun coverage command required by the plan, which now reports 93.20% line coverage for the scoped flow.
+ScrapedResultsView.tsx
+
+- Audit verdict set to REJECT because guardrails were violated (ScrapedResultsView.tsx changed; migration adds helper functions beyond the queue table) and task requirements T5/T7/T8 are not fully met.

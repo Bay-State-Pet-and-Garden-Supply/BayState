@@ -18,3 +18,6 @@
 ## 2026-03-26 - Task 8 unresolved problems
 
 - Direct execution of `node apps/web/scripts/backfill-login-protected-images-logic.ts --dry-run` requires Supabase env vars (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) to be present; local verification without secrets can only cover argument parsing and startup behavior.
+ImageRetryProcessorpriority
+
+- Unresolved: no production wiring for periodic ImageRetryProcessor polling, no priority column/support despite plan requirements, and most task evidence files are absent.

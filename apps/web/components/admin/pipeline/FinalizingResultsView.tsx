@@ -240,7 +240,7 @@ export function FinalizingResultsView({
         setCategories((prev) =>
           [...prev, category].sort((a, b) => a.name.localeCompare(b.name)),
         );
-        handleInputChange("category", category.name);
+        handleInputChange("category", [...formData.category, category.name]);
         setCategorySearch("");
         setCategoryPopoverOpen(false);
         toast.success(`Category "${category.name}" created`);
@@ -263,7 +263,7 @@ export function FinalizingResultsView({
     price: "",
     weight: "",
     brandId: "none",
-    category: "",
+    category: [] as string[],
     productType: "",
     stockStatus: "in_stock",
     productOnPages: [] as string[],
@@ -377,7 +377,15 @@ export function FinalizingResultsView({
         price: String(consolidated.price ?? input.price ?? ""),
         weight: ((cons as Record<string, unknown>).weight as string) || "",
         brandId: consolidated.brand_id || "none",
-        category: ((cons as Record<string, unknown>).category as string) || "",
+        category: Array.isArray((cons as Record<string, unknown>).category)
+          ? ((cons as Record<string, unknown>).category as string[])
+          : typeof (cons as Record<string, unknown>).category === "string" &&
+              (cons as Record<string, unknown>).category
+            ? ((cons as Record<string, unknown>).category as string)
+                .split("|")
+                .map((c) => c.trim())
+                .filter(Boolean)
+            : [],
         productType:
           ((cons as Record<string, unknown>).product_type as string) || "",
         stockStatus:
@@ -554,7 +562,7 @@ export function FinalizingResultsView({
         is_featured: formData.isFeatured,
         is_special_order: formData.isSpecialOrder,
         weight: formData.weight.trim() || null,
-        category: formData.category.trim() || null,
+        category: formData.category,
         product_type: formData.productType.trim() || null,
         product_on_pages: formData.productOnPages,
         images: formData.selectedImages,
@@ -1116,7 +1124,32 @@ export function FinalizingResultsView({
                             aria-expanded={categoryPopoverOpen}
                             className="w-full justify-between font-normal"
                           >
-                            {formData.category || "Select Category"}
+                            <div className="flex flex-wrap gap-1">
+                              {formData.category.length > 0 ? (
+                                formData.category.map((cat) => (
+                                  <div
+                                    key={cat}
+                                    className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1"
+                                  >
+                                    {cat}
+                                    <X
+                                      className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const cats = formData.category.filter(
+                                          (c) => c !== cat,
+                                        );
+                                        handleInputChange("category", cats);
+                                      }}
+                                    />
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  Select Categories
+                                </span>
+                              )}
+                            </div>
                             <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -1159,31 +1192,39 @@ export function FinalizingResultsView({
                                 />
                                 No Category
                               </div>
-                              {filteredCategories.map((cat) => (
-                                <div
-                                  key={cat.id}
-                                  className={cn(
-                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                    formData.category === cat.name &&
-                                      "bg-accent text-accent-foreground",
-                                  )}
-                                  onClick={() => {
-                                    handleInputChange("category", cat.name);
-                                    setCategoryPopoverOpen(false);
-                                    setCategorySearch("");
-                                  }}
-                                >
-                                  <Check
+                              {filteredCategories.map((cat) => {
+                                const isSelected = formData.category.includes(
+                                  cat.name,
+                                );
+                                return (
+                                  <div
+                                    key={cat.id}
                                     className={cn(
-                                      "mr-2 h-4 w-4",
-                                      formData.category === cat.name
-                                        ? "opacity-100"
-                                        : "opacity-0",
+                                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                      isSelected &&
+                                        "bg-accent text-accent-foreground",
                                     )}
-                                  />
-                                  {cat.name}
-                                </div>
-                              ))}
+                                    onClick={() => {
+                                      const cats = isSelected
+                                        ? formData.category.filter(
+                                            (c) => c !== cat.name,
+                                          )
+                                        : [...formData.category, cat.name];
+                                      handleInputChange("category", cats);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        isSelected
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    {cat.name}
+                                  </div>
+                                );
+                              })}
                               {filteredCategories.length === 0 &&
                                 categorySearch && (
                                   <div className="p-2 text-xs text-muted-foreground italic">

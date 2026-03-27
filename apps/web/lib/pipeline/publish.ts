@@ -103,7 +103,9 @@ export async function publishToStorefront(sku: string) {
             images: images,
             is_special_order: consolidated.is_special_order || false,
             is_taxable: consolidated.is_taxable !== false,
-            category: consolidated.category || input.category || null,
+            category: Array.isArray(consolidated.category)
+                ? (consolidated.category as string[]).join('|')
+                : consolidated.category || input.category || null,
             weight: consolidated.weight || null,
             product_type: consolidated.product_type || null,
             search_keywords: consolidated.search_keywords || null,
