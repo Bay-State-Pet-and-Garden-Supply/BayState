@@ -1,7 +1,11 @@
 /**
  * @jest-environment node
  */
-import { transformShopSiteProduct, buildProductSlug } from '@/lib/admin/migration/product-sync';
+import {
+    buildPipelineInputFromShopSiteProduct,
+    buildProductSlug,
+    transformShopSiteProduct,
+} from '@/lib/admin/migration/product-sync';
 
 describe('Product Sync Utilities', () => {
     describe('transformShopSiteProduct', () => {
@@ -124,6 +128,32 @@ describe('Product Sync Utilities', () => {
             expect(result.brand_name).toBe('Bay State P&G');
             expect(result.category_name).toBe('Lawn & Garden|Bird Supplies');
             expect(result.product_type).toBe('Food|Apparel|Gloves');
+        });
+
+        it('builds pipeline input that preserves ProductOnPages for downstream consolidation', () => {
+            const input = buildPipelineInputFromShopSiteProduct({
+                sku: 'SKU-PIPE-001',
+                name: 'Example Product',
+                price: 14.99,
+                description: 'Short description',
+                quantityOnHand: 8,
+                imageUrl: '',
+                brandName: 'Bay State',
+                categoryName: 'Dog Food',
+                productTypeName: 'Treats',
+                moreInfoText: '<p>Long description</p>',
+                shopsitePages: ['Dog Food Dry', 'Dog Food Shop All'],
+            });
+
+            expect(input).toEqual(
+                expect.objectContaining({
+                    name: 'Example Product',
+                    price: 14.99,
+                    category: 'Dog Food',
+                    product_type: 'Treats',
+                    product_on_pages: ['Dog Food Dry', 'Dog Food Shop All'],
+                })
+            );
         });
     });
 

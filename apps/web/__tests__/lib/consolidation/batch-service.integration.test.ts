@@ -167,6 +167,7 @@ describe('consolidation batch integration behavior', () => {
                     sku: 'SKU-1',
                     consolidated: { images: ['https://cdn.example.com/1.jpg'] },
                     sources: {},
+                    input: {},
                     image_candidates: [],
                     selected_images: [],
                 }],
@@ -199,7 +200,7 @@ describe('consolidation batch integration behavior', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, image_candidates, selected_images') {
+            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {

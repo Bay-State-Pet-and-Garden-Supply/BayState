@@ -14,7 +14,7 @@ function dedupeValues(values: string[]): string[] {
 
 function toTitleCase(value: string): string {
     return collapseWhitespace(value)
-        .split(/(\s+|\/|&|-|\(|\))/)
+        .split(/(\s+|\/|&|-|\(|\)|,)/)
         .map((segment) => {
             if (!/^[A-Za-z][A-Za-z']*$/.test(segment)) {
                 return segment;
@@ -106,4 +106,52 @@ export function normalizeProductTypeValue(value: string | null | undefined): str
     );
 
     return normalizedValues.length > 0 ? normalizedValues.join('|') : null;
+}
+
+export function normalizeCategoryOptions<T extends { name: string }>(items: T[]): T[] {
+    const normalizedItems = new Map<string, T>();
+
+    for (const item of items) {
+        const normalizedName = normalizeCategoryName(item.name);
+        if (!normalizedName) {
+            continue;
+        }
+
+        const key = normalizedName.toLowerCase();
+        if (normalizedItems.has(key)) {
+            continue;
+        }
+
+        normalizedItems.set(key, {
+            ...item,
+            name: normalizedName,
+        });
+    }
+
+    return Array.from(normalizedItems.values())
+        .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export function normalizeProductTypeOptions<T extends { name: string }>(items: T[]): T[] {
+    const normalizedItems = new Map<string, T>();
+
+    for (const item of items) {
+        const normalizedName = normalizeProductTypeToken(item.name);
+        if (!normalizedName) {
+            continue;
+        }
+
+        const key = normalizedName.toLowerCase();
+        if (normalizedItems.has(key)) {
+            continue;
+        }
+
+        normalizedItems.set(key, {
+            ...item,
+            name: normalizedName,
+        });
+    }
+
+    return Array.from(normalizedItems.values())
+        .sort((left, right) => left.name.localeCompare(right.name));
 }

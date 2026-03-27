@@ -8,6 +8,7 @@ interface RunnerData {
   last_seen_at: string | null;
   status: 'online' | 'offline' | 'busy' | 'idle' | 'polling' | 'paused';
   current_job_id: string | null;
+  enabled: boolean;
 }
 
 export async function GET() {
@@ -15,7 +16,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data: runnersData, error } = await supabase
       .from('scraper_runners')
-      .select('name,last_seen_at,status,current_job_id')
+      .select('name,last_seen_at,status,current_job_id,enabled')
       .order('last_seen_at', { ascending: false });
 
     if (error) {
@@ -39,6 +40,7 @@ export async function GET() {
         labels: [],
         last_seen: runner.last_seen_at ?? new Date(0).toISOString(),
         active_jobs: runner.current_job_id ? 1 : 0,
+        enabled: runner.enabled,
       };
     });
 

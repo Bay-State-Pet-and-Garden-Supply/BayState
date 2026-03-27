@@ -2,7 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFile } from 'node:fs/promises';
 import { ShopSiteClient } from '../lib/admin/migration/shopsite-client';
-import { importShopSiteProducts } from '../lib/admin/migration/product-import';
+import {
+    importShopSiteProducts,
+    syncExistingProductsIngestionInputFromShopSite,
+} from '../lib/admin/migration/product-import';
 import type { SyncResult } from '../lib/admin/migration/types';
 
 const MIGRATION_SETTINGS_KEY = 'shopsite_migration';
@@ -143,6 +146,12 @@ async function main() {
                 ? async (progressResult) => updateLogProgress(supabase, logId, progressResult)
                 : undefined,
         });
+        const pipelineInputSync = await syncExistingProductsIngestionInputFromShopSite({
+            supabase,
+            shopSiteProducts,
+        });
+
+        console.log(`Synced ShopSite input into ${pipelineInputSync.updated} pipeline rows`);
 
         if (logId) {
             await completeLog(supabase, logId, result);
@@ -156,6 +165,7 @@ async function main() {
             updated: result.updated,
             failed: result.failed,
             errorCount: result.errors.length,
+            pipelineInputUpdated: pipelineInputSync.updated,
             duration: result.duration,
         }, null, 2));
 

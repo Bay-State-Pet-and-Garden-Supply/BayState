@@ -6,7 +6,7 @@
  * Ported from BayStateTools.
  */
 
-import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
+import { parseShopSitePages, SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 
 /**
  * Common abbreviations found in distributor product names.
@@ -146,7 +146,10 @@ function normalizeSpacing(text: string): string {
  * Normalize a consolidation result from the LLM.
  * Applies all normalization rules to the name field.
  */
-export function normalizeConsolidationResult(data: Record<string, unknown>): Record<string, unknown> {
+export function normalizeConsolidationResult(
+    data: Record<string, unknown>,
+    validPages: readonly string[] = SHOPSITE_PAGES
+): Record<string, unknown> {
     const normalized = { ...data };
 
     if (typeof normalized.name === 'string') {
@@ -177,10 +180,13 @@ export function normalizeConsolidationResult(data: Record<string, unknown>): Rec
     }
 
     // Validate product_on_pages against valid ShopSite pages
-    if (Array.isArray(normalized.product_on_pages)) {
-        const validPages = new Set(SHOPSITE_PAGES as readonly string[]);
-        normalized.product_on_pages = (normalized.product_on_pages as string[])
-            .filter((page: string) => validPages.has(page));
+    if ('product_on_pages' in normalized) {
+        const allowedPages = new Set(validPages);
+        const normalizedPages = parseShopSitePages(normalized.product_on_pages);
+        normalized.product_on_pages =
+            allowedPages.size > 0
+                ? normalizedPages.filter((page) => allowedPages.has(page))
+                : normalizedPages;
     }
 
     return normalized;

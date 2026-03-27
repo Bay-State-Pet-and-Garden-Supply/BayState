@@ -21,6 +21,8 @@ export interface RunnerPresence {
   active_jobs: number;
   /** ISO 8601 timestamp of last activity */
   last_seen: string;
+  /** Whether the runner is currently enabled to pick up new work */
+  enabled?: boolean;
   /** Optional metadata for runner configuration or capabilities */
   metadata?: Record<string, unknown>;
 }
@@ -34,6 +36,7 @@ export const runnerPresenceSchema = z.object({
   status: z.enum(['online', 'busy', 'idle', 'offline']),
   active_jobs: z.number().int().min(0),
   last_seen: z.string(),
+  enabled: z.boolean().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 

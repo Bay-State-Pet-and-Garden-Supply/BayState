@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { normalizeProductTypeOptions } from '@/lib/facets/normalization';
 
 export async function GET() {
   const auth = await requireAdminAuth();
@@ -21,7 +22,7 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ productTypes: data || [] });
+  return NextResponse.json({ productTypes: normalizeProductTypeOptions(data || []) });
 }
 
 export async function POST(request: NextRequest) {

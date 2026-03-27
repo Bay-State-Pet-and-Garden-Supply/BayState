@@ -116,6 +116,7 @@ export function JobHeatmap({
               runner_id: job.runner_id,
               runner_name: job.runner_id.slice(0, 8),
               status: 'offline',
+              enabled: true, // Default to true if unknown
               active_jobs: 0,
               last_seen: new Date().toISOString(),
             },
@@ -236,7 +237,13 @@ export function JobHeatmap({
           </thead>
           <tbody>
             {runnerJobs.map((rj) => (
-              <tr key={rj.runner.runner_id} className="border-b border-slate-100 dark:border-slate-800">
+              <tr 
+                key={rj.runner.runner_id} 
+                className={cn(
+                  "border-b border-slate-100 dark:border-slate-800",
+                  rj.runner.enabled === false && "opacity-60 bg-slate-50/50 dark:bg-slate-900/20"
+                )}
+              >
                 {/* Runner Name */}
                 <td className="py-2 pl-2">
                   <div className="flex items-center gap-2">
@@ -249,12 +256,21 @@ export function JobHeatmap({
                         rj.runner.status === 'offline' && 'bg-slate-400'
                       )}
                     />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
-                      {rj.runner.runner_name}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      ({rj.runner.active_jobs})
-                    </span>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
+                          {rj.runner.runner_name}
+                        </span>
+                        {rj.runner.enabled === false && (
+                          <span className="text-[9px] px-1 py-0 rounded border border-orange-200 text-orange-700 bg-orange-50/50 leading-tight uppercase font-bold">
+                            Disabled
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        ({rj.runner.active_jobs} jobs)
+                      </span>
+                    </div>
                   </div>
                 </td>
 

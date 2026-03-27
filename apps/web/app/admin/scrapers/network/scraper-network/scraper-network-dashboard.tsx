@@ -317,7 +317,9 @@ export function ScraperNetworkDashboard() {
                 <Link
                   key={runner.runner_id}
                   href={`/admin/scrapers/network/${runner.runner_id}`}
-                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                  className={`flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
+                    runner.enabled === false ? "opacity-60 bg-muted/30" : ""
+                  }`}
                 >
                   <div className="flex items-center gap-4">
                     <div
@@ -332,7 +334,14 @@ export function ScraperNetworkDashboard() {
                       }`}
                     />
                     <div>
-                      <p className="font-medium">{runner.runner_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{runner.runner_name}</p>
+                        {runner.enabled === false && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 uppercase tracking-wider border-orange-200 text-orange-700 bg-orange-50/50">
+                            Disabled
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground font-mono">
                         {runner.runner_id}
                       </p>

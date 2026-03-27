@@ -136,7 +136,11 @@ export function validateProductType(value: string | undefined | null, validTypes
  * Build a JSON schema for OpenAI Structured Outputs with enum constraints.
  * This enforces that the LLM can only return values from the provided taxonomy.
  */
-export function buildResponseSchema(categories: string[], productTypes: string[]): object {
+export function buildResponseSchema(
+    categories: string[],
+    productTypes: string[],
+    shopsitePages: string[] = []
+): object {
     return {
         type: 'json_schema',
         json_schema: {
@@ -169,6 +173,7 @@ export function buildResponseSchema(categories: string[], productTypes: string[]
                         type: 'array',
                         items: {
                             type: 'string',
+                            ...(shopsitePages.length > 0 ? { enum: shopsitePages } : {}),
                         },
                         description: 'Store pages this product should appear on, using exact page names from the provided list',
                     },
