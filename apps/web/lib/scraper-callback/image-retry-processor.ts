@@ -49,7 +49,10 @@ function findWorkspaceRoot(startDir: string): string | null {
 function resolveScraperRoot(): string {
   const workspaceRoot = findWorkspaceRoot(process.cwd());
   if (workspaceRoot) {
-    return path.join(workspaceRoot, 'apps', 'scraper');
+    const workspacePath = path.join(workspaceRoot, 'apps', 'scraper');
+    if (existsSync(path.join(workspacePath, 'scrapers', 'configs'))) {
+      return workspacePath;
+    }
   }
 
   const siblingCandidate = path.resolve(process.cwd(), '..', 'scraper');
@@ -62,7 +65,12 @@ function resolveScraperRoot(): string {
     return workspaceCandidate;
   }
 
-  return siblingCandidate;
+  throw new Error(
+    `Could not find scraper root directory. ` +
+    `Tried: ${workspaceRoot ? path.join(workspaceRoot, 'apps', 'scraper') : 'n/a (no workspace root)'}, ` +
+    `${siblingCandidate}, ${workspaceCandidate}. ` +
+    `Ensure the scraper configs exist at one of these locations.`
+  );
 }
 
 const SCRAPER_ROOT = resolveScraperRoot();

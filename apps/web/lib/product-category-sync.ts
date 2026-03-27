@@ -42,7 +42,7 @@ export async function syncProductCategoryLinks(
                     slug,
                     display_order: 0,
                 },
-                { onConflict: 'slug' }
+                { onConflict: 'name' }
             )
             .select('id')
             .single();
