@@ -130,21 +130,21 @@ describe('POST /api/admin/scraping/retry-image', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 400 when product_id is missing', async () => {
-    const RequestWithoutProductId = class extends NextRequest {
+  it('returns 400 when sku is missing', async () => {
+    const RequestWithoutSku = class extends NextRequest {
       async json() {
         return { image_url: 'https://images.example.com/broken.jpg' };
       }
     };
 
-    const req = new (RequestWithoutProductId as any)(
+    const req = new (RequestWithoutSku as any)(
       'http://localhost/api/admin/scraping/retry-image'
     );
     const res = await POST(req);
 
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual(
-      expect.objectContaining({ error: expect.stringContaining('product_id') })
+      expect.objectContaining({ error: expect.stringContaining('sku') })
     );
   });
 
@@ -161,7 +161,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
     const RequestForPublicSource = class extends NextRequest {
       async json() {
         return {
-          product_id: 'product-1',
+          sku: 'SKU-404',
           image_url: 'https://images.example.com/public.jpg',
         };
       }
@@ -183,7 +183,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
     const RequestWithBody = class extends NextRequest {
       async json() {
         return {
-          product_id: 'product-1',
+          sku: 'SKU-404',
           image_url: 'https://images.example.com/broken.jpg',
         };
       }
@@ -199,7 +199,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
 
     expect(imageRetryTable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
-        product_id: 'product-1',
+        sku: 'SKU-404',
         image_url: 'https://images.example.com/broken.jpg',
         error_type: 'not_found_404',
         status: 'pending',
@@ -213,7 +213,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
       data: [
         {
           id: 'retry-1',
-          product_id: 'product-1',
+          sku: 'SKU-404',
           image_url: 'https://images.example.com/broken.jpg',
         },
       ],
@@ -223,7 +223,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
     const RequestWithBody = class extends NextRequest {
       async json() {
         return {
-          product_id: 'product-1',
+          sku: 'SKU-404',
           image_url: 'https://images.example.com/broken.jpg',
         };
       }

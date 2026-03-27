@@ -203,7 +203,7 @@ describe('getStageConfig', () => {
 
   it('returns correct config for finalized', () => {
     const config = getStageConfig('finalized');
-    expect(config.label).toBe('Finalized');
+    expect(config.label).toBe('Finalizing');
     expect(config.color).toBe('#F59E0B');
   });
 

@@ -367,10 +367,11 @@ class TestFullWorkflow:
                 scraper_name="test",
             )
 
-            transformed = callback.transform_results({"data": extraction_result})
+            transformed = callback.transform_results({"data": {"SKU001": extraction_result}})
 
             assert "title" in extraction_result
-            assert "Test" in transformed.values()
+            assert transformed["SKU001"]["test"]["title"] == "Test"
+            assert "scraped_at" in transformed["SKU001"]["test"]
 
 
 class TestMetricsCollection:
@@ -378,11 +379,25 @@ class TestMetricsCollection:
 
     def test_extraction_metrics_tracked(self):
         """Test extraction metrics are tracked."""
-        # This would integrate with the metrics module
-        from src.crawl4ai_engine import metrics
+        from src.crawl4ai_engine.metrics import Crawl4AIMetricsCollector, ExtractionMode
 
-        # Verify metrics module exists and has expected functions
-        assert hasattr(metrics, "extract_content")
+        collector = Crawl4AIMetricsCollector()
+        metric = collector.record_extraction(
+            url="https://example.com/product",
+            mode=ExtractionMode.LLM_FREE,
+            success=True,
+            duration_ms=250.0,
+            anti_bot_triggered=True,
+            anti_bot_strategy="stealth",
+        )
+        summary = collector.get_summary()
+
+        assert metric.success is True
+        assert summary["extractions"]["total"] == 1
+        assert summary["extractions"]["llm_free"] == 1
+        assert summary["performance"]["success_rate"] == 1.0
+        assert summary["anti_bot"]["total_attempts"] == 1
+        assert summary["anti_bot"]["strategies_used"]["stealth"] == 1
 
 
 class TestAntiBotIntegration:
@@ -390,14 +405,18 @@ class TestAntiBotIntegration:
 
     def test_anti_bot_config_loading(self):
         """Test anti-bot configuration loading."""
-        # Test that anti-bot config can be parsed
-        from src.crawl4ai_engine.anti_bot import AntiBotConfig
+        from src.crawl4ai_engine.anti_bot import AntiBotConfigGenerator, AntiBotSettings
 
-        config = AntiBotConfig(
-            enabled=True,
-            simulate_user=True,
-            rotate_fingerprint=True,
+        settings = AntiBotSettings.from_scraper_config(
+            {
+                "stealth": True,
+                "user_agents": ["UA-1"],
+                "proxies": ["http://proxy:8080"],
+            }
         )
+        generator = AntiBotConfigGenerator(settings)
+        selection = generator.next_selection()
 
-        assert config.enabled is True
-        assert config.simulate_user is True
+        assert settings.stealth is True
+        assert selection.user_agent == "UA-1"
+        assert selection.proxy == "http://proxy:8080"

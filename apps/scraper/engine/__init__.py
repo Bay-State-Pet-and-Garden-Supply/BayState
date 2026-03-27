@@ -1,23 +1,31 @@
 """Compatibility proxy package for crawl4ai engine.
 
-This module provides a lightweight proxy so code can import
-`apps.scraper.engine` while the original implementation remains
-under `apps.scraper.src.crawl4ai_engine` during this migration.
-
-It copies the original package's __path__ and public attributes so
-submodule imports like `apps.scraper.engine.metrics_endpoint` resolve
-to the existing files under src/crawl4ai_engine.
+This alias needs to work both when the scraper is imported as part of the
+monorepo package graph and when tests execute from `apps/scraper` directly.
 """
 
 from __future__ import annotations
 
 import importlib
-import sys
-from types import ModuleType
 
-ORIG = "apps.scraper.src.crawl4ai_engine"
+_CANDIDATE_MODULES = (
+    "apps.scraper.src.crawl4ai_engine",
+    "src.crawl4ai_engine",
+)
 
-_orig_pkg = importlib.import_module(ORIG)
+_orig_pkg = None
+for _candidate in _CANDIDATE_MODULES:
+    try:
+        _orig_pkg = importlib.import_module(_candidate)
+        break
+    except ModuleNotFoundError:
+        continue
+
+if _orig_pkg is None:
+    raise ModuleNotFoundError(
+        "Unable to resolve crawl4ai engine compatibility package from "
+        f"{', '.join(_CANDIDATE_MODULES)}"
+    )
 
 # Copy selected attributes to this package namespace
 for _k, _v in _orig_pkg.__dict__.items():
@@ -33,7 +41,3 @@ try:
 except Exception:
     # Fallback: leave default path
     pass
-
-# Also ensure sys.modules maps this package name to the original module
-# so other importers see a consistent module object.
-sys.modules.setdefault(__name__, sys.modules.get(ORIG, _orig_pkg))

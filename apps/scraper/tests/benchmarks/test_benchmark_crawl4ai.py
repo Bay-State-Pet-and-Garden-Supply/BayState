@@ -458,6 +458,12 @@ async def test_concurrent_extraction_limits():
     print(f"  crawl4ai max recommended: {max_crawl4ai}")
     print(f"  legacy max recommended: {max_legacy}")
 
+    if not results["crawl4ai"]:
+        pytest.skip("crawl4ai not installed")
+
+    if not results["legacy"]:
+        pytest.skip("playwright not installed")
+
     # Both should support at least 3 concurrent
     assert max_crawl4ai >= 3, f"crawl4ai should support at least 3 concurrent: {max_crawl4ai}"
     assert max_legacy >= 3, f"legacy should support at least 3 concurrent: {max_legacy}"

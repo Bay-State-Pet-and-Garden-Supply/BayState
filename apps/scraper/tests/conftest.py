@@ -1,7 +1,11 @@
 """Pytest configuration and fixtures."""
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 
 
@@ -27,3 +31,32 @@ project_root = Path(__file__).resolve().parent.parent
 src_path = project_root / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
+
+
+@dataclass(slots=True)
+class _LocalBenchmark:
+    """Minimal benchmark fixture fallback for suites that use benchmark.pedantic."""
+
+    def pedantic(
+        self,
+        target,
+        *,
+        iterations: int = 1,
+        rounds: int = 1,
+        warmup_rounds: int = 0,
+    ) -> Any:
+        for _ in range(max(warmup_rounds, 0)):
+            for _ in range(max(iterations, 1)):
+                target()
+
+        result: Any = None
+        for _ in range(max(rounds, 1)):
+            for _ in range(max(iterations, 1)):
+                result = target()
+
+        return result
+
+
+@pytest.fixture
+def benchmark() -> _LocalBenchmark:
+    return _LocalBenchmark()

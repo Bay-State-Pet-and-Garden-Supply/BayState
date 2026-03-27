@@ -4,10 +4,8 @@ from pathlib import Path
 
 import yaml
 
-from scrapers.parser.yaml_parser import ScraperConfigParser
 
-
-CONFIG_PATH = Path(__file__).resolve().parents[2] / "scrapers" / "configs" / "crawl4ai" / "coastal.yaml"
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "scrapers" / "configs" / "coastal.yaml"
 
 
 def test_coastal_migrated_config_exists() -> None:
@@ -15,18 +13,21 @@ def test_coastal_migrated_config_exists() -> None:
 
 
 def test_coastal_migrated_config_schema_and_workflow() -> None:
-    parser = ScraperConfigParser()
-    config = parser.load_from_file(CONFIG_PATH)
+    with open(CONFIG_PATH, encoding="utf-8") as file:
+        raw = yaml.safe_load(file)
 
-    assert config.name == "coastal"
-    assert config.scraper_type == "static"
+    assert raw["name"] == "coastal"
+    assert raw["scraper_type"] == "static"
 
-    actions = [step.action for step in config.workflows]
+    actions = [step["action"] for step in raw.get("workflows", [])]
     assert "navigate" in actions
     assert "wait_for" in actions
+    assert "wait" in actions
     assert "conditional_click" in actions
-    assert "click" in actions
+    assert "conditional_skip" in actions
+    assert "extract_single" in actions
     assert "extract" in actions
+    assert "process_images" in actions
     assert "check_no_results" in actions
 
 
@@ -36,13 +37,15 @@ def test_coastal_migrated_config_fields_present() -> None:
 
     selector_names = {selector["name"] for selector in raw.get("selectors", [])}
     expected = {
-        "name",
-        "brand",
-        "size_options",
-        "description",
-        "images",
-        "price",
-        "upc",
-        "item_number",
+        "Name",
+        "Brand",
+        "Size",
+        "Description",
+        "Image URLs",
+        "UPC",
+        "Item Number",
+        "Features",
+        "Weight",
+        "Dimensions",
     }
     assert expected.issubset(selector_names)

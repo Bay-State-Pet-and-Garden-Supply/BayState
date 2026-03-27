@@ -15,6 +15,7 @@ describe('getProductsByStatus source filter', () => {
         const queryBuilder = {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
             or: jest.fn().mockReturnThis(),
             gte: jest.fn().mockReturnThis(),
             lte: jest.fn().mockReturnThis(),
@@ -39,7 +40,7 @@ describe('getProductsByStatus source filter', () => {
     });
 
     it('uses filter with ? operator for source key existence', async () => {
-        await getProductsByStatus('registered', { source: 'amazon' });
+        await getProductsByStatus('imported', { source: 'amazon' });
 
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledWith(
             'sources',
@@ -49,7 +50,7 @@ describe('getProductsByStatus source filter', () => {
     });
 
     it('uses filter for source when source is provided', async () => {
-        await getProductsByStatus('enriched', { source: 'ebay' });
+        await getProductsByStatus('consolidated', { source: 'ebay' });
 
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledTimes(1);
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledWith(
@@ -60,7 +61,7 @@ describe('getProductsByStatus source filter', () => {
     });
 
     it('does not use filter when source is not provided', async () => {
-        await getProductsByStatus('registered', {});
+        await getProductsByStatus('imported', {});
 
         expect(mockSupabase._queryBuilder.filter).not.toHaveBeenCalled();
     });
@@ -71,7 +72,7 @@ describe('getProductsByStatus source filter', () => {
         for (const source of sources) {
             const mock = makeSupabaseMock();
             (createClient as jest.Mock).mockResolvedValue(mock);
-            await getProductsByStatus('registered', { source });
+            await getProductsByStatus('imported', { source });
             expect(mock._queryBuilder.filter).toHaveBeenCalledWith(
                 'sources',
                 '?',
@@ -81,7 +82,7 @@ describe('getProductsByStatus source filter', () => {
     });
 
     it('combines source filter with other filters', async () => {
-        await getProductsByStatus('registered', {
+        await getProductsByStatus('imported', {
             source: 'amazon',
             minConfidence: 0.8,
             maxConfidence: 1.0,
@@ -111,6 +112,10 @@ describe('getProductsByStatus source filter', () => {
             endDate: '2024-12-31',
         });
 
+        expect(mockSupabase._queryBuilder.in).toHaveBeenCalledWith(
+            'pipeline_status',
+            ['finalized', 'consolidated']
+        );
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledWith(
             'sources',
             '?',

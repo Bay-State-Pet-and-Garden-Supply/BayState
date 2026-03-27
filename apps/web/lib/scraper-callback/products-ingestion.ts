@@ -27,7 +27,7 @@ export interface PartialPersistenceResult {
 }
 
 interface ProductsIngestionSourceRow {
-  id: string;
+  sku: string;
   sources: Record<string, unknown>;
 }
 
@@ -63,7 +63,7 @@ export async function loadProductsIngestionSourcesBySku(
   const uniqueSkus = [...new Set(skus)];
   const { data, error } = await supabase
     .from('products_ingestion')
-    .select('id, sku, sources')
+    .select('sku, sources')
     .in('sku', uniqueSkus);
 
   if (error) {
@@ -73,7 +73,7 @@ export async function loadProductsIngestionSourcesBySku(
   const sourcesBySku = new Map<string, ProductsIngestionSourceRow>();
   for (const row of data || []) {
     sourcesBySku.set(row.sku, {
-      id: row.id,
+      sku: row.sku,
       sources: (row.sources as Record<string, unknown>) || {},
     });
   }
@@ -105,7 +105,7 @@ export async function persistProductsIngestionSourcesStrict(
 
   const updateRows = await Promise.all(skus.map(async (sku) => {
     const existingRow = existingSourcesBySku.get(sku)!;
-    const scrapedData = await makeIncomingSourcesDurable(supabase, existingRow.id, sku, skuData[sku]);
+    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, sku, skuData[sku]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = mergeProductSources(existingRow.sources, scrapedData);
@@ -167,7 +167,7 @@ export async function persistProductsIngestionSourcesPartial(
 
   const updateRows = await Promise.all(toUpdateSkus.map(async (sku) => {
     const existingRow = existingSourcesBySku.get(sku)!;
-    const scrapedData = await makeIncomingSourcesDurable(supabase, existingRow.id, sku, skuData[sku]);
+    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, sku, skuData[sku]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = mergeProductSources(existingRow.sources, scrapedData);

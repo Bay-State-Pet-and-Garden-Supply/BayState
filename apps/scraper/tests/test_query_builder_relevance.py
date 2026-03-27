@@ -16,12 +16,14 @@ def test_query_builder_sku_prefixes() -> None:
     # 12-digit numeric SKU (UPC)
     query = qb.build_search_query(sku="813347002015", product_name=None, brand=None)
     assert "UPC 813347002015" in query
-    assert "official" in query
-    assert "manufacturer" in query
+    assert "813347002015" in query
+    assert "product" in query
+    assert "details" in query
 
     # Short numeric SKU
     query = qb.build_search_query(sku="12345", product_name=None, brand=None)
-    assert "SKU 12345" in query
+    assert "12345" in query
+    assert "SKU 12345" not in query
 
     # Alphanumeric SKU
     query = qb.build_search_query(sku="ABC-123", product_name=None, brand=None)
@@ -36,15 +38,15 @@ def test_query_builder_intent_keywords() -> None:
     assert "Manna Pro" in query
     assert "Stud Muffins" in query
     assert "UPC 813347002015" in query
-    assert "official" in query
-    assert "manufacturer" in query
+    assert "product" in query
+    assert "details" in query
     assert "-review" in query
+    assert "-comparison" in query
 
 def test_query_variants_sku_priority() -> None:
     qb = QueryBuilder()
     variants = qb.build_query_variants(sku="813347002015", product_name="Stud Muffins", brand="Manna Pro", category=None)
     
-    # Variant 1 should be SKU-focused with 'official'
-    assert variants[0] == "UPC 813347002015 official"
-    # Variant 2 should be Brand + Name
-    assert "Manna Pro Stud Muffins manufacturer" in variants
+    assert variants[0] == "813347002015 product"
+    assert "UPC 813347002015" in variants
+    assert "Manna Pro Stud Muffins" in variants

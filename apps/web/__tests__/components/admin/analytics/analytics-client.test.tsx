@@ -47,6 +47,7 @@ describe('AnalyticsClient', () => {
   });
 
   it('renders loading state initially', () => {
+    global.fetch = jest.fn(() => new Promise(() => {})) as jest.Mock;
     render(<AnalyticsClient />);
 
     // Should show loading skeletons
@@ -206,7 +207,7 @@ describe('RevenueChart', () => {
     expect(bars).toHaveLength(2);
 
     // Check that date labels exist (span elements with date text)
-    const labels = document.querySelectorAll('.text-gray-600');
+    const labels = document.querySelectorAll('.text-muted-foreground');
     expect(labels.length).toBeGreaterThan(0);
   });
 

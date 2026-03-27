@@ -235,6 +235,7 @@ class TestXPathExtractionStrategy:
             assert result == {"title": "XPath Product"}
 
 
+@pytest.mark.skip(reason="LLM fallback strategy module was removed; fallback is handled by Crawl4AIExtractor.")
 class TestLLMFallbackStrategy:
     """Test suite for LLMFallbackStrategy."""
 
@@ -444,16 +445,14 @@ class TestFallbackChain:
 
     def test_fallback_chain_order(self, sample_schema):
         """Test that fallback chain tries strategies in correct order."""
-        # This test verifies the fallback chain logic exists
-        # Actual chain execution is tested in integration tests
+        # The dedicated LLM fallback strategy module was removed.
+        # Current fallback coverage validates CSS/XPath strategies here and
+        # Crawl4AIExtractor fallback behavior in integration tests.
         from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
         from src.crawl4ai_engine.strategies.xpath_strategy import XPathExtractionStrategy
-        from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
 
-        # Verify all strategy classes can be imported and instantiated
         assert CSSExtractionStrategy is not None
         assert XPathExtractionStrategy is not None
-        assert LLMFallbackStrategy is not None
 
     def test_css_to_xpath_fallback(self, sample_schema):
         """Test CSS can fall back to XPath."""

@@ -69,10 +69,16 @@ class SelectorResolver:
                     # Apply escalation multiplier from context if available
                     # This multiplier is increased by RetryExecutor on each attempt
                     multiplier = 1.0
-                    if hasattr(self.browser, "context_data") and isinstance(self.browser.context_data, dict):
-                        multiplier = self.browser.context_data.get("timeout_multiplier", 1.0)
-                    elif hasattr(self.browser, "context") and hasattr(self.browser.context, "timeout_multiplier"):
-                        multiplier = getattr(self.browser.context, "timeout_multiplier", 1.0)
+                    context_data = getattr(self.browser, "context_data", None)
+                    if isinstance(context_data, dict):
+                        candidate = context_data.get("timeout_multiplier", 1.0)
+                        if isinstance(candidate, (int, float)):
+                            multiplier = float(candidate)
+                    else:
+                        browser_context = getattr(self.browser, "context", None)
+                        candidate = getattr(browser_context, "timeout_multiplier", None)
+                        if isinstance(candidate, (int, float)):
+                            multiplier = float(candidate)
 
                     if multiplier > 1.0:
                         element_timeout = int(element_timeout * multiplier)

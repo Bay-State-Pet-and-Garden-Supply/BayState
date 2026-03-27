@@ -197,7 +197,7 @@ class TestErrorClassification:
 
     def test_error_classification_with_failure_type(self):
         """Test classification with failure type."""
-        from core.failure_classifier import ErrorClassification, FailureType, ErrorCategory
+        from core.failure_classifier import FailureType
 
         classification = ErrorClassification(
             category=ErrorCategory.ANTI_BOT,
@@ -330,13 +330,30 @@ class TestRetryWithBackoff:
         """Test exhausted retries raises exception."""
         call_count = 0
 
-        @retry_with_backoff(max_retries=2, base_delay=0.01)
+        class _FixedDelayStrategy:
+            def get_adaptive_config(self, failure_type, site_name, current_retry_count=0):
+                return {"delay": 0.01}
+
+            def calculate_delay(self, config, retry_count):
+                return 0.01
+
+        class _FixedDelayExecutor:
+            adaptive_strategy = _FixedDelayStrategy()
+
+        @retry_with_backoff(
+            max_retries=2,
+            base_delay=0.01,
+            jitter_seconds=0.0,
+            retry_executor=_FixedDelayExecutor(),
+        )
         async def always_fail():
             nonlocal call_count
             call_count += 1
             raise TimeoutError("Persistent failure")
 
-        with pytest.raises(TimeoutError):
+        from scrapers.exceptions import TimeoutError as ScraperTimeoutError
+
+        with pytest.raises(ScraperTimeoutError):
             await always_fail()
 
         assert call_count == 3  # Initial + 2 retries

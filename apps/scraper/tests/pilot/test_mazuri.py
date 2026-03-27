@@ -4,10 +4,8 @@ from pathlib import Path
 
 import yaml
 
-from scrapers.parser.yaml_parser import ScraperConfigParser
 
-
-CONFIG_PATH = Path(__file__).resolve().parents[2] / "scrapers" / "configs" / "crawl4ai" / "mazuri.yaml"
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "scrapers" / "configs" / "mazuri.yaml"
 
 
 def test_mazuri_migrated_config_exists() -> None:
@@ -15,17 +13,20 @@ def test_mazuri_migrated_config_exists() -> None:
 
 
 def test_mazuri_migrated_config_schema_and_workflow() -> None:
-    parser = ScraperConfigParser()
-    config = parser.load_from_file(CONFIG_PATH)
+    with open(CONFIG_PATH, encoding="utf-8") as file:
+        raw = yaml.safe_load(file)
 
-    assert config.name == "mazuri"
-    assert config.scraper_type == "static"
+    assert raw["name"] == "mazuri"
+    assert raw["scraper_type"] == "static"
 
-    actions = [step.action for step in config.workflows]
+    actions = [step["action"] for step in raw.get("workflows", [])]
     assert "navigate" in actions
     assert "wait_for" in actions
+    assert "wait" in actions
     assert "click" in actions
     assert "extract" in actions
+    assert "process_images" in actions
+    assert "transform_value" in actions
     assert "check_no_results" in actions
 
 
@@ -35,14 +36,13 @@ def test_mazuri_migrated_config_fields_present() -> None:
 
     selector_names = {selector["name"] for selector in raw.get("selectors", [])}
     expected = {
-        "name",
-        "brand",
-        "description",
-        "images",
-        "weight",
-        "ingredients",
-        "guaranteed_analysis",
-        "feeding_directions",
-        "size_options",
+        "Name",
+        "Brand",
+        "Description",
+        "Image URLs",
+        "Weight",
+        "Ingredients",
+        "Size Options",
+        "UPC",
     }
     assert expected.issubset(selector_names)

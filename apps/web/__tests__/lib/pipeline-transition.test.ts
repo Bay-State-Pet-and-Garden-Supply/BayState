@@ -41,7 +41,7 @@ describe('pipeline status transition CRUD', () => {
         expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'imported');
     });
 
-    it('returns counts for all 5 pipeline statuses', async () => {
+    it('returns counts for all pipeline status buckets', async () => {
         const select = jest.fn().mockResolvedValue({
             data: [
                 { pipeline_status: 'imported' },
@@ -67,8 +67,8 @@ describe('pipeline status transition CRUD', () => {
             { status: 'imported', count: 2 },
             { status: 'monitoring', count: 0 },
             { status: 'scraped', count: 1 },
-            { status: 'consolidated', count: 1 },
-            { status: 'finalized', count: 1 },
+            { status: 'consolidated', count: 0 },
+            { status: 'finalized', count: 2 },
             { status: 'published', count: 3 },
         ]);
     });
@@ -160,10 +160,15 @@ describe('pipeline status transition CRUD', () => {
             in: jest.fn().mockResolvedValue({ data: null, error: null, count: 1 }),
         };
 
+        const auditBuilder = {
+            insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+
         const from = jest
             .fn()
             .mockReturnValueOnce(fetchBuilder)
-            .mockReturnValueOnce(updateBuilder);
+            .mockReturnValueOnce(updateBuilder)
+            .mockReturnValueOnce(auditBuilder);
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
@@ -171,5 +176,10 @@ describe('pipeline status transition CRUD', () => {
         const result = await bulkUpdateStatus(['SKU-1'], 'imported');
 
         expect(result.success).toBe(true);
+        expect(auditBuilder.insert).toHaveBeenCalledWith([
+            expect.objectContaining({
+                to_state: 'imported',
+            }),
+        ]);
     });
 });

@@ -71,7 +71,7 @@ describe('ScrapedResultsView', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          product_id: 'product-primary',
+          sku: 'SKU-primary',
           image_url: 'https://images.example.com/primary-broken-primary.jpg',
         }),
       });
@@ -126,7 +126,7 @@ describe('ScrapedResultsView', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          product_id: 'product-secondary',
+          sku: 'SKU-secondary',
           image_url: 'https://images.example.com/secondary-broken-secondary.jpg',
         }),
       });

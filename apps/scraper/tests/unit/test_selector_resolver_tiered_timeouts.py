@@ -14,12 +14,15 @@ def mock_browser():
     mock_page = MagicMock()
     # Mock locator for convert_to_playwright_locator
     mock_locator = MagicMock()
+    mock_locator.first.wait_for = AsyncMock()
     mock_locator.element_handle = AsyncMock()
     mock_locator.all = AsyncMock()
     mock_page.locator.return_value = mock_locator
     
     browser = MagicMock()
     browser.page = mock_page
+    browser.context = None
+    browser.context_data = {"timeout_multiplier": 1.0}
     return browser
 
 
@@ -67,9 +70,10 @@ async def test_find_elements_safe_uses_optional_tier_by_default(resolver):
     """Test that find_elements_safe uses OPTIONAL tier (5s) by default."""
     await resolver.find_elements_safe(".test-selector")
     
-    # Check locator.all call
+    # Check locator wait and all call
     mock_locator = resolver.browser.page.locator.return_value
-    mock_locator.all.assert_called_once_with(timeout=5000)
+    mock_locator.first.wait_for.assert_called_once_with(state="attached", timeout=5000)
+    mock_locator.all.assert_called_once_with()
 
 
 @pytest.mark.asyncio
@@ -77,6 +81,7 @@ async def test_find_elements_safe_respects_explicit_timeout(resolver):
     """Test that find_elements_safe respects an explicitly provided timeout."""
     await resolver.find_elements_safe(".test-selector", timeout=8000)
     
-    # Check locator.all call
+    # Check locator wait and all call
     mock_locator = resolver.browser.page.locator.return_value
-    mock_locator.all.assert_called_once_with(timeout=8000)
+    mock_locator.first.wait_for.assert_called_once_with(state="attached", timeout=8000)
+    mock_locator.all.assert_called_once_with()

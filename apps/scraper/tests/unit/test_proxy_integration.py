@@ -37,9 +37,9 @@ def test_mark_failed_excludes_proxy():
 
 def test_from_proxy_config():
     """Test creating rotator from ProxyConfig."""
-    from scrapers.models.config import ProxyConfig
+    from scrapers.models.config import ScraperConfig
 
-    config = ProxyConfig(
+    config = ScraperConfig.ProxyConfig(
         proxy_url="http://proxy:8080",
         rotation_strategy="per_request",
     )

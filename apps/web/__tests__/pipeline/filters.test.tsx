@@ -3,14 +3,21 @@ import { PipelineFilters } from '@/components/admin/pipeline/PipelineFilters';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
 import userEvent from '@testing-library/user-event';
 
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+const mockSearchParamGet = jest.fn();
+const mockSearchParamsToString = jest.fn(() => '');
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
     useRouter: () => ({
-        push: jest.fn(),
+        push: mockPush,
+        replace: mockReplace,
     }),
     usePathname: () => '/admin/pipeline',
     useSearchParams: () => ({
-        get: jest.fn(),
+        get: mockSearchParamGet,
+        toString: mockSearchParamsToString,
     }),
 }));
 
@@ -27,6 +34,18 @@ global.fetch = jest.fn(() =>
         json: () => Promise.resolve({ products: [], count: 0 }),
     })
 ) as jest.Mock;
+
+beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParamGet.mockReturnValue(null);
+    mockSearchParamsToString.mockReturnValue('');
+    (global.fetch as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ products: [], count: 0 }),
+        })
+    );
+});
 
 describe('PipelineFilters', () => {
     it('renders filter button', () => {
@@ -92,7 +111,7 @@ describe('PipelineClient Integration', () => {
     ];
     const mockCounts = [{ status: 'imported', count: 1 }];
 
-    it('fetches products when the active stage changes', async () => {
+    it('updates the stage in the URL when the active stage changes', async () => {
         render(
             <PipelineClient
                 initialProducts={mockProducts as any}
@@ -104,9 +123,7 @@ describe('PipelineClient Integration', () => {
         await userEvent.click(screen.getByRole('tab', { name: /Scraped/i }));
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('status=scraped')
-            );
+            expect(mockReplace).toHaveBeenCalledWith('/admin/pipeline?stage=scraped');
         });
     });
 });

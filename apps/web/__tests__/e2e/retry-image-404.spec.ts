@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('404 image failures trigger one debounced retry request', async ({ page }) => {
   const baseUrl = 'http://127.0.0.1:3000';
-  const retryRequests: Array<{ product_id?: string; image_url?: string }> = [];
+  const retryRequests: Array<{ sku?: string; image_url?: string }> = [];
 
   await page.route(`${baseUrl}/broken-image.jpg`, async (route) => {
     await route.fulfill({ status: 404, body: 'missing' });
@@ -36,7 +36,7 @@ test('404 image failures trigger one debounced retry request', async ({ page }) 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            product_id: 'product-1',
+            sku: 'product-1',
             image_url: '${baseUrl}/broken-image.jpg',
           }),
         });
@@ -51,7 +51,7 @@ test('404 image failures trigger one debounced retry request', async ({ page }) 
 
   await expect.poll(() => retryRequests.length).toBe(1);
   expect(retryRequests[0]).toEqual({
-    product_id: 'product-1',
+    sku: 'product-1',
     image_url: `${baseUrl}/broken-image.jpg`,
   });
 });

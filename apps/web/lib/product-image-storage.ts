@@ -266,7 +266,7 @@ async function enqueueImageRetry(
     const scheduledFor = new Date(Date.now() + getRetryDelay(captureErrorType, 0)).toISOString();
     const marker = buildPendingRetryMarker(imageUrl, errorType);
     const payload: ImageRetryQueueInsert = {
-      product_id: options.productId ?? null,
+      sku: options.productId ?? null,
       image_url: imageUrl,
       error_type: errorType,
       retry_count: 0,

@@ -19,7 +19,7 @@ function buildMarker(imageUrl: string, errorType: string): string {
 function createEntry(overrides: Partial<ImageRetryEntry> = {}): ImageRetryEntry {
   return {
     retry_id: 'retry-1',
-    product_id: 'product-1',
+    sku: 'SKU-001',
     image_url: 'https://private.example.com/protected.jpg',
     error_type: 'network_timeout',
     retry_count: 0,
@@ -62,7 +62,6 @@ function createSupabaseMock(entries: ImageRetryEntry[]) {
           eq: () => ({
             single: async () => ({
               data: {
-                id: 'product-1',
                 sku: 'SKU-1',
                 sources: {
                   phillips: {
@@ -137,7 +136,7 @@ describe('ImageRetryProcessor', () => {
 
     expect(mock.rpc).toHaveBeenCalledWith('get_pending_image_retries', { p_limit: 10 });
     expect(captureImage).toHaveBeenCalledWith({
-      productId: 'product-1',
+      productId: 'SKU-1',
       sku: 'SKU-1',
       imageUrl: 'https://private.example.com/protected.jpg',
       domain: 'private.example.com',
@@ -145,7 +144,7 @@ describe('ImageRetryProcessor', () => {
     });
     expect(mock.productUpdates).toEqual([
       {
-        id: 'product-1',
+        id: 'SKU-1',
         payload: {
           sources: {
             phillips: {

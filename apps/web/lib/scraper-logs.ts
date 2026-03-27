@@ -119,42 +119,43 @@ export function normalizeScrapeTimestamp(value: unknown): string {
 }
 
 export function normalizeScrapeLogEntry(
-  raw: any,
+  raw: unknown,
   options: { persisted?: boolean; jobId?: string } = {},
 ): ScrapeJobLogEntry {
-  const eventId = toOptionalString(raw.event_id) ?? toOptionalString(raw.id) ?? undefined;
-  const timestamp = normalizeScrapeTimestamp(raw.timestamp ?? raw.created_at);
-  const createdAt = normalizeScrapeTimestamp(raw.created_at ?? raw.timestamp);
-  const details = isRecord(raw.details) ? raw.details : null;
-  const sequence = toOptionalNumber(raw.sequence) ?? null;
-  const jobId = toOptionalString(raw.job_id) ?? options.jobId ?? '';
-  const message = toOptionalString(raw.message) ?? '';
+  const record = isRecord(raw) ? raw : {};
+  const eventId = toOptionalString(record.event_id) ?? toOptionalString(record.id) ?? undefined;
+  const timestamp = normalizeScrapeTimestamp(record.timestamp ?? record.created_at);
+  const createdAt = normalizeScrapeTimestamp(record.created_at ?? record.timestamp);
+  const details = isRecord(record.details) ? record.details : null;
+  const sequence = toOptionalNumber(record.sequence) ?? null;
+  const jobId = toOptionalString(record.job_id) ?? options.jobId ?? '';
+  const message = toOptionalString(record.message) ?? '';
 
   const fingerprint = [
     jobId,
     sequence ?? 'na',
     timestamp,
-    normalizeScrapeLogLevel(raw.level),
+    normalizeScrapeLogLevel(record.level),
     message,
-    toOptionalString(raw.runner_name) ?? '',
-    toOptionalString(raw.scraper_name) ?? '',
-    toOptionalString(raw.sku) ?? '',
+    toOptionalString(record.runner_name) ?? '',
+    toOptionalString(record.scraper_name) ?? '',
+    toOptionalString(record.sku) ?? '',
   ].join(':');
 
   return {
     id: eventId ?? fingerprint,
     event_id: eventId,
     job_id: jobId,
-    level: normalizeScrapeLogLevel(raw.level),
+    level: normalizeScrapeLogLevel(record.level),
     message,
     timestamp,
     created_at: createdAt,
-    runner_id: toOptionalString(raw.runner_id),
-    runner_name: toOptionalString(raw.runner_name),
-    source: toOptionalString(raw.source),
-    scraper_name: toOptionalString(raw.scraper_name),
-    sku: toOptionalString(raw.sku),
-    phase: toOptionalString(raw.phase),
+    runner_id: toOptionalString(record.runner_id),
+    runner_name: toOptionalString(record.runner_name),
+    source: toOptionalString(record.source),
+    scraper_name: toOptionalString(record.scraper_name),
+    sku: toOptionalString(record.sku),
+    phase: toOptionalString(record.phase),
     sequence,
     details,
     persisted: options.persisted ?? false,

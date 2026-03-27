@@ -2,22 +2,33 @@
  * @jest-environment node
  */
 import { validateStatusTransition, PipelineStatus } from '@/lib/pipeline';
-import { createClient } from '@/lib/supabase/server';
-
-jest.mock('@/lib/supabase/server', () => ({
-    createClient: jest.fn(),
-}));
 
 describe('validateStatusTransition', () => {
-    const statuses: PipelineStatus[] = ['imported', 'scraped', 'consolidated', 'finalized', 'published'];
+    const statuses: PipelineStatus[] = ['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'];
 
     describe('valid transitions', () => {
+        it('should allow imported → monitoring', () => {
+            expect(validateStatusTransition('imported', 'monitoring')).toBe(true);
+        });
+
         it('should allow imported → scraped', () => {
             expect(validateStatusTransition('imported', 'scraped')).toBe(true);
         });
 
+        it('should allow monitoring → imported', () => {
+            expect(validateStatusTransition('monitoring', 'imported')).toBe(true);
+        });
+
+        it('should allow monitoring → scraped', () => {
+            expect(validateStatusTransition('monitoring', 'scraped')).toBe(true);
+        });
+
         it('should allow scraped → consolidated', () => {
             expect(validateStatusTransition('scraped', 'consolidated')).toBe(true);
+        });
+
+        it('should allow scraped → finalized', () => {
+            expect(validateStatusTransition('scraped', 'finalized')).toBe(true);
         });
 
         it('should allow consolidated → finalized', () => {
@@ -26,6 +37,10 @@ describe('validateStatusTransition', () => {
 
         it('should allow finalized → published', () => {
             expect(validateStatusTransition('finalized', 'published')).toBe(true);
+        });
+
+        it('should allow finalized → scraped', () => {
+            expect(validateStatusTransition('finalized', 'scraped')).toBe(true);
         });
 
         it('should allow same status transition: imported → imported', () => {
@@ -63,31 +78,43 @@ describe('validateStatusTransition', () => {
     });
 
     describe('all status combinations', () => {
-        it('should test all 5 statuses with correct transitions', () => {
-            // imported can go to: imported, scraped
+        it('should test all 6 statuses with correct transitions', () => {
+            // imported can go to: imported, monitoring, scraped
             expect(validateStatusTransition('imported', 'imported')).toBe(true);
+            expect(validateStatusTransition('imported', 'monitoring')).toBe(true);
             expect(validateStatusTransition('imported', 'scraped')).toBe(true);
             expect(validateStatusTransition('imported', 'consolidated')).toBe(false);
             expect(validateStatusTransition('imported', 'finalized')).toBe(false);
             expect(validateStatusTransition('imported', 'published')).toBe(false);
 
-            // scraped can go to: scraped, consolidated, imported (backwards)
+            // monitoring can go to: monitoring, imported, scraped
+            expect(validateStatusTransition('monitoring', 'imported')).toBe(true);
+            expect(validateStatusTransition('monitoring', 'monitoring')).toBe(true);
+            expect(validateStatusTransition('monitoring', 'scraped')).toBe(true);
+            expect(validateStatusTransition('monitoring', 'consolidated')).toBe(false);
+            expect(validateStatusTransition('monitoring', 'finalized')).toBe(false);
+            expect(validateStatusTransition('monitoring', 'published')).toBe(false);
+
+            // scraped can go to: scraped, imported, consolidated, finalized
             expect(validateStatusTransition('scraped', 'imported')).toBe(true);
+            expect(validateStatusTransition('scraped', 'monitoring')).toBe(false);
             expect(validateStatusTransition('scraped', 'scraped')).toBe(true);
             expect(validateStatusTransition('scraped', 'consolidated')).toBe(true);
-            expect(validateStatusTransition('scraped', 'finalized')).toBe(false);
+            expect(validateStatusTransition('scraped', 'finalized')).toBe(true);
             expect(validateStatusTransition('scraped', 'published')).toBe(false);
 
-            // consolidated can go to: consolidated, finalized, scraped (backwards)
+            // consolidated can go to: consolidated, finalized, scraped
             expect(validateStatusTransition('consolidated', 'imported')).toBe(false);
+            expect(validateStatusTransition('consolidated', 'monitoring')).toBe(false);
             expect(validateStatusTransition('consolidated', 'scraped')).toBe(true);
             expect(validateStatusTransition('consolidated', 'consolidated')).toBe(true);
             expect(validateStatusTransition('consolidated', 'finalized')).toBe(true);
             expect(validateStatusTransition('consolidated', 'published')).toBe(false);
 
-            // finalized can go to: finalized, published, consolidated (backwards)
+            // finalized can go to: finalized, published, consolidated, scraped
             expect(validateStatusTransition('finalized', 'imported')).toBe(false);
-            expect(validateStatusTransition('finalized', 'scraped')).toBe(false);
+            expect(validateStatusTransition('finalized', 'monitoring')).toBe(false);
+            expect(validateStatusTransition('finalized', 'scraped')).toBe(true);
             expect(validateStatusTransition('finalized', 'consolidated')).toBe(true);
             expect(validateStatusTransition('finalized', 'finalized')).toBe(true);
             expect(validateStatusTransition('finalized', 'published')).toBe(true);
@@ -104,7 +131,21 @@ describe('validateStatusTransition', () => {
     describe('edge cases', () => {
         it('should handle all valid transitions from imported', () => {
             const from: PipelineStatus = 'imported';
-            const validTargets = ['imported', 'scraped'];
+            const validTargets: PipelineStatus[] = ['imported', 'monitoring', 'scraped'];
+            
+            statuses.forEach((to) => {
+                const result = validateStatusTransition(from, to);
+                if (validTargets.includes(to)) {
+                    expect(result).toBe(true);
+                } else {
+                    expect(result).toBe(false);
+                }
+            });
+        });
+
+        it('should handle all valid transitions from monitoring', () => {
+            const from: PipelineStatus = 'monitoring';
+            const validTargets: PipelineStatus[] = ['imported', 'monitoring', 'scraped'];
             
             statuses.forEach((to) => {
                 const result = validateStatusTransition(from, to);
@@ -118,7 +159,7 @@ describe('validateStatusTransition', () => {
 
         it('should handle all valid transitions from scraped', () => {
             const from: PipelineStatus = 'scraped';
-            const validTargets = ['imported', 'scraped', 'consolidated'];
+            const validTargets: PipelineStatus[] = ['imported', 'scraped', 'consolidated', 'finalized'];
             
             statuses.forEach((to) => {
                 const result = validateStatusTransition(from, to);
