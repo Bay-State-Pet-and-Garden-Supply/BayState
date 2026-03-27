@@ -46,11 +46,6 @@ selectors:
     attribute: text
     multiple: false
     required: false
-  - name: Specifications
-    selector: "#tst_productDetail_specifications li"
-    attribute: text
-    multiple: true
-    required: false
   - name: Features
     selector: "#tst_productDetail_features li, .product-features li"
     attribute: text
@@ -131,7 +126,6 @@ workflows:
         - UPC
         - "Mfg Part #"
         - Description
-        - Specifications
         - Features
         - Dimensions
   - action: process_images
