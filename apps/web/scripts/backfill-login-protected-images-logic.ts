@@ -1,125 +1,98 @@
-import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { getLocalScraperConfigs } from '../lib/admin/scrapers/configs';
-import type { ScraperConfig } from '../lib/admin/scrapers/types';
-import {
-  extractImageCandidatesFromSourcePayload,
-  extractSourceMetadata,
-  normalizeImageUrl,
-  normalizeProductSources,
-  removeImageFieldsFromSourcePayload,
-} from '../lib/product-sources';
-import { isDurableProductImageReference } from '../lib/product-image-storage';
+import yaml from 'yaml';
+import type { ImageRetryQueueInsert } from '../lib/supabase/database.types';
 
-type BackfillMode = 'dry-run' | 'execute';
+export type BackfillMode = 'dry-run' | 'execute';
 
 interface ProductsIngestionBackfillRow {
+  id: string;
   sku: string;
   sources: unknown;
-  consolidated: unknown;
-  selected_images: unknown;
-  image_candidates: string[] | null;
-  pipeline_status: string | null;
-  input: unknown;
 }
 
-interface ScrapeContextItem {
-  sku: string;
-  product_name?: string;
-  price?: number;
-  brand?: string;
-  category?: string;
+interface SourceBackfillTarget {
+  sourceName: string;
+  imageUrl: string;
+  normalizedUrl: string;
 }
 
-type StandardSkuContext = {
-  product_name?: string;
-  price?: number;
-  brand?: string;
-  category?: string;
-};
-
-export interface LoginProtectedImageBackfillCandidate {
+interface ProductBackfillCandidate {
+  productId: string;
   sku: string;
-  pipelineStatus: string | null;
-  affectedSources: string[];
-  staleSourceImages: string[];
-  staleSelectedImages: string[];
-  staleConsolidatedImages: string[];
-  staleImageCandidates: string[];
-  requiresRepublish: boolean;
-  updatedSources: Record<string, unknown>;
-  updatedConsolidated: Record<string, unknown>;
-  updatedSelectedImages: unknown[];
-  updatedImageCandidates: string[];
+  targets: SourceBackfillTarget[];
+}
+
+interface ProductSourceHelpers {
+  extractImageCandidatesFromSourcePayload: (rawSource: unknown, max?: number) => string[];
+  normalizeImageUrl: (url: string) => string;
+  normalizeProductSources: (rawSources: unknown) => Record<string, unknown>;
 }
 
 export interface LoginProtectedImageBackfillOptions {
   mode: BackfillMode;
   skus?: string[];
   limit?: number;
-  maxWorkers?: number;
-  chunkSize?: number;
+  batchSize?: number;
 }
 
 export interface LoginProtectedImageBackfillResult {
   mode: BackfillMode;
   scannedCount: number;
-  candidateCount: number;
-  updatedCount: number;
-  queuedJobIds: string[];
-  candidates: Array<Pick<
-    LoginProtectedImageBackfillCandidate,
-    | 'sku'
-    | 'pipelineStatus'
-    | 'affectedSources'
-    | 'staleSourceImages'
-    | 'staleSelectedImages'
-    | 'staleConsolidatedImages'
-    | 'staleImageCandidates'
-    | 'requiresRepublish'
-  >>;
+  totalFound: number;
+  alreadyQueued: number;
+  newlyQueued: number;
+  errors: number;
+  batchesProcessed: number;
+  batchSize: number;
+  productsWithTargets: number;
+}
+
+interface ScraperConfigLike {
+  slug?: string;
+  login?: unknown;
+  workflows?: Array<{ action?: unknown; params?: unknown }>;
+  [key: string]: unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function toOptionalString(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
+let productSourceHelpersPromise: Promise<ProductSourceHelpers> | null = null;
+
+async function loadProductSourceHelpers(): Promise<ProductSourceHelpers> {
+  if (!productSourceHelpersPromise) {
+    const modulePath = '../lib/product-sources.ts';
+    productSourceHelpersPromise = import(modulePath).then((module) => ({
+      extractImageCandidatesFromSourcePayload: module.extractImageCandidatesFromSourcePayload,
+      normalizeImageUrl: module.normalizeImageUrl,
+      normalizeProductSources: module.normalizeProductSources,
+    }));
   }
 
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
+  return productSourceHelpersPromise;
 }
 
-function toOptionalNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().replace(/[$,]/g, '');
-    if (!normalized) {
-      return undefined;
-    }
-
-    const parsed = Number.parseFloat(normalized);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-
-  return undefined;
+function isInlineImageDataUrl(value: string): boolean {
+  return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(value.trim());
 }
 
-function normalizeImageKey(value: string): string {
-  return normalizeImageUrl(value);
+function isProductImageStorageUrl(value: string): boolean {
+  const normalized = value.trim();
+  return (
+    normalized.includes('/storage/v1/object/public/product-images/') ||
+    normalized.includes('/storage/v1/render/image/public/product-images/')
+  );
 }
 
-function dedupeStrings(values: string[]): string[] {
-  return Array.from(new Set(values));
+function isDurableProductImageReference(value: string): boolean {
+  const normalized = value.trim();
+  return isInlineImageDataUrl(normalized) || isProductImageStorageUrl(normalized);
 }
 
-function scraperConfigRequiresLogin(config: ScraperConfig): boolean {
+function scraperConfigRequiresLogin(config: ScraperConfigLike): boolean {
   if (config.login && isRecord(config.login)) {
     return true;
   }
@@ -138,7 +111,7 @@ function scraperConfigRequiresLogin(config: ScraperConfig): boolean {
   });
 }
 
-export function resolveLoginProtectedScraperSlugs(configs: ScraperConfig[]): string[] {
+export function resolveLoginProtectedScraperSlugs(configs: ScraperConfigLike[]): string[] {
   return configs
     .map((config) => {
       const slug = typeof config.slug === 'string' ? config.slug.trim() : '';
@@ -150,407 +123,114 @@ export function resolveLoginProtectedScraperSlugs(configs: ScraperConfig[]): str
     .filter((slug): slug is string => Boolean(slug));
 }
 
-function filterStringArray(
-  values: unknown,
-  staleKeys: Set<string>,
-): { kept: string[]; removed: string[] } {
-  if (!Array.isArray(values)) {
-    return { kept: [], removed: [] };
+async function loadLocalScraperConfigs(): Promise<ScraperConfigLike[]> {
+  const configsDir = path.join(process.cwd(), 'apps/scraper/scrapers/configs');
+  if (!fs.existsSync(configsDir)) {
+    return [];
   }
 
-  const kept: string[] = [];
-  const removed: string[] = [];
+  const filenames = fs
+    .readdirSync(configsDir)
+    .filter((filename) => filename.endsWith('.yaml') || filename.endsWith('.yml'));
 
-  values.forEach((value) => {
-    if (typeof value !== 'string' || !value.trim()) {
-      return;
+  const configs: ScraperConfigLike[] = [];
+
+  filenames.forEach((filename) => {
+    try {
+      const fullPath = path.join(configsDir, filename);
+      const content = fs.readFileSync(fullPath, 'utf8');
+      const parsed = yaml.parse(content);
+      const slug = filename.replace(/\.ya?ml$/i, '').trim();
+      if (!slug || !isRecord(parsed)) {
+        return;
+      }
+
+      configs.push({
+        slug,
+        login: parsed.login,
+        workflows: Array.isArray(parsed.workflows)
+          ? parsed.workflows.map((step) => (isRecord(step) ? step : {}))
+          : [],
+      });
+    } catch (error) {
+      console.warn(`[Login Image Backfill] Failed to parse scraper config ${filename}:`, error);
     }
-
-    if (staleKeys.has(normalizeImageKey(value))) {
-      removed.push(value);
-      return;
-    }
-
-    kept.push(value);
   });
 
-  return {
-    kept: dedupeStrings(kept),
-    removed: dedupeStrings(removed),
-  };
+  return configs;
 }
 
-function filterSelectedImages(
-  value: unknown,
-  staleKeys: Set<string>,
-): { kept: unknown[]; removed: string[] } {
-  if (!Array.isArray(value)) {
-    return { kept: [], removed: [] };
+function sourceRequiresLogin(
+  sourceName: string,
+  sourcePayload: unknown,
+  loginProtectedSet: Set<string>,
+): boolean {
+  if (loginProtectedSet.has(sourceName)) {
+    return true;
   }
 
-  const kept: unknown[] = [];
-  const removed: string[] = [];
+  if (!isRecord(sourcePayload)) {
+    return false;
+  }
 
-  value.forEach((entry) => {
-    if (typeof entry === 'string') {
-      if (staleKeys.has(normalizeImageKey(entry))) {
-        removed.push(entry);
-      } else {
-        kept.push(entry);
-      }
-      return;
+  return sourcePayload.requires_login === true;
+}
+
+function dedupeTargets(targets: SourceBackfillTarget[]): SourceBackfillTarget[] {
+  const byKey = new Map<string, SourceBackfillTarget>();
+  targets.forEach((target) => {
+    const key = `${target.sourceName}|${target.normalizedUrl}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, target);
     }
-
-    if (isRecord(entry) && typeof entry.url === 'string') {
-      if (staleKeys.has(normalizeImageKey(entry.url))) {
-        removed.push(entry.url);
-      } else {
-        kept.push(entry);
-      }
-      return;
-    }
-
-    kept.push(entry);
   });
-
-  return {
-    kept,
-    removed: dedupeStrings(removed),
-  };
+  return Array.from(byKey.values());
 }
 
-function filterConsolidatedImages(
-  value: unknown,
-  staleKeys: Set<string>,
-): { kept: Record<string, unknown>; removed: string[] } {
-  const consolidated = isRecord(value) ? { ...value } : {};
-  const { kept, removed } = filterStringArray(consolidated.images, staleKeys);
-
-  if (kept.length > 0) {
-    consolidated.images = kept;
-  } else {
-    delete consolidated.images;
-  }
-
-  return {
-    kept: consolidated,
-    removed,
-  };
-}
-
-export function collectLoginProtectedImageBackfillCandidates(
+export async function collectLoginProtectedImageBackfillCandidates(
   rows: ProductsIngestionBackfillRow[],
   loginProtectedScraperSlugs: string[],
-): LoginProtectedImageBackfillCandidate[] {
+): Promise<ProductBackfillCandidate[]> {
   const loginProtectedSet = new Set(loginProtectedScraperSlugs);
+  const helpers = await loadProductSourceHelpers();
 
   return rows.flatMap((row) => {
-    const normalizedSources = normalizeProductSources(row.sources);
-    const updatedSources: Record<string, unknown> = {
-      ...normalizedSources,
-      ...extractSourceMetadata(row.sources),
-    };
-    const staleSourceImages: string[] = [];
-    const affectedSources: string[] = [];
-    const staleKeys = new Set<string>();
+    const normalizedSources = helpers.normalizeProductSources(row.sources);
+    const targets: SourceBackfillTarget[] = [];
 
     Object.entries(normalizedSources).forEach(([sourceName, sourcePayload]) => {
-      if (!loginProtectedSet.has(sourceName)) {
+      if (!sourceRequiresLogin(sourceName, sourcePayload, loginProtectedSet)) {
         return;
       }
 
-      const sourceImages = extractImageCandidatesFromSourcePayload(sourcePayload, 128);
-      const staleImages = sourceImages.filter((image) => !isDurableProductImageReference(image));
+      const images = helpers.extractImageCandidatesFromSourcePayload(sourcePayload, 128);
+      images.forEach((imageUrl) => {
+        const normalizedUrl = helpers.normalizeImageUrl(imageUrl);
+        if (!normalizedUrl || isDurableProductImageReference(normalizedUrl)) {
+          return;
+        }
 
-      if (staleImages.length === 0) {
-        return;
-      }
-
-      affectedSources.push(sourceName);
-      staleImages.forEach((image) => {
-        staleKeys.add(normalizeImageKey(image));
-        staleSourceImages.push(image);
+        targets.push({
+          sourceName,
+          imageUrl,
+          normalizedUrl,
+        });
       });
-      updatedSources[sourceName] = removeImageFieldsFromSourcePayload(sourcePayload);
     });
 
-    if (affectedSources.length === 0) {
+    const dedupedTargets = dedupeTargets(targets);
+    if (dedupedTargets.length === 0) {
       return [];
     }
 
-    const { kept: updatedSelectedImages, removed: staleSelectedImages } = filterSelectedImages(
-      row.selected_images,
-      staleKeys,
-    );
-    const { kept: updatedImageCandidates, removed: staleImageCandidates } = filterStringArray(
-      row.image_candidates,
-      staleKeys,
-    );
-    const { kept: updatedConsolidated, removed: staleConsolidatedImages } = filterConsolidatedImages(
-      row.consolidated,
-      staleKeys,
-    );
-
     return [
       {
+        productId: row.id,
         sku: row.sku,
-        pipelineStatus: row.pipeline_status,
-        affectedSources: affectedSources.sort(),
-        staleSourceImages: dedupeStrings(staleSourceImages),
-        staleSelectedImages,
-        staleConsolidatedImages,
-        staleImageCandidates,
-        requiresRepublish: row.pipeline_status === 'published',
-        updatedSources,
-        updatedConsolidated,
-        updatedSelectedImages,
-        updatedImageCandidates,
+        targets: dedupedTargets,
       },
     ];
   });
-}
-
-async function loadScrapeContextItems(
-  supabase: SupabaseClient,
-  skus: string[],
-): Promise<ScrapeContextItem[]> {
-  const { data, error } = await supabase
-    .from('products_ingestion')
-    .select('sku, input')
-    .in('sku', skus);
-
-  if (error) {
-    console.warn('[Login Image Backfill] Failed to load scrape context:', error);
-    return skus.map((sku) => ({ sku }));
-  }
-
-  const rows = Array.isArray(data) ? (data as Array<{ sku: string; input: unknown }>) : [];
-  const inputBySku = new Map(rows.map((row) => [row.sku, row.input]));
-
-  return skus.map((sku) => {
-    const input = inputBySku.get(sku);
-    const inputRecord = isRecord(input) ? input : {};
-
-    return {
-      sku,
-      product_name: toOptionalString(inputRecord.name),
-      price: toOptionalNumber(inputRecord.price),
-      brand: toOptionalString(inputRecord.brand),
-      category: toOptionalString(inputRecord.category),
-    };
-  });
-}
-
-function buildStandardSkuContext(items: ScrapeContextItem[]): Record<string, StandardSkuContext> | null {
-  const entries = items
-    .map((item) => {
-      const context: StandardSkuContext = {
-        product_name: item.product_name,
-        price: item.price,
-        brand: item.brand,
-        category: item.category,
-      };
-
-      return Object.values(context).some((value) => value !== undefined)
-        ? ([item.sku, context] as const)
-        : null;
-    })
-    .filter((entry): entry is readonly [string, StandardSkuContext] => entry !== null);
-
-  return entries.length > 0 ? Object.fromEntries(entries) : null;
-}
-
-function groupCandidatesBySourceSet(
-  candidates: LoginProtectedImageBackfillCandidate[],
-): Array<{ scrapers: string[]; skus: string[] }> {
-  const grouped = new Map<string, { scrapers: string[]; skus: Set<string> }>();
-
-  candidates.forEach((candidate) => {
-    const scrapers = [...candidate.affectedSources].sort();
-    const key = scrapers.join('|');
-    const current = grouped.get(key) ?? { scrapers, skus: new Set<string>() };
-    current.skus.add(candidate.sku);
-    grouped.set(key, current);
-  });
-
-  return Array.from(grouped.values()).map((group) => ({
-    scrapers: group.scrapers,
-    skus: Array.from(group.skus).sort(),
-  }));
-}
-
-async function createScrapeJob(
-  supabase: SupabaseClient,
-  group: { scrapers: string[]; skus: string[] },
-  options: { maxWorkers: number; chunkSize: number },
-): Promise<string> {
-  const nowIso = new Date().toISOString();
-  const scrapeContextItems = await loadScrapeContextItems(supabase, group.skus);
-  const skuContext = buildStandardSkuContext(scrapeContextItems);
-
-  const { data: job, error: jobError } = await supabase
-    .from('scrape_jobs')
-    .insert({
-      skus: group.skus,
-      scrapers: group.scrapers,
-      test_mode: false,
-      max_workers: options.maxWorkers,
-      status: 'pending',
-      attempt_count: 0,
-      max_attempts: 3,
-      backoff_until: null,
-      lease_token: null,
-      leased_at: null,
-      lease_expires_at: null,
-      heartbeat_at: null,
-      runner_name: null,
-      started_at: null,
-      type: 'standard',
-      config: skuContext ? { sku_context: skuContext } : null,
-      metadata: {
-        source: 'login_image_backfill',
-        mode: 'scrapers',
-        affected_sources: group.scrapers,
-      },
-      updated_at: nowIso,
-    })
-    .select('id')
-    .single();
-
-  if (jobError || !job) {
-    throw new Error(`Failed to create scrape job for ${group.scrapers.join(', ')}: ${jobError?.message ?? 'unknown error'}`);
-  }
-
-  const chunks = [];
-  for (let index = 0; index < group.skus.length; index += options.chunkSize) {
-    chunks.push({
-      job_id: job.id,
-      chunk_index: chunks.length,
-      skus: group.skus.slice(index, index + options.chunkSize),
-      scrapers: group.scrapers,
-      status: 'pending',
-      updated_at: nowIso,
-    });
-  }
-
-  const { error: chunksError } = await supabase.from('scrape_job_chunks').insert(chunks);
-
-  if (chunksError) {
-    await supabase.from('scrape_jobs').delete().eq('id', job.id);
-    throw new Error(`Failed to create scrape chunks for job ${job.id}: ${chunksError.message}`);
-  }
-
-  return job.id;
-}
-
-async function recordAuditEntries(
-  supabase: SupabaseClient,
-  candidates: LoginProtectedImageBackfillCandidate[],
-): Promise<void> {
-  const auditRows = candidates.map((candidate) => ({
-    job_type: 'login_image_backfill',
-    job_id: randomUUID(),
-    from_state: candidate.pipelineStatus ?? 'unknown',
-    to_state: candidate.pipelineStatus ?? 'unknown',
-    actor_id: null,
-    actor_type: 'system',
-    metadata: {
-      sku: candidate.sku,
-      affected_sources: candidate.affectedSources,
-      stale_source_images: candidate.staleSourceImages,
-      stale_selected_images: candidate.staleSelectedImages,
-      stale_consolidated_images: candidate.staleConsolidatedImages,
-      stale_image_candidates: candidate.staleImageCandidates,
-      timestamp: new Date().toISOString(),
-    },
-  }));
-
-  const { error } = await supabase.from('pipeline_audit_log').insert(auditRows);
-
-  if (error) {
-    console.warn('[Login Image Backfill] Failed to write audit log entries:', error);
-  }
-}
-
-export async function executeLoginProtectedImageBackfillWithClient(
-  supabase: SupabaseClient,
-  rows: ProductsIngestionBackfillRow[],
-  loginProtectedScraperSlugs: string[],
-  options: LoginProtectedImageBackfillOptions,
-): Promise<LoginProtectedImageBackfillResult> {
-  const candidates = collectLoginProtectedImageBackfillCandidates(rows, loginProtectedScraperSlugs);
-
-  if (options.mode === 'dry-run' || candidates.length === 0) {
-    return {
-      mode: options.mode,
-      scannedCount: rows.length,
-      candidateCount: candidates.length,
-      updatedCount: 0,
-      queuedJobIds: [],
-      candidates: candidates.map((candidate) => ({
-        sku: candidate.sku,
-        pipelineStatus: candidate.pipelineStatus,
-        affectedSources: candidate.affectedSources,
-        staleSourceImages: candidate.staleSourceImages,
-        staleSelectedImages: candidate.staleSelectedImages,
-        staleConsolidatedImages: candidate.staleConsolidatedImages,
-        staleImageCandidates: candidate.staleImageCandidates,
-        requiresRepublish: candidate.requiresRepublish,
-      })),
-    };
-  }
-
-  let updatedCount = 0;
-
-  for (const candidate of candidates) {
-    const { error } = await supabase
-      .from('products_ingestion')
-      .update({
-        sources: candidate.updatedSources,
-        consolidated: candidate.updatedConsolidated,
-        selected_images: candidate.updatedSelectedImages,
-        image_candidates: candidate.updatedImageCandidates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('sku', candidate.sku);
-
-    if (error) {
-      throw new Error(`Failed to update products_ingestion for ${candidate.sku}: ${error.message}`);
-    }
-
-    updatedCount += 1;
-  }
-
-  await recordAuditEntries(supabase, candidates);
-
-  const queuedJobIds: string[] = [];
-  const groups = groupCandidatesBySourceSet(candidates);
-
-  for (const group of groups) {
-    const jobId = await createScrapeJob(supabase, group, {
-      maxWorkers: options.maxWorkers ?? 3,
-      chunkSize: options.chunkSize ?? 50,
-    });
-    queuedJobIds.push(jobId);
-  }
-
-  return {
-    mode: options.mode,
-    scannedCount: rows.length,
-    candidateCount: candidates.length,
-    updatedCount,
-    queuedJobIds,
-    candidates: candidates.map((candidate) => ({
-      sku: candidate.sku,
-      pipelineStatus: candidate.pipelineStatus,
-      affectedSources: candidate.affectedSources,
-      staleSourceImages: candidate.staleSourceImages,
-      staleSelectedImages: candidate.staleSelectedImages,
-      staleConsolidatedImages: candidate.staleConsolidatedImages,
-      staleImageCandidates: candidate.staleImageCandidates,
-      requiresRepublish: candidate.requiresRepublish,
-    })),
-  };
 }
 
 function createSupabaseAdminClient(): SupabaseClient {
@@ -569,20 +249,36 @@ function createSupabaseAdminClient(): SupabaseClient {
   });
 }
 
-async function loadProductsIngestionRows(
+function resolveBatchSize(options: LoginProtectedImageBackfillOptions): number {
+  const requested = options.batchSize ?? 100;
+  if (!Number.isFinite(requested) || requested <= 0) {
+    return 100;
+  }
+  return Math.floor(requested);
+}
+
+async function loadProductsIngestionRowsBatch(
   supabase: SupabaseClient,
   options: Pick<LoginProtectedImageBackfillOptions, 'skus' | 'limit'>,
+  offset: number,
+  batchSize: number,
 ): Promise<ProductsIngestionBackfillRow[]> {
   let query = supabase
     .from('products_ingestion')
-    .select('sku, sources, consolidated, selected_images, image_candidates, pipeline_status, input')
-    .order('updated_at', { ascending: false });
+    .select('id, sku, sources')
+    .order('updated_at', { ascending: false })
+    .range(offset, offset + batchSize - 1);
 
   if (options.skus && options.skus.length > 0) {
     query = query.in('sku', options.skus);
-  } else {
-    const limit = options.limit ?? 500;
-    query = query.range(0, Math.max(limit - 1, 0));
+  }
+
+  if (typeof options.limit === 'number' && options.limit > 0) {
+    const endIndex = Math.max(Math.min(options.limit - 1, offset + batchSize - 1), offset - 1);
+    if (endIndex < offset) {
+      return [];
+    }
+    query = query.range(offset, endIndex);
   }
 
   const { data, error } = await query;
@@ -594,18 +290,267 @@ async function loadProductsIngestionRows(
   return Array.isArray(data) ? (data as ProductsIngestionBackfillRow[]) : [];
 }
 
+async function getExistingQueueEntries(
+  supabase: SupabaseClient,
+  productId: string,
+  normalizedUrls: string[],
+): Promise<Set<string>> {
+  if (normalizedUrls.length === 0) {
+    return new Set();
+  }
+
+  const { data, error } = await supabase
+    .from('image_retry_queue')
+    .select('image_url')
+    .eq('product_id', productId)
+    .in('image_url', normalizedUrls);
+
+  if (error) {
+    throw new Error(`Failed to query image_retry_queue for product ${productId}: ${error.message}`);
+  }
+
+  const existing = new Set<string>();
+  const helpers = await loadProductSourceHelpers();
+  (data ?? []).forEach((row) => {
+    if (typeof row?.image_url === 'string') {
+      existing.add(helpers.normalizeImageUrl(row.image_url));
+    }
+  });
+
+  return existing;
+}
+
+async function insertRetryQueueEntry(
+  supabase: SupabaseClient,
+  payload: ImageRetryQueueInsert & { product_id: string; last_error: string },
+): Promise<void> {
+  const withPriority = {
+    ...payload,
+    priority: 'backfill',
+  };
+
+  const { error: priorityError } = await supabase.from('image_retry_queue').insert(withPriority);
+  if (!priorityError) {
+    return;
+  }
+
+  const missingPriorityColumn = /column.+priority|priority.+does not exist/i.test(priorityError.message);
+  if (!missingPriorityColumn) {
+    throw new Error(`Failed to insert retry queue entry: ${priorityError.message}`);
+  }
+
+  const { error: fallbackError } = await supabase.from('image_retry_queue').insert(payload);
+  if (fallbackError) {
+    throw new Error(`Failed to insert retry queue entry: ${fallbackError.message}`);
+  }
+}
+
+export async function executeLoginProtectedImageBackfillWithClient(
+  supabase: SupabaseClient,
+  loginProtectedScraperSlugs: string[],
+  options: LoginProtectedImageBackfillOptions,
+): Promise<LoginProtectedImageBackfillResult> {
+  const batchSize = resolveBatchSize(options);
+  const nowIso = new Date().toISOString();
+
+  let offset = 0;
+  let batchesProcessed = 0;
+  let scannedCount = 0;
+  let totalFound = 0;
+  let alreadyQueued = 0;
+  let newlyQueued = 0;
+  let errors = 0;
+  const productsWithTargets = new Set<string>();
+
+  while (true) {
+    const rows = await loadProductsIngestionRowsBatch(supabase, options, offset, batchSize);
+    if (rows.length === 0) {
+      break;
+    }
+
+    batchesProcessed += 1;
+    scannedCount += rows.length;
+    offset += rows.length;
+
+    const candidates = await collectLoginProtectedImageBackfillCandidates(rows, loginProtectedScraperSlugs);
+
+    for (const candidate of candidates) {
+      productsWithTargets.add(candidate.sku);
+      totalFound += candidate.targets.length;
+
+      try {
+        const normalizedUrls = candidate.targets.map((target) => target.normalizedUrl);
+        const existingEntries = await getExistingQueueEntries(
+          supabase,
+          candidate.productId,
+          normalizedUrls,
+        );
+
+        for (const target of candidate.targets) {
+          if (existingEntries.has(target.normalizedUrl)) {
+            alreadyQueued += 1;
+            continue;
+          }
+
+          if (options.mode === 'dry-run') {
+            newlyQueued += 1;
+            continue;
+          }
+
+          try {
+            await insertRetryQueueEntry(supabase, {
+              product_id: candidate.productId,
+              image_url: target.normalizedUrl,
+              error_type: 'not_found_404',
+              retry_count: 0,
+              status: 'pending',
+              scheduled_for: nowIso,
+              last_error: `backfill: detected non-durable login-protected image for ${candidate.sku}`,
+            });
+            newlyQueued += 1;
+            console.log(
+              `[Login Image Backfill] queued sku=${candidate.sku} source=${target.sourceName} url=${target.normalizedUrl}`,
+            );
+          } catch (error) {
+            errors += 1;
+            const message = error instanceof Error ? error.message : String(error ?? 'Unknown error');
+            console.error(
+              `[Login Image Backfill] failed to queue sku=${candidate.sku} source=${target.sourceName} url=${target.normalizedUrl}: ${message}`,
+            );
+          }
+        }
+      } catch (error) {
+        errors += candidate.targets.length;
+        const message = error instanceof Error ? error.message : String(error ?? 'Unknown error');
+        console.error(`[Login Image Backfill] failed to process sku=${candidate.sku}: ${message}`);
+      }
+    }
+
+    console.log(
+      `[Login Image Backfill] batch=${batchesProcessed} scanned=${scannedCount} found=${totalFound} alreadyQueued=${alreadyQueued} queued=${newlyQueued} errors=${errors}`,
+    );
+
+    if (rows.length < batchSize) {
+      break;
+    }
+
+    if (typeof options.limit === 'number' && options.limit > 0 && scannedCount >= options.limit) {
+      break;
+    }
+  }
+
+  return {
+    mode: options.mode,
+    scannedCount,
+    totalFound,
+    alreadyQueued,
+    newlyQueued,
+    errors,
+    batchesProcessed,
+    batchSize,
+    productsWithTargets: productsWithTargets.size,
+  };
+}
+
 export async function runLoginProtectedImageBackfill(
   options: LoginProtectedImageBackfillOptions,
 ): Promise<LoginProtectedImageBackfillResult> {
   const supabase = createSupabaseAdminClient();
-  const configs = await getLocalScraperConfigs();
+  const configs = await loadLocalScraperConfigs();
   const loginProtectedScraperSlugs = resolveLoginProtectedScraperSlugs(configs);
-  const rows = await loadProductsIngestionRows(supabase, options);
 
   return executeLoginProtectedImageBackfillWithClient(
     supabase,
-    rows,
     loginProtectedScraperSlugs,
     options,
   );
+}
+
+function parseIntegerFlag(flag: string, value: string | undefined): number {
+  if (!value) {
+    throw new Error(`Missing value for ${flag}`);
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Invalid value for ${flag}: ${value}`);
+  }
+
+  return parsed;
+}
+
+function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
+  const options: LoginProtectedImageBackfillOptions = {
+    mode: 'execute',
+    batchSize: 100,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    switch (arg) {
+      case '--dry-run':
+        options.mode = 'dry-run';
+        break;
+      case '--execute':
+        options.mode = 'execute';
+        break;
+      case '--sku': {
+        const sku = argv[index + 1]?.trim();
+        if (!sku) {
+          throw new Error('Missing value for --sku');
+        }
+        options.skus = [...(options.skus ?? []), sku];
+        index += 1;
+        break;
+      }
+      case '--limit':
+        options.limit = parseIntegerFlag('--limit', argv[index + 1]);
+        index += 1;
+        break;
+      case '--batch-size':
+        options.batchSize = parseIntegerFlag('--batch-size', argv[index + 1]);
+        index += 1;
+        break;
+      case '--help':
+      case '-h':
+        console.log(
+          [
+            'Usage:',
+            '  node apps/web/scripts/backfill-login-protected-images-logic.ts [options]',
+            '',
+            'Options:',
+            '  --dry-run            Scan and report without inserting queue entries',
+            '  --execute            Insert queue entries (default mode)',
+            '  --sku <sku>          Limit to a single SKU (repeatable)',
+            '  --limit <number>     Maximum products_ingestion rows to scan',
+            '  --batch-size <num>   Products processed per batch (default: 100)',
+          ].join('\n'),
+        );
+        process.exit(0);
+      default:
+        throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  return options;
+}
+
+async function main(): Promise<void> {
+  const options = parseArgs(process.argv.slice(2));
+  const result = await runLoginProtectedImageBackfill(options);
+  console.log(JSON.stringify(result, null, 2));
+}
+
+const isCommonJsEntryPoint = typeof require !== 'undefined' && require.main === module;
+const isEsmEntryPoint =
+  typeof require === 'undefined' &&
+  typeof process.argv[1] === 'string' &&
+  import.meta.url === new URL(`file://${process.argv[1].replace(/\\/g, '/')}`).href;
+
+if (isCommonJsEntryPoint || isEsmEntryPoint) {
+  main().catch((error) => {
+    console.error('[Login Image Backfill] Failed:', error);
+    process.exit(1);
+  });
 }
