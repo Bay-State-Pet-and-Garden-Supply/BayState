@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Activity, Brain } from "lucide-react";
@@ -38,8 +38,13 @@ export function PipelineClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
-  const currentStage = initialStage;
+  const [isNavigating, startNavigation] = useTransition();
+
+  const stageFromUrl = searchParams.get("stage");
+  const currentStage: PipelineStage =
+    stageFromUrl && ["imported", "monitoring", "scraped", "consolidating", "finalized", "published"].includes(stageFromUrl)
+      ? (stageFromUrl as PipelineStage)
+      : initialStage;
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
@@ -105,7 +110,7 @@ export function PipelineClient({
         });
         if (searchTerm) params.set("search", searchTerm);
 
-        const res = await fetch(`/api/admin/pipeline?${params}`);
+        const res = await fetch(`/api/admin/pipeline?${params}`, { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
         setProducts(data.products || []);
@@ -122,7 +127,7 @@ export function PipelineClient({
   // Fetch counts for all stages
   const fetchCounts = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/pipeline/counts");
+      const res = await fetch("/api/admin/pipeline/counts", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setCounts(data.counts || []);
@@ -145,6 +150,7 @@ export function PipelineClient({
     setCounts(initialCounts);
     setTotalCount(initialTotal);
     setSelectedSkus(new Set());
+    setIsLoading(false);
   }, [initialProducts, initialCounts, initialTotal, initialStage]);
 
   // Fetch products when search changes
@@ -159,7 +165,7 @@ export function PipelineClient({
     const performFetch = async () => {
       if (!isMounted) return;
 
-      if (initialStage === "monitoring" || initialStage === "consolidating") {
+      if (currentStage === "monitoring" || currentStage === "consolidating") {
         setProducts([]);
         setTotalCount(0);
         setSelectedSkus(new Set());
@@ -169,7 +175,7 @@ export function PipelineClient({
       // Only fetch if there is a search filter. 
       // Base stage data comes from server props!
       if (search) {
-        await fetchProducts(initialStage, search);
+        await fetchProducts(currentStage, search);
         if (isMounted) setSelectedSkus(new Set());
       }
     };
@@ -179,7 +185,7 @@ export function PipelineClient({
     return () => {
       isMounted = false;
     };
-  }, [search, fetchProducts, initialStage]);
+  }, [search, fetchProducts, currentStage]);
 
   // Sync search and source filters with URL (if they exist in URL on load)
   useEffect(() => {
@@ -202,14 +208,14 @@ export function PipelineClient({
     setSourceFilter("");
     setLastSelectedIndex(null);
 
-    // Provide immediate feedback while server fetches
-    setIsLoading(true);
-
     const params = new URLSearchParams(searchParams.toString());
     params.set("stage", stage);
     params.delete("search"); // clear search on stage change
     params.delete("source"); // clear source on stage change
-    router.push(`${pathname}?${params.toString()}`);
+
+    startNavigation(() => {
+      router.replace(`${pathname}?${params.toString()}`);
+    });
   };
 
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
@@ -700,7 +706,7 @@ export function PipelineClient({
 
       {/* Content Area */}
       <div className="flex-1 min-h-0">
-        {isLoading ? (
+        {isLoading || isNavigating ? (
           <div className="flex h-48 items-center justify-center">
             <div className="text-muted-foreground">Loading...</div>
           </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { extractImageCandidatesFromSources } from '@/lib/product-sources';
@@ -174,6 +175,8 @@ export async function PATCH(
         { status: 500 }
       );
     }
+
+    revalidatePath('/admin/pipeline');
 
     return NextResponse.json({ success: true });
   } catch (err) {
