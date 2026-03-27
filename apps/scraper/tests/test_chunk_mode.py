@@ -40,8 +40,8 @@ def test_chunk_worker_does_not_mutate_base_scraper_list_between_chunks() -> None
     ]
     captured_scrapers: list[list[str]] = []
 
-    def fake_run_job(job_config, runner_name=None, progress_callback=None):
-        _ = runner_name, progress_callback
+    def fake_run_job(job_config, runner_name=None, progress_callback=None, api_client=None, job_logging=None):
+        _ = runner_name, progress_callback, api_client, job_logging
         captured_scrapers.append([s.name for s in job_config.scrapers])
         return {"data": {}, "skus_processed": len(job_config.skus)}
 
@@ -91,8 +91,8 @@ def test_chunk_worker_counts_successful_skus_once_even_with_multiple_scrapers() 
         None,
     ]
 
-    def fake_run_job(job_config, runner_name=None, progress_callback=None):
-        _ = runner_name
+    def fake_run_job(job_config, runner_name=None, progress_callback=None, api_client=None, job_logging=None):
+        _ = runner_name, api_client, job_logging
         assert progress_callback is not None
         progress_callback("SKU-1", "amazon", {"Name": "Product 1"})
         progress_callback("SKU-1", "target", {"Name": "Product 1"})

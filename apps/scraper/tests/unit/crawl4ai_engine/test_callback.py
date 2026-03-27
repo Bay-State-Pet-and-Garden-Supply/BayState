@@ -471,7 +471,7 @@ class TestCallbackDeliveryHttp:
             scraper_name="scraper",
         )
 
-        network_error = httpx.RequestError("Network error", request=MagicMock())
+        network_error = httpx.ConnectError("Network error", request=MagicMock())
         assert delivery._is_retryable_http_error(network_error) is True
 
         timeout_error = httpx.TimeoutException("Timeout", request=MagicMock())

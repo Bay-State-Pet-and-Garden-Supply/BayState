@@ -90,7 +90,7 @@ describe('replaceInlineImageDataUrls', () => {
 
     expect(upload).toHaveBeenCalledTimes(1);
     expect(insert).toHaveBeenCalledWith({
-      product_id: 'product-123',
+      sku: 'product-123',
       image_url: 'https://private.example.com/protected-image.jpg',
       error_type: 'unknown',
       retry_count: 0,
@@ -136,7 +136,7 @@ describe('replaceInlineImageDataUrls', () => {
 
     expect(upload).not.toHaveBeenCalled();
     expect(insert).toHaveBeenCalledWith({
-      product_id: 'product-456',
+      sku: 'product-456',
       image_url: 'https://private.example.com/auth-image.jpg',
       error_type: 'auth_401',
       retry_count: 0,

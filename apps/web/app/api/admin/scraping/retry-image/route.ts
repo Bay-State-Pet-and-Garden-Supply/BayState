@@ -5,7 +5,7 @@ import type { ImageRetryQueueRow } from '@/lib/supabase/database.types';
 import { resolveImageRetryTarget } from '@/lib/scraper-callback/image-retry-processor';
 
 interface RetryImageRequestBody {
-  product_id?: string;
+  sku?: string;
   image_url?: string;
 }
 
@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as RetryImageRequestBody;
-    const productId = body.product_id?.trim();
+    const productId = body.sku?.trim();
     const imageUrl = body.image_url?.trim();
 
     if (!productId || !imageUrl) {
       return NextResponse.json(
-        { error: 'product_id and image_url are required' },
+        { error: 'sku and image_url are required' },
         { status: 400 }
       );
     }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { data: existingRows, error: existingError } = await supabase
       .from('image_retry_queue')
       .select('*')
-      .eq('product_id', productId)
+      .eq('sku', productId)
       .eq('image_url', imageUrl)
       .order('updated_at', { ascending: false })
       .limit(1);
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { error: insertError } = await supabase.from('image_retry_queue').insert({
-      product_id: productId,
+      sku: productId,
       image_url: imageUrl,
       error_type: 'not_found_404',
       status: 'pending',

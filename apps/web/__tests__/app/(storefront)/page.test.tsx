@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 // Mock the data fetching
 jest.mock('@/lib/data', () => ({
   getFeaturedProducts: jest.fn().mockResolvedValue([]),
+  getBrands: jest.fn().mockResolvedValue([]),
 }));
 
 // Mock async components that might cause issues in test environment
@@ -46,14 +47,14 @@ describe('Home Page', () => {
   it('renders the homepage with hero section', async () => {
     const page = await HomePage();
     render(page);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Bay State Pet & Garden');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Baby Chicks Are Here!');
   });
 
-  it('renders Shop Now and Our Services buttons', async () => {
+  it('renders Shop Now and View All Services buttons', async () => {
     const page = await HomePage();
     render(page);
-    expect(screen.getByRole('link', { name: /shop now/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /our services/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /shop now/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /view all services/i })).toBeInTheDocument();
   });
 
   it('renders category cards', async () => {

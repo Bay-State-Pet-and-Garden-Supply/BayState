@@ -2,10 +2,15 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AdminSidebar } from "@/components/admin/sidebar";
 
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/admin",
+}));
+
 // Test the sidebar component directly since the layout is now async/server
 describe("Admin Layout", () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem("adminSidebarCollapsed", "false");
   });
 
   it("renders side navigation with links for admin role", () => {
@@ -15,29 +20,22 @@ describe("Admin Layout", () => {
     expect(screen.getByRole("link", { name: "Pipeline" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Scrapers" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Network" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Data Migration" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Products" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
   });
 
   it("hides admin-only links for staff role", () => {
     render(<AdminSidebar userRole="staff" />);
 
-    expect(screen.getByRole("link", { name: "Homepage" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Products" })).toBeInTheDocument();
 
     // Staff should NOT see admin-only items
-    expect(
-      screen.queryByRole("link", { name: "New Products" }),
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Scrapers" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Network" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Data Migration" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Settings" }),
@@ -51,11 +49,10 @@ describe("Admin Layout", () => {
 
   it("can toggle collapse state", async () => {
     render(<AdminSidebar userRole="admin" />);
-    const button = screen.getByRole("button", { name: /collapse sidebar/i });
+    const button = screen.getByRole("button", { name: "Collapse" });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveAttribute("aria-expanded", "true");
 
     await userEvent.click(button);
-    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "Expand" })).toBeInTheDocument();
   });
 });

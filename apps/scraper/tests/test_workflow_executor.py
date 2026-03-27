@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from typing_extensions import override
 
 from scrapers.actions.base import BaseAction
@@ -86,12 +86,14 @@ class _DummyPage:
     class _DummyLocator:
         def __init__(self, element: _DummyElement | None) -> None:
             self._element = element
+            self.first = self
 
         async def wait_for(self, state: str = "attached", timeout: int | None = None) -> None:
             _ = (state, timeout)
             return None
 
-        async def element_handle(self) -> _DummyElement | None:
+        async def element_handle(self, timeout: int | None = None) -> _DummyElement | None:
+            _ = timeout
             return self._element
 
         async def all(self) -> list[_DummyElement]:
@@ -144,7 +146,7 @@ async def test_execute_workflow_calls_action_handler_via_action_registry() -> No
 
     class RecordingAction(BaseAction):
         @override
-        def execute(self, params: dict[str, object]):
+        async def execute(self, params: dict[str, object]):
             received_params.append(params)
 
     def fake_get_action_class(name: str) -> type[BaseAction]:
@@ -174,7 +176,7 @@ async def test_execute_step_dispatches_to_correct_handler_and_substitutes_contex
 
     class RecordingAction(BaseAction):
         @override
-        def execute(self, params: dict[str, object]):
+        async def execute(self, params: dict[str, object]):
             received_params.append(params)
 
     def fake_get_action_class(name: str) -> type[BaseAction]:
@@ -221,7 +223,7 @@ async def test_extraction_step_populates_results() -> None:
 
 
 @pytest.mark.anyio
-async def test_agentic_initialize_sets_provider_context_without_dedicated_ai_browser() -> None:
+async def test_agentic_initialize_forces_static_mode_without_ai_context() -> None:
     from scrapers.executor.workflow_executor import WorkflowExecutor
 
     config = _build_agentic_config(workflows=[WorkflowStep(action="ai_search", name=None, params={"query": "{sku}"})])
@@ -231,11 +233,9 @@ async def test_agentic_initialize_sets_provider_context_without_dedicated_ai_bro
         executor = WorkflowExecutor(config=config, headless=True)
         await executor.initialize()
 
-    assert executor.scraper_type == "agentic"
-    assert executor.ai_browser is None
-    assert executor.ai_context["scraper_type"] == "agentic"
-    assert executor.ai_context["provider"] == "crawl4ai"
-    assert executor.ai_context["browser_initialized"] is False
+    assert executor.scraper_type == "static"
+    assert not hasattr(executor, "ai_browser")
+    assert not hasattr(executor, "ai_context")
 
 
 @pytest.mark.anyio

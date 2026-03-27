@@ -1,0 +1,155 @@
+{
+  "comparison": {
+    "average_time_delta_seconds": -2.466666,
+    "cost_reduction_percent": 98.2117,
+    "speedup_ratio_browser_use_over_crawl4ai": 2.042253,
+    "success_rate_delta": 0.166667,
+    "total_cost_delta_usd": -0.1857675
+  },
+  "generated_at": "2026-03-27T18:43:59.636406+00:00",
+  "metrics": {
+    "browser_use": {
+      "average_cost_usd": 0.031525,
+      "average_extraction_time_seconds": 4.833333,
+      "extractor": "browser_use",
+      "per_sku": [
+        {
+          "cost_usd": 0.03175,
+          "extraction_time_seconds": 4.4,
+          "input_tokens": 3500,
+          "model": "gpt-4o",
+          "output_tokens": 950,
+          "sku": "TEST001",
+          "success": true
+        },
+        {
+          "cost_usd": 0.0319,
+          "extraction_time_seconds": 4.9,
+          "input_tokens": 3620,
+          "model": "gpt-4o",
+          "output_tokens": 920,
+          "sku": "TEST002",
+          "success": true
+        },
+        {
+          "cost_usd": 0.0306,
+          "extraction_time_seconds": 5.3,
+          "input_tokens": 3480,
+          "model": "gpt-4o",
+          "output_tokens": 880,
+          "sku": "TEST003",
+          "success": false
+        },
+        {
+          "cost_usd": 0.0308,
+          "extraction_time_seconds": 5.0,
+          "input_tokens": 3550,
+          "model": "gpt-4o",
+          "output_tokens": 870,
+          "sku": "TEST004",
+          "success": false
+        },
+        {
+          "cost_usd": 0.0324,
+          "extraction_time_seconds": 4.8,
+          "input_tokens": 3600,
+          "model": "gpt-4o",
+          "output_tokens": 960,
+          "sku": "TEST005",
+          "success": true
+        },
+        {
+          "cost_usd": 0.0317,
+          "extraction_time_seconds": 4.6,
+          "input_tokens": 3520,
+          "model": "gpt-4o",
+          "output_tokens": 940,
+          "sku": "TEST006",
+          "success": true
+        }
+      ],
+      "sku_count": 6,
+      "success_rate": 0.6666666666666666,
+      "successes": 4,
+      "total_cost_usd": 0.18915,
+      "total_extraction_time_seconds": 29.0
+    },
+    "crawl4ai": {
+      "average_cost_usd": 0.00056375,
+      "average_extraction_time_seconds": 2.366667,
+      "extractor": "crawl4ai",
+      "per_sku": [
+        {
+          "cost_usd": 0.000567,
+          "extraction_time_seconds": 2.1,
+          "input_tokens": 1700,
+          "model": "gpt-4o-mini",
+          "output_tokens": 520,
+          "sku": "TEST001",
+          "success": true
+        },
+        {
+          "cost_usd": 0.000573,
+          "extraction_time_seconds": 2.5,
+          "input_tokens": 1820,
+          "model": "gpt-4o-mini",
+          "output_tokens": 500,
+          "sku": "TEST002",
+          "success": true
+        },
+        {
+          "cost_usd": 0.000546,
+          "extraction_time_seconds": 2.0,
+          "input_tokens": 1680,
+          "model": "gpt-4o-mini",
+          "output_tokens": 490,
+          "sku": "TEST003",
+          "success": true
+        },
+        {
+          "cost_usd": 0.0005385,
+          "extraction_time_seconds": 3.0,
+          "input_tokens": 1750,
+          "model": "gpt-4o-mini",
+          "output_tokens": 460,
+          "sku": "TEST004",
+          "success": false
+        },
+        {
+          "cost_usd": 0.000594,
+          "extraction_time_seconds": 2.4,
+          "input_tokens": 1800,
+          "model": "gpt-4o-mini",
+          "output_tokens": 540,
+          "sku": "TEST005",
+          "success": true
+        },
+        {
+          "cost_usd": 0.000564,
+          "extraction_time_seconds": 2.2,
+          "input_tokens": 1720,
+          "model": "gpt-4o-mini",
+          "output_tokens": 510,
+          "sku": "TEST006",
+          "success": true
+        }
+      ],
+      "sku_count": 6,
+      "success_rate": 0.8333333333333334,
+      "successes": 5,
+      "total_cost_usd": 0.0033825,
+      "total_extraction_time_seconds": 14.2
+    }
+  },
+  "sku_scope": {
+    "count": 6,
+    "skus": [
+      "TEST001",
+      "TEST002",
+      "TEST003",
+      "TEST004",
+      "TEST005",
+      "TEST006"
+    ]
+  }
+}

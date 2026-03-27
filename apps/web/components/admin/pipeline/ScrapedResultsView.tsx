@@ -229,7 +229,7 @@ export function ScrapedResultsView({
 
   const handleImageError = useCallback(
     (imageUrl: string | undefined) => {
-      const productId = selectedProduct?.id;
+      const productId = selectedProduct?.sku;
       const normalizedImageUrl = imageUrl?.trim();
 
       if (!productId || !normalizedImageUrl) {
@@ -256,7 +256,7 @@ export function ScrapedResultsView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          product_id: productId,
+          sku: productId,
           image_url: normalizedImageUrl,
         }),
       })
@@ -278,7 +278,7 @@ export function ScrapedResultsView({
           );
         });
     },
-    [selectedProduct?.id],
+    [selectedProduct?.sku],
   );
 
   return (

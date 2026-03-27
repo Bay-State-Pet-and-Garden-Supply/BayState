@@ -23,7 +23,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from memory_profiler import memory_usage  # type: ignore[import-untyped]
+
+memory_usage = pytest.importorskip("memory_profiler").memory_usage
 
 from tests.t17_ab_test_harness import ABTestHarness, ExtractionResult
 

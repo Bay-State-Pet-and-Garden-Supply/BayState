@@ -67,7 +67,7 @@ describe('backfill-login-protected-images logic', () => {
 
     expect(candidates).toHaveLength(1);
     expect(candidates[0]).toEqual({
-      productId: 'product-1',
+      productId: 'SKU-1',
       sku: 'SKU-1',
       targets: [
         {
@@ -179,7 +179,6 @@ describe('backfill-login-protected-images logic', () => {
                   return {
                     data: [
                       {
-                        id: 'product-1',
                         sku: 'SKU-1',
                         sources: {
                           phillips: {
@@ -241,14 +240,14 @@ describe('backfill-login-protected-images logic', () => {
     expect(insertCalls).toHaveLength(2);
     expect(insertCalls[0]).toEqual(
       expect.objectContaining({
-        product_id: 'product-1',
+        sku: 'SKU-1',
         image_url: 'https://private.example.com/new-entry.jpg',
         priority: 'backfill',
       }),
     );
     expect(insertCalls[1]).toEqual(
       expect.objectContaining({
-        product_id: 'product-1',
+        sku: 'SKU-1',
         image_url: 'https://private.example.com/new-entry.jpg',
         status: 'pending',
         error_type: 'not_found_404',

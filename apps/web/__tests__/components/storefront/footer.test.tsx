@@ -20,11 +20,11 @@ describe('StorefrontFooter', () => {
     expect(screen.getByRole('link', { name: /equipment rentals/i })).toBeInTheDocument();
   });
 
-  it('renders Contact section', () => {
+  it('renders Contact & Hours section', () => {
     render(<StorefrontFooter />);
-    expect(screen.getByText('Contact')).toBeInTheDocument();
+    expect(screen.getByText('Contact & Hours')).toBeInTheDocument();
     expect(screen.getByText(/sales@baystatepet.com/i)).toBeInTheDocument();
-    expect(screen.getByText(/\(774\) 226-9845/i)).toBeInTheDocument();
+    expect(screen.getByText(/\(508\) 821-3704/i)).toBeInTheDocument();
   });
 
   it('renders copyright with current year', () => {

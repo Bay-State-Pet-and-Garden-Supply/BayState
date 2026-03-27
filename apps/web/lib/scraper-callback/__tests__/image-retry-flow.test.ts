@@ -41,7 +41,7 @@ function buildPendingMarker(imageUrl: string, errorType: string): string {
 function createRetryEntry(overrides: Partial<ImageRetryEntry> = {}): ImageRetryEntry {
   return {
     retry_id: 'retry-1',
-    product_id: 'product-1',
+    sku: 'SKU-001',
     image_url: 'https://private.example.com/protected.jpg',
     error_type: 'network_timeout',
     retry_count: 0,
@@ -130,7 +130,6 @@ function createProcessorSupabaseMock(options: {
               eq: () => ({
                 single: async () => ({
                   data: {
-                    id: 'product-1',
                     sku: 'SKU-1',
                     sources,
                   },
@@ -191,7 +190,7 @@ async function queueInitialFailure(options: {
     },
     {
       folderPath: 'pipeline-sources/sku-1',
-      productId: 'product-1',
+      productId: 'SKU-1',
     }
   );
 
@@ -288,7 +287,7 @@ describe('image retry flow integration', () => {
 
     expect(queued.queuedInsert).toEqual(
       expect.objectContaining({
-        product_id: 'product-1',
+        sku: 'SKU-1',
         image_url: 'https://private.example.com/protected.jpg',
         error_type: 'auth_401',
         status: 'pending',
@@ -297,14 +296,14 @@ describe('image retry flow integration', () => {
     expect(status).toBe('completed');
     expect(reauthenticate).toHaveBeenCalledTimes(1);
     expect(captureImage).toHaveBeenCalledWith({
-      productId: 'product-1',
+      productId: 'SKU-1',
       sku: 'SKU-1',
       imageUrl: 'https://private.example.com/protected.jpg',
       domain: 'private.example.com',
       scraperSlug: 'phillips',
     });
     expect(processorMock.productUpdates[0]).toEqual({
-      id: 'product-1',
+      id: 'SKU-1',
       payload: {
         sources: {
           phillips: {
@@ -436,7 +435,7 @@ describe('image retry flow integration', () => {
     });
     expect(secondStatus).toBe('completed');
     expect(processorMock.productUpdates.at(-1)).toEqual({
-      id: 'product-1',
+      id: 'SKU-1',
       payload: {
         sources: {
           phillips: {
@@ -659,7 +658,7 @@ describe('image retry flow integration', () => {
     const storage = createStorageSupabaseMock({
       insertImpl: async (payload) => {
         await Promise.resolve();
-        dedupedKeys.add(`${payload.product_id}|${payload.image_url}|${payload.error_type}`);
+        dedupedKeys.add(`${payload.sku}|${payload.image_url}|${payload.error_type}`);
         return { error: null };
       },
     });
@@ -682,14 +681,14 @@ describe('image retry flow integration', () => {
           },
         ],
       },
-      {
-        folderPath: 'pipeline-sources/sku-1',
-        productId: 'product-1',
-      }
-    );
+    {
+      folderPath: 'pipeline-sources/sku-1',
+      productId: 'SKU-1',
+    }
+  );
 
-    expect(storage.retryQueueInserts).toHaveLength(1);
-    expect(dedupedKeys).toEqual(new Set(['product-1|https://private.example.com/duplicate.jpg|network_timeout']));
+  expect(storage.retryQueueInserts).toHaveLength(1);
+  expect(dedupedKeys).toEqual(new Set(['SKU-1|https://private.example.com/duplicate.jpg|network_timeout']));
     expect(result.queuedImages).toHaveLength(2);
     expect(result.value).toEqual({
       images: [result.value.images[0], result.value.images[0]],
@@ -854,13 +853,13 @@ describe('image retry flow integration', () => {
 
     const target = await resolveImageRetryTarget(
       processorMock.supabase as never,
-      'product-1',
+      'SKU-1',
       'https://private.example.com/protected.jpg'
     );
 
     expect(target).toEqual(
       expect.objectContaining({
-        productId: 'product-1',
+        productId: 'SKU-1',
         sku: 'SKU-1',
         matchedSourceNames: ['phillips'],
         requiresLogin: true,

@@ -6,6 +6,23 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PipelineClient } from "@/components/admin/pipeline/PipelineClient";
 import type { PipelineProduct, StatusCount } from "@/lib/pipeline/types";
 
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+const mockSearchParamGet = jest.fn();
+const mockSearchParamsToString = jest.fn(() => "");
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+  }),
+  usePathname: () => "/admin/pipeline",
+  useSearchParams: () => ({
+    get: mockSearchParamGet,
+    toString: mockSearchParamsToString,
+  }),
+}));
+
 const products: PipelineProduct[] = [
   {
     sku: "SKU001",
@@ -51,6 +68,16 @@ beforeAll(() => {
   });
 });
 
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockSearchParamGet.mockReturnValue(null);
+  mockSearchParamsToString.mockReturnValue("");
+  (global.fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    json: async () => ({ products, count: 3, counts }),
+  });
+});
+
 afterAll(() => {
   // @ts-expect-error global fetch assignment
   global.fetch = undefined;
@@ -66,18 +93,22 @@ describe("PipelineClient shift range selection", () => {
       />,
     );
 
-    const checkbox1 = await screen.findByLabelText("Select SKU001");
-    fireEvent.click(checkbox1);
-
+    const row1 = await screen.findByText("SKU001");
+    const row2 = screen.getByText("SKU002").closest("tr");
     const row3 = screen.getByText("SKU003").closest("tr");
+    const row1Element = row1.closest("tr");
+
+    expect(row1Element).toBeTruthy();
+    expect(row2).toBeTruthy();
     expect(row3).toBeTruthy();
 
+    fireEvent.click(row1Element!);
     fireEvent.click(row3!, { shiftKey: true });
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Select SKU001")).toBeChecked();
-      expect(screen.getByLabelText("Select SKU002")).toBeChecked();
-      expect(screen.getByLabelText("Select SKU003")).toBeChecked();
+      expect(row1Element).toHaveAttribute("data-state", "selected");
+      expect(row2).toHaveAttribute("data-state", "selected");
+      expect(row3).toHaveAttribute("data-state", "selected");
     });
   });
 });

@@ -15,12 +15,15 @@ def mock_browser():
     mock_page = MagicMock()
     # Mock locator for convert_to_playwright_locator
     mock_locator = MagicMock()
+    mock_locator.first.wait_for = AsyncMock()
     mock_locator.element_handle = AsyncMock()
     mock_locator.all = AsyncMock()
     mock_page.locator.return_value = mock_locator
     
     browser = MagicMock()
     browser.page = mock_page
+    browser.context = None
+    browser.context_data = {"timeout_multiplier": 1.0}
     return browser
 
 
@@ -38,10 +41,12 @@ async def test_find_element_safe_tries_fallback_on_failure(resolver):
     # Setup locators for primary and fallback
     primary_locator = MagicMock()
     primary_locator.element_handle = AsyncMock(side_effect=Exception("Primary failed"))
+    primary_locator.first.wait_for = AsyncMock()
     
     fallback_locator = MagicMock()
     mock_element = MagicMock()
     fallback_locator.element_handle = AsyncMock(return_value=mock_element)
+    fallback_locator.first.wait_for = AsyncMock()
     
     # Mock convert_to_playwright_locator to return our specific locators
     with patch("scrapers.executor.selector_resolver.convert_to_playwright_locator") as mock_convert:
@@ -62,9 +67,11 @@ async def test_find_elements_safe_tries_fallback_if_primary_empty(resolver):
     mock_page = resolver.browser.page
     
     primary_locator = MagicMock()
+    primary_locator.first.wait_for = AsyncMock()
     primary_locator.all = AsyncMock(return_value=[])
     
     fallback_locator = MagicMock()
+    fallback_locator.first.wait_for = AsyncMock()
     mock_elements = [MagicMock(), MagicMock()]
     fallback_locator.all = AsyncMock(return_value=mock_elements)
     
@@ -76,8 +83,10 @@ async def test_find_elements_safe_tries_fallback_if_primary_empty(resolver):
         assert result == mock_elements
         assert mock_convert.call_count == 2
         # Check timeouts
-        primary_locator.all.assert_called_once_with(timeout=5000)
-        fallback_locator.all.assert_called_once_with(timeout=2000)
+        primary_locator.first.wait_for.assert_called_once_with(state="attached", timeout=5000)
+        fallback_locator.first.wait_for.assert_called_once_with(state="attached", timeout=2000)
+        primary_locator.all.assert_called_once_with()
+        fallback_locator.all.assert_called_once_with()
 
 
 @pytest.mark.asyncio
@@ -87,9 +96,11 @@ async def test_find_element_safe_raises_if_all_fail(resolver):
     
     locator1 = MagicMock()
     locator1.element_handle = AsyncMock(side_effect=Exception("Fail 1"))
+    locator1.first.wait_for = AsyncMock()
     
     locator2 = MagicMock()
     locator2.element_handle = AsyncMock(side_effect=Exception("Fail 2"))
+    locator2.first.wait_for = AsyncMock()
     
     with patch("scrapers.executor.selector_resolver.convert_to_playwright_locator") as mock_convert:
         mock_convert.side_effect = [locator1, locator2]

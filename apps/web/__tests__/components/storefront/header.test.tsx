@@ -50,7 +50,7 @@ describe('StorefrontHeader', () => {
         brands={[]}
       />
     );
-    expect(screen.getByTestId('inline-search')).toBeInTheDocument();
+    expect(screen.getAllByTestId('inline-search')).toHaveLength(2);
   });
 
 
@@ -65,7 +65,7 @@ describe('StorefrontHeader', () => {
         brands={[]}
       />
     );
-    expect(screen.getByRole('button', { name: /shopping cart/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /shopping cart/i })).toHaveLength(2);
   });
 
   it('renders desktop navigation links', () => {
@@ -78,9 +78,10 @@ describe('StorefrontHeader', () => {
         brands={[]}
       />
     );
-    expect(screen.getByText(/Products/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /shop pet supplies/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /shop by brand/i })).toBeInTheDocument();
+    expect(screen.getByText(/Shop Farm/i)).toBeInTheDocument();
     expect(screen.getByText(/Services/i)).toBeInTheDocument();
-    expect(screen.getByText(/About/i)).toBeInTheDocument();
   });
 
   it('renders menu button for mobile', () => {

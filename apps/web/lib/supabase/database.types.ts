@@ -28,7 +28,7 @@ export type ImageRetryStatus =
 
 export interface ImageRetryQueueRow {
   id: string;
-  product_id: string | null;
+  sku: string | null;
   image_url: string;
   error_type: ImageErrorType;
   retry_count: number;
@@ -42,7 +42,7 @@ export interface ImageRetryQueueRow {
 
 export interface ImageRetryQueueInsert {
   id?: string;
-  product_id?: string | null;
+  sku?: string | null;
   image_url: string;
   error_type?: ImageErrorType;
   retry_count?: number;
@@ -56,7 +56,7 @@ export interface ImageRetryQueueInsert {
 
 export interface ImageRetryQueueUpdate {
   id?: string;
-  product_id?: string | null;
+  sku?: string | null;
   image_url?: string;
   error_type?: ImageErrorType;
   retry_count?: number;
@@ -74,7 +74,7 @@ export interface ImageRetryQueueUpdate {
 
 export interface PendingImageRetry {
   retry_id: string;
-  product_id: string | null;
+  sku: string | null;
   image_url: string;
   error_type: ImageErrorType;
   retry_count: number;

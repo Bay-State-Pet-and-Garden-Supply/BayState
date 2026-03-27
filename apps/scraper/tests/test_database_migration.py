@@ -8,9 +8,18 @@ Following TDD approach: RED - GREEN - REFACTOR
 import os
 import sys
 import pytest
+from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+
+
+MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "web" / "supabase" / "migrations"
+
+
+def _get_test_lab_migrations() -> list[str]:
+    migration_files = sorted(os.listdir(MIGRATIONS_DIR))
+    return [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
 
 
 class TestDatabaseMigration:
@@ -18,28 +27,23 @@ class TestDatabaseMigration:
 
     def test_migration_file_exists(self):
         """Test that migration file exists with correct naming pattern."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
         # Check if migrations directory exists
-        assert os.path.exists(migrations_dir), f"Migrations directory not found: {migrations_dir}"
+        assert MIGRATIONS_DIR.exists(), f"Migrations directory not found: {MIGRATIONS_DIR}"
 
         # Look for test_lab migration file
-        migration_files = os.listdir(migrations_dir)
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        migration_files = os.listdir(MIGRATIONS_DIR)
+        test_lab_migrations = _get_test_lab_migrations()
 
         assert len(test_lab_migrations) > 0, f"No test_lab migration found. Found: {migration_files}"
 
     def test_migration_adds_selector_results_table(self):
         """Test migration creates scraper_selector_results table."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -49,15 +53,12 @@ class TestDatabaseMigration:
 
     def test_migration_adds_login_results_table(self):
         """Test migration creates scraper_login_results table."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -66,15 +67,12 @@ class TestDatabaseMigration:
 
     def test_migration_adds_extraction_results_table(self):
         """Test migration creates scraper_extraction_results table."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -83,15 +81,12 @@ class TestDatabaseMigration:
 
     def test_migration_adds_columns_to_scraper_test_runs(self):
         """Test migration extends scraper_test_runs table."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -101,15 +96,12 @@ class TestDatabaseMigration:
 
     def test_migration_adds_indexes(self):
         """Test migration adds indexes for performance."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -119,15 +111,12 @@ class TestDatabaseMigration:
 
     def test_selector_results_has_required_columns(self):
         """Test selector_results table has required fields."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -138,15 +127,12 @@ class TestDatabaseMigration:
 
     def test_login_results_has_required_columns(self):
         """Test login_results table has required fields."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -157,15 +143,12 @@ class TestDatabaseMigration:
 
     def test_extraction_results_has_required_columns(self):
         """Test extraction_results table has required fields."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 
@@ -176,9 +159,7 @@ class TestDatabaseMigration:
 
     def test_migration_follows_existing_patterns(self):
         """Test migration follows existing migration file patterns."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
+        migration_files = sorted(os.listdir(MIGRATIONS_DIR))
 
         # Get a sample existing migration for comparison
         existing_migrations = [f for f in migration_files if f.endswith(".sql")]
@@ -186,17 +167,17 @@ class TestDatabaseMigration:
             pytest.skip("Not enough existing migrations to compare patterns")
 
         # Read an existing migration to understand the pattern
-        existing_migration = os.path.join(migrations_dir, existing_migrations[0])
+        existing_migration = MIGRATIONS_DIR / existing_migrations[0]
         with open(existing_migration, "r") as f:
-            existing_content = f.read()
+            _ = f.read()
 
         # New migration should follow similar structure
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        new_migration = os.path.join(migrations_dir, test_lab_migrations[0])
+        new_migration = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(new_migration, "r") as f:
             new_content = f.read()
 
@@ -213,15 +194,12 @@ class TestDatabaseMigrationDown:
 
     def test_migration_has_down_function(self):
         """Test migration includes rollback/down functionality."""
-        migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../BayStateApp/supabase/migrations/"))
-
-        migration_files = sorted(os.listdir(migrations_dir))
-        test_lab_migrations = [f for f in migration_files if "test_lab" in f.lower() or "testlab" in f.lower()]
+        test_lab_migrations = _get_test_lab_migrations()
 
         if not test_lab_migrations:
             pytest.skip("No test_lab migration file found")
 
-        migration_path = os.path.join(migrations_dir, test_lab_migrations[0])
+        migration_path = MIGRATIONS_DIR / test_lab_migrations[0]
         with open(migration_path, "r") as f:
             content = f.read()
 

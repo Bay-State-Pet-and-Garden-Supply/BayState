@@ -19,7 +19,7 @@ SCRAPER_ROOT = Path(__file__).resolve().parent.parent
 def _scan_file(filepath: Path, pattern: str, skip_comments: bool = False) -> list[tuple[int, str]]:
     """Scan a file for a regex pattern. Returns (line_number, line_text) matches."""
     matches: list[tuple[int, str]] = []
-    for i, line in enumerate(filepath.read_text().splitlines(), start=1):
+    for i, line in enumerate(filepath.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
         if skip_comments and line.lstrip().startswith("#"):
             continue
         if re.search(pattern, line):
@@ -55,7 +55,7 @@ class TestAntiDetectionManagerNoSelenium:
 
     def test_no_by_stub_class(self) -> None:
         """The By stub class should be removed (dead Selenium code)."""
-        content = self.FILE.read_text()
+        content = self.FILE.read_text(encoding="utf-8", errors="ignore")
         assert "class By:" not in content, "Dead By stub class still present in anti_detection_manager.py"
 
 
@@ -86,10 +86,10 @@ class TestCodebaseNoSelenium:
         matches: list[tuple[str, int, str]] = []
         for py_file in sorted(SCRAPER_ROOT.rglob("*.py")):
             # Skip test files and __pycache__
-            path_str = str(py_file)
-            if "test_" in py_file.name or "__pycache__" in path_str or "/venv/" in path_str or "/.venv/" in path_str or "/site-packages/" in path_str:
+            path_parts = set(py_file.parts)
+            if "test_" in py_file.name or "__pycache__" in path_parts or "venv" in path_parts or ".venv" in path_parts or "site-packages" in path_parts:
                 continue
-            for i, line in enumerate(py_file.read_text().splitlines(), start=1):
+            for i, line in enumerate(py_file.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
                 if "selenium" in line:
                     rel = py_file.relative_to(SCRAPER_ROOT)
                     matches.append((str(rel), i, line.strip()))

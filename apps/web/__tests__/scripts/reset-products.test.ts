@@ -13,10 +13,10 @@ import { createAdminClient } from '@/lib/supabase/server';
 const mockCreateAdminClient = createAdminClient as jest.MockedFunction<typeof createAdminClient>;
 
 describe('Product Reset Script Logic', () => {
+  const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
   const mockUpdate = jest.fn();
   const mockDelete = jest.fn();
   const mockFrom = jest.fn();
-  const mockEq = jest.fn();
   const mockOr = jest.fn();
   const mockNeq = jest.fn();
   const mockIn = jest.fn();
@@ -46,13 +46,16 @@ describe('Product Reset Script Logic', () => {
   it('resets published_at and is_featured for all products', async () => {
     await resetProducts();
 
-    expect(mockFrom).toHaveBeenCalledWith('products');
-    expect(mockUpdate).toHaveBeenCalledWith({
+    expect(mockFrom).toHaveBeenNthCalledWith(1, 'products');
+    expect(mockFrom).toHaveBeenNthCalledWith(2, 'product_storefront_settings');
+    expect(mockUpdate).toHaveBeenNthCalledWith(1, {
       published_at: null,
+    });
+    expect(mockUpdate).toHaveBeenNthCalledWith(2, {
       is_featured: false,
     });
-    // It should target all products (using a broad filter like neq('id', '000...'))
-    expect(mockNeq).toHaveBeenCalledWith('id', '00000000-0000-0000-0000-000000000000');
+    expect(mockNeq).toHaveBeenNthCalledWith(1, 'id', ZERO_UUID);
+    expect(mockNeq).toHaveBeenNthCalledWith(2, 'product_id', ZERO_UUID);
   });
 
   it('deletes placeholder products identified by name, slug or images', async () => {

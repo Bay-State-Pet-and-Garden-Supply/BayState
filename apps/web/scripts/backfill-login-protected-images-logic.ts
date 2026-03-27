@@ -7,7 +7,6 @@ import type { ImageRetryQueueInsert } from '../lib/supabase/database.types';
 export type BackfillMode = 'dry-run' | 'execute';
 
 interface ProductsIngestionBackfillRow {
-  id: string;
   sku: string;
   sources: unknown;
 }
@@ -225,7 +224,7 @@ export async function collectLoginProtectedImageBackfillCandidates(
 
     return [
       {
-        productId: row.id,
+        productId: row.sku,
         sku: row.sku,
         targets: dedupedTargets,
       },
@@ -265,7 +264,7 @@ async function loadProductsIngestionRowsBatch(
 ): Promise<ProductsIngestionBackfillRow[]> {
   let query = supabase
     .from('products_ingestion')
-    .select('id, sku, sources')
+    .select('sku, sources')
     .order('updated_at', { ascending: false })
     .range(offset, offset + batchSize - 1);
 
@@ -302,7 +301,7 @@ async function getExistingQueueEntries(
   const { data, error } = await supabase
     .from('image_retry_queue')
     .select('image_url')
-    .eq('product_id', productId)
+    .eq('sku', productId)
     .in('image_url', normalizedUrls);
 
   if (error) {
@@ -322,7 +321,7 @@ async function getExistingQueueEntries(
 
 async function insertRetryQueueEntry(
   supabase: SupabaseClient,
-  payload: ImageRetryQueueInsert & { product_id: string; last_error: string },
+  payload: ImageRetryQueueInsert & { last_error: string },
 ): Promise<void> {
   const withPriority = {
     ...payload,
@@ -399,7 +398,7 @@ export async function executeLoginProtectedImageBackfillWithClient(
 
           try {
             await insertRetryQueueEntry(supabase, {
-              product_id: candidate.productId,
+              sku: candidate.productId,
               image_url: target.normalizedUrl,
               error_type: 'not_found_404',
               retry_count: 0,

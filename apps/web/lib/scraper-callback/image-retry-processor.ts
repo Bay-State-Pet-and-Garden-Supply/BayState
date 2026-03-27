@@ -26,13 +26,43 @@ const MAX_RELOGIN_ATTEMPTS = 2;
 const AUTH_METADATA_PREFIX = '[image-retry-auth]';
 const execFileAsync = promisify(execFile);
 
+function findWorkspaceRoot(startDir: string): string | null {
+  let currentDir = startDir;
+
+  while (true) {
+    const turboConfigPath = path.join(currentDir, 'turbo.json');
+    const scraperPath = path.join(currentDir, 'apps', 'scraper', 'scrapers', 'configs');
+
+    if (existsSync(turboConfigPath) && existsSync(scraperPath)) {
+      return currentDir;
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return null;
+    }
+
+    currentDir = parentDir;
+  }
+}
+
 function resolveScraperRoot(): string {
+  const workspaceRoot = findWorkspaceRoot(process.cwd());
+  if (workspaceRoot) {
+    return path.join(workspaceRoot, 'apps', 'scraper');
+  }
+
+  const siblingCandidate = path.resolve(process.cwd(), '..', 'scraper');
+  if (existsSync(path.join(siblingCandidate, 'scrapers', 'configs'))) {
+    return siblingCandidate;
+  }
+
   const workspaceCandidate = path.resolve(process.cwd(), 'apps', 'scraper');
-  if (existsSync(workspaceCandidate)) {
+  if (existsSync(path.join(workspaceCandidate, 'scrapers', 'configs'))) {
     return workspaceCandidate;
   }
 
-  return path.resolve(process.cwd(), '..', 'scraper');
+  return siblingCandidate;
 }
 
 const SCRAPER_ROOT = resolveScraperRoot();
@@ -291,8 +321,8 @@ export async function resolveImageRetryTarget(
 ): Promise<ResolvedImageRetryTarget | null> {
   const { data: product, error } = await supabase
     .from('products_ingestion')
-    .select('id, sku, sources')
-    .eq('id', productId)
+    .select('sku, sources')
+    .eq('sku', productId)
     .single();
 
   if (error || !product) {
@@ -311,7 +341,7 @@ export async function resolveImageRetryTarget(
   );
 
   return {
-    productId: product.id,
+    productId: product.sku,
     sku: product.sku,
     sources,
     matchedSourceNames,
@@ -455,11 +485,11 @@ export class ImageRetryProcessor {
     await this.updateRetryEntry(entry.retry_id, { status: 'processing', last_error: null });
 
     try {
-      if (!entry.product_id) {
-        throw new Error('Retry entry is missing product_id');
+      if (!entry.sku) {
+        throw new Error('Retry entry is missing sku');
       }
 
-      const context = await this.loadProductRetryContext(entry.product_id, entry.image_url);
+      const context = await this.loadProductRetryContext(entry.sku, entry.image_url);
       const authEnvelope = parseRetryErrorEnvelope(entry.last_error);
       const authMetadata = await this.refreshAuthSessionIfNeeded(entry, context, authEnvelope.auth);
       const capture = await this.captureWithReauthentication(entry, context, domain, authMetadata);
@@ -639,7 +669,7 @@ export class ImageRetryProcessor {
         sources: nextSources,
         updated_at: this.now().toISOString(),
       })
-      .eq('id', context.id);
+      .eq('sku', context.id);
 
     if (productUpdateError) {
       throw new Error(`Failed to update product ${context.id} image references: ${productUpdateError.message}`);
