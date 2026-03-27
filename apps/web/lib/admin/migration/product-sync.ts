@@ -103,6 +103,81 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
     };
 }
 
+export interface ShopSitePipelineInput {
+    name: string;
+    price: number;
+    product_on_pages: string[];
+    description?: string;
+    long_description?: string;
+    category?: string;
+    product_type?: string;
+    brand?: string;
+    weight?: string;
+    search_keywords?: string;
+    gtin?: string;
+    availability?: string;
+    minimum_quantity?: number;
+    is_special_order?: boolean;
+    is_taxable?: boolean;
+}
+
+function formatOptionalNumber(value: number | null): string | undefined {
+    if (value === null || Number.isNaN(value)) {
+        return undefined;
+    }
+
+    return String(value);
+}
+
+export function buildPipelineInputFromTransformedShopSiteProduct(
+    transformed: ReturnType<typeof transformShopSiteProduct>
+): ShopSitePipelineInput {
+    const input: ShopSitePipelineInput = {
+        name: transformed.name,
+        price: transformed.price,
+        product_on_pages: transformed.shopsite_pages,
+        minimum_quantity: transformed.minimum_quantity,
+        is_special_order: transformed.is_special_order,
+        is_taxable: transformed.is_taxable,
+    };
+
+    if (transformed.description) {
+        input.description = transformed.description;
+    }
+    if (transformed.long_description) {
+        input.long_description = transformed.long_description;
+    }
+    if (transformed.category_name) {
+        input.category = transformed.category_name;
+    }
+    if (transformed.product_type) {
+        input.product_type = transformed.product_type;
+    }
+    if (transformed.brand_name) {
+        input.brand = transformed.brand_name;
+    }
+    if (transformed.search_keywords) {
+        input.search_keywords = transformed.search_keywords;
+    }
+    if (transformed.gtin) {
+        input.gtin = transformed.gtin;
+    }
+    if (transformed.availability) {
+        input.availability = transformed.availability;
+    }
+
+    const formattedWeight = formatOptionalNumber(transformed.weight);
+    if (formattedWeight) {
+        input.weight = formattedWeight;
+    }
+
+    return input;
+}
+
+export function buildPipelineInputFromShopSiteProduct(product: ShopSiteProduct): ShopSitePipelineInput {
+    return buildPipelineInputFromTransformedShopSiteProduct(transformShopSiteProduct(product));
+}
+
 /**
  * Generate a unique slug by appending a counter if the base slug exists.
  */

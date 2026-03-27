@@ -13,6 +13,7 @@ import { buildResponseSchema, validateCategory, validateConsolidationTaxonomy, v
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
+import { parseShopSitePages } from '@/lib/shopsite/constants';
 import type {
     BatchJob,
     BatchMetadata,
@@ -40,9 +41,11 @@ const RELEVANT_FIELDS = [
     'size',
     'attributes',
     'description',
+    'long_description',
     'category',
     'categories',
     'product_type',
+    'product_on_pages',
     'flavor',
     'color',
     'unit',
@@ -96,6 +99,7 @@ function hasRelevantKeyName(key: string): boolean {
         'animal',
         'breed',
         'feature',
+        'page',
         'value',
         'data',
         'upc',
@@ -442,14 +446,10 @@ export function createBatchContent(
             }
         });
 
-        const userPrompt = `Consolidate this product data into a review-ready canonical record.\n\n${JSON.stringify(
-            {
-                sku: product.sku,
-                sources: filteredSources,
-            },
-            null,
-            2
-        )}`;
+        const userPrompt = `Consolidate this product into a canonical record: ${JSON.stringify({
+            sku: product.sku,
+            sources: filteredSources,
+        })}`;
 
         const request = {
             custom_id: product.sku,
@@ -498,10 +498,10 @@ export async function submitBatch(
         const config = await getConsolidationConfig();
 
         // Build prompt context with taxonomy
-        const { systemPrompt, categories, productTypes } = await buildPromptContext();
+        const { systemPrompt, categories, productTypes, shopsitePages = [] } = await buildPromptContext();
 
         // Build JSON schema with enum constraints
-        const responseFormat = buildResponseSchema(categories, productTypes);
+        const responseFormat = buildResponseSchema(categories, productTypes, shopsitePages);
 
         // Create JSONL content
         const content = createBatchContent(products, systemPrompt, responseFormat, config);
@@ -665,7 +665,7 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
 
     try {
         // Fetch taxonomy for validation
-        const { categories, productTypes } = await buildPromptContext();
+        const { categories, productTypes, shopsitePages = [] } = await buildPromptContext();
 
         const resolvedBatchId = await resolveOpenAIBatchId(batchId);
         const batch = await client.batches.retrieve(resolvedBatchId);
@@ -710,7 +710,7 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                         const parsed = parseJsonResponse(content);
 
                         if (parsed) {
-                            const normalized = normalizeConsolidationResult(parsed);
+                            const normalized = normalizeConsolidationResult(parsed, shopsitePages);
                             const validated = validateConsolidationTaxonomy(normalized, categories, productTypes);
 
                             const categoryValues = parseDelimitedTaxonomy(
@@ -849,13 +849,14 @@ export async function applyConsolidationResults(
         sku: string;
         consolidated: unknown;
         sources: unknown;
+        input: unknown;
         image_candidates: unknown;
         selected_images: unknown;
     }> = [];
     if (resultSkus.length > 0) {
         const existingRowsResponse = await supabase
             .from('products_ingestion')
-            .select('sku, consolidated, sources, image_candidates, selected_images')
+            .select('sku, consolidated, sources, input, image_candidates, selected_images')
             .in('sku', resultSkus);
 
         if (existingRowsResponse.error) {
@@ -866,6 +867,7 @@ export async function applyConsolidationResults(
             sku: string;
             consolidated: unknown;
             sources: unknown;
+            input: unknown;
             image_candidates: unknown;
             selected_images: unknown;
         }>;
@@ -876,6 +878,7 @@ export async function applyConsolidationResults(
         {
             consolidated: Record<string, unknown>;
             sources: Record<string, unknown>;
+            input: Record<string, unknown>;
             imageCandidates: string[];
             selectedImages: string[];
         }
@@ -883,6 +886,7 @@ export async function applyConsolidationResults(
     for (const row of existingRows) {
         const consolidated = row.consolidated;
         const sources = row.sources;
+        const input = row.input;
         const imageCandidates = toStringUrlArray(row.image_candidates);
         const selectedImages = extractSelectedImageUrls(row.selected_images);
 
@@ -895,11 +899,16 @@ export async function applyConsolidationResults(
             sources && typeof sources === 'object' && !Array.isArray(sources)
                 ? (sources as Record<string, unknown>)
                 : {};
+        const inputRecord =
+            input && typeof input === 'object' && !Array.isArray(input)
+                ? (input as Record<string, unknown>)
+                : {};
 
         if (consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)) {
             existingBySku.set(row.sku, {
                 consolidated: consolidatedRecord,
                 sources: sourceRecord,
+                input: inputRecord,
                 imageCandidates,
                 selectedImages,
             });
@@ -907,6 +916,7 @@ export async function applyConsolidationResults(
             existingBySku.set(row.sku, {
                 consolidated: consolidatedRecord,
                 sources: sourceRecord,
+                input: inputRecord,
                 imageCandidates,
                 selectedImages,
             });
@@ -1054,12 +1064,19 @@ export async function applyConsolidationResults(
 
             const nextCategory = parseDelimitedTaxonomy(result.category);
             const nextProductType = parseDelimitedTaxonomy(result.product_type);
+            const parsedPrice =
+                typeof result.price === 'number'
+                    ? result.price
+                    : typeof result.price === 'string'
+                        ? Number.parseFloat(result.price)
+                        : Number.NaN;
 
             const nextFields: Record<string, unknown> = {
                 ...(result.name ? { name: result.name } : {}),
-                description: result.name || existingConsolidated.name || '',
-                long_description: result.name || existingConsolidated.name || '',
+                ...(result.description ? { description: result.description } : {}),
+                ...(result.long_description ? { long_description: result.long_description } : {}),
                 ...(result.weight ? { weight: result.weight } : {}),
+                ...(Number.isFinite(parsedPrice) ? { price: parsedPrice } : {}),
                 ...(resolvedBrandName ? { brand: resolvedBrandName } : {}),
                 ...(resolvedBrandId ? { brand_id: resolvedBrandId } : {}),
                 ...(nextCategory.length > 0 ? { category: nextCategory.join('|') } : {}),
@@ -1092,12 +1109,10 @@ export async function applyConsolidationResults(
             }
 
             // Handle product_on_pages (stored as array in consolidated jsonb)
-            if (result.product_on_pages) {
-                const pages = Array.isArray(result.product_on_pages)
-                    ? result.product_on_pages
-                    : typeof result.product_on_pages === 'string'
-                        ? result.product_on_pages.split('|').map(p => p.trim()).filter(Boolean)
-                        : [];
+            {
+                const pages = result.product_on_pages
+                    ? parseShopSitePages(result.product_on_pages)
+                    : parseShopSitePages(existingRecord?.input.product_on_pages);
                 if (pages.length > 0) {
                     nextFields.product_on_pages = pages;
                 }

@@ -77,13 +77,20 @@ export function FleetStatusWidget() {
               {runners.map((runner) => (
                 <div
                   key={runner.name}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card text-card-foreground shadow-sm"
+                  className={`flex items-center justify-between p-3 rounded-lg border bg-card text-card-foreground shadow-sm ${
+                    !runner.enabled ? "opacity-60 bg-muted/30" : ""
+                  }`}
                 >
                   <div className="flex flex-col gap-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm truncate" title={runner.name}>
                         {runner.name}
                       </span>
+                      {!runner.enabled && (
+                        <Badge variant="outline" className="text-[10px] h-4 px-1 uppercase tracking-wider border-orange-200 text-orange-700 bg-orange-50/50">
+                          Disabled
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center text-xs text-muted-foreground">
                       <span className="truncate">

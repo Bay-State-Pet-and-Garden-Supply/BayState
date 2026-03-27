@@ -213,7 +213,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, image_candidates, selected_images') {
+            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -318,6 +318,7 @@ describe('consolidation batch service', () => {
                         sku: 'SKU-NEW',
                         consolidated: {},
                         sources: {},
+                        input: {},
                         image_candidates: [],
                         selected_images: [],
                     },
@@ -337,7 +338,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, image_candidates, selected_images') {
+            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -419,5 +420,113 @@ describe('consolidation batch service', () => {
                 })
             );
         }
+    });
+
+    it('applyConsolidationResults keeps model descriptions and falls back to input product_on_pages', async () => {
+        const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
+            data: { sku: 'SKU-PAGES' },
+            error: null,
+        });
+        const productsIngestionUpdateSelect = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionUpdateMaybeSingle });
+        const productsIngestionUpdateEq = jest.fn();
+        productsIngestionUpdateEq.mockReturnValue({
+            eq: productsIngestionUpdateEq,
+            select: productsIngestionUpdateSelect,
+        });
+        const productsIngestionUpdate = jest
+            .fn()
+            .mockReturnValue({ eq: productsIngestionUpdateEq });
+
+        const productsIngestionSelectBySkuIn = {
+            in: jest.fn().mockResolvedValue({
+                data: [
+                    {
+                        sku: 'SKU-PAGES',
+                        consolidated: {},
+                        sources: {},
+                        input: {
+                            product_on_pages: ['Dog Food Dry', 'Dog Food Shop All'],
+                        },
+                        image_candidates: [],
+                        selected_images: [],
+                    },
+                ],
+                error: null,
+            }),
+        };
+
+        const productsIngestionSelectCurrentMaybeSingle = jest.fn().mockResolvedValue({
+            data: {
+                consolidated: {},
+                updated_at: '2026-03-27T00:00:00.000Z',
+            },
+            error: null,
+        });
+        const productsIngestionSelectCurrentEq = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
+        const productsIngestionSelect = jest.fn((columns: string) => {
+            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
+                return productsIngestionSelectBySkuIn;
+            }
+            if (columns === 'consolidated, updated_at') {
+                return {
+                    eq: productsIngestionSelectCurrentEq,
+                };
+            }
+            throw new Error(`Unexpected products_ingestion select columns: ${columns}`);
+        });
+
+        const brandsSelect = jest.fn().mockResolvedValue({
+            data: [{ id: 'brand-uuid-2', name: 'Acme' }],
+            error: null,
+        });
+
+        const supabaseMock = {
+            from: jest.fn((table: string) => {
+                if (table === 'products_ingestion') {
+                    return {
+                        select: productsIngestionSelect,
+                        update: productsIngestionUpdate,
+                    };
+                }
+
+                if (table === 'brands') {
+                    return {
+                        select: brandsSelect,
+                    };
+                }
+
+                throw new Error(`Unexpected table: ${table}`);
+            }),
+        };
+
+        (createAdminClient as jest.Mock).mockResolvedValue(supabaseMock);
+
+        const response = await applyConsolidationResults([
+            {
+                sku: 'SKU-PAGES',
+                name: 'Acme Crunchy Bites 10 oz.',
+                brand: 'Acme',
+                description: 'Short shelf-ready description.',
+                long_description: 'Longer detail-page description with more product context.',
+                category: 'Dog',
+                product_type: 'Dog Treats',
+                confidence_score: 0.88,
+            },
+        ]);
+
+        expect('status' in response && response.status === 'applied').toBe(true);
+        expect(productsIngestionUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                consolidated: expect.objectContaining({
+                    description: 'Short shelf-ready description.',
+                    long_description: 'Longer detail-page description with more product context.',
+                    product_on_pages: ['Dog Food Dry', 'Dog Food Shop All'],
+                }),
+            })
+        );
     });
 });

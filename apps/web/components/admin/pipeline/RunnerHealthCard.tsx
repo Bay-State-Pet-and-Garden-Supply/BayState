@@ -11,6 +11,7 @@ interface Runner {
   id: string;
   name: string;
   status: RunnerStatus;
+  enabled?: boolean;
   activeJobs: number;
   lastSeen: Date;
   cpuUsage?: number;
@@ -50,6 +51,7 @@ export function RunnerHealthCard({
 }: RunnerHealthCardProps) {
   const statusConfig = STATUS_CONFIG[runner.status];
   const isOffline = runner.status === 'offline';
+  const isEnabled = runner.enabled !== false;
 
   // Using useMemo to store the formatted string from an impure source (Date.now())
   const lastSeenText = useMemo(() => formatLastSeen(runner.lastSeen), [runner.lastSeen]);
@@ -58,14 +60,22 @@ export function RunnerHealthCard({
     <Card
       className={cn(
         'transition-shadow',
-        onClick && !isOffline && 'cursor-pointer hover:shadow-md hover:ring-2 hover:ring-primary/20'
+        onClick && !isOffline && 'cursor-pointer hover:shadow-md hover:ring-2 hover:ring-primary/20',
+        !isEnabled && 'opacity-70 grayscale-[0.3]'
       )}
       onClick={() => !isOffline && onClick?.(runner)}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-base">{runner.name}</CardTitle>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">{runner.name}</CardTitle>
+              {!isEnabled && (
+                <Badge variant="outline" className="text-[10px] h-4 px-1 uppercase tracking-wider border-orange-200 text-orange-700 bg-orange-50/50">
+                  Disabled
+                </Badge>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
               Last seen: {lastSeenText}
             </p>

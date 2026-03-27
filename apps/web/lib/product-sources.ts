@@ -521,6 +521,50 @@ export function buildConsolidationSourcesPayload(
     };
 
     if (isRecord(rawInput) && Object.keys(rawInput).length > 0) {
+        const shopSiteInputSource: Record<string, unknown> = {};
+        const copyScalarField = (key: string) => {
+            const value = rawInput[key];
+            if (hasMeaningfulValue(value)) {
+                shopSiteInputSource[key] = value;
+            }
+        };
+
+        [
+            'name',
+            'brand',
+            'price',
+            'description',
+            'long_description',
+            'category',
+            'product_type',
+            'weight',
+            'search_keywords',
+            'gtin',
+            'availability',
+            'minimum_quantity',
+            'is_special_order',
+            'is_taxable',
+        ].forEach(copyScalarField);
+
+        if (Array.isArray(rawInput.product_on_pages)) {
+            const normalizedPages = rawInput.product_on_pages
+                .filter((entry): entry is string => typeof entry === 'string')
+                .map((entry) => entry.trim())
+                .filter((entry) => entry.length > 0);
+
+            if (normalizedPages.length > 0) {
+                shopSiteInputSource.product_on_pages = Array.from(new Set(normalizedPages));
+            }
+        } else if (typeof rawInput.product_on_pages === 'string' && rawInput.product_on_pages.trim()) {
+            shopSiteInputSource.product_on_pages = rawInput.product_on_pages
+                .split('|')
+                .map((entry) => entry.trim())
+                .filter((entry) => entry.length > 0);
+        }
+
+        if (Object.keys(shopSiteInputSource).length > 0) {
+            payload.shopsite_input = shopSiteInputSource;
+        }
         payload._input = rawInput;
     }
 

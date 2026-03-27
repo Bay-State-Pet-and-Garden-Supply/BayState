@@ -64,6 +64,7 @@ interface ApiRunnerData {
   labels: string[];
   last_seen?: string;
   active_jobs?: number;
+  enabled: boolean;
 }
 
 /**
@@ -176,6 +177,7 @@ export function useRunnerPresence(
           status: runner.status === "offline" ? "offline" : "online",
           active_jobs: runner.active_jobs ?? (runner.busy ? 1 : 0),
           last_seen: runner.last_seen ?? new Date(0).toISOString(),
+          enabled: runner.enabled,
           metadata: {
             os: runner.os,
             labels: runner.labels,

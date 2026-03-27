@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { transformShopSiteProduct, generateUniqueSlug } from './product-sync';
+import {
+    buildPipelineInputFromShopSiteProduct,
+    generateUniqueSlug,
+    transformShopSiteProduct,
+} from './product-sync';
 import { inferPetTypes, PetTypeName } from './pet-type-inference';
 import type { MigrationError, ShopSiteProduct, SyncResult } from './types';
 import {
@@ -287,4 +291,69 @@ export async function importShopSiteProducts({
         errors,
         duration: Date.now() - startTime,
     };
+}
+
+export async function syncExistingProductsIngestionInputFromShopSite({
+    supabase,
+    shopSiteProducts,
+}: {
+    supabase: SupabaseClient;
+    shopSiteProducts: ShopSiteProduct[];
+}): Promise<{ updated: number }> {
+    if (shopSiteProducts.length === 0) {
+        return { updated: 0 };
+    }
+
+    const inputBySku = new Map(
+        shopSiteProducts.map((product) => [product.sku, buildPipelineInputFromShopSiteProduct(product)])
+    );
+    const BATCH_SIZE = 500;
+    let updated = 0;
+
+    for (let index = 0; index < shopSiteProducts.length; index += BATCH_SIZE) {
+        const batchProducts = shopSiteProducts.slice(index, index + BATCH_SIZE);
+        const batchSkus = batchProducts.map((product) => product.sku);
+
+        const { data: existingRows, error: existingRowsError } = await supabase
+            .from('products_ingestion')
+            .select('sku, input')
+            .in('sku', batchSkus);
+
+        if (existingRowsError) {
+            throw new Error(`Failed to load products_ingestion rows: ${existingRowsError.message}`);
+        }
+
+        if (!existingRows || existingRows.length === 0) {
+            continue;
+        }
+
+        const updatedAt = new Date().toISOString();
+        const updateRows = existingRows.map((row) => {
+            const existingInput =
+                row.input && typeof row.input === 'object' && !Array.isArray(row.input)
+                    ? (row.input as Record<string, unknown>)
+                    : {};
+
+            return {
+                sku: row.sku,
+                input: {
+                    ...existingInput,
+                    ...inputBySku.get(row.sku),
+                },
+                updated_at: updatedAt,
+            };
+        });
+
+        const { error: upsertError } = await supabase
+            .from('products_ingestion')
+            .upsert(updateRows, { onConflict: 'sku' });
+
+        if (upsertError) {
+            throw new Error(`Failed to sync products_ingestion inputs: ${upsertError.message}`);
+        }
+
+        updated += updateRows.length;
+    }
+
+    return { updated };
 }

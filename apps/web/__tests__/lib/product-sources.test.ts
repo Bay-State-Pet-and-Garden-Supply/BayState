@@ -1,4 +1,5 @@
 import {
+    buildConsolidationSourcesPayload,
     extractImageCandidatesFromSourcePayload,
     filterMeaningfulProductSources,
     hasMeaningfulProductSourceData,
@@ -89,6 +90,31 @@ describe('normalizeProductSources', () => {
                 unit_of_measure: 'EA',
             },
         });
+    });
+
+    it('adds ShopSite input as a consolidation source with product_on_pages', () => {
+        const result = buildConsolidationSourcesPayload(
+            {
+                amazon: {
+                    title: 'Source Product Title',
+                },
+            },
+            {
+                name: 'Catalog Product Title',
+                product_on_pages: ['Dog Food Dry', 'Dog Food Shop All'],
+                category: 'Dog Food',
+            }
+        );
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                shopsite_input: {
+                    name: 'Catalog Product Title',
+                    product_on_pages: ['Dog Food Dry', 'Dog Food Shop All'],
+                    category: 'Dog Food',
+                },
+            })
+        );
     });
 
     it('normalizes top-level legacy fields into the _legacy source payload', () => {

@@ -45,7 +45,12 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
@@ -1570,6 +1575,9 @@ export function FinalizingResultsView({
                                       </div>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-white/95 backdrop-blur-sm border-none shadow-2xl">
+                                      <DialogTitle className="sr-only">
+                                        Zoomed product image {index + 1}
+                                      </DialogTitle>
                                       <div className="relative w-full h-[90vh] flex items-center justify-center p-8">
                                         <img
                                           src={url}

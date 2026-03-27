@@ -4,6 +4,7 @@ import {
     buildProductImageStorageFolder,
     replaceInlineImageDataUrls,
 } from '@/lib/product-image-storage';
+import { parseShopSitePages } from '@/lib/shopsite/constants';
 
 /**
  * Publishes a product from the ingestion pipeline to the storefront catalog.
@@ -84,12 +85,9 @@ export async function publishToStorefront(sku: string) {
         }
 
         // Resolve product_on_pages to shopsite_pages jsonb
-        let shopsitePages: string[] = [];
-        if (Array.isArray(consolidated.product_on_pages)) {
-            shopsitePages = consolidated.product_on_pages as string[];
-        } else if (typeof consolidated.product_on_pages === 'string' && consolidated.product_on_pages) {
-            shopsitePages = (consolidated.product_on_pages as string).split('|').map((p: string) => p.trim()).filter(Boolean);
-        }
+        const shopsitePages = parseShopSitePages(
+            consolidated.product_on_pages ?? input.product_on_pages
+        );
 
         // Prepare product data for 'products' table
         const productData = {
