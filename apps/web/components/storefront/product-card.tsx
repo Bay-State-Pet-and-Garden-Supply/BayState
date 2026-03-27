@@ -4,7 +4,7 @@ import { type Product } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { WishlistButton } from './wishlist-button';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatImageUrl } from '@/lib/utils';
 import { ImageIcon } from 'lucide-react';
 
 interface ProductCardProps {
@@ -18,8 +18,9 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const formattedPrice = formatCurrency(product.price);
 
-  const imageSrc = product.images?.[0]?.trim();
-  const hasValidImage = Boolean(imageSrc) && (imageSrc?.startsWith('/') || imageSrc?.startsWith('http'));
+  const rawImageSrc = product.images?.[0];
+  const imageSrc = formatImageUrl(rawImageSrc);
+  const hasValidImage = Boolean(imageSrc);
 
   return (
     <div className="group relative h-full">
