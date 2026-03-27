@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { syncProductCategoryLinks } from '@/lib/product-category-sync';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
 
@@ -81,6 +82,8 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
             console.error('Database Error:', error);
             return { success: false, error: 'Failed to update product in database' };
         }
+
+        await syncProductCategoryLinks(supabase, id, validatedData.category ?? null);
 
         revalidatePath('/admin/products');
         return { success: true };

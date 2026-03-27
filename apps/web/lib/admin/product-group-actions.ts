@@ -231,7 +231,23 @@ export async function getProductGroupMembers(groupId: string) {
 
   const { data, error } = await supabase
     .from('product_group_products')
-    .select('*, product:products(*)')
+    .select(`
+      group_id,
+      product_id,
+      sort_order,
+      is_default,
+      display_label,
+      metadata,
+      created_at,
+      product:products(
+        id,
+        name,
+        slug,
+        price,
+        images,
+        stock_status
+      )
+    `)
     .eq('group_id', groupId)
     .order('sort_order')
 

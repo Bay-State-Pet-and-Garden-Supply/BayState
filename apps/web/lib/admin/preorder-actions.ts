@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { updateProductPickupOnlySetting } from '@/lib/product-storefront-settings'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -215,14 +216,11 @@ export async function updateProductPickupOnly(formData: FormData) {
   const pickupOnly = formData.get('pickup_only') === 'true'
   const supabase = await createClient()
 
-  const { error } = await supabase
-    .from('products')
-    .update({ pickup_only: pickupOnly })
-    .eq('id', productId)
-
-  if (error) {
+  try {
+    await updateProductPickupOnlySetting(supabase, productId, pickupOnly)
+  } catch (error) {
     console.error('Failed to update product pickup_only:', error)
-    throw new Error(error.message || 'Failed to update product')
+    throw error
   }
 
   revalidatePath(`/admin/products/${productId}/edit`)

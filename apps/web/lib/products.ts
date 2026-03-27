@@ -1,5 +1,42 @@
 import { createClient } from '@/lib/supabase/server';
+import {
+  normalizeProductStorefrontSettings,
+  PRODUCT_STOREFRONT_SETTINGS_SELECT,
+  type ProductStorefrontSettingsRelation,
+} from '@/lib/product-storefront-settings';
 import type { Product, ProductGroup, ProductGroupMember } from '@/lib/types';
+
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+const PRODUCT_SELECT = `
+  id,
+  sku,
+  brand_id,
+  name,
+  slug,
+  description,
+  long_description,
+  price,
+  stock_status,
+  images,
+  is_special_order,
+  is_taxable,
+  category,
+  weight,
+  product_type,
+  search_keywords,
+  shopsite_pages,
+  published_at,
+  gtin,
+  availability,
+  minimum_quantity,
+  quantity,
+  low_stock_threshold,
+  created_at,
+  updated_at,
+  brand:brands(id, name, slug, logo_url),
+  ${PRODUCT_STOREFRONT_SETTINGS_SELECT}
+`;
 
 /**
  * Transforms a row from products table to Product interface.
@@ -7,88 +44,149 @@ import type { Product, ProductGroup, ProductGroupMember } from '@/lib/types';
  */
 interface ProductRow {
   id: string;
+  sku: string | null;
   brand_id: string | null;
   name: string;
   slug: string;
   description: string | null;
+  long_description: string | null;
   price: number;
-  sale_price: number | null;
   stock_status: string;
   images: unknown;
-  is_featured: boolean;
-  is_special_order: boolean;
+  is_special_order: boolean | null;
+  is_taxable: boolean | null;
+  category: string | null;
+  product_type: string | null;
   weight: number | null;
   search_keywords: string | null;
-  category_id: string | null;
-  created_at: string;
-  compare_at_price: number | null;
-  cost_price: number | null;
+  shopsite_pages: unknown;
+  published_at: string | null;
+  gtin: string | null;
+  availability: string | null;
+  minimum_quantity: number | null;
   quantity: number | null;
   low_stock_threshold: number | null;
-  is_taxable: boolean | null;
-  tax_code: string | null;
-  barcode: string | null;
-  meta_title: string | null;
-  meta_description: string | null;
-  dimensions: Record<string, unknown> | null;
-  origin_country: string | null;
-  vendor: string | null;
-  published_at: string | null;
-  avg_rating: number | null;
-  review_count: number | null;
-  brand: {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url: string | null;
-  } | null;
+  created_at: string;
+  updated_at: string;
+  brand:
+    | {
+        id: string;
+        name: string;
+        slug: string;
+        logo_url: string | null;
+      }
+    | Array<{
+        id: string;
+        name: string;
+        slug: string;
+        logo_url: string | null;
+      }>
+    | null;
+  storefront_settings: ProductStorefrontSettingsRelation;
 }
 
 function transformProductRow(row: ProductRow): Product {
+  const storefrontSettings = normalizeProductStorefrontSettings(row.storefront_settings);
+  const brand = Array.isArray(row.brand) ? row.brand[0] ?? null : row.brand;
   const product: Product = {
     id: row.id,
+    sku: row.sku,
     brand_id: row.brand_id,
     name: row.name,
     slug: row.slug,
     description: row.description,
+    long_description: row.long_description,
     price: Number(row.price),
-    sale_price: row.sale_price ? Number(row.sale_price) : null,
     stock_status: (row.stock_status as Product['stock_status']) || 'in_stock',
     images: parseImages(row.images),
-    is_featured: Boolean(row.is_featured),
+    is_featured: storefrontSettings.is_featured,
     is_special_order: Boolean(row.is_special_order),
-    weight: row.weight ? Number(row.weight) : null,
+    pickup_only: storefrontSettings.pickup_only,
+    weight: row.weight !== null ? Number(row.weight) : null,
     search_keywords: row.search_keywords,
-    category_id: row.category_id,
+    category: row.category,
     created_at: row.created_at,
-    compare_at_price: row.compare_at_price ? Number(row.compare_at_price) : null,
-    cost_price: row.cost_price ? Number(row.cost_price) : null,
+    updated_at: row.updated_at,
     quantity: row.quantity ?? 0,
     low_stock_threshold: row.low_stock_threshold ?? 5,
     is_taxable: row.is_taxable ?? true,
-    tax_code: row.tax_code,
-    barcode: row.barcode,
-    meta_title: row.meta_title,
-    meta_description: row.meta_description,
-    dimensions: row.dimensions as Product['dimensions'],
-    origin_country: row.origin_country,
-    vendor: row.vendor,
     published_at: row.published_at,
-    avg_rating: row.avg_rating ? Number(row.avg_rating) : null,
-    review_count: row.review_count ?? 0,
+    gtin: row.gtin,
+    availability: row.availability,
+    minimum_quantity: row.minimum_quantity ?? 0,
+    product_type: row.product_type,
+    shopsite_pages: parseImages(row.shopsite_pages),
   };
 
   // Brand data is included via join
-  if (row.brand) {
+  if (brand) {
     product.brand = {
-      id: row.brand.id,
-      name: row.brand.name,
-      slug: row.brand.slug,
-      logo_url: row.brand.logo_url,
+      id: brand.id,
+      name: brand.name,
+      slug: brand.slug,
+      logo_url: brand.logo_url,
     };
   }
 
   return product;
+}
+
+async function resolveCategoryProductIds(
+  supabase: ServerSupabaseClient,
+  options: { categoryId?: string; categorySlug?: string }
+): Promise<string[] | null> {
+  let resolvedCategoryId = options.categoryId ?? null;
+
+  if (!resolvedCategoryId && options.categorySlug) {
+    const { data: category, error } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('slug', options.categorySlug)
+      .single();
+
+    if (error || !category) {
+      return [];
+    }
+
+    resolvedCategoryId = category.id;
+  }
+
+  if (!resolvedCategoryId) {
+    return null;
+  }
+
+  const { data: productCategories, error } = await supabase
+    .from('product_categories')
+    .select('product_id')
+    .eq('category_id', resolvedCategoryId);
+
+  if (error) {
+    console.error('Error resolving product categories:', error);
+    return [];
+  }
+
+  return (productCategories || []).map((row) => row.product_id);
+}
+
+async function resolveFeaturedProductIds(
+  supabase: ServerSupabaseClient,
+  featured?: boolean
+): Promise<string[] | null> {
+  if (!featured) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('product_storefront_settings')
+    .select('product_id')
+    .eq('is_featured', true);
+
+  if (error) {
+    console.error('Error resolving featured products:', error);
+    return [];
+  }
+
+  return (data || []).map((row) => row.product_id);
 }
 
 /**
@@ -121,7 +219,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('products')
-    .select('*, brand:brands(id, name, slug, logo_url)')
+    .select(PRODUCT_SELECT)
     .eq('slug', slug)
     .single();
 
@@ -144,7 +242,7 @@ export async function getProductById(id: string): Promise<Product | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('products')
-    .select('*, brand:brands(id, name, slug, logo_url)')
+    .select(PRODUCT_SELECT)
     .eq('id', id)
     .single();
 
@@ -180,25 +278,19 @@ export async function getFilteredProducts(options?: {
   const supabase = await createClient();
   let query = supabase
     .from('products')
-    .select('*, brand:brands(id, name, slug, logo_url)', { count: 'exact' });
+    .select(PRODUCT_SELECT, { count: 'exact' });
 
-  // Filter by category slug - resolve to ID first
-  if (options?.categorySlug) {
-    const { data: category } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('slug', options.categorySlug)
-      .single();
+  const categoryProductIds = await resolveCategoryProductIds(supabase, {
+    categoryId: options?.categoryId,
+    categorySlug: options?.categorySlug,
+  });
 
-    if (category) {
-      query = query.eq('category_id', category.id);
-    } else {
+  if (categoryProductIds) {
+    if (categoryProductIds.length === 0) {
       return { products: [], count: 0 };
     }
-  }
-  // Filter by category ID
-  if (options?.categoryId) {
-    query = query.eq('category_id', options.categoryId);
+
+    query = query.in('id', categoryProductIds);
   }
   // Filter by brand slug - resolve to ID first for performance/simplicity
   if (options?.brandSlug) {
@@ -247,9 +339,14 @@ export async function getFilteredProducts(options?: {
   if (options?.search) {
     query = query.ilike('name', `%${options.search}%`);
   }
-  // Filter featured only
-  if (options?.featured) {
-    query = query.eq('is_featured', true);
+
+  const featuredProductIds = await resolveFeaturedProductIds(supabase, options?.featured);
+  if (featuredProductIds) {
+    if (featuredProductIds.length === 0) {
+      return { products: [], count: 0 };
+    }
+
+    query = query.in('id', featuredProductIds);
   }
 
   query = query.order('created_at', { ascending: false });
@@ -292,7 +389,7 @@ export async function getAllProducts(): Promise<Product[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('products')
-    .select('*, brand:brands(id, name, slug, logo_url)')
+    .select(PRODUCT_SELECT)
     .order('name');
 
   if (error) {
@@ -364,8 +461,12 @@ export async function getProductGroupBySlug(
     .select(`
       *,
       product:products(
-        id, name, slug, price, stock_status, images,
-        brand_id, description, is_featured
+        id, sku, name, slug, description, long_description, price,
+        stock_status, images, brand_id, is_special_order, is_taxable,
+        category, weight, product_type, search_keywords, shopsite_pages,
+        published_at, gtin, availability, minimum_quantity, quantity,
+        low_stock_threshold, created_at, updated_at,
+        storefront_settings:product_storefront_settings(is_featured, pickup_only)
       )
     `)
     .eq('group_id', group.id)
@@ -383,6 +484,9 @@ export async function getProductGroupBySlug(
   for (const row of membersData || []) {
     const product = row.product as Record<string, unknown> | undefined;
     if (!product) continue;
+    const storefrontSettings = normalizeProductStorefrontSettings(
+      product.storefront_settings as ProductStorefrontSettingsRelation
+    );
 
     const member: ProductGroupMember = {
       group_id: row.group_id,
@@ -396,35 +500,38 @@ export async function getProductGroupBySlug(
 
     const productData: Product = {
       id: product.id as string,
+      sku: (product.sku as string | null) ?? null,
       brand_id: product.brand_id as string | null,
       name: product.name as string,
       slug: product.slug as string,
       description: product.description as string | null,
+      long_description: product.long_description as string | null,
       price: Number(product.price),
-      sale_price: null,
       stock_status: (product.stock_status as Product['stock_status']) || 'in_stock',
       images: parseImages(product.images),
-      is_featured: Boolean(product.is_featured),
-      is_special_order: false,
-      weight: null,
-      search_keywords: null,
-      category_id: null,
-      created_at: '',
-      compare_at_price: null,
-      cost_price: null,
-      quantity: 0,
-      low_stock_threshold: 5,
-      is_taxable: true,
-      tax_code: null,
-      barcode: null,
-      meta_title: null,
-      meta_description: null,
-      dimensions: null,
-      origin_country: null,
-      vendor: null,
-      published_at: null,
-      avg_rating: null,
-      review_count: 0,
+      is_featured: storefrontSettings.is_featured,
+      is_special_order: Boolean(product.is_special_order),
+      pickup_only: storefrontSettings.pickup_only,
+      weight: typeof product.weight === 'number' ? (product.weight as number) : null,
+      search_keywords: product.search_keywords as string | null,
+      category: product.category as string | null,
+      created_at: (product.created_at as string | undefined) ?? '',
+      updated_at: product.updated_at as string | undefined,
+      quantity: typeof product.quantity === 'number' ? (product.quantity as number) : 0,
+      low_stock_threshold:
+        typeof product.low_stock_threshold === 'number'
+          ? (product.low_stock_threshold as number)
+          : 5,
+      is_taxable: product.is_taxable !== false,
+      published_at: product.published_at as string | null,
+      gtin: product.gtin as string | null,
+      availability: product.availability as string | null,
+      minimum_quantity:
+        typeof product.minimum_quantity === 'number'
+          ? (product.minimum_quantity as number)
+          : 0,
+      product_type: product.product_type as string | null,
+      shopsite_pages: parseImages(product.shopsite_pages),
     };
 
     members.push({ member, product: productData });
