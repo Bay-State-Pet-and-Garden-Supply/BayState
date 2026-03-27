@@ -281,7 +281,11 @@ export function PipelineProductDetail({
             <Package className="h-6 w-6 text-muted-foreground" />
             <div>
               <h2 id="modal-title" className="text-lg font-semibold">Edit Product</h2>
-              <p className="text-sm text-muted-foreground font-mono tabular-nums">{sku}</p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono tabular-nums">
+                <span className="bg-muted px-1.5 py-0.5 rounded">{sku}</span>
+                <span>•</span>
+                <span className="font-bold text-primary">${Number(price || 0).toFixed(2)}</span>
+              </div>
             </div>
           </div>
           <button
@@ -336,18 +340,6 @@ export function PipelineProductDetail({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price" className="text-sm font-medium">Price ($) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="weight" className="text-sm font-medium">Weight (lb)</Label>
                     <Input
