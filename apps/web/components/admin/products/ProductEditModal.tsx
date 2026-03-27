@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Package, AlertCircle, Info } from 'lucide-react';
+import { Save, Package, AlertCircle, Info, Search, Plus, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { PetTypeSelector } from './PetTypeSelector';
 import { updateProduct } from '@/app/admin/products/actions';
 import { cn } from '@/lib/utils';
@@ -93,7 +98,17 @@ export function ProductEditModal({
     const [weight, setWeight] = useState(product.weight || '');
     const [brandId, setBrandId] = useState(product.brand_id || 'none');
     const [category, setCategory] = useState(product.category || '');
-    const [productType, setProductType] = useState(product.product_type || '');
+    const [productType, setProductType] = useState<string[]>(
+        product.product_type
+            ? product.product_type.split('|').map((t) => t.trim()).filter(Boolean)
+            : []
+    );
+
+    // Product Type reference data state
+    const [productTypes, setProductTypes] = useState<{ id: string; name: string }[]>([]);
+    const [productTypeSearch, setProductTypeSearch] = useState("");
+    const [creatingProductType, setCreatingProductType] = useState(false);
+    const [productTypePopoverOpen, setProductTypePopoverOpen] = useState(false);
     const [searchKeywords, setSearchKeywords] = useState(product.search_keywords || '');
     const [gtin, setGtin] = useState(product.gtin || '');
     const [availability, setAvailability] = useState(product.availability || 'in stock');
@@ -148,9 +163,10 @@ export function ProductEditModal({
     useEffect(() => {
         async function fetchData() {
             try {
-                const [brandsRes, petTypesRes] = await Promise.all([
+                const [brandsRes, petTypesRes, productTypesRes] = await Promise.all([
                     fetch('/api/admin/brands'),
                     fetch(`/api/admin/products/${product.id}/pet-types`),
+                    fetch('/api/admin/product-types'),
                 ]);
                 
                 if (brandsRes.ok) {
@@ -161,6 +177,11 @@ export function ProductEditModal({
                 if (petTypesRes.ok) {
                     const data = await petTypesRes.json();
                     setSelectedPetTypes(data.petTypes || []);
+                }
+
+                if (productTypesRes.ok) {
+                    const data = await productTypesRes.json();
+                    setProductTypes(data.productTypes || []);
                 }
             } catch (err) {
                 console.error('Failed to load data', err);
@@ -196,6 +217,35 @@ export function ProductEditModal({
         );
     };
 
+    const handleCreateProductType = async () => {
+        if (!productTypeSearch.trim()) return;
+        setCreatingProductType(true);
+        try {
+            const res = await fetch("/api/admin/product-types", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: productTypeSearch.trim() }),
+            });
+            if (res.ok) {
+                const { productType: newPT } = await res.json();
+                setProductTypes((prev) =>
+                    [...prev, newPT].sort((a, b) => a.name.localeCompare(b.name)),
+                );
+                setProductType((prev) => [...prev, newPT.name]);
+                setProductTypeSearch("");
+                setProductTypePopoverOpen(false);
+                toast.success(`Product type "${newPT.name}" created`);
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to create product type");
+            }
+        } catch {
+            toast.error("An error occurred while creating product type");
+        } finally {
+            setCreatingProductType(false);
+        }
+    };
+
     const handleSave = async () => {
         setSaving(true);
         setError(null);
@@ -209,7 +259,7 @@ export function ProductEditModal({
             formData.append('price', price);
             formData.append('weight', weight.trim());
             formData.append('category', category.trim());
-            formData.append('product_type', productType.trim());
+            formData.append('product_type', productType.join('|'));
             formData.append('search_keywords', searchKeywords.trim());
             formData.append('gtin', gtin.trim());
             formData.append('availability', availability.trim());
@@ -385,12 +435,123 @@ export function ProductEditModal({
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="productType">Product Type</Label>
-                                        <Input
-                                            id="productType"
-                                            value={productType}
-                                            onChange={(e) => setProductType(e.target.value)}
-                                            placeholder="e.g. Kibble"
-                                        />
+                                        <Popover
+                                            open={productTypePopoverOpen}
+                                            onOpenChange={setProductTypePopoverOpen}
+                                        >
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    id="productType"
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={productTypePopoverOpen}
+                                                    className="w-full justify-between font-normal min-h-[40px] h-auto px-3"
+                                                >
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {productType.length > 0 ? (
+                                                            productType.map((type) => (
+                                                                <Badge key={type} variant="secondary" className="gap-1 px-1 py-0 h-5">
+                                                                    {type}
+                                                                    <X
+                                                                        className="h-3 w-3 cursor-pointer hover:text-destructive"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setProductType(prev => prev.filter(t => t !== type));
+                                                                        }}
+                                                                    />
+                                                                </Badge>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-muted-foreground">Select types...</span>
+                                                        )}
+                                                    </div>
+                                                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="w-[var(--radix-popover-trigger-width)] p-0"
+                                                align="start"
+                                            >
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center border-b px-3 py-2">
+                                                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        <input
+                                                            className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                                            placeholder="Search product types..."
+                                                            value={productTypeSearch}
+                                                            onChange={(e) =>
+                                                                setProductTypeSearch(e.target.value)
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div className="max-h-[200px] overflow-y-auto p-1">
+                                                        {productTypes
+                                                            .filter((pt) =>
+                                                                pt.name.toLowerCase().includes(productTypeSearch.toLowerCase())
+                                                            )
+                                                            .map((pt) => {
+                                                                const isSelected = productType.includes(pt.name);
+                                                                return (
+                                                                    <div
+                                                                        key={pt.id}
+                                                                        className={cn(
+                                                                            "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                                                            isSelected &&
+                                                                            "bg-accent text-accent-foreground",
+                                                                        )}
+                                                                        onClick={() => {
+                                                                            setProductType(prev =>
+                                                                                isSelected
+                                                                                    ? prev.filter(t => t !== pt.name)
+                                                                                    : [...prev, pt.name]
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                isSelected
+                                                                                    ? "opacity-100"
+                                                                                    : "opacity-0",
+                                                                            )}
+                                                                        />
+                                                                        {pt.name}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        {productTypes.filter((pt) =>
+                                                            pt.name.toLowerCase().includes(productTypeSearch.toLowerCase())
+                                                        ).length === 0 &&
+                                                            productTypeSearch && (
+                                                                <div className="p-2 text-xs text-muted-foreground italic">
+                                                                    No product types found.
+                                                                </div>
+                                                            )}
+                                                    </div>
+                                                    {productTypeSearch.trim() &&
+                                                        !productTypes.find(
+                                                            (pt) =>
+                                                                pt.name.toLowerCase() ===
+                                                                productTypeSearch.toLowerCase().trim(),
+                                                        ) && (
+                                                            <div className="border-t p-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="w-full justify-start text-xs font-normal"
+                                                                    onClick={handleCreateProductType}
+                                                                    disabled={creatingProductType}
+                                                                >
+                                                                    <Plus className="mr-2 h-3 w-3" />
+                                                                    {creatingProductType
+                                                                        ? "Creating..."
+                                                                        : `Create "${productTypeSearch.trim()}"`}
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                 </div>
                                 <div className="space-y-2">

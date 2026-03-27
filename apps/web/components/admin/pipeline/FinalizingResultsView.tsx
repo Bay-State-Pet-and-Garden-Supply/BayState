@@ -197,6 +197,12 @@ export function FinalizingResultsView({
   const [pageSearch, setPageSearch] = useState("");
   const [pagePopoverOpen, setPagePopoverOpen] = useState(false);
 
+  // Product Type state
+  const [productTypes, setProductTypes] = useState<{ id: string; name: string }[]>([]);
+  const [productTypeSearch, setProductTypeSearch] = useState("");
+  const [creatingProductType, setCreatingProductType] = useState(false);
+  const [productTypePopoverOpen, setProductTypePopoverOpen] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [lastSavedData, setLastSavedData] = useState<string>("");
@@ -221,6 +227,12 @@ export function FinalizingResultsView({
     const search = pageSearch.toLowerCase();
     return SHOPSITE_PAGES.filter((p) => p.toLowerCase().includes(search));
   }, [pageSearch]);
+
+  const filteredProductTypes = useMemo(() => {
+    if (!productTypeSearch.trim()) return productTypes;
+    const search = productTypeSearch.toLowerCase();
+    return productTypes.filter((pt) => pt.name.toLowerCase().includes(search));
+  }, [productTypes, productTypeSearch]);
 
   const handleCreateBrand = async () => {
     if (!brandSearch.trim()) return;
@@ -280,6 +292,38 @@ export function FinalizingResultsView({
     }
   };
 
+  const handleCreateProductType = async () => {
+    if (!productTypeSearch.trim()) return;
+    setCreatingProductType(true);
+    try {
+      const res = await fetch("/api/admin/product-types", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: productTypeSearch.trim() }),
+      });
+      if (res.ok) {
+        const { productType } = await res.json();
+        setProductTypes((prev) =>
+          [...prev, productType].sort((a, b) => a.name.localeCompare(b.name)),
+        );
+        handleInputChange("productType", [
+          ...formData.productType,
+          productType.name,
+        ]);
+        setProductTypeSearch("");
+        setProductTypePopoverOpen(false);
+        toast.success(`Product type "${productType.name}" created`);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to create product type");
+      }
+    } catch {
+      toast.error("An error occurred while creating product type");
+    } finally {
+      setCreatingProductType(false);
+    }
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -287,7 +331,7 @@ export function FinalizingResultsView({
     weight: "",
     brandId: "none",
     category: [] as string[],
-    productType: "",
+    productType: [] as string[],
     stockStatus: "in_stock",
     productOnPages: [] as string[],
     isSpecialOrder: false,
@@ -343,13 +387,14 @@ export function FinalizingResultsView({
     }
   }, [sortedProducts, preferredSku]);
 
-  // Fetch brands and categories
+  // Fetch brands, categories, and product types
   useEffect(() => {
     async function fetchData() {
       try {
-        const [brandsRes, categoriesRes] = await Promise.all([
+        const [brandsRes, categoriesRes, productTypesRes] = await Promise.all([
           fetch("/api/admin/brands"),
           fetch("/api/admin/categories"),
+          fetch("/api/admin/product-types"),
         ]);
 
         if (brandsRes.ok) {
@@ -360,6 +405,11 @@ export function FinalizingResultsView({
         if (categoriesRes.ok) {
           const data = await categoriesRes.json();
           setCategories(data.categories || []);
+        }
+
+        if (productTypesRes.ok) {
+          const data = await productTypesRes.json();
+          setProductTypes(data.productTypes || []);
         }
       } catch (err) {
         console.error("Failed to fetch reference data:", err);
@@ -403,8 +453,15 @@ export function FinalizingResultsView({
                 .map((c) => c.trim())
                 .filter(Boolean)
             : [],
-        productType:
-          ((cons as Record<string, unknown>).product_type as string) || "",
+        productType: Array.isArray((cons as Record<string, unknown>).product_type)
+          ? ((cons as Record<string, unknown>).product_type as string[])
+          : typeof (cons as Record<string, unknown>).product_type === "string" &&
+               (cons as Record<string, unknown>).product_type
+            ? ((cons as Record<string, unknown>).product_type as string)
+                .split("|")
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : [],
         stockStatus:
           ((consolidated as Record<string, unknown>).stock_status as string) ||
           "in_stock",
@@ -565,7 +622,7 @@ export function FinalizingResultsView({
         is_special_order: formData.isSpecialOrder,
         weight: formData.weight.trim() || null,
         category: formData.category,
-        product_type: formData.productType.trim() || null,
+        product_type: formData.productType.join("|") || null,
         product_on_pages: formData.productOnPages,
         images: formData.selectedImages,
       };
@@ -1210,14 +1267,132 @@ export function FinalizingResultsView({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="product-type">Product Type</Label>
-                      <Input
-                        id="product-type"
-                        value={formData.productType}
-                        onChange={(e) =>
-                          handleInputChange("productType", e.target.value)
-                        }
-                        placeholder="e.g. Dry Dog Food"
-                      />
+                      <Popover
+                        open={productTypePopoverOpen}
+                        onOpenChange={setProductTypePopoverOpen}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="product-type"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={productTypePopoverOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            <div className="flex flex-wrap gap-1">
+                              {formData.productType.length > 0 ? (
+                                formData.productType.map((type) => (
+                                  <div
+                                    key={type}
+                                    className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1"
+                                  >
+                                    {type}
+                                    <X
+                                      className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const types =
+                                          formData.productType.filter(
+                                            (t) => t !== type,
+                                          );
+                                        handleInputChange(
+                                          "productType",
+                                          types,
+                                        );
+                                      }}
+                                    />
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  Select Product Types
+                                </span>
+                              )}
+                            </div>
+                            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          align="start"
+                        >
+                          <div className="flex flex-col">
+                            <div className="flex items-center border-b px-3 py-2">
+                              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                              <input
+                                className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Search product types..."
+                                value={productTypeSearch}
+                                onChange={(e) =>
+                                  setProductTypeSearch(e.target.value)
+                                }
+                              />
+                            </div>
+                            <div className="max-h-[200px] overflow-y-auto p-1">
+                              {filteredProductTypes.map((pt) => {
+                                const isSelected = formData.productType.includes(
+                                  pt.name,
+                                );
+                                return (
+                                  <div
+                                    key={pt.id}
+                                    className={cn(
+                                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                      isSelected &&
+                                        "bg-accent text-accent-foreground",
+                                    )}
+                                    onClick={() => {
+                                      const types = isSelected
+                                        ? formData.productType.filter(
+                                            (t) => t !== pt.name,
+                                          )
+                                        : [...formData.productType, pt.name];
+                                      handleInputChange("productType", types);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        isSelected
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    {pt.name}
+                                  </div>
+                                );
+                              })}
+                              {filteredProductTypes.length === 0 &&
+                                productTypeSearch && (
+                                  <div className="p-2 text-xs text-muted-foreground italic">
+                                    No product types found.
+                                  </div>
+                                )}
+                            </div>
+                            {productTypeSearch.trim() &&
+                              !productTypes.find(
+                                (pt) =>
+                                  pt.name.toLowerCase() ===
+                                  productTypeSearch.toLowerCase().trim(),
+                              ) && (
+                                <div className="border-t p-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs font-normal"
+                                    onClick={handleCreateProductType}
+                                    disabled={creatingProductType}
+                                  >
+                                    <Plus className="mr-2 h-3 w-3" />
+                                    {creatingProductType
+                                      ? "Creating..."
+                                      : `Create "${productTypeSearch.trim()}"`}
+                                  </Button>
+                                </div>
+                              )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
 
