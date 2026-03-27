@@ -15,7 +15,7 @@ import {
   useRunnerPresence,
   useJobSubscription,
 } from '@/lib/realtime';
-import { Users, Layers, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { Users, Layers, CheckCircle2, Clock, XCircle, AlertCircle, ArrowRight } from 'lucide-react';
 
 const cellVariants = cva(
   'px-3 py-2 text-center text-sm font-medium rounded-md transition-all',
@@ -25,6 +25,8 @@ const cellVariants = cva(
         none: 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
         pending:
           'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        claimed:
+          'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
         running:
           'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
         completed:
@@ -159,6 +161,7 @@ export function JobHeatmap({
   // Summary counts
   const summary = useMemo(() => {
     let pending = 0,
+      claimed = 0,
       running = 0,
       completed = 0,
       failed = 0;
@@ -166,13 +169,14 @@ export function JobHeatmap({
     runnerJobs.forEach((rj) => {
       rj.jobs.forEach((job) => {
         if (job.status === 'pending') pending++;
+        else if (job.status === 'claimed') claimed++;
         else if (job.status === 'running') running++;
         else if (job.status === 'completed') completed++;
         else if (job.status === 'failed') failed++;
       });
     });
 
-    return { pending, running, completed, failed };
+    return { pending, claimed, running, completed, failed };
   }, [runnerJobs]);
 
   return (
@@ -187,6 +191,10 @@ export function JobHeatmap({
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-amber-500" />
             {summary.pending}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-sky-500" />
+            {summary.claimed}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-violet-500" />
@@ -266,6 +274,7 @@ export function JobHeatmap({
                       >
                         {status === 'none' && '-'}
                         {status === 'pending' && <Clock className="h-4 w-4 mx-auto" />}
+                        {status === 'claimed' && <ArrowRight className="h-4 w-4 mx-auto" />}
                         {status === 'running' && (
                           <Clock className="h-4 w-4 mx-auto animate-spin" />
                         )}

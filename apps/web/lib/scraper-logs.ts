@@ -119,7 +119,7 @@ export function normalizeScrapeTimestamp(value: unknown): string {
 }
 
 export function normalizeScrapeLogEntry(
-  raw: Record<string, unknown>,
+  raw: any,
   options: { persisted?: boolean; jobId?: string } = {},
 ): ScrapeJobLogEntry {
   const eventId = toOptionalString(raw.event_id) ?? toOptionalString(raw.id) ?? undefined;

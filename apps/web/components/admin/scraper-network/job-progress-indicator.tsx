@@ -28,6 +28,7 @@ const statusVariants = cva('flex items-center gap-1.5', {
   variants: {
     status: {
       pending: 'text-amber-600 dark:text-amber-400',
+      claimed: 'text-sky-600 dark:text-sky-400',
       running: 'text-blue-600 dark:text-blue-400',
       completed: 'text-emerald-600 dark:text-emerald-400',
       failed: 'text-red-600 dark:text-red-400',
@@ -68,6 +69,8 @@ function getStatusIcon(status: JobAssignment['status']) {
   switch (status) {
     case 'pending':
       return <Clock className="h-4 w-4" />;
+    case 'claimed':
+      return <Zap className="h-4 w-4 text-sky-500" />;
     case 'running':
       return <Loader2 className="h-4 w-4 animate-spin" />;
     case 'completed':
@@ -115,7 +118,7 @@ function JobProgressItem({
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
               {job.scrapers?.join(', ') || 'Unknown Scraper'}
             </p>
-            <p className="text-xs text-slate-500 font-mono">{job.job_id.slice(0, 8)}</p>
+            <p className="text-xs text-slate-500 font-mono">{(job.job_id || job.id).slice(0, 8)}</p>
           </div>
         </div>
 
