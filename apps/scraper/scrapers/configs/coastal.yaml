@@ -79,13 +79,6 @@ selectors:
     attribute: text
     multiple: false
     required: false
-  - name: Specifications
-    selector: "#product-details__specs-tab-panel dt, #product-details__specs-tab-panel dd"
-    fallback_selectors:
-      - ".product-specs"
-    attribute: text
-    multiple: true
-    required: false
   - name: Dimensions
     selector: ".product-details__dimensions, span:has-text('Dimensions') + span"
     fallback_selectors:
@@ -149,7 +142,6 @@ workflows:
         - Description
         - Features
         - Weight
-        - Specifications
         - Dimensions
   - action: process_images
     name: null

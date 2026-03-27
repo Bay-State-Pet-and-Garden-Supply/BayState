@@ -39,25 +39,13 @@ export default async function PipelinePage({ searchParams }: PageProps) {
         let totalCount = 0;
 
         if (shouldFetchProducts) {
-            if (initialStage === 'finalized') {
-                // Fetch both consolidated and finalized products for the Finalizing tab
-                const [cResult, fResult, countsResult] = await Promise.all([
-                    getProductsByStatus('consolidated', { limit: 250 }),
-                    getProductsByStatus('finalized', { limit: 250 }),
-                    getStatusCounts(),
-                ]);
-                products = [...cResult.products, ...fResult.products];
-                totalCount = cResult.count + fResult.count;
-                counts = countsResult;
-            } else {
-                const [pResult, countsResult] = await Promise.all([
-                    getProductsByStatus(initialStage as PipelineStatus, { limit: 500 }),
-                    getStatusCounts(),
-                ]);
-                products = pResult.products;
-                totalCount = pResult.count;
-                counts = countsResult;
-            }
+            const [pResult, countsResult] = await Promise.all([
+                getProductsByStatus(initialStage as PipelineStatus, { limit: 500 }),
+                getStatusCounts(),
+            ]);
+            products = pResult.products;
+            totalCount = pResult.count;
+            counts = countsResult;
         } else {
             counts = await getStatusCounts();
         }

@@ -45,22 +45,6 @@ selectors:
     attribute: text
     multiple: false
     required: false
-  - name: Guaranteed Analysis
-    selector: ".tab-pane:nth-of-type(1)"
-    fallback_selectors:
-      - "#analysis-tab-content"
-      - ".guaranteed-analysis"
-    attribute: text
-    multiple: false
-    required: false
-  - name: Feeding Directions
-    selector: ".tab-pane:nth-of-type(3)"
-    fallback_selectors:
-      - "#feeding-tab-content"
-      - ".feeding-directions"
-    attribute: text
-    multiple: false
-    required: false
   - name: Size Options
     selector: select[name='id'] option
     fallback_selectors:
@@ -136,8 +120,6 @@ workflows:
         - Weight
         - Image URLs
         - Ingredients
-        - Guaranteed Analysis
-        - Feeding Directions
         - Size Options
         - Description
         - UPC

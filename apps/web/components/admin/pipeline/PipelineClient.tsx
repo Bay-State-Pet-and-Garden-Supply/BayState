@@ -39,7 +39,7 @@ export function PipelineClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const [currentStage, setCurrentStage] = useState<PipelineStage>(initialStage);
+  const currentStage = initialStage;
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
@@ -100,7 +100,7 @@ export function PipelineClient({
       if (!silent) setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          status: stage === "finalized" ? "consolidated,finalized" : stage,
+          status: stage,
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
@@ -139,9 +139,16 @@ export function PipelineClient({
 
   const isFirstMount = useRef(true);
 
-  // Fetch products when stage or search changes
+  // Sync state with props from Server Component
   useEffect(() => {
-    // Skip initial fetch since we have initialProducts from props
+    setProducts(initialProducts);
+    setCounts(initialCounts);
+    setTotalCount(initialTotal);
+    setSelectedSkus(new Set());
+  }, [initialProducts, initialCounts, initialTotal, initialStage]);
+
+  // Fetch products when search changes
+  useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
@@ -152,16 +159,18 @@ export function PipelineClient({
     const performFetch = async () => {
       if (!isMounted) return;
 
-      if (currentStage === "monitoring" || currentStage === "consolidating") {
+      if (initialStage === "monitoring" || initialStage === "consolidating") {
         setProducts([]);
         setTotalCount(0);
         setSelectedSkus(new Set());
         return;
       }
 
-      await fetchProducts(currentStage, search);
-      if (isMounted) {
-        setSelectedSkus(new Set());
+      // Only fetch if there is a search filter. 
+      // Base stage data comes from server props!
+      if (search) {
+        await fetchProducts(initialStage, search);
+        if (isMounted) setSelectedSkus(new Set());
       }
     };
 
@@ -170,18 +179,10 @@ export function PipelineClient({
     return () => {
       isMounted = false;
     };
-  }, [currentStage, search, fetchProducts]);
+  }, [search, fetchProducts, initialStage]);
 
-  // Sync currentStage with URL when it changes
+  // Sync search and source filters with URL (if they exist in URL on load)
   useEffect(() => {
-    const stageParam = searchParams.get("stage") || searchParams.get("status");
-    if (stageParam && stageParam !== currentStage) {
-      const validStages = ["imported", "monitoring", "scraped", "consolidating", "finalized", "published"];
-      if (validStages.includes(stageParam)) {
-        setCurrentStage(stageParam as PipelineStage);
-      }
-    }
-    
     const searchParam = searchParams.get("search") || "";
     if (searchParam !== search) {
       setSearch(searchParam);
@@ -191,19 +192,24 @@ export function PipelineClient({
     if (sourceParam !== sourceFilter) {
       setSourceFilter(sourceParam);
     }
-  }, [searchParams, currentStage, search, sourceFilter]);
+  }, [searchParams]);
 
   // Handle stage tab change
   const handleStageChange = (stage: PipelineStage) => {
-    setCurrentStage(stage);
+    // Clear local filters before navigating
+    // This allows the server to fetch clean data for the new stage
     setSearch("");
     setSourceFilter("");
     setLastSelectedIndex(null);
 
-    // Update URL to persist stage on refresh
+    // Provide immediate feedback while server fetches
+    setIsLoading(true);
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("stage", stage);
-    window.history.pushState(null, '', `${pathname}?${params.toString()}`);
+    params.delete("search"); // clear search on stage change
+    params.delete("source"); // clear source on stage change
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
@@ -322,14 +328,8 @@ export function PipelineClient({
             },
           );
           setSelectedSkus(new Set());
-          setCurrentStage("consolidating");
-          setSearch("");
+          handleStageChange("consolidating");
           await fetchCounts();
-
-          // Update URL
-          const params = new URLSearchParams(searchParams.toString());
-          params.set("stage", "consolidating");
-          window.history.pushState(null, '', `${pathname}?${params.toString()}`);
         } else {
           const error = await res.json();
           toast.error(error.error || "Failed to submit consolidation");
@@ -651,14 +651,7 @@ export function PipelineClient({
           await refreshAll();
         } else {
           // Navigate to monitoring tab for initial scrapes
-          setCurrentStage("monitoring");
-          setSearch("");
-          await Promise.all([fetchCounts(), fetchProducts("monitoring")]);
-
-          // Update URL
-          const params = new URLSearchParams(searchParams.toString());
-          params.set("stage", "monitoring");
-          window.history.pushState(null, '', `${pathname}?${params.toString()}`);
+          handleStageChange("monitoring");
         }
       } else {
         const error = await res.json();
