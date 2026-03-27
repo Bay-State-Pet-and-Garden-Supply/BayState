@@ -111,6 +111,7 @@ export interface ConsolidationResult {
     product_on_pages?: string;
     description?: string;
     long_description?: string;
+    search_keywords?: string;
     confidence_score?: number;
     error?: string;
 }

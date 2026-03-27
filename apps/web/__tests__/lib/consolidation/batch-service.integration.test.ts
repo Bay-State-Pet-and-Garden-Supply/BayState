@@ -117,6 +117,9 @@ describe('consolidation batch integration behavior', () => {
                                     brand: 'KONG',
                                     weight: '3.00',
                                     description: 'Durable fetch toy for active dogs.',
+                                    long_description: 'Durable fetch toy for active dogs with a squeaker and tennis-ball texture.',
+                                    search_keywords: 'dog toy, fetch toy, squeaker ball',
+                                    product_on_pages: ['Dog Toys', 'Dog Supplies Shop All'],
                                     category: ['Dog'],
                                     product_type: ['Dog Toys'],
                                     confidence_score: 0.93,
@@ -154,10 +157,72 @@ describe('consolidation batch integration behavior', () => {
                     sku: 'SKU-1',
                     category: 'Dog',
                     product_type: 'Dog Toys',
+                    search_keywords: 'dog toy, fetch toy, squeaker ball',
                     confidence_score: 0.93,
                 })
             );
         }
+    });
+
+    it('retrieveResults returns actionable errors when required fields are missing', async () => {
+        (buildPromptContext as jest.Mock).mockResolvedValue({
+            systemPrompt: 'system',
+            categories: ['Horse Feed & Treats'],
+            productTypes: ['Treats'],
+            shopsitePages: ['Horse Treats'],
+        });
+
+        const outputLine = JSON.stringify({
+            custom_id: '813347001025',
+            response: {
+                status_code: 200,
+                body: {
+                    choices: [
+                        {
+                            message: {
+                                content: JSON.stringify({
+                                    name: 'Stud Muffins Horse Treats 20 oz.',
+                                    brand: 'Bubbacare',
+                                    weight: '1.25',
+                                    description: '',
+                                    long_description: 'Horse treats.',
+                                    product_on_pages: ['Horse Treats'],
+                                    category: ['Horse Feed & Treats'],
+                                    product_type: ['Treats'],
+                                    confidence_score: 0.95,
+                                }),
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+
+        const openAiMock = {
+            batches: {
+                retrieve: jest.fn().mockResolvedValue({
+                    id: 'batch_missing',
+                    status: 'completed',
+                    output_file_id: 'out_missing',
+                    error_file_id: null,
+                }),
+            },
+            files: {
+                content: jest.fn().mockResolvedValue({
+                    text: async () => outputLine,
+                }),
+            },
+        };
+        (getOpenAIClient as jest.Mock).mockReturnValue(openAiMock);
+
+        const results = await retrieveResults('batch_missing');
+
+        expect(results).toEqual([
+            {
+                sku: '813347001025',
+                error: 'Invalid consolidation output: description is required',
+            },
+        ]);
     });
 
     it('applyConsolidationResults stores quality metrics into batch metadata', async () => {
@@ -256,6 +321,9 @@ describe('consolidation batch integration behavior', () => {
                     name: 'KONG Air Dog Ball 3 ct',
                     brand: 'KONG',
                     description: 'Dog toy',
+                    long_description: 'Dog toy with durable construction for fetch sessions.',
+                    search_keywords: 'dog toy, fetch toy, squeaker ball',
+                    product_on_pages: 'Dog Toys|Dog Supplies Shop All',
                     category: 'Dog',
                     product_type: 'Dog Toys',
                     confidence_score: 0.91,

@@ -142,6 +142,34 @@ function normalizeSpacing(text: string): string {
         .trim();
 }
 
+function normalizePlainText(text: string): string {
+    return text.replace(/\s+/g, ' ').trim();
+}
+
+function normalizeSearchKeywords(value: string): string {
+    const segments = value
+        .split(/[\n,;|]+/)
+        .map((segment) => normalizePlainText(segment))
+        .filter((segment) => segment.length > 0);
+
+    if (segments.length === 0) {
+        return normalizePlainText(value);
+    }
+
+    const deduped: string[] = [];
+    const seen = new Set<string>();
+    for (const segment of segments) {
+        const key = segment.toLowerCase();
+        if (seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+        deduped.push(segment);
+    }
+
+    return deduped.join(', ');
+}
+
 /**
  * Normalize a consolidation result from the LLM.
  * Applies all normalization rules to the name field.
@@ -171,9 +199,27 @@ export function normalizeConsolidationResult(
         normalized.name = name;
     }
 
+    if (typeof normalized.brand === 'string') {
+        normalized.brand = normalizePlainText(normalized.brand.replace(/^brand\s*:\s*/i, ''));
+    }
+
+    if (typeof normalized.description === 'string') {
+        normalized.description = normalizePlainText(normalized.description);
+    }
+
+    if (typeof normalized.long_description === 'string') {
+        normalized.long_description = normalizePlainText(normalized.long_description);
+    }
+
+    if (typeof normalized.search_keywords === 'string') {
+        normalized.search_keywords = normalizeSearchKeywords(normalized.search_keywords);
+    }
+
     // Normalize weight field - convert to pounds
     if (typeof normalized.weight === 'string') {
-        const converted = convertWeightToPounds(normalized.weight);
+        const normalizedWeight = normalizePlainText(normalized.weight);
+        normalized.weight = normalizedWeight;
+        const converted = convertWeightToPounds(normalizedWeight);
         if (converted !== null) {
             normalized.weight = converted;
         }

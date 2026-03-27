@@ -129,16 +129,24 @@ export function RunnerPresenceCard({
         className={cn(
           cardVariants({ size: 'compact' }),
           'flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50',
-          isNew && 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-slate-900'
+          isNew && 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-slate-900',
+          runner.enabled === false && 'opacity-60 grayscale-[0.3] bg-slate-50/50 dark:bg-slate-800/20'
         )}
       >
         <div className="flex-shrink-0">
           <Server className="h-5 w-5 text-slate-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-            {runner.runner_name}
-          </p>
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+              {runner.runner_name}
+            </p>
+            {runner.enabled === false && (
+              <span className="flex-shrink-0 text-[8px] px-1 rounded border border-orange-200 text-orange-700 bg-orange-50/50 leading-tight uppercase font-bold">
+                Disabled
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500">
             {runner.active_jobs} active job{runner.active_jobs !== 1 ? 's' : ''}
           </p>
@@ -157,7 +165,8 @@ export function RunnerPresenceCard({
       className={cn(
         cardVariants({ size: 'default' }),
         'flex flex-col hover:bg-slate-50 dark:hover:bg-slate-800/50',
-        isNew && 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-slate-900'
+        isNew && 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-slate-900',
+        runner.enabled === false && 'opacity-60 grayscale-[0.3] bg-slate-50/50 dark:bg-slate-800/20'
       )}
     >
       {/* Header */}
@@ -167,9 +176,16 @@ export function RunnerPresenceCard({
             <Server className="h-5 w-5 text-slate-600 dark:text-slate-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {runner.runner_name}
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {runner.runner_name}
+              </h3>
+              {runner.enabled === false && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded border border-orange-200 text-orange-700 bg-orange-50/50 leading-tight uppercase font-bold">
+                  Disabled
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 font-mono">{runner.runner_id}</p>
           </div>
         </div>

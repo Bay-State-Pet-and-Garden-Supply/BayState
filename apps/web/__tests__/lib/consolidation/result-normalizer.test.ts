@@ -17,4 +17,18 @@ describe('normalizeConsolidationResult', () => {
             })
         );
     });
+
+    it('normalizes brand prefixes and deduplicates search keywords', () => {
+        const result = normalizeConsolidationResult({
+            brand: 'Brand: Bubbacare',
+            search_keywords: 'horse treats, horse treats; flax seed\nhorse snacks',
+        });
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                brand: 'Bubbacare',
+                search_keywords: 'horse treats, flax seed, horse snacks',
+            })
+        );
+    });
 });

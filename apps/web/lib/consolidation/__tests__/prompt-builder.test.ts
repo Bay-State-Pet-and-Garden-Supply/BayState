@@ -56,17 +56,16 @@ describe('brand exclusion in prompt-builder', () => {
             expect(prompt).toMatch(/brand/i);
         });
 
-        it('instructs decimal size handling to keep the leading whole number without rounding', () => {
+        it('instructs decimal size handling to preserve source-supported precision', () => {
             const categories = ['Dog Food', 'Cat Supplies'];
             const productTypes = ['Food', 'Treats'];
 
             const prompt = generateSystemPrompt(categories, productTypes);
 
-            expect(prompt).toMatch(/leading whole-number portion|integer part/i);
-            expect(prompt).toMatch(/do not round/i);
-            expect(prompt).toContain('1.06 oz. → 1 oz.');
-            expect(prompt).toContain('7.9 lb. → 7 lb.');
-            expect(prompt).toContain('2.5 gal. → 2 gal.');
+            expect(prompt).toMatch(/preserve source-supported decimal/i);
+            expect(prompt).toMatch(/do not round or truncate/i);
+            expect(prompt).toContain('1.06 oz.');
+            expect(prompt).toContain('4.5 lb.');
         });
 
         it('requires source-supported variant differentiation', () => {
@@ -78,6 +77,16 @@ describe('brand exclusion in prompt-builder', () => {
             expect(prompt).toMatch(/never produce identical names/i);
             expect(prompt).toMatch(/do not invent variant details/i);
             expect(prompt).toContain('Motorsport Container Red 5 Gal.');
+        });
+
+        it('includes source trust and keyword guidance', () => {
+            const prompt = generateSystemPrompt(['Dog Supplies'], ['Dog Toys']);
+
+            expect(prompt).toMatch(/highest trust.*shopsite_input/i);
+            expect(prompt).toMatch(/marketplace/i);
+            expect(prompt).toMatch(/search_keywords/i);
+            expect(prompt).toContain('Allowed category values: Dog Supplies');
+            expect(prompt).toContain('Allowed product_type values: Dog Toys');
         });
     });
 });

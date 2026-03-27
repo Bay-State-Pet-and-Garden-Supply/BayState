@@ -9,7 +9,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { getOpenAIClient, CONSOLIDATION_CONFIG, getConsolidationConfig } from './openai-client';
 import { buildPromptContext } from './prompt-builder';
-import { buildResponseSchema, validateCategory, validateConsolidationTaxonomy, validateProductType } from './taxonomy-validator';
+import {
+    buildResponseSchema,
+    validateCategory,
+    validateConsolidationTaxonomy,
+    validateProductType,
+    validateRequiredConsolidationFields,
+} from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
@@ -145,7 +151,6 @@ const EXCLUDED_FROM_LLM = new Set([
 ]);
 
 const EXCLUDED_FROM_CONSOLIDATED_MERGE = new Set([
-    'search_keywords',
     'is_taxable',
     'taxable',
 ]);
@@ -380,6 +385,194 @@ function parseDelimitedTaxonomy(value: string | undefined): string[] {
         .filter((entry) => entry.length > 0);
 }
 
+type SourceTrustLevel = 'canonical' | 'trusted' | 'standard' | 'marketplace';
+type AnimalSignal = 'dog' | 'cat' | 'horse' | 'bird' | 'small-pet';
+
+const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
+const TRUSTED_SOURCE_FRAGMENTS = [
+    'shopsite_input',
+    'bradley',
+    'central-pet',
+    'central_pet',
+    'orgill',
+    'doitbest',
+    'do_it_best',
+    'manufacturer',
+    'catalog',
+    'distributor',
+];
+const ANIMAL_SIGNAL_RULES: Array<{ label: AnimalSignal; patterns: RegExp[] }> = [
+    { label: 'dog', patterns: [/\bdog\b/i, /\bpuppy\b/i, /\bcanine\b/i] },
+    { label: 'cat', patterns: [/\bcat\b/i, /\bkitten\b/i, /\bfeline\b/i] },
+    { label: 'horse', patterns: [/\bhorse\b/i, /\bhorses\b/i, /\bequine\b/i] },
+    { label: 'bird', patterns: [/\bbird\b/i, /\bavian\b/i, /\bparrot\b/i] },
+    {
+        label: 'small-pet',
+        patterns: [/\bsmall pet\b/i, /\bhamster\b/i, /\bgerbil\b/i, /\bguinea pig\b/i, /\brabbit\b/i, /\bferret\b/i],
+    },
+];
+
+interface PromptSourceEvidence {
+    source: string;
+    trust: SourceTrustLevel;
+    fields: Record<string, unknown>;
+}
+
+interface PendingConsolidationRow {
+    sku: string;
+    next_fields: Record<string, unknown>;
+    pipeline_status: PipelineStatus;
+    pipeline_status_new: PipelineStatus;
+    confidence_score: number | null;
+    error_message: string | null;
+    outcome: 'finalized' | 'rejected';
+    name_key?: string;
+    existing_consolidated?: Record<string, unknown>;
+}
+
+function getSourceTrustLevel(sourceName: string): SourceTrustLevel {
+    const normalized = sourceName.toLowerCase();
+
+    if (normalized === 'shopsite_input') {
+        return 'canonical';
+    }
+
+    if (MARKETPLACE_SOURCE_FRAGMENTS.some((fragment) => normalized.includes(fragment))) {
+        return 'marketplace';
+    }
+
+    if (TRUSTED_SOURCE_FRAGMENTS.some((fragment) => normalized.includes(fragment))) {
+        return 'trusted';
+    }
+
+    return 'standard';
+}
+
+function getSourceTrustRank(trust: SourceTrustLevel): number {
+    switch (trust) {
+        case 'canonical':
+            return 0;
+        case 'trusted':
+            return 1;
+        case 'standard':
+            return 2;
+        case 'marketplace':
+            return 3;
+        default:
+            return 4;
+    }
+}
+
+function cleanBrandLabel(rawBrandName: unknown): string | undefined {
+    if (typeof rawBrandName !== 'string') {
+        return undefined;
+    }
+
+    const stripped = rawBrandName.replace(/^brand\s*:\s*/i, '').trim();
+    return normalizeBrandName(stripped) || undefined;
+}
+
+function buildPromptSourceEvidence(filteredSources: Record<string, unknown>): PromptSourceEvidence[] {
+    return Object.entries(filteredSources)
+        .filter(([, data]) => data && typeof data === 'object' && !Array.isArray(data))
+        .map(([source, data]) => ({
+            source,
+            trust: getSourceTrustLevel(source),
+            fields: data as Record<string, unknown>,
+        }))
+        .sort((left, right) => {
+            const trustComparison = getSourceTrustRank(left.trust) - getSourceTrustRank(right.trust);
+            if (trustComparison !== 0) {
+                return trustComparison;
+            }
+
+            return left.source.localeCompare(right.source);
+        });
+}
+
+function collectAnimalSignalsFromValue(
+    value: unknown,
+    detected: Set<AnimalSignal>,
+    depth: number = 0
+): void {
+    if (depth > 5 || value === null || value === undefined) {
+        return;
+    }
+
+    if (typeof value === 'string') {
+        for (const rule of ANIMAL_SIGNAL_RULES) {
+            if (rule.patterns.some((pattern) => pattern.test(value))) {
+                detected.add(rule.label);
+            }
+        }
+        return;
+    }
+
+    if (Array.isArray(value)) {
+        value.forEach((entry) => collectAnimalSignalsFromValue(entry, detected, depth + 1));
+        return;
+    }
+
+    if (value && typeof value === 'object') {
+        Object.values(value as Record<string, unknown>).forEach((entry) =>
+            collectAnimalSignalsFromValue(entry, detected, depth + 1)
+        );
+    }
+}
+
+function collectExpectedAnimalSignals(
+    input: Record<string, unknown>,
+    sources: Record<string, unknown>
+): Set<AnimalSignal> {
+    const detected = new Set<AnimalSignal>();
+
+    collectAnimalSignalsFromValue(input, detected);
+
+    for (const [sourceName, sourcePayload] of Object.entries(normalizeProductSources(sources))) {
+        if (getSourceTrustLevel(sourceName) === 'marketplace') {
+            continue;
+        }
+
+        collectAnimalSignalsFromValue(sourcePayload, detected);
+    }
+
+    return detected;
+}
+
+function collectOutputAnimalSignals(nextFields: Record<string, unknown>): Set<AnimalSignal> {
+    const detected = new Set<AnimalSignal>();
+    collectAnimalSignalsFromValue(nextFields.category, detected);
+    collectAnimalSignalsFromValue(nextFields.product_type, detected);
+    collectAnimalSignalsFromValue(nextFields.product_on_pages, detected);
+    return detected;
+}
+
+function summarizeAnimalSignals(signals: Iterable<AnimalSignal>): string {
+    return Array.from(signals).sort().join(', ');
+}
+
+function getPreferredTrustedBrand(
+    sources: Record<string, unknown>
+): { brand: string; source: string } | null {
+    const evidence = buildPromptSourceEvidence(normalizeProductSources(sources));
+
+    for (const source of evidence) {
+        if (source.trust === 'marketplace') {
+            continue;
+        }
+
+        const brand = cleanBrandLabel(source.fields.brand);
+        if (brand) {
+            return {
+                brand,
+                source: source.source,
+            };
+        }
+    }
+
+    return null;
+}
+
 function toStringUrlArray(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
 
@@ -446,9 +639,10 @@ export function createBatchContent(
             }
         });
 
-        const userPrompt = `Consolidate this product into a canonical record: ${JSON.stringify({
+        const sourceEvidence = buildPromptSourceEvidence(filteredSources);
+        const userPrompt = `Consolidate this product into a canonical record using the provided source trust metadata and only source-supported values: ${JSON.stringify({
             sku: product.sku,
-            sources: filteredSources,
+            sources: sourceEvidence,
         })}`;
 
         const request = {
@@ -684,9 +878,10 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
 
                 for (const line of text.trim().split('\n')) {
                     if (!line) continue;
+                    let sku = 'unknown';
                     try {
                         const result = JSON.parse(line);
-                        const sku = result.custom_id || 'unknown';
+                        sku = result.custom_id || 'unknown';
 
                         if (result.error) {
                             results.push({ sku, error: result.error.message || 'Unknown error' });
@@ -711,7 +906,8 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
 
                         if (parsed) {
                             const normalized = normalizeConsolidationResult(parsed, shopsitePages);
-                            const validated = validateConsolidationTaxonomy(normalized, categories, productTypes);
+                            const requiredFieldsValidated = validateRequiredConsolidationFields(normalized);
+                            const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories, productTypes);
 
                             const categoryValues = parseDelimitedTaxonomy(
                                 typeof validated.category === 'string' ? validated.category : undefined
@@ -753,6 +949,10 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                             results.push({ sku, error: 'Failed to parse JSON response' });
                         }
                     } catch (e) {
+                        results.push({
+                            sku,
+                            error: e instanceof Error ? e.message : 'Failed to parse structured output',
+                        });
                         console.warn('[Consolidation] Failed to parse result line:', e);
                     }
                 }
@@ -825,6 +1025,11 @@ export async function applyConsolidationResults(
 
     const { createAdminClient } = await import('@/lib/supabase/server');
     const supabase = await createAdminClient();
+    const config = await getConsolidationConfig();
+    const confidenceThreshold =
+        typeof config.confidence_threshold === 'number' && Number.isFinite(config.confidence_threshold)
+            ? config.confidence_threshold
+            : 0.7;
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
@@ -842,8 +1047,7 @@ export async function applyConsolidationResults(
         batchJobRow = lookup.row;
     }
 
-    const successfulResults = results.filter((result) => !result.error);
-    const resultSkus = successfulResults.map((result) => result.sku);
+    const resultSkus = Array.from(new Set(results.map((result) => result.sku).filter((sku) => sku && sku.length > 0)));
 
     let existingRows: Array<{
         sku: string;
@@ -1019,24 +1223,9 @@ export async function applyConsolidationResults(
         throw new Error(`Failed to resolve brand "${normalizedBrand}"${details ? ` (${details})` : ''}`);
     };
 
-    const updateRows: Array<{
-        sku: string;
-        next_fields: Record<string, unknown>;
-        pipeline_status: PipelineStatus;
-        pipeline_status_new: 'finalized';
-        confidence_score: number | null;
-        error_message: null;
-    }> = [];
+    const updateRows: PendingConsolidationRow[] = [];
 
     for (const result of results) {
-        if (result.error) {
-            errorCount++;
-            if (errors.length < 10) {
-                errors.push(`${result.sku}: ${result.error}`);
-            }
-            continue;
-        }
-
         try {
             if (!existingBySku.has(result.sku)) {
                 errorCount++;
@@ -1048,19 +1237,26 @@ export async function applyConsolidationResults(
 
             const existingRecord = existingBySku.get(result.sku);
             const existingConsolidated = existingRecord?.consolidated || {};
-            const normalizedBrand = normalizeBrandName(result.brand);
-            const {
-                brandId: resolvedBrandId,
-                brandName: resolvedBrandName,
-            } = await resolveBrand(result.brand);
 
-            if (normalizedBrand) {
-                if (resolvedBrandId) {
-                    matchedBrandCount += 1;
-                } else {
-                    unresolvedBrandCount += 1;
+            if (result.error) {
+                if (errors.length < 10) {
+                    errors.push(`${result.sku}: ${result.error}`);
                 }
+
+                updateRows.push({
+                    sku: result.sku,
+                    next_fields: {},
+                    pipeline_status: 'enriched',
+                    pipeline_status_new: 'enriched',
+                    confidence_score: null,
+                    error_message: result.error,
+                    outcome: 'rejected',
+                    existing_consolidated: existingConsolidated,
+                });
+                continue;
             }
+
+            const normalizedBrand = cleanBrandLabel(result.brand);
 
             const nextCategory = parseDelimitedTaxonomy(result.category);
             const nextProductType = parseDelimitedTaxonomy(result.product_type);
@@ -1072,13 +1268,19 @@ export async function applyConsolidationResults(
                         : Number.NaN;
 
             const nextFields: Record<string, unknown> = {
-                ...(result.name ? { name: result.name } : {}),
-                ...(result.description ? { description: result.description } : {}),
-                ...(result.long_description ? { long_description: result.long_description } : {}),
-                ...(result.weight ? { weight: result.weight } : {}),
+                ...(typeof result.name === 'string' && result.name.trim() ? { name: result.name.trim() } : {}),
+                ...(typeof result.description === 'string' && result.description.trim()
+                    ? { description: result.description.trim() }
+                    : {}),
+                ...(typeof result.long_description === 'string' && result.long_description.trim()
+                    ? { long_description: result.long_description.trim() }
+                    : {}),
+                ...(typeof result.search_keywords === 'string' && result.search_keywords.trim()
+                    ? { search_keywords: result.search_keywords.trim() }
+                    : {}),
+                ...(typeof result.weight === 'string' && result.weight.trim() ? { weight: result.weight.trim() } : {}),
                 ...(Number.isFinite(parsedPrice) ? { price: parsedPrice } : {}),
-                ...(resolvedBrandName ? { brand: resolvedBrandName } : {}),
-                ...(resolvedBrandId ? { brand_id: resolvedBrandId } : {}),
+                ...(normalizedBrand ? { brand: normalizedBrand } : {}),
                 ...(nextCategory.length > 0 ? { category: nextCategory.join('|') } : {}),
                 ...(nextProductType.length > 0 ? { product_type: nextProductType.join('|') } : {}),
                 ...(typeof result.confidence_score === 'number'
@@ -1118,34 +1320,189 @@ export async function applyConsolidationResults(
                 }
             }
 
-            Object.entries(nextFields).forEach(([key, value]) => {
-                if (value === undefined || value === null) return;
-                const existingValue = existingConsolidated[key];
-                if (existingValue === undefined || existingValue === null || existingValue === '') {
-                    overwrittenFieldCount += 1;
-                    return;
+            const gateErrors: string[] = [];
+
+            try {
+                validateRequiredConsolidationFields({
+                    name: nextFields.name,
+                    brand: nextFields.brand,
+                    description: nextFields.description,
+                    long_description: nextFields.long_description,
+                    search_keywords: nextFields.search_keywords,
+                    confidence_score: result.confidence_score,
+                });
+            } catch (validationError: unknown) {
+                gateErrors.push(
+                    validationError instanceof Error ? validationError.message : 'Invalid consolidation output'
+                );
+            }
+
+            if (
+                typeof result.confidence_score === 'number'
+                && Number.isFinite(result.confidence_score)
+                && result.confidence_score < confidenceThreshold
+            ) {
+                gateErrors.push(
+                    `confidence_score ${result.confidence_score.toFixed(2)} is below threshold ${confidenceThreshold.toFixed(2)}`
+                );
+            }
+
+            const preferredTrustedBrand = getPreferredTrustedBrand(existingRecord?.sources || {});
+            if (
+                preferredTrustedBrand
+                && normalizedBrand
+                && normalizeLookupKey(preferredTrustedBrand.brand) !== normalizeLookupKey(normalizedBrand)
+            ) {
+                gateErrors.push(
+                    `brand "${normalizedBrand}" conflicts with higher-trust source "${preferredTrustedBrand.source}" brand "${preferredTrustedBrand.brand}"`
+                );
+            }
+
+            const outputAnimalSignals = collectOutputAnimalSignals(nextFields);
+            const expectedAnimalSignals = collectExpectedAnimalSignals(
+                existingRecord?.input || {},
+                existingRecord?.sources || {}
+            );
+            const unexpectedAnimalSignals = Array.from(outputAnimalSignals).filter(
+                (signal) => expectedAnimalSignals.size > 0 && !expectedAnimalSignals.has(signal)
+            );
+
+            if (unexpectedAnimalSignals.length > 0) {
+                gateErrors.push(
+                    `taxonomy/pages target ${unexpectedAnimalSignals.join(', ')} but trusted source evidence supports ${summarizeAnimalSignals(expectedAnimalSignals)}`
+                );
+            }
+
+            const pages = Array.isArray(nextFields.product_on_pages)
+                ? (nextFields.product_on_pages as string[])
+                : [];
+            if (pages.length === 0) {
+                gateErrors.push('product_on_pages is required to finalize');
+            }
+
+            if (gateErrors.length > 0) {
+                const errorMessage = gateErrors.join('; ');
+                if (errors.length < 10) {
+                    errors.push(`${result.sku}: ${errorMessage}`);
                 }
-                if (existingValue === value) {
-                    preservedExistingFieldCount += 1;
+
+                updateRows.push({
+                    sku: result.sku,
+                    next_fields: {},
+                    pipeline_status: 'enriched',
+                    pipeline_status_new: 'enriched',
+                    confidence_score: result.confidence_score ?? null,
+                    error_message: errorMessage,
+                    outcome: 'rejected',
+                    existing_consolidated: existingConsolidated,
+                });
+                continue;
+            }
+
+            const {
+                brandId: resolvedBrandId,
+                brandName: resolvedBrandName,
+            } = await resolveBrand(normalizedBrand);
+
+            if (normalizedBrand) {
+                if (resolvedBrandId) {
+                    matchedBrandCount += 1;
                 } else {
-                    overwrittenFieldCount += 1;
+                    unresolvedBrandCount += 1;
                 }
-            });
+            }
+
+            if (resolvedBrandName) {
+                nextFields.brand = resolvedBrandName;
+            }
+            if (resolvedBrandId) {
+                nextFields.brand_id = resolvedBrandId;
+            }
 
             updateRows.push({
                 sku: result.sku,
                 next_fields: nextFields,
-                pipeline_status: 'finalized' as PipelineStatus,
-                pipeline_status_new: 'finalized' as const,
+                pipeline_status: 'finalized',
+                pipeline_status_new: 'finalized',
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
+                outcome: 'finalized',
+                name_key: typeof nextFields.name === 'string' ? normalizeLookupKey(nextFields.name) : undefined,
+                existing_consolidated: existingConsolidated,
             });
         } catch (e: unknown) {
-            errorCount++;
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
             if (errors.length < 10) {
-                errors.push(`${result.sku}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                errors.push(`${result.sku}: ${errorMessage}`);
+            }
+
+            const existingConsolidated = existingBySku.get(result.sku)?.consolidated || {};
+            updateRows.push({
+                sku: result.sku,
+                next_fields: {},
+                pipeline_status: 'enriched',
+                pipeline_status_new: 'enriched',
+                confidence_score: typeof result.confidence_score === 'number' ? result.confidence_score : null,
+                error_message: errorMessage,
+                outcome: 'rejected',
+                existing_consolidated: existingConsolidated,
+            });
+        }
+    }
+
+    const duplicateNameGroups = new Map<string, PendingConsolidationRow[]>();
+    for (const row of updateRows) {
+        if (row.outcome !== 'finalized' || !row.name_key) {
+            continue;
+        }
+
+        const group = duplicateNameGroups.get(row.name_key) || [];
+        group.push(row);
+        duplicateNameGroups.set(row.name_key, group);
+    }
+
+    for (const group of duplicateNameGroups.values()) {
+        if (group.length < 2) {
+            continue;
+        }
+
+        const duplicateName =
+            typeof group[0]?.next_fields.name === 'string'
+                ? group[0].next_fields.name
+                : 'duplicate consolidation name';
+        const errorMessage = `duplicate finalized name "${duplicateName}" across SKUs ${group.map((row) => row.sku).join(', ')}`;
+
+        for (const row of group) {
+            row.outcome = 'rejected';
+            row.pipeline_status = 'enriched';
+            row.pipeline_status_new = 'enriched';
+            row.error_message = errorMessage;
+            row.next_fields = {};
+            if (errors.length < 10) {
+                errors.push(`${row.sku}: ${errorMessage}`);
             }
         }
+    }
+
+    for (const row of updateRows) {
+        if (row.outcome !== 'finalized') {
+            continue;
+        }
+
+        const existingConsolidated = row.existing_consolidated || {};
+        Object.entries(row.next_fields).forEach(([key, value]) => {
+            if (value === undefined || value === null) return;
+            const existingValue = existingConsolidated[key];
+            if (existingValue === undefined || existingValue === null || existingValue === '') {
+                overwrittenFieldCount += 1;
+                return;
+            }
+            if (existingValue === value) {
+                preservedExistingFieldCount += 1;
+            } else {
+                overwrittenFieldCount += 1;
+            }
+        });
     }
 
     if (updateRows.length > 0) {
@@ -1217,11 +1574,15 @@ export async function applyConsolidationResults(
                     };
                 }
 
-                if (updatedRow) {
-                    successCount++;
-                    applied = true;
-                    break;
-                }
+                    if (updatedRow) {
+                        if (row.outcome === 'finalized') {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                        applied = true;
+                        break;
+                    }
 
                 if (attempt === maxAttempts) {
                     return {
