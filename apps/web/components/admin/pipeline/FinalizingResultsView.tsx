@@ -258,8 +258,6 @@ export function FinalizingResultsView({
   // Form state
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    longDescription: "",
     price: "",
     weight: "",
     brandId: "none",
@@ -267,7 +265,6 @@ export function FinalizingResultsView({
     productType: "",
     stockStatus: "in_stock",
     productOnPages: [] as string[],
-    isFeatured: false,
     isSpecialOrder: false,
     customImageUrl: "",
     selectedImages: [] as string[],
@@ -370,17 +367,13 @@ export function FinalizingResultsView({
 
       const initialData = {
         name,
-        description: consolidated.description || name,
-        longDescription:
-          ((cons as Record<string, unknown>).long_description as string) ||
-          name,
         price: String(consolidated.price ?? input.price ?? ""),
         weight: ((cons as Record<string, unknown>).weight as string) || "",
         brandId: consolidated.brand_id || "none",
         category: Array.isArray((cons as Record<string, unknown>).category)
           ? ((cons as Record<string, unknown>).category as string[])
           : typeof (cons as Record<string, unknown>).category === "string" &&
-              (cons as Record<string, unknown>).category
+               (cons as Record<string, unknown>).category
             ? ((cons as Record<string, unknown>).category as string)
                 .split("|")
                 .map((c) => c.trim())
@@ -396,12 +389,11 @@ export function FinalizingResultsView({
         )
           ? ((cons as Record<string, unknown>).product_on_pages as string[])
           : typeof (cons as Record<string, unknown>).product_on_pages ===
-              "string"
+               "string"
             ? ((cons as Record<string, unknown>).product_on_pages as string)
                 .split("|")
                 .filter(Boolean)
             : [],
-        isFeatured: consolidated.is_featured || false,
         isSpecialOrder: !!(cons as Record<string, unknown>).is_special_order,
         customImageUrl: "",
         selectedImages: initialSelectedImages,
@@ -422,18 +414,7 @@ export function FinalizingResultsView({
 
   // Handle name change and auto-populate descriptions if they match name
   const handleNameChange = (newName: string) => {
-    setFormData((prev) => {
-      const updates: Partial<typeof prev> = { name: newName };
-      // If description was empty or matched previous name, update it
-      if (!prev.description || prev.description === prev.name) {
-        updates.description = newName;
-      }
-      // If long description was empty or matched previous name, update it
-      if (!prev.longDescription || prev.longDescription === prev.name) {
-        updates.longDescription = newName;
-      }
-      return { ...prev, ...updates };
-    });
+    setFormData((prev) => ({ ...prev, name: newName }));
   };
 
   // Keyboard navigation and shortcuts
@@ -554,12 +535,9 @@ export function FinalizingResultsView({
     try {
       const consolidated = {
         name: formData.name.trim(),
-        description: formData.description.trim(),
-        long_description: formData.longDescription.trim(),
         price: parseFloat(formData.price) || 0,
         brand_id: formData.brandId === "none" ? null : formData.brandId,
         stock_status: formData.stockStatus,
-        is_featured: formData.isFeatured,
         is_special_order: formData.isSpecialOrder,
         weight: formData.weight.trim() || null,
         category: formData.category,
@@ -828,8 +806,12 @@ export function FinalizingResultsView({
                   <h2 className="text-lg font-bold tracking-tight line-clamp-1">
                     {formData.name || "Untitled Product"}
                   </h2>
-                  <div className="text-xs text-muted-foreground font-mono">
-                    {selectedSku}
+                  <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
+                    <span className="bg-muted px-1 rounded">{selectedSku}</span>
+                    <span>•</span>
+                    <span className="font-bold text-primary">
+                      ${Number(formData.price || 0).toFixed(2)}
+                    </span>
                   </div>
                 </div>
                 {isDirty && (
@@ -916,20 +898,7 @@ export function FinalizingResultsView({
                     />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="product-price">Price ($)</Label>
-                      <Input
-                        id="product-price"
-                        type="number"
-                        step="0.01"
-                        value={formData.price}
-                        onChange={(e) =>
-                          handleInputChange("price", e.target.value)
-                        }
-                        placeholder="0.00"
-                      />
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="product-weight">Weight</Label>
                       <Input
@@ -1057,49 +1026,7 @@ export function FinalizingResultsView({
                     </div>
                   </div>
 
-                  {/* Descriptions Group */}
-                  <div className="space-y-1 pt-4">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Descriptions
-                    </h3>
-                    <Separator />
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="product-description">
-                      Short Description{" "}
-                      <span className="text-muted-foreground font-normal">
-                        (listing page)
-                      </span>
-                    </Label>
-                    <Textarea
-                      id="product-description"
-                      value={formData.description}
-                      onChange={(e) =>
-                        handleInputChange("description", e.target.value)
-                      }
-                      placeholder="1-2 concise sentences for category/listing pages..."
-                      className="min-h-[100px]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="product-long-description">
-                      Long Description{" "}
-                      <span className="text-muted-foreground font-normal">
-                        (detail page)
-                      </span>
-                    </Label>
-                    <Textarea
-                      id="product-long-description"
-                      value={formData.longDescription}
-                      onChange={(e) =>
-                        handleInputChange("longDescription", e.target.value)
-                      }
-                      placeholder="3-5 detailed sentences for the product detail page..."
-                      className="min-h-[200px]"
-                    />
-                  </div>
 
                   {/* Classification Group */}
                   <div className="space-y-1 pt-4">
@@ -1381,18 +1308,7 @@ export function FinalizingResultsView({
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="is-featured"
-                        checked={formData.isFeatured}
-                        onCheckedChange={(checked) =>
-                          handleInputChange("isFeatured", !!checked)
-                        }
-                      />
-                      <Label htmlFor="is-featured" className="cursor-pointer">
-                        Feature this product on the home page
-                      </Label>
-                    </div>
+
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="is-special-order"
