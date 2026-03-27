@@ -706,6 +706,20 @@ class ScraperAPIClient:
     def send_logs(self, job_id: str, logs: list[dict[str, Any]]) -> bool:
         return self.post_logs(job_id, logs)
 
+    def post_progress(self, payload: dict[str, Any]) -> bool:
+        """Persist the latest durable progress snapshot for a job."""
+        if not self.api_url:
+            return False
+
+        job_id = str(payload.get("job_id") or "")
+
+        try:
+            self._make_request("POST", "/api/scraper/v1/progress", payload=json.dumps(payload))
+            return True
+        except (httpx.HTTPError, AuthenticationError):
+            logger.exception(f"Failed to send progress for job {job_id or 'unknown'}")
+            raise
+
     def get_published_config(self, slug: str) -> dict[str, Any]:
         use_yaml_configs = os.environ.get("USE_YAML_CONFIGS", "false").lower() == "true"
 

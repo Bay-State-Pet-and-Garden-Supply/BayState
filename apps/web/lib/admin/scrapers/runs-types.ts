@@ -32,6 +32,18 @@ export interface ScraperRunRecord {
   attempt_count?: number;
   max_attempts?: number;
   backoff_until?: string | null;
+  runner_name?: string | null;
+  progress_percent?: number | null;
+  progress_message?: string | null;
+  progress_phase?: string | null;
+  progress_updated_at?: string | null;
+  current_sku?: string | null;
+  items_processed?: number | null;
+  items_total?: number | null;
+  last_event_at?: string | null;
+  last_log_at?: string | null;
+  last_log_level?: string | null;
+  last_log_message?: string | null;
   // Additional fields not in schema but computed
   github_run_id?: number | null;
   created_by?: string | null;

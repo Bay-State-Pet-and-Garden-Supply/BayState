@@ -34,6 +34,28 @@ export interface ScrapeJobProgressUpdate {
   timestamp: string;
 }
 
+export interface ScrapeJobRuntimeRecord {
+  id?: string;
+  job_id?: string;
+  status?: string | null;
+  runner_id?: string | null;
+  runner_name?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  progress_percent?: number | string | null;
+  progress_message?: string | null;
+  progress_phase?: string | null;
+  progress_details?: Record<string, unknown> | null;
+  progress_updated_at?: string | null;
+  current_sku?: string | null;
+  items_processed?: number | string | null;
+  items_total?: number | string | null;
+  last_event_at?: string | null;
+  last_log_at?: string | null;
+  last_log_level?: string | null;
+  last_log_message?: string | null;
+}
+
 const VALID_LEVELS = new Set<ScrapeLogLevel>([
   'debug',
   'info',
@@ -193,6 +215,16 @@ function compareScrapeLogEntries(
   return buildScrapeLogKey(left).localeCompare(buildScrapeLogKey(right));
 }
 
+export function getLatestScrapeJobLog(
+  logs: ScrapeJobLogEntry[],
+): ScrapeJobLogEntry | null {
+  if (logs.length === 0) {
+    return null;
+  }
+
+  return [...logs].sort(compareScrapeLogEntries)[logs.length - 1] ?? null;
+}
+
 export function mergeScrapeJobLogs(
   existing: ScrapeJobLogEntry[],
   incoming: ScrapeJobLogEntry[],
@@ -229,7 +261,35 @@ export function normalizeScrapeProgressUpdate(
   };
 }
 
-export function toScrapeJobLogRow(log: Record<string, unknown>): Record<string, unknown> {
+export function progressUpdateFromJobRecord(
+  raw: ScrapeJobRuntimeRecord | Record<string, unknown>,
+): ScrapeJobProgressUpdate | null {
+  const jobId = toOptionalString(raw.id) ?? toOptionalString(raw.job_id);
+  if (!jobId) {
+    return null;
+  }
+
+  return {
+    job_id: jobId,
+    runner_id: toOptionalString(raw.runner_id),
+    runner_name: toOptionalString(raw.runner_name),
+    status: toOptionalString(raw.status) ?? 'running',
+    progress: Math.max(0, Math.min(100, toOptionalNumber(raw.progress_percent) ?? 0)),
+    message: toOptionalString(raw.progress_message) ?? toOptionalString(raw.last_log_message),
+    phase: toOptionalString(raw.progress_phase),
+    current_sku: toOptionalString(raw.current_sku),
+    items_processed: toOptionalNumber(raw.items_processed),
+    items_total: toOptionalNumber(raw.items_total),
+    details: isRecord(raw.progress_details) ? raw.progress_details : null,
+    timestamp: normalizeScrapeTimestamp(
+      raw.progress_updated_at ?? raw.last_event_at ?? raw.updated_at ?? raw.created_at,
+    ),
+  };
+}
+
+export function toScrapeJobLogRow(
+  log: Record<string, unknown> | ScrapeJobLogEntry,
+): Record<string, unknown> {
   const normalized = normalizeScrapeLogEntry(log, { persisted: true });
 
   return {

@@ -44,20 +44,52 @@ export const runnerPresenceSchema = z.object({
 export interface JobAssignment {
   /** Unique identifier for the assignment record */
   id: string;
-  /** Reference to the scrape job being assigned */
-  job_id: string;
+  /** Optional legacy reference to the scrape job being assigned */
+  job_id?: string;
   /** List of scraper names to execute */
   scrapers: string[];
   /** Target SKUs to scrape */
   skus: string[];
   /** Current status of the job assignment */
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled';
   /** ISO 8601 timestamp when the assignment was created */
   created_at: string;
+  /** ISO 8601 timestamp when the assignment was last updated */
+  updated_at?: string;
   /** Optional runner ID once the job is picked up */
   runner_id?: string;
+  /** Human-readable runner name */
+  runner_name?: string | null;
   /** Whether this is a test mode job */
   test_mode?: boolean;
+  /** Latest job heartbeat timestamp */
+  heartbeat_at?: string | null;
+  /** Lease expiry timestamp for the active runner */
+  lease_expires_at?: string | null;
+  /** Durable runtime progress percent */
+  progress_percent?: number | null;
+  /** Durable runtime progress message */
+  progress_message?: string | null;
+  /** Durable runtime progress phase */
+  progress_phase?: string | null;
+  /** Durable runtime progress details */
+  progress_details?: Record<string, unknown> | null;
+  /** Durable runtime progress update timestamp */
+  progress_updated_at?: string | null;
+  /** Currently processed SKU */
+  current_sku?: string | null;
+  /** Processed item count */
+  items_processed?: number | null;
+  /** Total item count */
+  items_total?: number | null;
+  /** Latest runtime event timestamp */
+  last_event_at?: string | null;
+  /** Latest persisted log timestamp */
+  last_log_at?: string | null;
+  /** Latest persisted log level */
+  last_log_level?: string | null;
+  /** Latest persisted log message */
+  last_log_message?: string | null;
 }
 
 /**
@@ -65,13 +97,29 @@ export interface JobAssignment {
  */
 export const jobAssignmentSchema = z.object({
   id: z.string(),
-  job_id: z.string(),
+  job_id: z.string().optional(),
   scrapers: z.array(z.string()),
   skus: z.array(z.string()),
-  status: z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  status: z.enum(['pending', 'claimed', 'running', 'completed', 'failed', 'cancelled']),
   created_at: z.string(),
   runner_id: z.string().optional(),
+  runner_name: z.string().nullable().optional(),
   test_mode: z.boolean().optional(),
+  updated_at: z.string().optional(),
+  heartbeat_at: z.string().nullable().optional(),
+  lease_expires_at: z.string().nullable().optional(),
+  progress_percent: z.number().nullable().optional(),
+  progress_message: z.string().nullable().optional(),
+  progress_phase: z.string().nullable().optional(),
+  progress_details: z.record(z.string(), z.unknown()).nullable().optional(),
+  progress_updated_at: z.string().nullable().optional(),
+  current_sku: z.string().nullable().optional(),
+  items_processed: z.number().nullable().optional(),
+  items_total: z.number().nullable().optional(),
+  last_event_at: z.string().nullable().optional(),
+  last_log_at: z.string().nullable().optional(),
+  last_log_level: z.string().nullable().optional(),
+  last_log_message: z.string().nullable().optional(),
 });
 
 /**

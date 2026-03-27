@@ -164,6 +164,7 @@ class JobLogTransport:
         job_id: str,
         runner_name: str | None = None,
         runner_id: str | None = None,
+        lease_token: str | None = None,
         api_client: Any | None = None,
         realtime_manager: Any | None = None,
         batch_size: int = 25,
@@ -176,6 +177,7 @@ class JobLogTransport:
         self.job_id = job_id
         self.runner_name = runner_name
         self.runner_id = runner_id or runner_name
+        self.lease_token = lease_token
         self.api_client = api_client
         self.realtime_manager = realtime_manager
         self.batch_size = batch_size
@@ -187,6 +189,7 @@ class JobLogTransport:
 
         self._history: list[JobLogEntry] = []
         self._pending: deque[JobLogEntry] = deque(maxlen=max_queue_size)
+        self._pending_progress: dict[str, Any] | None = None
         self._lock = threading.Lock()
         self._sequence = 0
         self._stop_event = threading.Event()
@@ -314,6 +317,21 @@ class JobLogTransport:
             self._pending.clear()
             return batch
 
+    def _queue_progress(self, payload: dict[str, Any]) -> None:
+        if not self.api_client:
+            return
+
+        with self._lock:
+            self._pending_progress = payload
+
+        self._flush_event.set()
+
+    def _drain_progress(self) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._pending_progress
+            self._pending_progress = None
+            return payload
+
     def _send_batch(self, batch: list[JobLogEntry]) -> None:
         if not batch or not self.api_client:
             return
@@ -352,10 +370,17 @@ class JobLogTransport:
             if batch:
                 self._send_batch(batch)
 
+            progress_payload = self._drain_progress()
+            if progress_payload:
+                self._send_progress(progress_payload)
+
             if self._stop_event.is_set():
                 final_batch = self._drain_pending()
                 if final_batch:
                     self._send_batch(final_batch)
+                final_progress = self._drain_progress()
+                if final_progress:
+                    self._send_progress(final_progress)
                 return
 
     def broadcast(self, entry: JobLogEntry) -> None:
@@ -383,12 +408,10 @@ class JobLogTransport:
         items_processed: int | None = None,
         items_total: int | None = None,
     ) -> None:
-        if not self.realtime_manager or not self._loop or not getattr(self.realtime_manager, "is_connected", False):
-            return
-
         payload = _compact_dict(
             {
                 "job_id": self.job_id,
+                "lease_token": self.lease_token,
                 "runner_id": self.runner_id,
                 "runner_name": self.runner_name,
                 "status": status,
@@ -403,10 +426,43 @@ class JobLogTransport:
             }
         )
 
+        self._queue_progress(payload)
+
+        if not self.realtime_manager or not self._loop or not getattr(self.realtime_manager, "is_connected", False):
+            return
+
         try:
             asyncio.run_coroutine_threadsafe(
                 self.realtime_manager.broadcast_job_progress_update(payload),
                 self._loop,
+            )
+        except Exception:
+            pass
+
+    def _send_progress(self, payload: dict[str, Any]) -> None:
+        if not payload or not self.api_client:
+            return
+
+        delay = self.retry_delay
+        last_error: Exception | None = None
+
+        for attempt in range(self.max_retries + 1):
+            try:
+                self._thread_local.shipping = True
+                self.api_client.post_progress(payload)
+                return
+            except Exception as exc:  # noqa: PERF203 - clearer retry loop
+                last_error = exc
+                if attempt < self.max_retries:
+                    time.sleep(delay)
+                    delay *= 2
+            finally:
+                self._thread_local.shipping = False
+
+        try:
+            sys.stderr.write(
+                f"[job-logging] Failed to ship progress for job {self.job_id} "
+                f"after {self.max_retries + 1} attempt(s): {last_error}\n"
             )
         except Exception:
             pass
@@ -421,6 +477,9 @@ class JobLogTransport:
             batch = self._drain_pending()
             if batch:
                 self._send_batch(batch)
+            progress_payload = self._drain_progress()
+            if progress_payload:
+                self._send_progress(progress_payload)
 
     def close(self) -> None:
         if self._closed:
@@ -476,6 +535,7 @@ class JobLoggingSession:
         job_id: str,
         runner_name: str | None = None,
         runner_id: str | None = None,
+        lease_token: str | None = None,
         api_client: Any | None = None,
         realtime_manager: Any | None = None,
         logger_instance: logging.Logger | None = None,
@@ -487,6 +547,7 @@ class JobLoggingSession:
             job_id=job_id,
             runner_name=runner_name,
             runner_id=runner_id,
+            lease_token=lease_token,
             api_client=api_client,
             realtime_manager=realtime_manager,
             batch_size=batch_size,

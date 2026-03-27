@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogViewer } from '@/components/admin/scrapers/LogViewer';
+import { progressUpdateFromJobRecord } from '@/lib/scraper-logs';
 
 export const metadata: Metadata = {
   title: 'Run Details | Admin',
@@ -67,6 +68,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
   const status = run.status.toLowerCase();
   const config = statusConfig[status as keyof typeof statusConfig] ?? statusConfig.pending;
   const StatusIcon = config.icon;
+  const initialProgress = progressUpdateFromJobRecord(run);
 
   return (
     <div className="space-y-6 p-6">
@@ -119,6 +121,17 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Duration</p>
             <p>{formatDuration(run.created_at, run.completed_at)}</p>
           </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Runner</p>
+            <p>{run.runner_name || 'Unassigned'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Current Activity</p>
+            <p>
+              {initialProgress?.phase || run.progress_phase || 'Waiting for activity'}
+              {initialProgress?.current_sku ? ` • ${initialProgress.current_sku}` : ''}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -170,7 +183,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
         </Card>
       ) : null}
 
-      <LogViewer jobId={run.id} logs={logs} />
+      <LogViewer jobId={run.id} logs={logs} initialProgress={initialProgress} />
     </div>
   );
 }

@@ -27,8 +27,9 @@ import { toast } from 'sonner';
 import { TimelineView } from './TimelineView';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 import { useLogSubscription } from '@/lib/realtime/useLogSubscription';
-import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 import type { LogEntry } from '@/lib/realtime/useLogSubscription';
+import type { JobAssignment } from '@/lib/realtime/types';
+import { progressUpdateFromJobRecord } from '@/lib/scraper-logs';
 
 interface ActiveJob {
     id: string;
@@ -37,6 +38,17 @@ interface ActiveJob {
     status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
     createdAt: string;
     progress: number;
+    runnerName: string | null;
+    progressMessage: string | null;
+    progressPhase: string | null;
+    currentSku: string | null;
+    itemsProcessed: number | null;
+    itemsTotal: number | null;
+    lastLogMessage: string | null;
+    lastLogLevel: string | null;
+    lastLogAt: string | null;
+    lastUpdateAt: string | null;
+    heartbeatAt: string | null;
 }
 
 type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d';
@@ -122,6 +134,32 @@ function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
     );
 }
 
+function toActiveJob(job: JobAssignment): ActiveJob {
+    const liveProgress = progressUpdateFromJobRecord(job);
+
+    return {
+        id: job.id,
+        skuCount: job.skus?.length ?? 0,
+        scrapers: job.scrapers ?? [],
+        status: job.status === 'claimed'
+            ? 'running'
+            : job.status as ActiveJob['status'],
+        createdAt: job.created_at,
+        progress: liveProgress?.progress ?? 0,
+        runnerName: job.runner_name ?? liveProgress?.runner_name ?? null,
+        progressMessage: liveProgress?.message ?? null,
+        progressPhase: liveProgress?.phase ?? null,
+        currentSku: liveProgress?.current_sku ?? null,
+        itemsProcessed: liveProgress?.items_processed ?? null,
+        itemsTotal: liveProgress?.items_total ?? null,
+        lastLogMessage: job.last_log_message ?? null,
+        lastLogLevel: job.last_log_level ?? null,
+        lastLogAt: job.last_log_at ?? null,
+        lastUpdateAt: liveProgress?.timestamp ?? job.last_event_at ?? job.updated_at ?? job.created_at,
+        heartbeatAt: job.heartbeat_at ?? null,
+    };
+}
+
 export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     const router = useRouter();
     const [jobs, setJobs] = useState<ActiveJob[]>([]);
@@ -137,6 +175,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         isConnected: jobsConnected,
         jobs: realtimeJobs,
     } = useJobSubscription({
+        maxJobsPerStatus: 50,
         onJobCreated: (job) => {
             toast.info(`New job created: ${job.id.slice(0, 8)}...`);
         },
@@ -156,14 +195,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     } = useLogSubscription({
         maxEntries: 500,
     });
-    const {
-        progress,
-        isConnected: broadcastsConnected,
-    } = useJobBroadcasts({
-        autoConnect: true,
-    });
-
-    const isRealtimeConnected = jobsConnected && (logsConnected || broadcastsConnected);
+    const isRealtimeConnected = jobsConnected || logsConnected;
 
     // Initial fetch + periodic refresh (as fallback alongside realtime)
     const fetchJobs = useCallback(async () => {
@@ -211,41 +243,22 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                 let hasChanges = false;
 
                 activeRealtimeJobs.forEach((rj) => {
+                    const nextJob = toActiveJob(rj);
                     const existing = jobMap.get(rj.id);
-                    // Only update if something changed to prevent unnecessary re-renders
-                    if (!existing || existing.status !== rj.status || existing.skuCount !== (rj.skus?.length ?? 0)) {
-                        jobMap.set(rj.id, {
-                            id: rj.id,
-                            skuCount: rj.skus?.length ?? 0,
-                            scrapers: rj.scrapers ?? [],
-                            status: rj.status as 'pending' | 'running' | 'completed' | 'failed' | 'cancelled',
-                            createdAt: rj.created_at,
-                            progress: existing?.progress ?? 0,
-                        });
+
+                    if (!existing || JSON.stringify(existing) !== JSON.stringify(nextJob)) {
+                        jobMap.set(rj.id, nextJob);
                         hasChanges = true;
                     }
                 });
 
                 if (!hasChanges) return prev;
-                return Array.from(jobMap.values());
+                return Array.from(jobMap.values()).sort(
+                    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+                );
             });
         }
     }, [pendingJobs, runningJobs, completedJobs, failedJobs, cancelledJobs]);
-
-    useEffect(() => {
-        setJobs((prev) =>
-            prev.map((job) => {
-                const liveProgress = progress[job.id];
-                if (!liveProgress || job.progress === liveProgress.progress) {
-                    return job;
-                }
-                return {
-                    ...job,
-                    progress: liveProgress.progress,
-                };
-            })
-        );
-    }, [progress]);
 
     const handleCancel = async (jobId: string) => {
         if (!confirm('Are you sure you want to cancel this job?')) return;
@@ -432,6 +445,28 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                                                 {job.skuCount} SKUs • Started{' '}
                                                 {new Date(job.createdAt).toLocaleString()}
                                             </p>
+                                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                {job.runnerName ? (
+                                                    <span className="rounded-full bg-muted px-2 py-0.5">
+                                                        Runner: {job.runnerName}
+                                                    </span>
+                                                ) : null}
+                                                {job.progressPhase ? (
+                                                    <span className="rounded-full bg-muted px-2 py-0.5 uppercase">
+                                                        {job.progressPhase}
+                                                    </span>
+                                                ) : null}
+                                                {job.currentSku ? (
+                                                    <span className="font-mono text-foreground">
+                                                        {job.currentSku}
+                                                    </span>
+                                                ) : null}
+                                                {typeof job.itemsProcessed === 'number' && typeof job.itemsTotal === 'number' ? (
+                                                    <span>
+                                                        {job.itemsProcessed}/{job.itemsTotal}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -449,6 +484,28 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                                                     style={{ width: `${job.progress}%` }}
                                                 />
                                             </div>
+                                            {(job.progressMessage || job.lastLogMessage) && (
+                                                <div className="mt-2 space-y-1 text-xs">
+                                                    {job.progressMessage ? (
+                                                        <p className="text-foreground">{job.progressMessage}</p>
+                                                    ) : null}
+                                                    {job.lastLogMessage ? (
+                                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                                            {job.lastLogLevel ? (
+                                                                <LogLevelBadge level={job.lastLogLevel} />
+                                                            ) : null}
+                                                            <span className="line-clamp-1">
+                                                                {job.lastLogMessage}
+                                                            </span>
+                                                            {job.lastLogAt ? (
+                                                                <span className="shrink-0 tabular-nums">
+                                                                    {new Date(job.lastLogAt).toLocaleTimeString()}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex items-center gap-2 ml-4">

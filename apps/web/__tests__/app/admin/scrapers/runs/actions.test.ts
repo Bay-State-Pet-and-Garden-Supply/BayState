@@ -38,13 +38,23 @@ describe("getScraperRunLogs", () => {
 
     expect(mockSupabase.from).toHaveBeenCalledWith("scrape_job_logs");
     expect(mockSupabase.select).toHaveBeenCalledWith(
-      "id, job_id, level, message, details, created_at",
+      "id, event_id, job_id, level, message, details, created_at, runner_id, runner_name, source, scraper_name, sku, phase, sequence",
     );
     expect(mockSupabase.eq).toHaveBeenCalledWith("job_id", "job1");
-    expect(mockSupabase.order).toHaveBeenCalledWith("created_at", {
+    expect(mockSupabase.order).toHaveBeenNthCalledWith(1, "created_at", {
       ascending: true,
     });
-    expect(result).toEqual(fakeLogs);
+    expect(mockSupabase.order).toHaveBeenNthCalledWith(2, "sequence", {
+      ascending: true,
+    });
+    expect(result[0]).toMatchObject({
+      id: "1",
+      job_id: "job1",
+      level: "info",
+      message: "hello",
+      details: { foo: "bar" },
+      persisted: true,
+    });
   });
 
   it("returns empty array if error occurs", async () => {
