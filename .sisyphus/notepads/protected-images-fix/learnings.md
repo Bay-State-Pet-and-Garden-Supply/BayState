@@ -39,3 +39,11 @@
 - A reliable non-durable backfill scan can combine scraper login metadata (from local YAML) with per-source `requires_login=true` flags in `products_ingestion.sources` to avoid missing protected sources.
 - Batch pagination with `range(offset, offset + batchSize - 1)` keeps memory stable and gives deterministic 100/100/50 style progress logs for large backfills.
 - Retry queue insertion is safest when it first checks existing `(product_id, image_url)` rows and then performs insert; this keeps the script idempotent across repeated runs.
+
+- 2026-03-26:  reaches 17 passing cases with fully mocked storage, scraper capture, and browser-session persistence, so the retry flow stays CI-safe and network-independent.
+- 2026-03-26: Duplicate retry inserts can happen when the same failed image is traversed concurrently; guarding  with an in-flight promise cache removes duplicate queue rows without changing marker output.
+- 2026-03-26: apps/web/lib/scraper-callback/__tests__/image-retry-flow.test.ts now covers 8 required scenarios plus helper-path assertions, and the mock-only suite passes without reaching external services.
+- 2026-03-26: Using an in-flight promise cache inside apps/web/lib/product-image-storage.ts prevents duplicate image_retry_queue inserts when identical failures are traversed concurrently.
+
+
+- Compliance audit: core retry queue, storage handling, backfill, and retry processor files exist, but plan/evidence alignment is incomplete.

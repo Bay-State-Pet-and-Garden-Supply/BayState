@@ -57,7 +57,7 @@ export function PipelineProductDetail({
   const [price, setPrice] = useState('');
   const [weight, setWeight] = useState('');
   const [brandId, setBrandId] = useState('none');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<string[]>([]);
   const [productType, setProductType] = useState('');
   const [productOnPages, setProductOnPages] = useState<string[]>([]);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('imported');
@@ -99,7 +99,11 @@ export function PipelineProductDetail({
         setPrice(String(consolidated.price ?? input.price ?? ''));
         setWeight(consolidated.weight || input.weight || '');
         setBrandId(consolidated.brand_id || 'none');
-        setCategory(consolidated.category || input.category || '');
+        const catData = consolidated.category || input.category || '';
+        setCategory(Array.isArray(catData) 
+          ? catData 
+          : catData.split('|').map((c: string) => c.trim()).filter(Boolean)
+        );
         setProductType(consolidated.product_type || input.product_type || '');
         
         // Handle pages (product_on_pages is the internal field name)
@@ -198,7 +202,7 @@ export function PipelineProductDetail({
         price: parseFloat(price) || 0,
         brand_id: brandId === 'none' ? null : brandId,
         weight: weight.trim(),
-        category: category.trim(),
+        category: category,
         product_type: productType.trim(),
         product_on_pages: productOnPages,
         images: selectedImages
@@ -375,12 +379,31 @@ export function PipelineProductDetail({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category" className="text-sm font-medium">Category</Label>
-                    <Input
-                      id="category"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      placeholder="e.g. Dog Food"
-                    />
+                    <div className="flex flex-wrap gap-2 p-2 rounded-md border bg-muted/30 min-h-[40px]">
+                      {category.map(cat => (
+                        <Badge key={cat} variant="secondary" className="gap-1">
+                          {cat}
+                          <X 
+                            className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                            onClick={() => setCategory(prev => prev.filter(c => c !== cat))}
+                          />
+                        </Badge>
+                      ))}
+                      <Input
+                        className="flex-1 min-w-[120px] h-6 border-none bg-transparent focus-visible:ring-0 p-0 text-sm"
+                        placeholder="Add category..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = e.currentTarget.value.trim();
+                            if (val && !category.includes(val)) {
+                              setCategory(prev => [...prev, val]);
+                              e.currentTarget.value = '';
+                            }
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="productType" className="text-sm font-medium">Product Type</Label>
