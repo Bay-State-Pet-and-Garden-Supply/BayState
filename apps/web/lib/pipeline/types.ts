@@ -40,6 +40,7 @@ export interface SelectedImage {
  * Represents the full lifecycle of a product from import to publication
  */
 export interface PipelineProduct {
+  id?: string;
   /** Unique product identifier (matches SKU) */
   sku: string;
   /** Raw imported data */

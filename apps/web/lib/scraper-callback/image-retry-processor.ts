@@ -54,7 +54,7 @@ interface ScraperYamlConfig {
   requires_login?: boolean;
 }
 
-interface ScraperRuntimeConfig {
+export interface ScraperRuntimeConfig {
   slug: string;
   filePath: string;
   baseUrl: string | null;
@@ -69,6 +69,15 @@ interface DomainCircuitState {
 interface BrowserSessionState {
   sessionExpiresAt: string | null;
   storageStatePath: string;
+}
+
+export interface ResolvedImageRetryTarget {
+  productId: string;
+  sku: string;
+  sources: Record<string, unknown>;
+  matchedSourceNames: string[];
+  scraper: ScraperRuntimeConfig | null;
+  requiresLogin: boolean;
 }
 
 interface RetryAuthMetadata {
@@ -218,6 +227,97 @@ function buildPendingRetryMarker(imageUrl: string, errorType: ImageErrorType): s
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function valueContainsImageUrl(value: unknown, imageUrl: string): boolean {
+  if (typeof value === 'string') {
+    return value.trim() === imageUrl;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((entry) => valueContainsImageUrl(entry, imageUrl));
+  }
+
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return Object.values(value).some((entry) => valueContainsImageUrl(entry, imageUrl));
+}
+
+async function loadScraperRuntimeConfig(
+  supabase: Pick<SupabaseClient, 'from'>,
+  sourceNames: string[],
+  imageUrl: string
+): Promise<ScraperRuntimeConfig | null> {
+  if (sourceNames.length === 0) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('scraper_configs')
+    .select('slug, file_path')
+    .in('slug', sourceNames);
+
+  if (error || !Array.isArray(data) || data.length === 0) {
+    return null;
+  }
+
+  const configs = data as ScraperConfigMatch[];
+  const yamlConfigs = await Promise.all(
+    configs.map(async (config) => {
+      const filePath = path.resolve(SCRAPER_ROOT, config.file_path);
+      const rawConfig = await readFile(filePath, 'utf8');
+      const parsed = parseYaml(rawConfig) as ScraperYamlConfig;
+      return {
+        slug: config.slug,
+        filePath: config.file_path,
+        baseUrl: typeof parsed.base_url === 'string' ? parsed.base_url : null,
+        requiresLogin: Boolean(parsed.requires_login),
+      } satisfies ScraperRuntimeConfig;
+    })
+  );
+
+  const domain = parseDomain(imageUrl);
+  const directMatch = yamlConfigs.find((config) => parseDomain(config.baseUrl ?? '') === domain);
+
+  return directMatch ?? yamlConfigs[0] ?? null;
+}
+
+export async function resolveImageRetryTarget(
+  supabase: Pick<SupabaseClient, 'from'>,
+  productId: string,
+  imageUrl: string
+): Promise<ResolvedImageRetryTarget | null> {
+  const { data: product, error } = await supabase
+    .from('products_ingestion')
+    .select('id, sku, sources')
+    .eq('id', productId)
+    .single();
+
+  if (error || !product) {
+    return null;
+  }
+
+  const sources = isRecord(product.sources) ? product.sources : {};
+  const sourceNames = Object.keys(sources).filter((sourceName) => !sourceName.startsWith('_'));
+  const matchedSourceNames = sourceNames.filter((sourceName) =>
+    valueContainsImageUrl(sources[sourceName], imageUrl)
+  );
+  const scraper = await loadScraperRuntimeConfig(
+    supabase,
+    matchedSourceNames.length > 0 ? matchedSourceNames : sourceNames,
+    imageUrl
+  );
+
+  return {
+    productId: product.id,
+    sku: product.sku,
+    sources,
+    matchedSourceNames,
+    scraper,
+    requiresLogin: Boolean(scraper?.requiresLogin),
+  };
 }
 
 function parseDomain(imageUrl: string): string {
@@ -432,63 +532,18 @@ export class ImageRetryProcessor {
   };
 
   private async loadProductRetryContext(productId: string, imageUrl: string): Promise<ProductRetryContext> {
-    const { data: product, error } = await this.supabase
-      .from('products_ingestion')
-      .select('id, sku, sources')
-      .eq('id', productId)
-      .single();
+    const target = await resolveImageRetryTarget(this.supabase, productId, imageUrl);
 
-    if (error || !product) {
-      throw new Error(`Unable to load product ${productId}: ${error?.message ?? 'not found'}`);
+    if (!target) {
+      throw new Error(`Unable to load product ${productId}: not found`);
     }
-
-    const sources = isRecord(product.sources) ? product.sources : {};
-    const sourceNames = Object.keys(sources).filter((sourceName) => !sourceName.startsWith('_'));
 
     return {
-      id: product.id,
-      sku: product.sku,
-      sources,
-      scraper: await this.loadScraperRuntimeConfig(sourceNames, imageUrl),
+      id: target.productId,
+      sku: target.sku,
+      sources: target.sources,
+      scraper: target.scraper,
     };
-  }
-
-  private async loadScraperRuntimeConfig(
-    sourceNames: string[],
-    imageUrl: string
-  ): Promise<ScraperRuntimeConfig | null> {
-    if (sourceNames.length === 0) {
-      return null;
-    }
-
-    const { data, error } = await this.supabase
-      .from('scraper_configs')
-      .select('slug, file_path')
-      .in('slug', sourceNames);
-
-    if (error || !Array.isArray(data) || data.length === 0) {
-      return null;
-    }
-
-    const configs = data as ScraperConfigMatch[];
-    const yamlConfigs = await Promise.all(
-      configs.map(async (config) => {
-        const filePath = path.resolve(SCRAPER_ROOT, config.file_path);
-        const rawConfig = await readFile(filePath, 'utf8');
-        const parsed = parseYaml(rawConfig) as ScraperYamlConfig;
-        return {
-          slug: config.slug,
-          filePath: config.file_path,
-          baseUrl: typeof parsed.base_url === 'string' ? parsed.base_url : null,
-          requiresLogin: Boolean(parsed.requires_login),
-        } satisfies ScraperRuntimeConfig;
-      })
-    );
-
-    const domain = parseDomain(imageUrl);
-    const directMatch = yamlConfigs.find((config) => parseDomain(config.baseUrl ?? '') === domain);
-
-    return directMatch ?? yamlConfigs[0] ?? null;
   }
 
   private async refreshAuthSessionIfNeeded(
