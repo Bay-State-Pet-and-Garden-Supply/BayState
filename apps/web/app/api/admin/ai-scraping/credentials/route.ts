@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as {
       openai_api_key?: string;
+      serpapi_api_key?: string;
       brave_api_key?: string;
       defaults?: {
         llm_model?: 'gpt-4o-mini' | 'gpt-4o';
@@ -77,6 +78,10 @@ export async function POST(request: NextRequest) {
 
     if (body.openai_api_key && body.openai_api_key.trim()) {
       tasks.push(setAIScrapingProviderSecret('openai', body.openai_api_key, auth.userId));
+    }
+
+    if (body.serpapi_api_key && body.serpapi_api_key.trim()) {
+      tasks.push(setAIScrapingProviderSecret('serpapi', body.serpapi_api_key, auth.userId));
     }
 
     if (body.brave_api_key && body.brave_api_key.trim()) {

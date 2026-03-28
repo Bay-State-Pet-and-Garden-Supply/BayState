@@ -205,6 +205,7 @@ describe('POST /api/scraper/v1/poll', () => {
 
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
             openai_api_key: 'sk-test-key',
+            serpapi_api_key: 'serpapi-test-key',
             brave_api_key: 'brave-test-key',
         });
 
@@ -254,6 +255,7 @@ describe('POST /api/scraper/v1/poll', () => {
 
         const data = await res.json();
         expect(data.job.ai_credentials.openai_api_key).toBe('sk-test-key');
+        expect(data.job.ai_credentials.serpapi_api_key).toBe('serpapi-test-key');
         expect(data.job.ai_credentials.brave_api_key).toBe('brave-test-key');
         expect(data.job.job_config.max_search_results).toBe(7);
         expect(data.job.job_config.max_steps).toBe(20);

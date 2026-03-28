@@ -37,7 +37,8 @@ def validate_config() -> ValidationReport:
 
     Checks:
     - OPENAI_API_KEY: exists, not empty, starts with "sk-"
-    - BRAVE_API_KEY: exists, not empty, starts with "bsr_"
+    - AI_SEARCH_PROVIDER: optional, one of auto/serpapi/brave
+    - SERPAPI_API_KEY / BRAVE_API_KEY: at least one valid search key based on provider
     - SCRAPER_API_URL: exists, valid URL format
     - SCRAPER_API_KEY: exists, not empty
 
@@ -60,18 +61,34 @@ def validate_config() -> ValidationReport:
         if len(openai_key) < 40:
             warnings.append("OPENAI_API_KEY may be truncated or invalid")
 
-    # Validate BRAVE_API_KEY
+    # Validate search provider credentials
+    provider = str(os.environ.get("AI_SEARCH_PROVIDER") or "auto").strip().lower() or "auto"
+    if provider not in {"auto", "serpapi", "brave"}:
+        errors.append("AI_SEARCH_PROVIDER must be one of: auto, serpapi, brave")
+        provider = "auto"
+
+    serpapi_key = os.environ.get("SERPAPI_API_KEY")
     brave_key = os.environ.get("BRAVE_API_KEY")
-    if not brave_key:
-        errors.append("BRAVE_API_KEY is not set")
-    elif not brave_key.strip():
-        errors.append("BRAVE_API_KEY is empty")
-    elif not brave_key.startswith("bsr_"):
-        errors.append("BRAVE_API_KEY must start with 'bsr_'")
+    serpapi_present = bool(serpapi_key and serpapi_key.strip())
+    brave_present = bool(brave_key and brave_key.strip())
+
+    if serpapi_present and len(str(serpapi_key).strip()) < 20:
+        warnings.append("SERPAPI_API_KEY may be truncated or invalid")
+
+    if brave_present and len(str(brave_key).strip()) < 20:
+        warnings.append("BRAVE_API_KEY may be truncated or invalid")
+
+    if provider == "serpapi":
+        if not serpapi_present:
+            errors.append("SERPAPI_API_KEY is not set")
+    elif provider == "brave":
+        if not brave_present:
+            errors.append("BRAVE_API_KEY is not set")
     else:
-        # Check for minimum length
-        if len(brave_key) < 20:
-            warnings.append("BRAVE_API_KEY may be truncated or invalid")
+        if not serpapi_present and not brave_present:
+            errors.append("Either SERPAPI_API_KEY or BRAVE_API_KEY must be set")
+        elif not serpapi_present and brave_present:
+            warnings.append("SERPAPI_API_KEY is not set; AI Search will fall back to Brave")
 
     # Validate SCRAPER_API_URL
     scraper_url = os.environ.get("SCRAPER_API_URL")

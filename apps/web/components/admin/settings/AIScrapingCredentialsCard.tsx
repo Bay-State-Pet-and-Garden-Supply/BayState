@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Bot, Save, RefreshCw } from 'lucide-react';
 
 interface ProviderStatus {
-  provider: 'openai' | 'brave';
+  provider: 'openai' | 'serpapi' | 'brave';
   configured: boolean;
   last4: string | null;
   updated_at: string | null;
@@ -23,7 +23,7 @@ interface Defaults {
 }
 
 interface ApiResponse {
-  statuses: Record<'openai' | 'brave', ProviderStatus>;
+  statuses: Record<'openai' | 'serpapi' | 'brave', ProviderStatus>;
   defaults: Defaults;
 }
 
@@ -39,9 +39,11 @@ export function AIScrapingCredentialsCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [serpapiApiKey, setSerpapiApiKey] = useState('');
   const [braveApiKey, setBraveApiKey] = useState('');
-  const [statuses, setStatuses] = useState<Record<'openai' | 'brave', ProviderStatus>>({
+  const [statuses, setStatuses] = useState<Record<'openai' | 'serpapi' | 'brave', ProviderStatus>>({
     openai: { provider: 'openai', configured: false, last4: null, updated_at: null },
+    serpapi: { provider: 'serpapi', configured: false, last4: null, updated_at: null },
     brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
   });
   const [defaults, setDefaults] = useState<Defaults>(DEFAULTS);
@@ -74,13 +76,14 @@ export function AIScrapingCredentialsCard() {
   const hasChanges = useMemo(() => {
     return (
       openaiApiKey.trim().length > 0 ||
+      serpapiApiKey.trim().length > 0 ||
       braveApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [openaiApiKey, braveApiKey, defaults, initialDefaults]);
+  }, [openaiApiKey, serpapiApiKey, braveApiKey, defaults, initialDefaults]);
 
   const onSave = async () => {
     setSaving(true);
@@ -89,6 +92,7 @@ export function AIScrapingCredentialsCard() {
     try {
       const payload = {
         openai_api_key: openaiApiKey.trim() || undefined,
+        serpapi_api_key: serpapiApiKey.trim() || undefined,
         brave_api_key: braveApiKey.trim() || undefined,
         defaults,
       };
@@ -109,6 +113,7 @@ export function AIScrapingCredentialsCard() {
       setDefaults(body.defaults);
       setInitialDefaults(body.defaults);
       setOpenaiApiKey('');
+      setSerpapiApiKey('');
       setBraveApiKey('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
@@ -127,7 +132,7 @@ export function AIScrapingCredentialsCard() {
           <div>
             <CardTitle>AI Scraping Credentials</CardTitle>
             <CardDescription>
-              Configure OpenAI and Brave keys for runner-dispatched AI scraping jobs.
+              Configure OpenAI, SerpAPI, and optional Brave fallback keys for runner-dispatched AI scraping jobs.
             </CardDescription>
           </div>
         </div>
@@ -141,7 +146,7 @@ export function AIScrapingCredentialsCard() {
           <>
             {error && <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="openai-api-key">OpenAI API Key</Label>
                 <Input
@@ -159,7 +164,23 @@ export function AIScrapingCredentialsCard() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="brave-api-key">Brave Search API Key</Label>
+                <Label htmlFor="serpapi-api-key">SerpAPI Key</Label>
+                <Input
+                  id="serpapi-api-key"
+                  type="password"
+                  value={serpapiApiKey}
+                  onChange={(e) => setSerpapiApiKey(e.target.value)}
+                  placeholder="7aad..."
+                />
+                <div className="text-xs text-muted-foreground">
+                  {statuses.serpapi.configured
+                    ? `Configured (ending in ${statuses.serpapi.last4 ?? '****'})`
+                    : 'Not configured'}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="brave-api-key">Brave Search API Key (Optional Fallback)</Label>
                 <Input
                   id="brave-api-key"
                   type="password"
@@ -240,8 +261,11 @@ export function AIScrapingCredentialsCard() {
                 <Badge variant={statuses.openai.configured ? 'default' : 'secondary'}>
                   OpenAI {statuses.openai.configured ? 'Ready' : 'Missing'}
                 </Badge>
+                <Badge variant={statuses.serpapi.configured ? 'default' : 'secondary'}>
+                  SerpAPI {statuses.serpapi.configured ? 'Ready' : 'Missing'}
+                </Badge>
                 <Badge variant={statuses.brave.configured ? 'default' : 'secondary'}>
-                  Brave {statuses.brave.configured ? 'Ready' : 'Missing'}
+                  Brave Fallback {statuses.brave.configured ? 'Ready' : 'Optional'}
                 </Badge>
               </div>
 

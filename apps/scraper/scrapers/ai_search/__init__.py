@@ -2,7 +2,7 @@
 AI Search Scraper - Universal product extraction.
 
 This module provides a standalone AI scraper that:
-1. Searches for products using Brave Search API
+1. Searches for products using SerpAPI/Google search with provider fallbacks
 2. Identifies manufacturer websites intelligently
 3. Navigates and extracts product data
 4. Returns structured results

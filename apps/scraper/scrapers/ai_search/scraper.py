@@ -12,7 +12,7 @@ from scrapers.ai_search.models import AISearchResult
 from scrapers.ai_search.scoring import SearchScorer
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.extraction import ExtractionUtils
-from scrapers.ai_search.search import BraveSearchClient
+from scrapers.ai_search.search import SearchClient, normalize_search_provider
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.validation import ExtractionValidator
 from scrapers.ai_search.source_selector import LLMSourceSelector
@@ -25,7 +25,7 @@ class AISearchScraper:
     """AI-powered search scraper for universal product extraction.
 
     This scraper doesn't require pre-configured site definitions. Instead, it:
-    1. Searches for the product using Brave Search API
+    1. Searches for the product using SerpAPI/Google search with provider fallbacks
     2. Uses AI to identify the most likely manufacturer/official product page
     3. Navigates to that page and extracts structured data
     4. Returns results in a standardized format
@@ -41,6 +41,7 @@ class AISearchScraper:
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
+        search_provider: str | None = None,
     ):
         """Initialize the AI discovery scraper.
 
@@ -53,6 +54,7 @@ class AISearchScraper:
             cache_enabled: Whether to enable/disable Crawl4AI caching
             extraction_strategy: Strategy for data extraction (llm, json_ld, etc)
             prompt_version: Which prompt version to use (v1, v2, etc)
+            search_provider: Search provider preference (auto, serpapi, brave)
         """
         self.headless = headless
         self.max_search_results = max_search_results
@@ -62,6 +64,7 @@ class AISearchScraper:
         self.cache_enabled = cache_enabled
         self.extraction_strategy = extraction_strategy
         self.prompt_version = prompt_version
+        self.search_provider = normalize_search_provider(search_provider or os.getenv("AI_SEARCH_PROVIDER"))
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
         self._cost_tracker = AICostTracker()
         self._browser: Any = None
@@ -86,7 +89,7 @@ class AISearchScraper:
         self._scoring = SearchScorer()
         self._matching = MatchingUtils()
         self._extraction = ExtractionUtils(self._scoring)
-        self._search_client = BraveSearchClient(max_results=max_search_results)
+        self._search_client = SearchClient(max_results=max_search_results, provider=self.search_provider)
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
         self._source_selector = LLMSourceSelector(model=llm_model)
@@ -197,8 +200,23 @@ class AISearchScraper:
             ),
         ]
 
+        pending_queries: list[str] = []
         for query in query_plan:
-            await run_query(query)
+            if not query or query in seen_queries:
+                continue
+            seen_queries.add(query)
+            pending_queries.append(query)
+
+        if pending_queries:
+            query_results = await asyncio.gather(
+                *[self._search_client.search(query) for query in pending_queries]
+            )
+            for raw_results, raw_error in query_results:
+                if raw_results:
+                    aggregated_results.extend(raw_results)
+                    search_error = None
+                elif raw_error:
+                    search_error = raw_error
 
         prepared_results = self._scoring.prepare_search_results(
             aggregated_results,
