@@ -4,10 +4,12 @@ import logging
 import os
 from typing import Any, Optional, Tuple
 
-from openai import OpenAI
+from openai import AsyncOpenAI
+
 from scrapers.ai_cost_tracker import AICostTracker
 
 logger = logging.getLogger(__name__)
+
 
 class NameConsolidator:
     """Uses LLM to infer a canonical product name from search results."""
@@ -16,7 +18,7 @@ class NameConsolidator:
         """Initialize the name consolidator."""
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
-        self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
         self._cost_tracker = AICostTracker()
 
     async def consolidate_name(
@@ -64,7 +66,7 @@ TASK:
 CONSOLIDATED NAME:"""
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a product data expert specializing in name canonicalization."},

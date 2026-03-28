@@ -22,8 +22,8 @@ async def run_baseline():
     if not os.environ.get("OPENAI_API_KEY"):
         logger.error("OPENAI_API_KEY is not set. Please set it before running.")
         sys.exit(1)
-    if not os.environ.get("BRAVE_API_KEY"):
-        logger.error("BRAVE_API_KEY is not set. Please set it before running.")
+    if not os.environ.get("SERPAPI_API_KEY") and not os.environ.get("BRAVE_API_KEY"):
+        logger.error("Either SERPAPI_API_KEY or BRAVE_API_KEY must be set before running.")
         sys.exit(1)
 
     # Load ground truth data

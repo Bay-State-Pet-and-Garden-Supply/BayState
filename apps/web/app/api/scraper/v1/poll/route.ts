@@ -41,6 +41,7 @@ interface PollResponse {
         job_config?: Record<string, unknown>;
         ai_credentials?: {
             openai_api_key?: string;
+            serpapi_api_key?: string;
             brave_api_key?: string;
         };
         lease_token?: string;
@@ -54,6 +55,7 @@ const DISCOVERY_CONFIG_KEYS = new Set([
     'max_search_results',
     'max_steps',
     'confidence_threshold',
+    'search_provider',
     'prefer_manufacturer',
     'fallback_to_static',
     'max_concurrency',

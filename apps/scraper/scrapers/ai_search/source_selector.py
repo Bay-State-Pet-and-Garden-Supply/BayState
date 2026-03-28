@@ -4,10 +4,12 @@ import logging
 import os
 from typing import Any, Optional, Tuple
 
-from openai import OpenAI
+from openai import AsyncOpenAI
+
 from scrapers.ai_cost_tracker import AICostTracker
 
 logger = logging.getLogger(__name__)
+
 
 class LLMSourceSelector:
     """Uses LLM to identify the best source URL from search results."""
@@ -16,7 +18,7 @@ class LLMSourceSelector:
         """Initialize the source selector."""
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
-        self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
         self._cost_tracker = AICostTracker()
 
     async def select_best_url(
@@ -49,10 +51,7 @@ class LLMSourceSelector:
         prompt = self._build_prompt(sku, product_name, candidates)
         
         try:
-            # Note: We use the synchronous client here, but it can be wrapped in a thread
-            # or use an async client. For now, we'll use synchronous within the async method
-            # as a starting point.
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a product sourcing expert. Your task is to identify the official manufacturer's product detail page from a list of search results."},

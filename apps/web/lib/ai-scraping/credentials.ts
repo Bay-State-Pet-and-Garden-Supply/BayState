@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export type AIProvider = 'openai' | 'brave';
+export type AIProvider = 'openai' | 'serpapi' | 'brave';
 
 export interface AIScrapingDefaults {
   llm_model: 'gpt-4o-mini' | 'gpt-4o';
@@ -255,12 +255,13 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
 
   const statuses: Record<AIProvider, AICredentialStatus> = {
     openai: { provider: 'openai', configured: false, last4: null, updated_at: null },
+    serpapi: { provider: 'serpapi', configured: false, last4: null, updated_at: null },
     brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
   };
 
   for (const row of data || []) {
     const provider = row.provider as AIProvider;
-    if (provider !== 'openai' && provider !== 'brave') {
+    if (provider !== 'openai' && provider !== 'serpapi' && provider !== 'brave') {
       continue;
     }
     statuses[provider] = {
@@ -304,16 +305,20 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
   }
 }
 
-export async function getAIScrapingRuntimeCredentials(): Promise<{ openai_api_key?: string; brave_api_key?: string } | null> {
-  const [openai, brave] = await Promise.all([
+export async function getAIScrapingRuntimeCredentials(): Promise<{ openai_api_key?: string; serpapi_api_key?: string; brave_api_key?: string } | null> {
+  const [openai, serpapi, brave] = await Promise.all([
     getAIScrapingProviderSecret('openai'),
+    getAIScrapingProviderSecret('serpapi'),
     getAIScrapingProviderSecret('brave'),
   ]);
 
-  const credentials: { openai_api_key?: string; brave_api_key?: string } = {};
+  const credentials: { openai_api_key?: string; serpapi_api_key?: string; brave_api_key?: string } = {};
 
   if (openai) {
     credentials.openai_api_key = openai;
+  }
+  if (serpapi) {
+    credentials.serpapi_api_key = serpapi;
   }
   if (brave) {
     credentials.brave_api_key = brave;

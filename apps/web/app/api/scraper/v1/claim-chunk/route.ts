@@ -29,6 +29,7 @@ interface ChunkResponse {
     job_config?: Record<string, unknown>;
     ai_credentials?: {
         openai_api_key?: string;
+        serpapi_api_key?: string;
         brave_api_key?: string;
     };
     lease_token?: string;

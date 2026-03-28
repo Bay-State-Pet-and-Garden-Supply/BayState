@@ -104,6 +104,10 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             runnerName: 'test-runner',
             allowedScrapers: null,
         });
+        (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
+            openai_api_key: 'sk-test-key',
+            serpapi_api_key: 'serpapi-test-key',
+        });
         mockSupabase.rpc.mockResolvedValue({
             data: [{
                 chunk_id: 'chunk-1',
@@ -131,6 +135,10 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             chunk_index: 0,
             skus: ['SKU-1'],
             scrapers: ['bradley'],
+            ai_credentials: {
+                openai_api_key: 'sk-test-key',
+                serpapi_api_key: 'serpapi-test-key',
+            },
         });
         expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({
             status: 'busy',
