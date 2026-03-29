@@ -1,0 +1,152 @@
+schema_version: "1.0"
+name: petedge
+display_name: PetEdge
+base_url: https://www.petedge.com
+scraper_type: static
+use_stealth: false
+selectors:
+  - name: Name
+    selector: "h1.page-title span.base"
+    fallback_selectors:
+      - "h1.page-title"
+      - "h1"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "li.list-wrapper:has(.list-heading:has-text('Brand')) .list-text"
+    fallback_selectors:
+      - "li.list-wrapper:has-text('Brand') .list-text"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "#description .value"
+    fallback_selectors:
+      - ".product.attribute.description .value"
+      - "#description"
+    attribute: text
+    multiple: false
+    required: false
+  - name: SKU
+    selector: ".product.attribute.sku .value"
+    fallback_selectors:
+      - "body :has-text('ITEM #')"
+    attribute: text
+    multiple: false
+    required: true
+  - name: UPC
+    selector: "li.list-wrapper:has(.list-heading:has-text('UPC')) .list-text"
+    fallback_selectors:
+      - "li.list-wrapper:has-text('UPC') .list-text"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: "img.fotorama__img"
+    fallback_selectors:
+      - ".fotorama__stage__frame img"
+      - "img[src*='/media/catalog/product/']"
+    attribute: src
+    multiple: true
+    required: true
+workflows:
+  - action: navigate
+    name: search_page
+    params:
+      url: "https://www.petedge.com/search/?q={sku}"
+  - action: wait
+    name: settle_search_page
+    params:
+      seconds: 2
+  - action: conditional_click
+    name: accept_cookies_if_present
+    params:
+      selector: "#onetrust-accept-btn-handler, button:has-text('Accept Cookies'), button:has-text('Accept')"
+      timeout: 2
+  - action: wait_for
+    name: wait_for_search_results
+    params:
+      timeout: 15
+      selector:
+        - "a.klevuProductClick"
+        - "body"
+  - action: conditional
+    name: open_exact_sku_match
+    params:
+      condition_type: element_exists
+      selector: "a.klevuProductClick:has-text('{sku}')"
+      then:
+        - action: click
+          name: click_exact_sku_match
+          params:
+            selector: "a.klevuProductClick:has-text('{sku}')"
+        - action: wait_for
+          name: wait_for_product_details
+          params:
+            timeout: 15
+            selector:
+              - "h1.page-title span.base"
+              - ".product.attribute.sku .value"
+        - action: extract
+          name: extract_fields
+          params:
+            fields:
+              - Name
+              - Brand
+              - Description
+              - SKU
+              - UPC
+              - Image URLs
+        - action: process_images
+          name: clean_images
+          params:
+            field: Image URLs
+            quality_patterns:
+              - regex: "\\?.*$"
+                replacement: ""
+            filters:
+              - type: require_text
+                text: /media/catalog/product/
+              - type: exclude_text
+                text: placeholder
+              - type: exclude_text
+                text: logo
+            deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - ".kuNoResults"
+    - ".kuNoRecordFound"
+    - "main :has-text('No Results')"
+  no_results_text_patterns:
+    - no results found
+    - no products found
+    - no records found
+login: null
+http_status: null
+normalization: null
+timeout: 25
+retries: 2
+image_quality: 60
+test_skus:
+  - "DT361 99"
+  - "AD2475 17"
+  - "BG2101 91"
+fake_skus:
+  - zzznotreal9999
+  - xx000notfound
+  - "000000000000"
+edge_case_skus:
+  - "A"
+  - "DT361"
