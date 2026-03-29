@@ -37,7 +37,6 @@ class ExtractionUtils:
         """Normalize and dedupe image URLs."""
         normalized: list[str] = []
         seen: set[str] = set()
-        source_domain = self._scoring.domain_from_url(source_url)
 
         for raw in images:
             value = str(raw or "").strip()
@@ -46,8 +45,6 @@ class ExtractionUtils:
             absolute = urljoin(source_url, value)
             parsed = urlparse(absolute)
             if parsed.scheme not in {"http", "https"}:
-                continue
-            if source_domain and self._scoring.domain_from_url(absolute) != source_domain:
                 continue
             if absolute in seen:
                 continue

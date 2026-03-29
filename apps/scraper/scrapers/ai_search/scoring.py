@@ -1,5 +1,6 @@
 """Search result scoring and filtering logic."""
 
+import re
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -56,35 +57,39 @@ class SearchScorer:
         "upcindex.com",
     }
 
-    # Low quality terms to penalize
-    LOW_QUALITY_TERMS = [
-        "review",
-        "best",
-        "top 10",
-        "comparison",
-        "vs",
-        "reddit",
-        "pinterest",
-        "youtube",
-        "facebook",
-        "instagram",
-        "tiktok",
-        "affiliate",
-        "coupon",
-        "deal",
-        "blog",
-        "forum",
+    # Low quality phrases to penalize. These are matched as words/phrases rather than
+    # raw substrings so legitimate PDPs like "...ideal-for..." do not trip the "deal" filter.
+    LOW_QUALITY_PATTERNS = [
+        r"\breview\b",
+        r"\bbest\b",
+        r"\btop 10\b",
+        r"\bcomparison\b",
+        r"\bvs\b",
+        r"\breddit\b",
+        r"\bpinterest\b",
+        r"\byoutube\b",
+        r"\bfacebook\b",
+        r"\binstagram\b",
+        r"\btiktok\b",
+        r"\baffiliate\b",
+        r"\bcoupon\b",
+        r"\bdeal(?:s)?\b",
+        r"\bblog\b",
+        r"\bforum\b",
+        r"\bgift guide\b",
+        r"\bbuying guide\b",
+        r"\btop picks\b",
+        r"\bbest toys\b",
+        r"\bbest dog toys\b",
+        r"\bupc database\b",
+        r"\bbarcode search\b",
+        r"\bgtin search\b",
+        r"\bproduct lookup\b",
+    ]
+
+    LOW_QUALITY_URL_FRAGMENTS = [
         "category/",
         "/collections/",
-        "gift guide",
-        "buying guide",
-        "top picks",
-        "best toys",
-        "best dog toys",
-        "upc database",
-        "barcode search",
-        "gtin search",
-        "product lookup",
     ]
 
     # Category-like URL patterns
@@ -140,7 +145,10 @@ class SearchScorer:
         if self.is_category_like_url(url):
             return True
 
-        return any(term in combined for term in self.LOW_QUALITY_TERMS)
+        if any(fragment in combined for fragment in self.LOW_QUALITY_URL_FRAGMENTS):
+            return True
+
+        return any(re.search(pattern, combined) for pattern in self.LOW_QUALITY_PATTERNS)
 
     def score_search_result(
         self,
