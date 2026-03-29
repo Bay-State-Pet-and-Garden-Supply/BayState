@@ -35,6 +35,34 @@ class TestCrawl4AIEngine:
             assert engine.config == basic_config
             mock_browser_config.assert_called()
 
+    def test_init_with_engine_config_dataclass(self):
+        """Test engine initialization accepts EngineConfig dataclass inputs."""
+        with (
+            patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("src.crawl4ai_engine.engine.BrowserConfig"),
+            patch("src.crawl4ai_engine.engine.CrawlerRunConfig"),
+        ):
+            from src.crawl4ai_engine.engine import Crawl4AIEngine
+            from src.crawl4ai_engine.types import EngineConfig
+
+            engine = Crawl4AIEngine(
+                EngineConfig(
+                    headless=False,
+                    browser_type="firefox",
+                    timeout=45,
+                    max_concurrent_crawls=7,
+                    user_agent="BayStateBot/1.0",
+                    proxy="http://proxy.example.com:8080",
+                )
+            )
+
+            assert engine.config["browser"]["headless"] is False
+            assert engine.config["browser"]["browser_type"] == "firefox"
+            assert engine.config["browser"]["user_agent"] == "BayStateBot/1.0"
+            assert engine.config["browser"]["proxy"] == "http://proxy.example.com:8080"
+            assert engine.config["crawler"]["timeout"] == 45000
+            assert engine.config["crawler"]["concurrency_limit"] == 7
+
     def test_build_browser_config(self, basic_config):
         """Test browser config building."""
         with (
@@ -52,6 +80,46 @@ class TestCrawl4AIEngine:
             # Verify specific arguments
             call_args = mock_browser_config.call_args.kwargs
             assert call_args["headless"] is True
+
+    def test_build_browser_config_maps_viewport_and_browser_options(self):
+        """Test viewport dictionaries and advanced browser options are normalized."""
+        config = {
+            "browser": {
+                "headless": False,
+                "viewport": {"width": 1920, "height": 1080},
+                "headers": {"X-Test": "1"},
+                "cookies": [{"name": "session", "value": "abc"}],
+                "extra_args": ["--disable-extensions"],
+                "java_script_enabled": False,
+                "user_agent_mode": "random",
+                "user_agent_generator_config": {"device_type": "desktop"},
+                "text_mode": True,
+                "light_mode": True,
+            }
+        }
+        with (
+            patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("src.crawl4ai_engine.engine.BrowserConfig") as mock_browser_config,
+            patch("src.crawl4ai_engine.engine.CrawlerRunConfig"),
+        ):
+            mock_browser_config.return_value = MagicMock()
+            from src.crawl4ai_engine.engine import Crawl4AIEngine
+
+            engine = Crawl4AIEngine(config)
+            _ = engine._build_browser_config()
+
+            call_args = mock_browser_config.call_args.kwargs
+            assert call_args["headless"] is False
+            assert call_args["viewport_width"] == 1920
+            assert call_args["viewport_height"] == 1080
+            assert call_args["headers"] == {"X-Test": "1"}
+            assert call_args["cookies"] == [{"name": "session", "value": "abc"}]
+            assert call_args["extra_args"] == ["--disable-extensions"]
+            assert call_args["java_script_enabled"] is False
+            assert call_args["user_agent_mode"] == "random"
+            assert call_args["user_agent_generator_config"] == {"device_type": "desktop"}
+            assert call_args["text_mode"] is True
+            assert call_args["light_mode"] is True
 
     def test_build_run_config(self, basic_config):
         """Test crawler run config building."""
@@ -131,6 +199,79 @@ class TestCrawl4AIEngine:
             engine = Crawl4AIEngine(basic_config)
             with pytest.raises(RuntimeError, match="not initialized"):
                 _ = engine.crawler
+
+    @pytest.mark.asyncio
+    async def test_crawl_normalizes_markdown_generation_result(self, basic_config):
+        """Test crawl converts MarkdownGenerationResult-like objects into strings."""
+        with (
+            patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("src.crawl4ai_engine.engine.BrowserConfig"),
+            patch("src.crawl4ai_engine.engine.CrawlerRunConfig"),
+        ):
+            from src.crawl4ai_engine.engine import Crawl4AIEngine
+
+            engine = Crawl4AIEngine(basic_config)
+            markdown_result = MagicMock()
+            markdown_result.raw_markdown = "raw markdown"
+            markdown_result.fit_markdown = "fit markdown"
+            markdown_result.fit_html = "<p>fit html</p>"
+            markdown_result.markdown_with_citations = "citations markdown"
+            markdown_result.references_markdown = "references markdown"
+
+            mock_result = MagicMock()
+            mock_result.url = "https://example.com/final"
+            mock_result.success = True
+            mock_result.html = "<html>ok</html>"
+            mock_result.cleaned_html = "<html>clean</html>"
+            mock_result.markdown = markdown_result
+            mock_result.extracted_content = '{"ok": true}'
+            mock_result.metadata = {"title": "Example"}
+            mock_result.links = {"internal": ["https://example.com/about"]}
+            mock_result.media = {"images": ["https://example.com/image.jpg"]}
+
+            mock_crawler = AsyncMock()
+            mock_crawler.arun.return_value = mock_result
+            engine._crawler = mock_crawler
+
+            result = await engine.crawl("https://example.com")
+
+            assert result["url"] == "https://example.com/final"
+            assert result["html"] == "<html>ok</html>"
+            assert result["cleaned_html"] == "<html>clean</html>"
+            assert result["markdown"] == "fit markdown"
+            assert result["raw_markdown"] == "raw markdown"
+            assert result["fit_markdown"] == "fit markdown"
+            assert result["fit_html"] == "<p>fit html</p>"
+            assert result["markdown_with_citations"] == "citations markdown"
+            assert result["references_markdown"] == "references markdown"
+            assert result["metadata"] == {"title": "Example"}
+            assert result["links"] == {"internal": ["https://example.com/about"]}
+            assert result["media"] == {"images": ["https://example.com/image.jpg"]}
+
+    @pytest.mark.asyncio
+    async def test_crawl_uses_error_message_when_error_attr_missing(self, basic_config):
+        """Test crawl normalizes failure payloads that only expose error_message."""
+        with (
+            patch("src.crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("src.crawl4ai_engine.engine.BrowserConfig"),
+            patch("src.crawl4ai_engine.engine.CrawlerRunConfig"),
+        ):
+            from src.crawl4ai_engine.engine import Crawl4AIEngine
+
+            engine = Crawl4AIEngine(basic_config)
+            mock_result = MagicMock()
+            mock_result.success = False
+            mock_result.error = None
+            mock_result.error_message = "Timed out waiting for selector"
+
+            mock_crawler = AsyncMock()
+            mock_crawler.arun.return_value = mock_result
+            engine._crawler = mock_crawler
+
+            result = await engine.crawl("https://example.com")
+
+            assert result["success"] is False
+            assert result["error"] == "Timed out waiting for selector"
 
 
 class TestConfigLoading:
