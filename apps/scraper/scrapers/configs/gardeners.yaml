@@ -1,0 +1,152 @@
+schema_version: "1.0"
+name: gardeners
+display_name: Gardener's Supply
+base_url: https://www.gardeners.com
+scraper_type: static
+use_stealth: false
+selectors:
+  - name: Name
+    selector: "main h1"
+    fallback_selectors:
+      - "h1"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "main h1"
+    fallback_selectors:
+      - "h1"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "main .product__description"
+    fallback_selectors:
+      - "main .rte"
+    attribute: text
+    multiple: false
+    required: false
+  - name: SKU
+    selector: "[data-product-sku]"
+    fallback_selectors:
+      - "main :has-text('SKU:')"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Image URLs
+    selector: "main .lightbox-image img.image__img"
+    fallback_selectors:
+      - ".product-thumbnails__item-image img.image__img"
+    attribute: src
+    multiple: true
+    required: true
+workflows:
+  - action: navigate
+    name: search_page
+    params:
+      url: "https://www.gardeners.com/pages/search-results-page?q={sku}"
+  - action: wait_for
+    name: wait_for_search_results
+    params:
+      timeout: 15
+      selector:
+        - "a.snize-view-link[href*='/products/']"
+        - "body"
+  - action: conditional
+    name: open_first_product_match
+    params:
+      condition_type: element_exists
+      selector: "a.snize-view-link[href*='/products/']"
+      then:
+        - action: click
+          name: click_first_product_match
+          params:
+            selector: "a.snize-view-link[href*='/products/']"
+        - action: wait_for
+          name: wait_for_product_details
+          params:
+            timeout: 15
+            selector:
+              - "main h1"
+              - "[data-product-sku]"
+        - action: extract
+          name: extract_fields
+          params:
+            fields:
+              - Name
+              - Brand
+              - Description
+              - SKU
+              - Image URLs
+        - action: transform_value
+          name: normalize_brand
+          params:
+            field: Brand
+            transformations:
+              - type: replace
+                pattern: "^.*$"
+                replacement: "Gardener's Supply"
+        - action: transform_value
+          name: normalize_description
+          params:
+            field: Description
+            transformations:
+              - type: replace
+                pattern: "^Description\\s+"
+                replacement: ""
+        - action: transform_value
+          name: normalize_sku
+          params:
+            field: SKU
+            transformations:
+              - type: regex_extract
+                pattern: "SKU:\\s*([A-Za-z0-9-]+)"
+                group: 1
+        - action: process_images
+          name: clean_images
+          params:
+            field: Image URLs
+            quality_patterns:
+              - regex: "&width=\\d+"
+                replacement: ""
+            filters:
+              - type: require_text
+                text: /cdn/shop/files/
+              - type: exclude_text
+                text: LogoStandard
+            deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - "main :has-text('0 results found')"
+    - "main :has-text('No results found')"
+  no_results_text_patterns:
+    - 0 results found for
+    - no results found
+login: null
+http_status: null
+normalization: null
+timeout: 25
+retries: 2
+image_quality: 60
+test_skus:
+  - "12338"
+  - "12111"
+  - "15024"
+fake_skus:
+  - zzznotreal9999
+  - "9999999999"
+  - NOTAGARDENERSMATCH
+edge_case_skus:
+  - "1"
+  - "1234567890123456789"
