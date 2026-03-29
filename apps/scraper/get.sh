@@ -149,6 +149,11 @@ load_saved_config() {
                     SCRAPER_AUTO_UPDATE="$value"
                 fi
                 ;;
+            BAYSTATE_RUNNER_RELEASE_CHANNEL)
+                if [ -z "${BAYSTATE_RUNNER_RELEASE_CHANNEL:-}" ] && [ -n "$value" ]; then
+                    BAYSTATE_RUNNER_RELEASE_CHANNEL="$value"
+                fi
+                ;;
         esac
     done < "$CONFIG_FILE"
 }
@@ -161,6 +166,7 @@ SCRAPER_API_URL=$SCRAPER_API_URL
 SCRAPER_API_KEY=$SCRAPER_API_KEY
 RUNNER_NAME=$RUNNER_NAME
 SCRAPER_AUTO_UPDATE=$AUTO_UPDATES_ENABLED
+BAYSTATE_RUNNER_RELEASE_CHANNEL=${BAYSTATE_RUNNER_RELEASE_CHANNEL:-latest}
 EOF
 
     chmod 600 "$CONFIG_FILE" 2>/dev/null || true
@@ -213,8 +219,13 @@ get_config() {
         RUNNER_NAME=$(hostname | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
     fi
 
+    if [ -z "${BAYSTATE_RUNNER_RELEASE_CHANNEL:-}" ]; then
+        BAYSTATE_RUNNER_RELEASE_CHANNEL="latest"
+    fi
+
     echo ""
     echo -e "Runner Name: ${CYAN}$RUNNER_NAME${NC}"
+    echo -e "Release Channel: ${CYAN}$BAYSTATE_RUNNER_RELEASE_CHANNEL${NC}"
 }
 
 get_auto_update_preference() {

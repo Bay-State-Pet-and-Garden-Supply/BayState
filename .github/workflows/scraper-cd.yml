@@ -76,6 +76,7 @@ jobs:
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
 
       - name: Build and push Docker image
+        id: build_image
         uses: docker/build-push-action@v6
         with:
           context: ./apps/scraper
@@ -86,3 +87,18 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            RUNNER_BUILD_ID=${{ github.run_id }}-${{ github.run_attempt }}
+            RUNNER_BUILD_SHA=${{ github.sha }}
+
+      - name: Publish latest runner release metadata
+        if: contains(steps.meta.outputs.tags, ':latest')
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RUNNER_RELEASE_CHANNEL: latest
+          RUNNER_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          RUNNER_BUILD_SHA: ${{ github.sha }}
+          RUNNER_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          RUNNER_IMAGE_DIGEST: ${{ steps.build_image.outputs.digest }}
+        run: node scripts/publish-scraper-runner-release.mjs

@@ -6,6 +6,13 @@ import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
 } from '@/lib/ai-scraping/credentials';
+import {
+    buildRunnerBuildHeaders,
+    buildRunnerBuildMetadata,
+    createRunnerBuildMismatchResponse,
+    getRunnerBuildCheck,
+    loadExpectedRunnerRelease,
+} from '@/lib/scraper-runner-version';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
@@ -47,6 +54,13 @@ interface PollResponse {
         lease_token?: string;
         lease_expires_at?: string;
     } | null;
+}
+
+interface RunnerRecord {
+    name: string;
+    enabled: boolean;
+    status: string | null;
+    metadata: Record<string, unknown> | null;
 }
 
 const DISCOVERY_CONFIG_KEYS = new Set([
@@ -188,17 +202,78 @@ export async function POST(request: NextRequest) {
         const runnerName = runner.runnerName;
         const supabase = getSupabaseAdmin();
         const nowIso = new Date().toISOString();
+        const expectedRelease = await loadExpectedRunnerRelease(supabase, request.headers);
+        const versionCheck = getRunnerBuildCheck(request.headers, expectedRelease);
+        const responseHeaders = {
+            'X-Enforced-Runner-Name': runnerName,
+            ...buildRunnerBuildHeaders(versionCheck),
+        };
 
-        const { data: updatedRunners, error: runnerUpdateError } = await supabase
+        const { data: runnerRows, error: runnerLookupError } = await supabase
+            .from('scraper_runners')
+            .update({ last_seen_at: nowIso })
+            .eq('name', runnerName)
+            .select('name, enabled, status, metadata');
+
+        if (runnerLookupError) {
+            console.error('[Poll] Failed to load runner state:', runnerLookupError);
+            return NextResponse.json(
+                { error: 'Failed to load runner state', details: runnerLookupError.message },
+                { status: 500 }
+            );
+        }
+
+        if (!runnerRows || runnerRows.length === 0) {
+            const response: PollResponse = { job: null };
+            return NextResponse.json(response, {
+                headers: responseHeaders,
+            });
+        }
+
+        const runnerRecord = runnerRows[0] as RunnerRecord;
+        const versionMetadata = buildRunnerBuildMetadata(
+            runnerRecord.metadata,
+            versionCheck,
+            nowIso
+        );
+
+        const updateRunnerMetadata = async (updates: Record<string, unknown>) => {
+            const { error } = await supabase
+                .from('scraper_runners')
+                .update({
+                    metadata: versionMetadata,
+                    ...updates,
+                })
+                .eq('name', runnerName);
+
+            if (error) {
+                console.error('[Poll] Failed to persist runner version state:', error);
+            }
+        };
+
+        if (!versionCheck.isCompatible) {
+            await updateRunnerMetadata({});
+            return createRunnerBuildMismatchResponse(versionCheck, {
+                'X-Enforced-Runner-Name': runnerName,
+            });
+        }
+
+        if (!runnerRecord.enabled || runnerRecord.status === 'paused') {
+            await updateRunnerMetadata({});
+
+            const response: PollResponse = { job: null };
+            return NextResponse.json(response, {
+                headers: responseHeaders,
+            });
+        }
+
+        const { error: runnerUpdateError } = await supabase
             .from('scraper_runners')
             .update({
-                last_seen_at: nowIso,
                 status: 'polling',
+                metadata: versionMetadata,
             })
-            .eq('name', runnerName)
-            .eq('enabled', true)
-            .neq('status', 'paused')
-            .select('name');
+            .eq('name', runnerName);
 
         if (runnerUpdateError) {
             console.error('[Poll] Failed to update runner polling state:', runnerUpdateError);
@@ -206,20 +281,6 @@ export async function POST(request: NextRequest) {
                 { error: 'Failed to update runner state', details: runnerUpdateError.message },
                 { status: 500 }
             );
-        }
-
-        if (!updatedRunners || updatedRunners.length === 0) {
-            await supabase
-                .from('scraper_runners')
-                .update({ last_seen_at: nowIso })
-                .eq('name', runnerName);
-
-            const response: PollResponse = { job: null };
-            return NextResponse.json(response, {
-                headers: {
-                    'X-Enforced-Runner-Name': runnerName
-                }
-            });
         }
 
         const { data: claimedJobs, error: claimError } = await supabase.rpc('claim_next_pending_job', {
@@ -236,7 +297,9 @@ export async function POST(request: NextRequest) {
 
         if (!claimedJobs || claimedJobs.length === 0) {
             const response: PollResponse = { job: null };
-            return NextResponse.json(response);
+            return NextResponse.json(response, {
+                headers: responseHeaders,
+            });
         }
 
         const job = claimedJobs[0];
@@ -375,9 +438,7 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(response, {
-            headers: {
-                'X-Enforced-Runner-Name': runnerName
-            }
+            headers: responseHeaders,
         });
     } catch (error) {
         console.error('[Poll] Error:', error);
