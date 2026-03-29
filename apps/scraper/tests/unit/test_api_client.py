@@ -38,9 +38,16 @@ class TestScraperAPIClient:
         assert self.client.runner_name == "test-runner"
 
     def test_get_headers_includes_api_key(self):
-        headers = self.client._get_headers()
+        with patch("core.api_client.get_runner_build_id", return_value="build-123"), patch(
+            "core.api_client.get_runner_build_sha", return_value="abc123def456"
+        ), patch("core.api_client.get_runner_release_channel", return_value="latest"):
+            headers = self.client._get_headers()
+
         assert headers["Content-Type"] == "application/json"
         assert headers["X-API-Key"] == "test-api-key"
+        assert headers["X-BayState-Runner-Build-Id"] == "build-123"
+        assert headers["X-BayState-Runner-Build-Sha"] == "abc123def456"
+        assert headers["X-BayState-Runner-Release-Channel"] == "latest"
 
     def test_get_headers_raises_if_no_key(self):
         # Create client with empty api_key to test auth error
@@ -78,6 +85,26 @@ class TestScraperAPIClient:
 
             with pytest.raises(AuthenticationError):
                 self.client._make_request("GET", "/api/test")
+
+    def test_make_request_426_raises_runner_build_mismatch(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 426
+        mock_response.json.return_value = {
+            "error": "Runner image update required",
+            "message": "Runner build build-old is outdated",
+            "runner_build_id": "build-old",
+            "latest_build_id": "build-123",
+        }
+
+        with patch("httpx.Client") as mock_client:
+            mock_instance = mock_client.return_value.__enter__.return_value
+            mock_instance.get.return_value = mock_response
+
+            with pytest.raises(RunnerBuildMismatchError) as exc_info:
+                self.client._make_request("GET", "/api/test")
+
+        assert exc_info.value.runner_build_id == "build-old"
+        assert exc_info.value.latest_build_id == "build-123"
 
     def test_get_job_config_parses_response(self):
         mock_response = MagicMock()
@@ -215,6 +242,19 @@ class TestScraperAPIClient:
 
             claimed = self.client.claim_chunk("runner-1")
             assert claimed is None
+
+    def test_claim_chunk_reraises_runner_build_mismatch(self):
+        with patch.object(
+            self.client,
+            "_make_request",
+            side_effect=RunnerBuildMismatchError(
+                "Runner build build-old is outdated",
+                runner_build_id="build-old",
+                latest_build_id="build-123",
+            ),
+        ):
+            with pytest.raises(RunnerBuildMismatchError):
+                self.client.claim_chunk("runner-1")
 
     def test_get_credentials_from_supabase_reconstructs_login_and_password_rows(self):
         encryption_key = "12345678901234567890123456789012"

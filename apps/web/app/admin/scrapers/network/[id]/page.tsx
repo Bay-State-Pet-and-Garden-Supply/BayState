@@ -43,7 +43,11 @@ async function getRunner(id: string): Promise<RunnerDetail | null> {
   // Extract optional fields from metadata
   const metadata = runner.metadata || {};
   const region = (metadata.region as string) || null;
-  const version = (metadata.version as string) || null;
+  const version =
+    (metadata.build_sha as string) ||
+    (metadata.build_id as string) ||
+    (metadata.version as string) ||
+    null;
 
   return {
     id: runner.name, // Use name as id since it's the primary key

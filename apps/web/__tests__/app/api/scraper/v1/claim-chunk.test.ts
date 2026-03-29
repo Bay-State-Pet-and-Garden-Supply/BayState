@@ -28,6 +28,10 @@ import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { createClient } from '@supabase/supabase-js';
 import { getAIScrapingRuntimeCredentials } from '@/lib/ai-scraping/credentials';
 import type { NextRequest } from 'next/server';
+import {
+    RUNNER_BUILD_ID_HEADER,
+    RUNNER_BUILD_SHA_HEADER,
+} from '@/lib/scraper-runner-version';
 
 jest.mock('@/lib/scraper-auth', () => ({
     validateRunnerAuth: jest.fn(),
@@ -43,15 +47,52 @@ jest.mock('@/lib/ai-scraping/credentials', () => ({
 
 describe('POST /api/scraper/v1/claim-chunk', () => {
     let mockSupabase: any;
+    let mockRunnerTable: any;
+    let mockSettingsTable: any;
 
     beforeEach(() => {
         process.env.SUPABASE_URL = 'http://localhost:54321';
         process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
         jest.clearAllMocks();
 
-        mockSupabase = {
-            from: jest.fn().mockReturnThis(),
+        mockRunnerTable = {
+            update: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            select: jest.fn().mockResolvedValue({
+                data: [{ name: 'test-runner', enabled: true, status: 'online', metadata: {} }],
+                error: null,
+            }),
+        };
+
+        mockSettingsTable = {
             select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({
+                data: {
+                    value: {
+                        channel: 'latest',
+                        build_id: 'build-123',
+                        build_sha: 'abc123def456',
+                    },
+                },
+                error: null,
+            }),
+        };
+
+        mockSupabase = {
+            from: jest.fn((table: string) => {
+                if (table === 'scraper_runners') {
+                    return mockRunnerTable;
+                }
+
+                if (table === 'site_settings') {
+                    return mockSettingsTable;
+                }
+
+                return mockSupabase;
+            }),
+            select: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
             eq: jest.fn().mockReturnThis(),
             neq: jest.fn().mockResolvedValue({ data: [{ name: 'test-runner' }], error: null }),
             update: jest.fn().mockReturnThis(),
@@ -64,7 +105,11 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
     });
 
     const createRequest = (body: any = {}, headers: Record<string, string> = {}) => {
-        const reqHeaders = new Map(Object.entries(headers));
+        const reqHeaders = new Map(Object.entries({
+            [RUNNER_BUILD_ID_HEADER]: 'build-123',
+            [RUNNER_BUILD_SHA_HEADER]: 'abc123def456',
+            ...headers,
+        }));
         return {
             headers: {
                 get: (key: string) => reqHeaders.get(key) || null,
@@ -87,7 +132,7 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             runnerName: 'test-runner',
             allowedScrapers: null,
         });
-        mockSupabase.neq.mockResolvedValueOnce({ data: [], error: null });
+        mockRunnerTable.select.mockResolvedValueOnce({ data: [], error: null });
 
         const res = await POST(createRequest({ runner_name: 'test-runner' }));
 
@@ -140,9 +185,30 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
                 serpapi_api_key: 'serpapi-test-key',
             },
         });
-        expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockRunnerTable.update).toHaveBeenCalledWith(expect.objectContaining({
             status: 'busy',
             current_job_id: 'job-1',
         }));
+    });
+
+    it('rejects outdated runners before claiming a chunk', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+
+        const res = await POST(
+            createRequest(
+                { runner_name: 'test-runner' },
+                { [RUNNER_BUILD_ID_HEADER]: 'build-old' }
+            )
+        );
+
+        expect(res.status).toBe(426);
+        await expect(res.json()).resolves.toMatchObject({
+            error: 'Runner image update required',
+            latest_build_id: 'build-123',
+        });
+        expect(mockSupabase.rpc).not.toHaveBeenCalled();
     });
 });

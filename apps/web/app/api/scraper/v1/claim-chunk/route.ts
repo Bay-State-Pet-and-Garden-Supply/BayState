@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { getAIScrapingRuntimeCredentials } from '@/lib/ai-scraping/credentials';
+import {
+    buildRunnerBuildHeaders,
+    buildRunnerBuildMetadata,
+    createRunnerBuildMismatchResponse,
+    getRunnerBuildCheck,
+    loadExpectedRunnerRelease,
+} from '@/lib/scraper-runner-version';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
@@ -42,6 +49,13 @@ interface ClaimChunkResponse {
     remaining_chunks?: number;
 }
 
+interface RunnerRecord {
+    name: string;
+    enabled: boolean;
+    status: string | null;
+    metadata: Record<string, unknown> | null;
+}
+
 export async function POST(request: NextRequest) {
     try {
         // Validate authentication
@@ -65,13 +79,15 @@ export async function POST(request: NextRequest) {
         const claimingRunner = runner_name || runner.runnerName;
         const supabase = getSupabaseAdmin();
         const nowIso = new Date().toISOString();
+        const expectedRelease = await loadExpectedRunnerRelease(supabase, request.headers);
+        const versionCheck = getRunnerBuildCheck(request.headers, expectedRelease);
+        const responseHeaders = buildRunnerBuildHeaders(versionCheck);
 
-        const { data: eligibleRunners, error: runnerLookupError } = await supabase
+        const { data: runnerRows, error: runnerLookupError } = await supabase
             .from('scraper_runners')
-            .select('name')
+            .update({ last_seen_at: nowIso })
             .eq('name', claimingRunner)
-            .eq('enabled', true)
-            .neq('status', 'paused');
+            .select('name, enabled, status, metadata');
 
         if (runnerLookupError) {
             console.error('[Claim Chunk] Failed to load runner state:', runnerLookupError);
@@ -81,18 +97,56 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (!eligibleRunners || eligibleRunners.length === 0) {
-            await supabase
+        if (!runnerRows || runnerRows.length === 0) {
+            const response: ClaimChunkResponse = {
+                chunk: null,
+                message: 'Runner is disabled or paused',
+            };
+
+            return NextResponse.json(response, {
+                headers: responseHeaders,
+            });
+        }
+
+        const runnerRecord = runnerRows[0] as RunnerRecord;
+        const versionMetadata = buildRunnerBuildMetadata(
+            runnerRecord.metadata,
+            versionCheck,
+            nowIso
+        );
+
+        const updateRunnerState = async (updates: Record<string, unknown>) => {
+            const { error } = await supabase
                 .from('scraper_runners')
-                .update({ last_seen_at: nowIso })
+                .update({
+                    metadata: versionMetadata,
+                    ...updates,
+                })
                 .eq('name', claimingRunner);
+
+            if (error) {
+                console.error('[Claim Chunk] Failed to persist runner version state:', error);
+            }
+        };
+
+        if (!versionCheck.isCompatible) {
+            await updateRunnerState({});
+            return createRunnerBuildMismatchResponse(versionCheck, {
+                'X-Enforced-Runner-Name': claimingRunner,
+            });
+        }
+
+        if (!runnerRecord.enabled || runnerRecord.status === 'paused') {
+            await updateRunnerState({});
 
             const response: ClaimChunkResponse = {
                 chunk: null,
                 message: 'Runner is disabled or paused',
             };
 
-            return NextResponse.json(response);
+            return NextResponse.json(response, {
+                headers: responseHeaders,
+            });
         }
 
         // Call the atomic claim function
@@ -124,7 +178,11 @@ export async function POST(request: NextRequest) {
                 remaining_chunks: count || 0,
             };
 
-            return NextResponse.json(response);
+            await updateRunnerState({});
+
+            return NextResponse.json(response, {
+                headers: responseHeaders,
+            });
         }
 
         const chunk = claimedChunks[0];
@@ -139,6 +197,7 @@ export async function POST(request: NextRequest) {
                 status: 'busy',
                 last_seen_at: nowIso,
                 current_job_id: chunk.job_id,
+                metadata: versionMetadata,
             })
             .eq('name', claimingRunner);
 
@@ -161,7 +220,9 @@ export async function POST(request: NextRequest) {
             },
         };
 
-        return NextResponse.json(response);
+        return NextResponse.json(response, {
+            headers: responseHeaders,
+        });
     } catch (error) {
         console.error('[Claim Chunk] Error:', error);
         return NextResponse.json(
