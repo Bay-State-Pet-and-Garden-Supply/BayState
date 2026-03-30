@@ -1,5 +1,8 @@
 """Crawl4AI Engine - Main async crawler engine."""
 
+import asyncio as _asyncio
+import random as _random
+import time as _time
 from typing import Any, Optional
 import logging
 import re
@@ -9,6 +12,7 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
+from .metrics import ExtractionMode, ErrorType, get_metrics_collector
 from .types import EngineConfig
 
 logger = logging.getLogger(__name__)
@@ -30,7 +34,6 @@ class Crawl4AIEngine:
         self.config = self._normalize_config(config)
         self._crawler: Optional[AsyncWebCrawler] = None
         self._browser_config = self._build_browser_config()
-        self._run_config = self._build_run_config()
 
     @staticmethod
     def _normalize_config(config: dict[str, Any] | EngineConfig) -> dict[str, Any]:
@@ -50,6 +53,7 @@ class Crawl4AIEngine:
             crawler: dict[str, Any] = {
                 "timeout": int(config.timeout * 1000),
                 "concurrency_limit": config.max_concurrent_crawls,
+                "max_retries": config.max_retries if config.enable_retry else 0,
             }
             return {
                 "browser": {key: value for key, value in browser.items() if value is not None},
@@ -308,8 +312,34 @@ class Crawl4AIEngine:
             
         run_config = self._build_run_config(session_id=session_id)
 
-        result = await self._crawler.arun(url=url, config=run_config)
+        has_extraction_strategy = run_config.extraction_strategy is not None
+        extraction_mode = ExtractionMode.LLM if has_extraction_strategy else ExtractionMode.LLM_FREE
+        crawl_start = _time.perf_counter()
+
+        # Retry transient exceptions (timeouts, connection errors).
+        # Non-success results (403/429) are not exceptions — handled by fallback below.
+        max_retries = self.config.get("crawler", {}).get("max_retries", 2)
+        last_exc: Exception | None = None
+        result = None
+        for attempt in range(max_retries + 1):
+            try:
+                result = await self._crawler.arun(url=url, config=run_config)
+                last_exc = None
+                break
+            except Exception as exc:
+                last_exc = exc
+                error_str = str(exc).lower()
+                is_transient = any(kw in error_str for kw in ("timeout", "timed out", "connection", "network", "dns"))
+                if not is_transient or attempt >= max_retries:
+                    raise
+                delay = min(1.0 * (2 ** attempt), 10.0) + _random.uniform(0, 0.5)
+                logger.warning(
+                    "Transient error on attempt %d/%d for %s: %s — retrying in %.1fs",
+                    attempt + 1, max_retries + 1, url, exc, delay,
+                )
+                await _asyncio.sleep(delay)
         
+        duration_ms = (_time.perf_counter() - crawl_start) * 1000
         fallback_fn = self.config.get("crawler", {}).get("fallback_fetch_function")
         fallback_triggered = False
         error_text = (self._extract_error_text(result) or "").lower()
@@ -318,11 +348,54 @@ class Crawl4AIEngine:
             if "403" in error_text or "429" in error_text or "forbidden" in error_text or "too many requests" in error_text:
                 logger.info(f"Escalation triggered for {url} due to error: {self._extract_error_text(result)}")
                 fallback_triggered = True
+
+                # Record the failed crawl attempt before fallback
+                error_type = self._classify_error_type(error_text)
+                anti_bot = error_type in (ErrorType.ANTI_BOT_DETECTED, ErrorType.RATE_LIMIT)
+                get_metrics_collector().record_extraction(
+                    url=url,
+                    mode=extraction_mode,
+                    success=False,
+                    duration_ms=duration_ms,
+                    error_type=error_type,
+                    error_message=self._extract_error_text(result),
+                    anti_bot_triggered=anti_bot,
+                )
+
                 fallback_result = await fallback_fn(url)
                 fallback_result["fallback_triggered"] = True
                 return fallback_result
 
+        # Record metrics for the crawl
+        success = bool(getattr(result, "success", False))
+        error_type_val: ErrorType | None = None
+        if not success:
+            error_type_val = self._classify_error_type(error_text)
+        get_metrics_collector().record_extraction(
+            url=url,
+            mode=extraction_mode,
+            success=success,
+            duration_ms=duration_ms,
+            error_type=error_type_val,
+            error_message=self._extract_error_text(result) if not success else None,
+        )
+
         return self._build_result_payload(fallback_triggered=fallback_triggered, result=result, source_url=url)
+
+    @staticmethod
+    def _classify_error_type(error_text: str) -> ErrorType:
+        """Classify an error string into an ErrorType for metrics."""
+        if not error_text:
+            return ErrorType.UNKNOWN
+        if "timeout" in error_text or "timed out" in error_text:
+            return ErrorType.TIMEOUT
+        if "429" in error_text or "rate limit" in error_text or "too many requests" in error_text:
+            return ErrorType.RATE_LIMIT
+        if "403" in error_text or "forbidden" in error_text or "blocked" in error_text or "captcha" in error_text:
+            return ErrorType.ANTI_BOT_DETECTED
+        if "network" in error_text or "connection" in error_text or "dns" in error_text:
+            return ErrorType.NETWORK_ERROR
+        return ErrorType.UNKNOWN
 
     async def crawl_many(self, urls: list[str]) -> list[dict[str, Any]]:
         """Crawl multiple URLs concurrently using arun_many.
@@ -346,18 +419,33 @@ class Crawl4AIEngine:
                 for url in urls
             ]
 
+        batch_start = _time.perf_counter()
         results = await self._crawler.arun_many(
             urls=urls,
             config=run_config,
         )
+        batch_duration_ms = (_time.perf_counter() - batch_start) * 1000
+
+        def _record_and_build(item: Any) -> dict[str, Any]:
+            item_url = str(getattr(item, "url", ""))
+            item_success = bool(getattr(item, "success", False))
+            per_item_ms = batch_duration_ms / max(len(urls), 1)
+            error_text = (self._extract_error_text(item) or "").lower() if not item_success else ""
+            get_metrics_collector().record_extraction(
+                url=item_url,
+                mode=ExtractionMode.LLM_FREE,
+                success=item_success,
+                duration_ms=per_item_ms,
+                error_type=self._classify_error_type(error_text) if not item_success else None,
+                error_message=self._extract_error_text(item) if not item_success else None,
+            )
+            return self._build_result_payload(fallback_triggered=False, result=item, source_url=item_url)
 
         if hasattr(results, "__aiter__"):
             collected_results: list[dict[str, Any]] = []
             async for item in results:
-                collected_results.append(self._build_result_payload(fallback_triggered=False, result=item, source_url=getattr(item, "url", "")))
+                collected_results.append(_record_and_build(item))
             return collected_results
 
-        return [
-            self._build_result_payload(fallback_triggered=False, result=item, source_url=getattr(item, "url", ""))
-            for item in results
-        ]
+        return [_record_and_build(item) for item in results]
+
