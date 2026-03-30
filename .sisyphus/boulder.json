@@ -7,7 +7,8 @@
     "ses_2bfd73b70ffejdIjBGYdN0oidS",
     "ses_2bfd4912dffeC7UbKV6RVPWwSU",
     "ses_2bfd5148cffegl0NN5t3wLgf5K",
-    "ses_2bfd420a9ffe2Pnm8sgtoZMEQY"
+    "ses_2bfd420a9ffe2Pnm8sgtoZMEQY",
+    "ses_2bfc9000cffetWS6sREuTCle6z"
   ],
   "plan_name": "hybrid-search-extraction",
   "agent": "atlas",
@@ -20,6 +21,15 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "updated_at": "2026-03-30T19:16:43.456Z"
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "Implement TwoStepSearchRefiner class skeleton",
+      "session_id": "ses_2bfc9000cffetWS6sREuTCle6z",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-03-30T19:34:19.219Z"
     }
   }
 }
