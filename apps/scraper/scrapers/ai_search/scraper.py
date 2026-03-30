@@ -14,6 +14,7 @@ from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.search import SearchClient, normalize_search_provider
 from scrapers.ai_search.query_builder import QueryBuilder
+from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
 from scrapers.ai_search.validation import ExtractionValidator
 from scrapers.ai_search.source_selector import LLMSourceSelector
 from scrapers.ai_search.name_consolidator import NameConsolidator
@@ -128,6 +129,19 @@ class AISearchScraper:
         self._validator = ExtractionValidator(confidence_threshold)
         self._source_selector = LLMSourceSelector(model=llm_model)
         self._name_consolidator = NameConsolidator(model=llm_model)
+        self._two_step_refiner: TwoStepSearchRefiner | None = None
+        if self.enable_two_step:
+            self._two_step_refiner = TwoStepSearchRefiner(
+                search_client=self._search_client,
+                query_builder=self._query_builder,
+                config={
+                    "confidence_threshold_low": self.secondary_threshold,
+                    "confidence_threshold_high": self.circuit_breaker_threshold,
+                    "min_improvement_delta": self.confidence_delta,
+                    "max_follow_up_queries": self.max_follow_up_queries,
+                },
+                name_consolidator=self._name_consolidator,
+            )
 
         # Load unified extractors
         from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor, FallbackExtractor
@@ -170,7 +184,7 @@ class AISearchScraper:
         total = len(urls)
         successful = sum(1 for u in urls if u.get("stage") == "validation" and u.get("success"))
         failed = total - successful
-        
+
         # Calculate agreement if LLM was used
         agreement_rate = 0.0
         if self._telemetry["llm_heuristic_agreement"]:
@@ -410,13 +424,13 @@ class AISearchScraper:
                 brand=brand,
                 product_name=product_name,
             )
-            
+
             best_url, cost = await self._source_selector.select_best_url(
                 results=search_results,
                 sku=sku,
                 product_name=product_name or "",
             )
-            
+
             # Track agreement
             if best_url and heuristic_url:
                 agreement = best_url == heuristic_url
@@ -471,6 +485,177 @@ class AISearchScraper:
         logger.warning("[AI Search] No valid sources found after ranking")
         return None
 
+    def _parse_candidate_confidence(self, value: Any) -> Optional[float]:
+        if isinstance(value, bool):
+            return float(int(value))
+        if isinstance(value, (int, float)):
+            return max(0.0, min(1.0, float(value)))
+        if isinstance(value, str):
+            try:
+                return max(0.0, min(1.0, float(value.strip() or 0.0)))
+            except ValueError:
+                return None
+        return None
+
+    def _estimate_first_pass_confidence(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+        category: Optional[str],
+    ) -> float:
+        if not search_results:
+            return 0.0
+
+        top_result = search_results[0]
+        raw_confidence = self._parse_candidate_confidence(top_result.get("confidence"))
+        if raw_confidence is not None:
+            return raw_confidence
+
+        top_score = self._scoring.score_search_result(
+            result=top_result,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+        )
+        second_score = 0.0
+        if len(search_results) > 1:
+            second_score = self._scoring.score_search_result(
+                result=search_results[1],
+                sku=sku,
+                brand=brand,
+                product_name=product_name,
+                category=category,
+            )
+
+        gap_signal = max(0.0, min(1.0, (top_score - second_score) / 3.0))
+        top_signal = max(0.0, min(1.0, top_score / 8.0))
+        quality_bonus = 0.0 if self._scoring.is_low_quality_result(top_result) else 0.2
+        confidence = max(0.0, min(0.99, (0.55 * top_signal) + (0.25 * gap_signal) + quality_bonus))
+
+        strong_candidate_url = self._scoring.pick_strong_candidate_url(
+            search_results=search_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+        )
+        top_url = str(top_result.get("url") or "").strip()
+        if strong_candidate_url and top_url == strong_candidate_url:
+            confidence = max(confidence, min(0.99, self.circuit_breaker_threshold))
+
+        return confidence
+
+    def _build_first_pass_result(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        category: Optional[str],
+    ) -> AISearchResult:
+        top_result = search_results[0] if search_results else {}
+        target_url = str(top_result.get("url") or "").strip() or None
+        description = str(top_result.get("description") or "").strip() or None
+        confidence = self._estimate_first_pass_confidence(
+            search_results=search_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+        )
+
+        return AISearchResult(
+            success=True,
+            sku=sku,
+            product_name=product_name,
+            brand=brand,
+            description=description,
+            url=target_url,
+            source_website=self._scoring.domain_from_url(target_url) if target_url else None,
+            confidence=confidence,
+            selection_method="first-pass-search",
+        )
+
+    def _refined_results_to_candidates(self, refined_results: list[AISearchResult]) -> list[dict[str, Any]]:
+        candidates: list[dict[str, Any]] = []
+        for refined_result in refined_results:
+            target_url = str(refined_result.url or "").strip()
+            if not target_url:
+                continue
+            candidates.append(
+                {
+                    "url": target_url,
+                    "title": refined_result.product_name or "",
+                    "description": refined_result.description or "",
+                    "confidence": float(refined_result.confidence or 0.0),
+                    "provider": "two-step-search",
+                    "result_type": "organic",
+                }
+            )
+
+        candidates.sort(key=lambda candidate: float(candidate.get("confidence") or 0.0), reverse=True)
+        return candidates
+
+    async def _maybe_refine_search_results(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        category: Optional[str],
+    ) -> list[dict[str, Any]]:
+        if not self.enable_two_step or self._two_step_refiner is None or not search_results:
+            return search_results
+
+        first_pass_result = self._build_first_pass_result(
+            search_results=search_results,
+            sku=sku,
+            product_name=product_name,
+            brand=brand,
+            category=category,
+        )
+        if first_pass_result.confidence >= self.secondary_threshold:
+            return search_results
+
+        try:
+            refinement_result = await self._two_step_refiner.refine(
+                first_pass_result,
+                search_results,
+                first_pass_result.confidence,
+            )
+        except Exception as exc:
+            logger.warning("[AI Search] Two-step refinement failed for SKU %s: %s", sku, exc)
+            return search_results
+
+        if not refinement_result.two_step_triggered or not refinement_result.two_step_improved:
+            return search_results
+
+        refined_results = refinement_result.second_pass_results or []
+        refined_candidates = self._refined_results_to_candidates(refined_results)
+        if not refined_candidates:
+            return search_results
+
+        prepared_refined_results = self._prepare_candidate_pool(
+            search_results=refined_candidates,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+        )
+        if not prepared_refined_results:
+            return search_results
+
+        logger.info(
+            "[AI Search] Using two-step refined results for SKU %s (%.2f -> %.2f)",
+            sku,
+            first_pass_result.confidence,
+            refinement_result.second_pass_confidence or first_pass_result.confidence,
+        )
+        return prepared_refined_results
+
     async def scrape_product(
         self,
         sku: str,
@@ -500,6 +685,14 @@ class AISearchScraper:
             if not search_results:
                 error_msg = search_error or "No search results found"
                 return AISearchResult(success=False, sku=sku, error=error_msg)
+
+            search_results = await self._maybe_refine_search_results(
+                search_results=search_results,
+                sku=sku,
+                product_name=product_name,
+                brand=brand,
+                category=category,
+            )
 
             if not brand:
                 logger.info("[AI Search] Brand missing - initiating parallel candidate discovery")
@@ -546,9 +739,7 @@ class AISearchScraper:
                 )
 
             if prioritized_url:
-                ordered_results.sort(
-                    key=lambda result: 0 if str(result.get("url") or "") == prioritized_url else 1
-                )
+                ordered_results.sort(key=lambda result: 0 if str(result.get("url") or "") == prioritized_url else 1)
 
             max_attempts = min(3, len(ordered_results))
             extraction_result: Optional[dict[str, Any]] = None
@@ -573,8 +764,8 @@ class AISearchScraper:
                 tried_urls.add(target_url)
                 self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
                 extraction_result = await self._extract_product_data(target_url, sku, product_name, brand)
-                fetch_ok = extraction_result is not None and extraction_result.get("success")
-                fetch_details = extraction_result.get("error") if extraction_result and not fetch_ok else "ok"
+                fetch_ok = bool(extraction_result.get("success"))
+                fetch_details = str(extraction_result.get("error") or "ok") if not fetch_ok else "ok"
                 self._log_telemetry(sku, target_url, "fetch_attempt", fetch_ok, fetch_details)
                 self._log_telemetry(sku, target_url, "validation", True, "initiated")
                 is_acceptable, rejection_reason = self._validator.validate_extraction_match(

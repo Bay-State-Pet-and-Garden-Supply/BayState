@@ -556,7 +556,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `feat(ai_search): add A/B validation for result selection`
   - Files: `apps/scraper/scrapers/ai_search/two_step_refiner.py`
 
-- [ ] 8. Integrate into AISearchScraper.scrape_product()
+- [x] 8. Integrate into AISearchScraper.scrape_product()
 
   **What to do**:
   - Modify `scrape_product()` in `scraper.py`:

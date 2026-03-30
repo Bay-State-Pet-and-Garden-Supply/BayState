@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import importlib
 import sys
 from types import ModuleType
 from collections.abc import Awaitable, Callable
-from typing import cast, final
+from typing import Any, cast, final
+from unittest.mock import AsyncMock
 
-import pytest
+pytest = importlib.import_module("pytest")
 
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
@@ -102,11 +104,13 @@ def _install_validation_shim() -> None:
 _install_validation_shim()
 
 from scrapers.ai_search import AISearchScraper
+from scrapers.ai_search.models import AISearchResult
+from scrapers.ai_search.two_step_refiner import RefinementResult
 
 
 pytestmark = pytest.mark.asyncio
 
-SearchResults = list[dict[str, str]]
+SearchResults = list[dict[str, object]]
 ExtractionResult = dict[str, object]
 ResultFactory = Callable[[str, str, str | None, str | None], Awaitable[ExtractionResult | None]]
 
@@ -155,7 +159,7 @@ class IntegrationTestScraper(AISearchScraper):
 
 
 def _build_scraper(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch,
     *,
     search_results: SearchResults,
     crawl4ai_result_factory: ResultFactory,
@@ -212,7 +216,7 @@ def _make_extraction_result(
     }
 
 
-async def test_ai_search_scrape_product_uses_best_result_and_validates_match(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_ai_search_scrape_product_uses_best_result_and_validates_match(monkeypatch) -> None:
     selected_url = "https://acmepets.com/products/12345-squeaky-ball"
 
     async def fake_crawl4ai_extract(url: str, sku: str, product_name: str | None, brand: str | None) -> ExtractionResult:
@@ -263,7 +267,7 @@ async def test_ai_search_scrape_product_uses_best_result_and_validates_match(mon
     assert abs(result.confidence - 0.94) < 1e-9
 
 
-async def test_ai_search_scrape_product_falls_back_when_crawl4ai_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_ai_search_scrape_product_falls_back_when_crawl4ai_returns_none(monkeypatch) -> None:
     selected_url = "https://acmepets.com/products/12345-squeaky-ball"
     crawl4ai_calls: list[str] = []
     fallback_calls: list[str] = []
@@ -308,7 +312,7 @@ async def test_ai_search_scrape_product_falls_back_when_crawl4ai_returns_none(mo
     assert fallback_calls == [selected_url]
 
 
-async def test_ai_search_scrape_product_filters_blocked_domains_before_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_ai_search_scrape_product_filters_blocked_domains_before_extraction(monkeypatch) -> None:
     selected_url = "https://acmepets.com/products/12345-squeaky-ball"
     extracted_urls: list[str] = []
 
@@ -355,7 +359,7 @@ async def test_ai_search_scrape_product_filters_blocked_domains_before_extractio
     assert extracted_urls == [selected_url]
 
 
-async def test_ai_search_scrape_product_rejects_low_confidence_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_ai_search_scrape_product_rejects_low_confidence_extraction(monkeypatch) -> None:
     selected_url = "https://acmepets.com/products/12345-squeaky-ball"
 
     async def fake_crawl4ai_extract(_url: str, _sku: str, _product_name: str | None, _brand: str | None) -> ExtractionResult:
@@ -393,3 +397,128 @@ async def test_ai_search_scrape_product_rejects_low_confidence_extraction(monkey
     assert result.success is False
     assert result.error is not None
     assert "Confidence below threshold" in result.error
+
+
+async def test_ai_search_scrape_product_uses_two_step_refined_results_when_improved(monkeypatch) -> None:
+    first_pass_url = "https://example.com/products/12345"
+    refined_url = "https://acmepets.com/products/12345-squeaky-ball"
+    extracted_urls: list[str] = []
+
+    async def fake_crawl4ai_extract(url: str, _sku: str, _product_name: str | None, _brand: str | None) -> ExtractionResult:
+        extracted_urls.append(url)
+        return _make_extraction_result(
+            product_name="Acme Squeaky Ball 12345",
+            brand="Acme",
+            confidence=0.94,
+            description="Official product details for SKU 12345",
+        )
+
+    async def unexpected_fallback_extract(_url: str, _sku: str, _product_name: str | None, _brand: str | None) -> ExtractionResult | None:
+        raise AssertionError("fallback extractor should not be used on the two-step success path")
+
+    monkeypatch.setenv("AI_SEARCH_ENABLE_TWO_STEP", "true")
+    scraper = _build_scraper(
+        monkeypatch,
+        confidence_threshold=0.7,
+        search_results=[
+            {
+                "url": first_pass_url,
+                "title": "Squeaky Ball 12345",
+                "description": "Acme product listing teaser",
+                "confidence": 0.42,
+            }
+        ],
+        crawl4ai_result_factory=fake_crawl4ai_extract,
+        fallback_result_factory=unexpected_fallback_extract,
+    )
+    assert scraper._two_step_refiner is not None
+    refiner = cast(Any, scraper._two_step_refiner)
+    refiner.refine = AsyncMock(
+        return_value=RefinementResult(
+            success=True,
+            second_pass_results=[
+                AISearchResult(
+                    success=True,
+                    sku="12345",
+                    product_name="Acme Squeaky Ball 12345",
+                    brand="Acme",
+                    description="Official product details for SKU 12345",
+                    url=refined_url,
+                    source_website="acmepets.com",
+                    confidence=0.93,
+                    selection_method="two-step-search",
+                )
+            ],
+            second_pass_confidence=0.93,
+            product_name_extracted="Acme Squeaky Ball",
+            cost_usd=0.02,
+            first_pass_confidence=0.42,
+            two_step_triggered=True,
+            two_step_improved=True,
+        )
+    )
+
+    result = await scraper.scrape_product(
+        sku="12345",
+        product_name="Squeaky Ball",
+        brand="Acme",
+        category="Dog Toys",
+    )
+
+    assert result.success is True
+    assert result.url == refined_url
+    assert extracted_urls == [refined_url]
+    refine_call = refiner.refine.await_args
+    assert refine_call is not None
+    assert isinstance(refine_call.args[0], AISearchResult)
+    assert refine_call.args[0].url == first_pass_url
+    assert refine_call.args[1][0]["url"] == first_pass_url
+    assert refine_call.args[2] == pytest.approx(0.42)
+
+
+async def test_ai_search_scrape_product_falls_back_to_first_pass_when_two_step_errors(monkeypatch) -> None:
+    first_pass_url = "https://acmepets.com/products/12345-squeaky-ball"
+    extracted_urls: list[str] = []
+
+    async def fake_crawl4ai_extract(url: str, _sku: str, _product_name: str | None, _brand: str | None) -> ExtractionResult:
+        extracted_urls.append(url)
+        return _make_extraction_result(
+            product_name="Acme Squeaky Ball 12345",
+            brand="Acme",
+            confidence=0.91,
+            description="Official product details for SKU 12345",
+        )
+
+    async def unexpected_fallback_extract(_url: str, _sku: str, _product_name: str | None, _brand: str | None) -> ExtractionResult | None:
+        raise AssertionError("fallback extractor should not be used when first-pass extraction succeeds")
+
+    monkeypatch.setenv("AI_SEARCH_ENABLE_TWO_STEP", "true")
+    scraper = _build_scraper(
+        monkeypatch,
+        confidence_threshold=0.7,
+        search_results=[
+            {
+                "url": first_pass_url,
+                "title": "Acme Squeaky Ball 12345",
+                "description": "Official product details with price and add to cart",
+                "confidence": 0.42,
+            }
+        ],
+        crawl4ai_result_factory=fake_crawl4ai_extract,
+        fallback_result_factory=unexpected_fallback_extract,
+    )
+    assert scraper._two_step_refiner is not None
+    refiner = cast(Any, scraper._two_step_refiner)
+    refiner.refine = AsyncMock(side_effect=RuntimeError("two-step unavailable"))
+
+    result = await scraper.scrape_product(
+        sku="12345",
+        product_name="Squeaky Ball",
+        brand="Acme",
+        category="Dog Toys",
+    )
+
+    assert result.success is True
+    assert result.url == first_pass_url
+    assert extracted_urls == [first_pass_url]
+    refiner.refine.assert_awaited_once()
