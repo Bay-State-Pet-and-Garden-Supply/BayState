@@ -11,7 +11,11 @@
     "ses_2bfc9000cffetWS6sREuTCle6z",
     "ses_2bfc0fd06ffeIA2rTEodaVTRk2",
     "ses_2bfb74791ffe1zNHiqpVStnzkF",
-    "ses_2bfb6cfdeffeP5AxYf8jlttz0G"
+    "ses_2bfb6cfdeffeP5AxYf8jlttz0G",
+    "ses_2bfa64411ffeMXhbyPx0JWvugL",
+    "ses_2bfa6888cffeqCruDtXXL5QCQe",
+    "ses_2bfa6a2b0ffeLGht1V5ZWxCviL",
+    "ses_2bfa666b4ffe7z2KpGuZQrgRL4"
   ],
   "plan_name": "hybrid-search-extraction",
   "agent": "atlas",
@@ -51,6 +55,14 @@
       "agent": "Sisyphus-Junior",
       "category": "writing",
       "updated_at": "2026-03-30T19:49:19.523Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "ses_2bfa6a2b0ffeLGht1V5ZWxCviL",
+      "agent": "oracle",
+      "updated_at": "2026-03-30T20:10:18.822Z"
     }
   }
 }
