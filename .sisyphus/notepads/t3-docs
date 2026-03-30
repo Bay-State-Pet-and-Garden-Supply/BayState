@@ -71,3 +71,26 @@ This pattern of automated verification ensures documentation stays in sync with 
 - Avoided Grafana setup (out of scope per requirements)
 - No real credentials or DSNs included
 - Used plain language, avoided AI-sounding phrases
+
+## Date: 2026-03-30
+
+## Verification Findings (Two-Step Search Scope Check)
+
+- Confirmed `TwoStepSearchRefiner.refine()` performs a single optional second-pass call (`_execute_second_search`) and does not recurse.
+- Confirmed circuit breaker threshold is configurable and defaults to `0.85`:
+  - `AISearchScraper`: `AI_SEARCH_CIRCUIT_BREAKER_THRESHOLD` default `0.85`
+  - Refiner fallback: `config.get("confidence_threshold_high", 0.85)`
+- Confirmed A/B delta is configurable and defaults to `0.1`:
+  - `AISearchScraper`: `AI_SEARCH_CONFIDENCE_DELTA` default `0.1`
+  - Refiner fallback: `config.get("min_improvement_delta", 0.1)`
+- Found telemetry gap: required two-step fields are carried in `RefinementResult`, but not persisted in scraper telemetry logs (`_telemetry["urls"]` / summary) as explicit fields.
+- Preservation check against `origin/main...HEAD` shows both `search.py` and `query_builder.py` diverge from baseline rather than remaining untouched; this does not satisfy strict “preserve existing component” interpretation.
+
+## Verification Commands
+
+- Diagnostics:
+  - `lsp_diagnostics` run on `two_step_refiner.py`, `scraper.py`, `search.py`, `query_builder.py`
+  - Results were not clean due to existing basedpyright warnings in non-edited files.
+- Build/tests:
+  - `python3 -m pytest tests/test_two_step_refiner.py tests/test_ai_search_two_step_config.py tests/test_ai_search_integration.py`
+  - Result: `28 passed`.

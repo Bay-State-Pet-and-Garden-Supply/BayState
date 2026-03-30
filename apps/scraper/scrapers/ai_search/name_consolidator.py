@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from openai import AsyncOpenAI
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class NameConsolidator:
     """Uses LLM to infer a canonical product name from search results."""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini"):
         """Initialize the name consolidator."""
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
@@ -26,14 +26,14 @@ class NameConsolidator:
         sku: str,
         abbreviated_name: str,
         search_snippets: list[dict[str, Any]],
-    ) -> Tuple[str, float]:
+    ) -> tuple[str, float]:
         """Consolidate an abbreviated name into a canonical one using search context.
-        
+
         Args:
             sku: Product SKU
             abbreviated_name: Initial abbreviated product name
             search_snippets: List of search results (title, description) from initial search
-            
+
         Returns:
             Tuple of (Consolidated Name, Cost in USD)
         """
@@ -42,10 +42,7 @@ class NameConsolidator:
 
         # Limit snippets to top 5
         candidates = search_snippets[:5]
-        snippets_text = "\n".join([
-            f"- Title: {res.get('title')}\n  Desc: {res.get('description')}" 
-            for res in candidates
-        ])
+        snippets_text = "\n".join([f"- Title: {res.get('title')}\n  Desc: {res.get('description')}" for res in candidates])
 
         prompt = f"""You are a product data specialist. Your task is to decipher an abbreviated product name using search result snippets.
 
@@ -70,21 +67,24 @@ CONSOLIDATED NAME:"""
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a product data expert specializing in name canonicalization."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=0.0,
                 max_tokens=60,
             )
-            
+
             content = str(response.choices[0].message.content or "").strip()
-            
+
             # Record cost
-            input_tokens = response.usage.prompt_tokens
-            output_tokens = response.usage.completion_tokens
-            cost = self._cost_tracker.calculate_cost(self.model, input_tokens, output_tokens)
-            
+            if response.usage:
+                input_tokens = response.usage.prompt_tokens
+                output_tokens = response.usage.completion_tokens
+                cost = self._cost_tracker.calculate_cost(self.model, input_tokens, output_tokens)
+            else:
+                cost = 0.0
+
             logger.info(f"[Name Consolidator] Inferred name: '{content}' from abbreviation '{abbreviated_name}' (Cost: ${cost:.4f})")
-            
+
             return content or abbreviated_name, cost
 
         except Exception as e:

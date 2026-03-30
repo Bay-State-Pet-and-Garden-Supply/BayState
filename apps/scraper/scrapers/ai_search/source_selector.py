@@ -54,7 +54,8 @@ class LLMSourceSelector:
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a product sourcing expert. Your task is to identify the official manufacturer's product detail page from a list of search results."},
+                    {"role": "system", "content": "You are a product sourcing expert. Your task is to identify "
+                                                   "the official manufacturer's product detail page from a list of search results."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.0,
@@ -102,7 +103,8 @@ TARGET PRODUCT:
 INSTRUCTIONS:
 1. Identify which URL is most likely the OFFICIAL manufacturer's product detail page (PDP) for this exact product.
 2. Prioritize official brand domains (e.g., if the product is 'Advantage II' by Elanco, prioritize elanco.com).
-3. If no official manufacturer page is present, but a high-quality trusted retailer PDP (like Chewy, Amazon, or Petco) is available for the EXACT product, you may select it.
+3. If no official manufacturer page is present, but a high-quality trusted retailer PDP "
+   "(like Chewy, Amazon, or Petco) is available for the EXACT product, you may select it.
 4. If multiple official pages exist, pick the one that most closely matches the SKU or specific variant.
 5. If none of the results are a clear product detail page for the target product, return "NONE".
 6. Return ONLY the URL of the best result, or "NONE". No other text.

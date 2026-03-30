@@ -7,3 +7,6 @@
 - Cost validation now depends on `SearchClient.search_with_cost(...)`, which returns per-query provider cost without changing existing `search()` callers.
 - Two-step refinement cost is now the sum of name consolidation plus the second-pass search request, while `AISearchResult.cost_usd` adds the initial search stage so runner callbacks receive total per-SKU cost.
 - Regression coverage now includes `test_cost_tracking_accurate` plus an integration assertion that improved two-step results surface the accumulated cost on the final scraper result.
+- Added `apps/scraper/scripts/qa_ai_search_two_step_e2e.py` for manual live QA; it loads `.env.development`/`.env`, forces `AI_SEARCH_ENABLE_TWO_STEP=true`, runs two real SKUs (`032247761215`, `032247279048`), and validates both telemetry logging and AI metrics cost deltas per case.
+
+- 2026-03-30 audit finding: two-step refinement tests pass locally (9 refiner tests + 15 config/integration tests), but plan compliance still depends on non-test requirements such as callback telemetry, evidence artifacts, and unchanged guarded modules.
