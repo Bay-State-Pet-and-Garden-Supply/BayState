@@ -118,13 +118,19 @@ ResultFactory = Callable[[str, str, str | None, str | None], Awaitable[Extractio
 @final
 class StubSearchClient:
     _results: SearchResults
+    _cost_usd: float
 
-    def __init__(self, results: SearchResults):
+    def __init__(self, results: SearchResults, cost_usd: float = 0.0):
         self._results = results
+        self._cost_usd = cost_usd
 
     async def search(self, query: str) -> tuple[SearchResults, None]:
         _ = query
         return self._results, None
+
+    async def search_with_cost(self, query: str) -> tuple[SearchResults, None, float]:
+        _ = query
+        return self._results, None, self._cost_usd
 
 
 @final
@@ -148,12 +154,13 @@ class IntegrationTestScraper(AISearchScraper):
         self,
         *,
         search_results: SearchResults,
+        search_cost_usd: float,
         crawl4ai_result_factory: ResultFactory,
         fallback_result_factory: ResultFactory,
         confidence_threshold: float,
     ):
         super().__init__(confidence_threshold=confidence_threshold)
-        self._search_client = StubSearchClient(search_results)
+        self._search_client = StubSearchClient(search_results, cost_usd=search_cost_usd)
         self._crawl4ai_extractor = StubExtractor(crawl4ai_result_factory)
         self._fallback_extractor = StubExtractor(fallback_result_factory)
 
@@ -162,6 +169,7 @@ def _build_scraper(
     monkeypatch,
     *,
     search_results: SearchResults,
+    search_cost_usd: float = 0.0,
     crawl4ai_result_factory: ResultFactory,
     fallback_result_factory: ResultFactory,
     confidence_threshold: float,
@@ -189,6 +197,7 @@ def _build_scraper(
     return IntegrationTestScraper(
         confidence_threshold=confidence_threshold,
         search_results=search_results,
+        search_cost_usd=search_cost_usd,
         crawl4ai_result_factory=crawl4ai_result_factory,
         fallback_result_factory=fallback_result_factory,
     )
@@ -428,6 +437,7 @@ async def test_ai_search_scrape_product_uses_two_step_refined_results_when_impro
                 "confidence": 0.42,
             }
         ],
+        search_cost_usd=0.01,
         crawl4ai_result_factory=fake_crawl4ai_extract,
         fallback_result_factory=unexpected_fallback_extract,
     )
@@ -467,6 +477,7 @@ async def test_ai_search_scrape_product_uses_two_step_refined_results_when_impro
 
     assert result.success is True
     assert result.url == refined_url
+    assert result.cost_usd == pytest.approx(0.03)
     assert extracted_urls == [refined_url]
     refine_call = refiner.refine.await_args
     assert refine_call is not None

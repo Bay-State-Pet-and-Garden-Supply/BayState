@@ -13,6 +13,7 @@ from scrapers.ai_search.search import SearchClient
 from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
 
 pytestmark = pytest.mark.asyncio
+SERPAPI_COST_USD = 0.01
 
 
 class ProviderStub:
@@ -36,7 +37,7 @@ def refiner_config() -> dict[str, float | int]:
 
 
 @pytest.fixture
-def first_pass_results() -> list[dict[str, str]]:
+def first_pass_results() -> list[dict[str, object]]:
     return [
         {
             "url": "https://www.acmepets.com/products/12345",
@@ -60,6 +61,7 @@ def search_client_fixture(
     monkeypatch,
 ) -> tuple[SearchClient, ProviderStub]:
     monkeypatch.setenv("SERPAPI_API_KEY", "serpapi-test-key")
+    monkeypatch.setenv("AI_SEARCH_SERPAPI_COST_USD", str(SERPAPI_COST_USD))
     monkeypatch.delenv("BRAVE_API_KEY", raising=False)
 
     provider = ProviderStub(([], None))
@@ -140,7 +142,7 @@ async def test_second_search_triggers_when_low_confidence(
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
     refiner_config: dict[str, float | int],
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     provider.response = (make_second_pass_results(0.82), None)
@@ -164,7 +166,7 @@ async def test_circuit_breaker_skips_when_high_confidence(
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
     refiner_config: dict[str, float | int],
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     refiner = build_refiner(
@@ -194,7 +196,7 @@ async def test_name_extraction_success(
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
     refiner_config: dict[str, float | int],
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     provider.response = (make_second_pass_results(0.7), None)
@@ -215,7 +217,7 @@ async def test_name_extraction_success(
     assert get_call_arg(build_call, 0, "sku") == "12345"
     assert get_call_arg(build_call, 1, "product_name") == "Acme Deluxe Squeaky Ball"
     assert result.product_name_extracted == "Acme Deluxe Squeaky Ball"
-    assert result.cost_usd == pytest.approx(0.03)
+    assert result.cost_usd == pytest.approx(0.03 + SERPAPI_COST_USD)
 
 
 async def test_name_extraction_failure_fallback(
@@ -223,7 +225,7 @@ async def test_name_extraction_failure_fallback(
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
     refiner_config: dict[str, float | int],
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     name_consolidator_fixture.consolidate_name = AsyncMock(side_effect=RuntimeError("llm unavailable"))
@@ -251,7 +253,7 @@ async def test_ab_validation_prefers_second_when_better(
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
     refiner_config: dict[str, float | int],
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     provider.response = (make_second_pass_results(0.76), None)
@@ -275,7 +277,7 @@ async def test_ab_validation_keeps_first_when_better(
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
     refiner_config: dict[str, float | int],
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     provider.response = (make_second_pass_results(0.68), None)
@@ -297,7 +299,7 @@ async def test_budget_enforcement_respects_max_queries(
     search_client_fixture: tuple[SearchClient, ProviderStub],
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     refiner = build_refiner(
@@ -326,7 +328,7 @@ async def test_telemetry_records_both_passes(
     query_builder_fixture: MagicMock,
     name_consolidator_fixture: MagicMock,
     refiner_config: dict[str, float | int],
-    first_pass_results: list[dict[str, str]],
+    first_pass_results: list[dict[str, object]],
 ) -> None:
     search_client, provider = search_client_fixture
     provider.response = (make_second_pass_results(0.81), None)
@@ -345,4 +347,50 @@ async def test_telemetry_records_both_passes(
     assert result.two_step_triggered is True
     assert result.two_step_improved is True
     assert result.product_name_extracted == "Acme Deluxe Squeaky Ball"
-    assert result.cost_usd == pytest.approx(0.04)
+    assert result.cost_usd == pytest.approx(0.04 + SERPAPI_COST_USD)
+
+
+async def test_cost_tracking_accurate(
+    search_client_fixture: tuple[SearchClient, ProviderStub],
+    query_builder_fixture: MagicMock,
+    name_consolidator_fixture: MagicMock,
+    refiner_config: dict[str, float | int],
+    first_pass_results: list[dict[str, object]],
+) -> None:
+    search_client, provider = search_client_fixture
+    provider.response = (first_pass_results, None)
+
+    first_pass_raw_results, first_pass_error, first_pass_cost = await search_client.search_with_cost("12345")
+
+    assert first_pass_error is None
+    assert first_pass_raw_results == first_pass_results
+    assert first_pass_cost == pytest.approx(SERPAPI_COST_USD)
+
+    provider.response = (make_second_pass_results(0.84), None)
+    name_consolidator_fixture.consolidate_name = AsyncMock(return_value=("Acme Deluxe Squeaky Ball", 0.004))
+    refiner = build_refiner(
+        search_client,
+        query_builder_fixture,
+        name_consolidator_fixture,
+        refiner_config,
+    )
+
+    no_refinement_result = await refiner.refine(
+        make_initial_result(confidence=0.87),
+        first_pass_raw_results,
+        0.87,
+    )
+    refined_result = await refiner.refine(
+        make_initial_result(confidence=0.64),
+        first_pass_raw_results,
+        0.64,
+    )
+
+    assert no_refinement_result.cost_usd == pytest.approx(0.0)
+    assert refined_result.two_step_triggered is True
+    assert refined_result.cost_usd == pytest.approx(SERPAPI_COST_USD + 0.004)
+
+    total_cost_usd = first_pass_cost + refined_result.cost_usd
+
+    assert total_cost_usd == pytest.approx((SERPAPI_COST_USD * 2) + 0.004)
+    assert total_cost_usd > first_pass_cost * 2

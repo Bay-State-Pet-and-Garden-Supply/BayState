@@ -82,6 +82,7 @@ class TwoStepSearchRefiner:
             improved results from second pass.
         """
         self._last_name_consolidation_cost = 0.0
+        second_pass_search_cost = 0.0
 
         fallback_result = RefinementResult(
             success=initial_result.success,
@@ -108,9 +109,10 @@ class TwoStepSearchRefiner:
             )
 
             if not product_name_extracted:
+                fallback_result.cost_usd = self._last_name_consolidation_cost
                 return fallback_result
 
-            second_pass_raw_results, search_error = await self._execute_second_search(
+            second_pass_raw_results, search_error, second_pass_search_cost = await self._execute_second_search(
                 product_name_extracted,
                 initial_result.sku,
             )
@@ -139,7 +141,7 @@ class TwoStepSearchRefiner:
                 second_pass_results=second_pass_results or None,
                 second_pass_confidence=second_pass_confidence,
                 product_name_extracted=product_name_extracted,
-                cost_usd=self._last_name_consolidation_cost,
+                cost_usd=self._last_name_consolidation_cost + second_pass_search_cost,
                 first_pass_confidence=first_pass_confidence,
                 two_step_triggered=True,
                 two_step_improved=two_step_improved,
@@ -150,6 +152,7 @@ class TwoStepSearchRefiner:
                 initial_result.sku,
                 exc,
             )
+            fallback_result.cost_usd = self._last_name_consolidation_cost + second_pass_search_cost
             return fallback_result
         finally:
             self._active_brand = None
@@ -246,7 +249,7 @@ class TwoStepSearchRefiner:
         self,
         refined_query: str,
         original_sku: str,
-    ) -> tuple[list[SearchResultPayload], str | None]:
+    ) -> tuple[list[SearchResultPayload], str | None, float]:
         """Execute second search pass with refined query.
 
         Performs secondary search using refined query constructed from
@@ -257,12 +260,12 @@ class TwoStepSearchRefiner:
             original_sku: Original product SKU for reference.
 
         Returns:
-            Tuple of (results list, error message or None).
+            Tuple of (results list, error message or None, search cost).
         """
         try:
             product_name = str(refined_query or "").strip()
             if not original_sku or not product_name:
-                return [], "Missing SKU or extracted product name"
+                return [], "Missing SKU or extracted product name", 0.0
 
             query = self.query_builder.build_search_query(
                 sku=original_sku,
@@ -270,16 +273,16 @@ class TwoStepSearchRefiner:
                 brand=self._active_brand,
             )
             if not query:
-                return [], "Unable to build refined search query"
+                return [], "Unable to build refined search query", 0.0
 
-            return await self.search_client.search(query)
+            return await self.search_client.search_with_cost(query)
         except Exception as exc:
             logger.error(
                 "[TwoStepRefiner] Second-pass search execution failed for SKU %s: %s",
                 original_sku,
                 exc,
             )
-            return [], str(exc)
+            return [], str(exc), 0.0
 
     def _select_best_result(
         self,

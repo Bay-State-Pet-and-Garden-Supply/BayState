@@ -4,7 +4,9 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any, Optional
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any, Optional, cast
 
 from scrapers.ai_cost_tracker import AICostTracker
 from scrapers.ai_metrics import record_ai_extraction
@@ -48,6 +50,16 @@ def _read_float_env(name: str, default: float, minimum: float = 0.0) -> float:
         return default
 
     return max(minimum, parsed)
+
+
+@dataclass
+class _ScrapeCostContext:
+    search_cost_usd: float = 0.0
+    llm_cost_usd: float = 0.0
+    refinement_cost_usd: float = 0.0
+
+    def total_cost_usd(self, tracker_cost_usd: float = 0.0) -> float:
+        return float(tracker_cost_usd or 0.0) + float(self.search_cost_usd or 0.0) + float(self.llm_cost_usd or 0.0) + float(self.refinement_cost_usd or 0.0)
 
 
 class AISearchScraper:
@@ -200,12 +212,25 @@ class AISearchScraper:
         }
         logger.info(f"[AI Search] Job telemetry summary: {json.dumps(summary)}")
 
+    async def _search_with_cost(self, query: str) -> tuple[list[dict[str, Any]], str | None, float]:
+        search_with_cost = getattr(self._search_client, "search_with_cost", None)
+        if callable(search_with_cost):
+            typed_search_with_cost = cast(
+                Callable[[str], Awaitable[tuple[list[dict[str, Any]], str | None, float]]],
+                search_with_cost,
+            )
+            return await typed_search_with_cost(query)
+
+        raw_results, raw_error = await self._search_client.search(query)
+        return raw_results, raw_error, 0.0
+
     async def _collect_search_candidates(
         self,
         sku: str,
         product_name: Optional[str],
         brand: Optional[str],
         category: Optional[str],
+        cost_context: _ScrapeCostContext | None = None,
     ) -> tuple[list[dict[str, Any]], Optional[str], Optional[str]]:
         """Search identifier-first, then expand into broader queries only when needed."""
         initial_query = self._query_builder.build_identifier_query(sku)
@@ -222,7 +247,9 @@ class AISearchScraper:
             if not query or query in seen_queries:
                 return
             seen_queries.add(query)
-            raw_results, raw_error = await self._search_client.search(query)
+            raw_results, raw_error, query_cost = await self._search_with_cost(query)
+            if cost_context is not None:
+                cost_context.search_cost_usd += float(query_cost or 0.0)
             if raw_results:
                 aggregated_results.extend(raw_results)
                 search_error = None
@@ -234,11 +261,13 @@ class AISearchScraper:
         working_name = product_name
         if self.use_ai_source_selection and aggregated_results and product_name:
             logger.info(f"[AI Search] Consolidating product name for '{product_name}'")
-            working_name, _ = await self._name_consolidator.consolidate_name(
+            working_name, consolidation_cost = await self._name_consolidator.consolidate_name(
                 sku=sku,
                 abbreviated_name=product_name,
                 search_snippets=aggregated_results[:5],
             )
+            if cost_context is not None:
+                cost_context.llm_cost_usd += float(consolidation_cost or 0.0)
 
         prepared_results = self._prepare_candidate_pool(
             search_results=aggregated_results,
@@ -284,8 +313,10 @@ class AISearchScraper:
                 )
                 break
 
-            raw_results, raw_error = await self._search_client.search(query)
+            raw_results, raw_error, query_cost = await self._search_with_cost(query)
             follow_up_queries_run += 1
+            if cost_context is not None:
+                cost_context.search_cost_usd += float(query_cost or 0.0)
             if raw_results:
                 aggregated_results.extend(raw_results)
                 search_error = None
@@ -410,6 +441,7 @@ class AISearchScraper:
         sku: str,
         brand: Optional[str],
         product_name: Optional[str],
+        cost_context: _ScrapeCostContext | None = None,
     ) -> Optional[str]:
         """Select the best source URL.
 
@@ -430,6 +462,8 @@ class AISearchScraper:
                 sku=sku,
                 product_name=product_name or "",
             )
+            if cost_context is not None:
+                cost_context.llm_cost_usd += float(cost or 0.0)
 
             # Track agreement
             if best_url and heuristic_url:
@@ -606,6 +640,7 @@ class AISearchScraper:
         product_name: Optional[str],
         brand: Optional[str],
         category: Optional[str],
+        cost_context: _ScrapeCostContext | None = None,
     ) -> list[dict[str, Any]]:
         if not self.enable_two_step or self._two_step_refiner is None or not search_results:
             return search_results
@@ -629,6 +664,9 @@ class AISearchScraper:
         except Exception as exc:
             logger.warning("[AI Search] Two-step refinement failed for SKU %s: %s", sku, exc)
             return search_results
+
+        if cost_context is not None:
+            cost_context.refinement_cost_usd += float(refinement_result.cost_usd or 0.0)
 
         if not refinement_result.two_step_triggered or not refinement_result.two_step_improved:
             return search_results
@@ -674,17 +712,24 @@ class AISearchScraper:
         Returns:
             AISearchResult with extracted data
         """
+        cost_context = _ScrapeCostContext()
         try:
             search_results, product_name, search_error = await self._collect_search_candidates(
                 sku=sku,
                 product_name=product_name,
                 brand=brand,
                 category=category,
+                cost_context=cost_context,
             )
 
             if not search_results:
                 error_msg = search_error or "No search results found"
-                return AISearchResult(success=False, sku=sku, error=error_msg)
+                return AISearchResult(
+                    success=False,
+                    sku=sku,
+                    error=error_msg,
+                    cost_usd=cost_context.total_cost_usd(),
+                )
 
             search_results = await self._maybe_refine_search_results(
                 search_results=search_results,
@@ -692,6 +737,7 @@ class AISearchScraper:
                 product_name=product_name,
                 brand=brand,
                 category=category,
+                cost_context=cost_context,
             )
 
             if not brand:
@@ -718,7 +764,14 @@ class AISearchScraper:
                         break
 
                 if accepted_result:
-                    return self._build_discovery_result(accepted_result, sku, product_name, brand, target_url)
+                    return self._build_discovery_result(
+                        accepted_result,
+                        sku,
+                        product_name,
+                        brand,
+                        target_url,
+                        cost_context=cost_context,
+                    )
 
             ordered_results = list(search_results)
             prioritized_url = None
@@ -728,6 +781,7 @@ class AISearchScraper:
                     sku,
                     brand,
                     product_name,
+                    cost_context=cost_context,
                 )
             if not prioritized_url:
                 prioritized_url = self._heuristic_source_selection(
@@ -791,25 +845,53 @@ class AISearchScraper:
                     error_msg = "Extraction failed"
                 # Telemetry: job summary on failure
                 self._log_telemetry_summary(sku)
-                return AISearchResult(success=False, sku=sku, error=str(error_msg))
+                return AISearchResult(
+                    success=False,
+                    sku=sku,
+                    error=str(error_msg),
+                    cost_usd=cost_context.total_cost_usd(),
+                )
 
             # Telemetry: job summary on success
             self._log_telemetry_summary(sku)
-            return self._build_discovery_result(accepted_result, sku, product_name, brand, target_url)
+            return self._build_discovery_result(
+                accepted_result,
+                sku,
+                product_name,
+                brand,
+                target_url,
+                cost_context=cost_context,
+            )
 
         except Exception as e:
             logger.error(f"[AI Search] Error scraping {sku}: {e}")
-            return AISearchResult(success=False, sku=sku, error=str(e))
+            return AISearchResult(
+                success=False,
+                sku=sku,
+                error=str(e),
+                cost_usd=cost_context.total_cost_usd(),
+            )
 
     def _build_discovery_result(
-        self, result: dict[str, Any], sku: str, product_name: Optional[str], brand: Optional[str], url: Optional[str]
+        self,
+        result: dict[str, Any],
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        url: Optional[str],
+        cost_context: _ScrapeCostContext | None = None,
     ) -> AISearchResult:
         """Build a finalized AISearchResult from raw extraction."""
         cost_summary = self._cost_tracker.get_cost_summary()
+        total_cost_usd = (
+            cost_context.total_cost_usd(cost_summary.get("total_cost_usd", 0))
+            if cost_context is not None
+            else float(cost_summary.get("total_cost_usd", 0) or 0.0)
+        )
         record_ai_extraction(
             scraper_name=f"ai_search_{brand or 'unknown'}",
             success=True,
-            cost_usd=cost_summary.get("total_cost_usd", 0),
+            cost_usd=total_cost_usd,
             duration_seconds=0.0,
             anti_bot_detected=bool(result.get("anti_bot_detected", False)),
         )
@@ -826,7 +908,7 @@ class AISearchScraper:
             url=url,
             source_website=str(__import__("urllib.parse", fromlist=["urlparse"]).urlparse(url).netloc if url else "unknown"),
             confidence=float(result.get("confidence", 0) or 0),
-            cost_usd=cost_summary.get("total_cost_usd", 0),
+            cost_usd=total_cost_usd,
         )
 
     async def _extract_candidates_parallel(self, urls: list[str], sku: str, product_name: Optional[str], brand: Optional[str]) -> list[dict[str, Any]]:
