@@ -21,6 +21,20 @@ from scrapers.ai_search.name_consolidator import NameConsolidator
 logger = logging.getLogger(__name__)
 
 
+def _read_int_env(name: str, default: int, minimum: int = 0) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    try:
+        parsed = int(raw_value)
+    except ValueError:
+        logger.warning("[AI Search] Invalid integer for %s=%r, using %s", name, raw_value, default)
+        return default
+
+    return max(minimum, parsed)
+
+
 class AISearchScraper:
     """AI-powered search scraper for universal product extraction.
 
@@ -66,6 +80,7 @@ class AISearchScraper:
         self.prompt_version = prompt_version
         self.search_provider = normalize_search_provider(search_provider or os.getenv("AI_SEARCH_PROVIDER"))
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
+        self.max_follow_up_queries = _read_int_env("AI_SEARCH_MAX_FOLLOW_UP_QUERIES", default=2)
         self._cost_tracker = AICostTracker()
         self._browser: Any = None
         self._llm: Any = None
@@ -190,6 +205,23 @@ class AISearchScraper:
                 search_snippets=aggregated_results[:5],
             )
 
+        prepared_results = self._prepare_candidate_pool(
+            search_results=aggregated_results,
+            sku=sku,
+            brand=brand,
+            product_name=working_name,
+            category=category,
+        )
+        if not self._should_expand_search(
+            search_results=prepared_results,
+            sku=sku,
+            brand=brand,
+            product_name=working_name,
+            category=category,
+        ):
+            logger.info("[AI Search] Primary search produced a strong candidate pool; skipping follow-up searches")
+            return prepared_results, working_name, search_error
+
         query_plan = [
             self._query_builder.build_search_query(sku, working_name, brand, category),
             *self._query_builder.build_query_variants(
@@ -207,25 +239,113 @@ class AISearchScraper:
             seen_queries.add(query)
             pending_queries.append(query)
 
-        if pending_queries:
-            query_results = await asyncio.gather(
-                *[self._search_client.search(query) for query in pending_queries]
-            )
-            for raw_results, raw_error in query_results:
-                if raw_results:
-                    aggregated_results.extend(raw_results)
-                    search_error = None
-                elif raw_error:
-                    search_error = raw_error
+        follow_up_queries_run = 0
+        for query in pending_queries:
+            if follow_up_queries_run >= self.max_follow_up_queries:
+                logger.info(
+                    "[AI Search] Reached follow-up search budget (%s) for SKU %s",
+                    self.max_follow_up_queries,
+                    sku,
+                )
+                break
 
-        prepared_results = self._scoring.prepare_search_results(
-            aggregated_results,
-            sku,
-            brand,
-            working_name,
-            category,
+            raw_results, raw_error = await self._search_client.search(query)
+            follow_up_queries_run += 1
+            if raw_results:
+                aggregated_results.extend(raw_results)
+                search_error = None
+            elif raw_error:
+                search_error = raw_error
+
+            prepared_results = self._prepare_candidate_pool(
+                search_results=aggregated_results,
+                sku=sku,
+                brand=brand,
+                product_name=working_name,
+                category=category,
+            )
+            if not self._should_expand_search(
+                search_results=prepared_results,
+                sku=sku,
+                brand=brand,
+                product_name=working_name,
+                category=category,
+            ):
+                logger.info(
+                    "[AI Search] Search expansion stopped after %s follow-up quer%s for SKU %s",
+                    follow_up_queries_run,
+                    "y" if follow_up_queries_run == 1 else "ies",
+                    sku,
+                )
+                break
+
+        prepared_results = self._prepare_candidate_pool(
+            search_results=aggregated_results,
+            sku=sku,
+            brand=brand,
+            product_name=working_name,
+            category=category,
         )
         return prepared_results, working_name, search_error
+
+    def _prepare_candidate_pool(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+        category: Optional[str],
+    ) -> list[dict[str, Any]]:
+        return self._scoring.prepare_search_results(
+            search_results,
+            sku,
+            brand,
+            product_name,
+            category,
+        )
+
+    def _should_expand_search(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+        category: Optional[str],
+    ) -> bool:
+        """Return True when we need more search coverage before extraction."""
+        if not search_results:
+            return True
+
+        strong_candidate_url = self._scoring.pick_strong_candidate_url(
+            search_results=search_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+        )
+        if strong_candidate_url:
+            return False
+
+        high_signal_count = 0
+        for result in search_results[:5]:
+            if self._scoring.is_low_quality_result(result):
+                continue
+
+            if (
+                self._scoring.score_search_result(
+                    result=result,
+                    sku=sku,
+                    brand=brand,
+                    product_name=product_name,
+                    category=category,
+                )
+                >= 4.5
+            ):
+                high_signal_count += 1
+                if high_signal_count >= 2:
+                    return False
+
+        return True
 
     async def scrape_products_batch(
         self,

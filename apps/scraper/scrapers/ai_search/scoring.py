@@ -101,6 +101,25 @@ class SearchScorer:
         "/search",
         "/products?",
         "/collections?",
+        "/product-line/",
+        "/product-lines/",
+    ]
+
+    # Title/snippet phrases that suggest a multi-product listing page
+    # rather than a single product detail page.
+    MULTI_PRODUCT_INDICATORS = [
+        r"\bshop all\b",
+        r"\bbrowse\b",
+        r"\bcollection\b",
+        r"\ball products\b",
+        r"\bour range\b",
+        r"\bvarieties\b",
+        r"\bview all\b",
+        r"\bexplore our\b",
+        r"\bfind a retailer\b",
+        r"\bwhere to buy\b",
+        r"\bavailable at\b",
+        r"\bbuy from\b",
     ]
 
     def __init__(self):
@@ -128,7 +147,43 @@ class SearchScorer:
     def is_category_like_url(self, url: str) -> bool:
         """Check if URL looks like a category page."""
         lowered = url.lower()
-        return any(pattern in lowered for pattern in self.CATEGORY_PATTERNS)
+        if any(pattern in lowered for pattern in self.CATEGORY_PATTERNS):
+            return True
+        # Detect brand-site product-line pages: /products/{category}/{slug}
+        # These have 3+ path segments under /products/ and typically list
+        # multiple items rather than a single buyable product.
+        if self.is_product_line_page(url):
+            return True
+        return False
+
+    def is_product_line_page(self, url: str) -> bool:
+        """Detect product-line pages on brand sites.
+
+        Brand sites often use URLs like:
+          brand.com/products/cat-litter/go-natural-pea-husk
+        These are marketing pages for a product line, listing variants
+        and linking to retailers, not a single purchasable PDP.
+        """
+        try:
+            parsed = urlparse(url)
+            path = parsed.path.rstrip("/").lower()
+            segments = [s for s in path.split("/") if s]
+
+            # Pattern: /products/{category}/{line-name} (3+ segments, first is 'products')
+            if len(segments) >= 3 and segments[0] == "products":
+                # If domain is a trusted retailer, this pattern is normal
+                # (e.g. amazon.com/products/...) — skip
+                domain = self.domain_from_url(url)
+                if not self.is_trusted_retailer(domain):
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def _has_multi_product_indicators(self, text: str) -> bool:
+        """Check if text contains phrases suggesting a multi-product listing."""
+        lowered = text.lower()
+        return any(re.search(pattern, lowered) for pattern in self.MULTI_PRODUCT_INDICATORS)
 
     def is_low_quality_result(self, result: dict[str, Any]) -> bool:
         """Check if search result is low quality."""
@@ -146,6 +201,9 @@ class SearchScorer:
             return True
 
         if any(fragment in combined for fragment in self.LOW_QUALITY_URL_FRAGMENTS):
+            return True
+
+        if self._has_multi_product_indicators(combined):
             return True
 
         return any(re.search(pattern, combined) for pattern in self.LOW_QUALITY_PATTERNS)

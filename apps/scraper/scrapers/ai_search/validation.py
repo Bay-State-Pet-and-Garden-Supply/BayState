@@ -1,12 +1,59 @@
 """Extraction result validation."""
 
 import logging
+import re
 from typing import Any, Optional, Tuple
+from urllib.parse import urlparse
 
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
 
 logger = logging.getLogger(__name__)
+
+# Patterns that indicate a URL is a logo, favicon, placeholder, or site icon
+# rather than an actual product image.
+_LOGO_PLACEHOLDER_PATTERNS = [
+    re.compile(r"/logos?[/_.-]", re.IGNORECASE),
+    re.compile(r"/favicon", re.IGNORECASE),
+    re.compile(r"/brand[/_.-]", re.IGNORECASE),
+    re.compile(r"/placeholder", re.IGNORECASE),
+    re.compile(r"/default[_.-]?image", re.IGNORECASE),
+    re.compile(r"/no[_-]?image", re.IGNORECASE),
+    re.compile(r"/icons?/", re.IGNORECASE),
+    re.compile(r"/site[_.-]", re.IGNORECASE),
+    re.compile(r"[/_.-]logo\.(png|jpe?g|svg|webp|gif)", re.IGNORECASE),
+    re.compile(r"-logo[_.-]", re.IGNORECASE),
+    re.compile(r"/spacer\.", re.IGNORECASE),
+    re.compile(r"/pixel\.", re.IGNORECASE),
+    re.compile(r"/blank\.", re.IGNORECASE),
+    re.compile(r"/1x1\.", re.IGNORECASE),
+    re.compile(r"/s_\d+x\d+\.", re.IGNORECASE),  # spacer pixels (s_1x2.gif, etc.)
+    re.compile(r"/social[_-]?share", re.IGNORECASE),
+    re.compile(r"/og[_-]?(image|default)", re.IGNORECASE),
+]
+
+# Minimum path depth for a product image URL (reject very short paths that
+# are often site-level assets like /images/logo.png).
+_MIN_PATH_SEGMENTS_FOR_PRODUCT_IMAGE = 2
+
+
+def _is_likely_logo_or_placeholder(url: str) -> bool:
+    """Return True if a URL looks like a logo, placeholder, or site icon."""
+    for pattern in _LOGO_PLACEHOLDER_PATTERNS:
+        if pattern.search(url):
+            return True
+
+    # Check for very short image paths that are often site-level assets
+    try:
+        path = urlparse(url).path
+        segments = [s for s in path.split("/") if s]
+        # Single-segment paths like /logo.png are suspect
+        if len(segments) <= 1 and re.search(r"\.(png|jpe?g|svg|webp|gif)$", path, re.IGNORECASE):
+            return True
+    except Exception:
+        pass
+
+    return False
 
 
 class ExtractionValidator:
@@ -24,6 +71,18 @@ class ExtractionValidator:
             except (TypeError, ValueError):
                 return 0.0
         return 0.0
+
+    def _filter_valid_product_images(self, images: list[str]) -> list[str]:
+        """Filter out logo, placeholder, and icon URLs from image list."""
+        valid = []
+        for url in images:
+            if not isinstance(url, str) or not url.strip():
+                continue
+            if _is_likely_logo_or_placeholder(url):
+                logger.info(f"[AI Search Validation] Filtered non-product image: {url}")
+                continue
+            valid.append(url)
+        return valid
 
     def _log_rejection(self, context: dict[str, Any], reason: str) -> Tuple[bool, str]:
         context["accepted"] = False
@@ -67,6 +126,16 @@ class ExtractionValidator:
         images = extraction_result.get("images")
         if not isinstance(images, list) or len(images) == 0:
             return self._log_rejection(validation_context, "Missing product images")
+
+        # Filter out logo/placeholder/icon images
+        valid_images = self._filter_valid_product_images(images)
+        if len(valid_images) == 0:
+            return self._log_rejection(
+                validation_context,
+                f"All {len(images)} image(s) appear to be logos or placeholders",
+            )
+        # Replace images in the result so downstream consumers get clean data
+        extraction_result["images"] = valid_images
 
         normalized_brand = self._matching.normalize_token_text(str(brand or ""))
         normalized_domain = self._matching.normalize_token_text(source_domain)
