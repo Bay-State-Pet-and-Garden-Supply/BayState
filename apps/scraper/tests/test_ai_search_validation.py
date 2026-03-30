@@ -112,20 +112,18 @@ class TestSKUValidation:
 
 
 class TestQueryVariants:
-    def test_sku_only_generates_single_variant(self, scraper):
+    def test_sku_only_generates_no_extra_variant(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku="12345", product_name=None, brand=None, category=None)
-        assert variants == ["12345 product"]
+        assert variants == []
 
-    def test_sku_and_name_generates_two_variants(self, scraper):
+    def test_sku_and_name_generates_name_sku_variant(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku="12345", product_name="PURINA CHKN", brand=None, category=None)
-        assert len(variants) == 2
-        assert "12345 product" in variants
-        assert "PURINA CHKN 12345" in variants
+        assert variants == ["PURINA CHKN 12345"]
 
     def test_all_fields_generates_multiple_variants(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku="12345", product_name="Pro Plan Chicken", brand="Purina", category="Dog Food")
         assert len(variants) >= 2
-        assert "12345 product" in variants
+        assert "Pro Plan Chicken 12345" in variants
         assert "Purina Pro Plan Chicken" in variants
 
     def test_empty_inputs_returns_empty_list(self, scraper):

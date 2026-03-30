@@ -17,7 +17,7 @@ async def test_scrape_product_performs_two_pass_discovery() -> None:
         
         search_mock = AsyncMock()
         def search_side_effect(query):
-            if "ABBRV NAME" in query:
+            if query == "123":
                 return (mock_results_recon, None)
             return (mock_results_targeted, None)
             

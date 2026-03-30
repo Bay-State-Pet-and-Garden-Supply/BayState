@@ -14,7 +14,8 @@ pytestmark = pytest.mark.asyncio
 
 async def test_collect_search_candidates_skips_variants_when_primary_pool_is_already_strong() -> None:
     scraper = AISearchScraper()
-    scraper._query_builder.build_search_query = MagicMock(return_value="primary-query")
+    scraper._query_builder.build_identifier_query = MagicMock(return_value="12345")
+    scraper._query_builder.build_search_query = MagicMock(return_value="fallback-query")
     scraper._query_builder.build_query_variants = MagicMock(return_value=["variant-one", "variant-two"])
 
     primary_results = [
@@ -31,7 +32,7 @@ async def test_collect_search_candidates_skips_variants_when_primary_pool_is_alr
     ]
 
     async def search_side_effect(query: str) -> tuple[list[dict[str, str]], None]:
-        if query != "primary-query":
+        if query != "12345":
             pytest.fail(f"unexpected variant search executed: {query}")
         return primary_results, None
 
@@ -51,13 +52,15 @@ async def test_collect_search_candidates_skips_variants_when_primary_pool_is_alr
         "https://www.chewy.com/acme-squeaky-ball/dp/12345",
     ]
     assert scraper._search_client.search.await_count == 1
+    scraper._query_builder.build_search_query.assert_not_called()
 
 
 async def test_collect_search_candidates_stops_after_first_strong_variant() -> None:
     scraper = AISearchScraper()
-    scraper._query_builder.build_search_query = MagicMock(return_value="primary-query")
+    scraper._query_builder.build_identifier_query = MagicMock(return_value="12345")
+    scraper._query_builder.build_search_query = MagicMock(return_value="fallback-query")
     scraper._query_builder.build_query_variants = MagicMock(
-        return_value=["variant-one", "variant-two", "variant-three"]
+        return_value=["UPC 12345", "variant-two", "variant-three"]
     )
 
     primary_results = [
@@ -83,9 +86,9 @@ async def test_collect_search_candidates_stops_after_first_strong_variant() -> N
 
     async def search_side_effect(query: str) -> tuple[list[dict[str, str]], None]:
         seen_queries.append(query)
-        if query == "primary-query":
+        if query == "12345":
             return primary_results, None
-        if query == "variant-one":
+        if query == "UPC 12345":
             return strong_variant_results, None
         pytest.fail(f"search expansion should have stopped before querying: {query}")
 
@@ -100,7 +103,7 @@ async def test_collect_search_candidates_stops_after_first_strong_variant() -> N
 
     assert search_error is None
     assert working_name == "Squeaky Ball"
-    assert seen_queries == ["primary-query", "variant-one"]
+    assert seen_queries == ["12345", "UPC 12345"]
     assert search_results[0]["url"] == "https://acmepets.com/products/12345-squeaky-ball"
 
 
