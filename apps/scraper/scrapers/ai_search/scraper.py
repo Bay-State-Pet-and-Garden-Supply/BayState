@@ -35,6 +35,20 @@ def _read_int_env(name: str, default: int, minimum: int = 0) -> int:
     return max(minimum, parsed)
 
 
+def _read_float_env(name: str, default: float, minimum: float = 0.0) -> float:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    try:
+        parsed = float(raw_value)
+    except ValueError:
+        logger.warning("[AI Search] Invalid float for %s=%r, using %s", name, raw_value, default)
+        return default
+
+    return max(minimum, parsed)
+
+
 class AISearchScraper:
     """AI-powered search scraper for universal product extraction.
 
@@ -81,6 +95,11 @@ class AISearchScraper:
         self.search_provider = normalize_search_provider(search_provider or os.getenv("AI_SEARCH_PROVIDER"))
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
         self.max_follow_up_queries = _read_int_env("AI_SEARCH_MAX_FOLLOW_UP_QUERIES", default=2)
+        # Two-step search refinement configuration
+        self.enable_two_step = os.getenv("AI_SEARCH_ENABLE_TWO_STEP", "false").lower() == "true"
+        self.secondary_threshold = _read_float_env("AI_SEARCH_SECONDARY_THRESHOLD", default=0.75)
+        self.circuit_breaker_threshold = _read_float_env("AI_SEARCH_CIRCUIT_BREAKER_THRESHOLD", default=0.85)
+        self.confidence_delta = _read_float_env("AI_SEARCH_CONFIDENCE_DELTA", default=0.1)
         self._cost_tracker = AICostTracker()
         self._browser: Any = None
         self._llm: Any = None
