@@ -39,7 +39,7 @@ class TestSKUValidation:
             brand="Purina",
             source_url="https://www.example.com/products/pro-plan-chicken",
         )
-        assert result[0] == True
+        assert result[0]  is True
 
     def test_rejects_without_sku_when_low_confidence(self, scraper):
         scraper_low = AISearchScraper(confidence_threshold=0.5)
@@ -56,7 +56,7 @@ class TestSKUValidation:
             brand="SomeBrand",
             source_url="https://example.com/product",
         )
-        assert result[0] == False
+        assert result[0]  is False
         assert "weak match signals" in result[1] or "confidence too low" in result[1].lower()
 
     def test_rejects_without_sku_brand_mismatch_high_confidence(self, scraper):
@@ -73,7 +73,7 @@ class TestSKUValidation:
             brand="BrandB",
             source_url="https://example.com/product",
         )
-        assert result[0] == False
+        assert result[0]  is False
         assert "Brand mismatch" in result[1]
 
     def test_rejects_untrusted_domain_below_elevated_confidence_threshold(self, scraper):

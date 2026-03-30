@@ -31,12 +31,12 @@ async def test_collect_search_candidates_skips_variants_when_primary_pool_is_alr
         },
     ]
 
-    async def search_side_effect(query: str) -> tuple[list[dict[str, str]], None]:
+    async def search_side_effect(query: str) -> tuple[list[dict[str, str]], None, float]:
         if query != "12345":
             pytest.fail(f"unexpected variant search executed: {query}")
-        return primary_results, None
+        return primary_results, None, 0.0
 
-    scraper._search_client.search = AsyncMock(side_effect=search_side_effect)
+    scraper._search_client.search_with_cost = AsyncMock(side_effect=search_side_effect)
 
     search_results, working_name, search_error = await scraper._collect_search_candidates(
         sku="12345",
@@ -51,7 +51,7 @@ async def test_collect_search_candidates_skips_variants_when_primary_pool_is_alr
         "https://acmepets.com/products/12345-squeaky-ball",
         "https://www.chewy.com/acme-squeaky-ball/dp/12345",
     ]
-    assert scraper._search_client.search.await_count == 1
+    assert scraper._search_client.search_with_cost.await_count == 1
     scraper._query_builder.build_search_query.assert_not_called()
 
 
@@ -84,15 +84,15 @@ async def test_collect_search_candidates_stops_after_first_strong_variant() -> N
     ]
     seen_queries: list[str] = []
 
-    async def search_side_effect(query: str) -> tuple[list[dict[str, str]], None]:
+    async def search_side_effect(query: str) -> tuple[list[dict[str, str]], None, float]:
         seen_queries.append(query)
         if query == "12345":
-            return primary_results, None
+            return primary_results, None, 0.0
         if query == "UPC 12345":
-            return strong_variant_results, None
+            return strong_variant_results, None, 0.0
         pytest.fail(f"search expansion should have stopped before querying: {query}")
 
-    scraper._search_client.search = AsyncMock(side_effect=search_side_effect)
+    scraper._search_client.search_with_cost = AsyncMock(side_effect=search_side_effect)
 
     search_results, working_name, search_error = await scraper._collect_search_candidates(
         sku="12345",
