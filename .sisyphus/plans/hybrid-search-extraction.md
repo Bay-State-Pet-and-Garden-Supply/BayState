@@ -611,7 +611,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `feat(ai_search): integrate two-step refiner into AISearchScraper`
   - Files: `apps/scraper/scrapers/ai_search/scraper.py`
 
-- [ ] 9. Add telemetry logging for two-step metrics
+- [x] 9. Add telemetry logging for two-step metrics
 
   **What to do**:
   - Add telemetry fields to `AISearchResult`:
@@ -662,7 +662,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `feat(ai_search): add two-step telemetry metrics`
   - Files: `apps/scraper/scrapers/ai_search/models.py`, `apps/scraper/scrapers/ai_search/scraper.py`
 
-- [ ] 10. Update callback contract if needed
+- [x] 10. Update callback contract if needed
 
   **What to do**:
   - Check `apps/web/lib/scraper-callback/contract.ts`
@@ -708,7 +708,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `feat(ai_search): update callback contract for two-step metrics`
   - Files: `apps/web/lib/scraper-callback/contract.ts`
 
-- [ ] 11. Integration tests with mocked APIs
+- [x] 11. Integration tests with mocked APIs
 
   **What to do**:
   - Create comprehensive integration tests:
@@ -759,7 +759,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `test(ai_search): add integration tests for two-step refiner`
   - Files: `apps/scraper/tests/test_two_step_refiner.py`
 
-- [ ] 12. Documentation and usage examples
+- [x] 12. Documentation and usage examples
 
   **What to do**:
   - Document in `apps/scraper/scrapers/ai_search/README.md` (or create):
@@ -810,7 +810,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `docs(ai_search): document two-step search refinement`
   - Files: `apps/scraper/scrapers/ai_search/README.md`
 
-- [ ] 13. Cost analysis telemetry validation
+- [x] 13. Cost analysis telemetry validation
 
   **What to do**:
   - Validate cost tracking is accurate:

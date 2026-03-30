@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 SUPPORTED_SEARCH_PROVIDERS = {"auto", "serpapi", "brave"}
 TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "srsltid"}
 TRACKING_QUERY_PREFIXES = ("utm_",)
+DEFAULT_PROVIDER_COST_USD = {
+    "serpapi": 0.01,
+    "brave": 0.0,
+}
 
 
 def normalize_search_provider(provider: str | None) -> str:
@@ -41,8 +45,7 @@ def canonicalize_result_url(url: str) -> str:
     filtered_query = [
         (key, value)
         for key, value in parse_qsl(parts.query, keep_blank_values=True)
-        if key.lower() not in TRACKING_QUERY_KEYS
-        and not any(key.lower().startswith(prefix) for prefix in TRACKING_QUERY_PREFIXES)
+        if key.lower() not in TRACKING_QUERY_KEYS and not any(key.lower().startswith(prefix) for prefix in TRACKING_QUERY_PREFIXES)
     ]
     path = parts.path.rstrip("/") or "/"
 
@@ -205,12 +208,7 @@ class SerpAPISearchClient:
             raise ValueError("SERPAPI_API_KEY not set")
 
         country = str(os.environ.get("AI_SEARCH_COUNTRY") or os.environ.get("SERPAPI_COUNTRY") or "US").strip().lower()
-        language = str(
-            os.environ.get("AI_SEARCH_LANG")
-            or os.environ.get("SERPAPI_LANGUAGE")
-            or os.environ.get("SERPAPI_SEARCH_LANG")
-            or "en"
-        ).strip().lower()
+        language = str(os.environ.get("AI_SEARCH_LANG") or os.environ.get("SERPAPI_LANGUAGE") or os.environ.get("SERPAPI_SEARCH_LANG") or "en").strip().lower()
         safe = str(os.environ.get("SERPAPI_SAFE") or "active").strip().lower() or "active"
         google_domain = str(os.environ.get("SERPAPI_GOOGLE_DOMAIN") or "google.com").strip() or "google.com"
 
@@ -236,12 +234,7 @@ class SerpAPISearchClient:
         return data
 
     def _normalize_result(self, result: dict[str, Any], result_type: str) -> dict[str, Any] | None:
-        raw_url = (
-            result.get("link")
-            or result.get("product_link")
-            or result.get("url")
-            or ""
-        )
+        raw_url = result.get("link") or result.get("product_link") or result.get("url") or ""
         url = canonicalize_result_url(str(raw_url))
         if not url:
             return None
@@ -344,16 +337,35 @@ class SearchClient:
         while len(self._cache) > self._cache_max:
             self._cache.popitem(last=False)
 
-    async def search(self, query: str) -> tuple[list[dict[str, Any]], str | None]:
-        """Search using the configured provider order."""
+    def _provider_request_cost(self, provider_name: str) -> float:
+        env_key = f"AI_SEARCH_{provider_name.upper()}_COST_USD"
+        raw_cost = os.environ.get(env_key)
+        if raw_cost is None:
+            return float(DEFAULT_PROVIDER_COST_USD.get(provider_name, 0.0))
+
+        try:
+            return max(0.0, float(raw_cost))
+        except ValueError:
+            logger.warning(
+                "[AI Search] Invalid provider cost for %s=%r, using default",
+                env_key,
+                raw_cost,
+            )
+            return float(DEFAULT_PROVIDER_COST_USD.get(provider_name, 0.0))
+
+    async def search_with_cost(
+        self,
+        query: str,
+    ) -> tuple[list[dict[str, Any]], str | None, float]:
         cache_key = self._normalize_query_key(query)
         cached = self._cache_get(cache_key)
         if cached is not None:
-            return cached, None
+            return cached, None, 0.0
 
         inflight = self._inflight_queries.get(cache_key)
         if inflight is not None:
-            return await inflight
+            results, error = await inflight
+            return results, error, 0.0
 
         loop = asyncio.get_running_loop()
         future: asyncio.Future[tuple[list[dict[str, Any]], str | None]] = loop.create_future()
@@ -364,21 +376,32 @@ class SearchClient:
             for provider_name in self._provider_order():
                 provider = self._providers[provider_name]
                 results, error = await provider.search(query)
+                request_cost = self._provider_request_cost(provider_name) if error is None else 0.0
                 if results:
                     self._cache_set(cache_key, results)
                     response = (results, None)
                     future.set_result(response)
-                    return response
+                    return results, None, request_cost
                 if error:
                     provider_errors.append(f"{provider_name}: {error}")
+                    continue
+
+                response = ([], None)
+                future.set_result(response)
+                return [], None, request_cost
 
             error_message = "; ".join(provider_errors) if provider_errors else "No search providers configured"
             response = ([], error_message)
             future.set_result(response)
-            return response
-        except Exception as exc:
+            return [], error_message, 0.0
+        except Exception:
             if not future.done():
-                future.set_exception(exc)
+                future.cancel()
             raise
         finally:
             self._inflight_queries.pop(cache_key, None)
+
+    async def search(self, query: str) -> tuple[list[dict[str, Any]], str | None]:
+        """Search using the configured provider order."""
+        results, error, _ = await self.search_with_cost(query)
+        return results, error

@@ -9,7 +9,9 @@
     "ses_2bfd5148cffegl0NN5t3wLgf5K",
     "ses_2bfd420a9ffe2Pnm8sgtoZMEQY",
     "ses_2bfc9000cffetWS6sREuTCle6z",
-    "ses_2bfc0fd06ffeIA2rTEodaVTRk2"
+    "ses_2bfc0fd06ffeIA2rTEodaVTRk2",
+    "ses_2bfb74791ffe1zNHiqpVStnzkF",
+    "ses_2bfb6cfdeffeP5AxYf8jlttz0G"
   ],
   "plan_name": "hybrid-search-extraction",
   "agent": "atlas",
@@ -40,6 +42,15 @@
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
       "updated_at": "2026-03-30T19:44:37.789Z"
+    },
+    "todo:12": {
+      "task_key": "todo:12",
+      "task_label": "12",
+      "task_title": "Documentation and usage examples",
+      "session_id": "ses_2bfb74791ffe1zNHiqpVStnzkF",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-03-30T19:49:19.523Z"
     }
   }
 }
