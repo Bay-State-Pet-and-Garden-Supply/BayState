@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections import OrderedDict
@@ -307,6 +308,7 @@ class SearchClient:
         self.provider = normalize_search_provider(provider or os.environ.get("AI_SEARCH_PROVIDER"))
         self._cache: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
         self._cache_max = cache_max
+        self._inflight_queries: dict[str, asyncio.Future[tuple[list[dict[str, Any]], str | None]]] = {}
         self._providers = {
             "serpapi": SerpAPISearchClient(max_results=max_results),
             "brave": BraveSearchClient(max_results=max_results),
@@ -323,6 +325,9 @@ class SearchClient:
         if os.environ.get("BRAVE_API_KEY"):
             return ["brave", "serpapi"]
         return ["serpapi", "brave"]
+
+    def _normalize_query_key(self, query: str) -> str:
+        return " ".join(str(query or "").split()).lower()
 
     def _cache_get(self, key: str) -> list[dict[str, Any]] | None:
         if key not in self._cache:
@@ -341,19 +346,39 @@ class SearchClient:
 
     async def search(self, query: str) -> tuple[list[dict[str, Any]], str | None]:
         """Search using the configured provider order."""
-        cached = self._cache_get(query)
+        cache_key = self._normalize_query_key(query)
+        cached = self._cache_get(cache_key)
         if cached is not None:
             return cached, None
 
-        provider_errors: list[str] = []
-        for provider_name in self._provider_order():
-            provider = self._providers[provider_name]
-            results, error = await provider.search(query)
-            if results:
-                self._cache_set(query, results)
-                return results, None
-            if error:
-                provider_errors.append(f"{provider_name}: {error}")
+        inflight = self._inflight_queries.get(cache_key)
+        if inflight is not None:
+            return await inflight
 
-        error_message = "; ".join(provider_errors) if provider_errors else "No search providers configured"
-        return [], error_message
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[tuple[list[dict[str, Any]], str | None]] = loop.create_future()
+        self._inflight_queries[cache_key] = future
+
+        provider_errors: list[str] = []
+        try:
+            for provider_name in self._provider_order():
+                provider = self._providers[provider_name]
+                results, error = await provider.search(query)
+                if results:
+                    self._cache_set(cache_key, results)
+                    response = (results, None)
+                    future.set_result(response)
+                    return response
+                if error:
+                    provider_errors.append(f"{provider_name}: {error}")
+
+            error_message = "; ".join(provider_errors) if provider_errors else "No search providers configured"
+            response = ([], error_message)
+            future.set_result(response)
+            return response
+        except Exception as exc:
+            if not future.done():
+                future.set_exception(exc)
+            raise
+        finally:
+            self._inflight_queries.pop(cache_key, None)

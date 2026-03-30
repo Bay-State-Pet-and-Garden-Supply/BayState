@@ -1018,8 +1018,10 @@ def _run_ai_search_job(
 
         if search_result.success:
             results["data"][sku][scraper_name] = {
-                "size_metrics": search_result.size_metrics,
                 "title": search_result.product_name,
+                "brand": search_result.brand,
+                "weight": search_result.size_metrics,
+                "size_metrics": search_result.size_metrics,
                 "description": search_result.description,
                 "images": search_result.images,
                 "categories": search_result.categories,

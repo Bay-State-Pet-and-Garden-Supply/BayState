@@ -84,22 +84,23 @@ class QueryBuilder:
 
         variants: list[str] = []
 
-        if sku_clean:
-            variants.append(f"{sku_clean} product")
-            if sku_clean.isdigit() and len(sku_clean) in (12, 13, 14):
-                variants.append(f"UPC {sku_clean}")
+        if name_clean and sku_clean:
+            variants.append(f"{name_clean} {sku_clean}")
 
         if brand_clean and name_clean:
             variants.append(f"{brand_clean} {name_clean}")
 
-        if name_clean and sku_clean:
-            variants.append(f"{name_clean} {sku_clean}")
-
         if brand_clean and name_clean and sku_clean:
             variants.append(f"{brand_clean} {name_clean} {sku_clean}")
 
+        if sku_clean and sku_clean.isdigit() and len(sku_clean) in (12, 13, 14):
+            variants.append(f"UPC {sku_clean}")
+
         if brand_clean and category_clean and sku_clean:
             variants.append(f"{brand_clean} {category_clean} {sku_clean}")
+
+        if sku_clean:
+            variants.append(f"{sku_clean} product")
 
         if not variants and name_clean:
             variants.append(name_clean)
