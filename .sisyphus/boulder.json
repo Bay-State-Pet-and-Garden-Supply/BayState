@@ -8,7 +8,8 @@
     "ses_2bfd4912dffeC7UbKV6RVPWwSU",
     "ses_2bfd5148cffegl0NN5t3wLgf5K",
     "ses_2bfd420a9ffe2Pnm8sgtoZMEQY",
-    "ses_2bfc9000cffetWS6sREuTCle6z"
+    "ses_2bfc9000cffetWS6sREuTCle6z",
+    "ses_2bfc0fd06ffeIA2rTEodaVTRk2"
   ],
   "plan_name": "hybrid-search-extraction",
   "agent": "atlas",
@@ -30,6 +31,15 @@
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
       "updated_at": "2026-03-30T19:34:19.219Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "Integrate into AISearchScraper.scrape_product()",
+      "session_id": "ses_2bfc0fd06ffeIA2rTEodaVTRk2",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-03-30T19:44:37.789Z"
     }
   }
 }

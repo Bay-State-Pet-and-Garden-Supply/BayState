@@ -3,9 +3,8 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-import pytest
-
 from scrapers.ai_search.scraper import AISearchScraper, _read_float_env
+from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
 
 
 class TestTwoStepConfigDefaults:
@@ -40,6 +39,7 @@ class TestTwoStepConfigOverrides:
         with patch.dict(os.environ, {"AI_SEARCH_ENABLE_TWO_STEP": "true"}):
             scraper = AISearchScraper()
             assert scraper.enable_two_step is True
+            assert isinstance(scraper._two_step_refiner, TwoStepSearchRefiner)
 
     def test_enable_two_step_false_case_insensitive(self) -> None:
         """enable_two_step is case-insensitive for boolean parsing."""
