@@ -1,85 +1,25 @@
 {
-  "active_plan": "C:\\Users\\Nick\\Projectos\\BayState\\.sisyphus\\plans\\protected-images-fix.md",
-  "started_at": "2026-03-26T22:57:57.453Z",
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/hybrid-search-extraction.md",
+  "started_at": "2026-03-30T19:10:42.982Z",
   "session_ids": [
-    "ses_2d3b88109ffeCirdm532o4bERt",
-    "ses_2d39fa828ffeA9rgbkVPafHIbu",
-    "ses_2d3a08244ffewKyGqkiWO2yWld",
-    "ses_2d3a01175ffeMwXh3dZPfQCkhi",
-    "ses_2d3978322ffeoQpPI2LdoCloju",
-    "ses_2d38d2a12ffeXkGQfkJpz6m5S1",
-    "ses_2d386385bffeQ37VIxGhM7OVqo",
-    "ses_2d37c9791ffeE4oM4gTUIbB8T0",
-    "ses_2d364be42ffe7XNrMnJTOwpyfg",
-    "ses_2d35652c1ffeQKsO1gxAToENeA",
-    "ses_2d349cc84ffeh9ABQu1MGdisMk",
-    "ses_2d349b404ffeJUXu86Jbz2RrEN"
+    "ses_2bff4c8b3ffeoI0nyChYoFtK55",
+    "ses_2bfd74703ffe0JrTn37y34Q4P8",
+    "ses_2bfd73b70ffejdIjBGYdN0oidS",
+    "ses_2bfd4912dffeC7UbKV6RVPWwSU",
+    "ses_2bfd5148cffegl0NN5t3wLgf5K",
+    "ses_2bfd420a9ffe2Pnm8sgtoZMEQY"
   ],
-  "plan_name": "protected-images-fix",
+  "plan_name": "hybrid-search-extraction",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Add Image Retry Queue Schema",
-      "session_id": "ses_2d3a08244ffewKyGqkiWO2yWld",
+      "task_title": "Add environment variables and configuration system",
+      "session_id": "ses_2bfd5148cffegl0NN5t3wLgf5K",
       "agent": "Sisyphus-Junior",
       "category": "quick",
-      "updated_at": "2026-03-26T23:05:27.675Z"
-    },
-    "todo:4": {
-      "task_key": "todo:4",
-      "task_label": "4",
-      "task_title": "Update Storage Layer to Enqueue Failures",
-      "session_id": "ses_2d3978322ffeoQpPI2LdoCloju",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-03-26T23:18:51.855Z"
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "Create Retry Job Processor",
-      "session_id": "ses_2d38d2a12ffeXkGQfkJpz6m5S1",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-03-26T23:26:50.789Z"
-    },
-    "todo:6": {
-      "task_key": "todo:6",
-      "task_label": "6",
-      "task_title": "Add Re-authentication Flow for 401 Errors",
-      "session_id": "ses_2d386385bffeQ37VIxGhM7OVqo",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-03-26T23:37:02.994Z"
-    },
-    "todo:7": {
-      "task_key": "todo:7",
-      "task_label": "7",
-      "task_title": "Implement Ongoing 404 Detection + Auto-re-scrape",
-      "session_id": "ses_2d37c9791ffeE4oM4gTUIbB8T0",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-03-27T00:01:36.654Z"
-    },
-    "todo:8": {
-      "task_key": "todo:8",
-      "task_label": "8",
-      "task_title": "Enhance Backfill Script with Retry Queue Integration",
-      "session_id": "ses_2d364be42ffe7XNrMnJTOwpyfg",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-03-27T00:18:36.599Z"
-    },
-    "todo:9": {
-      "task_key": "todo:9",
-      "task_label": "9",
-      "task_title": "Add Comprehensive Tests for All Failure Scenarios",
-      "session_id": "ses_2d35652c1ffeQKsO1gxAToENeA",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-03-27T00:33:03.899Z"
+      "updated_at": "2026-03-30T19:16:43.456Z"
     }
   }
 }
