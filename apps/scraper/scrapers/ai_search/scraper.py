@@ -174,8 +174,10 @@ class AISearchScraper:
         brand: Optional[str],
         category: Optional[str],
     ) -> tuple[list[dict[str, Any]], Optional[str], Optional[str]]:
-        """Search across the primary query and variants, then rank one merged candidate pool."""
-        initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
+        """Search identifier-first, then expand into broader queries only when needed."""
+        initial_query = self._query_builder.build_identifier_query(sku)
+        if not initial_query:
+            initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
         logger.info(f"[AI Search] Primary search: {initial_query}")
 
         seen_queries: set[str] = set()
@@ -223,13 +225,13 @@ class AISearchScraper:
             return prepared_results, working_name, search_error
 
         query_plan = [
-            self._query_builder.build_search_query(sku, working_name, brand, category),
             *self._query_builder.build_query_variants(
                 sku=sku,
                 product_name=working_name,
                 brand=brand,
                 category=category,
             ),
+            self._query_builder.build_search_query(sku, working_name, brand, category),
         ]
 
         pending_queries: list[str] = []
