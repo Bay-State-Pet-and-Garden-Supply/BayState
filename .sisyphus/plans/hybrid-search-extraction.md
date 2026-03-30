@@ -349,7 +349,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `test(ai_search): add TDD tests for two-step refiner`
   - Files: `apps/scraper/tests/test_two_step_refiner.py`
 
-- [ ] 4. Implement TwoStepSearchRefiner class skeleton
+- [x] 4. Implement TwoStepSearchRefiner class skeleton
 
   **What to do**:
   - Implement `__init__` with dependency injection:
@@ -403,7 +403,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `feat(ai_search): implement TwoStepSearchRefiner skeleton`
   - Files: `apps/scraper/scrapers/ai_search/two_step_refiner.py`
 
-- [ ] 5. Add product name extraction logic
+- [x] 5. Add product name extraction logic
 
   **What to do**:
   - Implement `_extract_product_name(sku, first_pass_results)` method:
@@ -458,7 +458,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `feat(ai_search): add product name extraction logic`
   - Files: `apps/scraper/scrapers/ai_search/two_step_refiner.py`
 
-- [ ] 6. Implement second search orchestration
+- [x] 6. Implement second search orchestration
 
   **What to do**:
   - Implement `_execute_second_search(product_name, brand)` method:
@@ -509,7 +509,7 @@ Max Concurrent: 4 (Wave 2)
   - Message: `feat(ai_search): implement second search orchestration`
   - Files: `apps/scraper/scrapers/ai_search/two_step_refiner.py`
 
-- [ ] 7. Add A/B validation logic
+- [x] 7. Add circuit breaker and A/B validation
 
   **What to do**:
   - Implement `_select_best_result(first_pass, second_pass)`:
