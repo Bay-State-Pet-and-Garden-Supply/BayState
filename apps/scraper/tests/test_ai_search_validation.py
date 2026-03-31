@@ -16,7 +16,7 @@ class TestSKUValidation:
                 "product_name": "Test Product",
                 "brand": "TestBrand",
                 "confidence": 0.9,
-                "images": ["http://example.com/img.jpg"],
+                "images": ["http://example.com/products/images/img.jpg"],
             },
             sku="12345",
             product_name=None,
@@ -32,7 +32,7 @@ class TestSKUValidation:
                 "product_name": "Pro Plan Chicken",
                 "brand": "Purina",
                 "confidence": 0.9,
-                "images": ["http://example.com/img.jpg"],
+                "images": ["http://example.com/products/images/img.jpg"],
             },
             sku="12345",
             product_name="Pro Plan Chicken",
@@ -49,7 +49,7 @@ class TestSKUValidation:
                 "product_name": "Some Product",
                 "brand": "SomeBrand",
                 "confidence": 0.6,
-                "images": ["http://example.com/img.jpg"],
+                "images": ["http://example.com/products/images/img.jpg"],
             },
             sku="12345",
             product_name=None,
@@ -66,7 +66,7 @@ class TestSKUValidation:
                 "product_name": "Premium Dog Food",
                 "brand": "BrandA",
                 "confidence": 0.85,
-                "images": ["http://example.com/img.jpg"],
+                "images": ["http://example.com/products/images/img.jpg"],
             },
             sku="12345",
             product_name=None,
@@ -83,7 +83,7 @@ class TestSKUValidation:
                 "product_name": "Pro Plan Chicken",
                 "brand": "Purina",
                 "confidence": 0.74,
-                "images": ["http://example.com/img.jpg"],
+                "images": ["http://example.com/products/images/img.jpg"],
             },
             sku="12345",
             product_name="Pro Plan Chicken",
@@ -101,7 +101,7 @@ class TestSKUValidation:
                 "brand": "Purina",
                 "confidence": 0.82,
                 "description": "Chicken recipe dry dog food",
-                "images": ["https://chewy.com/img.jpg"],
+                "images": ["https://chewy.com/products/images/img.jpg"],
             },
             sku="12345",
             product_name="Purina Pro Plan Chicken",
@@ -109,6 +109,47 @@ class TestSKUValidation:
             source_url="https://www.chewy.com/purina-pro-plan-adult-formula/dp/12345",
         )
         assert result == (True, "ok")
+
+    def test_resolves_bigcommerce_size_placeholder_in_images(self, scraper):
+        extraction_result = {
+            "success": True,
+            "product_name": "WEE-WEE LITTER BOX SYSTEM CAT PADS",
+            "brand": "FOUR PAWS",
+            "confidence": 0.9,
+            "images": [
+                "https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/{:size}/products/16199/19476/436322__58796.jpg"
+            ],
+        }
+        result = scraper._validator.validate_extraction_match(
+            extraction_result=extraction_result,
+            sku="436322",
+            product_name="WEE-WEE LITTER BOX SYSTEM CAT PADS",
+            brand="FOUR PAWS",
+            source_url="https://www.bradleycaldwell.com/wee-wee-litter-box-system-cat-pads-10-pk-436322",
+        )
+        assert result == (True, "ok")
+        assert extraction_result["images"] == [
+            "https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16199/19476/436322__58796.jpg"
+        ]
+
+    def test_rejects_images_with_unknown_template_placeholders(self, scraper):
+        result = scraper._validator.validate_extraction_match(
+            extraction_result={
+                "success": True,
+                "product_name": "Test Product",
+                "brand": "TestBrand",
+                "confidence": 0.9,
+                "images": [
+                    "https://cdn.example.com/images/{unknown_token}/product.jpg"
+                ],
+            },
+            sku="12345",
+            product_name="Test Product",
+            brand="TestBrand",
+            source_url="https://example.com/product/12345",
+        )
+        assert result[0] is False
+        assert "logos or placeholders" in result[1].lower()
 
 
 class TestQueryVariants:

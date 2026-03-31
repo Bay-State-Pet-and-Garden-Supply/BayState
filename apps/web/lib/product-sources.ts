@@ -392,14 +392,25 @@ function stripImageLikeFields(value: unknown): unknown {
 }
 
 /**
- * Normalize image URLs, specifically stripping Amazon's resize parameters.
+ * Resolve known CDN template placeholders (e.g. BigCommerce {:size}).
+ */
+function resolveCdnTemplatePlaceholders(url: string): string {
+    if (!url.includes('{')) return url;
+    return url.replace(/\{:size\}/gi, '3840w');
+}
+
+/**
+ * Normalize image URLs — resolves CDN template placeholders and strips
+ * Amazon resize parameters.
  */
 export function normalizeImageUrl(url: string): string {
     const trimmed = url.trim();
     if (!trimmed) return trimmed;
 
+    const resolved = resolveCdnTemplatePlaceholders(trimmed);
+
     try {
-        const parsed = new URL(trimmed);
+        const parsed = new URL(resolved);
         if (/amazon\./i.test(parsed.hostname) && /\/images\/I\//i.test(parsed.pathname)) {
             const cleanedPath = parsed.pathname.replace(
                 /(\._[^/?#]+_)(?=\.[^.\/?#]+$)/i,
@@ -408,12 +419,12 @@ export function normalizeImageUrl(url: string): string {
             return `${parsed.protocol}//${parsed.host}${cleanedPath}`;
         }
     } catch {
-        if (/amazon\./i.test(trimmed) && /\/images\/I\//i.test(trimmed)) {
-            return trimmed.replace(/(\._[^/?#]+_)(?=\.[^.\/?#]+(?:[?#].*)?$)/i, '');
+        if (/amazon\./i.test(resolved) && /\/images\/I\//i.test(resolved)) {
+            return resolved.replace(/(\._[^/?#]+_)(?=\.[^.\/?#]+(?:[?#].*)?$)/i, '');
         }
     }
 
-    return trimmed;
+    return resolved;
 }
 
 export function extractSourceMetadata(rawSources: unknown): Record<string, unknown> {
