@@ -9,12 +9,14 @@ import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
 import { PipelineToolbar } from "./PipelineToolbar";
 import { FloatingActionsBar } from "./FloatingActionsBar";
-import { ScraperSelectDialog } from "./ScraperSelectDialog";
-import { ManualAddProductDialog } from "./ManualAddProductDialog";
-import { IntegraImportDialog } from "./IntegraImportDialog";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
+import dynamic from "next/dynamic";
+
+const ScraperSelectDialog = dynamic(() => import("./ScraperSelectDialog").then(mod => mod.ScraperSelectDialog), { ssr: false });
+const ManualAddProductDialog = dynamic(() => import("./ManualAddProductDialog").then(mod => mod.ManualAddProductDialog), { ssr: false });
+const IntegraImportDialog = dynamic(() => import("./IntegraImportDialog").then(mod => mod.IntegraImportDialog), { ssr: false });
 import type {
   PipelineProduct,
   PipelineStatus,
@@ -714,8 +716,8 @@ export function PipelineClient({
           <div className="grid gap-6 xl:grid-cols-1">
             <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
-                <div className="rounded-lg bg-[#008850]/10 p-2">
-                  <Activity className="h-5 w-5 text-[#008850]" />
+                <div className="rounded-lg bg-brand-forest-green/10 p-2">
+                  <Activity className="h-5 w-5 text-brand-forest-green" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
