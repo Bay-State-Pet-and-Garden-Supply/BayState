@@ -204,4 +204,20 @@ describe('image source helpers', () => {
             scraped_at: '2026-03-22T00:00:00.000Z',
         });
     });
+
+    it('resolves BigCommerce {:size} placeholder to 3840w', () => {
+        expect(
+            normalizeImageUrl(
+                'https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/{:size}/products/16199/19476/436322__58796.jpg'
+            )
+        ).toBe(
+            'https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16199/19476/436322__58796.jpg'
+        );
+    });
+
+    it('passes through BigCommerce URLs that already have a resolved size', () => {
+        const resolved =
+            'https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16199/19476/436322__58796.jpg';
+        expect(normalizeImageUrl(resolved)).toBe(resolved);
+    });
 });

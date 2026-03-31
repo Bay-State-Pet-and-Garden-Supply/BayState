@@ -72,6 +72,13 @@ class ExtractionValidator:
                 return 0.0
         return 0.0
 
+    @staticmethod
+    def _resolve_bigcommerce_placeholder(url: str) -> str:
+        """Replace BigCommerce {:size} template tokens with a usable default."""
+        if "{:size}" in url:
+            return url.replace("{:size}", "3840w")
+        return url
+
     def _filter_valid_product_images(self, images: list[str]) -> list[str]:
         """Filter out logo, placeholder, and icon URLs from image list."""
         valid = []
@@ -80,6 +87,12 @@ class ExtractionValidator:
                 continue
             if _is_likely_logo_or_placeholder(url):
                 logger.info(f"[AI Search Validation] Filtered non-product image: {url}")
+                continue
+            # Resolve known CDN template placeholders
+            url = self._resolve_bigcommerce_placeholder(url)
+            # Reject URLs with any remaining unresolved template tokens
+            if re.search(r"\{[^}]*\}", url):
+                logger.info(f"[AI Search Validation] Filtered template URL: {url}")
                 continue
             valid.append(url)
         return valid
