@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Shield, Save, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScraperCredentialStatus, ScraperCredentialType } from '@/lib/admin/scrapers/credentials';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 interface ScraperCredentialsCardProps {
   slug: string;
@@ -18,6 +19,8 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<ScraperCredentialType | null>(null);
   const [deleting, setDeleting] = useState<ScraperCredentialType | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteType, setPendingDeleteType] = useState<ScraperCredentialType | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const [statuses, setStatuses] = useState<ScraperCredentialStatus[]>([]);
@@ -82,11 +85,16 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
     }
   };
 
-  const onDelete = async (type: ScraperCredentialType) => {
-    if (!confirm(`Are you sure you want to delete the ${type}?`)) {
-      return;
-    }
+  const onDeleteClick = (type: ScraperCredentialType) => {
+    setPendingDeleteType(type);
+    setConfirmOpen(true);
+  };
 
+  const onConfirmDelete = async () => {
+    if (!pendingDeleteType) return;
+    setConfirmOpen(false);
+
+    const type = pendingDeleteType;
     setDeleting(type);
     setError(null);
 
@@ -108,6 +116,8 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
     } finally {
       setDeleting(null);
     }
+
+    setPendingDeleteType(null);
   };
 
   const getStatus = (type: ScraperCredentialType) => {
@@ -184,7 +194,7 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => onDelete(type)}
+                          onClick={() => onDeleteClick(type)}
                           disabled={isSaving || isDeleting}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2"
                         >
@@ -211,6 +221,20 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
           </>
         )}
       </CardContent>
+
+      <ConfirmationDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) setPendingDeleteType(null);
+        }}
+        onConfirm={onConfirmDelete}
+        title="Delete Credential"
+        description={`Are you sure you want to delete the ${pendingDeleteType}?`}
+        confirmLabel="Delete"
+        variant="destructive"
+        isLoading={!!deleting}
+      />
     </Card>
   );
 }

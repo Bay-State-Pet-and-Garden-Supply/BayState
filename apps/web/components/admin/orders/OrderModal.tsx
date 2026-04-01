@@ -17,6 +17,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 interface OrderModalProps {
     order: Order;
@@ -52,6 +53,8 @@ export function OrderModal({
     onUpdate
 }: OrderModalProps) {
     const [updating, setUpdating] = useState(false);
+    const [confirmStatusOpen, setConfirmStatusOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<'processing' | 'completed' | 'cancelled' | null>(null);
 
     const formatDate = (dateString: string) =>
         new Date(dateString).toLocaleDateString('en-US', {
@@ -78,9 +81,16 @@ export function OrderModal({
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
 
-    const handleStatusUpdate = async (newStatus: 'processing' | 'completed' | 'cancelled') => {
-        if (!confirm(`Are you sure you want to change status to ${newStatus}?`)) return;
+    const handleStatusUpdate = (newStatus: 'processing' | 'completed' | 'cancelled') => {
+        setPendingStatus(newStatus);
+        setConfirmStatusOpen(true);
+    };
 
+    const handleConfirmStatusUpdate = async () => {
+        if (!pendingStatus) return;
+        setConfirmStatusOpen(false);
+
+        const newStatus = pendingStatus;
         setUpdating(true);
         try {
             const result = await updateOrderStatusAction(order.id, newStatus);
@@ -88,17 +98,17 @@ export function OrderModal({
 
             toast.success(`Order marked as ${newStatus}`);
             onUpdate();
-            // We can keep the modal open to show the new status, but props need to update. 
-            // Since parent refreshes, this component should re-render with new order object if parent passes it.
-            // However, simpler to just close or rely on parent re-render.
         } catch {
             toast.error('Failed to update status');
         } finally {
             setUpdating(false);
         }
+
+        setPendingStatus(null);
     };
 
     return (
+    <>
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -361,5 +371,20 @@ export function OrderModal({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <ConfirmationDialog
+            open={confirmStatusOpen}
+            onOpenChange={(open) => {
+                setConfirmStatusOpen(open);
+                if (!open) setPendingStatus(null);
+            }}
+            onConfirm={handleConfirmStatusUpdate}
+            title="Change Order Status"
+            description={`Are you sure you want to change status to ${pendingStatus}?`}
+            confirmLabel={`Mark as ${pendingStatus}`}
+            variant={pendingStatus === 'cancelled' ? 'destructive' : 'default'}
+            isLoading={updating}
+        />
+    </>
     );
 }

@@ -1,9 +1,11 @@
 'use client';
 
 import { Loader2, X, CheckSquare, Search, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { PipelineStatus } from '@/lib/pipeline/types';
 import { STAGE_CONFIG } from '@/lib/pipeline/types';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 /**
  * Bulk action configuration for each pipeline stage.
@@ -62,6 +64,8 @@ export function BulkToolbar({
   const isImported = currentStage === 'imported';
   const hasSecondaryAction = !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
 
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+
   const handlePrimaryAction = () => {
     if (isImported && onOpenScrapeDialog) {
       onOpenScrapeDialog();
@@ -72,9 +76,14 @@ export function BulkToolbar({
 
   const handleResetAction = () => {
     if (bulkAction.previousStage && onResetStage) {
-      if (confirm(`Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? 's' : ''}? This action may clear data.`)) {
-        onResetStage(bulkAction.previousStage);
-      }
+      setConfirmResetOpen(true);
+    }
+  };
+
+  const handleConfirmReset = () => {
+    setConfirmResetOpen(false);
+    if (bulkAction.previousStage && onResetStage) {
+      onResetStage(bulkAction.previousStage);
     }
   };
 
@@ -100,7 +109,7 @@ export function BulkToolbar({
         ) : (
           <>
             <span
-              className="inline-flex items-center justify-center rounded-full bg-[#008850] px-2.5 py-0.5 text-sm font-semibold text-white"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-2.5 py-0.5 text-sm font-semibold text-white"
               aria-live="polite"
             >
               {selectedCount}
@@ -179,7 +188,7 @@ export function BulkToolbar({
             size="sm"
             onClick={() => onOpenScrapeDialog?.()}
             disabled={isLoading}
-            className="h-9 border-[#008850]/30 text-[#008850] hover:bg-[#008850]/5"
+            className="h-9 border-primary/30 text-primary hover:bg-primary/5"
           >
             <Plus className="mr-1.5 h-4 w-4" />
             {bulkAction.secondaryAction}
@@ -190,7 +199,7 @@ export function BulkToolbar({
           <Button
             onClick={handlePrimaryAction}
             disabled={isLoading}
-            className={`${isImported ? 'bg-[#008850] hover:bg-[#008850]/90' : 'bg-[#008850] hover:bg-[#008850]/90'} text-white`}
+            className={`${isImported ? 'bg-primary hover:bg-primary/90' : 'bg-primary hover:bg-primary/90'} text-white`}
           >
             {isLoading ? (
               <>
@@ -206,6 +215,15 @@ export function BulkToolbar({
           </Button>
         )}
       </div>
+
+      <ConfirmationDialog
+        open={confirmResetOpen}
+        onOpenChange={setConfirmResetOpen}
+        onConfirm={handleConfirmReset}
+        title="Reset Stage"
+        description={`Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? 's' : ''}? This action may clear data.`}
+        confirmLabel={bulkAction.resetLabel ?? 'Reset'}
+      />
     </div>
   );
 }

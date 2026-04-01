@@ -59,6 +59,7 @@ import {
   normalizeProductSources,
   normalizeImageUrl,
 } from "@/lib/product-sources";
+import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -213,6 +214,7 @@ export function FinalizingResultsView({
   const [lastSavedData, setLastSavedData] = useState<string>("");
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredBrands = useMemo(() => {
@@ -714,11 +716,12 @@ export function FinalizingResultsView({
 
   const handleReject = async () => {
     if (!selectedSku) return;
+    setConfirmRejectOpen(true);
+  };
 
-    const confirmed = window.confirm(
-      "Are you sure you want to reject this product and send it back to the scraped stage? This will not clear your edits, but the product will move back to the manual review pipeline.",
-    );
-    if (!confirmed) return;
+  const handleConfirmReject = async () => {
+    if (!selectedSku) return;
+    setConfirmRejectOpen(false);
 
     setRejecting(true);
     try {
@@ -737,7 +740,7 @@ export function FinalizingResultsView({
       }
 
       toast.success("Product rejected and sent back to scraped stage.");
-      onRefresh(false); // full refresh for reject as it moves out
+      onRefresh(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -849,7 +852,7 @@ export function FinalizingResultsView({
                   data-sku={product.sku}
                   className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
                     isSelected
-                      ? "bg-primary/5 shadow-[inset_3px_0_0_0_#008850]"
+                      ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
                       : ""
                   }`}
                   onClick={() => setPreferredSku(product.sku)}
@@ -943,7 +946,7 @@ export function FinalizingResultsView({
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-[#008850] hover:bg-[#008850]/90"
+                  className="bg-primary hover:bg-primary/90"
                   onClick={() => handleSave(true)}
                   disabled={saving || publishing}
                 >
@@ -1795,6 +1798,15 @@ export function FinalizingResultsView({
           </div>
         )}
       </div>
+
+      <ConfirmationDialog
+        open={confirmRejectOpen}
+        onOpenChange={setConfirmRejectOpen}
+        onConfirm={handleConfirmReject}
+        title="Reject Product"
+        description="Are you sure you want to reject this product and send it back to the scraped stage? This will not clear your edits, but the product will move back to the manual review pipeline."
+        confirmLabel="Reject"
+      />
     </div>
   );
 }
