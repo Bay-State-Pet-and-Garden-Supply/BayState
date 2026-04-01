@@ -81,6 +81,8 @@ export function FloatingActionsBar({
   onUploadShopSite,
   onDownloadZip,
 }: FloatingActionsBarProps) {
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+
   if (selectedCount === 0) return null;
 
   const bulkAction = BULK_ACTIONS[currentStage];
@@ -91,8 +93,6 @@ export function FloatingActionsBar({
   const isImported = currentStage === "imported";
   const hasSecondaryAction =
     !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
-
-  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   const handlePrimaryAction = () => {
     if (isImported && onOpenScrapeDialog) {

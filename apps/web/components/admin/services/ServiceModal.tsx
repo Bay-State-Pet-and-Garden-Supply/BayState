@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createService, updateService } from '@/app/admin/services/actions';
+import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 import {
     Dialog,
     DialogContent,
@@ -126,9 +127,12 @@ export function ServiceModal({
 
                 {/* Error Banner */}
                 {error && (
-                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                        {error}
-                    </div>
+                    <AlertBanner
+                        severity="error"
+                        title="Save Failed"
+                        message={error}
+                        onDismiss={() => setError(null)}
+                    />
                 )}
 
                 {/* Form Content */}

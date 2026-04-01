@@ -151,7 +151,7 @@ export function ImageSelectionWorkspace({
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-card rounded-lg p-8 flex items-center gap-4">
-          <Loader2 className="h-6 w-6 animate-spin text-[#008850]" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-muted-foreground">Loading product images…</span>
         </div>
       </div>
@@ -253,9 +253,9 @@ export function ImageSelectionWorkspace({
                       aria-label={`Select image ${index + 1}`}
                       className={`
                         relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all
-                        focus:outline-none focus:ring-2 focus:ring-[#008850] focus:ring-offset-2
+                        focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
                         ${isSelected
-                          ? 'border-[#008850] ring-2 ring-[#008850]/20'
+                          ? 'border-primary ring-2 ring-primary/20'
                           : isDisabled
                             ? 'border-border opacity-50 cursor-not-allowed'
                             : 'border-border hover:border-border'
@@ -270,8 +270,8 @@ export function ImageSelectionWorkspace({
                       />
                       {isSelected && (
                         <>
-                          <div className="absolute inset-0 bg-[#008850]/10" />
-                          <div className="absolute top-2 right-2 rounded-full bg-[#008850] p-1">
+                          <div className="absolute inset-0 bg-primary/10" />
+                          <div className="absolute top-2 right-2 rounded-full bg-primary p-1">
                             <CheckCircle2 className="h-4 w-4 text-white" />
                           </div>
                         </>
@@ -307,7 +307,7 @@ export function ImageSelectionWorkspace({
             <button
               onClick={handleMarkAsFinalized}
               disabled={isFinalizing || selectedUrls.length === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#008850] rounded-lg hover:bg-[#2a7034] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isFinalizing && <Loader2 className="h-4 w-4 animate-spin" />}
               Mark as Finalized

@@ -184,7 +184,7 @@ export function EnrichmentLauncher({ onNext }: EnrichmentLauncherProps) {
                         onClick={handleNext} 
                         disabled={selectedSkus.size === 0}
                         data-testid="enrichment-next-button"
-                        className="bg-[#008850] hover:bg-[#2a7034] text-white font-medium"
+                        className="bg-primary hover:bg-primary/80 text-white font-medium"
                     >
                         Next Step
                     </Button>

@@ -106,7 +106,7 @@ export function PipelineToolbar({
               size="sm"
               onClick={onUploadShopSite}
               disabled={isLoading || totalCount === 0 || actionState !== null}
-              className="h-9 border-[#008850]/20 text-[#008850] hover:bg-[#008850]/5 hover:text-[#008850]"
+              className="h-9 border-primary/20 text-primary hover:bg-primary/5 hover:text-primary"
             >
               {actionState === "upload" ? (
                 <>
@@ -124,7 +124,7 @@ export function PipelineToolbar({
               size="sm"
               onClick={onDownloadZip}
               disabled={isLoading || totalCount === 0 || actionState !== null}
-              className="h-9 bg-[#008850] text-white hover:bg-[#008850]/90"
+              className="h-9 bg-primary text-white hover:bg-primary/90"
             >
               {actionState === "zip" ? (
                 <>

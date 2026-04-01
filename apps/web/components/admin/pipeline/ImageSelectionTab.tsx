@@ -79,7 +79,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
     if (loading) {
         return (
             <div className={`flex items-center justify-center py-12 ${className}`}>
-                <Loader2 className="h-8 w-8 animate-spin text-[#008850]" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }
@@ -125,7 +125,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
                         <button
                             onClick={() => saveImages(product.sku)}
                             disabled={saving === product.sku || !(selectedImages[product.sku]?.length > 0)}
-                            className="inline-flex items-center gap-1 rounded-md bg-[#008850] px-4 py-2 text-sm font-medium text-white hover:bg-[#007a48] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {saving === product.sku ? (
                                 <>
@@ -148,7 +148,7 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
                                 onClick={() => toggleImage(product.sku, url)}
                                 className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
                                     selectedImages[product.sku]?.includes(url)
-                                        ? 'border-[#008850] ring-2 ring-[#008850]/20'
+                                        ? 'border-primary ring-2 ring-primary/20'
                                         : 'border-border hover:border-border'
                                 }`}
                             >
@@ -158,8 +158,8 @@ export function ImageSelectionTab({ className }: ImageSelectionTabProps) {
                                     className="h-full w-full object-cover"
                                 />
                                 {selectedImages[product.sku]?.includes(url) && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-[#008850]/20">
-                                        <div className="rounded-full bg-[#008850] p-1">
+                                    <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                                        <div className="rounded-full bg-primary p-1">
                                             <Check className="h-4 w-4 text-white" />
                                         </div>
                                     </div>

@@ -53,7 +53,7 @@ export function EnrichmentDataPreview({
         <div className="flex items-center gap-3 bg-card px-4 py-2 rounded-md border border-border shadow-sm">
           <div className="flex flex-col">
             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Original Price</span>
-            <span className="text-lg font-bold text-[#66161D]">{formatCurrency(originalPrice)}</span>
+            <span className="text-lg font-bold text-secondary">{formatCurrency(originalPrice)}</span>
           </div>
           <span className="bg-muted text-muted-foreground text-[10px] font-medium px-2 py-1 rounded-full whitespace-nowrap border border-border">
             From Import
@@ -104,7 +104,7 @@ export function EnrichmentDataPreview({
                   inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
                   ${item.hasConflict 
                     ? 'bg-card border-amber-200 text-amber-700' 
-                    : 'bg-card border-border text-muted-foreground group-hover:border-[#008850] group-hover:text-[#008850] transition-colors'
+                    : 'bg-card border-border text-muted-foreground group-hover:border-primary group-hover:text-primary transition-colors'
                   }
                 `}
               >

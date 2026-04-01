@@ -18,7 +18,7 @@ export function PipelineHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
-        <Icon className="h-8 w-8 text-[#008850]" />
+        <Icon className="h-8 w-8 text-primary" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
           <p className="text-muted-foreground">{subtitle}</p>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -36,6 +37,7 @@ export function ReviewSubmit({
     chunkConfig,
     onBack
 }: ReviewSubmitProps) {
+    const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +63,7 @@ export function ReviewSubmit({
 
                 const data = await response.json();
                 const batchId = data.batch_id || data.jobId;
-                window.location.href = `/admin/pipeline?batchId=${batchId}`;
+                router.push(`/admin/pipeline?batchId=${batchId}`);
                 return;
             }
 
@@ -88,7 +90,7 @@ export function ReviewSubmit({
             }
 
             const data = await response.json();
-            window.location.href = `/admin/scrapers/runs/${data.jobId}`;
+            router.push(`/admin/scrapers/runs/${data.jobId}`);
         } catch (err: unknown) {
             console.error('Submit error:', err);
             setError((err as Error).message || 'An unexpected error occurred while creating the job.');
