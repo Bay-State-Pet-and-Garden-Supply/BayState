@@ -68,6 +68,6 @@ describe('PipelineHeader', () => {
     );
 
     const icon = container.querySelector('svg');
-    expect(icon).toHaveClass('h-8', 'w-8', 'text-[#008850]');
+    expect(icon).toHaveClass('h-8', 'w-8', 'text-primary');
   });
 });
