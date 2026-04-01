@@ -273,7 +273,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-card rounded-lg p-8 flex items-center gap-4">
-          <Loader2 className="h-6 w-6 animate-spin text-[#008850]" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-muted-foreground">Loading enrichment data…</span>
         </div>
       </div>
@@ -469,7 +469,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
             {!isBatchMode && hasScrapedData && (
               <button
                 onClick={() => router.push(`/admin/pipeline/image-selection?sku=${effectiveSku}`)}
-                className="px-3 py-1.5 text-sm font-medium text-[#008850] bg-[#008850]/10 border border-[#008850]/30 rounded-lg hover:bg-[#008850]/20 transition-colors flex items-center gap-2"
+                className="px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 border border-primary/30 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-2"
               >
                 <ImagePlus className="h-4 w-4" />
                 Open Image Selection
@@ -506,7 +506,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
             <button
               onClick={hasScrapedData ? handleSave : handleRunEnhancement}
               disabled={hasScrapedData ? isSaving : isRunningEnhancement || enabledSourceIds.length === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#008850] rounded-lg hover:bg-[#2a7034] transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {(hasScrapedData ? isSaving : isRunningEnhancement) && <Loader2 className="h-4 w-4 animate-spin" />}
               {hasScrapedData ? 'Save Changes' : 'Run Enhancement'}

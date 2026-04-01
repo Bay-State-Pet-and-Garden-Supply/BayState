@@ -429,7 +429,7 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
                           Reject
                         </Button>
                         <Button 
-                          className="bg-[#348C41] hover:bg-[#2a7034]"
+                          className="bg-primary hover:bg-primary/80"
                           onClick={() => handleStatusUpdate(selectedReview.id, 'approved')}
                           disabled={!!isProcessing}
                         >
@@ -449,7 +449,7 @@ export function AdminReviewsClient({ initialReviews, totalCount, stats }: AdminR
                     {selectedReview.status === 'rejected' && (
                        <Button 
                           variant="default"
-                          className="bg-[#348C41] hover:bg-[#2a7034]"
+                          className="bg-primary hover:bg-primary/80"
                           onClick={() => handleStatusUpdate(selectedReview.id, 'approved')}
                           disabled={!!isProcessing}
                         >

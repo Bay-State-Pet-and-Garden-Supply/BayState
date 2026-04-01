@@ -69,11 +69,16 @@ export function ImageCarousel({
   useEffect(() => {
     if (!carouselApi) return;
 
-    setCurrentImageIndex(carouselApi.selectedScrollSnap());
-
-    carouselApi.on("select", () => {
+    const onSelect = () => {
       setCurrentImageIndex(carouselApi.selectedScrollSnap());
-    });
+    };
+
+    onSelect();
+    carouselApi.on("select", onSelect);
+
+    return () => {
+      carouselApi.off("select", onSelect);
+    };
   }, [carouselApi]);
 
   return (

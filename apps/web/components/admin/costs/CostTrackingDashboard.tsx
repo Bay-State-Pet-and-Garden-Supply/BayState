@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { DataTable, Column } from '@/components/admin/data-table';
 
 interface ServiceCost {
   id: string;
@@ -133,6 +134,57 @@ function StatusBadge({ status }: { status: string }) {
     </Badge>
   );
 }
+
+const batchJobColumns: Column<BatchJob>[] = [
+  {
+    key: 'created_at',
+    header: 'Date',
+    sortable: true,
+    render: (_, row) => (
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {formatDate(row.created_at)}
+      </span>
+    ),
+  },
+  {
+    key: 'description',
+    header: 'Description',
+    searchable: true,
+    render: (_, row) => (
+      <span className="text-xs truncate max-w-[200px] block">
+        {row.description ?? '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    sortable: true,
+    render: (_, row) => <StatusBadge status={row.status} />,
+  },
+  {
+    key: 'total_tokens',
+    header: 'Tokens',
+    sortable: true,
+    className: 'text-right',
+    render: (_, row) => (
+      <span className="text-xs tabular-nums text-muted-foreground">
+        {formatTokens(row.total_tokens ?? 0)}
+      </span>
+    ),
+  },
+  {
+    key: 'estimated_cost',
+    header: 'Cost',
+    sortable: true,
+    className: 'text-right',
+    render: (_, row) => (
+      <span className="text-xs tabular-nums font-medium">
+        {formatCurrency(parseFloat(String(row.estimated_cost ?? 0)))}
+      </span>
+    ),
+  },
+];
 
 function EditableCostCell({
   service,
@@ -405,40 +457,12 @@ export function CostTrackingDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="pb-2 pr-4 text-xs font-medium text-muted-foreground">Date</th>
-                    <th className="pb-2 pr-4 text-xs font-medium text-muted-foreground">Description</th>
-                    <th className="pb-2 pr-4 text-xs font-medium text-muted-foreground">Status</th>
-                    <th className="pb-2 pr-4 text-xs font-medium text-muted-foreground text-right">Tokens</th>
-                    <th className="pb-2 text-xs font-medium text-muted-foreground text-right">Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.ai.recentJobs.map((job) => (
-                    <tr key={job.id} className="border-b border-border/30 last:border-0">
-                      <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap">
-                        {formatDate(job.created_at)}
-                      </td>
-                      <td className="py-2.5 pr-4 text-xs truncate max-w-[200px]">
-                        {job.description ?? '—'}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <StatusBadge status={job.status} />
-                      </td>
-                      <td className="py-2.5 pr-4 text-xs text-right tabular-nums text-muted-foreground">
-                        {formatTokens(job.total_tokens ?? 0)}
-                      </td>
-                      <td className="py-2.5 text-xs text-right tabular-nums font-medium">
-                        {formatCurrency(parseFloat(String(job.estimated_cost ?? 0)))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              data={data.ai.recentJobs}
+              columns={batchJobColumns}
+              pageSize={10}
+              emptyMessage="No recent AI consolidation jobs."
+            />
           </CardContent>
         </Card>
       )}

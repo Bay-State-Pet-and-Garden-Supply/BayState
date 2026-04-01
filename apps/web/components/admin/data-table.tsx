@@ -245,6 +245,15 @@ export function DataTable<T extends { id: string | number }>({
                 <TableHead
                   key={column.key}
                   className={column.className || ''}
+                  aria-sort={
+                    !column.sortable
+                      ? undefined
+                      : sort.key !== column.key
+                        ? 'none'
+                        : sort.direction === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                  }
                 >
                   {column.sortable ? (
                     <Button

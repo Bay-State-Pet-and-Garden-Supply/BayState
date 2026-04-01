@@ -66,9 +66,9 @@ export function SourceSelectorPanel({
                   ? 'bg-purple-600 border-purple-600 text-white'
                   : 'border-border bg-card hover:border-purple-500'
                 }`
-                : `focus:ring-[#008850] ${isEnabled
-                  ? 'bg-[#008850] border-[#008850] text-white'
-                  : 'border-border bg-card hover:border-[#008850]'
+                : `focus:ring-primary ${isEnabled
+                  ? 'bg-primary border-primary text-white'
+                  : 'border-border bg-card hover:border-primary'
                 }`
               }
               ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -108,7 +108,7 @@ export function SourceSelectorPanel({
             <button
               onClick={() => onRefreshSource(source.id)}
               disabled={isLoading}
-              className="p-1 text-muted-foreground hover:text-[#008850] opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none"
+              className="p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none"
               title="Refresh status"
             >
               <RefreshCw className="h-3.5 w-3.5" />

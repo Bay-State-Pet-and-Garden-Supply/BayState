@@ -42,11 +42,11 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
         <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <Package className="h-5 w-5 text-[#008850]" />
+                    <Package className="h-5 w-5 text-primary" />
                     Pipeline Flow
                 </h3>
                 <span className="text-sm text-muted-foreground">
-                    Current: <span className="font-medium text-[#008850]">{currentConfig.label}</span>
+                    Current: <span className="font-medium text-primary">{currentConfig.label}</span>
                 </span>
             </div>
 
@@ -65,9 +65,9 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
                                     <div 
                                         className={`relative w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
                                             isActive 
-                                                ? 'bg-[#008850] border-[#008850] text-white ring-4 ring-[#008850]/20 scale-110' 
+                                                ? 'bg-primary border-primary text-white ring-4 ring-primary/20 scale-110' 
                                                 : isCompleted
-                                                    ? 'bg-[#008850] border-[#008850] text-white'
+                                                    ? 'bg-primary border-primary text-white'
                                                     : 'bg-card border-border text-muted-foreground'
                                         }`}
                                     >
@@ -83,7 +83,7 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
                                         )}
                                     </div>
                                     <span className={`mt-2 text-xs font-medium whitespace-nowrap ${
-                                        isActive ? 'text-[#008850]' : isCompleted ? 'text-[#008850]' : 'text-muted-foreground'
+                                        isActive ? 'text-primary' : isCompleted ? 'text-primary' : 'text-muted-foreground'
                                     }`}>
                                         {config.label}
                                     </span>
@@ -91,7 +91,7 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
                                 
                                 {index < flowOrder.length - 1 && (
                                     <ArrowRight className={`h-4 w-4 mx-2 flex-shrink-0 ${
-                                        isCompleted ? 'text-[#008850]' : 'text-gray-200'
+                                        isCompleted ? 'text-primary' : 'text-gray-200'
                                     }`} />
                                 )}
                             </div>

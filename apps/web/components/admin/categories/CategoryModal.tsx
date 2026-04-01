@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Save, FolderTree } from 'lucide-react';
 import { toast } from 'sonner';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createCategory, updateCategory } from '@/app/admin/categories/actions';
+import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 import {
     Dialog,
     DialogContent,
@@ -28,6 +32,19 @@ export interface Category {
     created_at: string;
 }
 
+const categorySchema = z.object({
+    name: z.string().min(1, 'Category name is required').max(100, 'Name is too long'),
+    slug: z.string().min(1, 'Slug is required').max(100, 'Slug is too long')
+        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers, and hyphens'),
+    description: z.string().max(500, 'Description is too long').optional(),
+    parent_id: z.string().nullable().optional(),
+    display_order: z.coerce.number().int().min(0, 'Must be 0 or greater'),
+    image_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+    is_featured: z.boolean(),
+});
+
+type CategoryFormValues = z.infer<typeof categorySchema>;
+
 interface CategoryModalProps {
     category?: Category;
     allCategories: Category[];
@@ -44,79 +61,68 @@ export function CategoryModal({
     onSave,
 }: CategoryModalProps) {
     const isEditing = Boolean(category);
+    const [serverError, setServerError] = useState<string | null>(null);
 
-    const [name, setName] = useState(category?.name || '');
-    const [slug, setSlug] = useState(category?.slug || '');
-    const [description, setDescription] = useState(category?.description || '');
-    const [parentId, setParentId] = useState<string | null>(
-        category?.parent_id ?? defaultParentId ?? null
-    );
-    const [displayOrder, setDisplayOrder] = useState(category?.display_order ?? 0);
-    const [imageUrl, setImageUrl] = useState(category?.image_url || '');
-    const [isFeatured, setIsFeatured] = useState(category?.is_featured ?? false);
+    // Filter out current category and its descendants from parent options
+    const { excludeIds, parentOptions } = useMemo(() => {
+        const getDescendantIds = (catId: string): string[] => {
+            const directChildren = allCategories.filter((c) => c.parent_id === catId);
+            return [catId, ...directChildren.flatMap((c) => getDescendantIds(c.id))];
+        };
+        const ids = category ? getDescendantIds(category.id) : [];
+        return {
+            excludeIds: ids,
+            parentOptions: allCategories.filter((c) => !ids.includes(c.id)),
+        };
+    }, [category, allCategories]);
 
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    // Filter out current category and its children from parent options
-    const getDescendantIds = (catId: string): string[] => {
-        const directChildren = allCategories.filter((c) => c.parent_id === catId);
-        return [
-            catId,
-            ...directChildren.flatMap((c) => getDescendantIds(c.id)),
-        ];
-    };
-
-    const excludeIds = category ? getDescendantIds(category.id) : [];
-    const parentOptions = allCategories.filter(
-        (c) => !excludeIds.includes(c.id)
-    );
-
-    // Auto-generate slug
-    useEffect(() => {
-        if (!isEditing && name) {
-            setSlug(name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''));
-        }
-    }, [name, isEditing]);
-
-    // Handle keyboard shortcuts
-    const handleKeyDown = useCallback(
-        (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-                e.preventDefault();
-                handleSave();
-            }
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        control,
+        formState: { errors, isSubmitting },
+    } = useForm<CategoryFormValues>({
+        resolver: zodResolver(categorySchema),
+        defaultValues: {
+            name: category?.name ?? '',
+            slug: category?.slug ?? '',
+            description: category?.description ?? '',
+            parent_id: category?.parent_id ?? defaultParentId ?? null,
+            display_order: category?.display_order ?? 0,
+            image_url: category?.image_url ?? '',
+            is_featured: category?.is_featured ?? false,
         },
-        [onClose]
-    );
+    });
 
+    const nameValue = watch('name');
+
+    // Auto-generate slug from name when creating
     useEffect(() => {
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [handleKeyDown]);
+        if (!isEditing && nameValue) {
+            setValue('slug', nameValue.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''), {
+                shouldValidate: false,
+            });
+        }
+    }, [nameValue, isEditing, setValue]);
 
-    const handleSave = async () => {
-        setSaving(true);
-        setError(null);
+    const onSubmit = async (data: CategoryFormValues) => {
+        setServerError(null);
 
         try {
             const formData = new FormData();
-            formData.append('name', name.trim());
-            formData.append('slug', slug.trim());
-            if (description) formData.append('description', description.trim());
-            if (parentId) formData.append('parent_id', parentId);
-            formData.append('display_order', String(displayOrder));
-            if (imageUrl) formData.append('image_url', imageUrl.trim());
-            formData.append('is_featured', String(isFeatured));
+            formData.append('name', data.name.trim());
+            formData.append('slug', data.slug.trim());
+            if (data.description) formData.append('description', data.description.trim());
+            if (data.parent_id) formData.append('parent_id', data.parent_id);
+            formData.append('display_order', String(data.display_order));
+            if (data.image_url) formData.append('image_url', data.image_url.trim());
+            formData.append('is_featured', String(data.is_featured));
 
-            let result;
-            if (category) {
-                result = await updateCategory(category.id, formData);
-            } else {
-                result = await createCategory(formData);
-            }
+            const result = category
+                ? await updateCategory(category.id, formData)
+                : await createCategory(formData);
 
             if (!result.success) {
                 throw new Error(result.error || 'Failed to save category');
@@ -127,12 +133,26 @@ export function CategoryModal({
             onClose();
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to save';
-            setError(message);
+            setServerError(message);
             toast.error(message);
-        } finally {
-            setSaving(false);
         }
     };
+
+    // Ctrl+S keyboard shortcut
+    const handleKeyDown = useCallback(
+        (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                handleSubmit(onSubmit)();
+            }
+        },
+        [handleSubmit, onSubmit]
+    );
+
+    useEffect(() => {
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [handleKeyDown]);
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
@@ -147,61 +167,80 @@ export function CategoryModal({
                     </div>
                 </DialogHeader>
 
-                {/* Error Banner */}
-                {error && (
-                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                        {error}
-                    </div>
+                {serverError && (
+                    <AlertBanner
+                        severity="error"
+                        title="Save Failed"
+                        message={serverError}
+                        onDismiss={() => setServerError(null)}
+                    />
                 )}
 
-                {/* Form Content */}
-                <div className="space-y-4 py-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Name *</Label>
                         <Input
                             id="name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            {...register('name')}
                             placeholder="e.g. Dog Food"
                             autoFocus
+                            aria-invalid={!!errors.name}
+                            aria-describedby={errors.name ? 'name-error' : undefined}
                         />
+                        {errors.name && (
+                            <p id="name-error" className="text-sm text-destructive">{errors.name.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="slug">Slug *</Label>
                         <Input
                             id="slug"
-                            value={slug}
-                            onChange={(e) => setSlug(e.target.value)}
+                            {...register('slug')}
                             placeholder="e.g. dog-food"
+                            aria-invalid={!!errors.slug}
+                            aria-describedby={errors.slug ? 'slug-error' : undefined}
                         />
+                        {errors.slug && (
+                            <p id="slug-error" className="text-sm text-destructive">{errors.slug.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="parent_id">Parent Category</Label>
-                        <select
-                            id="parent_id"
-                            value={parentId || ''}
-                            onChange={(e) => setParentId(e.target.value || null)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        >
-                            <option value="">None (Top Level)</option>
-                            {parentOptions.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                    {cat.name}
-                                </option>
-                            ))}
-                        </select>
+                        <Controller
+                            name="parent_id"
+                            control={control}
+                            render={({ field }) => (
+                                <select
+                                    id="parent_id"
+                                    value={field.value || ''}
+                                    onChange={(e) => field.onChange(e.target.value || null)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="">None (Top Level)</option>
+                                    {parentOptions.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        />
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
                         <Input
                             id="description"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
+                            {...register('description')}
                             placeholder="Brief description"
+                            aria-invalid={!!errors.description}
+                            aria-describedby={errors.description ? 'desc-error' : undefined}
                         />
+                        {errors.description && (
+                            <p id="desc-error" className="text-sm text-destructive">{errors.description.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -209,52 +248,63 @@ export function CategoryModal({
                         <Input
                             id="display_order"
                             type="number"
-                            value={displayOrder}
-                            onChange={(e) => setDisplayOrder(parseInt(e.target.value) || 0)}
+                            {...register('display_order')}
                             min={0}
+                            aria-invalid={!!errors.display_order}
+                            aria-describedby={errors.display_order ? 'order-error' : undefined}
                         />
+                        {errors.display_order && (
+                            <p id="order-error" className="text-sm text-destructive">{errors.display_order.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="imageUrl">Image URL</Label>
+                        <Label htmlFor="image_url">Image URL</Label>
                         <Input
-                            id="imageUrl"
-                            value={imageUrl}
-                            onChange={(e) => setImageUrl(e.target.value)}
+                            id="image_url"
+                            {...register('image_url')}
                             placeholder="https://example.com/image.png"
+                            aria-invalid={!!errors.image_url}
+                            aria-describedby={errors.image_url ? 'img-error' : undefined}
                         />
+                        {errors.image_url && (
+                            <p id="img-error" className="text-sm text-destructive">{errors.image_url.message}</p>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-2 pt-2">
-                        <Checkbox
-                            id="is_featured"
-                            checked={isFeatured}
-                            onCheckedChange={(checked) => setIsFeatured(checked === true)}
+                        <Controller
+                            name="is_featured"
+                            control={control}
+                            render={({ field }) => (
+                                <Checkbox
+                                    id="is_featured"
+                                    checked={field.value}
+                                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                                />
+                            )}
                         />
                         <Label htmlFor="is_featured" className="cursor-pointer">
                             Featured Category
                         </Label>
                     </div>
-                </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2">
-                    <div className="flex-1 text-xs text-muted-foreground flex items-center">
-                        Press <kbd className="mx-1 rounded bg-muted px-1">Esc</kbd> to close,{' '}
-                        <kbd className="mx-1 rounded bg-muted px-1">Ctrl+S</kbd> to save
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={onClose} disabled={saving}>
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
-                            <Save className="mr-2 h-4 w-4" />
-                            {saving ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Category')}
-                        </Button>
-                    </div>
-                </DialogFooter>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <div className="flex-1 text-xs text-muted-foreground flex items-center">
+                            Press <kbd className="mx-1 rounded bg-muted px-1">Esc</kbd> to close,{' '}
+                            <kbd className="mx-1 rounded bg-muted px-1">Ctrl+S</kbd> to save
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                <Save className="mr-2 h-4 w-4" />
+                                {isSubmitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Category')}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );
