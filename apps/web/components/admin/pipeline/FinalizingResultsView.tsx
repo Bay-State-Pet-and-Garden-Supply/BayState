@@ -3,62 +3,40 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
   Package,
-  Image as ImageIcon,
-  Save,
-  CheckCircle,
   Plus,
   X,
   ChevronRight,
   Search,
   Check,
-  RotateCcw,
-  Maximize2,
-  ZoomIn,
-  ZoomOut,
-  ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  type CarouselApi,
-} from "@/components/ui/carousel";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
 import {
   extractImageCandidatesFromSources,
   normalizeProductSources,
-  normalizeImageUrl,
 } from "@/lib/product-sources";
+import {
+  toStringArray,
+  extractSelectedImageUrls,
+  formatSourceLabel,
+  isValidCustomImageUrl,
+} from "./finalizing/finalizing-utils";
+import type { ImageSourceOption } from "./finalizing/finalizing-utils";
+import { ProductListSidebar } from "./finalizing/ProductListSidebar";
+import { ImageCarousel } from "./finalizing/ImageCarousel";
+import { ProductSaveActions } from "./finalizing/ProductSaveActions";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 interface FinalizingResultsViewProps {
@@ -76,98 +54,6 @@ interface Category {
   name: string;
 }
 
-interface ImageSourceOption {
-  id: string;
-  label: string;
-  candidates: string[];
-}
-
-/**
- * Build a deduplication key for image URLs.
- * For Amazon images, strips the host to handle same image from different CDNs.
- * This matches the logic in product-sources.ts buildImageDedupKey.
- */
-function buildImageDedupKey(value: string): string {
-  const normalized = normalizeImageUrl(value);
-  if (/amazon\./i.test(normalized) && /\/images\/I\//i.test(normalized)) {
-    return normalized.replace(/^https?:\/\/[^/]+/i, "").toLowerCase();
-  }
-  return normalized;
-}
-
-/**
- * Convert array to string array with Amazon-aware deduplication.
- * Handles case where same Amazon image comes from different hosts/CDNs.
- */
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-
-  const deduped = new Map<string, string>();
-
-  value
-    .filter((entry): entry is string => typeof entry === "string")
-    .map((url) => normalizeImageUrl(url))
-    .filter((url) => url.length > 0)
-    .forEach((url) => {
-      const key = buildImageDedupKey(url);
-      if (!deduped.has(key)) {
-        deduped.set(key, url);
-      }
-    });
-
-  return Array.from(deduped.values());
-}
-
-function extractSelectedImageUrls(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-
-  const urls = value
-    .map((entry) => {
-      if (typeof entry === "string") return entry;
-      if (entry && typeof entry === "object" && "url" in entry) {
-        const url = (entry as { url?: unknown }).url;
-        return typeof url === "string" ? url : null;
-      }
-      return null;
-    })
-    .filter((url): url is string => typeof url === "string")
-    .map((url) => normalizeImageUrl(url))
-    .filter((url) => url.length > 0);
-
-  return Array.from(new Set(urls));
-}
-
-function formatSourceLabel(sourceKey: string): string {
-  return sourceKey
-    .replace(/^source:/i, "")
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function isValidCustomImageUrl(url: string): boolean {
-  const trimmed = url.trim();
-  if (!trimmed) return false;
-
-  if (/^data:image\//i.test(trimmed)) return true;
-  if (trimmed.startsWith("/")) return true;
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-      return false;
-  } catch {
-    return false;
-  }
-
-  if (/\.(png|jpe?g|webp|gif|bmp|svg)(\?|#|$)/i.test(trimmed)) {
-    return true;
-  }
-
-  return /(?:image|img|photo|picture|thumbnail|cdn)/i.test(trimmed);
-}
-
 export function FinalizingResultsView({
   products,
   onRefresh,
@@ -182,10 +68,6 @@ export function FinalizingResultsView({
 
   // track previous products to detect when a product is removed (published/rejected)
   const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
-
-  // Carousel state
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Brand state
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -347,18 +229,7 @@ export function FinalizingResultsView({
   });
   const [selectedImageSourceId, setSelectedImageSourceId] = useState("");
 
-  // Track carousel index
-  useEffect(() => {
-    if (!carouselApi) return;
-
-    setCurrentImageIndex(carouselApi.selectedScrollSnap());
-
-    carouselApi.on("select", () => {
-      setCurrentImageIndex(carouselApi.selectedScrollSnap());
-    });
-  }, [carouselApi]);
-
-  const selectedProduct = useMemo(
+  const selectedProduct= useMemo(
     () =>
       sortedProducts.find((product) => product.sku === preferredSku) ??
       sortedProducts[0] ??
@@ -837,132 +708,31 @@ export function FinalizingResultsView({
   return (
     <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
-      <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
-        <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
-          <div className="divide-y">
-            {sortedProducts.map((product) => {
-              const name =
-                product.consolidated?.name || product.input?.name || "Unknown";
-              const price = product.consolidated?.price ?? product.input?.price;
-              const isSelected = selectedSku === product.sku;
-
-              return (
-                <div
-                  key={product.sku}
-                  data-sku={product.sku}
-                  className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
-                    isSelected
-                      ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
-                      : ""
-                  }`}
-                  onClick={() => setPreferredSku(product.sku)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="font-mono text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-tight">
-                          {product.sku}
-                        </div>
-                        {price !== undefined && (
-                          <div className="text-sm font-bold text-primary">
-                            ${Number(price).toFixed(2)}
-                          </div>
-                        )}
-                      </div>
-                      <div
-                        className={`text-sm font-medium line-clamp-2 mt-0.5 ${isSelected ? "text-primary" : ""}`}
-                      >
-                        {name}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <ProductListSidebar
+        products={sortedProducts}
+        selectedSku={selectedSku}
+        onSelectProduct={setPreferredSku}
+        scrollContainerRef={scrollContainerRef}
+      />
 
       {/* Right Column: Editing Form */}
       <div className="flex-1 flex flex-col bg-background overflow-hidden">
         {selectedProduct ? (
           <>
             {/* Header */}
-            <div className="p-4 border-b flex justify-between items-center bg-card flex-shrink-0 z-10">
-              <div className="flex items-center gap-3">
-                <Package className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight line-clamp-1">
-                    {formData.name || "Untitled Product"}
-                  </h2>
-                  <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
-                    <span className="bg-muted px-1 rounded">{selectedSku}</span>
-                    <span>•</span>
-                    <span className="font-bold text-primary">
-                      ${Number(formData.price || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                {isDirty && (
-                  <Badge variant="outline" className="ml-2 h-5 text-[10px] font-normal border-amber-200 bg-amber-50 text-amber-700 animate-pulse">
-                    Unsaved Changes
-                  </Badge>
-                )}
-                {saving && (
-                  <Badge variant="outline" className="ml-2 h-5 text-[10px] font-normal border-primary/20 bg-primary/5 text-primary">
-                    Saving...
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReject}
-                  disabled={saving || publishing || rejecting}
-                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/5"
-                >
-                  {rejecting ? (
-                    "Rejecting..."
-                  ) : (
-                    <>
-                      <RotateCcw className="h-4 w-4 mr-2" /> Reject to Scraped
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSave(false)}
-                  disabled={saving || publishing}
-                >
-                  {saving ? (
-                    "Saving..."
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" /> Save
-                    </>
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-primary hover:bg-primary/90"
-                  onClick={() => handleSave(true)}
-                  disabled={saving || publishing}
-                >
-                  {publishing ? (
-                    "Publishing..."
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      {selectedProduct?.pipeline_status === "published"
-                        ? "Update Published Product"
-                        : "Finalize & Publish"}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+            <ProductSaveActions
+              productName={formData.name}
+              productPrice={formData.price}
+              selectedSku={selectedSku}
+              isDirty={isDirty}
+              saving={saving}
+              publishing={publishing}
+              rejecting={rejecting}
+              pipelineStatus={selectedProduct?.pipeline_status}
+              onSave={() => handleSave(false)}
+              onPublish={() => handleSave(true)}
+              onReject={handleReject}
+            />
 
             {/* Form Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -1535,227 +1305,19 @@ export function FinalizingResultsView({
                 </div>
 
                 {/* Media Management */}
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                        Product Media
-                      </Label>
-                      <span className="text-xs text-muted-foreground">
-                        {formData.selectedImages.length > 0
-                          ? `${currentImageIndex + 1} of ${formData.selectedImages.length} selected`
-                          : "No images selected"}
-                      </span>
-                    </div>
-
-                    {/* Large Image Carousel */}
-                    <div className="relative group rounded-xl border bg-card overflow-hidden shadow-sm">
-                      {formData.selectedImages.length > 0 ? (
-                        <Carousel
-                          setApi={setCarouselApi}
-                          className="w-full"
-                          opts={{
-                            loop: true,
-                          }}
-                        >
-                          <CarouselContent>
-                            {formData.selectedImages.map((url, index) => (
-                              <CarouselItem key={url}>
-                                <div className="relative aspect-square flex items-center justify-center p-4 bg-white">
-                                  <Dialog>
-                                    <DialogTrigger asChild>
-                                      <div className="relative w-full h-full cursor-zoom-in group/image">
-                                        <img
-                                          src={url}
-                                          alt={`Product image ${index + 1}`}
-                                          className="w-full h-full object-contain"
-                                        />
-                                        <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100">
-                                          <div className="bg-white/90 p-2 rounded-full shadow-lg">
-                                            <Maximize2 className="h-5 w-5 text-primary" />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-white/95 backdrop-blur-sm border-none shadow-2xl">
-                                      <DialogTitle className="sr-only">
-                                        Zoomed product image {index + 1}
-                                      </DialogTitle>
-                                      <div className="relative w-full h-[90vh] flex items-center justify-center p-8">
-                                        <img
-                                          src={url}
-                                          alt={`Product image ${index + 1} (Zoomed)`}
-                                          className="max-w-full max-h-full object-contain drop-shadow-2xl"
-                                        />
-                                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/80 backdrop-blur px-4 py-2 rounded-full border shadow-sm">
-                                          <span className="text-xs font-mono font-bold text-primary truncate max-w-[300px]">
-                                            {url.split("/").pop()}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </DialogContent>
-                                  </Dialog>
-                                  <button
-                                    onClick={() => toggleImage(url)}
-                                    className="absolute top-4 right-4 bg-destructive text-destructive-foreground rounded-full p-1.5 shadow-md hover:scale-110 transition-transform z-20"
-                                    title="Remove this image"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </CarouselItem>
-                            ))}
-                          </CarouselContent>
-                          {formData.selectedImages.length > 1 && (
-                            <>
-                              <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80" />
-                              <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80" />
-                            </>
-                          )}
-                        </Carousel>
-                      ) : (
-                        <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-muted/10 border-2 border-dashed rounded-xl m-2">
-                          <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
-                          <p className="text-sm font-medium">
-                            No images selected
-                          </p>
-                          <p className="text-xs opacity-60 mt-1">
-                            Select from candidates below
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Thumbnails of selected images */}
-                    {formData.selectedImages.length > 0 && (
-                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide px-1">
-                        {formData.selectedImages.map((url, index) => (
-                          <div
-                            key={`thumb-${url}`}
-                            onClick={() => carouselApi?.scrollTo(index)}
-                            className={cn(
-                              "relative flex-shrink-0 w-16 h-16 rounded-md border-2 overflow-hidden cursor-pointer transition-all",
-                              currentImageIndex === index
-                                ? "border-primary ring-2 ring-primary/20 scale-105"
-                                : "border-transparent opacity-60 hover:opacity-100",
-                            )}
-                          >
-                            <img
-                              src={url}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="space-y-2 pt-2">
-                      <Label
-                        htmlFor="image-source"
-                        className="text-xs uppercase font-bold text-muted-foreground"
-                      >
-                        Candidate Sources
-                      </Label>
-                      <Select
-                        value={selectedImageSourceId}
-                        onValueChange={setSelectedImageSourceId}
-                      >
-                        <SelectTrigger id="image-source" className="h-9">
-                          <SelectValue placeholder="Select image source" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {imageSourceOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Custom Image URL */}
-                    {isCustomImageSource && (
-                      <div className="space-y-2">
-                        <Label htmlFor="custom-image-url">
-                          Custom Image URL
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="custom-image-url"
-                            value={formData.customImageUrl}
-                            onChange={(e) =>
-                              handleInputChange(
-                                "customImageUrl",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="Paste image URL..."
-                            onKeyDown={(e) =>
-                              e.key === "Enter" && addCustomImage()
-                            }
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={addCustomImage}
-                            type="button"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    <Separator />
-
-                    {/* Image Candidates */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                        {isCustomImageSource
-                          ? "Custom Source"
-                          : `${activeImageSourceOption?.label ?? "Image"} Candidates`}
-                      </Label>
-                      {imageCandidates.length > 0 ? (
-                        <div className="grid grid-cols-4 gap-2">
-                          {imageCandidates.map((url) => {
-                            const isSelected =
-                              formData.selectedImages.includes(url);
-                            return (
-                              <div
-                                key={url}
-                                onClick={() => toggleImage(url)}
-                                className={cn(
-                                  "relative aspect-square rounded border overflow-hidden bg-card cursor-pointer hover:border-primary/50 transition-all",
-                                  isSelected
-                                    ? "ring-2 ring-primary border-primary"
-                                    : "opacity-60 grayscale hover:grayscale-0",
-                                )}
-                              >
-                                <img
-                                  src={url}
-                                  alt=""
-                                  className="w-full h-full object-contain"
-                                />
-                                {isSelected && (
-                                  <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                                    <CheckCircle className="h-5 w-5 text-primary" />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="border rounded-lg p-4 text-xs text-muted-foreground bg-muted/20">
-                          {isCustomImageSource
-                            ? "Paste a URL above and add it to selected images."
-                            : "No image candidates found for this source."}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <ImageCarousel
+                  selectedImages={formData.selectedImages}
+                  onToggleImage={toggleImage}
+                  imageSourceOptions={imageSourceOptions}
+                  selectedImageSourceId={selectedImageSourceId}
+                  onSelectImageSource={setSelectedImageSourceId}
+                  isCustomImageSource={isCustomImageSource}
+                  customImageUrl={formData.customImageUrl}
+                  onCustomImageUrlChange={(value) => handleInputChange("customImageUrl", value)}
+                  onAddCustomImage={addCustomImage}
+                  imageCandidates={imageCandidates}
+                  activeSourceLabel={activeImageSourceOption?.label ?? "Image"}
+                />
               </div>
 
               {/* Source Comparison */}
