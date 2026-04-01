@@ -12,6 +12,7 @@ import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
+import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import dynamic from "next/dynamic";
 
 const ScraperSelectDialog = dynamic(() => import("./ScraperSelectDialog").then(mod => mod.ScraperSelectDialog), { ssr: false });
@@ -58,6 +59,7 @@ export function PipelineClient({
   const [publishedActionState, setPublishedActionState] = useState<
     "upload" | "zip" | null
   >(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
 
@@ -355,14 +357,13 @@ export function PipelineClient({
   const handleDelete = useCallback(async () => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
+    setConfirmDeleteOpen(true);
+  }, [selectedSkus]);
 
-    if (
-      !confirm(
-        `Are you sure you want to permanently delete ${skus.length} product${skus.length > 1 ? "s" : ""}? This action cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+  const handleConfirmDelete = useCallback(async () => {
+    setConfirmDeleteOpen(false);
+    const skus = Array.from(selectedSkus);
+    if (skus.length === 0) return;
 
     setIsLoading(true);
     try {
@@ -825,6 +826,17 @@ export function PipelineClient({
         onDownloadZip={
           currentStage === "published" ? handleDownloadSelectedZip : undefined
         }
+      />
+
+      <ConfirmationDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        onConfirm={handleConfirmDelete}
+        title="Delete Products"
+        description={`Are you sure you want to permanently delete ${selectedSkus.size} product${selectedSkus.size > 1 ? "s" : ""}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        isLoading={isLoading}
       />
     </div>
   );

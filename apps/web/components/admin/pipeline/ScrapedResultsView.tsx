@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
@@ -74,6 +75,8 @@ export function ScrapedResultsView({
   const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
 
   const [preferredSource, setPreferredSource] = useState<string>("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteSource, setPendingDeleteSource] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedProduct =
@@ -174,14 +177,17 @@ export function ScrapedResultsView({
     }
   }, [preferredSku]);
 
-  const handleDeleteSource = async (sourceKey: string) => {
+  const handleDeleteSourceClick = (sourceKey: string) => {
     if (!selectedProduct) return;
+    setPendingDeleteSource(sourceKey);
+    setConfirmOpen(true);
+  };
 
-    if (
-      !confirm(`Are you sure you want to delete the source "${sourceKey}"?`)
-    ) {
-      return;
-    }
+  const handleConfirmDeleteSource = async () => {
+    if (!selectedProduct || !pendingDeleteSource) return;
+    setConfirmOpen(false);
+
+    const sourceKey = pendingDeleteSource;
 
     try {
       const newSources = { ...selectedProduct.sources };
@@ -208,7 +214,7 @@ export function ScrapedResultsView({
 
       if (res.ok) {
         toast.success(`Source "${sourceKey}" deleted`);
-        onRefresh(true); // Silent refresh as we are just updating source list
+        onRefresh(true);
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to delete source");
@@ -216,6 +222,8 @@ export function ScrapedResultsView({
     } catch {
       toast.error("An error occurred while deleting the source");
     }
+
+    setPendingDeleteSource(null);
   };
 
   const currentSourceData = useMemo(() => {
@@ -302,7 +310,7 @@ export function ScrapedResultsView({
                   key={product.sku}
                   data-sku={product.sku}
                   className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
-                    isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_#008850]" : ""
+                    isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]" : ""
                   }`}
                   onClick={() => setPreferredSku(product.sku)}
                 >
@@ -436,7 +444,7 @@ export function ScrapedResultsView({
                       variant="ghost"
                       size="sm"
                       className="text-destructive h-9 px-3 hover:bg-destructive/10"
-                      onClick={() => handleDeleteSource(activeSource)}
+                      onClick={() => handleDeleteSourceClick(activeSource)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete {activeSource}
@@ -533,7 +541,7 @@ export function ScrapedResultsView({
                             {activeSource.toUpperCase()} RESULT
                           </Badge>
                           {currentSourceData.price && (
-                            <span className="text-3xl font-black text-[#008850]">
+                            <span className="text-3xl font-black text-primary">
                               $
                               {typeof currentSourceData.price === "number"
                                 ? currentSourceData.price.toFixed(2)
@@ -639,7 +647,7 @@ export function ScrapedResultsView({
 
                       {currentSourceData.url && (
                         <Button
-                          className="w-full bg-[#008850] hover:bg-[#008850]/90"
+                          className="w-full bg-primary hover:bg-primary/90"
                           asChild
                         >
                           <a
@@ -702,6 +710,19 @@ export function ScrapedResultsView({
           </div>
         )}
       </div>
+
+      <ConfirmationDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) setPendingDeleteSource(null);
+        }}
+        onConfirm={handleConfirmDeleteSource}
+        title="Delete Source"
+        description={`Are you sure you want to delete the source "${pendingDeleteSource}"?`}
+        confirmLabel="Delete"
+        variant="destructive"
+      />
     </div>
   );
 }
