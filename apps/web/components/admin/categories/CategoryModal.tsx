@@ -38,7 +38,7 @@ const categorySchema = z.object({
         .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers, and hyphens'),
     description: z.string().max(500, 'Description is too long').optional(),
     parent_id: z.string().nullable().optional(),
-    display_order: z.coerce.number().int().min(0, 'Must be 0 or greater'),
+    display_order: z.number().int().min(0, 'Must be 0 or greater'),
     image_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
     is_featured: z.boolean(),
 });
