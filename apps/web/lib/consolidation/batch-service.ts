@@ -1246,7 +1246,7 @@ export async function applyConsolidationResults(
                 updateRows.push({
                     sku: result.sku,
                     next_fields: {},
-                    pipeline_status: 'enriched',
+                    pipeline_status: 'scraped',
                     pipeline_status_new: 'enriched',
                     confidence_score: null,
                     error_message: result.error,
@@ -1389,7 +1389,7 @@ export async function applyConsolidationResults(
                 updateRows.push({
                     sku: result.sku,
                     next_fields: {},
-                    pipeline_status: 'enriched',
+                    pipeline_status: 'scraped',
                     pipeline_status_new: 'enriched',
                     confidence_score: result.confidence_score ?? null,
                     error_message: errorMessage,
@@ -1440,7 +1440,7 @@ export async function applyConsolidationResults(
             updateRows.push({
                 sku: result.sku,
                 next_fields: {},
-                pipeline_status: 'enriched',
+                pipeline_status: 'scraped',
                 pipeline_status_new: 'enriched',
                 confidence_score: typeof result.confidence_score === 'number' ? result.confidence_score : null,
                 error_message: errorMessage,
@@ -1474,7 +1474,7 @@ export async function applyConsolidationResults(
 
         for (const row of group) {
             row.outcome = 'rejected';
-            row.pipeline_status = 'enriched';
+            row.pipeline_status = 'scraped';
             row.pipeline_status_new = 'enriched';
             row.error_message = errorMessage;
             row.next_fields = {};
