@@ -28,8 +28,8 @@ export async function publishToStorefront(sku: string) {
             return { success: false, error: 'Product not found in pipeline' };
         }
 
-        // Allow publishing from finalized or approved (legacy)
-        const publishableStatuses = new Set(['finalized', 'approved', 'consolidated']);
+        // Publishing is only allowed from the canonical finalized status.
+        const publishableStatuses = new Set(['finalized']);
         if (!publishableStatuses.has(ingestionProduct.pipeline_status)) {
             return { 
                 success: false, 

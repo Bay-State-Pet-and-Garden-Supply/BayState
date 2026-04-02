@@ -110,11 +110,11 @@ export async function getProductsWithIssues(options?: {
 }): Promise<{ products: ProductWithIssues[]; count: number }> {
     const supabase = await createClient();
 
-    // Get products in consolidated or approved status (need quality review)
+    // Get products in canonical reviewable statuses.
     const { data, error, count } = await supabase
         .from('products_ingestion')
         .select('*', { count: 'exact' })
-        .in('pipeline_status', ['staging', 'scraped', 'consolidated', 'approved'])
+        .in('pipeline_status', ['imported', 'scraped', 'finalized'])
         .order('updated_at', { ascending: false })
         .limit(options?.limit || 50)
         .range(options?.offset || 0, (options?.offset || 0) + (options?.limit || 50) - 1);

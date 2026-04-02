@@ -14,10 +14,8 @@ export const PipelineStageSchema = z.enum([
     'consolidating',
     'finalized',
     'failed',
-    'published',
     'images',
     'export',
-    'consolidated',
 ]);
 
 export const PipelineProductInputSchema = z.object({
