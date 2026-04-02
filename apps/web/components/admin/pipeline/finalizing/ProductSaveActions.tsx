@@ -12,7 +12,7 @@ export interface ProductSaveActionsProps {
   saving: boolean;
   publishing: boolean;
   rejecting: boolean;
-  pipelineStatus?: string;
+  isPublished?: boolean;
   onSave: () => void;
   onPublish: () => void;
   onReject: () => void;
@@ -26,7 +26,7 @@ export function ProductSaveActions({
   saving,
   publishing,
   rejecting,
-  pipelineStatus,
+  isPublished,
   onSave,
   onPublish,
   onReject,
@@ -95,15 +95,15 @@ export function ProductSaveActions({
           disabled={saving || publishing}
         >
           {publishing ? (
-            "Publishing..."
-          ) : (
-            <>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {pipelineStatus === "published"
-                ? "Update Published Product"
-                : "Finalize & Publish"}
-            </>
-          )}
+              "Publishing..."
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {isPublished
+                  ? "Update Published Product"
+                  : "Finalize & Publish"}
+              </>
+            )}
         </Button>
       </div>
     </div>

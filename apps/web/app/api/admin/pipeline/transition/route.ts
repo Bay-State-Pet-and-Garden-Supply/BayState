@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { validateTransition } from '@/lib/pipeline/core';
-import { PIPELINE_STATUS_VALUES, type PipelineStatus } from '@/lib/pipeline/types';
+import {
+    PERSISTED_PIPELINE_STATUSES,
+    type PersistedPipelineStatus,
+} from '@/lib/pipeline/types';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import * as z from 'zod';
 
 const transitionSchema = z.object({
     sku: z.string().min(1, 'SKU is required'),
-    toStatus: z.enum(PIPELINE_STATUS_VALUES, {
-        error: `Invalid toStatus. Must be one of: ${PIPELINE_STATUS_VALUES.join(', ')}`,
+    toStatus: z.enum(PERSISTED_PIPELINE_STATUSES, {
+        error: `Invalid toStatus. Must be one of: ${PERSISTED_PIPELINE_STATUSES.join(', ')}`,
     }),
 });
 
@@ -39,13 +42,19 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const currentStatus = product.pipeline_status as PipelineStatus;
+        const currentStatus = product.pipeline_status as PersistedPipelineStatus;
 
         // Validate the transition (400 if invalid)
         if (!validateTransition(currentStatus, toStatus)) {
+            const allowedTargets = [currentStatus, ...PERSISTED_PIPELINE_STATUSES]
+                .filter((status, index, all) => all.indexOf(status) === index)
+                .filter((status) => validateTransition(currentStatus, status));
+
             return NextResponse.json(
                 {
-                    error: `Invalid transition from '${currentStatus}' to '${toStatus}'`,
+                    error: `Invalid transition to '${toStatus}'. Allowed target states: ${allowedTargets
+                        .map((status) => `'${status}'`)
+                        .join(', ')}`,
                 },
                 { status: 400 }
             );

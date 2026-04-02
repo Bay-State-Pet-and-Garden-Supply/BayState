@@ -53,4 +53,26 @@ describe("addToOnboarding", () => {
 
     expect(res).toEqual({ success: true, count: 2 });
   });
+
+  it("writes canonical imported onboarding rows without legacy status aliases", async () => {
+    const products = [{ sku: "SKU3", name: "Third", price: 7 }];
+
+    await addToOnboarding(products as any);
+
+    const [upsertRows, upsertOptions] = mockSupabase.from().upsert.mock.calls[0];
+
+    expect(upsertRows).toEqual([
+      expect.objectContaining({
+        sku: "SKU3",
+        input: {
+          name: "Third",
+          price: 7,
+        },
+        pipeline_status: "imported",
+        updated_at: expect.any(String),
+      }),
+    ]);
+    expect(upsertRows[0]).not.toHaveProperty("pipeline_status_new");
+    expect(upsertOptions).toEqual({ onConflict: "sku" });
+  });
 });

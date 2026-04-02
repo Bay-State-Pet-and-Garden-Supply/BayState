@@ -1,8 +1,15 @@
 import {
+    loadPublishedShopSiteExport,
     preparePublishedShopSiteExport,
     type ShopSiteExportBrandRow,
     type ShopSiteExportSourceRow,
 } from '@/lib/shopsite/export-builder';
+
+jest.mock('@/lib/supabase/server', () => ({
+    createAdminClient: jest.fn(),
+}));
+
+const { createAdminClient } = require('@/lib/supabase/server');
 
 describe('preparePublishedShopSiteExport', () => {
     it('builds ShopSite-ready image paths grouped by brand', () => {
@@ -93,5 +100,75 @@ describe('preparePublishedShopSiteExport', () => {
         expect(products[1].file_name).toBe('duplicate-product-sku-2.html');
         expect(products[1].images).toEqual(['test-brand/duplicate-product-sku-2.jpg']);
         expect(products[1].image_sources).toEqual(['https://cdn.example.com/source/duplicate-two.png']);
+    });
+});
+
+describe('loadPublishedShopSiteExport', () => {
+    it('derives published export rows from matching storefront SKUs', async () => {
+        const productsRange = jest.fn().mockResolvedValue({
+            data: [{ sku: 'SKU-1' }],
+            error: null,
+        });
+        const ingestionIn = jest.fn().mockReturnValue({
+            order: jest.fn().mockResolvedValue({
+                data: [
+                    {
+                        sku: 'SKU-1',
+                        input: { name: 'Exported Product', price: 12.99 },
+                        consolidated: { name: 'Exported Product', brand_id: 'brand-1' },
+                        selected_images: [],
+                    },
+                ],
+                error: null,
+            }),
+        });
+        const brandsIn = jest.fn().mockResolvedValue({
+            data: [{ id: 'brand-1', name: 'Test Brand', slug: 'test-brand' }],
+            error: null,
+        });
+
+        const supabase = {
+            from: jest.fn((table: string) => {
+                if (table === 'products') {
+                    return {
+                        select: jest.fn().mockReturnValue({
+                            order: jest.fn().mockReturnValue({
+                                range: productsRange,
+                            }),
+                        }),
+                    };
+                }
+
+                if (table === 'products_ingestion') {
+                    return {
+                        select: jest.fn().mockReturnValue({
+                            in: ingestionIn,
+                        }),
+                    };
+                }
+
+                if (table === 'brands') {
+                    return {
+                        select: jest.fn().mockReturnValue({
+                            in: brandsIn,
+                        }),
+                    };
+                }
+
+                throw new Error(`Unexpected table ${table}`);
+            }),
+        };
+
+        (createAdminClient as jest.Mock).mockResolvedValue(supabase);
+
+        const result = await loadPublishedShopSiteExport();
+
+        expect(productsRange).toHaveBeenCalledWith(0, 199);
+        expect(ingestionIn).toHaveBeenCalledWith('sku', ['SKU-1']);
+        expect(result.products).toHaveLength(1);
+        expect(result.products[0]).toMatchObject({
+            sku: 'SKU-1',
+            brand_folder: 'test-brand',
+        });
     });
 });

@@ -1,7 +1,8 @@
 import { Metadata } from 'next';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
 import { getProductsByStatus, getStatusCounts } from '@/lib/pipeline';
-import type { PipelineProduct, StatusCount, PipelineStage, PipelineStatus } from '@/lib/pipeline/types';
+import { isDerivedTab, isPersistedStatus } from '@/lib/pipeline/types';
+import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
 
 export const metadata: Metadata = {
     title: 'Pipeline | Admin | Bay State Pet & Garden',
@@ -18,21 +19,21 @@ interface PageProps {
 
 export default async function PipelinePage({ searchParams }: PageProps) {
     const params = await searchParams;
-    const stageParam = (params.stage || params.status) as string;
-    
-    // Default to 'imported' if not specified or invalid
-    const initialStage: PipelineStage = 
-        ['imported', 'monitoring', 'scraped', 'consolidating', 'finalized', 'published'].includes(stageParam)
-            ? stageParam as PipelineStage
-            : 'imported';
+    const rawStageParam = params.stage ?? params.status;
+    const stageParam = typeof rawStageParam === 'string'
+        ? rawStageParam
+        : undefined;
+
+    const initialStage: PipelineStage = stageParam && (isPersistedStatus(stageParam) || isDerivedTab(stageParam))
+        ? stageParam
+        : 'imported';
 
     let initialCounts: StatusCount[] = [];
     let initialProducts: PipelineProduct[] = [];
     let initialTotal = 0;
 
     try {
-        // Only fetch products if the stage actually has products (monitoring/consolidating are live views)
-        const shouldFetchProducts = initialStage !== 'monitoring' && initialStage !== 'consolidating';
+        const shouldFetchProducts = isPersistedStatus(initialStage);
         
         let counts: StatusCount[] = [];
         let products: PipelineProduct[] = [];
@@ -40,7 +41,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
 
         if (shouldFetchProducts) {
             const [pResult, countsResult] = await Promise.all([
-                getProductsByStatus(initialStage as PipelineStatus, { limit: 500 }),
+                getProductsByStatus(initialStage, { limit: 500 }),
                 getStatusCounts(),
             ]);
             products = pResult.products;

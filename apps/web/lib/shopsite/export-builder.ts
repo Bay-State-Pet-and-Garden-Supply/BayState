@@ -18,6 +18,10 @@ export interface ShopSiteExportBrandRow {
     slug: string | null;
 }
 
+interface PublishedProductSkuRow {
+    sku: string;
+}
+
 type JsonRecord = Record<string, unknown>;
 
 export interface PreparedShopSiteExportProduct extends ShopSiteExportProduct {
@@ -287,29 +291,42 @@ export async function loadPublishedShopSiteExport(
         const from = page * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        let query = supabase
-            .from('products_ingestion')
-            .select('sku, input, consolidated, selected_images')
-            .eq('pipeline_status', 'published')
+        let publishedSkuQuery = supabase
+            .from('products')
+            .select('sku')
             .order('sku', { ascending: true });
 
         if (requestedSkus.length > 0) {
-            query = query.in('sku', requestedSkus);
+            publishedSkuQuery = publishedSkuQuery.in('sku', requestedSkus);
         }
 
-        const { data, error } = await query.range(from, to);
+        const { data: publishedSkuData, error: publishedSkuError } = await publishedSkuQuery.range(from, to);
+        if (publishedSkuError) {
+            throw new Error(`Failed to load published products: ${publishedSkuError.message}`);
+        }
+
+        const publishedSkus = uniqueStrings(
+            ((publishedSkuData ?? []) as PublishedProductSkuRow[]).map((row) => row.sku),
+        );
+
+        if (publishedSkus.length === 0) {
+            break;
+        }
+
+        const { data, error } = await supabase
+            .from('products_ingestion')
+            .select('sku, input, consolidated, selected_images')
+            .in('sku', publishedSkus)
+            .order('sku', { ascending: true });
+
         if (error) {
             throw new Error(`Failed to load published products: ${error.message}`);
         }
 
         const batch = (data ?? []) as ShopSiteExportSourceRow[];
-        if (batch.length === 0) {
-            break;
-        }
-
         rows.push(...batch);
 
-        if (batch.length < PAGE_SIZE) {
+        if (publishedSkus.length < PAGE_SIZE) {
             break;
         }
 

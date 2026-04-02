@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   Package,
   Plus,
@@ -97,6 +97,9 @@ export function FinalizingResultsView({
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  const [publishedSkuSet, setPublishedSkuSet] = useState<Set<string>>(
+    () => new Set(),
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredBrands = useMemo(() => {
@@ -238,6 +241,8 @@ export function FinalizingResultsView({
   );
 
   const selectedSku = selectedProduct?.sku ?? null;
+  const isSelectedProductPublished =
+    !!selectedSku && publishedSkuSet.has(selectedSku);
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
@@ -264,6 +269,46 @@ export function FinalizingResultsView({
       prevProductsRef.current = sortedProducts;
     }
   }, [sortedProducts, preferredSku]);
+
+  useEffect(() => {
+    if (!selectedSku) return;
+
+    let cancelled = false;
+
+    async function fetchPublishedState() {
+      try {
+        const response = await fetch(
+          `/api/admin/pipeline/publish?sku=${encodeURIComponent(selectedSku)}`,
+          { method: "GET" },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { inStorefront?: boolean };
+        if (cancelled) return;
+
+        setPublishedSkuSet((prev) => {
+          const next = new Set(prev);
+          if (data.inStorefront) {
+            next.add(selectedSku);
+          } else {
+            next.delete(selectedSku);
+          }
+          return next;
+        });
+      } catch (err) {
+        console.error("Failed to check storefront publish state:", err);
+      }
+    }
+
+    void fetchPublishedState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSku]);
 
   // Fetch brands, categories, and product types
   useEffect(() => {
@@ -376,61 +421,6 @@ export function FinalizingResultsView({
     setFormData((prev) => ({ ...prev, name: newName }));
   };
 
-  // Keyboard navigation and shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      const isInput =
-        activeElement?.tagName === "INPUT" ||
-        activeElement?.tagName === "TEXTAREA" ||
-        activeElement?.getAttribute("contenteditable") === "true";
-
-      // Ctrl+S to save
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        handleSave(false);
-        return;
-      }
-
-      // Enter to finalize (only if not in a textarea)
-      if (
-        e.key === "Enter" &&
-        !e.shiftKey &&
-        activeElement?.tagName !== "TEXTAREA" &&
-        !e.ctrlKey &&
-        !e.metaKey
-      ) {
-        // Only if we are not in an input that handles Enter differently
-        if (!isInput || activeElement?.id === "product-name") {
-          e.preventDefault();
-          handleSave(true);
-          return;
-        }
-      }
-
-      if (isInput) return;
-
-      if (sortedProducts.length === 0) return;
-
-      const currentIndex = sortedProducts.findIndex(
-        (p) => p.sku === preferredSku,
-      );
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const nextIndex = Math.min(currentIndex + 1, sortedProducts.length - 1);
-        setPreferredSku(sortedProducts[nextIndex].sku);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const nextIndex = Math.max(currentIndex - 1, 0);
-        setPreferredSku(sortedProducts[nextIndex].sku);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [preferredSku, sortedProducts, isDirty, formData]);
-
   // Scroll active item into view
   useEffect(() => {
     if (preferredSku && scrollContainerRef.current) {
@@ -484,7 +474,7 @@ export function FinalizingResultsView({
     }
   };
 
-  const handleSave = async (andPublish = false, silent = false) => {
+  const handleSave = useCallback(async (andPublish = false, silent = false) => {
     if (!selectedSku) return;
 
     const isSaveAction = !andPublish;
@@ -536,24 +526,10 @@ export function FinalizingResultsView({
           throw new Error(data.error || "Failed to publish to storefront");
         }
 
-        // 3. Update status to 'published'
-        const statusRes = await fetch(
-          `/api/admin/pipeline/${encodeURIComponent(selectedSku)}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pipeline_status: "published" }),
-          },
-        );
-
-        if (!statusRes.ok) {
-          console.warn(
-            "Product published but failed to update pipeline status",
-          );
-        }
+        setPublishedSkuSet((prev) => new Set(prev).add(selectedSku));
 
         toast.success(
-          selectedProduct?.pipeline_status === "published"
+          isSelectedProductPublished
             ? "Published product updated successfully!"
             : "Product finalized and published to website!",
         );
@@ -572,7 +548,57 @@ export function FinalizingResultsView({
       setSaving(false);
       setPublishing(false);
     }
-  };
+  }, [formData, isSelectedProductPublished, onRefresh, selectedSku]);
+
+  // Keyboard navigation and shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      const isInput =
+        activeElement?.tagName === "INPUT" ||
+        activeElement?.tagName === "TEXTAREA" ||
+        activeElement?.getAttribute("contenteditable") === "true";
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        void handleSave(false);
+        return;
+      }
+
+      if (
+        e.key === "Enter" &&
+        !e.shiftKey &&
+        activeElement?.tagName !== "TEXTAREA" &&
+        !e.ctrlKey &&
+        !e.metaKey
+      ) {
+        if (!isInput || activeElement?.id === "product-name") {
+          e.preventDefault();
+          void handleSave(true);
+          return;
+        }
+      }
+
+      if (isInput || sortedProducts.length === 0) return;
+
+      const currentIndex = sortedProducts.findIndex(
+        (p) => p.sku === preferredSku,
+      );
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIndex = Math.min(currentIndex + 1, sortedProducts.length - 1);
+        setPreferredSku(sortedProducts[nextIndex].sku);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const nextIndex = Math.max(currentIndex - 1, 0);
+        setPreferredSku(sortedProducts[nextIndex].sku);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSave, preferredSku, sortedProducts]);
 
   // Debounced auto-save
   useEffect(() => {
@@ -583,7 +609,7 @@ export function FinalizingResultsView({
     }, 2000); // Auto-save after 2 seconds of inactivity
 
     return () => clearTimeout(timer);
-  }, [formData, isDirty, selectedSku]);
+  }, [handleSave, isDirty, publishing, saving, selectedSku]);
 
   const handleReject = async () => {
     if (!selectedSku) return;
@@ -728,7 +754,7 @@ export function FinalizingResultsView({
               saving={saving}
               publishing={publishing}
               rejecting={rejecting}
-              pipelineStatus={selectedProduct?.pipeline_status}
+              isPublished={isSelectedProductPublished}
               onSave={() => handleSave(false)}
               onPublish={() => handleSave(true)}
               onReject={handleReject}
@@ -805,7 +831,8 @@ export function FinalizingResultsView({
                               />
                             </div>
                             <div className="max-h-[200px] overflow-y-auto p-1">
-                              <div
+                              <button
+                                type="button"
                                 className={cn(
                                   "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                                   formData.brandId === "none" &&
@@ -826,9 +853,10 @@ export function FinalizingResultsView({
                                   )}
                                 />
                                 No Brand
-                              </div>
+                              </button>
                               {filteredBrands.map((brand) => (
-                                <div
+                                <button
+                                  type="button"
                                   key={brand.id}
                                   className={cn(
                                     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
@@ -850,7 +878,7 @@ export function FinalizingResultsView({
                                     )}
                                   />
                                   {brand.name}
-                                </div>
+                                </button>
                               ))}
                               {filteredBrands.length === 0 && brandSearch && (
                                 <div className="p-2 text-xs text-muted-foreground italic">
@@ -956,7 +984,8 @@ export function FinalizingResultsView({
                               />
                             </div>
                             <div className="max-h-[200px] overflow-y-auto p-1">
-                              <div
+                              <button
+                                type="button"
                                 className={cn(
                                   "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                                   !formData.category &&
@@ -977,13 +1006,14 @@ export function FinalizingResultsView({
                                   )}
                                 />
                                 No Category
-                              </div>
+                              </button>
                               {filteredCategories.map((cat) => {
                                 const isSelected = formData.category.includes(
                                   cat.name,
                                 );
                                 return (
-                                  <div
+                                  <button
+                                    type="button"
                                     key={cat.id}
                                     className={cn(
                                       "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
@@ -1008,7 +1038,7 @@ export function FinalizingResultsView({
                                       )}
                                     />
                                     {cat.name}
-                                  </div>
+                                  </button>
                                 );
                               })}
                               {filteredCategories.length === 0 &&
@@ -1112,7 +1142,8 @@ export function FinalizingResultsView({
                                   pt.name,
                                 );
                                 return (
-                                  <div
+                                  <button
+                                    type="button"
                                     key={pt.id}
                                     className={cn(
                                       "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
@@ -1137,7 +1168,7 @@ export function FinalizingResultsView({
                                       )}
                                     />
                                     {pt.name}
-                                  </div>
+                                  </button>
                                 );
                               })}
                               {filteredProductTypes.length === 0 &&
@@ -1239,7 +1270,8 @@ export function FinalizingResultsView({
                               const isSelected =
                                 formData.productOnPages.includes(page);
                               return (
-                                <div
+                                <button
+                                  type="button"
                                   key={page}
                                   className={cn(
                                     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
@@ -1262,7 +1294,7 @@ export function FinalizingResultsView({
                                     )}
                                   />
                                   {page}
-                                </div>
+                                </button>
                               );
                             })}
                             {filteredPages.length === 0 && (

@@ -78,23 +78,11 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    // Check in products table by trying to match SKU pattern in slug
-    // Generate possible slugs to check
-    const consolidated = ingestionProduct.consolidated || {};
-    const input = ingestionProduct.input || {};
-    const name = consolidated.name || input.name || '';
-    const baseSlug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '') +
-        '-' +
-        sku.toLowerCase().replace(/[^a-z0-9]/g, '');
-
     const { data: existingProduct } = await supabase
         .from('products')
-        .select('id, name, slug, published_at')
-        .eq('slug', baseSlug)
-        .single();
+        .select('id, sku, name, slug, published_at')
+        .eq('sku', sku)
+        .maybeSingle();
 
     return NextResponse.json({
         sku,

@@ -152,6 +152,37 @@ describe('persistProductsIngestionSourcesStrict', () => {
     );
   });
 
+  it('persists canonical scraped status for callback writes without legacy alias columns', async () => {
+    const { supabase, selectIn, upsert } = createSupabaseMock();
+
+    selectIn.mockResolvedValue({
+      data: [{ sku: 'SKU-LEGACY', sources: { legacy_feed: { title: 'Old title' } } }],
+      error: null,
+    });
+    upsert.mockResolvedValue({ error: null });
+
+    await persistProductsIngestionSourcesStrict(
+      supabase,
+      {
+        'SKU-LEGACY': { amazon: { title: 'New title' } },
+      },
+      false,
+      '2026-02-17T00:00:00.000Z'
+    );
+
+    const firstUpsertRow = (upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0];
+
+    expect(firstUpsertRow).toMatchObject({
+      sku: 'SKU-LEGACY',
+      pipeline_status: 'scraped',
+      sources: {
+        legacy_feed: { title: 'Old title' },
+        amazon: { title: 'New title' },
+      },
+    });
+    expect(firstUpsertRow).not.toHaveProperty('pipeline_status_new');
+  });
+
   it('strict-fails with zero writes when any target SKU is missing', async () => {
     const { selectIn, upsert, supabase } = createSupabaseMock();
 

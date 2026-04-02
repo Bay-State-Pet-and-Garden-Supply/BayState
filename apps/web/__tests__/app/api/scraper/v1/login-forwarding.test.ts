@@ -70,8 +70,8 @@ function createPollSupabase() {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     neq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-    rpc: jest.fn<any>().mockResolvedValue({
+    maybeSingle: jest.fn().mockImplementation(async () => ({ data: null, error: null })),
+    rpc: (jest.fn().mockImplementation(async () => ({
       data: [{
         job_id: 'job-123',
         skus: ['SKU-1'],
@@ -80,15 +80,19 @@ function createPollSupabase() {
         max_workers: 1,
       }],
       error: null,
-    }),
-    channel: jest.fn<any>().mockReturnValue({
-      send: jest.fn<any>().mockResolvedValue(undefined),
-    }),
-    // Standard builder result for select() at end of chain
-    then: jest.fn((resolve) => {
-      resolve({ data: [{ name: 'runner-1', enabled: true, status: 'active' }], error: null });
+    })) as any,
+    channel: jest.fn().mockReturnValue({
+      send: (jest.fn().mockImplementation(async () => undefined)) as any,
     }),
   };
+
+  Object.defineProperty(mock, 'then', {
+    value: jest.fn((resolve: (value: { data: { name: string; enabled: boolean; status: string }[]; error: null }) => void) => {
+      resolve({ data: [{ name: 'runner-1', enabled: true, status: 'active' }], error: null });
+    }),
+    enumerable: false,
+  });
+
   return mock;
 }
 

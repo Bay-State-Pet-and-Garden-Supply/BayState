@@ -1,70 +1,86 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/hybrid-search-extraction.md",
-  "started_at": "2026-03-30T19:10:42.982Z",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\pipeline-status-normalization.md",
+  "started_at": "2026-04-02T19:17:35.663Z",
   "session_ids": [
-    "ses_2bff4c8b3ffeoI0nyChYoFtK55",
-    "ses_2bfd74703ffe0JrTn37y34Q4P8",
-    "ses_2bfd73b70ffejdIjBGYdN0oidS",
-    "ses_2bfd4912dffeC7UbKV6RVPWwSU",
-    "ses_2bfd5148cffegl0NN5t3wLgf5K",
-    "ses_2bfd420a9ffe2Pnm8sgtoZMEQY",
-    "ses_2bfc9000cffetWS6sREuTCle6z",
-    "ses_2bfc0fd06ffeIA2rTEodaVTRk2",
-    "ses_2bfb74791ffe1zNHiqpVStnzkF",
-    "ses_2bfb6cfdeffeP5AxYf8jlttz0G",
-    "ses_2bfa64411ffeMXhbyPx0JWvugL",
-    "ses_2bfa6888cffeqCruDtXXL5QCQe",
-    "ses_2bfa6a2b0ffeLGht1V5ZWxCviL",
-    "ses_2bfa666b4ffe7z2KpGuZQrgRL4",
-    "ses_2bf8f7aceffeNlNawelHwECJMR",
-    "ses_2bf843429ffelMKVyAF8qeWInc"
+    "ses_2b05ed603ffeikcAd2PQzO1DKJ",
+    "ses_2b05c9643ffe4GGptJ8QbWV9eX",
+    "ses_2b044badcffeBDvFdswYvtsajU",
+    "ses_2b039ff1dffeW0X37HRkm2trJE",
+    "ses_2b03b5957ffeOaBbIGUqMJm7VY",
+    "ses_2b039ff0dffeD4nsnb9OZ5GNS6",
+    "ses_2b03af7ecffenHl5KL1yq30qNf",
+    "ses_2b027e6d1ffeBaA7HO0UD7SPTA",
+    "ses_2b028a5f3ffedaA5py0MZN2eLQ",
+    "ses_2b00679ffffeaYIf8Q7mINDHHn",
+    "ses_2b00712c6ffe1bfYRHpsWTE8TK",
+    "ses_2affa809affeYvLe4HM668iMgL",
+    "ses_2aff84134ffeTvYmCUcFZqwp2v",
+    "ses_2aff8e541ffe8gxSP2e073FRUI",
+    "ses_2aff93317ffeApcfc0ZuENKvFN",
+    "ses_2afdd661cffeHTns74BBXbnKWs",
+    "ses_2afdd6654ffeAxC54u7xpN19Rv",
+    "ses_2afde4726ffedA2mf2KbrVAfZi",
+    "ses_2afd0a8bfffe6yrq766O68NQrF",
+    "ses_2afcbf028ffespaNQuTVI3OCTn",
+    "ses_2afcc01fdffeF1hujGIBS2FUw5",
+    "ses_2afcc7caaffegK6DAfUNKd23F4"
   ],
-  "plan_name": "hybrid-search-extraction",
+  "plan_name": "pipeline-status-normalization",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Add environment variables and configuration system",
-      "session_id": "ses_2bfd5148cffegl0NN5t3wLgf5K",
+      "task_title": "Freeze Canonical Status Contract",
+      "session_id": "ses_2b044badcffeBDvFdswYvtsajU",
       "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-03-30T19:16:43.456Z"
+      "category": "unspecified-high",
+      "updated_at": "2026-04-02T19:54:21.575Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "Land Schema Migration And Row Backfill",
+      "session_id": "ses_2b03b5957ffeOaBbIGUqMJm7VY",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-02T19:59:51.602Z"
     },
     "todo:4": {
       "task_key": "todo:4",
       "task_label": "4",
-      "task_title": "Implement TwoStepSearchRefiner class skeleton",
-      "session_id": "ses_2bfc9000cffetWS6sREuTCle6z",
+      "task_title": "Refactor Pipeline Writers To Canonical Persisted Statuses",
+      "session_id": "ses_2b028a5f3ffedaA5py0MZN2eLQ",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
-      "updated_at": "2026-03-30T19:34:19.219Z"
+      "updated_at": "2026-04-02T20:34:24.058Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Align Admin Pipeline Tabs, Labels, And Toolbar Logic",
+      "session_id": "ses_2b00712c6ffe1bfYRHpsWTE8TK",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-02T21:05:39.951Z"
     },
     "todo:8": {
       "task_key": "todo:8",
       "task_label": "8",
-      "task_title": "Integrate into AISearchScraper.scrape_product()",
-      "session_id": "ses_2bfc0fd06ffeIA2rTEodaVTRk2",
+      "task_title": "Update Compatibility Boundaries And Remove Dual Vocabulary",
+      "session_id": "ses_2aff93317ffeApcfc0ZuENKvFN",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
-      "updated_at": "2026-03-30T19:44:37.789Z"
+      "updated_at": "2026-04-02T21:36:18.982Z"
     },
-    "todo:12": {
-      "task_key": "todo:12",
-      "task_label": "12",
-      "task_title": "Documentation and usage examples",
-      "session_id": "ses_2bfb74791ffe1zNHiqpVStnzkF",
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "Run Final Data And Performance Audit",
+      "session_id": "ses_2afcc7caaffegK6DAfUNKd23F4",
       "agent": "Sisyphus-Junior",
-      "category": "writing",
-      "updated_at": "2026-03-30T19:49:19.523Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "**Plan Compliance Audit** — `oracle`",
-      "session_id": "ses_2bfa6a2b0ffeLGht1V5ZWxCviL",
-      "agent": "oracle",
-      "updated_at": "2026-03-30T20:10:18.822Z"
+      "category": "unspecified-high",
+      "updated_at": "2026-04-02T22:15:42.135Z"
     }
   }
 }

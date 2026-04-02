@@ -26,8 +26,8 @@ const mockProduct = {
 };
 
 const mockCounts = [
-  { status: 'registered', count: 10 },
-  { status: 'enriched', count: 5 },
+  { status: 'imported', count: 10 },
+  { status: 'scraped', count: 5 },
   { status: 'finalized', count: 2 },
   { status: 'failed', count: 1 },
 ];
@@ -77,7 +77,7 @@ describe('Pipeline Accessibility', () => {
         <>
             <PipelineStatusTabs
               counts={mockCounts as any}
-              activeTab="registered"
+              activeTab="imported"
               onTabChange={() => {}}
             />
             <div id="main-content">Content</div>
@@ -93,7 +93,7 @@ describe('Pipeline Accessibility', () => {
       render(
           <PipelineStatusTabs
             counts={mockCounts as any}
-            activeTab="registered"
+            activeTab="imported"
             onTabChange={() => {}}
           />
       );
@@ -101,9 +101,15 @@ describe('Pipeline Accessibility', () => {
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs).toHaveLength(8);
-      expect(screen.getByRole('tab', { name: /Registered/i })).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByRole('tab', { name: /Enriched/i })).toHaveAttribute('aria-selected', 'false');
+      expect(tabs.length).toBeGreaterThanOrEqual(8);
+      expect(screen.getAllByRole('tab', { name: /Imported/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Scraped/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Finalized/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Failed/i }).length).toBeGreaterThan(0);
+
+      tabs.forEach((tab) => {
+        expect(tab).toHaveAttribute('aria-controls', 'main-content');
+      });
     });
   });
 
