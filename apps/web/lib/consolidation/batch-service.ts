@@ -422,7 +422,6 @@ interface PendingConsolidationRow {
     sku: string;
     next_fields: Record<string, unknown>;
     pipeline_status: PipelineStatus;
-    pipeline_status_new: PipelineStatus;
     confidence_score: number | null;
     error_message: string | null;
     outcome: 'finalized' | 'rejected';
@@ -1249,7 +1248,6 @@ export async function applyConsolidationResults(
                     sku: result.sku,
                     next_fields: {},
                     pipeline_status: 'scraped',
-                    pipeline_status_new: 'consolidated',
                     confidence_score: null,
                     error_message: result.error,
                     outcome: 'rejected',
@@ -1392,7 +1390,6 @@ export async function applyConsolidationResults(
                     sku: result.sku,
                     next_fields: {},
                     pipeline_status: 'scraped',
-                    pipeline_status_new: 'consolidated',
                     confidence_score: result.confidence_score ?? null,
                     error_message: errorMessage,
                     outcome: 'rejected',
@@ -1425,7 +1422,6 @@ export async function applyConsolidationResults(
                 sku: result.sku,
                 next_fields: nextFields,
                 pipeline_status: 'finalized',
-                pipeline_status_new: 'finalized',
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
                 outcome: 'finalized',
@@ -1443,7 +1439,6 @@ export async function applyConsolidationResults(
                 sku: result.sku,
                 next_fields: {},
                 pipeline_status: 'scraped',
-                pipeline_status_new: 'consolidated',
                 confidence_score: typeof result.confidence_score === 'number' ? result.confidence_score : null,
                 error_message: errorMessage,
                 outcome: 'rejected',
@@ -1477,7 +1472,6 @@ export async function applyConsolidationResults(
         for (const row of group) {
             row.outcome = 'rejected';
             row.pipeline_status = 'scraped';
-            row.pipeline_status_new = 'consolidated';
             row.error_message = errorMessage;
             row.next_fields = {};
             if (errors.length < 10) {
@@ -1554,7 +1548,6 @@ export async function applyConsolidationResults(
                     .update({
                         consolidated: mergedConsolidated,
                         pipeline_status: row.pipeline_status,
-                        pipeline_status_new: row.pipeline_status_new,
                         confidence_score: row.confidence_score,
                         error_message: row.error_message,
                         updated_at: applyTimestamp,
