@@ -1,4 +1,4 @@
-import type { PipelineStatus } from './pipeline';
+import type { PersistedPipelineStatus } from './pipeline/types';
 
 export const BRAND_COLORS = {
     FOREST_GREEN: '#008850',
@@ -16,22 +16,18 @@ export const STATUS_COLORS = {
 
 export type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];
 
-export const PIPELINE_STATUS_COLORS: Record<PipelineStatus, StatusColor> = {
+export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor> = {
     imported: STATUS_COLORS.QUEUED,
-    monitoring: STATUS_COLORS.WARNING,
     scraped: STATUS_COLORS.RUNNING,
-    consolidated: STATUS_COLORS.WARNING,
     finalized: STATUS_COLORS.SUCCESS,
-    published: STATUS_COLORS.SUCCESS,
+    failed: STATUS_COLORS.FAILED,
 } as const;
 
-export const PIPELINE_STATUS_LABELS: Record<PipelineStatus, string> = {
+export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
     imported: 'Imported',
-    monitoring: 'Monitoring',
     scraped: 'Scraped',
-    consolidated: 'Consolidated',
     finalized: 'Finalized',
-    published: 'Published',
+    failed: 'Failed',
 } as const;
 
 export const CSS_CUSTOM_PROPERTIES = {
@@ -49,18 +45,16 @@ export const CSS_CUSTOM_PROPERTIES = {
     } as const,
 } as const;
 
-export function getStatusColor(status: PipelineStatus): StatusColor {
+export function getStatusColor(status: PersistedPipelineStatus): StatusColor {
     return PIPELINE_STATUS_COLORS[status];
 }
 
-export function getStatusCssVar(status: PipelineStatus): string {
-    const statusToCssVar: Record<PipelineStatus, string> = {
+export function getStatusCssVar(status: PersistedPipelineStatus): string {
+    const statusToCssVar: Record<PersistedPipelineStatus, string> = {
         imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
-        monitoring: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
         scraped: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
-        consolidated: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
         finalized: CSS_CUSTOM_PROPERTIES.STATUS.SUCCESS,
-        published: CSS_CUSTOM_PROPERTIES.STATUS.SUCCESS,
+        failed: CSS_CUSTOM_PROPERTIES.STATUS.FAILED,
     };
     return statusToCssVar[status];
 }

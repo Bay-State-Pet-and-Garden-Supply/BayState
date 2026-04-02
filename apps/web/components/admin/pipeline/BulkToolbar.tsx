@@ -3,7 +3,7 @@
 import { Loader2, X, CheckSquare, Search, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { PipelineStatus } from '@/lib/pipeline/types';
+import type { PersistedPipelineStatus } from '@/lib/pipeline/types';
 import { STAGE_CONFIG } from '@/lib/pipeline/types';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
@@ -11,34 +11,35 @@ import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
  * Bulk action configuration for each pipeline stage.
  * 'imported' opens the scraper selection dialog instead of a direct move.
  */
-const BULK_ACTIONS: Record<PipelineStatus, { 
+type BulkToolbarStage = PersistedPipelineStatus | 'monitoring';
+
+const BULK_ACTIONS: Record<BulkToolbarStage, { 
   label: string; 
-  nextStage: PipelineStatus | null; 
+  nextStage: PersistedPipelineStatus | null; 
   resetLabel?: string;
-  previousStage?: PipelineStatus | null;
+  previousStage?: PersistedPipelineStatus | null;
   secondaryAction?: string;
 }> = {
   imported: { label: 'Scrape Selected', nextStage: 'scraped' },
   monitoring: { label: '', nextStage: null, resetLabel: 'Cancel & Return to Import', previousStage: 'imported' },
-  scraped: { label: 'Consolidate Selected', nextStage: 'consolidated', resetLabel: 'Clear & Return to Import', previousStage: 'imported', secondaryAction: 'Scrape Additional Sources' },
-  consolidated: { label: 'Finalize Selected', nextStage: 'finalized', resetLabel: 'Reset Consolidation', previousStage: 'scraped' },
-  finalized: { label: 'Publish Selected', nextStage: 'published', resetLabel: 'Return to Consolidation', previousStage: 'consolidated' },
-  published: { label: '', nextStage: null },
+  scraped: { label: 'Finalize Selected', nextStage: 'finalized', resetLabel: 'Clear & Return to Import', previousStage: 'imported', secondaryAction: 'Scrape Additional Sources' },
+  failed: { label: 'Retry Selected', nextStage: 'imported' },
+  finalized: { label: '', nextStage: null, resetLabel: 'Return to Scraped', previousStage: 'scraped' },
 };
 
 interface BulkToolbarProps {
   selectedCount: number;
   totalCount: number;
-  currentStage: PipelineStatus;
+  currentStage: BulkToolbarStage;
   isLoading: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   onClearSelection: () => void;
   onSelectAll: () => void;
   /** For imported stage, opens scraper dialog. For others, moves to next stage. */
-  onBulkAction: (nextStage: PipelineStatus) => void;
+  onBulkAction: (nextStage: PersistedPipelineStatus) => void;
   /** Resets products to a previous stage, clearing results */
-  onResetStage?: (previousStage: PipelineStatus) => void;
+  onResetStage?: (previousStage: PersistedPipelineStatus) => void;
   /** Opens the scraper selection dialog (imported stage only) */
   onOpenScrapeDialog?: () => void;
 }
@@ -58,7 +59,7 @@ export function BulkToolbar({
 }: BulkToolbarProps) {
   const bulkAction = BULK_ACTIONS[currentStage];
   const stageConfig = STAGE_CONFIG[currentStage];
-  const isTerminalStage = currentStage === 'published';
+  const isTerminalStage = currentStage === 'finalized';
   const hasBulkAction = !isTerminalStage && bulkAction.nextStage !== null;
   const hasResetAction = !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
   const isImported = currentStage === 'imported';

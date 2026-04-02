@@ -122,8 +122,8 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
   if (loading) {
     return (
       <div className="space-y-4">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-lg border bg-muted" />
+        {['one', 'two', 'three', 'four', 'five'].map((skeletonKey) => (
+          <div key={skeletonKey} className="h-16 animate-pulse rounded-lg border bg-muted" />
         ))}
       </div>
     );
@@ -193,12 +193,12 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
                   <span className="font-mono text-sm text-muted-foreground">
                     {product.sku}
                   </span>
-                  {product.pipeline_status === 'published' ? (
-                    <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none capitalize">
+                  {product.pipeline_status === 'finalized' ? (
+                    <Badge variant="success" className="bg-green-100 text-green-700 hover:bg-green-200 border-none capitalize">
                       {product.pipeline_status}
                     </Badge>
-                  ) : product.pipeline_status === 'approved' ? (
-                    <Badge variant="success" className="bg-green-100 text-green-700 hover:bg-green-200 border-none capitalize">
+                  ) : product.pipeline_status === 'failed' ? (
+                    <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-200 border-none capitalize">
                       {product.pipeline_status}
                     </Badge>
                   ) : (

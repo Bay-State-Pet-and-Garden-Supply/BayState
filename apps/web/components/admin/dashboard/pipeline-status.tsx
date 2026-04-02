@@ -3,32 +3,29 @@ import { PackagePlus, ChevronRight } from 'lucide-react';
 
 interface PipelineStatusProps {
   counts: {
-    staging: number;
+    imported: number;
     scraped: number;
-    consolidated: number;
-    approved: number;
-    published: number;
+    finalized: number;
+    failed: number;
   };
 }
 
 const statusLabels = {
-  staging: 'Imported',
-  scraped: 'Enhanced',
-  consolidated: 'Ready for Review',
-  approved: 'Verified',
-  published: 'Live',
+  imported: 'Imported',
+  scraped: 'Scraped',
+  finalized: 'Finalized',
+  failed: 'Failed',
 };
 
 const statusColors = {
-  staging: 'bg-muted text-foreground',
+  imported: 'bg-muted text-foreground',
   scraped: 'bg-blue-100 text-blue-700',
-  consolidated: 'bg-orange-100 text-orange-700',
-  approved: 'bg-green-100 text-green-700',
-  published: 'bg-purple-100 text-purple-700',
+  finalized: 'bg-green-100 text-green-700',
+  failed: 'bg-red-100 text-red-700',
 };
 
 export function PipelineStatus({ counts }: PipelineStatusProps) {
-  const needsAttention = counts.staging + counts.scraped + counts.consolidated;
+  const activeIntake = counts.imported + counts.scraped + counts.finalized + counts.failed;
   const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
 
   return (
@@ -46,13 +43,13 @@ export function PipelineStatus({ counts }: PipelineStatusProps) {
         </Link>
       </div>
 
-      {needsAttention > 0 && (
+      {activeIntake > 0 && (
         <div className="mb-4 rounded-lg bg-orange-50 border border-orange-200 p-3">
           <p className="text-sm font-medium text-orange-800">
-            {needsAttention} products need attention
+            {activeIntake} products are in the intake pipeline
           </p>
           <p className="text-xs text-orange-600">
-            Review and approve products to publish them to the store
+            Track imported, scraped, finalized, and failed items before storefront publishing
           </p>
         </div>
       )}
@@ -75,15 +72,13 @@ export function PipelineStatus({ counts }: PipelineStatusProps) {
                 <div className="flex-1">
                   <div className="h-2 rounded-full bg-muted">
                     <div
-                      className={`h-2 rounded-full ${status === 'published'
-                        ? 'bg-purple-500'
-                        : status === 'approved'
-                          ? 'bg-green-500'
-                          : status === 'consolidated'
-                            ? 'bg-orange-500'
-                            : status === 'scraped'
-                              ? 'bg-blue-500'
-                              : 'bg-muted-foreground'
+                      className={`h-2 rounded-full ${status === 'finalized'
+                        ? 'bg-green-500'
+                        : status === 'failed'
+                          ? 'bg-red-500'
+                          : status === 'scraped'
+                            ? 'bg-blue-500'
+                            : 'bg-muted-foreground'
                         }`}
                       style={{ width: `${percentage}%` }}
                     />

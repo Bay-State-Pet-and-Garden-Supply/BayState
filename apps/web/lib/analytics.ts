@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
-import type { PipelineStatus } from './pipeline';
+import type { PersistedPipelineStatus } from './pipeline/types';
 
 /**
  * Status breakdown with counts.
  */
 export interface StatusBreakdown {
-    status: PipelineStatus;
+    status: PersistedPipelineStatus;
     count: number;
     percentage: number;
 }
@@ -15,9 +15,9 @@ export interface StatusBreakdown {
  */
 export interface ThroughputMetric {
     date: string;
-    published: number;
-    approved: number;
-    consolidated: number;
+    imported: number;
+    scraped: number;
+    finalized: number;
 }
 
 /**
@@ -36,8 +36,8 @@ export interface CompletenessMetric {
 export async function getStatusBreakdown(): Promise<StatusBreakdown[]> {
     const supabase = await createClient();
 
-    const statuses: PipelineStatus[] = ['imported', 'scraped', 'consolidated', 'finalized', 'published'];
-    const counts: { status: PipelineStatus; count: number }[] = [];
+    const statuses: PersistedPipelineStatus[] = ['imported', 'scraped', 'finalized', 'failed'];
+    const counts: { status: PersistedPipelineStatus; count: number }[] = [];
     let total = 0;
 
     for (const status of statuses) {
@@ -75,7 +75,7 @@ export async function getPipelineThroughput(days = 7): Promise<ThroughputMetric[
         .from('products_ingestion')
         .select('pipeline_status, updated_at')
         .gte('updated_at', startDate.toISOString())
-        .in('pipeline_status', ['consolidated', 'approved', 'published']);
+        .in('pipeline_status', ['imported', 'scraped', 'finalized']);
 
     if (error) {
         console.error('Error fetching throughput:', error);
@@ -89,13 +89,13 @@ export async function getPipelineThroughput(days = 7): Promise<ThroughputMetric[
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        byDate[dateStr] = { date: dateStr, published: 0, approved: 0, consolidated: 0 };
+        byDate[dateStr] = { date: dateStr, imported: 0, scraped: 0, finalized: 0 };
     }
 
     (data || []).forEach((row) => {
         const dateStr = new Date(row.updated_at).toISOString().split('T')[0];
         if (byDate[dateStr]) {
-            const status = row.pipeline_status as 'consolidated' | 'approved' | 'published';
+            const status = row.pipeline_status as 'imported' | 'scraped' | 'finalized';
             byDate[dateStr][status]++;
         }
     });
