@@ -11,10 +11,15 @@ describe('pipeline-tabs', () => {
     describe('PipelineTab type', () => {
         it('should include all required tabs', () => {
             const expectedTabs: PipelineTab[] = [
+                'imported',
                 'registered',
+                'monitoring',
                 'active-runs',
+                'scraped',
                 'enriched',
+                'consolidating',
                 'active-consolidations',
+                'published',
                 'images',
                 'export',
                 'finalized',
@@ -88,22 +93,28 @@ describe('pipeline-tabs', () => {
         it('should return tabs in correct display order', () => {
             const order = getTabOrder();
 
-            expect(order).toHaveLength(8);
-            expect(order[0]).toBe('registered');
-            expect(order[1]).toBe('active-runs');
-            expect(order[2]).toBe('enriched');
-            expect(order[3]).toBe('active-consolidations');
-            expect(order[4]).toBe('images');
-            expect(order[5]).toBe('export');
-            expect(order[6]).toBe('finalized');
-            expect(order[7]).toBe('failed');
+            expect(order).toEqual([
+                'imported',
+                'registered',
+                'monitoring',
+                'active-runs',
+                'scraped',
+                'enriched',
+                'consolidating',
+                'active-consolidations',
+                'finalized',
+                'published',
+                'images',
+                'export',
+                'failed',
+            ]);
         });
 
         it('should return tabs sorted by order property', () => {
             const order = getTabOrder();
 
             for (let i = 1; i < order.length; i++) {
-                expect(TAB_CONFIG[order[i - 1]].order).toBeLessThan(TAB_CONFIG[order[i]].order);
+                expect(TAB_CONFIG[order[i - 1]].order).toBeLessThanOrEqual(TAB_CONFIG[order[i]].order);
             }
         });
     });

@@ -69,4 +69,59 @@ describe('publishToStorefront', () => {
         );
         expect(productsTable.update).toHaveBeenCalled();
     });
+
+    it('allows legacy approved rows to publish during compatibility migration', async () => {
+        const ingestionEq = jest.fn().mockResolvedValue({
+            data: {
+                sku: 'SKU-2',
+                input: { name: 'Legacy Approved Product', price: 9.99 },
+                consolidated: { name: 'Legacy Approved Product', price: 9.99, images: [] },
+                pipeline_status: 'approved',
+            },
+            error: null,
+        });
+
+        const productsEq = jest.fn().mockReturnValue({
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        });
+
+        const insertSingle = jest.fn().mockResolvedValue({ data: { id: 'product-2' }, error: null });
+
+        const productsTable = {
+            select: jest.fn().mockImplementation(() => ({
+                eq: productsEq,
+            })),
+            update: jest.fn(),
+            insert: jest.fn().mockImplementation(() => ({
+                select: jest.fn().mockReturnValue({ single: insertSingle }),
+            })),
+        };
+
+        const ingestionTable = {
+            select: jest.fn().mockImplementation(() => ({
+                eq: jest.fn().mockReturnValue({ single: ingestionEq }),
+            })),
+            update: jest.fn(),
+        };
+
+        const supabase = {
+            from: jest.fn((table: string) => {
+                if (table === 'products_ingestion') return ingestionTable;
+                if (table === 'products') return productsTable;
+                throw new Error(`Unexpected table ${table}`);
+            }),
+        };
+
+        (createClient as jest.Mock).mockResolvedValue(supabase);
+
+        const result = await publishToStorefront('SKU-2');
+
+        expect(result).toEqual({ success: true, action: 'created', productId: 'product-2' });
+        expect(productsTable.insert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sku: 'SKU-2',
+                name: 'Legacy Approved Product',
+            })
+        );
+    });
 });

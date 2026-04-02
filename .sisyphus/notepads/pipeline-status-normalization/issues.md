@@ -23,3 +23,9 @@
 - `apps/web/components/admin/dashboard/pipeline-status.tsx` now renders canonical intake buckets, which leaves `__tests__/components/admin/dashboard/pipeline-status.test.tsx` failing because the test still expects legacy UI labels/count keys (`Enhanced`, `Ready for Review`, `Verified`, `Live`). Tests were not edited per task constraints.
 - `bunx tsc --noEmit` is still blocked by the pre-existing syntax error in `apps/web/__tests__/app/api/scraper/v1/login-forwarding.test.ts` (`TS1005` on line 84), outside Task 10c scope.
 - `bun run build` passed after the cleanup, and LSP diagnostics were clean for every changed file.
+
+## 2026-04-02 — Task 10b
+
+- The admin published tab now derives storefront membership from the published/export path instead of `products_ingestion.pipeline_status`, then hydrates ingestion rows back by SKU for the finalizing view.
+- `StageTabs.tsx` now renders an explicit derived `published` badge entry so the operational tab no longer appears count-less while waiting on persisted-status counts.
+- `bunx tsc --noEmit` remains blocked by the same unrelated pre-existing syntax error in `apps/web/__tests__/app/api/scraper/v1/login-forwarding.test.ts` (`TS1005` on line 84), outside Task 10b scope.

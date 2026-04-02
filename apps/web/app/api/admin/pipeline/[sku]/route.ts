@@ -8,12 +8,17 @@ import {
   replaceInlineImageDataUrls,
 } from '@/lib/product-image-storage';
 import {
-  isLegacyPipelineStatus,
-  toNewPipelineStatus,
   validateStatusTransition,
-  type TransitionalPipelineStatus,
 } from '@/lib/pipeline';
-import type { PipelineStatus } from '@/lib/pipeline/types';
+import {
+  PERSISTED_PIPELINE_STATUSES,
+  isPersistedStatus,
+  type PersistedPipelineStatus,
+} from '@/lib/pipeline/types';
+
+const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
+  (status) => `'${status}'`
+).join(', ');
 
 function toImageUrlArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -104,7 +109,7 @@ export async function PATCH(
     const body = await request.json();
     const { consolidated, pipeline_status, sources } = body as {
       consolidated?: unknown;
-      pipeline_status?: TransitionalPipelineStatus;
+      pipeline_status?: PersistedPipelineStatus;
       sources?: Record<string, unknown>;
     };
 
@@ -148,14 +153,38 @@ export async function PATCH(
         );
       }
 
-      const currentStatus = currentRow.pipeline_status as PipelineStatus;
-      const targetStatus = isLegacyPipelineStatus(pipeline_status)
-        ? toNewPipelineStatus(pipeline_status)
-        : pipeline_status;
+      const currentStatus = currentRow.pipeline_status as string;
+      const targetStatus = pipeline_status;
+
+      if (!isPersistedStatus(currentStatus)) {
+        return NextResponse.json(
+          {
+            error: `Invalid current pipeline status. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}`,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!isPersistedStatus(targetStatus)) {
+        return NextResponse.json(
+          {
+            error: `Invalid status transition to '${targetStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}`,
+          },
+          { status: 400 }
+        );
+      }
 
       if (!validateStatusTransition(currentStatus, targetStatus)) {
+        const allowedTargets = [currentStatus, ...PERSISTED_PIPELINE_STATUSES]
+          .filter((status, index, all): status is PersistedPipelineStatus => all.indexOf(status) === index)
+          .filter((status) => validateStatusTransition(currentStatus, status));
+
         return NextResponse.json(
-          { error: `Invalid transition from '${currentStatus}' to '${targetStatus}'` },
+          {
+            error: `Invalid status transition to '${targetStatus}'. Allowed target states: ${allowedTargets
+              .map((status) => `'${status}'`)
+              .join(', ')}`,
+          },
           { status: 400 }
         );
       }

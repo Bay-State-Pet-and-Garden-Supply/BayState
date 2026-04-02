@@ -78,7 +78,7 @@ describe('Performance Benchmarks', () => {
         it.skip('should execute filtered queries in under 1 second', async () => {
             const mockData = Array.from({ length: 50 }, (_, i) => ({
                 sku: `SKU-${i}`,
-                pipeline_status: 'registered',
+                pipeline_status: 'imported',
                 input: { name: `Product ${i}` },
                 updated_at: new Date().toISOString(),
             }));
@@ -91,7 +91,7 @@ describe('Performance Benchmarks', () => {
             const { getProductsByStatus } = require('@/lib/pipeline');
             
             const startTime = Date.now();
-            const result = await getProductsByStatus('registered', { limit: 50, offset: 0 });
+            const result = await getProductsByStatus('imported', { limit: 50, offset: 0 });
             const endTime = Date.now();
             
             const duration = endTime - startTime;
@@ -108,7 +108,7 @@ describe('Performance Benchmarks', () => {
                 sku: `SKU-${i.toString().padStart(4, '0')}`,
                 input: { name: `Product ${i}`, price: 10.99 + i },
                 consolidated: { name: `Consolidated Product ${i}`, price: 12.99 + i },
-                pipeline_status: 'registered',
+                pipeline_status: 'imported',
                 confidence_score: 0.85,
                 updated_at: new Date().toISOString(),
             }));

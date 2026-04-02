@@ -5,18 +5,24 @@
  * Note: Icon references are stored as strings, not imported components.
  */
 
+import {
+    DERIVED_PIPELINE_TABS,
+    PERSISTED_PIPELINE_STATUSES,
+    isDerivedTab,
+    isPersistedStatus,
+    type PersistedPipelineStatus,
+    type PipelineTab as DerivedPipelineTab,
+} from './pipeline/types';
+
+type LegacyPipelineTab = 'registered' | 'active-runs' | 'enriched' | 'active-consolidations';
+
 /**
  * All tabs in the pipeline system.
  */
-export type PipelineTab =
-    | 'registered'
-    | 'active-runs'
-    | 'enriched'
-    | 'active-consolidations'
-    | 'images'
-    | 'export'
-    | 'finalized'
-    | 'failed';
+/**
+ * @deprecated Use PersistedPipelineStatus or PipelineTab from './pipeline/types'.
+ */
+export type PipelineTab = PersistedPipelineStatus | DerivedPipelineTab | LegacyPipelineTab;
 
 /**
  * Configuration for a single pipeline tab.
@@ -36,17 +42,26 @@ export interface TabConfig {
  * Icon values are component reference names (strings), NOT imports.
  */
 export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
-    registered: {
-        label: 'Registered',
+    imported: {
+        label: 'Imported',
         icon: 'Inbox',
-        description: 'Imported products waiting to be enriched',
+        description: 'Products imported into ingestion and waiting for scraping',
         color: '#6B7280',
         bgColor: '#F3F4F6',
         isStatusTab: true,
         order: 1,
     },
-    'active-runs': {
-        label: 'Active Runs',
+    registered: {
+        label: 'Imported',
+        icon: 'Inbox',
+        description: 'Legacy alias for imported products waiting for scraping',
+        color: '#6B7280',
+        bgColor: '#F3F4F6',
+        isStatusTab: true,
+        order: 1,
+    },
+    monitoring: {
+        label: 'Monitoring',
         icon: 'Play',
         description: 'Currently running scrape jobs',
         color: '#3B82F6',
@@ -54,23 +69,68 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         isStatusTab: false,
         order: 2,
     },
-    enriched: {
-        label: 'Enriched',
+    'active-runs': {
+        label: 'Monitoring',
+        icon: 'Play',
+        description: 'Legacy alias for active scrape monitoring',
+        color: '#3B82F6',
+        bgColor: '#DBEAFE',
+        isStatusTab: false,
+        order: 2,
+    },
+    scraped: {
+        label: 'Scraped',
         icon: 'Download',
-        description: 'Products with enriched data',
+        description: 'Products with completed scrape results ready for consolidation',
         color: '#8B5CF6',
         bgColor: '#EDE9FE',
         isStatusTab: true,
         order: 3,
     },
-    'active-consolidations': {
-        label: 'Active Consolidations',
+    enriched: {
+        label: 'Scraped',
+        icon: 'Download',
+        description: 'Legacy alias for products with completed scrape results',
+        color: '#8B5CF6',
+        bgColor: '#EDE9FE',
+        isStatusTab: true,
+        order: 3,
+    },
+    consolidating: {
+        label: 'Consolidating',
         icon: 'Brain',
         description: 'AI consolidation in progress',
         color: '#EC4899',
         bgColor: '#FCE7F3',
         isStatusTab: false,
         order: 4,
+    },
+    'active-consolidations': {
+        label: 'Consolidating',
+        icon: 'Brain',
+        description: 'Legacy alias for active AI consolidation tracking',
+        color: '#EC4899',
+        bgColor: '#FCE7F3',
+        isStatusTab: false,
+        order: 4,
+    },
+    finalized: {
+        label: 'Finalized',
+        icon: 'Store',
+        description: 'Products approved and ready for downstream publishing workflows',
+        color: '#008850',
+        bgColor: '#D1FAE5',
+        isStatusTab: true,
+        order: 5,
+    },
+    published: {
+        label: 'Published',
+        icon: 'PackageCheck',
+        description: 'Derived view of products already published to the storefront',
+        color: '#16A34A',
+        bgColor: '#DCFCE7',
+        isStatusTab: false,
+        order: 6,
     },
     images: {
         label: 'Images',
@@ -79,7 +139,7 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         color: '#06B6D4',
         bgColor: '#CFFAFE',
         isStatusTab: false,
-        order: 5,
+        order: 7,
     },
     export: {
         label: 'Export',
@@ -88,16 +148,7 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         color: '#6366F1',
         bgColor: '#E0E7FF',
         isStatusTab: false,
-        order: 6,
-    },
-    finalized: {
-        label: 'Finalizing',
-        icon: 'Store',
-        description: 'Review and finalize product data',
-        color: '#008850',
-        bgColor: '#D1FAE5',
-        isStatusTab: true,
-        order: 7,
+        order: 8,
     },
     failed: {
         label: 'Failed',
@@ -106,7 +157,7 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         color: '#DC2626',
         bgColor: '#FEE2E2',
         isStatusTab: true,
-        order: 8,
+        order: 9,
     },
 };
 
@@ -132,7 +183,9 @@ export function isStatusTab(tab: PipelineTab): boolean {
  * Monitoring tabs show active operations (active-runs, active-consolidations).
  */
 export function isMonitoringTab(tab: PipelineTab): boolean {
-    return tab === 'active-runs' || tab === 'active-consolidations';
+    return (isDerivedTab(tab) && (tab === 'monitoring' || tab === 'consolidating'))
+        || tab === 'active-runs'
+        || tab === 'active-consolidations';
 }
 
 /**

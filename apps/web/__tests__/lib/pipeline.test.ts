@@ -12,20 +12,23 @@ describe('getProductsByStatus source filter', () => {
     let mockSupabase: any;
 
     const makeSupabaseMock = () => {
-        const queryBuilder = {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            in: jest.fn().mockReturnThis(),
-            or: jest.fn().mockReturnThis(),
-            gte: jest.fn().mockReturnThis(),
-            lte: jest.fn().mockReturnThis(),
-            filter: jest.fn().mockReturnThis(),
-            contains: jest.fn().mockReturnThis(),
-            order: jest.fn().mockReturnThis(),
-            limit: jest.fn().mockReturnThis(),
-            range: jest.fn().mockReturnThis(),
-            then: jest.fn((resolve) => resolve({ data: [], error: null })),
-        };
+        const queryBuilder = Promise.resolve({ data: [], error: null, count: 0 }) as Promise<{
+            data: [];
+            error: null;
+            count: number;
+        }> & Record<string, jest.Mock>;
+
+        queryBuilder.select = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.eq = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.in = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.or = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.gte = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.lte = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.filter = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.contains = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.order = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.limit = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.range = jest.fn().mockReturnValue(queryBuilder);
 
         return {
             from: jest.fn().mockReturnValue(queryBuilder),
@@ -50,7 +53,7 @@ describe('getProductsByStatus source filter', () => {
     });
 
     it('uses filter for source when source is provided', async () => {
-        await getProductsByStatus('consolidated', { source: 'ebay' });
+        await getProductsByStatus('scraped', { source: 'ebay' });
 
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledTimes(1);
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledWith(
@@ -112,10 +115,7 @@ describe('getProductsByStatus source filter', () => {
             endDate: '2024-12-31',
         });
 
-        expect(mockSupabase._queryBuilder.in).toHaveBeenCalledWith(
-            'pipeline_status',
-            ['finalized', 'consolidated']
-        );
+        expect(mockSupabase._queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'finalized');
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledWith(
             'sources',
             '?',

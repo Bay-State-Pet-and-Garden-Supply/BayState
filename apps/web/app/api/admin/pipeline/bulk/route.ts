@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bulkUpdateStatus, type TransitionalPipelineStatus } from '@/lib/pipeline';
+import { bulkUpdateStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { publishToStorefront } from '@/lib/pipeline/publish';
+import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus } from '@/lib/pipeline/types';
+
+const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
+    status => `'${status}'`
+).join(', ');
 
 /**
  * POST /api/admin/pipeline/bulk
@@ -15,7 +20,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { skus, toStatus, resetResults = false } = body as { 
             skus: string[]; 
-            toStatus: TransitionalPipelineStatus;
+            toStatus: string;
             resetResults?: boolean;
         };
 
@@ -35,8 +40,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // If moving to published, we also need to trigger the actual publishing to the storefront table
-        if (toStatus === 'published') {
+        if (!isPersistedStatus(toStatus)) {
+            return NextResponse.json(
+                { error: `Invalid status '${toStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}` },
+                { status: 400 }
+            );
+        }
+
+        // Finalized rows can still be pushed to the storefront table separately.
+        if (toStatus === 'finalized') {
             const publishResults = await Promise.all(
                 skus.map(sku => publishToStorefront(sku))
             );

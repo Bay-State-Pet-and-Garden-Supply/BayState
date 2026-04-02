@@ -34,6 +34,10 @@ const BULK_ACTIONS: Record<
     previousStage: "imported",
     secondaryAction: "Scrape Additional Sources",
   },
+  failed: {
+    label: "Retry Selected",
+    nextStage: "imported",
+  },
   consolidated: {
     label: "Finalize Selected",
     nextStage: "finalized",
@@ -47,6 +51,8 @@ const BULK_ACTIONS: Record<
     previousStage: "consolidated",
   },
   published: { label: "", nextStage: null },
+  images: { label: "", nextStage: null },
+  export: { label: "", nextStage: null },
   consolidating: { label: "", nextStage: null },
 };
 
@@ -128,6 +134,7 @@ export function FloatingActionsBar({
               {selectedCount === 1 ? "Product" : "Products"} Selected
             </span>
             <button
+              type="button"
               onClick={onClearSelection}
               className="text-[10px] font-bold text-muted-foreground hover:text-red-600 text-left transition-colors uppercase tracking-wider mt-1"
             >

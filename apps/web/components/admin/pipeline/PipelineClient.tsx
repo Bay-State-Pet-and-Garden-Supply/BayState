@@ -12,6 +12,8 @@ import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
+import { ImageSelectionTab } from "./ImageSelectionTab";
+import { ExportTab } from "./ExportTab";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import dynamic from "next/dynamic";
 
@@ -20,10 +22,73 @@ const ManualAddProductDialog = dynamic(() => import("./ManualAddProductDialog").
 const IntegraImportDialog = dynamic(() => import("./IntegraImportDialog").then(mod => mod.IntegraImportDialog), { ssr: false });
 import type {
   PipelineProduct,
+  PipelineTab,
+  PersistedPipelineStatus,
   PipelineStatus,
   PipelineStage,
   StatusCount,
 } from "@/lib/pipeline/types";
+import { isDerivedTab, isPersistedStatus } from "@/lib/pipeline/types";
+
+const LIVE_OPERATIONAL_TABS = new Set<PipelineTab>([
+  "monitoring",
+  "consolidating",
+  "images",
+  "export",
+]);
+
+const SKU_TAG_PATTERN = /<SKU>([^<]+)<\/SKU>/g;
+
+function parsePublishedSkus(xml: string): string[] {
+  const skus = new Set<string>();
+
+  for (const match of xml.matchAll(SKU_TAG_PATTERN)) {
+    const sku = match[1]?.trim();
+    if (sku) {
+      skus.add(sku);
+    }
+  }
+
+  return Array.from(skus);
+}
+
+function productMatchesSearch(product: PipelineProduct, searchTerm: string): boolean {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  const candidates = [
+    product.sku,
+    product.input?.name,
+    product.consolidated?.name,
+  ];
+
+  return candidates.some((value) =>
+    typeof value === "string" && value.toLowerCase().includes(normalizedSearch),
+  );
+}
+
+function mergePublishedCount(nextCounts: StatusCount[], publishedCount: number): StatusCount[] {
+  return [
+    ...nextCounts.filter((count) => count.status !== "published"),
+    { status: "published", count: publishedCount },
+  ];
+}
+
+function isRouteStage(value: string): value is PipelineStage {
+  return isPersistedStatus(value) || isDerivedTab(value);
+}
+
+function isLiveOperationalTab(stage: PipelineStage): boolean {
+  return LIVE_OPERATIONAL_TABS.has(stage as PipelineTab);
+}
+
+function isPersistedProductStage(
+  stage: PipelineStage,
+): stage is PersistedPipelineStatus {
+  return isPersistedStatus(stage);
+}
 
 interface PipelineClientProps {
   initialCounts: StatusCount[];
@@ -45,8 +110,8 @@ export function PipelineClient({
 
   const stageFromUrl = searchParams.get("stage");
   const currentStage: PipelineStage =
-    stageFromUrl && ["imported", "monitoring", "scraped", "consolidating", "finalized", "published"].includes(stageFromUrl)
-      ? (stageFromUrl as PipelineStage)
+    stageFromUrl && isRouteStage(stageFromUrl)
+      ? stageFromUrl
       : initialStage;
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
@@ -60,21 +125,28 @@ export function PipelineClient({
     "upload" | "zip" | null
   >(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
+  const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const publishedSkuCacheRef = useRef<string[] | null>(null);
 
   const availableSourceFilters = useMemo(() => {
-    const all = new Set<string>();
-    products.forEach((product) => {
-      const productSources = product.sources ?? {};
-      Object.keys(productSources)
-        .filter((key) => !key.startsWith("_"))
-        .forEach((key) => all.add(key));
-    });
-    return Array.from(all).sort();
+      const all = new Set<string>();
+      products.forEach((product) => {
+        const productSources = product.sources ?? {};
+        Object.keys(productSources)
+          .filter((key) => !key.startsWith("_"))
+          .forEach((key) => {
+            all.add(key);
+          });
+      });
+      return Array.from(all).sort();
   }, [products]);
 
   const filteredProducts = useMemo(() => {
+    if (currentStage === "published") {
+      return products.filter((product) => productMatchesSearch(product, search));
+    }
+
     if (!sourceFilter || currentStage !== "scraped") return products;
     return products.filter((product) => {
       const productSources = product.sources ?? {};
@@ -82,7 +154,7 @@ export function PipelineClient({
         .filter((key) => !key.startsWith("_"))
         .includes(sourceFilter);
     });
-  }, [products, sourceFilter, currentStage]);
+  }, [products, search, sourceFilter, currentStage]);
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
@@ -98,8 +170,7 @@ export function PipelineClient({
   // Fetch products for a specific stage
   const fetchProducts = useCallback(
     async (stage: PipelineStage, searchTerm?: string, silent = false) => {
-      // Monitoring and consolidating are live views, not product index queries.
-      if (stage === "monitoring" || stage === "consolidating") {
+      if (!isPersistedProductStage(stage)) {
         setProducts([]);
         setTotalCount(0);
         setSelectedSkus(new Set());
@@ -134,17 +205,100 @@ export function PipelineClient({
       const res = await fetch("/api/admin/pipeline/counts", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
-        setCounts(data.counts || []);
+        setCounts((previousCounts) => {
+          const publishedCount = previousCounts.find((count) => count.status === "published")?.count;
+          const nextCounts = data.counts || [];
+
+          return typeof publishedCount === "number"
+            ? mergePublishedCount(nextCounts, publishedCount)
+            : nextCounts;
+        });
       }
     } catch {
       // Silently fail for counts
     }
   }, []);
 
+  const getPublishedSkus = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh && publishedSkuCacheRef.current) {
+      return publishedSkuCacheRef.current;
+    }
+
+    const response = await fetch("/api/admin/pipeline/export-xml", { cache: "no-store" });
+    if (response.status === 404) {
+      publishedSkuCacheRef.current = [];
+      return [];
+    }
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "Failed to derive published products");
+    }
+
+    const xml = await response.text();
+    const skus = parsePublishedSkus(xml);
+    publishedSkuCacheRef.current = skus;
+    return skus;
+  }, []);
+
+  const fetchPublishedProducts = useCallback(
+    async (silent = false, forceRefresh = false) => {
+      if (!silent) {
+        setIsLoading(true);
+      }
+
+      try {
+        const publishedSkus = await getPublishedSkus(forceRefresh);
+
+        if (publishedSkus.length === 0) {
+          setProducts([]);
+          setTotalCount(0);
+          setCounts((previousCounts) => mergePublishedCount(previousCounts, 0));
+          return;
+        }
+
+        const productResponses = await Promise.all(
+          publishedSkus.map(async (sku) => {
+            const response = await fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
+              cache: "no-store",
+            });
+
+            if (!response.ok) {
+              return null;
+            }
+
+            const payload = await response.json();
+            return (payload.product ?? null) as PipelineProduct | null;
+          }),
+        );
+
+        const nextProducts = productResponses.filter(
+          (product): product is PipelineProduct => product !== null,
+        );
+
+        setProducts(nextProducts);
+        setTotalCount(nextProducts.length);
+        setCounts((previousCounts) => mergePublishedCount(previousCounts, nextProducts.length));
+      } catch {
+        toast.error("Failed to fetch published products");
+      } finally {
+        if (!silent) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [getPublishedSkus],
+  );
+
   // Refresh everything
   const refreshAll = useCallback(async (silent = false) => {
+    if (currentStage === "published") {
+      await Promise.all([fetchPublishedProducts(silent, true), fetchCounts()]);
+      return;
+    }
+
     await Promise.all([fetchProducts(currentStage, search, silent), fetchCounts()]);
-  }, [currentStage, search, fetchProducts, fetchCounts]);
+  }, [currentStage, search, fetchProducts, fetchCounts, fetchPublishedProducts]);
 
   const isFirstMount = useRef(true);
 
@@ -155,7 +309,7 @@ export function PipelineClient({
     setTotalCount(initialTotal);
     setSelectedSkus(new Set());
     setIsLoading(false);
-  }, [initialProducts, initialCounts, initialTotal, initialStage]);
+  }, [initialProducts, initialCounts, initialTotal]);
 
   // Fetch products when search changes
   useEffect(() => {
@@ -169,9 +323,14 @@ export function PipelineClient({
     const performFetch = async () => {
       if (!isMounted) return;
 
-      if (currentStage === "monitoring" || currentStage === "consolidating") {
+      if (isLiveOperationalTab(currentStage)) {
         setProducts([]);
         setTotalCount(0);
+        setSelectedSkus(new Set());
+        return;
+      }
+
+      if (currentStage === "published") {
         setSelectedSkus(new Set());
         return;
       }
@@ -191,6 +350,24 @@ export function PipelineClient({
     };
   }, [search, fetchProducts, currentStage]);
 
+  useEffect(() => {
+    void getPublishedSkus()
+      .then((publishedSkus) => {
+        setCounts((previousCounts) => mergePublishedCount(previousCounts, publishedSkus.length));
+      })
+      .catch(() => {
+        // Ignore badge derivation failures until the published tab is opened.
+      });
+  }, [getPublishedSkus]);
+
+  useEffect(() => {
+    if (currentStage !== "published") {
+      return;
+    }
+
+    void fetchPublishedProducts();
+  }, [currentStage, fetchPublishedProducts]);
+
   // Sync search and source filters with URL (if they exist in URL on load)
   useEffect(() => {
     const searchParam = searchParams.get("search") || "";
@@ -202,10 +379,10 @@ export function PipelineClient({
     if (sourceParam !== sourceFilter) {
       setSourceFilter(sourceParam);
     }
-  }, [searchParams]);
+  }, [searchParams, search, sourceFilter]);
 
   // Handle stage tab change
-  const handleStageChange = (stage: PipelineStage) => {
+  const handleStageChange = useCallback((stage: PipelineStage) => {
     // Clear local filters before navigating
     // This allows the server to fetch clean data for the new stage
     setSearch("");
@@ -220,7 +397,7 @@ export function PipelineClient({
     startNavigation(() => {
       router.replace(`${pathname}?${params.toString()}`);
     });
-  };
+  }, [pathname, router, searchParams]);
 
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
     null,
@@ -247,9 +424,13 @@ export function PipelineClient({
             .map((p) => p.sku);
 
           if (selected) {
-            rangeSkus.forEach((skuItem) => next.add(skuItem));
+            rangeSkus.forEach((skuItem) => {
+              next.add(skuItem);
+            });
           } else {
-            rangeSkus.forEach((skuItem) => next.delete(skuItem));
+            rangeSkus.forEach((skuItem) => {
+              next.delete(skuItem);
+            });
           }
         } else {
           if (selected) {
@@ -278,6 +459,11 @@ export function PipelineClient({
   const handleSelectAll = async () => {
     if (currentStage === "finalized") {
       // Finalizing should not support select-all behavior; enforce one-by-one in UI.
+      return;
+    }
+
+    if (currentStage === "published") {
+      handleSelectAllVisible();
       return;
     }
 
@@ -350,7 +536,7 @@ export function PipelineClient({
         setIsLoading(false);
       }
     },
-    [fetchCounts],
+    [fetchCounts, handleStageChange],
   );
 
   // Handle product deletion
@@ -680,8 +866,8 @@ export function PipelineClient({
         onStageChange={handleStageChange}
       />
 
-      {/* Pipeline Toolbar — hidden for monitoring/consolidating */}
-      {currentStage !== "monitoring" && currentStage !== "consolidating" && (
+      {/* Pipeline Toolbar — hidden for live operational tabs */}
+      {!isLiveOperationalTab(currentStage) && (
         <PipelineToolbar
           totalCount={totalCount}
           currentStage={currentStage}
@@ -751,6 +937,16 @@ export function PipelineClient({
               <ActiveConsolidationsTab />
             </section>
           </div>
+        ) : currentStage === "images" ? (
+          <ImageSelectionTab />
+        ) : currentStage === "export" ? (
+          <ExportTab
+            count={totalCount}
+            filters={{
+              status: currentStage,
+              search,
+            }}
+          />
         ) : currentStage === "scraped" ? (
           <ScrapedResultsView
             products={filteredProducts}
@@ -804,29 +1000,31 @@ export function PipelineClient({
       )}
 
       {/* Floating Bulk Actions Bar */}
-      <FloatingActionsBar
-        selectedCount={selectedSkus.size}
-        totalCount={totalCount}
-        currentStage={currentStage}
-        isLoading={isLoading}
-        onClearSelection={handleClearSelection}
-        onSelectAll={handleSelectAll}
-        onBulkAction={handleBulkAction}
-        onResetStage={handleResetStage}
-        onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
-        onDelete={handleDelete}
-        actionState={
-          currentStage === "published" ? publishedActionState : null
-        }
-        onUploadShopSite={
-          currentStage === "published"
-            ? handleUploadSelectedShopSite
-            : undefined
-        }
-        onDownloadZip={
-          currentStage === "published" ? handleDownloadSelectedZip : undefined
-        }
-      />
+      {!isLiveOperationalTab(currentStage) && (
+        <FloatingActionsBar
+          selectedCount={selectedSkus.size}
+          totalCount={totalCount}
+          currentStage={currentStage}
+          isLoading={isLoading}
+          onClearSelection={handleClearSelection}
+          onSelectAll={handleSelectAll}
+          onBulkAction={handleBulkAction}
+          onResetStage={handleResetStage}
+          onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
+          onDelete={handleDelete}
+          actionState={
+            currentStage === "published" ? publishedActionState : null
+          }
+          onUploadShopSite={
+            currentStage === "published"
+              ? handleUploadSelectedShopSite
+              : undefined
+          }
+          onDownloadZip={
+            currentStage === "published" ? handleDownloadSelectedZip : undefined
+          }
+        />
+      )}
 
       <ConfirmationDialog
         open={confirmDeleteOpen}

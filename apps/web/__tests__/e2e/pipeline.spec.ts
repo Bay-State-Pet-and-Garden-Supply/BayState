@@ -17,13 +17,20 @@ test.describe('Pipeline E2E Tests', () => {
         await expect(productGrid).toBeVisible();
     });
 
-    test('should filter products by status tabs', async ({ page }) => {
-        // Click on different status tabs
-        await page.getByRole('tab', { name: /Enhanced/ }).click();
-        await expect(page.getByRole('tab', { name: /Enhanced/ })).toHaveAttribute('aria-selected', 'true');
-        
-        await page.getByRole('tab', { name: /Ready for Review/ }).click();
-        await expect(page.getByRole('tab', { name: /Ready for Review/ })).toHaveAttribute('aria-selected', 'true');
+    test('should render canonical workflow and operational tabs without stale labels', async ({ page }) => {
+        await expect(page.getByText('Workflow')).toBeVisible();
+        await expect(page.getByText('Operational')).toBeVisible();
+
+        await expect(page.getByRole('tab', { name: /Imported/ })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Scraped/ })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Finalized/ })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Failed/ })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Published/ })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Images/ })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Export/ })).toBeVisible();
+
+        await expect(page.getByRole('tab', { name: /Enhanced/ })).toHaveCount(0);
+        await expect(page.getByRole('tab', { name: /Ready for Review/ })).toHaveCount(0);
     });
 
     test('should search products', async ({ page }) => {

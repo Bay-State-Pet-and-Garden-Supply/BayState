@@ -1,4 +1,4 @@
-import { Package, Sparkles, CheckCircle2, Globe } from "lucide-react";
+import { Package, Sparkles, CheckCircle2, Globe, AlertCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { PipelineStatus } from "@/lib/pipeline";
@@ -26,6 +26,7 @@ const statusConfig: Record<
   imported: { variant: "default", label: "Imported", icon: Package },
   monitoring: { variant: "warning", label: "Monitoring", icon: Sparkles },
   scraped: { variant: "success", label: "Scraped", icon: Sparkles },
+  failed: { variant: "destructive", label: "Failed", icon: AlertCircle },
   consolidated: { variant: "warning", label: "Consolidated", icon: CheckCircle2 },
   finalized: { variant: "warning", label: "Finalized", icon: CheckCircle2 },
   published: { variant: "success", label: "Published", icon: Globe },
