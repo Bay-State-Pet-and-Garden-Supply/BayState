@@ -60,6 +60,31 @@ describe('validateConsolidationTaxonomy', () => {
         expect(required).toContain('search_keywords');
     });
 
+    it('buildResponseSchema does not contain keywords unsupported by OpenAI Structured Outputs (strict mode)', () => {
+        const schema = buildResponseSchema(['Dog'], ['Food'], ['Page 1']) as any;
+        const rootSchema = schema.json_schema?.schema || {};
+        const properties = rootSchema.properties || {};
+
+        // Helper to check for unsupported keywords in an object
+        const checkUnsupported = (obj: any) => {
+            if (!obj || typeof obj !== 'object') return;
+            const unsupported = ['minLength', 'maxLength', 'minItems', 'maxItems', 'uniqueItems', 'minimum', 'maximum', 'pattern', 'format'];
+            for (const key of unsupported) {
+                expect(obj).not.toHaveProperty(key);
+            }
+            if (obj.properties) {
+                for (const prop of Object.values(obj.properties)) {
+                    checkUnsupported(prop);
+                }
+            }
+            if (obj.items) {
+                checkUnsupported(obj.items);
+            }
+        };
+
+        checkUnsupported(rootSchema);
+    });
+
     it('validateRequiredConsolidationFields rejects blank required strings', () => {
         expect(() =>
             validateRequiredConsolidationFields({
