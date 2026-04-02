@@ -45,7 +45,11 @@ const newStatusMap: Record<PipelineStatus, ActionButton[]> = {
         { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },
         { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
     ],
-    finalized: [], // Terminal state
+    finalized: [
+        { action: 'publish', label: 'Publish', className: 'bg-green-600 hover:bg-green-700' },
+        { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
+    ],
+    failed: [], // Retry handled elsewhere
     published: [], // Terminal state
 };
 
@@ -62,6 +66,7 @@ const legacyActionsMap: Record<PipelineStatus, ActionButton[]> = {
         { action: 'publish', label: 'Publish', className: 'bg-green-600 hover:bg-green-700' },
         { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
     ],
+    failed: [],
     published: [],
 };
 
@@ -139,6 +144,7 @@ export function BulkActionsToolbar({
                             {actions.map(({ action, label, className }) => (
                                 <button
                                     key={action}
+                                    type="button"
                                     onClick={() => {
                                         if (action === 'consolidate' && onConsolidate) {
                                             void onConsolidate();
@@ -166,6 +172,7 @@ export function BulkActionsToolbar({
 
                             {(currentStatus === 'scraped') && onClearScrapeResults && (
                                 <button
+                                    type="button"
                                     onClick={() => void onClearScrapeResults()}
                                     disabled={isBusy}
                                     className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
@@ -176,6 +183,7 @@ export function BulkActionsToolbar({
                             )}
 
                             <button
+                                type="button"
                                 onClick={handleDeleteClick}
                                 disabled={isBusy}
                                 className="flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors bg-red-600 hover:bg-red-700 disabled:opacity-50"
@@ -186,6 +194,7 @@ export function BulkActionsToolbar({
                             </button>
 
                             <button
+                                type="button"
                                 onClick={onClearSelection}
                                 disabled={isBusy}
                                 className="rounded px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white disabled:opacity-50"

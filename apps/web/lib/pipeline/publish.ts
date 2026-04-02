@@ -120,25 +120,12 @@ export async function publishToStorefront(sku: string) {
             low_stock_threshold: 5,
         };
 
-        const markPipelinePublished = async () => {
-            const { error: pipelineError } = await supabase
-                .from('products_ingestion')
-                .update({
-                    pipeline_status: 'published',
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('sku', sku);
-
-            if (pipelineError) {
-                console.error(`[Publish] Failed to update pipeline status for ${sku}:`, pipelineError);
-            }
-        };
-
-        // Check if product already exists in products table by slug
+        // Reuse existing storefront rows by SKU so published state remains
+        // deterministically derived from products.sku existence.
         const { data: existingProduct } = await supabase
             .from('products')
             .select('id')
-            .eq('slug', slug)
+            .eq('sku', sku)
             .maybeSingle();
 
         if (existingProduct) {
@@ -160,7 +147,6 @@ export async function publishToStorefront(sku: string) {
                 return { success: false, error: 'Failed to sync product categories in storefront' };
             }
 
-            await markPipelinePublished();
             return { success: true, action: 'updated', productId: existingProduct.id };
         } else {
             // Insert new product
@@ -184,7 +170,6 @@ export async function publishToStorefront(sku: string) {
                 return { success: false, error: 'Failed to sync product categories in storefront' };
             }
 
-            await markPipelinePublished();
             return { success: true, action: 'created', productId: insertedProduct?.id };
         }
     } catch (err) {

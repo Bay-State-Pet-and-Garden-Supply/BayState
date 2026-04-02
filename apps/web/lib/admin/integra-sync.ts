@@ -13,12 +13,7 @@ export interface SyncAnalysis {
   newProducts: IntegraProduct[];
 }
 
-type OnboardingTabStatus = "imported";
-
-const INITIAL_ONBOARDING_TAB_STATUS: OnboardingTabStatus = "imported";
-const PIPELINE_STATUS_BY_TAB_STATUS: Record<OnboardingTabStatus, "registered"> = {
-  imported: "registered",
-};
+const INITIAL_ONBOARDING_PIPELINE_STATUS = "imported";
 
 /**
  * Parses an Integra Excel export.
@@ -122,8 +117,7 @@ export async function addToOnboarding(
       name: p.name,
       price: p.price,
     },
-    // UI onboarding tab uses "imported"; DB persists the normalized status literal.
-    pipeline_status: PIPELINE_STATUS_BY_TAB_STATUS[INITIAL_ONBOARDING_TAB_STATUS],
+    pipeline_status: INITIAL_ONBOARDING_PIPELINE_STATUS,
     updated_at: new Date().toISOString(),
   }));
 
