@@ -1,0 +1,57 @@
+Task 4 Evidence - Refactor Pipeline Writers To Canonical Persisted Statuses
+Date: 2026-04-02
+
+Changed files:
+- apps/web/lib/admin/integra-sync.ts
+- apps/web/lib/scraper-callback/products-ingestion.ts
+- apps/web/lib/pipeline/publish.ts
+- apps/web/__tests__/lib/admin/integra-sync.test.ts
+- apps/web/__tests__/lib/scraper-callback/products-ingestion-callback.test.ts
+- apps/web/__tests__/lib/consolidation/batch-service.test.ts
+- apps/web/__tests__/lib/pipeline/publish.test.ts
+
+LSP diagnostics:
+- apps/web/lib/admin/integra-sync.ts -> clean
+- apps/web/lib/scraper-callback/products-ingestion.ts -> clean
+- apps/web/lib/pipeline/publish.ts -> clean
+- apps/web/__tests__/lib/admin/integra-sync.test.ts -> clean
+- apps/web/__tests__/lib/scraper-callback/products-ingestion-callback.test.ts -> clean
+- apps/web/__tests__/lib/consolidation/batch-service.test.ts -> clean
+- apps/web/__tests__/lib/pipeline/publish.test.ts -> clean
+
+Verification run 1:
+Command:
+  bun run web test -- --runInBand --runTestsByPath "apps/web/__tests__/lib/admin/integra-sync.test.ts" "apps/web/__tests__/lib/scraper-callback/products-ingestion-callback.test.ts" "apps/web/__tests__/lib/consolidation/batch-service.test.ts" "apps/web/__tests__/lib/pipeline/publish.test.ts"
+Result:
+  Failed due to incorrect path prefix (`apps/web/apps/web/...`)
+
+Build run:
+Command:
+  bun run web build
+Result:
+  Failed on unrelated existing type error:
+  components/admin/pipeline/BulkActionsToolbar.tsx:44
+  Object literal may only specify known properties, and 'consolidated' does not exist in type 'Record<"imported" | "monitoring" | "scraped" | "finalized" | "published" | "failed", ActionButton[]>'
+
+Verification run 2:
+Command:
+  bun run web test -- --runInBand --runTestsByPath "__tests__/lib/admin/integra-sync.test.ts" "__tests__/lib/scraper-callback/products-ingestion-callback.test.ts" "__tests__/lib/consolidation/batch-service.test.ts" "__tests__/lib/pipeline/publish.test.ts"
+Result:
+  PASS __tests__/lib/admin/integra-sync.test.ts
+  PASS __tests__/lib/scraper-callback/products-ingestion-callback.test.ts
+  PASS __tests__/lib/consolidation/batch-service.test.ts
+  FAIL __tests__/lib/pipeline/publish.test.ts
+
+Remaining failing assertion:
+- __tests__/lib/pipeline/publish.test.ts expected the mocked products query to use `slug`, but the observed call was `sku` in the current mock/test wiring.
+
+Outcome summary:
+- Canonical writer changes are implemented in source files.
+- `pipeline_status_new` dual-writes were removed from active scraper callback persistence.
+- Publish no longer writes `pipeline_status: 'published'`.
+- Verification is not fully green yet because of one publish test failure and one unrelated pre-existing build failure.
+
+Final verification:
+- `bun run web build` -> PASS
+- `bun run web test -- --runInBand --runTestsByPath "__tests__/lib/admin/integra-sync.test.ts" "__tests__/lib/scraper-callback/products-ingestion-callback.test.ts" "__tests__/lib/consolidation/batch-service.test.ts" "__tests__/lib/pipeline/publish.test.ts"` -> PASS (4 suites, 22 tests)
+- `apps/web/components/admin/pipeline/BulkActionsToolbar.tsx` was adjusted so the admin build remains green while finalized/published flow stays usable after status normalization.
