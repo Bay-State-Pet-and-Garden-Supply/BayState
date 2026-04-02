@@ -1,31 +1,80 @@
 /**
  * Pipeline Types
- * Type definitions for the five-stage product ingestion pipeline
+ * Distinguishes persisted ingestion statuses from derived admin tabs.
  */
 
-/** Pipeline stage status values */
-export const PIPELINE_STATUS_VALUES = [
+/** Persisted pipeline statuses stored in the database. */
+export const PERSISTED_PIPELINE_STATUSES = [
   "imported",
-  "monitoring",
   "scraped",
-  "consolidated",
   "finalized",
-  "published",
+  "failed",
 ] as const;
 
-export type PipelineStatus = (typeof PIPELINE_STATUS_VALUES)[number];
+export type PersistedPipelineStatus =
+  (typeof PERSISTED_PIPELINE_STATUSES)[number];
 
-const PIPELINE_STATUS_SET = new Set<string>(PIPELINE_STATUS_VALUES);
+/** UI-only tabs derived from other records or active work in progress. */
+export const DERIVED_PIPELINE_TABS = [
+  "monitoring",
+  "consolidating",
+  "published",
+  "images",
+  "export",
+] as const;
 
-export function isPipelineStatus(value: string): value is PipelineStatus {
-  return PIPELINE_STATUS_SET.has(value);
+export type PipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
+
+/** Legacy review tab retained until the admin UI finishes converging on canonical names. */
+export const LEGACY_PIPELINE_TABS = ["consolidated"] as const;
+
+export type LegacyPipelineTab = (typeof LEGACY_PIPELINE_TABS)[number];
+
+/** Combined set for UI rendering and migration compatibility. */
+export const ALL_PIPELINE_STATUSES = [
+  ...PERSISTED_PIPELINE_STATUSES,
+  ...DERIVED_PIPELINE_TABS,
+] as const;
+
+export const DISPLAYABLE_PIPELINE_STATUSES = [
+  ...ALL_PIPELINE_STATUSES,
+  ...LEGACY_PIPELINE_TABS,
+] as const;
+
+export type PipelineStatus =
+  | PersistedPipelineStatus
+  | "monitoring"
+  | "published"
+  | LegacyPipelineTab;
+
+const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
+  PERSISTED_PIPELINE_STATUSES
+);
+
+const DERIVED_PIPELINE_TAB_SET = new Set<string>(DERIVED_PIPELINE_TABS);
+
+const ALL_PIPELINE_STATUS_SET = new Set<string>(DISPLAYABLE_PIPELINE_STATUSES);
+
+export function isPersistedStatus(
+  value: string
+): value is PersistedPipelineStatus {
+  return PERSISTED_PIPELINE_STATUS_SET.has(value);
 }
 
-/**
- * Extended pipeline stages used in the UI pipeline tab flow.
- * Includes a transient consolidating monitoring stage.
- */
-export type PipelineStage = PipelineStatus | "consolidating";
+export function isDerivedTab(value: string): value is PipelineTab {
+  return DERIVED_PIPELINE_TAB_SET.has(value);
+}
+
+export function isPipelineStatus(value: string): value is PipelineStage {
+  return ALL_PIPELINE_STATUS_SET.has(value);
+}
+
+export type PipelineStage = PipelineStatus | "consolidating" | "images" | "export";
+
+type StageConfigKey =
+  | PipelineStage
+  | PersistedPipelineStatus
+  | PipelineTab;
 
 /**
  * Selected image with metadata
@@ -59,7 +108,7 @@ export interface PipelineProduct {
     brand_id?: string;
     is_featured?: boolean;
   } | null;
-  pipeline_status: PipelineStatus;
+  pipeline_status: PersistedPipelineStatus;
   /** Image URLs from scraping */
   image_candidates?: string[];
   /** Selected images with metadata */
@@ -81,7 +130,7 @@ export interface PipelineProduct {
  */
 export interface StatusCount {
   /** Pipeline status value */
-  status: PipelineStatus;
+  status: PipelineStage;
   /** Number of products in this status */
   count: number;
 }
@@ -102,14 +151,14 @@ export interface StageConfig {
  * Stage display configurations
  * Maps each pipeline status to its UI representation
  */
-export const STAGE_CONFIG: Record<PipelineStage, StageConfig> = {
+export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   imported: {
     label: "Imported",
     color: "#6B7280",
     description: "Product data has been imported into the system",
   },
   monitoring: {
-    label: "Scraping",
+    label: "Monitoring",
     color: "#F59E0B",
     description: "Track active scraper jobs and progress",
   },
@@ -126,16 +175,31 @@ export const STAGE_CONFIG: Record<PipelineStage, StageConfig> = {
   consolidated: {
     label: "Consolidated",
     color: "#8B5CF6",
-    description: "Data from multiple sources has been merged by AI",
+    description: "Legacy consolidated status retained during migration to derived tabs",
   },
   finalized: {
-    label: "Finalizing",
+    label: "Finalized",
     color: "#F59E0B",
-    description: "Product data is being reviewed and finalized",
+    description: "Product data is ready for downstream publishing workflows",
+  },
+  failed: {
+    label: "Failed",
+    color: "#DC2626",
+    description: "Product processing failed and needs admin retry",
   },
   published: {
     label: "Published",
     color: "#008850",
     description: "Product is live on the storefront",
+  },
+  images: {
+    label: "Images",
+    color: "#06B6D4",
+    description: "Manage selected product images before export",
+  },
+  export: {
+    label: "Export",
+    color: "#6366F1",
+    description: "Prepare finalized products for export workflows",
   },
 } as const;

@@ -1,69 +1,31 @@
 import { createClient } from '@/lib/supabase/server';
-import type { PipelineStatus, StatusCount } from '@/lib/pipeline/types';
+import {
+    PERSISTED_PIPELINE_STATUSES,
+    isPersistedStatus,
+    type PersistedPipelineStatus,
+    type StatusCount,
+} from '@/lib/pipeline/types';
+import {
+    STATUS_TRANSITIONS as CORE_STATUS_TRANSITIONS,
+    validateTransition,
+} from '@/lib/pipeline/core';
 import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 
-/**
- * Legacy pipeline status types (for backward compatibility during migration).
- * @deprecated Use PipelineStatus from '@/lib/pipeline/types' for new code.
- */
-export type LegacyPipelineStatus = 'staging' | 'scraped' | 'consolidated' | 'approved' | 'published' | 'failed';
+const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
+    status => `'${status}'`
+).join(', ');
 
 /**
- * @deprecated Use PipelineStatus from '@/lib/pipeline/types'
+ * Canonical persisted status transition rules.
  */
-export type TransitionalPipelineStatus = PipelineStatus | LegacyPipelineStatus;
+export const STATUS_TRANSITIONS: Record<
+    PersistedPipelineStatus,
+    PersistedPipelineStatus[]
+> = CORE_STATUS_TRANSITIONS;
 
-const LEGACY_TO_NEW_STATUS: Record<LegacyPipelineStatus, PipelineStatus> = {
-    staging: 'imported',
-    failed: 'imported',
-    scraped: 'scraped',
-    consolidated: 'consolidated',
-    approved: 'finalized',
-    published: 'published',
-};
-
-const NEW_TO_LEGACY_STATUS: Record<PipelineStatus, LegacyPipelineStatus> = {
-    imported: 'staging',
-    monitoring: 'staging',
-    scraped: 'scraped',
-    consolidated: 'consolidated',
-    finalized: 'consolidated',
-    published: 'published',
-};
-
-/**
- * @deprecated Use PipelineStatus from '@/lib/pipeline/types'
- */
-export function isLegacyPipelineStatus(status: TransitionalPipelineStatus): status is LegacyPipelineStatus {
-    return !['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'].includes(status);
+function getInvalidTargetStatusError(targetStatus: string): string {
+    return `Invalid status transition to '${targetStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}`;
 }
-
-/**
- * @deprecated Use PipelineStatus from '@/lib/pipeline/types'
- */
-export function toNewPipelineStatus(status: TransitionalPipelineStatus): PipelineStatus {
-    return isLegacyPipelineStatus(status) ? LEGACY_TO_NEW_STATUS[status] : status;
-}
-
-/**
- * @deprecated Use PipelineStatus from '@/lib/pipeline/types'
- */
-export function toLegacyPipelineStatus(status: TransitionalPipelineStatus): LegacyPipelineStatus {
-    return isLegacyPipelineStatus(status) ? status : NEW_TO_LEGACY_STATUS[status];
-}
-
-/**
- * Status transition rules for the five-stage pipeline.
- * Defines which status transitions are valid.
- */
-export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
-    imported: ['monitoring', 'scraped'],
-    monitoring: ['scraped', 'imported'],
-    scraped: ['finalized', 'consolidated', 'imported'],
-    consolidated: ['finalized', 'scraped'],
-    finalized: ['published', 'scraped', 'consolidated'],
-    published: [], // Terminal state - no outgoing transitions
-};
 
 /**
  * Validates if a status transition is allowed.
@@ -72,12 +34,10 @@ export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
  * @returns true if transition is valid, false otherwise
  */
 export function validateStatusTransition(
-    from: PipelineStatus,
-    to: PipelineStatus
+    from: PersistedPipelineStatus,
+    to: PersistedPipelineStatus
 ): boolean {
-    if (from === to) return true; // Same status is always valid
-    const allowedTransitions = STATUS_TRANSITIONS[from];
-    return allowedTransitions?.includes(to) ?? false;
+    return validateTransition(from, to);
 }
 
 /**
@@ -110,8 +70,8 @@ export interface PipelineProduct {
         stock_status?: string;
         is_featured?: boolean;
     } | null;
-    /** Current pipeline stage status (five-stage: imported, scraped, consolidated, finalized, published) */
-    pipeline_status: PipelineStatus;
+    /** Current pipeline stage status persisted on the ingestion row */
+    pipeline_status: PersistedPipelineStatus;
     confidence_score?: number;
     error_message?: string;
     retry_count?: number;
@@ -152,16 +112,10 @@ function withMergedImageCandidates(product: PipelineProduct): PipelineProduct {
 }
 
 /**
- * @deprecated Use StatusCount from '@/lib/pipeline/types'
- */
-export type PipelineStatusType = PipelineStatus; // Alias for backward compatibility
-
-
-/**
  * Fetches products filtered by pipeline status.
  */
 export async function getProductsByStatus(
-    status: TransitionalPipelineStatus,
+    status: PersistedPipelineStatus,
     options?: {
         limit?: number;
         offset?: number;
@@ -180,12 +134,7 @@ export async function getProductsByStatus(
         .select('*', { count: 'exact' })
         .order('updated_at', { ascending: false });
 
-    const targetStatus = toNewPipelineStatus(status);
-    if (targetStatus === 'finalized') {
-        query = query.in('pipeline_status', ['finalized', 'consolidated']);
-    } else {
-        query = query.eq('pipeline_status', targetStatus);
-    }
+    query = query.eq('pipeline_status', status);
 
     if (options?.search) {
         query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
@@ -238,7 +187,7 @@ export async function getProductsByStatus(
  * Used by "select all matching" flows in the admin pipeline.
  */
 export async function getSkusByStatus(
-    status: TransitionalPipelineStatus,
+    status: PersistedPipelineStatus,
     options?: {
         search?: string;
         startDate?: string;
@@ -255,12 +204,7 @@ export async function getSkusByStatus(
         .select('sku', { count: 'exact' })
         .order('updated_at', { ascending: false });
 
-    const targetStatus = toNewPipelineStatus(status);
-    if (targetStatus === 'finalized') {
-        query = query.in('pipeline_status', ['finalized', 'consolidated']);
-    } else {
-        query = query.eq('pipeline_status', targetStatus);
-    }
+    query = query.eq('pipeline_status', status);
 
     if (options?.search) {
         query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
@@ -312,31 +256,23 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
 
     if (error) {
         console.error('Error fetching status counts:', error);
-        const statuses: PipelineStatus[] = ['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'];
-        return statuses.map(status => ({ status, count: 0 }));
+        return PERSISTED_PIPELINE_STATUSES.map(status => ({ status, count: 0 }));
     }
 
-    const countMap: Record<PipelineStatus, number> = {
+    const countMap: Record<PersistedPipelineStatus, number> = {
         imported: 0,
-        monitoring: 0,
         scraped: 0,
-        consolidated: 0,
         finalized: 0,
-        published: 0,
+        failed: 0,
     };
 
-    (data || []).forEach((row: { pipeline_status?: PipelineStatus }) => {
-        if (row.pipeline_status && countMap[row.pipeline_status] !== undefined) {
+    (data || []).forEach((row: { pipeline_status?: string }) => {
+        if (row.pipeline_status && isPersistedStatus(row.pipeline_status)) {
             countMap[row.pipeline_status]++;
         }
     });
 
-    // Merge consolidated count into finalized count for the UI
-    countMap.finalized += countMap.consolidated;
-    countMap.consolidated = 0;
-
-    const statuses: PipelineStatus[] = ['imported', 'monitoring', 'scraped', 'consolidated', 'finalized', 'published'];
-    return statuses.map(status => ({
+    return PERSISTED_PIPELINE_STATUSES.map(status => ({
         status,
         count: countMap[status] || 0,
     }));
@@ -347,15 +283,14 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
  */
 export async function updateProductStatus(
     sku: string,
-    newStatus: TransitionalPipelineStatus
+    newStatus: PersistedPipelineStatus
 ): Promise<{ success: boolean; error?: string }> {
     const supabase = await createClient();
-    const targetStatus = toNewPipelineStatus(newStatus);
 
     const { error } = await supabase
         .from('products_ingestion')
         .update({
-            pipeline_status: targetStatus,
+            pipeline_status: newStatus,
             updated_at: new Date().toISOString(),
         })
         .eq('sku', sku);
@@ -377,12 +312,16 @@ export async function updateProductStatus(
  */
 export async function bulkUpdateStatus(
     skus: string[],
-    newStatus: TransitionalPipelineStatus,
+    newStatus: PersistedPipelineStatus,
     userId?: string,
     resetResults: boolean = false
 ): Promise<{ success: boolean; error?: string; updatedCount: number }> {
     const supabase = await createClient();
-    const targetStatus = toNewPipelineStatus(newStatus);
+    const targetStatus = newStatus;
+
+    if (!isPersistedStatus(targetStatus)) {
+        return { success: false, error: getInvalidTargetStatusError(targetStatus), updatedCount: 0 };
+    }
 
     const { data: currentProducts, error: fetchError } = await supabase
         .from('products_ingestion')
@@ -395,21 +334,22 @@ export async function bulkUpdateStatus(
     }
 
     const invalidSkus = (currentProducts || [])
-        .filter((product: { pipeline_status: PipelineStatus }) => {
-            return !validateStatusTransition(product.pipeline_status, targetStatus);
+        .filter((product: { pipeline_status: string }) => {
+            return !isPersistedStatus(product.pipeline_status)
+                || !validateStatusTransition(product.pipeline_status, targetStatus);
         })
         .map((product: { sku: string }) => product.sku);
 
     if (invalidSkus.length > 0) {
         return {
             success: false,
-            error: `Invalid status transition to ${targetStatus} for SKU(s): ${invalidSkus.join(', ')}`,
+            error: `${getInvalidTargetStatusError(targetStatus)} SKU(s): ${invalidSkus.join(', ')}`,
             updatedCount: 0,
         };
     }
 
     const updatePayload: {
-        pipeline_status: PipelineStatus;
+        pipeline_status: PersistedPipelineStatus;
         updated_at: string;
         sources?: Record<string, unknown>;
         consolidated?: PipelineProduct['consolidated'];
@@ -497,7 +437,7 @@ export async function moveToScraped(
     invalidSkus?: string[];
 }> {
     const supabase = await createClient();
-    const targetStatus: PipelineStatus = 'scraped';
+    const targetStatus: PersistedPipelineStatus = 'scraped';
 
     // Fetch current statuses for all SKUs
     const { data: currentProducts, error: fetchError } = await supabase
@@ -512,8 +452,9 @@ export async function moveToScraped(
 
     // Validate all transitions before updating any (all-or-nothing)
     const invalidSkus: string[] = [];
-    (currentProducts || []).forEach((product: { sku: string; pipeline_status: PipelineStatus }) => {
-        if (!validateStatusTransition(product.pipeline_status, targetStatus)) {
+    (currentProducts || []).forEach((product: { sku: string; pipeline_status: string }) => {
+        if (!isPersistedStatus(product.pipeline_status)
+            || !validateStatusTransition(product.pipeline_status, targetStatus)) {
             invalidSkus.push(product.sku);
         }
     });
@@ -591,7 +532,7 @@ export async function moveToEnriched(
 /**
  * Bulk action to move multiple products to 'finalized' status.
  * Validates all transitions before executing (all-or-nothing).
- * Only products in 'consolidated' status can move to 'finalized'.
+ * Only products in 'scraped' status can move to 'finalized'.
  */
 export async function moveToFinalized(
     skus: string[],
@@ -603,7 +544,7 @@ export async function moveToFinalized(
     invalidSkus?: string[];
 }> {
     const supabase = await createClient();
-    const targetStatus: PipelineStatus = 'finalized';
+    const targetStatus: PersistedPipelineStatus = 'finalized';
 
     // Fetch current statuses for all SKUs
     const { data: currentProducts, error: fetchError } = await supabase
@@ -618,8 +559,9 @@ export async function moveToFinalized(
 
     // Validate all transitions before updating any (all-or-nothing)
     const invalidSkus: string[] = [];
-    (currentProducts || []).forEach((product: { sku: string; pipeline_status: PipelineStatus }) => {
-        if (!validateStatusTransition(product.pipeline_status, targetStatus)) {
+    (currentProducts || []).forEach((product: { sku: string; pipeline_status: string }) => {
+        if (!isPersistedStatus(product.pipeline_status)
+            || !validateStatusTransition(product.pipeline_status, targetStatus)) {
             invalidSkus.push(product.sku);
         }
     });
@@ -628,7 +570,7 @@ export async function moveToFinalized(
     if (invalidSkus.length > 0) {
         return {
             success: false,
-            error: `Cannot move to 'finalized': products must be in 'consolidated' status. Invalid SKU(s): ${invalidSkus.join(', ')}`,
+            error: `Cannot move to 'finalized': products must be in 'scraped' status. Invalid SKU(s): ${invalidSkus.join(', ')}`,
             updatedCount: 0,
             invalidSkus,
         };
@@ -653,7 +595,7 @@ export async function moveToFinalized(
         const auditPayload = {
             job_type: 'bulk_action',
             job_id: crypto.randomUUID(),
-            from_state: 'consolidated',
+            from_state: 'scraped',
             to_state: targetStatus,
             actor_id: userId || null,
             actor_type: userId ? 'user' : 'system',
@@ -756,7 +698,7 @@ export async function bulkDeleteProducts(
 /**
  * Clears scrape results and resets products back to 'imported' status.
  * This removes all scraped source data and consolidated data, allowing products
- * to be re-enhanced from scratch.
+ * to be retried from scratch.
  */
 export async function clearScrapeResultsAndResetStatus(
     skus: string[],
@@ -771,7 +713,12 @@ export async function clearScrapeResultsAndResetStatus(
             .update({
                 pipeline_status: 'imported',
                 sources: {},
-                consolidated: {},
+                consolidated: null,
+                image_candidates: [],
+                selected_images: [],
+                confidence_score: null,
+                error_message: null,
+                retry_count: 0,
                 updated_at: new Date().toISOString(),
             })
             .in('sku', skus);

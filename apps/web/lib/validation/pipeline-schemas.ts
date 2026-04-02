@@ -1,23 +1,23 @@
 import { z } from 'zod';
 
 export const PipelineStatusSchema = z.enum([
-    'staging',
+    'imported',
     'scraped',
-    'consolidated',
-    'approved',
-    'published',
+    'finalized',
     'failed',
 ]);
 
-export const NewPipelineStatusSchema = z.enum([
-    'registered',
-    'enriched',
+export const PipelineStageSchema = z.enum([
+    'imported',
+    'monitoring',
+    'scraped',
+    'consolidating',
     'finalized',
-]);
-
-export const TransitionalPipelineStatusSchema = z.union([
-    PipelineStatusSchema,
-    NewPipelineStatusSchema,
+    'failed',
+    'published',
+    'images',
+    'export',
+    'consolidated',
 ]);
 
 export const PipelineProductInputSchema = z.object({
@@ -51,19 +51,18 @@ export const PipelineProductSchema = z.object({
     sources: z.record(z.string(), z.unknown()),
     consolidated: PipelineProductConsolidatedSchema,
     pipeline_status: PipelineStatusSchema,
-    pipeline_status_new: NewPipelineStatusSchema.optional(),
     created_at: z.string(),
     updated_at: z.string(),
 });
 
 export const StatusCountSchema = z.object({
-    status: TransitionalPipelineStatusSchema,
+    status: PipelineStageSchema,
     count: z.number().int().min(0),
 });
 
 export const BulkUpdateStatusSchema = z.object({
     skus: z.array(z.string().min(1)).min(1, 'At least one SKU is required'),
-    newStatus: TransitionalPipelineStatusSchema,
+    newStatus: PipelineStatusSchema,
 });
 
 export const GetProductsByStatusOptionsSchema = z.object({
@@ -73,8 +72,7 @@ export const GetProductsByStatusOptionsSchema = z.object({
 });
 
 export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
-export type NewPipelineStatus = z.infer<typeof NewPipelineStatusSchema>;
-export type TransitionalPipelineStatus = z.infer<typeof TransitionalPipelineStatusSchema>;
+export type PipelineStage = z.infer<typeof PipelineStageSchema>;
 export type PipelineProduct = z.infer<typeof PipelineProductSchema>;
 export type StatusCount = z.infer<typeof StatusCountSchema>;
 export type BulkUpdateStatus = z.infer<typeof BulkUpdateStatusSchema>;
