@@ -33,7 +33,7 @@ type ActionButton = {
     className: string;
 };
 
-const newStatusMap: Record<PipelineStatus, ActionButton[]> = {
+const newStatusMap: Partial<Record<PipelineStatus, ActionButton[]>> = {
     imported: [
         { action: 'enrich', label: 'Run Scrapers', className: 'bg-blue-600 hover:bg-blue-700' },
     ],
@@ -51,23 +51,6 @@ const newStatusMap: Record<PipelineStatus, ActionButton[]> = {
     ],
     failed: [], // Retry handled elsewhere
     published: [], // Terminal state
-};
-
-
-const legacyActionsMap: Record<PipelineStatus, ActionButton[]> = {
-    imported: [],
-    monitoring: [],
-    scraped: [{ action: 'consolidate', label: 'Consolidate', className: 'bg-blue-600 hover:bg-blue-700' }],
-    consolidated: [
-        { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },
-        { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
-    ],
-    finalized: [
-        { action: 'publish', label: 'Publish', className: 'bg-green-600 hover:bg-green-700' },
-        { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
-    ],
-    failed: [],
-    published: [],
 };
 
 
@@ -93,7 +76,7 @@ export function BulkActionsToolbar({
     const [isDeleting, setIsDeleting] = useState(false);
 
     const isNewPipeline = true;
-    const actions = newStatusMap[currentStatus];
+    const actions = newStatusMap[currentStatus] ?? [];
     const isBusy = isMovingToEnriched || isDeleting || isConsolidating || isClearingScrapeResults || isEnriching;
 
     const handleDeleteClick = () => {

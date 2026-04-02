@@ -2,15 +2,21 @@ import { PassThrough, Readable } from 'node:stream';
 import ExcelJS from 'exceljs';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { PERSISTED_PIPELINE_STATUSES } from '@/lib/pipeline/types';
 import { createAdminClient } from '@/lib/supabase/server';
+import {
+  normalizePipelineRouteStatus,
+  PIPELINE_ROUTE_STATUS_VALUES,
+  type PipelineRouteStatus,
+} from '@/app/api/admin/pipeline/status-compat';
 
 export const runtime = 'nodejs';
 
 const EXPORT_FILENAME = 'products-export.xlsx';
 const PAGE_SIZE = 200;
-const ALLOWED_STATUSES = ['registered', 'enriched', 'finalized', 'all'] as const;
+const ALLOWED_STATUSES = PIPELINE_ROUTE_STATUS_VALUES;
 
-type ExportStatus = (typeof ALLOWED_STATUSES)[number];
+type ExportStatus = PipelineRouteStatus;
 
 type JsonRecord = Record<string, unknown>;
 type SelectedImageRecord = {
@@ -22,19 +28,7 @@ type ExportProduct = {
   consolidated: unknown;
   selected_images: unknown;
   pipeline_status?: string;
-  pipeline_status_new?: string | null;
 };
-
-function mapExportStatusToLegacy(status: ExportStatus): string[] {
-  if (status === 'registered') return ['staging', 'failed', 'registered'];
-  if (status === 'enriched') return ['scraped', 'enriched'];
-  if (status === 'finalized') return ['consolidated', 'approved', 'published', 'finalized'];
-  return [];
-}
-
-function isExportStatus(value: string): value is ExportStatus {
-  return ALLOWED_STATUSES.includes(value as ExportStatus);
-}
 
 function asRecord(value: unknown): JsonRecord {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -151,16 +145,13 @@ export async function streamWorkbook(status: ExportStatus | 'all', output: PassT
       
       let query = supabase
         .from('products_ingestion')
-        .select('sku, input, consolidated, selected_images, pipeline_status, pipeline_status_new, updated_at')
+        .select('sku, input, consolidated, selected_images, pipeline_status, updated_at')
         .order('updated_at', { ascending: false })
         .order('sku', { ascending: true });
       
       // Only filter by status if not 'all'
       if (status !== 'all') {
-        const legacyStatuses = mapExportStatusToLegacy(status);
-        query = query.or(
-          `pipeline_status_new.eq.${status},and(pipeline_status_new.is.null,pipeline_status.in.(${legacyStatuses.join(',')}))`
-        );
+        query = query.eq('pipeline_status', status);
       }
       
       const { data, error } = await query.range(from, to);
@@ -196,17 +187,20 @@ export async function GET(request: NextRequest) {
   if (!auth.authorized) return auth.response;
 
   const statusParam = request.nextUrl.searchParams.get('status') ?? 'finalized';
+  const normalizedStatus = normalizePipelineRouteStatus(statusParam, '/api/admin/pipeline/export');
 
-  if (!isExportStatus(statusParam)) {
+  if (!normalizedStatus) {
     return NextResponse.json(
-      { error: `Invalid status. Expected one of: ${ALLOWED_STATUSES.join(', ')}` },
+      {
+        error: `Invalid status. Expected one of: ${[...PERSISTED_PIPELINE_STATUSES, 'all'].join(', ')}`,
+      },
       { status: 400 }
     );
   }
 
   const output = new PassThrough();
 
-  void streamWorkbook(statusParam, output).catch((error: unknown) => {
+  void streamWorkbook(normalizedStatus, output).catch((error: unknown) => {
     console.error('Pipeline export stream failed:', error);
     output.destroy(error instanceof Error ? error : new Error('Pipeline export failed'));
   });

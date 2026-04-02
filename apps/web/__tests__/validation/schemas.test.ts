@@ -81,7 +81,7 @@ describe('Consolidation Schemas', () => {
 
     describe('PipelineStatusSchema', () => {
         it('should accept valid pipeline statuses', () => {
-            const validStatuses = ['staging', 'scraped', 'consolidated', 'approved', 'published', 'failed'];
+            const validStatuses = ['imported', 'scraped', 'finalized', 'failed'];
             for (const status of validStatuses) {
                 expect(PipelineStatusSchema.parse(status)).toBe(status);
             }
@@ -117,7 +117,6 @@ describe('Consolidation Schemas', () => {
                 is_featured: false,
             },
             pipeline_status: 'scraped',
-            pipeline_status_new: 'enriched',
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-02T00:00:00Z',
         };
@@ -126,7 +125,6 @@ describe('Consolidation Schemas', () => {
             const result = PipelineProductSchema.parse(validPipelineProduct);
             expect(result.sku).toBe('PROD-001');
             expect(result.pipeline_status).toBe('scraped');
-            expect(result.pipeline_status_new).toBe('enriched');
         });
 
         it('should parse pipeline product with optional fields missing', () => {
@@ -135,14 +133,13 @@ describe('Consolidation Schemas', () => {
                 input: {},
                 sources: {},
                 consolidated: {},
-                pipeline_status: 'staging',
-                pipeline_status_new: 'registered',
+                pipeline_status: 'imported',
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
             };
             const result = PipelineProductSchema.parse(minimalProduct);
             expect(result.sku).toBe('MIN-001');
-            expect(result.pipeline_status_new).toBe('registered');
+            expect(result.pipeline_status).toBe('imported');
         });
 
         it('should reject pipeline product with empty SKU', () => {

@@ -1,11 +1,11 @@
-import type { TransitionalPipelineStatus } from '@/lib/pipeline';
+import type { PersistedPipelineStatus } from '@/lib/pipeline/types';
 
 export interface UndoAction {
     id: string;
     type: 'status_change';
     skus: string[];
-    fromStatus: TransitionalPipelineStatus;
-    toStatus: TransitionalPipelineStatus;
+    fromStatus: PersistedPipelineStatus;
+    toStatus: PersistedPipelineStatus;
     timestamp: number;
     revert: () => Promise<void>;
 }
@@ -67,7 +67,9 @@ class UndoQueue {
     }
 
     private notify(action: UndoAction | null) {
-        this.listeners.forEach(l => l(action));
+        this.listeners.forEach((listener) => {
+            listener(action);
+        });
     }
 }
 

@@ -3,18 +3,24 @@
  * Transition validation and stage configuration utilities
  */
 
-import { STAGE_CONFIG, type PipelineStatus, type StageConfig } from './types';
+import {
+  STAGE_CONFIG,
+  type PersistedPipelineStatus,
+  type PipelineStage,
+  type StageConfig,
+} from './types';
 
 /**
  * Valid status transitions for each pipeline stage
  */
-export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
-  imported: ['monitoring', 'scraped'],
-  monitoring: ['scraped', 'imported'],
-  scraped: ['consolidated', 'imported'],
-  consolidated: ['finalized', 'scraped'],
-  finalized: ['published', 'consolidated'],
-  published: [],
+export const STATUS_TRANSITIONS: Record<
+  PersistedPipelineStatus,
+  PersistedPipelineStatus[]
+> = {
+  imported: ['scraped'],
+  scraped: ['finalized'],
+  finalized: ['scraped'],
+  failed: ['imported'],
 } as const;
 
 /**
@@ -25,8 +31,8 @@ export const STATUS_TRANSITIONS: Record<PipelineStatus, PipelineStatus[]> = {
  * @returns true if transition is allowed, false otherwise
  */
 export function validateTransition(
-  fromStatus: PipelineStatus,
-  toStatus: PipelineStatus
+  fromStatus: PersistedPipelineStatus,
+  toStatus: PersistedPipelineStatus
 ): boolean {
   // Same status transition is always allowed
   if (fromStatus === toStatus) {
@@ -43,7 +49,7 @@ export function validateTransition(
  * @param status - Pipeline status to check
  * @returns true if status is terminal, false otherwise
  */
-export function isTerminalStage(status: PipelineStatus): boolean {
+export function isTerminalStage(status: PersistedPipelineStatus): boolean {
   return STATUS_TRANSITIONS[status].length === 0;
 }
 
@@ -53,6 +59,12 @@ export function isTerminalStage(status: PipelineStatus): boolean {
  * @param status - Pipeline status
  * @returns StageConfig for the status
  */
-export function getStageConfig(status: PipelineStatus): StageConfig {
+export function getStageConfig(status: PipelineStage): StageConfig {
+  return STAGE_CONFIG[status];
+}
+
+export function getPersistedStageConfig(
+  status: PersistedPipelineStatus
+): StageConfig {
   return STAGE_CONFIG[status];
 }

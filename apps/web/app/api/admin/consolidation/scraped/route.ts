@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
         let query = supabase
             .from('products_ingestion')
             .select('sku, sources, input')
-            .or('pipeline_status_new.eq.enriched,and(pipeline_status_new.is.null,pipeline_status.in.(scraped,enriched))');
+            .eq('pipeline_status', 'scraped');
 
         if (skus && Array.isArray(skus) && skus.length > 0) {
             query = query.in('sku', skus);
