@@ -66,10 +66,12 @@ describe('persistProductsIngestionSourcesStrict', () => {
     expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).toMatchObject(
       expect.objectContaining({
         pipeline_status: 'scraped',
-        pipeline_status_new: 'enriched',
         is_test_run: false,
         updated_at: nowIso,
       })
+    );
+    expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).not.toHaveProperty(
+      'pipeline_status_new'
     );
     expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).toMatchObject({
       sources: {
@@ -139,7 +141,6 @@ describe('persistProductsIngestionSourcesStrict', () => {
       expect.arrayContaining([
       expect.objectContaining({
         pipeline_status: 'scraped',
-        pipeline_status_new: 'enriched',
         sources: {
           ai_discovery: {
             title: 'Discovery Name',
@@ -211,12 +212,14 @@ describe('persistProductsIngestionSourcesPartial', () => {
       expect.arrayContaining([
       expect.objectContaining({
         pipeline_status: 'scraped',
-        pipeline_status_new: 'enriched',
         is_test_run: false,
         updated_at: nowIso,
       })
       ]),
       { onConflict: 'sku' }
+    );
+    expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).not.toHaveProperty(
+      'pipeline_status_new'
     );
   });
 

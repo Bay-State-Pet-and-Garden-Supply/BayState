@@ -646,7 +646,7 @@ describe('consolidation batch service', () => {
         );
     });
 
-    it('applyConsolidationResults leaves low-confidence outputs in scraped/consolidated status', async () => {
+    it('applyConsolidationResults leaves low-confidence outputs in canonical scraped status', async () => {
         (getConsolidationConfig as jest.Mock).mockResolvedValue({
             model: 'gpt-4o-mini',
             maxTokens: 1024,
@@ -750,6 +750,7 @@ describe('consolidation batch service', () => {
                 error_message: expect.stringContaining('below threshold'),
             })
         );
+        expect((productsIngestionUpdate as jest.Mock).mock.calls[0]?.[0]).not.toHaveProperty('pipeline_status_new');
     });
 
     it('applyConsolidationResults rejects higher-trust brand conflicts', async () => {

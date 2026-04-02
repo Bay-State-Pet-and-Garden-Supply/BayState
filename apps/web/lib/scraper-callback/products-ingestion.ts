@@ -118,7 +118,6 @@ export async function persistProductsIngestionSourcesStrict(
       ...(hasMeaningfulData
         ? {
             pipeline_status: 'scraped' as const,
-            pipeline_status_new: 'enriched' as const,
           }
         : {}),
     };
@@ -180,7 +179,6 @@ export async function persistProductsIngestionSourcesPartial(
       ...(hasMeaningfulData
         ? {
             pipeline_status: 'scraped' as const,
-            pipeline_status_new: 'enriched' as const,
           }
         : {}),
     };
