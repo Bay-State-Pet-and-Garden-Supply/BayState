@@ -15,7 +15,7 @@ interface ProviderStatus {
   updated_at: string | null;
 }
 
-interface Defaults {
+interface ScrapingDefaults {
   llm_model: 'gpt-4o-mini' | 'gpt-4o';
   max_search_results: number;
   max_steps: number;
@@ -24,17 +24,17 @@ interface Defaults {
 
 interface ApiResponse {
   statuses: Record<'openai' | 'brave', ProviderStatus>;
-  defaults: Defaults;
+  defaults: ScrapingDefaults;
 }
 
-const DEFAULTS: Defaults = {
+const DEFAULTS: ScrapingDefaults = {
   llm_model: 'gpt-4o-mini',
   max_search_results: 5,
   max_steps: 15,
   confidence_threshold: 0.7,
 };
 
-export function AIScrapingCredentialsCard() {
+export function AIScrapingSettingsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +44,8 @@ export function AIScrapingCredentialsCard() {
     openai: { provider: 'openai', configured: false, last4: null, updated_at: null },
     brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
   });
-  const [defaults, setDefaults] = useState<Defaults>(DEFAULTS);
-  const [initialDefaults, setInitialDefaults] = useState<Defaults>(DEFAULTS);
+  const [defaults, setDefaults] = useState<ScrapingDefaults>(DEFAULTS);
+  const [initialDefaults, setInitialDefaults] = useState<ScrapingDefaults>(DEFAULTS);
 
   const fetchConfig = async () => {
     setLoading(true);
@@ -104,7 +104,7 @@ export function AIScrapingCredentialsCard() {
         throw new Error(body?.details || body?.error || 'Failed to save settings');
       }
 
-      const body = (await res.json()) as { statuses: ApiResponse['statuses']; defaults: Defaults };
+      const body = (await res.json()) as { statuses: ApiResponse['statuses']; defaults: ScrapingDefaults };
       setStatuses(body.statuses);
       setDefaults(body.defaults);
       setInitialDefaults(body.defaults);
@@ -125,9 +125,9 @@ export function AIScrapingCredentialsCard() {
             <Bot className="h-5 w-5 text-violet-600" />
           </div>
           <div>
-            <CardTitle>AI Scraping Credentials</CardTitle>
+            <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
-              Configure OpenAI and Brave keys for runner-dispatched AI scraping jobs.
+              Configure OpenAI and Brave keys for runner-dispatched AI scraping jobs, and set scraping models.
             </CardDescription>
           </div>
         </div>
@@ -177,12 +177,12 @@ export function AIScrapingCredentialsCard() {
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
-                <Label htmlFor="ai-model">Default Model</Label>
+                <Label htmlFor="scraping-ai-model">Scraping Model</Label>
                 <select
-                  id="ai-model"
+                  id="scraping-ai-model"
                   value={defaults.llm_model}
                   onChange={(e) =>
-                    setDefaults((prev) => ({ ...prev, llm_model: e.target.value as Defaults['llm_model'] }))
+                    setDefaults((prev) => ({ ...prev, llm_model: e.target.value as ScrapingDefaults['llm_model'] }))
                   }
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
@@ -220,9 +220,9 @@ export function AIScrapingCredentialsCard() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confidence-threshold">Confidence Threshold</Label>
+                <Label htmlFor="scraping-confidence-threshold">Confidence Threshold</Label>
                 <Input
-                  id="confidence-threshold"
+                  id="scraping-confidence-threshold"
                   type="number"
                   min={0}
                   max={1}
@@ -259,7 +259,7 @@ export function AIScrapingCredentialsCard() {
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Save AI Settings
+                      Save Scraping Settings
                     </>
                   )}
                 </Button>

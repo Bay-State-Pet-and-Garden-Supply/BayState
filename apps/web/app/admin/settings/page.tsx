@@ -1,4 +1,5 @@
-import { AIScrapingCredentialsCard } from "@/components/admin/settings/AIScrapingCredentialsCard";
+import { AIScrapingSettingsCard } from "@/components/admin/settings/AIScrapingSettingsCard";
+import { AIConsolidationSettingsCard } from "@/components/admin/settings/AIConsolidationSettingsCard";
 import { ShopSiteCredentialsCard } from "@/components/admin/settings/ShopSiteCredentialsCard";
 
 export default function AdminSettingsPage() {
@@ -12,7 +13,8 @@ export default function AdminSettingsPage() {
       </div>
 
       <ShopSiteCredentialsCard />
-      <AIScrapingCredentialsCard />
+      <AIScrapingSettingsCard />
+      <AIConsolidationSettingsCard />
     </div>
   );
 }
