@@ -878,24 +878,31 @@ def _run_ai_search_job(
     max_steps = int(search_cfg.get("max_steps", 15) or 15)
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
     llm_model = str(search_cfg.get("llm_model", "gpt-4o-mini") or "gpt-4o-mini")
+    search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto")
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
     extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
 
     previous_openai = os.environ.get("OPENAI_API_KEY")
+    previous_serpapi = os.environ.get("SERPAPI_API_KEY")
     previous_brave = os.environ.get("BRAVE_API_KEY")
     runtime_credentials = job_config.ai_credentials or {}
     runtime_openai = runtime_credentials.get("openai_api_key")
+    runtime_serpapi = runtime_credentials.get("serpapi_api_key")
     runtime_brave = runtime_credentials.get("brave_api_key")
 
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
     if runtime_openai:
         logger.debug(f"Setting OPENAI_API_KEY from job payload: {runtime_openai[:4]}...")
+    if runtime_serpapi:
+        logger.debug(f"Setting SERPAPI_API_KEY from job payload: {runtime_serpapi[:4]}...")
     if runtime_brave:
         logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
 
     if runtime_openai:
         os.environ["OPENAI_API_KEY"] = runtime_openai
+    if runtime_serpapi:
+        os.environ["SERPAPI_API_KEY"] = runtime_serpapi
     if runtime_brave:
         os.environ["BRAVE_API_KEY"] = runtime_brave
 
@@ -947,6 +954,7 @@ def _run_ai_search_job(
             "max_steps": max_steps,
             "confidence_threshold": confidence_threshold,
             "llm_model": llm_model,
+            "search_provider": search_provider,
             "cache_enabled": cache_enabled,
             "extraction_strategy": extraction_strategy,
         },
@@ -972,6 +980,7 @@ def _run_ai_search_job(
             max_steps=max_steps,
             confidence_threshold=confidence_threshold,
             llm_model=llm_model,
+            search_provider=search_provider,
             cache_enabled=cache_enabled,
             extraction_strategy=extraction_strategy,
         )
@@ -985,6 +994,12 @@ def _run_ai_search_job(
                 os.environ.pop("OPENAI_API_KEY", None)
             else:
                 os.environ["OPENAI_API_KEY"] = previous_openai
+
+        if runtime_serpapi:
+            if previous_serpapi is None:
+                os.environ.pop("SERPAPI_API_KEY", None)
+            else:
+                os.environ["SERPAPI_API_KEY"] = previous_serpapi
 
         if runtime_brave:
             if previous_brave is None:
@@ -1003,8 +1018,10 @@ def _run_ai_search_job(
 
         if search_result.success:
             results["data"][sku][scraper_name] = {
-                "size_metrics": search_result.size_metrics,
                 "title": search_result.product_name,
+                "brand": search_result.brand,
+                "weight": search_result.size_metrics,
+                "size_metrics": search_result.size_metrics,
                 "description": search_result.description,
                 "images": search_result.images,
                 "categories": search_result.categories,

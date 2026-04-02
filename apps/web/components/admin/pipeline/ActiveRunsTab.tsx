@@ -30,6 +30,7 @@ import { useLogSubscription } from "@/lib/realtime/useLogSubscription";
 import type { LogEntry } from "@/lib/realtime/useLogSubscription";
 import type { JobAssignment } from "@/lib/realtime/types";
 import { progressUpdateFromJobRecord } from "@/lib/scraper-logs";
+import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 interface ActiveJob {
   id: string;
@@ -90,8 +91,8 @@ function ConnectionIndicator({ isConnected }: { isConnected: boolean }) {
     <div className="flex items-center gap-1.5 text-xs">
       {isConnected ? (
         <>
-          <Wifi className="h-3.5 w-3.5 text-[#008850]" />
-          <span className="text-[#008850] font-medium">Live</span>
+          <Wifi className="h-3.5 w-3.5 text-primary" />
+          <span className="text-primary font-medium">Live</span>
         </>
       ) : (
         <>
@@ -178,6 +179,8 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [pendingCancelJobId, setPendingCancelJobId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
   const [timeRange, setTimeRange] = useState<TimeRange>("1h");
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
@@ -271,9 +274,16 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     }
   }, [pendingJobs, runningJobs, completedJobs, failedJobs, cancelledJobs]);
 
-  const handleCancel = async (jobId: string) => {
-    if (!confirm("Are you sure you want to cancel this job?")) return;
+  const handleCancelClick = (jobId: string) => {
+    setPendingCancelJobId(jobId);
+    setConfirmCancelOpen(true);
+  };
 
+  const handleConfirmCancel = async () => {
+    if (!pendingCancelJobId) return;
+    setConfirmCancelOpen(false);
+
+    const jobId = pendingCancelJobId;
     setCancellingId(jobId);
     try {
       const res = await fetch(`/api/admin/scrapers/runs/${jobId}/cancel`, {
@@ -291,6 +301,8 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     } finally {
       setCancellingId(null);
     }
+
+    setPendingCancelJobId(null);
   };
 
   const toggleJobExpanded = (jobId: string) => {
@@ -324,7 +336,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   if (loading) {
     return (
       <div className={`flex items-center justify-center py-12 ${className}`}>
-        <Loader2 className="h-8 w-8 animate-spin text-[#008850]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -419,7 +431,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                             job.status === "running"
-                              ? "bg-[#008850]/10 text-[#008850]"
+                              ? "bg-primary/10 text-primary"
                               : job.status === "completed"
                                 ? "bg-green-100 text-green-700"
                                 : job.status === "failed" ||
@@ -499,7 +511,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-[#008850] transition-all duration-500"
+                          className="h-full rounded-full bg-primary transition-all duration-500"
                           style={{ width: `${job.progress}%` }}
                         />
                       </div>
@@ -555,7 +567,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleCancel(job.id)}
+                          onClick={() => handleCancelClick(job.id)}
                           disabled={cancellingId === job.id}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
@@ -582,6 +594,20 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
           })}
         </>
       )}
+
+      <ConfirmationDialog
+        open={confirmCancelOpen}
+        onOpenChange={(open) => {
+          setConfirmCancelOpen(open);
+          if (!open) setPendingCancelJobId(null);
+        }}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Job"
+        description="Are you sure you want to cancel this job?"
+        confirmLabel="Cancel Job"
+        variant="destructive"
+        isLoading={!!cancellingId}
+      />
     </div>
   );
 }

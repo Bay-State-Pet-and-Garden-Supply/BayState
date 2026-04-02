@@ -16,6 +16,7 @@ import {
   User,
   ShieldCheck,
   Package,
+  DollarSign,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -93,6 +94,12 @@ const navSections: NavSection[] = [
     title: "System",
     adminOnly: true,
     items: [
+      {
+        href: "/admin/costs",
+        label: "Costs",
+        icon: DollarSign,
+        adminOnly: true,
+      },
       {
         href: "/admin/settings",
         label: "Settings",

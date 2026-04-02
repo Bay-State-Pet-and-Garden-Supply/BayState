@@ -127,7 +127,7 @@ export function FeedCard({ feed }: FeedCardProps) {
         </div>
         <Button 
           size="sm" 
-          className="w-full bg-[#008850] hover:bg-[#00663c]" 
+          className="w-full bg-primary hover:bg-primary/80" 
           onClick={handleSync}
           disabled={!feed.enabled || feed.status === 'unconfigured' || isSyncing}
         >

@@ -89,11 +89,11 @@ export function PipelineStatusTabs({
                 aria-controls="main-content"
                 id={`tab-${tab}`}
                 onClick={() => onTabChange(tab)}
-                className={`group flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#008850] focus:ring-offset-2 whitespace-nowrap ${
+                className={`group flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 whitespace-nowrap ${
                     isActive
-                        ? `bg-[#008850] text-white shadow-lg scale-105`
+                        ? `bg-primary text-white shadow-lg scale-105`
                         : isCompleted
-                            ? 'bg-[#008850]/10 text-[#008850] border border-[#008850]/20 hover:bg-[#008850]/20'
+                            ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
                             : config.bgColor + ' ' + config.color + ' border hover:opacity-80'
                 }`}
                 style={{
@@ -177,7 +177,7 @@ export function PipelineStatusTabs({
                         {renderTabButton(tab, flowOrder.indexOf(tab))}
                         {idx < statusTabs.length - 1 && (
                             <ArrowRight className={`h-4 w-4 mx-1 ${
-                                flowOrder.indexOf(tab) < activeIndex ? 'text-[#008850]' : 'text-gray-300'
+                                flowOrder.indexOf(tab) < activeIndex ? 'text-primary' : 'text-gray-300'
                             }`} />
                         )}
                     </div>

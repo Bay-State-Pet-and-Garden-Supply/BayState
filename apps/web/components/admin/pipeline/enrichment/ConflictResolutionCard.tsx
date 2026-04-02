@@ -82,7 +82,7 @@ export function ConflictResolutionCard({
             className={`
               relative flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all
               ${selectedSourceId === option.sourceId
-                ? 'border-[#008850] bg-green-50/30'
+                ? 'border-primary bg-green-50/30'
                 : 'border-border hover:border-border hover:bg-muted'
               }
             `}
@@ -109,7 +109,7 @@ export function ConflictResolutionCard({
                 className={`
                   h-5 w-5 rounded-full border flex items-center justify-center transition-colors
                   ${selectedSourceId === option.sourceId
-                    ? 'border-[#008850] bg-[#008850] text-white'
+                    ? 'border-primary bg-primary text-white'
                     : 'border-border bg-card'
                   }
                 `}
@@ -135,9 +135,9 @@ export function ConflictResolutionCard({
           onClick={handleSave}
           disabled={!selectedSourceId}
           className={`
-            px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#008850]
+            px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary
             ${selectedSourceId
-              ? 'bg-[#008850] hover:bg-[#006f41]'
+              ? 'bg-primary hover:bg-primary/80'
               : 'bg-muted cursor-not-allowed'
             }
           `}

@@ -250,7 +250,7 @@ export function LogViewer({
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
           <div className="flex items-center gap-2 font-medium text-slate-700">
-            <Loader2 className={`h-3.5 w-3.5 ${isConnected ? 'animate-spin text-[#008850]' : 'text-slate-400'}`} />
+            <Loader2 className={`h-3.5 w-3.5 ${isConnected ? 'animate-spin text-primary' : 'text-slate-400'}`} />
             {formatProgressLabel(liveProgress)}
           </div>
           {liveProgress?.message ? (

@@ -6,6 +6,41 @@
       "sourceType": "github",
       "computedHash": "4663ddf39772a0181df90d996fddeb15c594de2c25cfb4ef7afe2f382df32973"
     },
+    "ckm:banner-design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "2237d5aafec7ab0223a91a9c4a13a8d25a4bd8a29b4ae9f9ea74d2cbfb9c6f91"
+    },
+    "ckm:brand": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "a5f623ca3998b832a4a254426bc184479bf1cfbf4275b786a6319d014d06803c"
+    },
+    "ckm:design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "356a9ffc8ae2174dee4ac0b35458b383756e349dfa00de17b79394154cc99905"
+    },
+    "ckm:design-system": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "0206bc1d866ba6a93c6683d28b801314979fd164939d53830a7592ce0fb7a8a2"
+    },
+    "ckm:slides": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "f3e6594f5dd3f341afbd2b6c71d8b7cc44a97cdb85f76d5868b715f650c97ac2"
+    },
+    "ckm:ui-styling": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "b5f892864e479f969820c353f44faeedc61981bf2d7a854367069a80e0a264e1"
+    },
+    "frontend-design-pro": {
+      "source": "binjuhor/shadcn-lar",
+      "sourceType": "github",
+      "computedHash": "ac0ee19a6c01837e02fe4d79464acc59dd0fe203f9b27608d87617f865c1d814"
+    },
     "honest-review": {
       "source": "wyattowalsh/agents",
       "sourceType": "github",
@@ -21,15 +56,35 @@
       "sourceType": "github",
       "computedHash": "c31ddd68ba5798a79a516c619b1e1fc4408cc4876ad600fefa4f5add4425719d"
     },
+    "nextjs-app-router-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "04c1df896cc2c9ef824d618b95d21686c5b8e24e5cb32b3d6fe9d97d4b661536"
+    },
     "openai-docs": {
       "source": "openai/skills",
       "sourceType": "github",
       "computedHash": "d80d4a94b1fe9c36798edd1b316a5670997152cbb694b751254dbf18e0bfe068"
     },
+    "shadcn-ui": {
+      "source": "jezweb/claude-skills",
+      "sourceType": "github",
+      "computedHash": "f86d41cbe62c1224b77b673413a0141930a7d5d7054ea60a8192e354198cd71e"
+    },
+    "tailwind-design-system": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "f54f39ce967af3a4bba1f662c3600f0253467508d5fbbc7c545c67e102da2253"
+    },
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",
       "computedHash": "362fc541359923b3b6006ea58451f99976fb01eca92e8670890ad0c9c2399817"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "6337038fe1fe6bbe1b9f252ab678ee575859190bab6f0f246f4061824eb40875"
     },
     "using-shadcn-ui": {
       "source": "nilecui/skillsbase",

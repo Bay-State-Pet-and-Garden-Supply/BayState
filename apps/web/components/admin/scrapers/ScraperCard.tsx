@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Scraper, updateScraperStatus } from '@/lib/admin/scrapers';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ interface ScraperCardProps {
 }
 
 export function ScraperCard({ scraper }: ScraperCardProps) {
+  const router = useRouter();
   const [disabled, setDisabled] = useState(scraper.disabled);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -97,7 +99,7 @@ export function ScraperCard({ scraper }: ScraperCardProps) {
             variant="outline" 
             size="sm" 
             className="w-full gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/30"
-            onClick={() => window.location.href = `/admin/scrapers/${scraper.name}`}
+            onClick={() => router.push(`/admin/scrapers/${scraper.name}`)}
             disabled={disabled}
           >
             <Play className="h-3.5 w-3.5" />

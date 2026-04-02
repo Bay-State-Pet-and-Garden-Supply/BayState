@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { deleteCategory } from '@/app/admin/categories/actions';
 import { CategoryModal, Category } from './CategoryModal';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 interface AdminCategoriesClientProps {
     initialCategories: Category[];
@@ -54,6 +55,8 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
     const router = useRouter();
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteCategory, setPendingDeleteCategory] = useState<Category | null>(null);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,14 +83,23 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
         setExpandedIds(new Set());
     };
 
-    const handleDelete = async (category: Category) => {
+    const handleDeleteClick = (category: Category) => {
+        setPendingDeleteCategory(category);
+        setConfirmOpen(true);
+    };
+
+    const getDeleteMessage = (category: Category) => {
         const childCount = initialCategories.filter((c) => c.parent_id === category.id).length;
-        const message = childCount > 0
+        return childCount > 0
             ? `Delete "${category.name}" and its ${childCount} subcategories?`
             : `Delete "${category.name}"?`;
+    };
 
-        if (!confirm(message)) return;
+    const handleConfirmDelete = async () => {
+        if (!pendingDeleteCategory) return;
+        setConfirmOpen(false);
 
+        const category = pendingDeleteCategory;
         setDeleting(category.id);
         try {
             const result = await deleteCategory(category.id);
@@ -102,6 +114,8 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
         } finally {
             setDeleting(null);
         }
+
+        setPendingDeleteCategory(null);
     };
 
     const handleCreate = (parentId: string | null = null) => {
@@ -206,7 +220,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(node)}
+                            onClick={() => handleDeleteClick(node)}
                             disabled={deleting === node.id}
                             className="text-red-600 hover:bg-red-50 hover:text-red-700"
                         >
@@ -277,6 +291,20 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                     onSave={handleSaveModal}
                 />
             )}
+
+            <ConfirmationDialog
+                open={confirmOpen}
+                onOpenChange={(open) => {
+                    setConfirmOpen(open);
+                    if (!open) setPendingDeleteCategory(null);
+                }}
+                onConfirm={handleConfirmDelete}
+                title="Delete Category"
+                description={pendingDeleteCategory ? getDeleteMessage(pendingDeleteCategory) : ''}
+                confirmLabel="Delete"
+                variant="destructive"
+                isLoading={!!deleting}
+            />
         </div>
     );
 }

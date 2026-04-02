@@ -25,6 +25,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 
 interface Brand {
   id: string;
@@ -351,8 +352,13 @@ export function PipelineProductDetail({
 
         {/* Error Banner */}
         {error && (
-          <div className="mx-6 mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-            {error}
+          <div className="mx-6 mt-4">
+            <AlertBanner
+              severity="error"
+              title="Error"
+              message={error}
+              onDismiss={() => setError(null)}
+            />
           </div>
         )}
 

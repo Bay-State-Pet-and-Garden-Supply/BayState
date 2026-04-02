@@ -318,7 +318,7 @@ export function PipelineProductCard({
                                         e.stopPropagation();
                                         onEnrich(product.sku);
                                     }}
-                                    className="flex items-center justify-center h-11 w-11 rounded-md text-[#008850] hover:bg-[#008850]/10 transition-colors"
+                                    className="flex items-center justify-center h-11 w-11 rounded-md text-primary hover:bg-primary/10 transition-colors"
                                     title="Configure enrichment sources"
                                     aria-label="Configure enrichment"
                                 >
@@ -331,7 +331,7 @@ export function PipelineProductCard({
                                         e.stopPropagation();
                                         onImageSelection(product.sku);
                                     }}
-                                    className="flex items-center justify-center h-11 w-11 rounded-md text-[#008850] hover:bg-[#008850]/10 transition-colors"
+                                    className="flex items-center justify-center h-11 w-11 rounded-md text-primary hover:bg-primary/10 transition-colors"
                                     title="Select product images"
                                     aria-label="Select images"
                                 >

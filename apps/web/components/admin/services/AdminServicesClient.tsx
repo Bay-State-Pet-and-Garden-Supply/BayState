@@ -9,6 +9,7 @@ import { DataTable, type Column } from '@/components/admin/data-table';
 import { toast } from 'sonner';
 import { deleteService, toggleServiceStatus } from '@/app/admin/services/actions';
 import { ServiceModal, Service } from './ServiceModal';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 import { formatCurrency } from '@/lib/utils';
 
 interface AdminServicesClientProps {
@@ -20,6 +21,8 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
     const router = useRouter();
     const [selected, setSelected] = useState<Service[]>([]);
     const [updating, setUpdating] = useState<string | null>(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteService, setPendingDeleteService] = useState<Service | null>(null);
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,19 +65,22 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
         router.refresh();
     };
 
-    const handleDelete = async (service: Service) => {
-        if (!confirm(`Are you sure you want to delete "${service.name}"?`)) {
-            return;
-        }
+    const handleDeleteClick = (service: Service) => {
+        setPendingDeleteService(service);
+        setConfirmOpen(true);
+    };
 
+    const handleConfirmDelete = async () => {
+        if (!pendingDeleteService) return;
+        setConfirmOpen(false);
+
+        const service = pendingDeleteService;
         setUpdating(service.id);
         try {
             const result = await deleteService(service.id);
-
             if (!result.success) {
                 throw new Error(result.error);
             }
-
             toast.success(`Deleted "${service.name}"`);
             router.refresh();
         } catch (error) {
@@ -83,6 +89,8 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
         } finally {
             setUpdating(null);
         }
+
+        setPendingDeleteService(null);
     };
 
     const handleCreate = () => {
@@ -192,7 +200,7 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleDelete(service)}
+                onClick={() => handleDeleteClick(service)}
                 disabled={updating === service.id}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
             >
@@ -265,6 +273,20 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
                     onSave={handleSaveModal}
                 />
             )}
+
+            <ConfirmationDialog
+                open={confirmOpen}
+                onOpenChange={(open) => {
+                    setConfirmOpen(open);
+                    if (!open) setPendingDeleteService(null);
+                }}
+                onConfirm={handleConfirmDelete}
+                title="Delete Service"
+                description={`Are you sure you want to delete "${pendingDeleteService?.name}"?`}
+                confirmLabel="Delete"
+                variant="destructive"
+                isLoading={!!updating}
+            />
         </div>
     );
 }

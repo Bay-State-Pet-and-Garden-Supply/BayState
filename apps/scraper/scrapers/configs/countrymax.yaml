@@ -1,0 +1,134 @@
+schema_version: "1.0"
+name: countrymax
+display_name: CountryMax
+base_url: https://www.countrymax.com
+scraper_type: static
+use_stealth: false
+selectors:
+  - name: Name
+    selector: "h1.productView-title"
+    fallback_selectors:
+      - "h1"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: ".productView-brand a"
+    fallback_selectors:
+      - "a[href*='brand']"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "#tab-description"
+    fallback_selectors:
+      - ".productView-description"
+    attribute: text
+    multiple: false
+    required: false
+  - name: SKU
+    selector: "[data-product-sku]"
+    fallback_selectors:
+      - "p.productView-info-name .productView-info-value >> nth=0"
+    attribute: text
+    multiple: false
+    required: true
+  - name: UPC
+    selector: "p.productView-info-name .productView-info-value >> nth=1"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: ".productView-image img"
+    fallback_selectors:
+      - ".productView-thumbnails img"
+    attribute: src
+    multiple: true
+    required: true
+workflows:
+  - action: navigate
+    name: search_page
+    params:
+      url: "https://www.countrymax.com/search.php?search_query={sku}&section=product"
+  - action: wait_for
+    name: wait_for_search_results
+    params:
+      timeout: 15
+      selector:
+        - "a[href*='?searchid='][href*='search_query=']"
+        - "body"
+  - action: conditional
+    name: open_first_product_match
+    params:
+      condition_type: element_exists
+      selector: "a[href*='?searchid='][href*='search_query=']"
+      then:
+        - action: click
+          name: click_first_product_match
+          params:
+            selector: "a[href*='?searchid='][href*='search_query=']"
+        - action: wait_for
+          name: wait_for_product_details
+          params:
+            timeout: 15
+            selector:
+              - "h1.productView-title"
+              - "[data-product-sku]"
+        - action: extract
+          name: extract_fields
+          params:
+            fields:
+              - Name
+              - Brand
+              - Description
+              - SKU
+              - UPC
+              - Image URLs
+        - action: process_images
+          name: clean_images
+          params:
+            field: Image URLs
+            quality_patterns:
+              - regex: "/stencil/\\d+x\\d+/"
+                replacement: "/stencil/1280x1280/"
+            filters:
+              - type: require_text
+                text: cdn11.bigcommerce.com
+              - type: exclude_text
+                text: ProductDefault
+            deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - "a:has-text('Products (0) »')"
+    - "main :has-text('Products (0)')"
+  no_results_text_patterns:
+    - products (0)
+    - no products found
+login: null
+http_status: null
+normalization: null
+timeout: 25
+retries: 2
+image_quality: 60
+test_skus:
+  - "073564"
+  - "284177"
+  - "091069"
+fake_skus:
+  - zzznotreal9999
+  - "999999999999"
+  - NOTACOUNTRYMAXSKU
+edge_case_skus:
+  - "1"
+  - "123456789012345"

@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 
 import type { RunnerDetail } from './runner-detail-client';
 
@@ -110,7 +111,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
       if (result.success) {
         toast.success('Runner deleted');
         // Navigate back to network page
-        window.location.href = '/admin/scrapers/network';
+        router.push('/admin/scrapers/network');
       } else {
         toast.error(result.error || 'Failed to delete runner');
       }
@@ -292,10 +293,11 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
               <CardTitle className="text-red-600">Delete Runner</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800">
-                <strong>Warning:</strong> This action will permanently delete this runner
-                and all associated API keys. This action cannot be undone.
-              </div>
+              <AlertBanner
+                severity="error"
+                title="Warning"
+                message="This action will permanently delete this runner and all associated API keys. This action cannot be undone."
+              />
               <div className="space-y-2">
                 <label className="text-sm font-medium">
                   Type <code className="bg-muted px-1">{runner.name}</code> to confirm

@@ -160,12 +160,25 @@ class Crawl4AIExtractor:
                 
                 # Strict validation: ensure html and markdown are strings
                 html_raw = result.get("html")
+                fit_markdown_raw = result.get("fit_markdown")
+                raw_markdown_raw = result.get("raw_markdown")
                 markdown_raw = result.get("markdown")
                 html = html_raw if isinstance(html_raw, str) else ""
-                markdown = markdown_raw if isinstance(markdown_raw, str) else ""
+                fit_markdown = fit_markdown_raw if isinstance(fit_markdown_raw, str) else ""
+                raw_markdown = raw_markdown_raw if isinstance(raw_markdown_raw, str) else ""
+                markdown_value = markdown_raw if isinstance(markdown_raw, str) else ""
+                markdown = fit_markdown or raw_markdown or markdown_value
                 
                 if html_raw is not None and not isinstance(html_raw, str):
                     logger.warning(f"[AI Search] Crawl4AI returned non-string html (type={type(html_raw).__name__}), using empty string")
+                if fit_markdown_raw is not None and not isinstance(fit_markdown_raw, str):
+                    logger.warning(
+                        f"[AI Search] Crawl4AI returned non-string fit_markdown (type={type(fit_markdown_raw).__name__}), using empty string"
+                    )
+                if raw_markdown_raw is not None and not isinstance(raw_markdown_raw, str):
+                    logger.warning(
+                        f"[AI Search] Crawl4AI returned non-string raw_markdown (type={type(raw_markdown_raw).__name__}), using empty string"
+                    )
                 if markdown_raw is not None and not isinstance(markdown_raw, str):
                     logger.warning(f"[AI Search] Crawl4AI returned non-string markdown (type={type(markdown_raw).__name__}), using empty string")
                 
@@ -301,7 +314,14 @@ class Crawl4AIExtractor:
 
                     try:
                         parse_start = time.perf_counter()
-                        data = json.loads(extracted_content)
+                        if isinstance(extracted_content, str):
+                            data = json.loads(extracted_content)
+                        elif isinstance(extracted_content, dict):
+                            data = [extracted_content]
+                        elif isinstance(extracted_content, list):
+                            data = extracted_content
+                        else:
+                            raise TypeError(f"Unsupported extracted_content type: {type(extracted_content).__name__}")
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
 
                         if data and isinstance(data, list):
@@ -331,7 +351,7 @@ class Crawl4AIExtractor:
                             logger.info(f"[AI Search] Extraction method used: {method}")
 
                             return product_data
-                    except json.JSONDecodeError:
+                    except (json.JSONDecodeError, TypeError):
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
                         self._log_telemetry(url, sku, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, "JSON parse error")
                         logger.warning("[AI Search] Could not parse Crawl4AI extraction result, using fallback extractor")

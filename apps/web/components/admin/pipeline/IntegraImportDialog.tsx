@@ -6,6 +6,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { FileUpload } from '@/components/ui/file-upload';
 import { formatCurrency } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { analyzeIntegraAction, processOnboardingAction } from '@/app/admin/tools/integra-sync/actions';
 import { SyncAnalysis } from '@/lib/admin/integra-sync';
 
@@ -174,37 +182,37 @@ export function IntegraImportDialog({
 
                                     <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
                                         <div className="max-h-72 overflow-auto scrollbar-thin scrollbar-thumb-zinc-200">
-                                            <table className="w-full text-sm text-left border-collapse">
-                                                <thead className="bg-muted/80 sticky top-0 backdrop-blur-md border-b border-border z-10">
-                                                    <tr>
-                                                        <th className="px-6 py-4 font-bold text-muted-foreground text-[11px] uppercase tracking-widest">SKU</th>
-                                                        <th className="px-6 py-4 font-bold text-muted-foreground text-[11px] uppercase tracking-widest">Product Name</th>
-                                                        <th className="px-6 py-4 text-right font-bold text-muted-foreground text-[11px] uppercase tracking-widest">List Price</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-100">
+                                            <Table>
+                                                <TableHeader className="bg-muted/80 sticky top-0 backdrop-blur-md border-b border-border z-10">
+                                                    <TableRow>
+                                                        <TableHead className="px-6 py-4 font-bold text-[11px] uppercase tracking-widest">SKU</TableHead>
+                                                        <TableHead className="px-6 py-4 font-bold text-[11px] uppercase tracking-widest">Product Name</TableHead>
+                                                        <TableHead className="px-6 py-4 text-right font-bold text-[11px] uppercase tracking-widest">List Price</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
                                                     {analysis.newProducts.slice(0, 50).map((product) => (
-                                                        <tr key={product.sku} className="group hover:bg-muted/50 transition-colors">
-                                                            <td className="px-6 py-4">
+                                                        <TableRow key={product.sku} className="group hover:bg-muted/50">
+                                                            <TableCell className="px-6 py-4">
                                                                 <span className="font-mono text-foreground bg-muted px-2 py-1 rounded text-xs border border-border/50">{product.sku}</span>
-                                                            </td>
-                                                            <td className="px-6 py-4">
+                                                            </TableCell>
+                                                            <TableCell className="px-6 py-4">
                                                                 <span className="text-muted-foreground font-medium group-hover:text-foreground">{product.name}</span>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-right font-bold text-foreground">
+                                                            </TableCell>
+                                                            <TableCell className="px-6 py-4 text-right font-bold text-foreground">
                                                                 {formatCurrency(product.price)}
-                                                            </td>
-                                                        </tr>
+                                                            </TableCell>
+                                                        </TableRow>
                                                     ))}
                                                     {analysis.newProducts.length > 50 && (
-                                                        <tr>
-                                                            <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground text-xs italic bg-muted/30">
+                                                        <TableRow>
+                                                            <TableCell colSpan={3} className="px-6 py-8 text-center text-muted-foreground text-xs italic bg-muted/30">
                                                                 Showing first 50 of {analysis.newProducts.length} products found in the export.
-                                                            </td>
-                                                        </tr>
+                                                            </TableCell>
+                                                        </TableRow>
                                                     )}
-                                                </tbody>
-                                            </table>
+                                                </TableBody>
+                                            </Table>
                                         </div>
                                     </div>
                                     
@@ -275,7 +283,7 @@ export function IntegraImportDialog({
                                 onClick={handleAddToOnboarding}
                                 disabled={isProcessing}
                                 size="lg"
-                                className="bg-[#008850] hover:bg-[#008850]/90 text-white shadow-lg shadow-green-100 transition-all active:scale-[0.98] px-8 font-bold h-11"
+                                className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-green-100 transition-all active:scale-[0.98] px-8 font-bold h-11"
                             >
                                 {isProcessing ? (
                                     <>
