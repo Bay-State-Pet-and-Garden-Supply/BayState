@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "db994d5097a46cc01de3f84c55bafbb2659762339b82ab0135acff297c55672b"
     },
+    "nano-banana-2": {
+      "source": "inferen-sh/skills",
+      "sourceType": "github",
+      "computedHash": "5b39cc74ac68397b55980b9bdd6400c59ab9d69d9b2a908326af7267376d7d96"
+    },
     "next-best-practices": {
       "source": "vercel-labs/next-skills",
       "sourceType": "github",

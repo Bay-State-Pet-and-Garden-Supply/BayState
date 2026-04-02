@@ -6,7 +6,7 @@
  */
 
 import OpenAI from 'openai';
-import { getAIScrapingRuntimeCredentials, getAIScrapingDefaults } from '@/lib/ai-scraping/credentials';
+import { getAIScrapingRuntimeCredentials, getAIConsolidationDefaults } from '@/lib/ai-scraping/credentials';
 
 // We cache the client but only if the key hasn't changed.
 let lastApiKey: string | null = null;
@@ -80,7 +80,7 @@ export const CONSOLIDATION_CONFIG = {
  */
 export async function getConsolidationConfig() {
     try {
-        const defaults = await getAIScrapingDefaults();
+        const defaults = await getAIConsolidationDefaults();
         return {
             ...CONSOLIDATION_CONFIG,
             model: defaults.llm_model || CONSOLIDATION_CONFIG.model,

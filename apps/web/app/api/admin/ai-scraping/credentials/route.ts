@@ -5,6 +5,8 @@ import {
   getAIScrapingDefaults,
   setAIScrapingProviderSecret,
   upsertAIScrapingDefaults,
+  getAIConsolidationDefaults,
+  upsertAIConsolidationDefaults,
 } from '@/lib/ai-scraping/credentials';
 
 async function requireAdmin() {
@@ -38,16 +40,17 @@ export async function GET() {
       return auth.error;
     }
 
-    const [statuses, defaults] = await Promise.all([
+    const [statuses, defaults, consolidationDefaults] = await Promise.all([
       getAIScrapingCredentialStatuses(),
       getAIScrapingDefaults(),
+      getAIConsolidationDefaults(),
     ]);
 
-    return NextResponse.json({ statuses, defaults });
+    return NextResponse.json({ statuses, defaults, consolidationDefaults });
   } catch (error) {
     return NextResponse.json(
       {
-        error: 'Failed to fetch AI scraping credentials',
+        error: 'Failed to fetch AI credentials and defaults',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
@@ -71,6 +74,10 @@ export async function POST(request: NextRequest) {
         max_steps?: number;
         confidence_threshold?: number;
       };
+      consolidationDefaults?: {
+        llm_model?: 'gpt-4o-mini' | 'gpt-4o';
+        confidence_threshold?: number;
+      };
     };
 
     const tasks: Array<Promise<unknown>> = [];
@@ -87,18 +94,23 @@ export async function POST(request: NextRequest) {
       tasks.push(upsertAIScrapingDefaults(body.defaults));
     }
 
+    if (body.consolidationDefaults) {
+      tasks.push(upsertAIConsolidationDefaults(body.consolidationDefaults));
+    }
+
     await Promise.all(tasks);
 
-    const [statuses, defaults] = await Promise.all([
+    const [statuses, defaults, consolidationDefaults] = await Promise.all([
       getAIScrapingCredentialStatuses(),
       getAIScrapingDefaults(),
+      getAIConsolidationDefaults(),
     ]);
 
-    return NextResponse.json({ success: true, statuses, defaults });
+    return NextResponse.json({ success: true, statuses, defaults, consolidationDefaults });
   } catch (error) {
     return NextResponse.json(
       {
-        error: 'Failed to update AI scraping credentials',
+        error: 'Failed to update AI credentials and defaults',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

@@ -10,6 +10,11 @@ export interface AIScrapingDefaults {
   confidence_threshold: number;
 }
 
+export interface AIConsolidationDefaults {
+  llm_model: 'gpt-4o-mini' | 'gpt-4o';
+  confidence_threshold: number;
+}
+
 export interface AICredentialStatus {
   provider: AIProvider;
   configured: boolean;
@@ -18,6 +23,7 @@ export interface AICredentialStatus {
 }
 
 const AI_DEFAULTS_SETTINGS_KEY = 'ai_scraping_defaults';
+const AI_CONSOLIDATION_DEFAULTS_SETTINGS_KEY = 'ai_consolidation_defaults';
 const ENCRYPTION_KEY_ENV_NAME = 'AI_CREDENTIALS_ENCRYPTION_KEY';
 const ENCRYPTION_KEY_HELP =
   'Set AI_CREDENTIALS_ENCRYPTION_KEY to a 32-byte UTF-8 string or base64-encoded 32-byte key (example: `openssl rand -base64 32`).';
@@ -30,6 +36,11 @@ const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
   llm_model: 'gpt-4o-mini',
   max_search_results: 5,
   max_steps: 15,
+  confidence_threshold: 0.7,
+};
+
+const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
+  llm_model: 'gpt-4o-mini',
   confidence_threshold: 0.7,
 };
 
@@ -204,6 +215,58 @@ export async function upsertAIScrapingDefaults(partial: Partial<AIScrapingDefaul
 
   if (error) {
     throw new Error(`Failed to save AI scraping defaults: ${error.message}`);
+  }
+
+  return next;
+}
+
+function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
+  const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
+
+  const llmModel = value.llm_model === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini';
+  const confidenceThreshold = Number.isFinite(value.confidence_threshold)
+    ? Number(value.confidence_threshold)
+    : DEFAULT_AI_CONSOLIDATION_DEFAULTS.confidence_threshold;
+
+  return {
+    llm_model: llmModel,
+    confidence_threshold: Math.min(1, Math.max(0, confidenceThreshold)),
+  };
+}
+
+export async function getAIConsolidationDefaults(): Promise<AIConsolidationDefaults> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('site_settings')
+    .select('value')
+    .eq('key', AI_CONSOLIDATION_DEFAULTS_SETTINGS_KEY)
+    .single();
+
+  if (error || !data) {
+    return DEFAULT_AI_CONSOLIDATION_DEFAULTS;
+  }
+
+  return normalizeConsolidationDefaults(data.value);
+}
+
+export async function upsertAIConsolidationDefaults(partial: Partial<AIConsolidationDefaults>): Promise<AIConsolidationDefaults> {
+  const admin = getSupabaseAdmin();
+  const current = await getAIConsolidationDefaults();
+  const next = normalizeConsolidationDefaults({ ...current, ...partial });
+
+  const { error } = await admin
+    .from('site_settings')
+    .upsert(
+      {
+        key: AI_CONSOLIDATION_DEFAULTS_SETTINGS_KEY,
+        value: next,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' }
+    );
+
+  if (error) {
+    throw new Error(`Failed to save AI consolidation defaults: ${error.message}`);
   }
 
   return next;
