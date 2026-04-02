@@ -509,14 +509,16 @@ function collectAnimalSignalsFromValue(
     }
 
     if (Array.isArray(value)) {
-        value.forEach((entry) => collectAnimalSignalsFromValue(entry, detected, depth + 1));
+        value.forEach((entry) => {
+            collectAnimalSignalsFromValue(entry, detected, depth + 1);
+        });
         return;
     }
 
     if (value && typeof value === 'object') {
-        Object.values(value as Record<string, unknown>).forEach((entry) =>
-            collectAnimalSignalsFromValue(entry, detected, depth + 1)
-        );
+        Object.values(value as Record<string, unknown>).forEach((entry) => {
+            collectAnimalSignalsFromValue(entry, detected, depth + 1);
+        });
     }
 }
 
@@ -1247,7 +1249,7 @@ export async function applyConsolidationResults(
                     sku: result.sku,
                     next_fields: {},
                     pipeline_status: 'scraped',
-                    pipeline_status_new: 'enriched',
+                    pipeline_status_new: 'consolidated',
                     confidence_score: null,
                     error_message: result.error,
                     outcome: 'rejected',
@@ -1390,7 +1392,7 @@ export async function applyConsolidationResults(
                     sku: result.sku,
                     next_fields: {},
                     pipeline_status: 'scraped',
-                    pipeline_status_new: 'enriched',
+                    pipeline_status_new: 'consolidated',
                     confidence_score: result.confidence_score ?? null,
                     error_message: errorMessage,
                     outcome: 'rejected',
@@ -1441,7 +1443,7 @@ export async function applyConsolidationResults(
                 sku: result.sku,
                 next_fields: {},
                 pipeline_status: 'scraped',
-                pipeline_status_new: 'enriched',
+                pipeline_status_new: 'consolidated',
                 confidence_score: typeof result.confidence_score === 'number' ? result.confidence_score : null,
                 error_message: errorMessage,
                 outcome: 'rejected',
@@ -1475,7 +1477,7 @@ export async function applyConsolidationResults(
         for (const row of group) {
             row.outcome = 'rejected';
             row.pipeline_status = 'scraped';
-            row.pipeline_status_new = 'enriched';
+            row.pipeline_status_new = 'consolidated';
             row.error_message = errorMessage;
             row.next_fields = {};
             if (errors.length < 10) {

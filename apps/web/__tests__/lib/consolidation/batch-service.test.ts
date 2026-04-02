@@ -648,7 +648,7 @@ describe('consolidation batch service', () => {
         );
     });
 
-    it('applyConsolidationResults leaves low-confidence outputs in enriched', async () => {
+    it('applyConsolidationResults leaves low-confidence outputs in scraped/consolidated status', async () => {
         (getConsolidationConfig as jest.Mock).mockResolvedValue({
             model: 'gpt-4o-mini',
             maxTokens: 1024,
@@ -748,8 +748,8 @@ describe('consolidation batch service', () => {
         expect('status' in response && response.status === 'applied').toBe(true);
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'enriched',
-                pipeline_status_new: 'enriched',
+                pipeline_status: 'scraped',
+                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('below threshold'),
             })
         );
@@ -855,8 +855,8 @@ describe('consolidation batch service', () => {
 
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'enriched',
-                pipeline_status_new: 'enriched',
+                pipeline_status: 'scraped',
+                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('higher-trust source'),
             })
         );
@@ -988,16 +988,16 @@ describe('consolidation batch service', () => {
         expect(productsIngestionUpdate).toHaveBeenNthCalledWith(
             1,
             expect.objectContaining({
-                pipeline_status: 'enriched',
-                pipeline_status_new: 'enriched',
+                pipeline_status: 'scraped',
+                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('duplicate finalized name'),
             })
         );
         expect(productsIngestionUpdate).toHaveBeenNthCalledWith(
             2,
             expect.objectContaining({
-                pipeline_status: 'enriched',
-                pipeline_status_new: 'enriched',
+                pipeline_status: 'scraped',
+                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('duplicate finalized name'),
             })
         );
