@@ -384,7 +384,6 @@ describe('consolidation batch service', () => {
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
                 pipeline_status: 'finalized',
-                pipeline_status_new: 'finalized',
                 confidence_score: 0.94,
                 error_message: null,
                 consolidated: expect.objectContaining({
@@ -518,7 +517,6 @@ describe('consolidation batch service', () => {
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
                 pipeline_status: 'finalized',
-                pipeline_status_new: 'finalized',
                 confidence_score: 0.92,
                 error_message: null,
                 consolidated: expect.objectContaining({
@@ -749,7 +747,6 @@ describe('consolidation batch service', () => {
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
                 pipeline_status: 'scraped',
-                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('below threshold'),
             })
         );
@@ -856,7 +853,6 @@ describe('consolidation batch service', () => {
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
                 pipeline_status: 'scraped',
-                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('higher-trust source'),
             })
         );
@@ -989,7 +985,6 @@ describe('consolidation batch service', () => {
             1,
             expect.objectContaining({
                 pipeline_status: 'scraped',
-                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('duplicate finalized name'),
             })
         );
@@ -997,7 +992,6 @@ describe('consolidation batch service', () => {
             2,
             expect.objectContaining({
                 pipeline_status: 'scraped',
-                pipeline_status_new: 'consolidated',
                 error_message: expect.stringContaining('duplicate finalized name'),
             })
         );
