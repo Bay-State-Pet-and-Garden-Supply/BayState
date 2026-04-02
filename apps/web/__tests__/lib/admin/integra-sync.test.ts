@@ -41,10 +41,12 @@ describe("addToOnboarding", () => {
         expect.objectContaining({
           sku: "SKU1",
           input: expect.objectContaining({ name: "First", price: 10 }),
+          pipeline_status: "registered",
         }),
         expect.objectContaining({
           sku: "SKU2",
           input: expect.objectContaining({ name: "Second", price: 5 }),
+          pipeline_status: "registered",
         }),
       ]),
     );
