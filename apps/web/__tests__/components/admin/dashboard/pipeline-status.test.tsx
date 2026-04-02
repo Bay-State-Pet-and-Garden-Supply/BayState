@@ -3,21 +3,20 @@ import { PipelineStatus } from '@/components/admin/dashboard/pipeline-status';
 
 describe('PipelineStatus', () => {
   const mockCounts = {
-    staging: 10,
+    imported: 10,
     scraped: 5,
-    consolidated: 15,
-    approved: 20,
+    finalized: 35,
+    failed: 2,
     published: 50,
   };
 
-  it('renders all status labels', () => {
+  it('renders all canonical status labels', () => {
     render(<PipelineStatus counts={mockCounts} />);
 
     expect(screen.getByText('Imported')).toBeInTheDocument();
-    expect(screen.getByText('Enhanced')).toBeInTheDocument();
-    expect(screen.getByText('Ready for Review')).toBeInTheDocument();
-    expect(screen.getByText('Verified')).toBeInTheDocument();
-    expect(screen.getByText('Live')).toBeInTheDocument();
+    expect(screen.getByText('Scraped')).toBeInTheDocument();
+    expect(screen.getByText('Finalized')).toBeInTheDocument();
+    expect(screen.getByText('Failed')).toBeInTheDocument();
   });
 
   it('renders counts for each status', () => {
@@ -25,37 +24,38 @@ describe('PipelineStatus', () => {
 
     expect(screen.getByText('10')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('15')).toBeInTheDocument();
-    expect(screen.getByText('20')).toBeInTheDocument();
-    expect(screen.getByText('50')).toBeInTheDocument();
+    expect(screen.getByText('35')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
-  it('renders total count', () => {
+  it('renders total count including published', () => {
     render(<PipelineStatus counts={mockCounts} />);
 
-    expect(screen.getByText('100')).toBeInTheDocument();
+    // Total includes all statuses: 10 + 5 + 35 + 2 + 50 = 102
+    expect(screen.getByText('102')).toBeInTheDocument();
     expect(screen.getByText(/items in intake/)).toBeInTheDocument();
   });
 
-  it('shows attention banner when items need review', () => {
+  it('shows intake pipeline banner with total count', () => {
     render(<PipelineStatus counts={mockCounts} />);
 
-    // staging (10) + scraped (5) + consolidated (15) = 30
-    expect(screen.getByText('30 products need attention')).toBeInTheDocument();
+    // Banner shows total count of items in intake pipeline
+    expect(screen.getByText(/52/)).toBeInTheDocument();
+    expect(screen.getByText(/products are in the intake pipeline/)).toBeInTheDocument();
   });
 
-  it('does not show attention banner when no items need review', () => {
-    const allPublished = {
-      staging: 0,
+  it('does not show banner when no items in pipeline', () => {
+    const emptyCounts = {
+      imported: 0,
       scraped: 0,
-      consolidated: 0,
-      approved: 0,
-      published: 100,
+      finalized: 0,
+      failed: 0,
+      published: 0,
     };
 
-    render(<PipelineStatus counts={allPublished} />);
+    render(<PipelineStatus counts={emptyCounts} />);
 
-    expect(screen.queryByText(/products need attention/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/products are in the intake pipeline/)).not.toBeInTheDocument();
   });
 
   it('renders View All link', () => {
@@ -67,18 +67,18 @@ describe('PipelineStatus', () => {
 
   it('handles zero counts', () => {
     const zeroCounts = {
-      staging: 0,
+      imported: 0,
       scraped: 0,
-      consolidated: 0,
-      approved: 0,
+      finalized: 0,
+      failed: 0,
       published: 0,
     };
 
     render(<PipelineStatus counts={zeroCounts} />);
 
-    // All status rows show 0, plus the total
+    // All 4 canonical status rows show 0, plus the total
     const zeroElements = screen.getAllByText('0');
-    expect(zeroElements.length).toBe(6); // 5 statuses + 1 total
+    expect(zeroElements.length).toBe(5); // 4 canonical statuses + 1 total
     expect(screen.getByText(/items in intake/)).toBeInTheDocument();
   });
 });
