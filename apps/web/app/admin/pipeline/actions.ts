@@ -4,7 +4,7 @@ import { addToOnboarding, IntegraProduct } from '@/lib/admin/integra-sync';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Server action to manually add a single product to the ingestion pipeline (staging status).
+ * Server action to manually add a single product to the ingestion pipeline (Imported tab).
  */
 export async function manualAddProductAction(product: IntegraProduct) {
     try {

@@ -13,6 +13,13 @@ export interface SyncAnalysis {
   newProducts: IntegraProduct[];
 }
 
+type OnboardingTabStatus = "imported";
+
+const INITIAL_ONBOARDING_TAB_STATUS: OnboardingTabStatus = "imported";
+const PIPELINE_STATUS_BY_TAB_STATUS: Record<OnboardingTabStatus, "registered"> = {
+  imported: "registered",
+};
+
 /**
  * Parses an Integra Excel export.
  * Mapping:
@@ -115,7 +122,8 @@ export async function addToOnboarding(
       name: p.name,
       price: p.price,
     },
-    pipeline_status: "imported",
+    // UI onboarding tab uses "imported"; DB persists the normalized status literal.
+    pipeline_status: PIPELINE_STATUS_BY_TAB_STATUS[INITIAL_ONBOARDING_TAB_STATUS],
     updated_at: new Date().toISOString(),
   }));
 
@@ -125,7 +133,7 @@ export async function addToOnboarding(
     );
   }
 
-  // Use upsert to avoid duplicate key errors if some products were already in imported
+  // Use upsert to avoid duplicate key errors if some products are already in onboarding.
   const { error } = await supabase
     .from("products_ingestion")
     .upsert(onboardingData, { onConflict: "sku" });
