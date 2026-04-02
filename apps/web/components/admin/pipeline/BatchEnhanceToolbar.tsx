@@ -37,7 +37,7 @@ export function BatchEnhanceToolbar({
                     onClick={onBatchEnhance}
                     disabled={isEnhancing}
                     className={`flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${runnersAvailable
-                            ? 'bg-[#008850] hover:bg-[#2a7034]'
+                            ? 'bg-primary hover:bg-primary/80'
                             : 'bg-amber-600 hover:bg-amber-700'
                         } disabled:opacity-50`}
                     title={!runnersAvailable ? 'Queue for enhancement (runners offline)' : undefined}

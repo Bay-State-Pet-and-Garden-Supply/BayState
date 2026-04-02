@@ -29,7 +29,7 @@ export function ProductCard({
   return (
     <Card
       className={`group relative overflow-hidden transition-all cursor-pointer ${
-        isSelected ? 'border-[#008850] shadow-md ring-1 ring-[#008850]/20' : 'hover:shadow-md hover:border-primary/30'
+        isSelected ? 'border-primary shadow-md ring-1 ring-primary/20' : 'hover:shadow-md hover:border-primary/30'
       }`}
       onClick={() => onSelect(product.sku, !isSelected)}
     >

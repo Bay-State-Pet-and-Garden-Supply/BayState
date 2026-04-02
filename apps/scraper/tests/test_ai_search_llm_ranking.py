@@ -15,7 +15,7 @@ async def test_scrape_product_uses_llm_source_selection_when_enabled() -> None:
             {"url": "https://official.com/product", "title": "Official", "description": "Desc"},
             {"url": "https://retailer.com/product", "title": "Retailer", "description": "Desc"}
         ]
-        scraper._search_client.search = AsyncMock(return_value=(mock_results, None))
+        scraper._search_client.search_with_cost = AsyncMock(return_value=(mock_results, None, 0.0))
         scraper._name_consolidator.consolidate_name = AsyncMock(return_value=("Test Product", 0.0))
         
         # Mock LLM source selector
@@ -46,7 +46,7 @@ async def test_scrape_product_falls_back_to_heuristics_when_llm_fails() -> None:
         mock_results = [
             {"url": "https://heuristic-choice.com/product", "title": "Heuristic", "description": "Desc"}
         ]
-        scraper._search_client.search = AsyncMock(return_value=(mock_results, None))
+        scraper._search_client.search_with_cost = AsyncMock(return_value=(mock_results, None, 0.0))
         scraper._name_consolidator.consolidate_name = AsyncMock(return_value=("Test Product", 0.0))
         
         # Mock LLM to return None

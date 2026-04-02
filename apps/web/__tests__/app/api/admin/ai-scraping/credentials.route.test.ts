@@ -77,6 +77,7 @@ describe('AI scraping credentials admin route', () => {
   it('returns statuses and defaults on GET', async () => {
     (getAIScrapingCredentialStatuses as jest.Mock).mockResolvedValue({
       openai: { provider: 'openai', configured: true, last4: '1234', updated_at: null },
+      serpapi: { provider: 'serpapi', configured: true, last4: '5678', updated_at: null },
       brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
     });
     (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
@@ -99,6 +100,7 @@ describe('AI scraping credentials admin route', () => {
     (upsertAIScrapingDefaults as jest.Mock).mockResolvedValue(undefined);
     (getAIScrapingCredentialStatuses as jest.Mock).mockResolvedValue({
       openai: { provider: 'openai', configured: true, last4: 'abcd', updated_at: null },
+      serpapi: { provider: 'serpapi', configured: true, last4: 'efgh', updated_at: null },
       brave: { provider: 'brave', configured: true, last4: 'wxyz', updated_at: null },
     });
     (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
@@ -111,6 +113,7 @@ describe('AI scraping credentials admin route', () => {
     const req = {
       json: async () => ({
         openai_api_key: 'sk-test',
+        serpapi_api_key: 'serpapi-test',
         brave_api_key: 'brave-test',
         defaults: {
           llm_model: 'gpt-4o',
@@ -128,6 +131,7 @@ describe('AI scraping credentials admin route', () => {
     expect(res?.status).toBe(200);
 
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('openai', 'sk-test', 'user-1');
+    expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('serpapi', 'serpapi-test', 'user-1');
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('brave', 'brave-test', 'user-1');
     expect(upsertAIScrapingDefaults).toHaveBeenCalled();
   });

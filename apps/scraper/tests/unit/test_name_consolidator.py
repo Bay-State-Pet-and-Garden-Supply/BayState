@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from scrapers.ai_search.name_consolidator import NameConsolidator
 
 @pytest.mark.asyncio
@@ -25,26 +25,30 @@ async def test_name_consolidator_infers_canonical_name() -> None:
     ]
     mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=10)
     
-    with patch("openai.resources.chat.Completions.create", return_value=mock_response):
-        consolidator = NameConsolidator(api_key="test-key")
-        consolidated_name, cost = await consolidator.consolidate_name(
-            sku="84170364",
-            abbreviated_name="ADVNTG II CAT LRG",
-            search_snippets=results
-        )
-        
-        assert consolidated_name == "Bayer Advantage II Large Cat"
-        assert cost > 0
+    consolidator = NameConsolidator(api_key="test-key")
+    assert consolidator.client is not None
+    consolidator.client.chat.completions.create = AsyncMock(return_value=mock_response)
+
+    consolidated_name, cost = await consolidator.consolidate_name(
+        sku="84170364",
+        abbreviated_name="ADVNTG II CAT LRG",
+        search_snippets=results
+    )
+    
+    assert consolidated_name == "Bayer Advantage II Large Cat"
+    assert cost > 0
 
 @pytest.mark.asyncio
 async def test_name_consolidator_returns_original_if_llm_fails() -> None:
-    with patch("openai.resources.chat.Completions.create", side_effect=Exception("API Error")):
-        consolidator = NameConsolidator(api_key="test-key")
-        consolidated_name, cost = await consolidator.consolidate_name(
-            sku="123",
-            abbreviated_name="ABBRV NAME",
-            search_snippets=[]
-        )
-        
-        assert consolidated_name == "ABBRV NAME"
-        assert cost == 0.0
+    consolidator = NameConsolidator(api_key="test-key")
+    assert consolidator.client is not None
+    consolidator.client.chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
+
+    consolidated_name, cost = await consolidator.consolidate_name(
+        sku="123",
+        abbreviated_name="ABBRV NAME",
+        search_snippets=[{"title": "One", "description": "Two"}]
+    )
+    
+    assert consolidated_name == "ABBRV NAME"
+    assert cost == 0.0

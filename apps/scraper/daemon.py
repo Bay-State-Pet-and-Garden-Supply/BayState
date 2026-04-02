@@ -81,8 +81,13 @@ if env_file.exists():
 try:
     # Prefer package-relative imports when daemon.py is imported as part of the
     # `scraper` package (normal runtime).
-    from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig
+    from core.api_client import ClaimedChunk, ScraperAPIClient, JobConfig, RunnerBuildMismatchError
     from core.realtime_manager import RealtimeManager
+    from core.version import (
+        get_runner_build_id,
+        get_runner_build_sha,
+        get_runner_release_channel,
+    )
     from utils.logger import setup_logging
     from utils.logging_handlers import JobLoggingSession
     from utils.sentry import (
@@ -108,13 +113,19 @@ except Exception:
     import importlib
     from typing import Any
 
-    api_mod = importlib.import_module("apps.scraper.infra.api_client")
+    api_mod = importlib.import_module("apps.scraper.core.api_client")
     ClaimedChunk = getattr(api_mod, "ClaimedChunk")
     ScraperAPIClient = getattr(api_mod, "ScraperAPIClient")
     JobConfig = getattr(api_mod, "JobConfig")
+    RunnerBuildMismatchError = getattr(api_mod, "RunnerBuildMismatchError")
 
-    realtime_mod = importlib.import_module("apps.scraper.infra.realtime_manager")
+    realtime_mod = importlib.import_module("apps.scraper.core.realtime_manager")
     RealtimeManager = getattr(realtime_mod, "RealtimeManager")
+
+    version_mod = importlib.import_module("apps.scraper.core.version")
+    get_runner_build_id = getattr(version_mod, "get_runner_build_id")
+    get_runner_build_sha = getattr(version_mod, "get_runner_build_sha")
+    get_runner_release_channel = getattr(version_mod, "get_runner_release_channel")
 
     # Runtime imports (use importlib to avoid implicit-relative import issues
     # when this file is executed as a top-level script during CI checks).
@@ -263,11 +274,9 @@ async def main_async():
     except Exception as e:
         logger.warning(f"Failed to start metrics server: {e}")
 
-    # Read version
-    version = "unknown"
-    version_file = PROJECT_ROOT / "VERSION"
-    if version_file.exists():
-        version = version_file.read_text().strip()
+    runner_build_id = get_runner_build_id()
+    runner_build_sha = get_runner_build_sha()
+    runner_release_channel = get_runner_release_channel()
 
     if not client.api_url or not client.api_key:
         logger.error("Missing SCRAPER_API_URL or SCRAPER_API_KEY. Cannot start daemon.")
@@ -281,10 +290,13 @@ async def main_async():
         sys.exit(1)
 
     logger.info("=" * 60)
-    logger.info(f"Bay State Scraper Daemon Starting (v{version})")
+    logger.info("Bay State Scraper Daemon Starting")
     logger.info("=" * 60)
     logger.info(f"Environment: {args.env.upper()}")
     logger.info(f"Runner Name: {client.runner_name}")
+    logger.info(f"Release Channel: {runner_release_channel}")
+    logger.info(f"Runner Build ID: {runner_build_id}")
+    logger.info(f"Runner Build SHA: {runner_build_sha}")
     logger.info(f"API URL: {client.api_url}")
     logger.info(f"Platform: {platform.system()} {platform.release()}")
     logger.info(f"Poll Interval: {POLL_INTERVAL}s")
@@ -437,6 +449,15 @@ async def main_async():
 
                 await asyncio.sleep(POLL_INTERVAL)
 
+        except RunnerBuildMismatchError as e:
+            latest_build_id = getattr(e, "latest_build_id", None)
+            logger.error(
+                "Coordinator rejected this runner image build%s%s. Shutting down so it does not keep polling.",
+                f" {getattr(e, 'runner_build_id', runner_build_id)}" if getattr(e, "runner_build_id", None) else "",
+                f" (latest build: {latest_build_id})" if latest_build_id else "",
+            )
+            logger.error(str(e))
+            break
         except Exception as e:
             logger.error(f"Daemon loop error: {e}")
             await asyncio.sleep(POLL_INTERVAL)

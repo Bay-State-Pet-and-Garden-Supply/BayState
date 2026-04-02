@@ -1,8 +1,10 @@
 "use client";
 
 import { Loader2, Plus, Trash2, Search, Archive, Upload } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
+import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 /**
  * Bulk action configuration for each pipeline stage.
@@ -79,6 +81,8 @@ export function FloatingActionsBar({
   onUploadShopSite,
   onDownloadZip,
 }: FloatingActionsBarProps) {
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+
   if (selectedCount === 0) return null;
 
   const bulkAction = BULK_ACTIONS[currentStage];
@@ -100,13 +104,14 @@ export function FloatingActionsBar({
 
   const handleResetAction = () => {
     if (bulkAction.previousStage && onResetStage) {
-      if (
-        confirm(
-          `Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? "s" : ""}? This action may clear data.`,
-        )
-      ) {
-        onResetStage(bulkAction.previousStage);
-      }
+      setConfirmResetOpen(true);
+    }
+  };
+
+  const handleConfirmReset = () => {
+    setConfirmResetOpen(false);
+    if (bulkAction.previousStage && onResetStage) {
+      onResetStage(bulkAction.previousStage);
     }
   };
 
@@ -115,7 +120,7 @@ export function FloatingActionsBar({
       <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-2xl ring-1 ring-black/5">
         {/* Selection Count */}
         <div className="flex items-center gap-3 border-r border-border pr-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#008850] text-[13px] font-bold text-white tabular-nums">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white tabular-nums">
             {selectedCount}
           </div>
           <div className="flex flex-col">
@@ -163,7 +168,7 @@ export function FloatingActionsBar({
               size="sm"
               onClick={() => onOpenScrapeDialog?.()}
               disabled={isLoading}
-              className="h-10 border-[#008850]/20 text-xs font-bold text-[#008850] hover:bg-[#008850]/5"
+              className="h-10 border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
             >
               <Plus className="mr-1.5 h-4 w-4" />
               {bulkAction.secondaryAction}
@@ -190,7 +195,7 @@ export function FloatingActionsBar({
                 size="sm"
                 onClick={onUploadShopSite}
                 disabled={isLoading || actionState !== null}
-                className="h-10 border-[#008850]/20 text-xs font-bold text-[#008850] hover:bg-[#008850]/5"
+                className="h-10 border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
               >
                 {actionState === "upload" ? (
                   <>
@@ -208,7 +213,7 @@ export function FloatingActionsBar({
                 size="sm"
                 onClick={onDownloadZip}
                 disabled={isLoading || actionState !== null}
-                className="h-10 bg-[#008850] px-5 text-xs font-bold text-white hover:bg-[#008850]/90 shadow-lg shadow-[#008850]/20"
+                className="h-10 bg-primary px-5 text-xs font-bold text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
               >
                 {actionState === "zip" ? (
                   <>
@@ -229,7 +234,7 @@ export function FloatingActionsBar({
             <Button
               onClick={handlePrimaryAction}
               disabled={isLoading}
-              className="h-10 bg-[#008850] px-6 text-xs font-bold text-white hover:bg-[#008850]/90 shadow-lg shadow-[#008850]/20"
+              className="h-10 bg-primary px-6 text-xs font-bold text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
             >
               {isLoading ? (
                 <>
@@ -246,6 +251,15 @@ export function FloatingActionsBar({
           )}
         </div>
       </div>
+
+      <ConfirmationDialog
+        open={confirmResetOpen}
+        onOpenChange={setConfirmResetOpen}
+        onConfirm={handleConfirmReset}
+        title="Reset Stage"
+        description={`Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? "s" : ""}? This action may clear data.`}
+        confirmLabel={bulkAction.resetLabel ?? "Reset"}
+      />
     </div>
   );
 }

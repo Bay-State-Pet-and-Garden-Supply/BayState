@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import threading
+import time as _time
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
@@ -62,7 +63,7 @@ class MetricsEndpointHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps({"status": "healthy", "timestamp": threading.time.time() if hasattr(threading, 'time') else 0}).encode())
+        self.wfile.write(json.dumps({"status": "healthy", "timestamp": _time.time()}).encode())
 
     def _handle_selector_health(self, parsed_url) -> None:
         """Get detailed selector health metrics."""

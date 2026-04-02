@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor, FallbackExtractor
 
 
 class TestCSSExtractionStrategy:
@@ -235,198 +236,326 @@ class TestXPathExtractionStrategy:
             assert result == {"title": "XPath Product"}
 
 
-@pytest.mark.skip(reason="LLM fallback strategy module was removed; fallback is handled by Crawl4AIExtractor.")
-class TestLLMFallbackStrategy:
-    """Test suite for LLMFallbackStrategy."""
+class TestExtractorFallbackBehavior:
+    """Tests for the current extractor fallback path used instead of the removed strategy module."""
 
     @pytest.fixture
-    def sample_schema(self):
-        """Sample schema for LLM extraction."""
-        return {
-            "name": "product",
-            "fields": [
-                {"name": "title", "selector": "h1", "type": "text"},
-                {"name": "price", "selector": ".price", "type": "text"},
-            ],
+    def extractor(self):
+        """Create a Crawl4AIExtractor with mocked collaborators."""
+        return Crawl4AIExtractor(
+            headless=True,
+            llm_model="gpt-4o",
+            scoring=MagicMock(),
+            matching=MagicMock(),
+            extraction_strategy="llm",
+        )
+
+    @pytest.fixture
+    def fallback_extractor(self):
+        """Create a FallbackExtractor with matching helpers enabled by default."""
+        matching = MagicMock()
+        matching.is_name_match.return_value = True
+        matching.is_brand_match.return_value = True
+        return FallbackExtractor(scoring=MagicMock(), matching=matching)
+
+    @pytest.mark.asyncio
+    async def test_extract_with_fallback_prefers_html(self, extractor):
+        """Test that fallback extraction reuses HTML when it is available."""
+        extractor._fallback_extractor.extract = AsyncMock(return_value={"success": True})
+
+        result = await extractor._extract_with_fallback(
+            "https://example.com/product",
+            "SKU123",
+            "Test Product",
+            "Test Brand",
+            "<html>preferred</html>",
+            "markdown fallback",
+        )
+
+        extractor._fallback_extractor.extract.assert_awaited_once_with(
+            "https://example.com/product",
+            "SKU123",
+            "Test Product",
+            "Test Brand",
+            html="<html>preferred</html>",
+        )
+        assert result == {"success": True}
+
+    @pytest.mark.asyncio
+    async def test_extract_with_fallback_uses_markdown_when_html_empty(self, extractor):
+        """Test that fallback extraction reuses markdown when HTML is unavailable."""
+        extractor._fallback_extractor.extract = AsyncMock(return_value={"success": True})
+
+        result = await extractor._extract_with_fallback(
+            "https://example.com/product",
+            "SKU123",
+            "Test Product",
+            "Test Brand",
+            "",
+            "markdown fallback",
+        )
+
+        extractor._fallback_extractor.extract.assert_awaited_once_with(
+            "https://example.com/product",
+            "SKU123",
+            "Test Product",
+            "Test Brand",
+            html="markdown fallback",
+        )
+        assert result == {"success": True}
+
+    def test_log_telemetry_includes_error_payload(self, extractor):
+        """Test telemetry logging includes the structured error payload."""
+        with patch("scrapers.ai_search.crawl4ai_extractor.logger.info") as mock_info:
+            extractor._log_telemetry(
+                "https://example.com/product",
+                "SKU123",
+                "llm",
+                False,
+                120,
+                15,
+                40,
+                error="boom",
+                confidence=0.25,
+                pruning_enabled=True,
+                fit_markdown_used=True,
+                fallback_triggered=True,
+            )
+
+            logged_message = mock_info.call_args.args[0]
+            assert '"error": "boom"' in logged_message
+            assert '"fallback_triggered": true' in logged_message
+            assert '"fit_markdown_used": true' in logged_message
+
+    @pytest.mark.asyncio
+    async def test_extract_returns_meta_tag_result_from_first_pass(self, extractor):
+        """Test that meta-tag extraction short-circuits the second crawl."""
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.__aenter__.return_value = mock_engine
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "<html>first pass</html>",
+            "markdown": "first pass markdown",
+        }
+        extractor._extraction.extract_product_from_html_jsonld = MagicMock(return_value=None)
+
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
+            patch(
+                "scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags",
+                return_value={"success": True, "product_name": "Meta Product", "confidence": 0.72},
+            ),
+        ):
+            result = await extractor.extract("https://example.com/product", "SKU123", "Meta Product", "Meta Brand")
+
+        assert result == {"success": True, "product_name": "Meta Product", "confidence": 0.72}
+        mock_engine.crawl.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_extract_failed_first_pass_without_content_returns_error(self, extractor):
+        """Test that a failed first crawl without cached content returns the crawl error."""
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.__aenter__.return_value = mock_engine
+        mock_engine.crawl.return_value = {
+            "success": False,
+            "error": "blocked",
+            "html": None,
+            "markdown": None,
         }
 
-    def test_init_with_defaults(self, sample_schema):
-        """Test LLM strategy initialization with defaults."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module") as mock_import:
-            mock_crawl4ai = MagicMock()
-            mock_extraction = MagicMock()
-            mock_llm_config_cls = MagicMock()
-            mock_llm_strategy_cls = MagicMock()
-            mock_crawl4ai.LLMConfig = mock_llm_config_cls
-            mock_extraction.LLMExtractionStrategy = mock_llm_strategy_cls
-            mock_import.side_effect = [mock_crawl4ai, mock_extraction]
+        with patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine):
+            result = await extractor.extract("https://example.com/product", "SKU123", "Test Product", "Test Brand")
 
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+        assert result == {"success": False, "error": "blocked"}
 
-                strategy = LLMFallbackStrategy(sample_schema)
+    @pytest.mark.asyncio
+    async def test_extract_json_css_uses_schema_strategy(self):
+        """Test that json_css extraction uses the JSON/CSS strategy on the second crawl."""
+        extractor = Crawl4AIExtractor(
+            headless=True,
+            llm_model="gpt-4o",
+            scoring=MagicMock(),
+            matching=MagicMock(),
+            extraction_strategy="json_css",
+        )
+        extractor._extraction.extract_product_from_html_jsonld = MagicMock(return_value=None)
 
-                assert strategy.schema == sample_schema
-                assert strategy.provider == "openai/gpt-4o-mini"
-                assert strategy.budget_usd == 1.0
-                assert strategy.confidence_threshold == 0.7
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.__aenter__.return_value = mock_engine
+        mock_engine.crawl.side_effect = [
+            {
+                "success": True,
+                "html": "",
+                "fit_markdown": "",
+                "raw_markdown": "",
+                "markdown": "",
+            },
+            {
+                "success": True,
+                "extracted_content": {
+                    "product_name": "CSS Product",
+                    "brand": "CSS Brand",
+                    "description": "A product",
+                    "size_metrics": "1 lb",
+                    "images": ["https://example.com/image.jpg"],
+                    "categories": ["Product"],
+                },
+            },
+        ]
 
-    def test_init_with_custom_params(self, sample_schema):
-        """Test LLM strategy with custom parameters."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module") as mock_import:
-            mock_crawl4ai = MagicMock()
-            mock_extraction = MagicMock()
-            mock_llm_config_cls = MagicMock()
-            mock_llm_strategy_cls = MagicMock()
-            mock_crawl4ai.LLMConfig = mock_llm_config_cls
-            mock_extraction.LLMExtractionStrategy = mock_llm_strategy_cls
-            mock_import.side_effect = [mock_crawl4ai, mock_extraction]
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
+            patch("scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags", return_value=None),
+            patch("crawl4ai.extraction_strategy.JsonCssExtractionStrategy", create=True) as mock_strategy_cls,
+        ):
+            mock_strategy = MagicMock()
+            mock_strategy_cls.return_value = mock_strategy
 
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+            result = await extractor.extract("https://example.com/product", "SKU123", "CSS Product", "CSS Brand")
 
-                strategy = LLMFallbackStrategy(
-                    sample_schema,
-                    provider="anthropic/claude-3-opus",
-                    budget_usd=5.0,
-                    confidence_threshold=0.8,
-                )
+        assert result["success"] is True
+        assert result["product_name"] == "CSS Product"
+        assert result["confidence"] == 1.0
+        assert mock_engine.config["crawler"]["extraction_strategy"] is mock_strategy
 
-                assert strategy.provider == "anthropic/claude-3-opus"
-                assert strategy.model == "claude-3-opus"
-                assert strategy.budget_usd == 5.0
-                assert strategy.confidence_threshold == 0.8
+    @pytest.mark.asyncio
+    async def test_extract_second_pass_without_content_uses_fallback(self, extractor):
+        """Test that an unsuccessful second crawl falls back to HTML/markdown parsing."""
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.__aenter__.return_value = mock_engine
+        mock_engine.crawl.side_effect = [
+            {
+                "success": True,
+                "html": "",
+                "fit_markdown": "",
+                "raw_markdown": "",
+                "markdown": "",
+            },
+            {
+                "success": False,
+                "error": "second pass failed",
+                "html": "<html>fallback html</html>",
+                "markdown": "fallback markdown",
+            },
+        ]
+        extractor._extraction.extract_product_from_html_jsonld = MagicMock(return_value=None)
+        extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback Product"})
 
-    def test_init_invalid_budget_raises(self, sample_schema):
-        """Test that invalid budget raises ValueError."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
+            patch("scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags", return_value=None),
+            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
+            patch("crawl4ai.LLMConfig", create=True),
+            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("os.environ.get", return_value="fake-key"),
+        ):
+            result = await extractor.extract("https://example.com/product", "SKU123", "Test Product", "Test Brand")
 
-                with pytest.raises(ValueError, match="budget_usd must be > 0"):
-                    LLMFallbackStrategy(sample_schema, budget_usd=0)
+        extractor._extract_with_fallback.assert_awaited_once_with(
+            "https://example.com/product",
+            "SKU123",
+            "Test Product",
+            "Test Brand",
+            "<html>fallback html</html>",
+            "fallback markdown",
+        )
+        assert result == {"success": True, "product_name": "Fallback Product"}
 
-    def test_init_invalid_confidence_raises(self, sample_schema):
-        """Test that invalid confidence threshold raises ValueError."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+    @pytest.mark.asyncio
+    async def test_extract_returns_error_for_unhandled_exception(self, extractor):
+        """Test that non-content exceptions surface as explicit failures."""
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.__aenter__.return_value = mock_engine
+        mock_engine.crawl.side_effect = RuntimeError("boom")
 
-                with pytest.raises(ValueError, match="confidence_threshold must be between"):
-                    LLMFallbackStrategy(sample_schema, confidence_threshold=1.5)
+        with patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine):
+            result = await extractor.extract("https://example.com/product", "SKU123", "Test Product", "Test Brand")
 
-    def test_model_from_provider(self):
-        """Test extracting model from provider string."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+        assert result == {"success": False, "error": "boom"}
 
-                assert LLMFallbackStrategy._model_from_provider("openai/gpt-4o") == "gpt-4o"
-                assert LLMFallbackStrategy._model_from_provider("anthropic/claude-3") == "claude-3"
-                assert LLMFallbackStrategy._model_from_provider("no-slash-model") == "no-slash-model"
+    @pytest.mark.asyncio
+    async def test_fallback_extractor_http_fetch_uses_response_url(self, fallback_extractor):
+        """Test that HTTP fallback extraction records the final response URL."""
+        fallback_extractor._extraction.extract_product_from_html_jsonld = MagicMock(return_value={"confidence": 0.9})
 
-    def test_resolve_api_token(self):
-        """Test API token resolution from environment."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict(
-                "os.environ",
-                {"OPENAI_API_KEY": "sk-test-openai", "ANTHROPIC_API_KEY": "sk-test-anthropic"},
-                clear=False,
-            ):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+        mock_response = MagicMock()
+        mock_response.text = "<html>fetched</html>"
+        mock_response.url = "https://example.com/final-product"
+        mock_response.raise_for_status = MagicMock()
 
-                assert LLMFallbackStrategy._resolve_api_token("openai/gpt-4o") == "sk-test-openai"
-                assert LLMFallbackStrategy._resolve_api_token("anthropic/claude-3") == "sk-test-anthropic"
-                assert LLMFallbackStrategy._resolve_api_token("unknown/provider") is None
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.get.return_value = mock_response
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
 
-    def test_parse_extracted_content(self):
-        """Test parsing extracted content from various formats."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+            result = await fallback_extractor.extract(
+                "https://example.com/original-product",
+                "SKU123",
+                "Fetched Product",
+                "Fetched Brand",
+            )
 
-                # Test JSON string
-                result = LLMFallbackStrategy._parse_extracted_content('{"key": "value"}')
-                assert result == {"key": "value"}
+        assert result["url"] == "https://example.com/final-product"
+        assert result["confidence"] == 0.9
+        mock_client.get.assert_awaited_once()
 
-                # Test non-JSON string
-                result = LLMFallbackStrategy._parse_extracted_content("plain text")
-                assert result == {"raw": "plain text"}
+    @pytest.mark.asyncio
+    async def test_fallback_extractor_rejects_brand_mismatch(self, fallback_extractor):
+        """Test that fallback extraction rejects pages outside the expected brand/domain context."""
+        fallback_extractor._matching.is_brand_match.return_value = False
+        html = """
+        <html>
+          <head>
+            <title>Test Product</title>
+            <meta property="og:title" content="Test Product" />
+            <meta property="og:description" content="Helpful description" />
+            <meta property="og:image" content="https://example.com/image.jpg" />
+          </head>
+        </html>
+        """
 
-                # Test dict
-                result = LLMFallbackStrategy._parse_extracted_content({"key": "value"})
-                assert result == {"key": "value"}
+        result = await fallback_extractor.extract(
+            "https://example.com/product",
+            "SKU123",
+            "Test Product",
+            "Expected Brand",
+            html=html,
+        )
 
-    def test_calculate_confidence(self):
-        """Test confidence calculation."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
+        assert result == {
+            "success": False,
+            "error": "Fallback extraction brand/domain does not match expected context",
+        }
 
-                schema = {
-                    "fields": [
-                        {"name": "title"},
-                        {"name": "price"},
-                    ]
-                }
+    @pytest.mark.asyncio
+    async def test_fallback_extractor_returns_error_when_no_structured_data_found(self, fallback_extractor):
+        """Test that fallback extraction fails when no usable product signals are present."""
+        html = """
+        <html>
+          <head>
+            <title>Test Product</title>
+            <meta property="og:title" content="Test Product" />
+          </head>
+        </html>
+        """
 
-                strategy = LLMFallbackStrategy(schema, confidence_threshold=0.7)
+        result = await fallback_extractor.extract(
+            "https://example.com/product",
+            "SKU123",
+            "Test Product",
+            "Expected Brand",
+            html=html,
+        )
 
-                # All fields filled
-                content = {"title": "Product", "price": "29.99"}
-                assert strategy._calculate_confidence(content) == 1.0
-
-                # Some fields missing
-                content = {"title": "Product"}
-                assert strategy._calculate_confidence(content) == 0.5
-
-                # Empty content
-                content = {}
-                assert strategy._calculate_confidence(content) == 0.0
-
-    def test_calculate_confidence_with_list(self):
-        """Test confidence calculation with list content."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
-
-                schema = {"fields": [{"name": "title"}]}
-                strategy = LLMFallbackStrategy(schema)
-
-                content = [{"title": "Product 1"}, {"title": "Product 2"}]
-                # Should use first item
-                assert strategy._calculate_confidence(content) == 1.0
-
-                # Empty list
-                assert strategy._calculate_confidence([]) == 0.0
-
-    def test_has_value(self):
-        """Test value presence check."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
-
-                assert LLMFallbackStrategy._has_value("text") is True
-                assert LLMFallbackStrategy._has_value("") is False
-                assert LLMFallbackStrategy._has_value(None) is False
-                assert LLMFallbackStrategy._has_value({"key": "value"}) is True
-                assert LLMFallbackStrategy._has_value({}) is False
-                assert LLMFallbackStrategy._has_value([1, 2, 3]) is True
-                assert LLMFallbackStrategy._has_value([]) is False
-                assert LLMFallbackStrategy._has_value(42) is True
-
-    def test_coerce_usage_int(self):
-        """Test token usage coercion."""
-        with patch("src.crawl4ai_engine.strategies.llm_fallback.import_module"):
-            with patch.dict("os.environ", {}, clear=False):
-                from src.crawl4ai_engine.strategies.llm_fallback import LLMFallbackStrategy
-
-                assert LLMFallbackStrategy._coerce_usage_int(100) == 100
-                assert LLMFallbackStrategy._coerce_usage_int(100.5) == 100
-                assert LLMFallbackStrategy._coerce_usage_int("200") == 200
-                assert LLMFallbackStrategy._coerce_usage_int(True) == 0
-                assert LLMFallbackStrategy._coerce_usage_int(None) == 0
-                assert LLMFallbackStrategy._coerce_usage_int("invalid") == 0
+        assert result == {
+            "success": False,
+            "error": "Fallback extraction found no structured product data",
+        }
 
 
 class TestFallbackChain:

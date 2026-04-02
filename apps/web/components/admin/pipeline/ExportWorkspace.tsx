@@ -234,7 +234,7 @@ export function ExportWorkspace() {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FileSpreadsheet className="h-5 w-5 text-[#008850]" />
+          <FileSpreadsheet className="h-5 w-5 text-primary" />
           Export Products
         </CardTitle>
         <CardDescription>
@@ -304,7 +304,7 @@ export function ExportWorkspace() {
           <Button
             onClick={handleGenerateExport}
             disabled={isGenerating || isLoadingCounts || !hasProducts}
-            className="bg-[#008850] hover:bg-[#2a7034] text-white"
+            className="bg-primary hover:bg-primary/80 text-white"
           >
             {isGenerating ? (
               <>
@@ -373,13 +373,13 @@ export function ExportWorkspace() {
 
         {/* Export Result */}
         {exportResult && (
-          <div className="rounded-lg bg-[#008850]/5 border border-[#008850]/20 p-4">
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0">
-                <FileSpreadsheet className="h-5 w-5 text-[#008850]" />
+                <FileSpreadsheet className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#008850]">
+                <p className="text-sm font-medium text-primary">
                   Export generated successfully
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">

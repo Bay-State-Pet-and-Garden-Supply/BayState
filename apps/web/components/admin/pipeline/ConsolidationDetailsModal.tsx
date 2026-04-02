@@ -47,7 +47,7 @@ export function ConsolidationDetailsModal({
   const getStatusBadge = (statusStr: string) => {
     switch (statusStr) {
       case 'completed':
-        return <Badge className="bg-[#008850] hover:bg-[#2a7034]"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</Badge>;
+        return <Badge className="bg-primary hover:bg-primary/80"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</Badge>;
       case 'in_progress':
         return <Badge variant="warning"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
       case 'failed':
@@ -62,7 +62,7 @@ export function ConsolidationDetailsModal({
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold text-[#66161D]">
+            <DialogTitle className="text-xl font-bold text-secondary">
               Batch Details
             </DialogTitle>
             {getStatusBadge(status.status)}
@@ -84,8 +84,8 @@ export function ConsolidationDetailsModal({
               <span className="text-2xl font-bold">{status.processedCount}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-sm text-muted-foreground text-[#008850]">Success</span>
-              <span className="text-2xl font-bold text-[#008850]">{status.successCount}</span>
+              <span className="text-sm text-muted-foreground text-primary">Success</span>
+              <span className="text-2xl font-bold text-primary">{status.successCount}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-sm text-muted-foreground text-destructive">Errors</span>
@@ -113,7 +113,7 @@ export function ConsolidationDetailsModal({
           {/* Results */}
           {status.results && status.results.length > 0 && (
             <div className="flex flex-col flex-1 min-h-0">
-              <h3 className="font-semibold mb-2 text-[#66161D]">Processed Products</h3>
+              <h3 className="font-semibold mb-2 text-secondary">Processed Products</h3>
               <ScrollArea className="flex-1 border rounded-md">
                 <div className="p-4 space-y-4">
                   {status.results.map((product) => (

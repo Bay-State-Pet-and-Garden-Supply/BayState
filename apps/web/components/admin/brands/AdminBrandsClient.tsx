@@ -10,6 +10,7 @@ import { DataTable, type Column } from '@/components/admin/data-table';
 import { toast } from 'sonner';
 import { deleteBrand } from '@/app/admin/brands/actions';
 import { BrandModal, Brand } from './BrandModal';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 interface AdminBrandsClientProps {
     initialBrands: Brand[];
@@ -20,51 +21,58 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
     const router = useRouter();
     const [selected, setSelected] = useState<Brand[]>([]);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteBrand, setPendingDeleteBrand] = useState<Brand | null>(null);
+    const [isBulkDelete, setIsBulkDelete] = useState(false);
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<Brand | undefined>(undefined);
 
-    const handleDelete = async (brand: Brand) => {
-        if (!confirm(`Are you sure you want to delete "${brand.name}"? products using this brand will have their brand unset.`)) {
-            return;
-        }
-
-        setDeleting(brand.id);
-        try {
-            const result = await deleteBrand(brand.id);
-
-            if (!result.success) {
-                throw new Error(result.error);
-            }
-
-            toast.success(`Deleted "${brand.name}"`);
-            router.refresh(); // Refresh server data
-        } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Failed to delete brand';
-            toast.error(msg);
-        } finally {
-            setDeleting(null);
-        }
+    const handleDeleteClick = (brand: Brand) => {
+        setPendingDeleteBrand(brand);
+        setIsBulkDelete(false);
+        setConfirmOpen(true);
     };
 
-    const handleBulkDelete = async () => {
+    const handleBulkDeleteClick = () => {
         if (selected.length === 0) return;
+        setIsBulkDelete(true);
+        setPendingDeleteBrand(null);
+        setConfirmOpen(true);
+    };
 
-        if (!confirm(`Delete ${selected.length} brand(s)? This cannot be undone.`)) {
-            return;
+    const handleConfirmDelete = async () => {
+        setConfirmOpen(false);
+
+        if (isBulkDelete) {
+            let successCount = 0;
+            for (const brand of selected) {
+                const result = await deleteBrand(brand.id);
+                if (result.success) successCount++;
+            }
+            toast.success(`Deleted ${successCount} brand(s)`);
+            setSelected([]);
+            router.refresh();
+        } else if (pendingDeleteBrand) {
+            setDeleting(pendingDeleteBrand.id);
+            try {
+                const result = await deleteBrand(pendingDeleteBrand.id);
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                toast.success(`Deleted "${pendingDeleteBrand.name}"`);
+                router.refresh();
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Failed to delete brand';
+                toast.error(msg);
+            } finally {
+                setDeleting(null);
+            }
         }
 
-        let successCount = 0;
-        // We do this concurrently for simplicity in this MVP but ideally should be a bulk server action
-        for (const brand of selected) {
-            const result = await deleteBrand(brand.id);
-            if (result.success) successCount++;
-        }
-
-        toast.success(`Deleted ${successCount} brand(s)`);
-        setSelected([]);
-        router.refresh();
+        setPendingDeleteBrand(null);
+        setIsBulkDelete(false);
     };
 
     const handleCreate = () => {
@@ -160,7 +168,7 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleDelete(brand)}
+                onClick={() => handleDeleteClick(brand)}
                 disabled={deleting === brand.id}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
             >
@@ -193,7 +201,7 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
                         <Button
                             variant="destructive"
                             size="sm"
-                            onClick={handleBulkDelete}
+                            onClick={handleBulkDeleteClick}
                         >
                             <Trash2 className="mr-1 h-4 w-4" />
                             Delete Selected
@@ -223,6 +231,27 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
                     onSave={handleSaveModal}
                 />
             )}
+
+            <ConfirmationDialog
+                open={confirmOpen}
+                onOpenChange={(open) => {
+                    setConfirmOpen(open);
+                    if (!open) {
+                        setPendingDeleteBrand(null);
+                        setIsBulkDelete(false);
+                    }
+                }}
+                onConfirm={handleConfirmDelete}
+                title={isBulkDelete ? 'Delete Brands' : 'Delete Brand'}
+                description={
+                    isBulkDelete
+                        ? `Delete ${selected.length} brand(s)? This cannot be undone.`
+                        : `Are you sure you want to delete "${pendingDeleteBrand?.name}"? Products using this brand will have their brand unset.`
+                }
+                confirmLabel="Delete"
+                variant="destructive"
+                isLoading={!!deleting}
+            />
         </div>
     );
 }

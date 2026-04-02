@@ -50,10 +50,10 @@ export function ImageSelector({ images, onSave }: ImageSelectorProps) {
             aria-label={`Select image ${index + 1}`}
             className={`
               relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all
-              focus:outline-none focus:ring-2 focus:ring-[#008850] focus:ring-offset-2
+              focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
               ${
                 selected.includes(imageUrl)
-                  ? 'border-[#008850] ring-2 ring-[#008850]'
+                  ? 'border-primary ring-2 ring-primary'
                   : 'border-border hover:border-border'
               }
             `}
@@ -64,7 +64,7 @@ export function ImageSelector({ images, onSave }: ImageSelectorProps) {
               className={`w-full h-32 object-cover ${selected.includes(imageUrl) ? 'selected' : ''}`}
             />
             {selected.includes(imageUrl) && (
-              <div className="absolute inset-0 bg-[#008850]/10" />
+              <div className="absolute inset-0 bg-primary/10" />
             )}
           </div>
         ))}
@@ -74,7 +74,7 @@ export function ImageSelector({ images, onSave }: ImageSelectorProps) {
         <Button
           onClick={handleSave}
           disabled={selected.length === 0}
-          className="bg-[#008850] hover:bg-[#2a7034]"
+          className="bg-primary hover:bg-primary/80"
         >
           Save Selected Images
         </Button>

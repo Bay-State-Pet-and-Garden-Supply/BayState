@@ -17,6 +17,12 @@ class TestCrawl4AIEnginePruning:
             },
             "crawler": {
                 "pruning_enabled": True,
+                "pruning_threshold": 0.4,
+                "pruning_threshold_type": "fixed",
+                "pruning_min_word_threshold": 12,
+                "pruning_user_query": "dog food ingredients",
+                "markdown_options": {"ignore_links": True},
+                "markdown_content_source": "cleaned_html",
             },
         }
 
@@ -47,8 +53,17 @@ class TestCrawl4AIEnginePruning:
             call_args = mock_run_config.call_args.kwargs
             
             assert call_args.get("markdown_generator") == mock_md_instance
-            mock_pruning_filter.assert_called_once()
-            mock_md_generator.assert_called_once_with(content_filter=mock_filter_instance)
+            mock_pruning_filter.assert_called_once_with(
+                user_query="dog food ingredients",
+                min_word_threshold=12,
+                threshold_type="fixed",
+                threshold=0.4,
+            )
+            mock_md_generator.assert_called_once_with(
+                content_filter=mock_filter_instance,
+                options={"ignore_links": True},
+                content_source="cleaned_html",
+            )
 
     def test_pruning_disabled_by_default(self):
         """Test that pruning is NOT applied by default."""

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 
 interface RunnerAccountModalProps {
     onClose: () => void;
@@ -194,8 +195,13 @@ export function RunnerAccountModal({ onClose, onSave, initialRunnerName }: Runne
                 </div>
 
                 {error && (
-                    <div className="mx-6 mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                        {error}
+                    <div className="mx-6 mt-4">
+                        <AlertBanner
+                            severity="error"
+                            title="Error"
+                            message={error}
+                            onDismiss={() => setError(null)}
+                        />
                     </div>
                 )}
 

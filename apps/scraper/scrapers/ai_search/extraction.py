@@ -33,26 +33,50 @@ class ExtractionUtils:
                 return match.group(0)
         return None
 
+    # BigCommerce stencil template placeholder pattern
+    _BIGCOMMERCE_SIZE_PLACEHOLDER = re.compile(r"\{:size\}", re.IGNORECASE)
+    _BIGCOMMERCE_SIZE_DEFAULT = "3840w"
+
+    def _resolve_template_placeholders(self, url: str) -> str | None:
+        """Resolve known CDN template placeholders in image URLs.
+
+        Returns the resolved URL, or None if the URL contains unresolvable
+        template tokens.
+        """
+        if "{" not in url:
+            return url
+
+        if self._BIGCOMMERCE_SIZE_PLACEHOLDER.search(url):
+            return self._BIGCOMMERCE_SIZE_PLACEHOLDER.sub(
+                self._BIGCOMMERCE_SIZE_DEFAULT, url
+            )
+
+        # Reject URLs with unknown/unresolved template placeholders
+        if re.search(r"\{[^}]+\}", url):
+            return None
+
+        return url
+
     def normalize_images(self, images: list[str], source_url: str) -> list[str]:
         """Normalize and dedupe image URLs."""
         normalized: list[str] = []
         seen: set[str] = set()
-        source_domain = self._scoring.domain_from_url(source_url)
 
         for raw in images:
             value = str(raw or "").strip()
             if not value:
                 continue
             absolute = urljoin(source_url, value)
-            parsed = urlparse(absolute)
+            resolved = self._resolve_template_placeholders(absolute)
+            if resolved is None:
+                continue
+            parsed = urlparse(resolved)
             if parsed.scheme not in {"http", "https"}:
                 continue
-            if source_domain and self._scoring.domain_from_url(absolute) != source_domain:
+            if resolved in seen:
                 continue
-            if absolute in seen:
-                continue
-            seen.add(absolute)
-            normalized.append(absolute)
+            seen.add(resolved)
+            normalized.append(resolved)
         return normalized
 
     def coerce_string_list(self, value: Any) -> list[str]:

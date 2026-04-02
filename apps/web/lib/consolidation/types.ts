@@ -202,4 +202,4 @@ export interface ProductType {
 /**
  * Pipeline status for product ingestion.
  */
-export type PipelineStatus = 'registered' | 'enriched' | 'finalized' | 'failed';
+export type PipelineStatus = 'imported' | 'monitoring' | 'scraped' | 'consolidated' | 'finalized' | 'published';

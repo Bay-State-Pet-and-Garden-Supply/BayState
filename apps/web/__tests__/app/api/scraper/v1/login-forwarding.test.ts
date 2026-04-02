@@ -64,13 +64,14 @@ function createRequest(url: string, headers: Record<string, string> = {}): NextR
 }
 
 function createPollSupabase() {
-  return {
+  const mock: any = {
     from: jest.fn().mockReturnThis(),
     update: jest.fn().mockReturnThis(),
-    select: jest.fn().mockResolvedValue({ data: [{ name: 'runner-1' }], error: null }),
+    select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     neq: jest.fn().mockReturnThis(),
-    rpc: jest.fn().mockResolvedValue({
+    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    rpc: jest.fn<any>().mockResolvedValue({
       data: [{
         job_id: 'job-123',
         skus: ['SKU-1'],
@@ -80,10 +81,15 @@ function createPollSupabase() {
       }],
       error: null,
     }),
-    channel: jest.fn().mockReturnValue({
-      send: jest.fn().mockResolvedValue(undefined),
+    channel: jest.fn<any>().mockReturnValue({
+      send: jest.fn<any>().mockResolvedValue(undefined),
+    }),
+    // Standard builder result for select() at end of chain
+    then: jest.fn((resolve) => {
+      resolve({ data: [{ name: 'runner-1', enabled: true, status: 'active' }], error: null });
     }),
   };
+  return mock;
 }
 
 function createJobSupabase() {
@@ -91,7 +97,7 @@ function createJobSupabase() {
     from: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({
+          single: jest.fn<any>().mockResolvedValue({
             data: {
               id: 'job-123',
               skus: ['SKU-1'],

@@ -188,12 +188,10 @@ export function buildResponseSchema(
                 properties: {
                     name: {
                         type: 'string',
-                        minLength: 1,
                         description: 'Formatted product name following naming conventions',
                     },
                     brand: {
                         type: 'string',
-                        minLength: 1,
                         description: 'Brand name',
                     },
                     weight: {
@@ -202,22 +200,18 @@ export function buildResponseSchema(
                     },
                     description: {
                         type: 'string',
-                        minLength: 1,
                         description: 'Short product description (1-2 sentences) for category/listing pages',
                     },
                     long_description: {
                         type: 'string',
-                        minLength: 1,
                         description: 'Detailed product description (3-5 sentences) for the product detail page',
                     },
                     search_keywords: {
                         type: 'string',
-                        minLength: 1,
                         description: 'Comma-separated site-search phrases, source-supported and concise',
                     },
                     product_on_pages: {
                         type: 'array',
-                        uniqueItems: true,
                         items: {
                             type: 'string',
                             ...(shopsitePages.length > 0 ? { enum: shopsitePages } : {}),
@@ -226,8 +220,6 @@ export function buildResponseSchema(
                     },
                     category: {
                         type: 'array',
-                        minItems: 1,
-                        uniqueItems: true,
                         items: {
                             type: 'string',
                             enum: categories,
@@ -236,8 +228,6 @@ export function buildResponseSchema(
                     },
                     product_type: {
                         type: 'array',
-                        minItems: 1,
-                        uniqueItems: true,
                         items: {
                             type: 'string',
                             enum: productTypes,
@@ -246,8 +236,6 @@ export function buildResponseSchema(
                     },
                     confidence_score: {
                         type: 'number',
-                        minimum: 0,
-                        maximum: 1,
                         description: 'Confidence score between 0.0 and 1.0',
                     },
                 },

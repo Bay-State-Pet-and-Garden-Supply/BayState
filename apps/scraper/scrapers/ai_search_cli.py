@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import sys
 
 # Configure logging
@@ -41,6 +42,12 @@ Examples:
     parser.add_argument("--max-results", type=int, default=5, help="Number of search results to analyze (default: 5)")
     parser.add_argument("--confidence", type=float, default=0.7, help="Minimum confidence threshold (default: 0.7)")
     parser.add_argument("--model", default="gpt-4o-mini", choices=["gpt-4o-mini", "gpt-4o"], help="LLM model to use (default: gpt-4o-mini)")
+    parser.add_argument(
+        "--search-provider",
+        default=os.getenv("AI_SEARCH_PROVIDER", "auto"),
+        choices=["auto", "serpapi", "brave"],
+        help="Search provider preference (default: auto)",
+    )
     parser.add_argument("--headless", action="store_true", default=True, help="Run browser in headless mode (default: True)")
     parser.add_argument("--visible", action="store_true", help="Show browser window (sets headless=False)")
     parser.add_argument("--output", "-o", help="Output file for results (JSON)")
@@ -63,6 +70,7 @@ Examples:
         max_steps=args.max_steps,
         confidence_threshold=args.confidence,
         llm_model=args.model,
+        search_provider=args.search_provider,
     )
 
     # Run extraction

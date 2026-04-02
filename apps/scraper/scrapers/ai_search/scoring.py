@@ -1,5 +1,6 @@
 """Search result scoring and filtering logic."""
 
+import re
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -56,35 +57,39 @@ class SearchScorer:
         "upcindex.com",
     }
 
-    # Low quality terms to penalize
-    LOW_QUALITY_TERMS = [
-        "review",
-        "best",
-        "top 10",
-        "comparison",
-        "vs",
-        "reddit",
-        "pinterest",
-        "youtube",
-        "facebook",
-        "instagram",
-        "tiktok",
-        "affiliate",
-        "coupon",
-        "deal",
-        "blog",
-        "forum",
+    # Low quality phrases to penalize. These are matched as words/phrases rather than
+    # raw substrings so legitimate PDPs like "...ideal-for..." do not trip the "deal" filter.
+    LOW_QUALITY_PATTERNS = [
+        r"\breview\b",
+        r"\bbest\b",
+        r"\btop 10\b",
+        r"\bcomparison\b",
+        r"\bvs\b",
+        r"\breddit\b",
+        r"\bpinterest\b",
+        r"\byoutube\b",
+        r"\bfacebook\b",
+        r"\binstagram\b",
+        r"\btiktok\b",
+        r"\baffiliate\b",
+        r"\bcoupon\b",
+        r"\bdeal(?:s)?\b",
+        r"\bblog\b",
+        r"\bforum\b",
+        r"\bgift guide\b",
+        r"\bbuying guide\b",
+        r"\btop picks\b",
+        r"\bbest toys\b",
+        r"\bbest dog toys\b",
+        r"\bupc database\b",
+        r"\bbarcode search\b",
+        r"\bgtin search\b",
+        r"\bproduct lookup\b",
+    ]
+
+    LOW_QUALITY_URL_FRAGMENTS = [
         "category/",
         "/collections/",
-        "gift guide",
-        "buying guide",
-        "top picks",
-        "best toys",
-        "best dog toys",
-        "upc database",
-        "barcode search",
-        "gtin search",
-        "product lookup",
     ]
 
     # Category-like URL patterns
@@ -96,6 +101,25 @@ class SearchScorer:
         "/search",
         "/products?",
         "/collections?",
+        "/product-line/",
+        "/product-lines/",
+    ]
+
+    # Title/snippet phrases that suggest a multi-product listing page
+    # rather than a single product detail page.
+    MULTI_PRODUCT_INDICATORS = [
+        r"\bshop all\b",
+        r"\bbrowse\b",
+        r"\bcollection\b",
+        r"\ball products\b",
+        r"\bour range\b",
+        r"\bvarieties\b",
+        r"\bview all\b",
+        r"\bexplore our\b",
+        r"\bfind a retailer\b",
+        r"\bwhere to buy\b",
+        r"\bavailable at\b",
+        r"\bbuy from\b",
     ]
 
     def __init__(self):
@@ -123,7 +147,43 @@ class SearchScorer:
     def is_category_like_url(self, url: str) -> bool:
         """Check if URL looks like a category page."""
         lowered = url.lower()
-        return any(pattern in lowered for pattern in self.CATEGORY_PATTERNS)
+        if any(pattern in lowered for pattern in self.CATEGORY_PATTERNS):
+            return True
+        # Detect brand-site product-line pages: /products/{category}/{slug}
+        # These have 3+ path segments under /products/ and typically list
+        # multiple items rather than a single buyable product.
+        if self.is_product_line_page(url):
+            return True
+        return False
+
+    def is_product_line_page(self, url: str) -> bool:
+        """Detect product-line pages on brand sites.
+
+        Brand sites often use URLs like:
+          brand.com/products/cat-litter/go-natural-pea-husk
+        These are marketing pages for a product line, listing variants
+        and linking to retailers, not a single purchasable PDP.
+        """
+        try:
+            parsed = urlparse(url)
+            path = parsed.path.rstrip("/").lower()
+            segments = [s for s in path.split("/") if s]
+
+            # Pattern: /products/{category}/{line-name} (3+ segments, first is 'products')
+            if len(segments) >= 3 and segments[0] == "products":
+                # If domain is a trusted retailer, this pattern is normal
+                # (e.g. amazon.com/products/...) — skip
+                domain = self.domain_from_url(url)
+                if not self.is_trusted_retailer(domain):
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def _has_multi_product_indicators(self, text: str) -> bool:
+        """Check if text contains phrases suggesting a multi-product listing."""
+        lowered = text.lower()
+        return any(re.search(pattern, lowered) for pattern in self.MULTI_PRODUCT_INDICATORS)
 
     def is_low_quality_result(self, result: dict[str, Any]) -> bool:
         """Check if search result is low quality."""
@@ -140,7 +200,13 @@ class SearchScorer:
         if self.is_category_like_url(url):
             return True
 
-        return any(term in combined for term in self.LOW_QUALITY_TERMS)
+        if any(fragment in combined for fragment in self.LOW_QUALITY_URL_FRAGMENTS):
+            return True
+
+        if self._has_multi_product_indicators(combined):
+            return True
+
+        return any(re.search(pattern, combined) for pattern in self.LOW_QUALITY_PATTERNS)
 
     def score_search_result(
         self,

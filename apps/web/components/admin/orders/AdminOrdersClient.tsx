@@ -11,6 +11,7 @@ import { OrderModal } from './OrderModal';
 import { toast } from 'sonner';
 import { deleteOrder } from '@/app/admin/orders/actions';
 import { formatCurrency } from '@/lib/utils';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 interface AdminOrdersClientProps {
     initialOrders: Order[];
@@ -28,6 +29,8 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
     const router = useRouter();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null);
 
     const handleUpdate = () => {
         router.refresh();
@@ -42,9 +45,16 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
         setSelectedOrder(null);
     };
 
-    const handleDelete = async (order: Order) => {
-        if (!confirm(`Are you sure you want to delete order ${order.order_number}? This action cannot be undone.`)) return;
+    const handleDeleteClick = (order: Order) => {
+        setPendingDeleteOrder(order);
+        setConfirmOpen(true);
+    };
 
+    const handleConfirmDelete = async () => {
+        if (!pendingDeleteOrder) return;
+        setConfirmOpen(false);
+
+        const order = pendingDeleteOrder;
         setDeleting(order.id);
         try {
             const res = await deleteOrder(order.id);
@@ -56,6 +66,8 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
         } finally {
             setDeleting(null);
         }
+
+        setPendingDeleteOrder(null);
     }
 
     const formatDate = (dateString: string) =>
@@ -171,7 +183,7 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleDelete(order)}
+                onClick={() => handleDeleteClick(order)}
                 disabled={deleting === order.id}
                 className="text-red-600 hover:bg-red-50"
             >
@@ -213,6 +225,20 @@ export function AdminOrdersClient({ initialOrders, totalCount }: AdminOrdersClie
                     onUpdate={handleUpdate}
                 />
             )}
+
+            <ConfirmationDialog
+                open={confirmOpen}
+                onOpenChange={(open) => {
+                    setConfirmOpen(open);
+                    if (!open) setPendingDeleteOrder(null);
+                }}
+                onConfirm={handleConfirmDelete}
+                title="Delete Order"
+                description={`Are you sure you want to delete order ${pendingDeleteOrder?.order_number}? This action cannot be undone.`}
+                confirmLabel="Delete"
+                variant="destructive"
+                isLoading={!!deleting}
+            />
         </div>
     );
 }

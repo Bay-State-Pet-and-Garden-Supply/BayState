@@ -65,10 +65,53 @@ class TestCrawl4AIEngineV04:
             assert last_call_args.get("css_selector") == ".product-main"
             assert last_call_args.get("excluded_tags") == ["nav", "footer"]
             assert last_call_args.get("js_code") == "window.scrollTo(0, 1000);"
+            assert last_call_args.get("page_timeout") == 30000
+            assert last_call_args.get("semaphore_count") == 5
             
             # Verify cache_mode was converted to Enum
             from crawl4ai import CacheMode
             assert last_call_args.get("cache_mode") == CacheMode.BYPASS
+
+    def test_build_run_config_supports_advanced_sdk_fields(self):
+        """Test Crawl4AI-specific advanced run configuration fields are passed through."""
+        config = {
+            "crawler": {
+                "wait_until": "networkidle",
+                "wait_for_images": True,
+                "capture_network_requests": True,
+                "capture_console_messages": True,
+                "log_console": True,
+                "check_robots_txt": True,
+                "mean_delay": 0.2,
+                "max_range": 0.6,
+                "semaphore_count": 8,
+                "link_preview_config": {"max_depth": 1},
+                "virtual_scroll_config": {"enabled": True},
+            }
+        }
+
+        with (
+            patch("crawl4ai_engine.engine.AsyncWebCrawler"),
+            patch("crawl4ai_engine.engine.BrowserConfig"),
+            patch("crawl4ai_engine.engine.CrawlerRunConfig") as mock_run_config,
+        ):
+            from crawl4ai_engine.engine import Crawl4AIEngine
+
+            engine = Crawl4AIEngine(config)
+            _ = engine._build_run_config()
+
+            last_call_args = mock_run_config.call_args.kwargs
+            assert last_call_args.get("wait_until") == "networkidle"
+            assert last_call_args.get("wait_for_images") is True
+            assert last_call_args.get("capture_network_requests") is True
+            assert last_call_args.get("capture_console_messages") is True
+            assert last_call_args.get("log_console") is True
+            assert last_call_args.get("check_robots_txt") is True
+            assert last_call_args.get("mean_delay") == 0.2
+            assert last_call_args.get("max_range") == 0.6
+            assert last_call_args.get("semaphore_count") == 8
+            assert last_call_args.get("link_preview_config") == {"max_depth": 1}
+            assert last_call_args.get("virtual_scroll_config") == {"enabled": True}
 
     def test_content_filtering_defaults(self):
         """Test default content filtering settings."""
@@ -160,6 +203,13 @@ class TestCrawl4AIEngineV04:
             assert "session_a_com" in constructor_session_ids
             assert "session_b_com" in constructor_session_ids
 
+            call_kwargs = mock_crawler.arun_many.call_args.kwargs
+            assert "config" in call_kwargs
+            assert "concurrency_limit" not in call_kwargs
+            configs = call_kwargs.get("config")
+            assert isinstance(configs, list)
+            assert len(configs) == 2
+
     @pytest.mark.asyncio
     async def test_crawl_many_uses_arun_many(self, v04_config):
         """Test that crawl_many uses the native arun_many method."""
@@ -182,15 +232,16 @@ class TestCrawl4AIEngineV04:
             mock_crawler.arun_many.assert_called_once()
             call_kwargs = mock_crawler.arun_many.call_args.kwargs
             assert call_kwargs.get("urls") == urls
-            assert call_kwargs.get("concurrency_limit") == 5
+            assert "config" in call_kwargs
+            assert "concurrency_limit" not in call_kwargs
 
     @pytest.mark.asyncio
     async def test_crawl_many_default_concurrency(self):
-        """Test that crawl_many uses default concurrency limit of 3."""
+        """Test that crawl_many maps default concurrency to semaphore_count=3."""
         with (
             patch("crawl4ai_engine.engine.AsyncWebCrawler") as mock_crawler_class,
             patch("crawl4ai_engine.engine.BrowserConfig"),
-            patch("crawl4ai_engine.engine.CrawlerRunConfig"),
+            patch("crawl4ai_engine.engine.CrawlerRunConfig") as mock_run_config,
         ):
             mock_crawler = AsyncMock()
             mock_crawler_class.return_value = mock_crawler
@@ -206,7 +257,54 @@ class TestCrawl4AIEngineV04:
                 
             mock_crawler.arun_many.assert_called_once()
             call_args = mock_crawler.arun_many.call_args
-            assert call_args.kwargs.get("concurrency_limit") == 3
+            run_config = call_args.kwargs.get("config")
+            assert isinstance(run_config, list)
+            assert len(run_config) == 2
+            assert all(call.kwargs.get("semaphore_count") == 3 for call in mock_run_config.call_args_list[1:])
+
+    @pytest.mark.asyncio
+    async def test_crawl_many_supports_streaming_results(self):
+        """Test that crawl_many consumes async generators returned by arun_many."""
+        with (
+            patch("crawl4ai_engine.engine.AsyncWebCrawler") as mock_crawler_class,
+            patch("crawl4ai_engine.engine.BrowserConfig"),
+            patch("crawl4ai_engine.engine.CrawlerRunConfig"),
+        ):
+            mock_crawler = AsyncMock()
+            mock_crawler_class.return_value = mock_crawler
+
+            async def _stream():
+                first = MagicMock()
+                first.url = "https://example1.com"
+                first.success = True
+                first.html = "<html>1</html>"
+                first.markdown = "one"
+                first.extracted_content = None
+                first.metadata = {}
+                first.links = {}
+                first.media = {}
+                yield first
+
+                second = MagicMock()
+                second.url = "https://example2.com"
+                second.success = False
+                second.error = "403 Forbidden"
+                second.metadata = {}
+                yield second
+
+            mock_crawler.arun_many = AsyncMock(return_value=_stream())
+
+            from crawl4ai_engine.engine import Crawl4AIEngine
+
+            engine = Crawl4AIEngine({"crawler": {"stream": True}})
+            async with engine:
+                results = await engine.crawl_many(["https://example1.com", "https://example2.com"])
+
+            assert len(results) == 2
+            assert results[0]["url"] == "https://example1.com"
+            assert results[0]["markdown"] == "one"
+            assert results[1]["success"] is False
+            assert results[1]["error"] == "403 Forbidden"
 
     def test_explicit_extraction_strategy(self):
         """Test that explicit extraction strategy is used."""

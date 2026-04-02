@@ -22,6 +22,9 @@ FROM mcr.microsoft.com/playwright/python:v1.57.0-jammy
 
 WORKDIR /app
 
+ARG RUNNER_BUILD_ID=unknown
+ARG RUNNER_BUILD_SHA=unknown
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -39,6 +42,9 @@ COPY . .
 ENV PYTHONPATH=/app
 
 # Environment defaults
+ENV BAYSTATE_RUNNER_BUILD_ID=${RUNNER_BUILD_ID}
+ENV BAYSTATE_RUNNER_BUILD_SHA=${RUNNER_BUILD_SHA}
+ENV BAYSTATE_RUNNER_RELEASE_CHANNEL=latest
 ENV POLL_INTERVAL=30
 ENV MAX_JOBS_BEFORE_RESTART=100
 ENV HEALTH_CHECK_MEMORY_LIMIT_MB=1800

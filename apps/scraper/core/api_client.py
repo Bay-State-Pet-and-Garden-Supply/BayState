@@ -21,6 +21,11 @@ from typing import Any
 import httpx
 from scrapers.models.config import ScraperConfig as ScraperYamlConfig
 from scrapers.parser.yaml_parser import ScraperConfigParser
+from core.version import (
+    get_runner_build_id,
+    get_runner_build_sha,
+    get_runner_release_channel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +33,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAX_RETRIES = 3
 RETRY_BACKOFF_MULTIPLIER = 2  # Exponential backoff: 1s, 2s, 4s, 8s
 RETRY_INITIAL_DELAY = 1.0  # Initial delay in seconds
+RUNNER_BUILD_ID_HEADER = "X-BayState-Runner-Build-Id"
+RUNNER_BUILD_SHA_HEADER = "X-BayState-Runner-Build-Sha"
+RUNNER_RELEASE_CHANNEL_HEADER = "X-BayState-Runner-Release-Channel"
+LATEST_RUNNER_BUILD_ID_HEADER = "X-BayState-Latest-Runner-Build-Id"
+LATEST_RUNNER_BUILD_SHA_HEADER = "X-BayState-Latest-Runner-Build-Sha"
 
 
 @dataclass
@@ -87,6 +97,20 @@ class ConnectionError(Exception):
     """Raised when API connection fails."""
 
     pass
+
+
+class RunnerBuildMismatchError(Exception):
+    """Raised when the coordinator rejects this runner image build."""
+
+    def __init__(
+        self,
+        message: str,
+        runner_build_id: str | None = None,
+        latest_build_id: str | None = None,
+    ):
+        self.runner_build_id = runner_build_id
+        self.latest_build_id = latest_build_id
+        super().__init__(message)
 
 
 class ConfigFetchError(Exception):
@@ -221,6 +245,15 @@ class ScraperAPIClient:
             "Content-Type": "application/json",
             "X-API-Key": self.api_key,
         }
+        runner_build_id = get_runner_build_id()
+        runner_build_sha = get_runner_build_sha()
+        runner_release_channel = get_runner_release_channel()
+
+        if runner_build_id != "unknown":
+            headers[RUNNER_BUILD_ID_HEADER] = runner_build_id
+        if runner_build_sha != "unknown":
+            headers[RUNNER_BUILD_SHA_HEADER] = runner_build_sha
+        headers[RUNNER_RELEASE_CHANNEL_HEADER] = runner_release_channel
 
         # Add HMAC signature if WEBHOOK_SECRET is configured and payload is present
         webhook_secret = os.environ.get("WEBHOOK_SECRET")
@@ -260,6 +293,40 @@ class ScraperAPIClient:
                     # Authentication failure - not retryable
                     if response.status_code == 401:
                         raise AuthenticationError("Invalid API key")
+
+                    if response.status_code == 426:
+                        error_payload: dict[str, Any] = {}
+                        try:
+                            error_payload = response.json()
+                        except Exception:
+                            error_payload = {}
+
+                        latest_build_id = (
+                            error_payload.get("latest_build_id")
+                            or response.headers.get(LATEST_RUNNER_BUILD_ID_HEADER)
+                        )
+                        runner_build_id = (
+                            error_payload.get("runner_build_id")
+                            or response.headers.get(RUNNER_BUILD_ID_HEADER)
+                            or get_runner_build_id()
+                        )
+                        latest_build_sha = (
+                            error_payload.get("latest_build_sha")
+                            or response.headers.get(LATEST_RUNNER_BUILD_SHA_HEADER)
+                        )
+                        message = (
+                            error_payload.get("message")
+                            or error_payload.get("error")
+                            or "Runner image update required"
+                        )
+                        if latest_build_sha:
+                            message = f"{message} Latest build SHA: {latest_build_sha}."
+
+                        raise RunnerBuildMismatchError(
+                            str(message),
+                            runner_build_id=str(runner_build_id) if runner_build_id else None,
+                            latest_build_id=str(latest_build_id) if latest_build_id else None,
+                        )
 
                     # Raise for status on HTTP errors
                     response.raise_for_status()
@@ -344,6 +411,8 @@ class ScraperAPIClient:
         except AuthenticationError as e:
             logger.error(f"Authentication failed: {e}")
             return None
+        except RunnerBuildMismatchError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to fetch job config: {e.response.status_code} - {e.response.text}")
             return None
@@ -389,6 +458,8 @@ class ScraperAPIClient:
         except AuthenticationError as e:
             logger.error(f"Authentication failed: {e}")
             return False
+        except RunnerBuildMismatchError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to submit results: {e.response.status_code} - {e.response.text}")
             return False
@@ -449,6 +520,8 @@ class ScraperAPIClient:
         except AuthenticationError as e:
             logger.error(f"Authentication failed: {e}")
             return None
+        except RunnerBuildMismatchError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to claim chunk: {e.response.status_code} - {e.response.text}")
             return None
@@ -489,6 +562,8 @@ class ScraperAPIClient:
         except AuthenticationError as e:
             logger.error(f"Authentication failed: {e}")
             return False
+        except RunnerBuildMismatchError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to submit chunk results: {e.response.status_code} - {e.response.text}")
             return False
@@ -543,6 +618,8 @@ class ScraperAPIClient:
         except AuthenticationError as e:
             logger.error(f"Authentication failed: {e}")
             return False
+        except RunnerBuildMismatchError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to submit chunk progress: {e.response.status_code} - {e.response.text}")
             return False
@@ -619,6 +696,8 @@ class ScraperAPIClient:
         except AuthenticationError as e:
             logger.error(f"Authentication failed: {e}")
             return None
+        except RunnerBuildMismatchError:
+            raise
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 # 404 means no jobs available - not an error
@@ -675,6 +754,8 @@ class ScraperAPIClient:
         except AuthenticationError as e:
             logger.error(f"Heartbeat auth failed: {e}")
             return False
+        except RunnerBuildMismatchError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"Heartbeat failed: {e.response.status_code} - {e.response.text}")
             return False

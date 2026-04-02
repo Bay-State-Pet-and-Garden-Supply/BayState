@@ -1,4 +1,5 @@
 import { AdminSidebar } from '@/components/admin/sidebar'
+import { MobileSidebarDrawer } from '@/components/admin/mobile-sidebar-drawer'
 import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/auth/roles'
 import { redirect } from 'next/navigation'
@@ -32,8 +33,15 @@ export default async function AdminLayout({
     <div className="dark fixed inset-0 flex overflow-hidden bg-background text-foreground selection:bg-primary/30">
       <AdminLayoutStyles />
       <SkipLink />
-      <AdminSidebar userRole={role as 'admin' | 'staff'} />
-      <main id="main-content" className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden p-8">
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex">
+        <AdminSidebar userRole={role as 'admin' | 'staff'} />
+      </div>
+      {/* Mobile drawer */}
+      <MobileSidebarDrawer>
+        <AdminSidebar userRole={role as 'admin' | 'staff'} />
+      </MobileSidebarDrawer>
+      <main id="main-content" className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden p-4 md:p-8">
         <div className="max-w-[1600px] mx-auto">
           {children}
         </div>

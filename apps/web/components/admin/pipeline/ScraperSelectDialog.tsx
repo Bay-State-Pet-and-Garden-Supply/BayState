@@ -125,7 +125,7 @@ export function ScraperSelectDialog({
                             variant={enrichmentMethod === 'scrapers' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setEnrichmentMethod('scrapers')}
-                            className={enrichmentMethod === 'scrapers' ? 'bg-[#008850] hover:bg-[#008850]/90' : ''}
+                            className={enrichmentMethod === 'scrapers' ? 'bg-primary hover:bg-primary/90' : ''}
                         >
                             <Search className="mr-1.5 h-3.5 w-3.5" />
                             Standard Scrapers
@@ -134,7 +134,7 @@ export function ScraperSelectDialog({
                             variant={enrichmentMethod === 'ai_search' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setEnrichmentMethod('ai_search')}
-                            className={enrichmentMethod === 'ai_search' ? 'bg-[#8B5CF6] hover:bg-[#8B5CF6]/90' : ''}
+                            className={enrichmentMethod === 'ai_search' ? 'bg-violet-500 hover:bg-violet-500/90' : ''}
                         >
                             <Zap className="mr-1.5 h-3.5 w-3.5" />
                             AI Search
@@ -233,7 +233,7 @@ export function ScraperSelectDialog({
                     <Button
                         onClick={handleConfirm}
                         disabled={!canSubmit || isSubmitting}
-                        className="bg-[#008850] hover:bg-[#008850]/90 text-white"
+                        className="bg-primary hover:bg-primary/90 text-white"
                     >
                         {isSubmitting ? (
                             <>
