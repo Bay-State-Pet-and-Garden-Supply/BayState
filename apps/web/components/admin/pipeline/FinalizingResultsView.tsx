@@ -948,6 +948,14 @@ export function FinalizingResultsView({
                                     {cat}
                                     <X
                                       className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                      onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                      }}
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                      }}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const cats = formData.category.filter(
@@ -1097,6 +1105,14 @@ export function FinalizingResultsView({
                                     {type}
                                     <X
                                       className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                      onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                      }}
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                      }}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const types =
@@ -1228,6 +1244,14 @@ export function FinalizingResultsView({
                                   {page}
                                   <X
                                     className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                    onPointerDown={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                    }}
+                                    onMouseDown={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                    }}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const pages =

@@ -36,7 +36,6 @@ import signal
 import sys
 import time
 import asyncio
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
@@ -166,6 +165,7 @@ if TYPE_CHECKING:
 
 # Configuration
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "30"))
+MAX_POLL_INTERVAL = int(os.environ.get("MAX_POLL_INTERVAL", "300"))
 MAX_JOBS_BEFORE_RESTART = int(os.environ.get("MAX_JOBS_BEFORE_RESTART", "100"))
 HEARTBEAT_INTERVAL = 60  # Send heartbeat every 60 seconds when idle
 
@@ -322,6 +322,7 @@ async def main_async():
 
     chunks_completed = 0
     last_heartbeat = 0
+    consecutive_idle_polls = 0
 
     logger.info("[Daemon] Entering main polling loop")
 
@@ -336,6 +337,7 @@ async def main_async():
             logger.info(f"[Daemon] Claim result: {chunk}")
 
             if chunk:
+                consecutive_idle_polls = 0
                 logger.info(f"[Chunk {chunk.chunk_id}] Claimed - job={chunk.job_id}, skus={len(chunk.skus)}")
 
                 try:
@@ -441,13 +443,26 @@ async def main_async():
                     )
 
             else:
+                consecutive_idle_polls += 1
                 now = time.time()
                 if now - last_heartbeat >= HEARTBEAT_INTERVAL:
                     await asyncio.to_thread(client.heartbeat, status="idle")
                     last_heartbeat = now
                     logger.debug("Heartbeat sent")
 
-                await asyncio.sleep(POLL_INTERVAL)
+                import random
+                # Adaptive backoff
+                max_interval = MAX_POLL_INTERVAL
+                base_interval = POLL_INTERVAL
+                backoff = base_interval * (1.5 ** (consecutive_idle_polls - 1))
+                current_interval = min(max_interval, backoff)
+                
+                # Add jitter (±10%)
+                jitter = current_interval * 0.1
+                sleep_time = current_interval + random.uniform(-jitter, jitter)
+                
+                logger.debug(f"No jobs found. Backing off for {sleep_time:.1f}s")
+                await asyncio.sleep(sleep_time)
 
         except RunnerBuildMismatchError as e:
             latest_build_id = getattr(e, "latest_build_id", None)

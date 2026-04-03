@@ -421,7 +421,19 @@ async def run_validation(config: ValidationConfig) -> int:
 
     for index, product in enumerate(sampled_products, start=1):
         print(f"[{index}/{len(sampled_products)}] Extracting {product.sku}...")
-        result, elapsed_ms = await _run_extraction(product, scraper)
+        try:
+            result, elapsed_ms = await _run_extraction(product, scraper)
+        except Exception as exc:
+            print(f"  -> Exception during extraction: {exc}")
+            result = AISearchResult(
+                success=False,
+                error=str(exc),
+                confidence=0.0,
+                cost_usd=0.0,
+                skus_extracted=[],
+            )
+            elapsed_ms = 0.0
+
         serialized_results.append(_serialize_result(product, result, elapsed_ms))
         status = "ok" if result.success else "failed"
         error_suffix = f" | error={result.error}" if result.error else ""
