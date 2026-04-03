@@ -21,7 +21,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { Spinner } from '@/components/ui/spinner';
 
-type ExportStatus = 'registered' | 'enriched' | 'finalized' | 'all';
+type ExportStatus = 'imported' | 'scraped' | 'finalized' | 'all';
 
 interface StatusCount {
   status: string;
@@ -35,8 +35,8 @@ interface ExportResult {
 }
 
 const STATUS_LABELS: Record<ExportStatus, string> = {
-  registered: 'Registered',
-  enriched: 'Enriched',
+  imported: 'Imported',
+  scraped: 'Scraped',
   finalized: 'Finalized',
   all: 'All Products',
 };
@@ -259,8 +259,8 @@ export function ExportWorkspace() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="finalized">Finalized</SelectItem>
-              <SelectItem value="enriched">Enriched</SelectItem>
-              <SelectItem value="registered">Registered</SelectItem>
+              <SelectItem value="scraped">Scraped</SelectItem>
+              <SelectItem value="imported">Imported</SelectItem>
               <SelectItem value="all">All Products</SelectItem>
             </SelectContent>
           </Select>

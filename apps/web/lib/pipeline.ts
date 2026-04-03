@@ -3,6 +3,8 @@ import {
     PERSISTED_PIPELINE_STATUSES,
     isPersistedStatus,
     type PersistedPipelineStatus,
+    type PipelineProduct,
+    type SelectedImage,
     type StatusCount,
 } from '@/lib/pipeline/types';
 import {
@@ -40,44 +42,6 @@ export function validateStatusTransition(
     return validateTransition(from, to);
 }
 
-/**
- * Represents a selected image with metadata.
- */
-export interface SelectedImage {
-    url: string;
-    selectedAt: string;
-}
-
-/**
- * Represents a product in the ingestion pipeline.
- */
-export interface PipelineProduct {
-    id?: string;
-    sku: string;
-    input: {
-        name?: string;
-        price?: number;
-    } | null;
-    sources: Record<string, unknown>;
-    image_candidates?: string[];
-    selected_images?: SelectedImage[];
-    consolidated: {
-        name?: string;
-        description?: string;
-        price?: number;
-        images?: string[];
-        brand_id?: string;
-        stock_status?: string;
-        is_featured?: boolean;
-    } | null;
-    /** Current pipeline stage status persisted on the ingestion row */
-    pipeline_status: PersistedPipelineStatus;
-    confidence_score?: number;
-    error_message?: string;
-    retry_count?: number;
-    created_at: string;
-    updated_at: string;
-}
 
 function toImageUrlArray(value: unknown): string[] {
     if (!Array.isArray(value)) {
@@ -514,20 +478,6 @@ export async function moveToScraped(
     return { success: true, updatedCount: count || skus.length };
 }
 
-/**
- * @deprecated Use moveToScraped instead. Kept for backward compatibility.
- */
-export async function moveToEnriched(
-    skus: string[],
-    userId?: string
-): Promise<{
-    success: boolean;
-    error?: string;
-    updatedCount: number;
-    invalidSkus?: string[];
-}> {
-    return moveToScraped(skus, userId);
-}
 
 /**
  * Bulk action to move multiple products to 'finalized' status.
@@ -869,4 +819,4 @@ export async function setSelectedImages(
 }
 
 // Re-export types from types.ts for convenience
-export type { PipelineStatus, PipelineStage, StatusCount, StageConfig } from '@/lib/pipeline/types';
+export type { PipelineStatus, PipelineStage, StatusCount, StageConfig, PipelineProduct } from '@/lib/pipeline/types';

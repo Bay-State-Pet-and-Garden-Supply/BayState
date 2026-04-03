@@ -740,12 +740,6 @@ export function PipelineClient({
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
-    // Intercept scraped → consolidated to call consolidation API
-    if (currentStage === "scraped" && nextStage === "consolidated") {
-      await handleConsolidate(skus);
-      return;
-    }
-
     setIsLoading(true);
     try {
       const res = await fetch("/api/admin/pipeline/bulk", {

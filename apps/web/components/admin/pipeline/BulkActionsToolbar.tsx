@@ -40,8 +40,6 @@ const newStatusMap: Partial<Record<PipelineStatus, ActionButton[]>> = {
     monitoring: [], // Transient state
     scraped: [
         { action: 'consolidate', label: 'AI Consolidate', className: 'bg-purple-600 hover:bg-purple-700' },
-    ],
-    consolidated: [
         { action: 'approve', label: 'Approve', className: 'bg-green-600 hover:bg-green-700' },
         { action: 'reject', label: 'Reject', className: 'bg-amber-600 hover:bg-amber-700' },
     ],

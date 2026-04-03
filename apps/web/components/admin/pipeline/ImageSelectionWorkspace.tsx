@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, CheckCircle2, ImageOff } from 'lucide-react';
 import { toast } from 'sonner';
-import type { SelectedImage, PipelineProduct } from '@/lib/pipeline';
+import type { SelectedImage, PipelineProduct } from '@/lib/pipeline/types';
 
 interface ImageSelectionWorkspaceProps {
   /** Single SKU for image selection */
