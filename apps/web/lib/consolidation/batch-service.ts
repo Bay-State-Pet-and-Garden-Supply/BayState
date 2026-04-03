@@ -17,6 +17,7 @@ import {
     validateRequiredConsolidationFields,
 } from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
+import { calculateAICost } from '@/lib/ai-scraping/pricing';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
@@ -838,14 +839,36 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
         // Sync status to Supabase
         const { createAdminClient } = await import('@/lib/supabase/server');
         const supabase = await createAdminClient();
+        const promptTokens = (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0;
+        const completionTokens = (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0;
+        const totalTokens = (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0;
+        const batchMetadata =
+            batch.metadata && typeof batch.metadata === 'object'
+                ? (batch.metadata as Record<string, unknown>)
+                : {};
+        const costModel =
+            typeof batch.model === 'string' && batch.model.trim().length > 0
+                ? batch.model.trim()
+                : typeof batchMetadata.llm_model === 'string' && batchMetadata.llm_model.trim().length > 0
+                    ? batchMetadata.llm_model.trim()
+                    : CONSOLIDATION_CONFIG.model;
+
+        const estimatedCost = calculateAICost(
+            costModel,
+            promptTokens,
+            completionTokens,
+            true // Batch API
+        );
+
         const updateData: Record<string, unknown> = {
             status: batch.status,
             total_requests: requestCounts.total || 0,
             completed_requests: requestCounts.completed || 0,
             failed_requests: requestCounts.failed || 0,
-            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0,
-            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0,
-            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0,
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            total_tokens: totalTokens,
+            estimated_cost: estimatedCost,
             output_file_id: batch.output_file_id,
             error_file_id: batch.error_file_id,
         };

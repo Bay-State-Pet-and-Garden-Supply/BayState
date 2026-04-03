@@ -6,7 +6,7 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/scraped
- * Trigger consolidation for products that are enriched and ready for consolidation.
+ * Trigger consolidation for products that are scraped and ready for consolidation.
  * Backward-compatible with legacy records that only have pipeline_status = 'scraped'.
  * Body: { skus?: string[] } - if no SKUs provided, consolidates all scraped products
  */

@@ -126,7 +126,7 @@ export function ImageSelectionWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sku,
-          fromStatus: 'enriched',
+          fromStatus: 'scraped',
           toStatus: 'finalized',
         }),
       });

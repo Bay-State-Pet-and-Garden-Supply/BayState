@@ -351,11 +351,9 @@ describe("pipeline queries", () => {
       ],
       scrape_jobs: [
         createQueryPlan({ data: [{ product_id: "p-2", skus: [] }], error: null }),
-        createQueryPlan({ data: [{ product_id: "p-3", skus: [] }], error: null }),
       ],
       consolidation_batches: [
         createQueryPlan({ data: [{ product_ids: ["SKU-4"] }], error: null }),
-        createQueryPlan({ data: [{ product_ids: ["SKU-6"] }], error: null }),
       ],
     });
 
@@ -366,5 +364,9 @@ describe("pipeline queries", () => {
       consolidating: 4,
       finalizing: 5,
     });
+
+    const fromCalls = (supabase.from as jest.Mock).mock.calls.map(([table]) => table);
+    expect(fromCalls.filter((table) => table === "scrape_jobs")).toHaveLength(1);
+    expect(fromCalls.filter((table) => table === "consolidation_batches")).toHaveLength(1);
   });
 });

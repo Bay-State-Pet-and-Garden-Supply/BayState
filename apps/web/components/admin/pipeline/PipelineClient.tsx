@@ -14,19 +14,17 @@ import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import dynamic from "next/dynamic";
+import type {
+  PipelineProduct,
+  PipelineStage,
+  PersistedPipelineStatus,
+  StatusCount,
+} from "@/lib/pipeline/types";
+import { getStageDataStatus, isPipelineStage } from "@/lib/pipeline/types";
 
 const ScraperSelectDialog = dynamic(() => import("./ScraperSelectDialog").then(mod => mod.ScraperSelectDialog), { ssr: false });
 const ManualAddProductDialog = dynamic(() => import("./ManualAddProductDialog").then(mod => mod.ManualAddProductDialog), { ssr: false });
 const IntegraImportDialog = dynamic(() => import("./IntegraImportDialog").then(mod => mod.IntegraImportDialog), { ssr: false });
-import type {
-  PipelineProduct,
-  PipelineTab,
-  PersistedPipelineStatus,
-  PipelineStatus,
-  PipelineStage,
-  StatusCount,
-} from "@/lib/pipeline/types";
-import { isDerivedTab, isPersistedStatus } from "@/lib/pipeline/types";
 
 const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
   'scraping',
@@ -72,18 +70,8 @@ function mergePublishedCount(nextCounts: StatusCount[], publishedCount: number):
   ];
 }
 
-function isRouteStage(value: string): value is PipelineStage {
-  return isPersistedStatus(value) || isDerivedTab(value);
-}
-
 function isLiveOperationalTab(stage: PipelineStage): boolean {
   return LIVE_OPERATIONAL_TABS.has(stage);
-}
-
-function isPersistedProductStage(
-  stage: PipelineStage,
-): stage is PersistedPipelineStatus {
-  return isPersistedStatus(stage);
 }
 
 interface PipelineClientProps {
@@ -106,7 +94,7 @@ export function PipelineClient({
 
   const stageFromUrl = searchParams.get("stage");
   const currentStage: PipelineStage =
-    stageFromUrl && isRouteStage(stageFromUrl)
+    stageFromUrl && isPipelineStage(stageFromUrl)
       ? stageFromUrl
       : initialStage;
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
@@ -166,7 +154,9 @@ export function PipelineClient({
   // Fetch products for a specific stage
   const fetchProducts = useCallback(
     async (stage: PipelineStage, searchTerm?: string, silent = false) => {
-      if (!isPersistedProductStage(stage)) {
+      const dataStatus = getStageDataStatus(stage);
+
+      if (!dataStatus) {
         setProducts([]);
         setTotalCount(0);
         setSelectedSkus(new Set());
@@ -176,7 +166,7 @@ export function PipelineClient({
       if (!silent) setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          status: stage,
+          status: dataStatus,
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
@@ -453,7 +443,7 @@ export function PipelineClient({
 
   // Select ALL matching (including beyond visible page) via API
   const handleSelectAll = async () => {
-    if (currentStage === "finalized") {
+    if (currentStage === "finalizing") {
       // Finalizing should not support select-all behavior; enforce one-by-one in UI.
       return;
     }
@@ -732,7 +722,7 @@ export function PipelineClient({
   ]);
 
   // Handle bulk status transition (non-scrape stages)
-  const handleBulkAction = async (nextStage: PipelineStatus) => {
+  const handleBulkAction = async (nextStage: PersistedPipelineStatus) => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
@@ -762,7 +752,7 @@ export function PipelineClient({
   };
 
   // Handle stage reset (moving back and clearing results)
-  const handleResetStage = async (previousStage: PipelineStatus) => {
+  const handleResetStage = async (previousStage: PersistedPipelineStatus) => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
@@ -835,8 +825,8 @@ export function PipelineClient({
           setSearch("");
           await refreshAll();
         } else {
-          // Navigate to monitoring tab for initial scrapes
-          handleStageChange("monitoring");
+          // Navigate to the live scraping tab for initial scrapes.
+          handleStageChange("scraping");
         }
       } else {
         const error = await res.json();
@@ -854,7 +844,6 @@ export function PipelineClient({
         currentStage={currentStage}
         counts={counts}
         onStageChange={handleStageChange}
-        variant="pipeline"
       />
 
       {/* Pipeline Toolbar — hidden for live operational tabs */}

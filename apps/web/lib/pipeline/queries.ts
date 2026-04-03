@@ -72,13 +72,15 @@ export async function queryImportedTabProducts(
 
 export async function queryScrapingTabProducts(
   supabase: PipelineQuerySupabaseClient,
-  pagination?: PipelineTabPagination
+  pagination?: PipelineTabPagination,
+  activeScrapeIdentifiers?: ActiveIdentifiers
 ): Promise<PipelineTabQueryResult> {
   const startedAt = Date.now();
-  const activeScrapeIdentifiers = await getActiveScrapeIdentifiers(supabase);
+  const resolvedActiveScrapeIdentifiers =
+    activeScrapeIdentifiers ?? await getActiveScrapeIdentifiers(supabase);
 
   const result = await queryProductsByStatus(supabase, "scraped", pagination, {
-    include: activeScrapeIdentifiers,
+    include: resolvedActiveScrapeIdentifiers,
   });
 
   return {
@@ -91,13 +93,15 @@ export async function queryScrapingTabProducts(
 
 export async function queryScrapedTabProducts(
   supabase: PipelineQuerySupabaseClient,
-  pagination?: PipelineTabPagination
+  pagination?: PipelineTabPagination,
+  activeScrapeIdentifiers?: ActiveIdentifiers
 ): Promise<PipelineTabQueryResult> {
   const startedAt = Date.now();
-  const activeScrapeIdentifiers = await getActiveScrapeIdentifiers(supabase);
+  const resolvedActiveScrapeIdentifiers =
+    activeScrapeIdentifiers ?? await getActiveScrapeIdentifiers(supabase);
 
   const result = await queryProductsByStatus(supabase, "scraped", pagination, {
-    exclude: activeScrapeIdentifiers,
+    exclude: resolvedActiveScrapeIdentifiers,
   });
 
   return {
@@ -110,15 +114,16 @@ export async function queryScrapedTabProducts(
 
 export async function queryConsolidatingTabProducts(
   supabase: PipelineQuerySupabaseClient,
-  pagination?: PipelineTabPagination
+  pagination?: PipelineTabPagination,
+  activeConsolidationIdentifiers?: ActiveIdentifiers
 ): Promise<PipelineTabQueryResult> {
   const startedAt = Date.now();
-  const activeConsolidationIdentifiers = await getActiveConsolidationIdentifiers(
-    supabase
-  );
+  const resolvedActiveConsolidationIdentifiers =
+    activeConsolidationIdentifiers
+    ?? await getActiveConsolidationIdentifiers(supabase);
 
   const result = await queryProductsByStatus(supabase, "finalized", pagination, {
-    include: activeConsolidationIdentifiers,
+    include: resolvedActiveConsolidationIdentifiers,
   });
 
   return {
@@ -131,15 +136,16 @@ export async function queryConsolidatingTabProducts(
 
 export async function queryFinalizingTabProducts(
   supabase: PipelineQuerySupabaseClient,
-  pagination?: PipelineTabPagination
+  pagination?: PipelineTabPagination,
+  activeConsolidationIdentifiers?: ActiveIdentifiers
 ): Promise<PipelineTabQueryResult> {
   const startedAt = Date.now();
-  const activeConsolidationIdentifiers = await getActiveConsolidationIdentifiers(
-    supabase
-  );
+  const resolvedActiveConsolidationIdentifiers =
+    activeConsolidationIdentifiers
+    ?? await getActiveConsolidationIdentifiers(supabase);
 
   const result = await queryProductsByStatus(supabase, "finalized", pagination, {
-    exclude: activeConsolidationIdentifiers,
+    exclude: resolvedActiveConsolidationIdentifiers,
   });
 
   return {
@@ -175,14 +181,19 @@ export async function queryWorkflowTabCounts(
   supabase: PipelineQuerySupabaseClient
 ): Promise<Record<WorkflowPipelineTab, number>> {
   const pagination = { limit: 1, offset: 0 };
+  const [activeScrapeIdentifiers, activeConsolidationIdentifiers] =
+    await Promise.all([
+      getActiveScrapeIdentifiers(supabase),
+      getActiveConsolidationIdentifiers(supabase),
+    ]);
 
   const [imported, scraping, scraped, consolidating, finalizing] =
     await Promise.all([
       queryImportedTabProducts(supabase, pagination),
-      queryScrapingTabProducts(supabase, pagination),
-      queryScrapedTabProducts(supabase, pagination),
-      queryConsolidatingTabProducts(supabase, pagination),
-      queryFinalizingTabProducts(supabase, pagination),
+      queryScrapingTabProducts(supabase, pagination, activeScrapeIdentifiers),
+      queryScrapedTabProducts(supabase, pagination, activeScrapeIdentifiers),
+      queryConsolidatingTabProducts(supabase, pagination, activeConsolidationIdentifiers),
+      queryFinalizingTabProducts(supabase, pagination, activeConsolidationIdentifiers),
     ]);
 
   return {
