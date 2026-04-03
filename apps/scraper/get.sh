@@ -186,7 +186,7 @@ get_config() {
         read -r -p "> " SCRAPER_API_URL < /dev/tty
 
         if [ -z "$SCRAPER_API_URL" ]; then
-            SCRAPER_API_URL="https://app.baystatepet.com"
+            SCRAPER_API_URL="https://bay-state-app.vercel.app/"
             echo -e "Using default: ${CYAN}$SCRAPER_API_URL${NC}"
         fi
     fi
