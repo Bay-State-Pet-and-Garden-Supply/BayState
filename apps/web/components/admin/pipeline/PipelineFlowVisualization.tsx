@@ -1,6 +1,7 @@
 'use client';
 
-import { PipelineTab, TAB_CONFIG, getTabOrder } from '@/lib/pipeline-tabs';
+import { STAGE_CONFIG } from '@/lib/pipeline/types';
+import type { PipelineStage } from '@/lib/pipeline/types';
 import { 
     Upload, 
     Sparkles, 
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 
 interface PipelineFlowVisualizationProps {
-    currentTab: PipelineTab;
+    currentTab: PipelineStage;
     counts: { status: string; count: number }[];
 }
 
@@ -33,11 +34,30 @@ const iconMap: Record<string, React.ElementType> = {
     AlertCircle: AlertCircle,
 };
 
-export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVisualizationProps) {
-    const flowOrder = getTabOrder();
-    const currentIndex = flowOrder.indexOf(currentTab);
-    const currentConfig = TAB_CONFIG[currentTab];
+// Stage to icon mapping (STAGE_CONFIG doesn't have icon property)
+const stageIconMap: Record<string, string> = {
+    imported: "Inbox",
+    scraping: "Download",
+    consolidating: "Merge",
+    finalizing: "CheckCircle",
+    published: "Store",
+    failed: "AlertCircle",
+};
 
+const WORKFLOW_ORDER: PipelineStage[] = [
+    "imported",
+    "scraping",
+    "consolidating",
+    "finalizing",
+    "published",
+    "failed",
+];
+
+export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVisualizationProps) {
+    const currentIndex = WORKFLOW_ORDER.indexOf(currentTab);
+    const currentConfig = STAGE_CONFIG[currentTab];
+    // Fallback bgColor - use lightened version of color or default gray
+    const currentBgColor = currentConfig ? `${currentConfig.color}15` : "#f3f4f6";
     return (
         <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -52,12 +72,12 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
 
             <div className="relative overflow-x-auto pb-4">
                 <div className="flex items-center justify-between min-w-max px-2">
-                    {flowOrder.map((tab, index) => {
-                        const config = TAB_CONFIG[tab];
+                    {WORKFLOW_ORDER.map((tab, index) => {
+                        const config = STAGE_CONFIG[tab];
                         const count = counts.find(c => c.status === tab)?.count ?? 0;
                         const isActive = index === currentIndex;
                         const isCompleted = index < currentIndex;
-                        const Icon = iconMap[config.icon] || Upload;
+                        const Icon = iconMap[stageIconMap[tab]] || Upload;
 
                         return (
                             <div key={tab} className="flex items-center">
@@ -89,7 +109,7 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
                                     </span>
                                 </div>
                                 
-                                {index < flowOrder.length - 1 && (
+                                {index < WORKFLOW_ORDER.length - 1 && (
                                     <ArrowRight className={`h-4 w-4 mx-2 flex-shrink-0 ${
                                         isCompleted ? 'text-primary' : 'text-gray-200'
                                     }`} />
@@ -100,7 +120,7 @@ export function PipelineFlowVisualization({ currentTab, counts }: PipelineFlowVi
                 </div>
             </div>
 
-            <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: currentConfig.bgColor }}>
+            <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: currentBgColor }}>
                 <p className="text-sm">
                     <span className="font-medium" style={{ color: currentConfig.color }}>{currentConfig.label}:</span>{' '}
                     <span style={{ color: currentConfig.color }}>{currentConfig.description}</span>

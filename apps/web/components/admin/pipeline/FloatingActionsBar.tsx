@@ -47,6 +47,8 @@ const BULK_ACTIONS: Record<
   published: { label: "", nextStage: null },
   images: { label: "", nextStage: null },
   export: { label: "", nextStage: null },
+  scraping: { label: "", nextStage: null },
+  finalizing: { label: "", nextStage: null },
   consolidating: { label: "", nextStage: null },
 };
 

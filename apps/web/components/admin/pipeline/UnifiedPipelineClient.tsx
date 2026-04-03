@@ -26,11 +26,14 @@ export function UnifiedPipelineClient({
 
   return (
     <div className="space-y-6">
-      <PipelineHeader totalProducts={total} />
+      <PipelineHeader
+        title="Product Pipeline"
+        subtitle={`${total} products in workflow`}
+      />
       
-      <PipelineFlowVisualization 
-        currentStage={currentStage} 
-        counts={counts} 
+      <PipelineFlowVisualization
+        currentTab={currentStage}
+        counts={counts}
       />
       
       <WorkflowTabs
