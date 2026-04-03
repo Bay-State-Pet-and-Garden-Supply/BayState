@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     const nextDefaults = defaults ?? rawDefaults;
-    const updatedDefaults = await upsertAIConsolidationDefaults(nextDefaults);
+    const updatedDefaults = await upsertAIConsolidationDefaults(nextDefaults as Partial<AIConsolidationDefaults>);
     return NextResponse.json({
       message: 'Settings updated successfully',
       defaults: updatedDefaults,

@@ -715,11 +715,12 @@ export async function submitBatch(
 
     try {
         const runtime = await getConfiguredBatchClient(true);
-        if ('success' in runtime && !runtime.success) {
-            return runtime;
+        if (!('client' in runtime)) {
+            return runtime as BatchErrorResponse;
         }
 
         const { client, ...config } = runtime;
+
 
         // Build prompt context with taxonomy
         const { systemPrompt, categories, productTypes, shopsitePages = [] } = await buildPromptContext();
@@ -802,6 +803,10 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
     if ('success' in runtime && !runtime.success) {
         return runtime;
     }
+    if (!('client' in runtime)) {
+        return runtime as BatchErrorResponse;
+    }
+
 
     try {
         const { client } = runtime;
@@ -892,6 +897,10 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
     if ('success' in runtime && !runtime.success) {
         return runtime;
     }
+    if (!('client' in runtime)) {
+        return runtime as BatchErrorResponse;
+    }
+
 
     try {
         const { client } = runtime;
@@ -1761,6 +1770,10 @@ export async function cancelBatch(batchId: string): Promise<{ status: string } |
     if ('success' in runtime && !runtime.success) {
         return runtime;
     }
+    if (!('client' in runtime)) {
+        return runtime as BatchErrorResponse;
+    }
+
 
     try {
         const { client } = runtime;
