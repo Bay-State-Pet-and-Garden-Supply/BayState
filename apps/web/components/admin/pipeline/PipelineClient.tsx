@@ -12,8 +12,6 @@ import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
-import { ImageSelectionTab } from "./ImageSelectionTab";
-import { ExportTab } from "./ExportTab";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import dynamic from "next/dynamic";
 
@@ -30,11 +28,9 @@ import type {
 } from "@/lib/pipeline/types";
 import { isDerivedTab, isPersistedStatus } from "@/lib/pipeline/types";
 
-const LIVE_OPERATIONAL_TABS = new Set<PipelineTab>([
-  "monitoring",
-  "consolidating",
-  "images",
-  "export",
+const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
+  'scraping',
+  'consolidating',
 ]);
 
 const SKU_TAG_PATTERN = /<SKU>([^<]+)<\/SKU>/g;
@@ -81,7 +77,7 @@ function isRouteStage(value: string): value is PipelineStage {
 }
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
-  return LIVE_OPERATIONAL_TABS.has(stage as PipelineTab);
+  return LIVE_OPERATIONAL_TABS.has(stage);
 }
 
 function isPersistedProductStage(
@@ -858,6 +854,7 @@ export function PipelineClient({
         currentStage={currentStage}
         counts={counts}
         onStageChange={handleStageChange}
+        variant="pipeline"
       />
 
       {/* Pipeline Toolbar — hidden for live operational tabs */}
@@ -893,7 +890,7 @@ export function PipelineClient({
           <div className="flex h-48 items-center justify-center">
             <div className="text-muted-foreground">Loading...</div>
           </div>
-        ) : currentStage === "monitoring" ? (
+        ) : currentStage === "scraping" ? (
           <div className="grid gap-6 xl:grid-cols-1">
             <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
@@ -931,16 +928,6 @@ export function PipelineClient({
               <ActiveConsolidationsTab />
             </section>
           </div>
-        ) : currentStage === "images" ? (
-          <ImageSelectionTab />
-        ) : currentStage === "export" ? (
-          <ExportTab
-            count={totalCount}
-            filters={{
-              status: currentStage,
-              search,
-            }}
-          />
         ) : currentStage === "scraped" ? (
           <ScrapedResultsView
             products={filteredProducts}
@@ -948,7 +935,7 @@ export function PipelineClient({
             onSelectSku={handleSelectSku}
             onRefresh={refreshAll}
           />
-        ) : currentStage === "finalized" || currentStage === "published" ? (
+        ) : currentStage === "finalizing" ? (
           <FinalizingResultsView
             products={filteredProducts}
             onRefresh={refreshAll}
