@@ -79,6 +79,7 @@ export const PIPELINE_TABS = [
   "scraped",
   "consolidating",
   "finalizing",
+  "published",
 ] as const;
 
 export type PipelineTab5 = (typeof PIPELINE_TABS)[number];
@@ -137,6 +138,9 @@ export function tabToQueryFilter(tab: PipelineTab5): {
       return { status: "finalized", consolidationActive: true };
     case "finalizing":
       return { status: "finalized", consolidationActive: false };
+    case "published":
+      // Published products are finalized products uploaded to ShopSite
+      return { status: "finalized" };
     default:
       return { status: "imported" };
   }

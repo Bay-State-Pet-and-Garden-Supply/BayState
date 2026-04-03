@@ -940,6 +940,12 @@ export function PipelineClient({
             products={filteredProducts}
             onRefresh={refreshAll}
           />
+        ) : currentStage === "published" ? (
+          // Published products view - shows finalized products ready for ShopSite upload
+          <FinalizingResultsView
+            products={filteredProducts}
+            onRefresh={refreshAll}
+          />
         ) : (
           <ProductTable
             products={filteredProducts}
