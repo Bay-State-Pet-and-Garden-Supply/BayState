@@ -456,7 +456,7 @@ Wave 3: compatibility removal + regression hardening + performance/consistency a
 
   **Commit**: YES | Message: `test(pipeline): add workflow status regression coverage` | Files: [`apps/web/__tests__/**/*pipeline*`, `apps/web/__tests__/**/*publish*`, `apps/web/__tests__/**/*integra*`]
 
-- [ ] 10. Run Final Data And Performance Audit
+- [x] 10. Run Final Data And Performance Audit
 
   **What to do**: Perform a final audit pass after code changes to confirm there are no invalid statuses, no query regressions in published/export derivation, no double-counting between persisted and operational tabs, and no stale strings left in active code. Capture evidence for schema values, route payloads, and page rendering.
   **Must NOT do**: Do not mark the refactor complete without verifying the real distinct DB status set, published derivation queries, and admin pipeline tab behavior on current fixtures.

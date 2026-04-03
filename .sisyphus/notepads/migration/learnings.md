@@ -1,2 +1,0 @@
-- The initial execution of the baseline test failed due to an error in `ai_discovery.py` related to the deprecated `provider` argument in `crawl4ai`. The script still correctly recorded all the failures to the baseline test results as expected.
-- Update to crawl4ai v0.8.0 requires using `LLMConfig(provider=...)` inside `LLMExtractionStrategy` instead of passing `provider` directly as an argument.
