@@ -13,13 +13,10 @@ import {
   type PipelineQuerySupabaseClient,
 } from "@/lib/pipeline/queries";
 import SinglePipelineTabs from "./SinglePipelineTabs";
-import { WorkflowTabs } from "./WorkflowTabs";
 import { PipelineHeader } from "./PipelineHeader";
-import { PipelineFlowVisualization } from "./PipelineFlowVisualization";
-
-const SINGLE_PIPELINE_UI_ENABLED =
-  process.env.NEXT_PUBLIC_ENABLE_SINGLE_PIPELINE_UI === "true"
-  || process.env.ENABLE_SINGLE_PIPELINE_UI === "true";
+import { ProductTable } from "./ProductTable";
+import { ScrapedResultsView } from "./ScrapedResultsView";
+import { FinalizingResultsView } from "./FinalizingResultsView";
 
 const EMPTY_SINGLE_PIPELINE_COUNTS: Record<WorkflowPipelineTab, number> = {
   imported: 0,
@@ -63,7 +60,7 @@ export function UnifiedPipelineClient({
   initialStage,
 }: UnifiedPipelineClientProps) {
   const [currentStage, setCurrentStage] = useState<PipelineStage>(() =>
-    SINGLE_PIPELINE_UI_ENABLED ? normalizeSinglePipelineStage(initialStage) : initialStage
+    normalizeSinglePipelineStage(initialStage)
   );
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts] = useState<StatusCount[]>(initialCounts);
@@ -74,10 +71,6 @@ export function UnifiedPipelineClient({
   const [isResolvingTabs, setIsResolvingTabs] = useState(false);
 
   useEffect(() => {
-    if (!SINGLE_PIPELINE_UI_ENABLED) {
-      return;
-    }
-
     let cancelled = false;
 
     async function fetchSinglePipelineData() {
@@ -123,7 +116,7 @@ export function UnifiedPipelineClient({
 
   const visibleProductCount = products.length;
 
-  const displayedStage = SINGLE_PIPELINE_UI_ENABLED ? activeSinglePipelineStage : currentStage;
+  const displayedStage = activeSinglePipelineStage;
   const stageLabel = formatStageLabel(displayedStage);
 
   return (
@@ -133,38 +126,35 @@ export function UnifiedPipelineClient({
         subtitle={`${total} products in workflow`}
       />
       
-      <PipelineFlowVisualization
-        currentTab={currentStage}
-        counts={counts}
+      
+      <SinglePipelineTabs
+        activeTab={activeSinglePipelineStage}
+        counts={singlePipelineCounts}
+        onTabChange={(tab) => setCurrentStage(tab as PipelineStage)}
       />
       
-      {SINGLE_PIPELINE_UI_ENABLED ? (
-        <SinglePipelineTabs
-          activeTab={activeSinglePipelineStage}
-          counts={singlePipelineCounts}
-          onTabChange={(tab) => setCurrentStage(tab as PipelineStage)}
-        />
-      ) : (
-        <WorkflowTabs
-          currentStage={currentStage}
-          counts={counts}
-          onStageChange={setCurrentStage}
-        />
-      )}
-      
-      <div className="rounded-lg border bg-card p-6">
-        <h2 className="text-lg font-semibold mb-4">
-          {stageLabel} Stage
-        </h2>
-        <p className="text-muted-foreground">
-          Showing {visibleProductCount} loaded products in {displayedStage} stage
-        </p>
-        {SINGLE_PIPELINE_UI_ENABLED && isResolvingTabs ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Resolving active scrape and consolidation jobs for loaded products.
-          </p>
-        ) : null}
-      </div>
+      {activeSinglePipelineStage === "scraped" ? (
+  <ScrapedResultsView
+    products={products}
+    selectedSkus={new Set()}
+    onSelectSku={() => {}}
+    onRefresh={() => {}}
+  />
+) : activeSinglePipelineStage === "finalizing" ? (
+  <FinalizingResultsView
+    products={products}
+    onRefresh={() => {}}
+  />
+) : (
+  <ProductTable
+    products={products}
+    selectedSkus={new Set()}
+    onSelectSku={() => {}}
+    onSelectAll={() => {}}
+    onDeselectAll={() => {}}
+    currentStage={activeSinglePipelineStage}
+  />
+)}
     </div>
   );
 }
