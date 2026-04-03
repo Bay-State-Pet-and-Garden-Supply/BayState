@@ -66,6 +66,82 @@ export function isDerivedTab(value: string): value is PipelineTab {
   return DERIVED_PIPELINE_TAB_SET.has(value);
 }
 
+/**
+ * 5-tab UI workflow tabs.
+ * These are DERIVED tabs based on persisted status + active jobs.
+ * The 'scraping' tab shows products being scraped (imported status + active scrape job).
+ * The 'consolidating' tab shows products being consolidated (finalized status + active consolidation).
+ * The 'finalizing' tab shows products ready for final review (finalized + no active work).
+ */
+export const PIPELINE_TABS = [
+  "imported",
+  "scraping",
+  "scraped",
+  "consolidating",
+  "finalizing",
+] as const;
+
+export type PipelineTab5 = (typeof PIPELINE_TABS)[number];
+
+/**
+ * Set for fast tab membership checks
+ */
+const PIPELINE_TAB_5_SET = new Set<string>(PIPELINE_TABS);
+
+/**
+ * Derives the UI tab from product status and active job states.
+ *
+ * Logic:
+ * - 'imported' → product is waiting for scraping
+ * - 'scraping' → product has 'imported' status + active scrape job
+ * - 'scraped' → product has 'scraped' status + no active scrape job
+ * - 'consolidating' → product has 'finalized' status + active consolidation job
+ * - 'finalizing' → product has 'finalized' status + no active consolidation
+ */
+export function statusToTab(
+  status: PersistedPipelineStatus,
+  hasActiveScrapeJob: boolean,
+  hasActiveConsolidation: boolean
+): PipelineTab5 {
+  switch (status) {
+    case "imported":
+      return hasActiveScrapeJob ? "scraping" : "imported";
+    case "scraped":
+      return "scraped";
+    case "finalized":
+      return hasActiveConsolidation ? "consolidating" : "finalizing";
+    case "failed":
+      return "imported";
+    default:
+      return "imported";
+  }
+}
+
+/**
+ * Returns Supabase query filter for a given tab.
+ * Used to filter products displayed in each UI tab.
+ */
+export function tabToQueryFilter(tab: PipelineTab5): {
+  status?: PersistedPipelineStatus;
+  scrapeJobActive?: boolean;
+  consolidationActive?: boolean;
+} {
+  switch (tab) {
+    case "imported":
+      return { status: "imported", scrapeJobActive: false };
+    case "scraping":
+      return { status: "imported", scrapeJobActive: true };
+    case "scraped":
+      return { status: "scraped" };
+    case "consolidating":
+      return { status: "finalized", consolidationActive: true };
+    case "finalizing":
+      return { status: "finalized", consolidationActive: false };
+    default:
+      return { status: "imported" };
+  }
+}
+
 export function isPipelineStatus(value: string): value is PipelineStage {
   return ALL_PIPELINE_STATUS_SET.has(value);
 }
