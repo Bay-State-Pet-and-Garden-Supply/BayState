@@ -3,7 +3,10 @@
 import { Loader2, Plus, Trash2, Search, Archive, Upload } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
+import type {
+  PersistedPipelineStatus,
+  PipelineStage,
+} from "@/lib/pipeline/types";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 /**
@@ -14,19 +17,13 @@ const BULK_ACTIONS: Record<
   PipelineStage,
   {
     label: string;
-    nextStage: PipelineStatus | null;
+    nextStage: PersistedPipelineStatus | null;
     resetLabel?: string;
-    previousStage?: PipelineStatus | null;
+    previousStage?: PersistedPipelineStatus | null;
     secondaryAction?: string;
   }
 > = {
   imported: { label: "Scrape Selected", nextStage: "scraped" },
-  monitoring: {
-    label: "",
-    nextStage: null,
-    resetLabel: "Cancel & Return to Import",
-    previousStage: "imported",
-  },
   scraped: {
     label: "Finalize Selected",
     nextStage: "finalized",
@@ -34,22 +31,15 @@ const BULK_ACTIONS: Record<
     previousStage: "imported",
     secondaryAction: "Scrape Additional Sources",
   },
-  failed: {
-    label: "Retry Selected",
-    nextStage: "imported",
-  },
-  finalized: {
-    label: "Publish Selected",
-    nextStage: "published",
+  published: { label: "", nextStage: null },
+  scraping: { label: "", nextStage: null },
+  consolidating: { label: "", nextStage: null },
+  finalizing: {
+    label: "",
+    nextStage: null,
     resetLabel: "Return to Scraped",
     previousStage: "scraped",
   },
-  published: { label: "", nextStage: null },
-  images: { label: "", nextStage: null },
-  export: { label: "", nextStage: null },
-  scraping: { label: "", nextStage: null },
-  finalizing: { label: "", nextStage: null },
-  consolidating: { label: "", nextStage: null },
 };
 
 interface FloatingActionsBarProps {
@@ -59,8 +49,8 @@ interface FloatingActionsBarProps {
   isLoading: boolean;
   onClearSelection: () => void;
   onSelectAll: () => void;
-  onBulkAction: (nextStage: PipelineStatus) => void;
-  onResetStage?: (previousStage: PipelineStatus) => void;
+  onBulkAction: (nextStage: PersistedPipelineStatus) => void;
+  onResetStage?: (previousStage: PersistedPipelineStatus) => void;
   onOpenScrapeDialog?: () => void;
   onDelete?: () => void;
   actionState?: "upload" | "zip" | null;
@@ -141,7 +131,7 @@ export function FloatingActionsBar({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {selectedCount < totalCount && currentStage !== "finalized" && (
+          {selectedCount < totalCount && currentStage !== "finalizing" && (
             <Button
               variant="ghost"
               size="sm"

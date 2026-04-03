@@ -15,16 +15,18 @@ describe("StatusBadge", () => {
     });
   });
 
-  describe("scraped status", () => {
-    it("renders scraped status with pulse animation", () => {
-      render(<StatusBadge status="scraped" />);
+  describe("scraping status", () => {
+    it("renders scraping status with pulse animation", () => {
+      render(<StatusBadge status="scraping" />);
 
-      const badge = screen.getByText("Scraped").closest("[data-slot='badge']");
+      const badge = screen.getByText("Scraping").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
       const pulseDot = document.querySelector(".animate-ping");
       expect(pulseDot).toBeInTheDocument();
     });
+  });
 
+  describe("scraped status", () => {
     it("renders scraped status with Sparkles icon", () => {
       render(<StatusBadge status="scraped" />);
 
@@ -33,18 +35,9 @@ describe("StatusBadge", () => {
     });
   });
 
-  describe("consolidated status", () => {
-    it("renders consolidated status with CheckCircle2 icon", () => {
-      const { container } = render(<StatusBadge status="consolidated" />);
-
-      const icon = container.querySelector("[data-slot='badge'] svg");
-      expect(icon).toBeInTheDocument();
-    });
-  });
-
-  describe("finalized status", () => {
-    it("renders finalized status with CheckCircle2 icon", () => {
-      const { container } = render(<StatusBadge status="finalized" />);
+  describe("finalizing status", () => {
+    it("renders finalizing status with CheckCircle2 icon", () => {
+      const { container } = render(<StatusBadge status="finalizing" />);
 
       const icon = container.querySelector("[data-slot='badge'] svg");
       expect(icon).toBeInTheDocument();
@@ -94,7 +87,7 @@ describe("StatusBadge", () => {
 
   describe("loading state", () => {
     it("renders skeleton when isLoading is true", () => {
-      render(<StatusBadge status="imported" isLoading={true} />);
+      render(<StatusBadge status="imported" isLoading />);
 
       const skeleton = document.querySelector(".animate-pulse");
       expect(skeleton).toBeInTheDocument();

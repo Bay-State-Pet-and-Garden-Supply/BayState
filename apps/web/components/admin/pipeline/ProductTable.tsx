@@ -111,7 +111,7 @@ export function ProductTable({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const showSources = currentStage === "scraped";
-  const showConfidence = currentStage === "finalized";
+  const showConfidence = currentStage === "finalizing";
 
   const columns = useMemo<ColumnDef<PipelineProduct>[]>(() => [
     {

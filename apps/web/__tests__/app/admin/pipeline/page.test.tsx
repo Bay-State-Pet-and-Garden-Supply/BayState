@@ -9,8 +9,8 @@ let lastPipelineClientProps: Record<string, unknown> | null = null;
 const mockGetProductsByStatus = jest.fn();
 const mockGetStatusCounts = jest.fn();
 
-jest.mock("@/components/admin/pipeline/UnifiedPipelineClient", () => ({
-  UnifiedPipelineClient: (props: Record<string, unknown>) => {
+jest.mock("@/components/admin/pipeline/PipelineClient", () => ({
+  PipelineClient: (props: Record<string, unknown>) => {
     lastPipelineClientProps = props;
     return <div data-testid="pipeline-client" />;
   },
@@ -29,14 +29,23 @@ describe("admin pipeline page stage params", () => {
     mockGetStatusCounts.mockResolvedValue([]);
   });
 
-  it("accepts derived stage params without fetching persisted products", async () => {
-    render(await PipelinePage({ searchParams: Promise.resolve({ stage: "images" }) }));
+  it("accepts the published stage without fetching persisted products", async () => {
+    render(await PipelinePage({ searchParams: Promise.resolve({ stage: "published" }) }));
 
     expect(mockGetProductsByStatus).not.toHaveBeenCalled();
     expect(lastPipelineClientProps).toMatchObject({
-      initialStage: "images",
+      initialStage: "published",
       initialProducts: [],
       initialTotal: 0,
+    });
+  });
+
+  it("hydrates finalizing from finalized products", async () => {
+    render(await PipelinePage({ searchParams: Promise.resolve({ stage: "finalizing" }) }));
+
+    expect(mockGetProductsByStatus).toHaveBeenCalledWith("finalized", { limit: 500 });
+    expect(lastPipelineClientProps).toMatchObject({
+      initialStage: "finalizing",
     });
   });
 

@@ -44,7 +44,7 @@ export function PipelineToolbar({
 }: PipelineToolbarProps) {
   const isImported = currentStage === "imported";
   const isScrapedStage = currentStage === "scraped";
-  const isFinalizing = currentStage === "finalized";
+  const isFinalizing = currentStage === "finalizing";
   const isPublished = currentStage === "published";
 
   return (

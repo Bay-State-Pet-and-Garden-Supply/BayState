@@ -118,7 +118,7 @@ function coalesceBoolean(...values: unknown[]): boolean | null {
 }
 
 function uniqueStrings(values: string[]): string[] {
-    return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+    return Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean)));
 }
 
 function extractSelectedImageUrls(value: unknown): string[] {

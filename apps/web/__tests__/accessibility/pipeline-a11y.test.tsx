@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { PipelineProductCard } from '../../components/admin/pipeline/PipelineProductCard';
 import { PipelineProductDetail } from '../../components/admin/pipeline/PipelineProductDetail';
-import { PipelineStatusTabs } from '../../components/admin/pipeline/PipelineStatusTabs';
+import { StageTabs } from '../../components/admin/pipeline/StageTabs';
 
 expect.extend(toHaveNoViolations);
 
@@ -30,6 +30,7 @@ const mockCounts = [
   { status: 'scraped', count: 5 },
   { status: 'finalized', count: 2 },
   { status: 'failed', count: 1 },
+  { status: 'published', count: 3 },
 ];
 
 describe('Pipeline Accessibility', () => {
@@ -71,17 +72,14 @@ describe('Pipeline Accessibility', () => {
     });
   });
 
-  describe('PipelineStatusTabs', () => {
+  describe('StageTabs', () => {
     it('should have no accessibility violations', async () => {
       const { container } = render(
-        <>
-            <PipelineStatusTabs
-              counts={mockCounts as any}
-              activeTab="imported"
-              onTabChange={() => {}}
-            />
-            <div id="main-content">Content</div>
-        </>
+        <StageTabs
+          counts={mockCounts as any}
+          currentStage="imported"
+          onStageChange={() => {}}
+        />
       );
 
       const results = await axe(container);
@@ -91,25 +89,22 @@ describe('Pipeline Accessibility', () => {
 
     it('should use correct ARIA roles', () => {
       render(
-          <PipelineStatusTabs
-            counts={mockCounts as any}
-            activeTab="imported"
-            onTabChange={() => {}}
-          />
+        <StageTabs
+          counts={mockCounts as any}
+          currentStage="imported"
+          onStageChange={() => {}}
+        />
       );
       const tablist = screen.getByRole('tablist');
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs.length).toBeGreaterThanOrEqual(8);
+      expect(tabs.length).toBe(6);
       expect(screen.getAllByRole('tab', { name: /Imported/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Scraping/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Scraped/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Finalized/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Failed/i }).length).toBeGreaterThan(0);
-
-      tabs.forEach((tab) => {
-        expect(tab).toHaveAttribute('aria-controls', 'main-content');
-      });
+      expect(screen.getAllByRole('tab', { name: /Finalizing/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Published/i }).length).toBeGreaterThan(0);
     });
   });
 

@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
 import { getProductsByStatus, getStatusCounts } from '@/lib/pipeline';
-import { isDerivedTab, isPersistedStatus } from '@/lib/pipeline/types';
+import { getStageDataStatus, isPipelineStage } from '@/lib/pipeline/types';
 import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
         ? rawStageParam
         : undefined;
 
-    const initialStage: PipelineStage = stageParam && (isPersistedStatus(stageParam) || isDerivedTab(stageParam))
+    const initialStage: PipelineStage = stageParam && isPipelineStage(stageParam)
         ? stageParam
         : 'imported';
 
@@ -33,15 +33,15 @@ export default async function PipelinePage({ searchParams }: PageProps) {
     let initialTotal = 0;
 
     try {
-        const shouldFetchProducts = isPersistedStatus(initialStage);
-        
         let counts: StatusCount[] = [];
         let products: PipelineProduct[] = [];
         let totalCount = 0;
 
-        if (shouldFetchProducts) {
+        const initialDataStatus = getStageDataStatus(initialStage);
+
+        if (initialDataStatus) {
             const [pResult, countsResult] = await Promise.all([
-                getProductsByStatus(initialStage, { limit: 500 }),
+                getProductsByStatus(initialDataStatus, { limit: 500 }),
                 getStatusCounts(),
             ]);
             products = pResult.products;

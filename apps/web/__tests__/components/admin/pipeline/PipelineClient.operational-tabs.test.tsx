@@ -2,8 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { render, screen } from "@testing-library/react";
-import { waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { PipelineClient } from "@/components/admin/pipeline/PipelineClient";
 import type { PipelineProduct, StatusCount } from "@/lib/pipeline/types";
 
@@ -57,12 +56,6 @@ jest.mock("@/components/admin/pipeline/FinalizingResultsView", () => ({
     return <div data-testid="finalizing-results" />;
   },
 }));
-jest.mock("@/components/admin/pipeline/ImageSelectionTab", () => ({
-  ImageSelectionTab: () => <div data-testid="image-selection-tab" />,
-}));
-jest.mock("@/components/admin/pipeline/ExportTab", () => ({
-  ExportTab: () => <div data-testid="export-tab" />,
-}));
 
 const products: PipelineProduct[] = [
   {
@@ -70,7 +63,7 @@ const products: PipelineProduct[] = [
     input: { name: "Product 1", price: 10 },
     sources: {},
     consolidated: { name: "Product 1", price: 10 },
-    pipeline_status: "imported",
+    pipeline_status: "finalized",
     created_at: "2026-01-01",
     updated_at: "2026-01-01",
   },
@@ -79,19 +72,16 @@ const products: PipelineProduct[] = [
 const counts: StatusCount[] = [
   { status: "imported", count: 1 },
   { status: "scraped", count: 0 },
-  { status: "finalized", count: 0 },
+  { status: "finalized", count: 1 },
   { status: "failed", count: 0 },
 ];
 
-describe("PipelineClient operational tab handling", () => {
+describe("PipelineClient live tab handling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     lastFinalizingResultsProps = null;
     mockSearchParamsToString.mockReturnValue("");
-    mockSearchParamGet.mockImplementation((key: string) => {
-      if (key === "stage") return null;
-      return null;
-    });
+    mockSearchParamGet.mockImplementation(() => null);
     mockFetch.mockResolvedValue({
       ok: true,
       text: async () => "<?xml version=\"1.0\"?><Products></Products>",
@@ -99,9 +89,9 @@ describe("PipelineClient operational tab handling", () => {
     });
   });
 
-  it("renders the images workspace without product toolbar chrome", async () => {
+  it("renders the scraping tab without product-table chrome", async () => {
     mockSearchParamGet.mockImplementation((key: string) => {
-      if (key === "stage") return "images";
+      if (key === "stage") return "scraping";
       return null;
     });
 
@@ -121,29 +111,29 @@ describe("PipelineClient operational tab handling", () => {
       );
     });
 
-    expect(screen.getByTestId("image-selection-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("active-runs")).toBeInTheDocument();
     expect(screen.queryByTestId("pipeline-toolbar")).not.toBeInTheDocument();
     expect(screen.queryByTestId("floating-actions")).not.toBeInTheDocument();
   });
 
-  it("allows the published derived tab without treating it like a workflow status tab", async () => {
+  it("renders finalizing from server-hydrated finalized products", async () => {
     mockSearchParamGet.mockImplementation((key: string) => {
-      if (key === "stage") return "published";
+      if (key === "stage") return "finalizing";
       return null;
     });
 
     render(
       <PipelineClient
         initialCounts={counts}
-        initialProducts={[]}
-        initialTotal={0}
-        initialStage="imported"
+        initialProducts={products}
+        initialTotal={1}
+        initialStage="finalizing"
       />,
     );
 
     expect(await screen.findByTestId("finalizing-results")).toBeInTheDocument();
+    expect(lastFinalizingResultsProps).toMatchObject({ products });
     expect(screen.getByTestId("pipeline-toolbar")).toBeInTheDocument();
-    expect(screen.getByTestId("floating-actions")).toBeInTheDocument();
     expect(screen.queryByTestId("product-table")).not.toBeInTheDocument();
   });
 

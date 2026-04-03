@@ -15,7 +15,7 @@ const counts: StatusCount[] = [
 ];
 
 describe("StageTabs", () => {
-  it("separates persisted workflow tabs from operational tabs", () => {
+  it("renders the live six-tab workflow", () => {
     render(
       <StageTabs
         currentStage="imported"
@@ -24,53 +24,46 @@ describe("StageTabs", () => {
       />,
     );
 
-    const workflowSection = screen.getByText("Workflow").parentElement;
-    const operationalSection = screen.getByText("Operational").parentElement;
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(6);
 
-    expect(workflowSection).toBeTruthy();
-    expect(operationalSection).toBeTruthy();
-
-    expect(within(workflowSection!).getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
-    expect(within(workflowSection!).getByRole("tab", { name: /Scraped/i })).toBeInTheDocument();
-    expect(within(workflowSection!).getByRole("tab", { name: /Finalized/i })).toBeInTheDocument();
-    expect(within(workflowSection!).getByRole("tab", { name: /Failed/i })).toBeInTheDocument();
-    expect(within(workflowSection!).queryByRole("tab", { name: /Published/i })).not.toBeInTheDocument();
-
-    expect(within(operationalSection!).getByRole("tab", { name: /Monitoring/i })).toBeInTheDocument();
-    expect(within(operationalSection!).getByRole("tab", { name: /Consolidating/i })).toBeInTheDocument();
-    expect(within(operationalSection!).getByRole("tab", { name: /Published/i })).toBeInTheDocument();
-    expect(within(operationalSection!).getByRole("tab", { name: /Images/i })).toBeInTheDocument();
-    expect(within(operationalSection!).getByRole("tab", { name: /Export/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Scraping/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Scraped/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Consolidating/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Finalizing/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Published/i })).toBeInTheDocument();
   });
 
-  it("keeps the canonical finalized badge and omits any legacy consolidated tab", () => {
+  it("shows derived counts for finalizing and published", () => {
     render(
       <StageTabs
-        currentStage="finalized"
+        currentStage="finalizing"
         counts={counts}
         onStageChange={() => {}}
       />,
     );
 
-    const workflowSection = screen.getByText("Workflow").parentElement;
-    const finalizedTab = within(workflowSection!).getByRole("tab", { name: /Finalized/i });
+    const finalizingTab = screen.getByRole("tab", { name: /Finalizing/i });
+    const publishedTab = screen.getByRole("tab", { name: /Published/i });
 
-    expect(within(finalizedTab).getByText("3")).toBeInTheDocument();
-    expect(within(workflowSection!).queryByRole("tab", { name: /Consolidated/i })).not.toBeInTheDocument();
-  });
-
-  it("renders the published badge from derived counts", () => {
-    render(
-      <StageTabs
-        currentStage="published"
-        counts={counts}
-        onStageChange={() => {}}
-      />,
-    );
-
-    const operationalSection = screen.getByText("Operational").parentElement;
-    const publishedTab = within(operationalSection!).getByRole("tab", { name: /Published/i });
-
+    expect(within(finalizingTab).getByText("3")).toBeInTheDocument();
     expect(within(publishedTab).getByText("7")).toBeInTheDocument();
+  });
+
+  it("shows zero for in-progress derived tabs", () => {
+    render(
+      <StageTabs
+        currentStage="scraping"
+        counts={counts}
+        onStageChange={() => {}}
+      />,
+    );
+
+    const scrapingTab = screen.getByRole("tab", { name: /Scraping/i });
+    const consolidatingTab = screen.getByRole("tab", { name: /Consolidating/i });
+
+    expect(within(scrapingTab).getByText("0")).toBeInTheDocument();
+    expect(within(consolidatingTab).getByText("0")).toBeInTheDocument();
   });
 });

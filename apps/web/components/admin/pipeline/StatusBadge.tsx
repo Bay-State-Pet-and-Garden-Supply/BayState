@@ -1,11 +1,18 @@
-import { Package, Sparkles, CheckCircle2, Globe, AlertCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Globe,
+  Loader2,
+  Package,
+  Sparkles,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { PipelineStatus } from "@/lib/pipeline";
+import type { PipelineDisplayStatus } from "@/lib/pipeline/types";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: PipelineStatus;
+  status: PipelineDisplayStatus;
   size?: "sm" | "md" | "lg";
   showIcon?: boolean;
   showLabel?: boolean;
@@ -20,14 +27,16 @@ const sizeConfig = {
 };
 
 const statusConfig: Record<
-  PipelineStatus,
+  PipelineDisplayStatus,
   { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   imported: { variant: "default", label: "Imported", icon: Package },
-  monitoring: { variant: "warning", label: "Monitoring", icon: Sparkles },
+  scraping: { variant: "warning", label: "Scraping", icon: Loader2 },
   scraped: { variant: "success", label: "Scraped", icon: Sparkles },
+  consolidating: { variant: "warning", label: "Consolidating", icon: Sparkles },
   failed: { variant: "destructive", label: "Failed", icon: AlertCircle },
   finalized: { variant: "warning", label: "Finalized", icon: CheckCircle2 },
+  finalizing: { variant: "warning", label: "Finalizing", icon: CheckCircle2 },
   published: { variant: "success", label: "Published", icon: Globe },
 };
 
@@ -68,7 +77,9 @@ export function StatusBadge({
 
   return (
     <Badge variant={config.variant} className={cn(sizeSettings.badge, "gap-1.5", className)}>
-      {(status === "scraped" || status === "monitoring") && <PulseDot className={sizeSettings.icon} />}
+      {(status === "scraping" || status === "consolidating") && (
+        <PulseDot className={sizeSettings.icon} />
+      )}
       {showIcon && <Icon className={sizeSettings.icon} aria-hidden="true" />}
       {showLabel ? (
         <span>{config.label}</span>

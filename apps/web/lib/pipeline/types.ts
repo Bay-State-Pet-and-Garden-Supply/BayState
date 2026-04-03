@@ -1,9 +1,9 @@
 /**
- * Pipeline Types
- * Distinguishes persisted ingestion statuses from derived admin tabs.
+ * Pipeline types
+ * Distinguishes persisted ingestion statuses from admin workflow stages.
  */
 
-/** Persisted pipeline statuses stored in the database. */
+/** Canonical statuses persisted in products_ingestion.pipeline_status. */
 export const PERSISTED_PIPELINE_STATUSES = [
   "imported",
   "scraped",
@@ -14,65 +14,7 @@ export const PERSISTED_PIPELINE_STATUSES = [
 export type PersistedPipelineStatus =
   (typeof PERSISTED_PIPELINE_STATUSES)[number];
 
-/** UI-only tabs derived from other records or active work in progress. */
-export const DERIVED_PIPELINE_TABS = [
-  "monitoring",
-  "consolidating",
-  "published",
-  "images",
-  "export",
-] as const;
-
-export type PipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
-
-/** Legacy review tab retained until the admin UI finishes converging on canonical names. */
-export const LEGACY_PIPELINE_TABS = ["consolidated"] as const;
-
-export type LegacyPipelineTab = (typeof LEGACY_PIPELINE_TABS)[number];
-
-/** Combined set for UI rendering and migration compatibility. */
-export const ALL_PIPELINE_STATUSES = [
-  ...PERSISTED_PIPELINE_STATUSES,
-  ...DERIVED_PIPELINE_TABS,
-] as const;
-
-export const DISPLAYABLE_PIPELINE_STATUSES = [
-  ...ALL_PIPELINE_STATUSES,
-  ...LEGACY_PIPELINE_TABS,
-  "scraping",
-  "finalizing",
-] as const;
-
-export type PipelineStatus =
-  | PersistedPipelineStatus
-  | "monitoring"
-  | "published";
-
-const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
-  PERSISTED_PIPELINE_STATUSES
-);
-
-const DERIVED_PIPELINE_TAB_SET = new Set<string>(DERIVED_PIPELINE_TABS);
-
-const ALL_PIPELINE_STATUS_SET = new Set<string>(DISPLAYABLE_PIPELINE_STATUSES);
-
-export function isPersistedStatus(
-  value: string
-): value is PersistedPipelineStatus {
-  return PERSISTED_PIPELINE_STATUS_SET.has(value);
-}
-
-export function isDerivedTab(value: string): value is PipelineTab {
-  return DERIVED_PIPELINE_TAB_SET.has(value);
-}
-
-/**
- * 5-tab UI workflow tabs.
- * These are DERIVED tabs based on persisted status + active jobs.
- * The 'scraping' tab shows products being scraped (imported status + active scrape job).
- * The 'consolidating' tab shows products being consolidated (finalized status + active consolidation).
- * The 'finalizing' tab shows products ready for final review (finalized + no active work).
- */
+/** Main admin workflow tabs shown in the live pipeline UI. */
 export const PIPELINE_TABS = [
   "imported",
   "scraping",
@@ -82,47 +24,89 @@ export const PIPELINE_TABS = [
   "published",
 ] as const;
 
-export type PipelineTab5 = (typeof PIPELINE_TABS)[number];
+export type PipelineStage = (typeof PIPELINE_TABS)[number];
+export type PipelineTab = PipelineStage;
+
+/** Tabs that are derived from persisted status plus active work or publish state. */
+export const DERIVED_PIPELINE_TABS = [
+  "scraping",
+  "consolidating",
+  "finalizing",
+  "published",
+] as const;
+
+export type DerivedPipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
+
+/** Status-like labels that appear in badges, counts, or actions. */
+export type PipelineStatus = PersistedPipelineStatus | "published";
+
+/** Displayable status or stage labels used by shared UI primitives. */
+export type PipelineDisplayStatus = PersistedPipelineStatus | PipelineStage;
+
+const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
+  PERSISTED_PIPELINE_STATUSES,
+);
+
+const DERIVED_PIPELINE_TAB_SET = new Set<string>(DERIVED_PIPELINE_TABS);
+const PIPELINE_STAGE_SET = new Set<string>(PIPELINE_TABS);
+
+export function isPersistedStatus(
+  value: string,
+): value is PersistedPipelineStatus {
+  return PERSISTED_PIPELINE_STATUS_SET.has(value);
+}
+
+export function isDerivedTab(value: string): value is DerivedPipelineTab {
+  return DERIVED_PIPELINE_TAB_SET.has(value);
+}
+
+export function isPipelineStage(value: string): value is PipelineStage {
+  return PIPELINE_STAGE_SET.has(value);
+}
 
 /**
- * Set for fast tab membership checks
- */
-const PIPELINE_TAB_5_SET = new Set<string>(PIPELINE_TABS);
-
-/**
- * Derives the UI tab from product status and active job states.
- *
- * Logic:
- * - 'imported' → product is waiting for scraping
- * - 'scraping' → product has 'imported' status + active scrape job
- * - 'scraped' → product has 'scraped' status + no active scrape job
- * - 'consolidating' → product has 'finalized' status + active consolidation job
- * - 'finalizing' → product has 'finalized' status + no active consolidation
+ * Derives the active admin workflow tab from persisted status and active work.
  */
 export function statusToTab(
   status: PersistedPipelineStatus,
   hasActiveScrapeJob: boolean,
-  hasActiveConsolidation: boolean
-): PipelineTab5 {
+  hasActiveConsolidation: boolean,
+): PipelineStage {
   switch (status) {
     case "imported":
-      return hasActiveScrapeJob ? "scraping" : "imported";
+      return "imported";
     case "scraped":
-      return "scraped";
+      return hasActiveScrapeJob ? "scraping" : "scraped";
     case "finalized":
       return hasActiveConsolidation ? "consolidating" : "finalizing";
     case "failed":
-      return "imported";
     default:
       return "imported";
   }
 }
 
 /**
- * Returns Supabase query filter for a given tab.
- * Used to filter products displayed in each UI tab.
+ * Returns the persisted status needed to hydrate a route stage, if any.
  */
-export function tabToQueryFilter(tab: PipelineTab5): {
+export function getStageDataStatus(
+  stage: PipelineStage,
+): PersistedPipelineStatus | null {
+  switch (stage) {
+    case "imported":
+      return "imported";
+    case "scraped":
+      return "scraped";
+    case "finalizing":
+      return "finalized";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Returns the query characteristics for a given workflow tab.
+ */
+export function tabToQueryFilter(tab: PipelineStage): {
   status?: PersistedPipelineStatus;
   scrapeJobActive?: boolean;
   consolidationActive?: boolean;
@@ -131,31 +115,19 @@ export function tabToQueryFilter(tab: PipelineTab5): {
     case "imported":
       return { status: "imported", scrapeJobActive: false };
     case "scraping":
-      return { status: "imported", scrapeJobActive: true };
+      return { status: "scraped", scrapeJobActive: true };
     case "scraped":
-      return { status: "scraped" };
+      return { status: "scraped", scrapeJobActive: false };
     case "consolidating":
       return { status: "finalized", consolidationActive: true };
     case "finalizing":
       return { status: "finalized", consolidationActive: false };
     case "published":
-      // Published products are finalized products uploaded to ShopSite
       return { status: "finalized" };
     default:
-      return { status: "imported" };
+      return {};
   }
 }
-
-export function isPipelineStatus(value: string): value is PipelineStage {
-  return ALL_PIPELINE_STATUS_SET.has(value);
-}
-
-export type PipelineStage = PipelineStatus | "scraping" | "consolidating" | "finalizing" | "images" | "export";
-
-type StageConfigKey =
-  | PipelineStage
-  | PersistedPipelineStatus
-  | PipelineTab;
 
 /**
  * Selected image with metadata
@@ -207,11 +179,11 @@ export interface PipelineProduct {
 }
 
 /**
- * Aggregate count of products per status
+ * Aggregate count of products per persisted status plus the derived published tab.
  */
 export interface StatusCount {
   /** Pipeline status value */
-  status: PipelineStage;
+  status: PipelineStatus;
   /** Number of products in this status */
   count: number;
 }
@@ -228,64 +200,51 @@ export interface StageConfig {
   description: string;
 }
 
+type StageConfigKey = PersistedPipelineStatus | PipelineStage;
+
 /**
  * Stage display configurations
- * Maps each pipeline status to its UI representation
+ * Maps each pipeline status or stage to its UI representation.
  */
 export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   imported: {
     label: "Imported",
     color: "#6B7280",
-    description: "Product data has been imported into the system",
-  },
-  monitoring: {
-    label: "Monitoring",
-    color: "#F59E0B",
-    description: "Track active scraper jobs and progress",
-  },
-  scraped: {
-    label: "Scraped",
-    color: "#3B82F6",
-    description: "Product data has been scraped from source websites",
-  },
-  consolidating: {
-    label: "Consolidating",
-    color: "#8B5CF6",
-    description: "Track active AI consolidation batches",
-  },
-  finalized: {
-    label: "Finalized",
-    color: "#F59E0B",
-    description: "Product data is ready for downstream publishing workflows",
-  },
-  failed: {
-    label: "Failed",
-    color: "#DC2626",
-    description: "Product processing failed and needs admin retry",
-  },
-  published: {
-    label: "Published",
-    color: "#008850",
-    description: "Product is live on the storefront",
-  },
-  images: {
-    label: "Images",
-    color: "#06B6D4",
-    description: "Manage selected product images before export",
-  },
-  export: {
-    label: "Export",
-    color: "#6366F1",
-    description: "Prepare finalized products for export workflows",
+    description: "Products imported into the system and waiting for scraping",
   },
   scraping: {
     label: "Scraping",
     color: "#3B82F6",
-    description: "Products currently being scraped",
+    description: "Products currently assigned to active scraper jobs",
+  },
+  scraped: {
+    label: "Scraped",
+    color: "#3B82F6",
+    description: "Products with completed scrape results ready for consolidation",
+  },
+  consolidating: {
+    label: "Consolidating",
+    color: "#8B5CF6",
+    description: "Products in active AI consolidation batches",
+  },
+  finalized: {
+    label: "Finalized",
+    color: "#F59E0B",
+    description: "Products ready for downstream publishing workflows",
   },
   finalizing: {
     label: "Finalizing",
     color: "#F59E0B",
-    description: "Products ready for final review",
+    description: "Products ready for final review and publishing actions",
+  },
+  published: {
+    label: "Published",
+    color: "#008850",
+    description: "Products already published to the storefront",
+  },
+  failed: {
+    label: "Failed",
+    color: "#DC2626",
+    description: "Products that failed processing and need manual retry",
   },
 } as const;
