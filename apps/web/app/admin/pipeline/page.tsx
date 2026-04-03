@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { UnifiedPipelineClient } from '@/components/admin/pipeline/UnifiedPipelineClient';
+import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
 import { getProductsByStatus, getStatusCounts } from '@/lib/pipeline';
 import { isDerivedTab, isPersistedStatus } from '@/lib/pipeline/types';
 import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
@@ -59,7 +59,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
     }
 
     return (
-        <UnifiedPipelineClient
+        <PipelineClient
             initialProducts={initialProducts}
             initialCounts={initialCounts}
             initialTotal={initialTotal}
