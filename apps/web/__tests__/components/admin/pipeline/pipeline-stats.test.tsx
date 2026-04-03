@@ -9,7 +9,6 @@ import type { StatusCount } from '@/lib/pipeline';
 const mockCounts: StatusCount[] = [
   { status: 'imported', count: 10 },
   { status: 'scraped', count: 25 },
-  { status: 'consolidated', count: 20 },
   { status: 'finalized', count: 15 },
   { status: 'published', count: 30 },
 ];
@@ -24,9 +23,6 @@ describe('PipelineStats', () => {
     expect(screen.getByText('Scraped')).toBeInTheDocument();
     expect(screen.getByText('25')).toBeInTheDocument();
 
-    expect(screen.getByText('Consolidated')).toBeInTheDocument();
-    expect(screen.getByText('20')).toBeInTheDocument();
-
     expect(screen.getByText('Finalized')).toBeInTheDocument();
     expect(screen.getByText('15')).toBeInTheDocument();
 
@@ -38,14 +34,13 @@ describe('PipelineStats', () => {
     const emptyCounts: StatusCount[] = [
       { status: 'imported', count: 0 },
       { status: 'scraped', count: 0 },
-      { status: 'consolidated', count: 0 },
       { status: 'finalized', count: 0 },
       { status: 'published', count: 0 },
     ];
 
     render(<PipelineStats counts={emptyCounts} />);
 
-    expect(screen.getAllByText('0')).toHaveLength(5);
+    expect(screen.getAllByText('0')).toHaveLength(4);
   });
 
   it('calls onStatusChange when card is clicked', () => {
@@ -66,7 +61,6 @@ describe('PipelineStats', () => {
     const trends = {
       imported: 5,
       scraped: -3,
-      consolidated: 10,
       finalized: 0,
       published: 15,
     };
@@ -75,7 +69,7 @@ describe('PipelineStats', () => {
 
     expect(screen.getByText('↑ 5%')).toBeInTheDocument();
     expect(screen.getByText('↓ 3%')).toBeInTheDocument();
-    expect(screen.getByText('↑ 10%')).toBeInTheDocument();
+    expect(screen.getByText('↑ 0%')).toBeInTheDocument();
     expect(screen.getByText('↑ 15%')).toBeInTheDocument();
   });
 
@@ -105,20 +99,19 @@ describe('PipelineStats', () => {
     expect(screen.getByText('10')).toBeInTheDocument();
     // Missing statuses should show 0
     const zeros = screen.getAllByText('0');
-    expect(zeros).toHaveLength(4);
+    expect(zeros).toHaveLength(3);
   });
   it('renders correct icons for each status', () => {
     render(<PipelineStats counts={mockCounts} />);
 
     const icons = document.querySelectorAll('svg');
-    expect(icons.length).toBeGreaterThanOrEqual(5);
+    expect(icons.length).toBeGreaterThanOrEqual(4);
   });
 
   it('formats large numbers with locale string', () => {
     const largeCounts: StatusCount[] = [
       { status: 'imported', count: 10000 },
       { status: 'scraped', count: 25000 },
-      { status: 'consolidated', count: 20000 },
       { status: 'finalized', count: 15000 },
       { status: 'published', count: 30000 },
     ];
@@ -127,7 +120,6 @@ describe('PipelineStats', () => {
 
     expect(screen.getByText('10,000')).toBeInTheDocument();
     expect(screen.getByText('25,000')).toBeInTheDocument();
-    expect(screen.getByText('20,000')).toBeInTheDocument();
     expect(screen.getByText('15,000')).toBeInTheDocument();
     expect(screen.getByText('30,000')).toBeInTheDocument();
   });

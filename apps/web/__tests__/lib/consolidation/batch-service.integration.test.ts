@@ -38,6 +38,8 @@ describe('consolidation batch integration behavior', () => {
             temperature: 0.1,
             completionWindow: '24h',
             confidence_threshold: 0.7,
+            llm_provider: 'openai',
+            llm_supports_batch_api: true,
         });
     });
 
@@ -92,6 +94,8 @@ describe('consolidation batch integration behavior', () => {
                     description: 'test batch',
                     auto_apply: 'true',
                     scrape_job_id: 'job-1',
+                    llm_provider: 'openai',
+                    llm_model: 'gpt-4o-mini',
                 },
             })
         );

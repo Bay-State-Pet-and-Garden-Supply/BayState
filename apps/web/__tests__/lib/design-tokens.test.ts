@@ -54,16 +54,12 @@ describe('design-tokens', () => {
             expect(PIPELINE_STATUS_COLORS.scraped).toBe('#3B82F6');
         });
 
-        it('should map consolidated to warning amber', () => {
-            expect(PIPELINE_STATUS_COLORS.consolidated).toBe('#F59E0B');
-        });
-
         it('should map finalized to success green', () => {
             expect(PIPELINE_STATUS_COLORS.finalized).toBe('#10B981');
         });
 
-        it('should map published to success green', () => {
-            expect(PIPELINE_STATUS_COLORS.published).toBe('#10B981');
+        it('should map failed to failed red', () => {
+            expect(PIPELINE_STATUS_COLORS.failed).toBe('#EF4444');
         });
     });
 
@@ -71,9 +67,8 @@ describe('design-tokens', () => {
         it('should have correct labels for all statuses', () => {
             expect(PIPELINE_STATUS_LABELS.imported).toBe('Imported');
             expect(PIPELINE_STATUS_LABELS.scraped).toBe('Scraped');
-            expect(PIPELINE_STATUS_LABELS.consolidated).toBe('Consolidated');
             expect(PIPELINE_STATUS_LABELS.finalized).toBe('Finalized');
-            expect(PIPELINE_STATUS_LABELS.published).toBe('Published');
+            expect(PIPELINE_STATUS_LABELS.failed).toBe('Failed');
         });
     });
 
@@ -102,16 +97,12 @@ describe('design-tokens', () => {
             expect(getStatusColor('scraped')).toBe('#3B82F6');
         });
 
-        it('should return correct color for consolidated status', () => {
-            expect(getStatusColor('consolidated')).toBe('#F59E0B');
-        });
-
         it('should return correct color for finalized status', () => {
             expect(getStatusColor('finalized')).toBe('#10B981');
         });
 
-        it('should return correct color for published status', () => {
-            expect(getStatusColor('published')).toBe('#10B981');
+        it('should return correct color for failed status', () => {
+            expect(getStatusColor('failed')).toBe('#EF4444');
         });
     });
 
@@ -124,16 +115,12 @@ describe('design-tokens', () => {
             expect(getStatusCssVar('scraped')).toBe('--color-status-running');
         });
 
-        it('should return correct CSS var for consolidated status', () => {
-            expect(getStatusCssVar('consolidated')).toBe('--color-status-warning');
-        });
-
         it('should return correct CSS var for finalized status', () => {
             expect(getStatusCssVar('finalized')).toBe('--color-status-success');
         });
 
-        it('should return correct CSS var for published status', () => {
-            expect(getStatusCssVar('published')).toBe('--color-status-success');
+        it('should return correct CSS var for failed status', () => {
+            expect(getStatusCssVar('failed')).toBe('--color-status-failed');
         });
     });
 });

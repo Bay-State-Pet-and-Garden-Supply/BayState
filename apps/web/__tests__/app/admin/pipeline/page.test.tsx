@@ -9,8 +9,8 @@ let lastPipelineClientProps: Record<string, unknown> | null = null;
 const mockGetProductsByStatus = jest.fn();
 const mockGetStatusCounts = jest.fn();
 
-jest.mock("@/components/admin/pipeline/PipelineClient", () => ({
-  PipelineClient: (props: Record<string, unknown>) => {
+jest.mock("@/components/admin/pipeline/UnifiedPipelineClient", () => ({
+  UnifiedPipelineClient: (props: Record<string, unknown>) => {
     lastPipelineClientProps = props;
     return <div data-testid="pipeline-client" />;
   },
