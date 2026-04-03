@@ -39,6 +39,8 @@ export const ALL_PIPELINE_STATUSES = [
 export const DISPLAYABLE_PIPELINE_STATUSES = [
   ...ALL_PIPELINE_STATUSES,
   ...LEGACY_PIPELINE_TABS,
+  "scraping",
+  "finalizing",
 ] as const;
 
 export type PipelineStatus =
@@ -68,7 +70,7 @@ export function isPipelineStatus(value: string): value is PipelineStage {
   return ALL_PIPELINE_STATUS_SET.has(value);
 }
 
-export type PipelineStage = PipelineStatus | "consolidating" | "images" | "export";
+export type PipelineStage = PipelineStatus | "scraping" | "consolidating" | "finalizing" | "images" | "export";
 
 type StageConfigKey =
   | PipelineStage
@@ -195,5 +197,15 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
     label: "Export",
     color: "#6366F1",
     description: "Prepare finalized products for export workflows",
+  },
+  scraping: {
+    label: "Scraping",
+    color: "#3B82F6",
+    description: "Products currently being scraped",
+  },
+  finalizing: {
+    label: "Finalizing",
+    color: "#F59E0B",
+    description: "Products ready for final review",
   },
 } as const;

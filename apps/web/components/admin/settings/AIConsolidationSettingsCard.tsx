@@ -2,22 +2,41 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Layers, Save, RefreshCw } from 'lucide-react';
 
+type ProviderName = 'openai' | 'openai_compatible' | 'serpapi' | 'brave';
+type LLMProvider = 'openai' | 'openai_compatible';
+
+interface ProviderStatus {
+  provider: ProviderName;
+  configured: boolean;
+  last4: string | null;
+  updated_at: string | null;
+}
+
 interface ConsolidationDefaults {
-  llm_model: 'gpt-4o-mini' | 'gpt-4o';
+  llm_provider: LLMProvider;
+  llm_model: string;
+  llm_base_url: string | null;
+  llm_supports_batch_api: boolean;
   confidence_threshold: number;
 }
 
 interface ApiResponse {
+  statuses: Record<ProviderName, ProviderStatus>;
   consolidationDefaults: ConsolidationDefaults;
 }
 
 const DEFAULTS: ConsolidationDefaults = {
+  llm_provider: 'openai',
   llm_model: 'gpt-4o-mini',
+  llm_base_url: null,
+  llm_supports_batch_api: true,
   confidence_threshold: 0.7,
 };
 
@@ -25,6 +44,14 @@ export function AIConsolidationSettingsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [openAICompatibleApiKey, setOpenAICompatibleApiKey] = useState('');
+  const [statuses, setStatuses] = useState<Record<ProviderName, ProviderStatus>>({
+    openai: { provider: 'openai', configured: false, last4: null, updated_at: null },
+    openai_compatible: { provider: 'openai_compatible', configured: false, last4: null, updated_at: null },
+    serpapi: { provider: 'serpapi', configured: false, last4: null, updated_at: null },
+    brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
+  });
   const [defaults, setDefaults] = useState<ConsolidationDefaults>(DEFAULTS);
   const [initialDefaults, setInitialDefaults] = useState<ConsolidationDefaults>(DEFAULTS);
 
@@ -38,6 +65,7 @@ export function AIConsolidationSettingsCard() {
       }
 
       const data = (await res.json()) as ApiResponse;
+      setStatuses(data.statuses);
       if (data.consolidationDefaults) {
         setDefaults(data.consolidationDefaults);
         setInitialDefaults(data.consolidationDefaults);
@@ -55,10 +83,15 @@ export function AIConsolidationSettingsCard() {
 
   const hasChanges = useMemo(() => {
     return (
+      openaiApiKey.trim().length > 0 ||
+      openAICompatibleApiKey.trim().length > 0 ||
+      defaults.llm_provider !== initialDefaults.llm_provider ||
       defaults.llm_model !== initialDefaults.llm_model ||
+      (defaults.llm_base_url || '') !== (initialDefaults.llm_base_url || '') ||
+      defaults.llm_supports_batch_api !== initialDefaults.llm_supports_batch_api ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [defaults, initialDefaults]);
+  }, [defaults, initialDefaults, openaiApiKey, openAICompatibleApiKey]);
 
   const onSave = async () => {
     setSaving(true);
@@ -66,6 +99,8 @@ export function AIConsolidationSettingsCard() {
 
     try {
       const payload = {
+        openai_api_key: openaiApiKey.trim() || undefined,
+        openai_compatible_api_key: openAICompatibleApiKey.trim() || undefined,
         consolidationDefaults: defaults,
       };
 
@@ -80,11 +115,19 @@ export function AIConsolidationSettingsCard() {
         throw new Error(body?.details || body?.error || 'Failed to save settings');
       }
 
-      const body = (await res.json()) as { consolidationDefaults: ConsolidationDefaults };
+      const body = (await res.json()) as {
+        statuses: ApiResponse['statuses'];
+        consolidationDefaults: ConsolidationDefaults;
+      };
+      if (body.statuses) {
+        setStatuses(body.statuses);
+      }
       if (body.consolidationDefaults) {
         setDefaults(body.consolidationDefaults);
         setInitialDefaults(body.consolidationDefaults);
       }
+      setOpenaiApiKey('');
+      setOpenAICompatibleApiKey('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
@@ -102,7 +145,11 @@ export function AIConsolidationSettingsCard() {
           <div>
             <CardTitle>AI Consolidation Settings</CardTitle>
             <CardDescription>
-              Configure the model and settings used for batch product consolidation.
+              Configure the provider used for product consolidation. The current
+              batch workflow requires an endpoint that supports OpenAI-style
+              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">/files</code>
+              and
+              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">/batches</code>.
             </CardDescription>
           </div>
         </div>
@@ -118,22 +165,101 @@ export function AIConsolidationSettingsCard() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="consolidation-ai-model">Consolidation Model</Label>
+                <Label htmlFor="consolidation-openai-key">OpenAI API Key</Label>
+                <Input
+                  id="consolidation-openai-key"
+                  type="password"
+                  value={openaiApiKey}
+                  onChange={(e) => setOpenaiApiKey(e.target.value)}
+                  placeholder="sk-proj-..."
+                />
+                <div className="text-xs text-muted-foreground">
+                  {statuses.openai.configured
+                    ? `Configured (ending in ${statuses.openai.last4 ?? '****'})`
+                    : 'Not configured'}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="consolidation-openai-compatible-key">
+                  OpenAI-Compatible Endpoint Key
+                </Label>
+                <Input
+                  id="consolidation-openai-compatible-key"
+                  type="password"
+                  value={openAICompatibleApiKey}
+                  onChange={(e) => setOpenAICompatibleApiKey(e.target.value)}
+                  placeholder="Optional bearer token"
+                />
+                <div className="text-xs text-muted-foreground">
+                  {statuses.openai_compatible.configured
+                    ? `Configured (ending in ${statuses.openai_compatible.last4 ?? '****'})`
+                    : 'Optional for self-hosted endpoints'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="consolidation-llm-provider">LLM Provider</Label>
                 <select
-                  id="consolidation-ai-model"
-                  value={defaults.llm_model}
+                  id="consolidation-llm-provider"
+                  value={defaults.llm_provider}
                   onChange={(e) =>
-                    setDefaults((prev) => ({ ...prev, llm_model: e.target.value as ConsolidationDefaults['llm_model'] }))
+                    setDefaults((prev) => ({
+                      ...prev,
+                      llm_provider: e.target.value as LLMProvider,
+                      llm_base_url:
+                        e.target.value === 'openai_compatible' ? prev.llm_base_url : null,
+                      llm_supports_batch_api:
+                        e.target.value === 'openai'
+                          ? true
+                          : prev.llm_supports_batch_api,
+                    }))
                   }
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="gpt-4o-mini">gpt-4o-mini</option>
-                  <option value="gpt-4o">gpt-4o</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="openai_compatible">Self-hosted / OpenAI-compatible</option>
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="consolidation-confidence-threshold">Confidence Threshold</Label>
+                <Label htmlFor="consolidation-ai-model">Consolidation Model</Label>
+                <Input
+                  id="consolidation-ai-model"
+                  value={defaults.llm_model}
+                  onChange={(e) =>
+                    setDefaults((prev) => ({ ...prev, llm_model: e.target.value }))
+                  }
+                  placeholder={
+                    defaults.llm_provider === 'openai'
+                      ? 'gpt-4o-mini'
+                      : 'google/gemma-4-31B-it'
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="consolidation-llm-base-url">LLM Base URL</Label>
+                <Input
+                  id="consolidation-llm-base-url"
+                  value={defaults.llm_base_url || ''}
+                  onChange={(e) =>
+                    setDefaults((prev) => ({
+                      ...prev,
+                      llm_base_url: e.target.value.trim() || null,
+                    }))
+                  }
+                  placeholder="http://localhost:8000/v1"
+                  disabled={defaults.llm_provider !== 'openai_compatible'}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="consolidation-confidence-threshold">
+                  Confidence Threshold
+                </Label>
                 <Input
                   id="consolidation-confidence-threshold"
                   type="number"
@@ -148,7 +274,54 @@ export function AIConsolidationSettingsCard() {
               </div>
             </div>
 
+            <div className="space-y-3 rounded-md border p-4">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="consolidation-batch-capability"
+                  checked={defaults.llm_supports_batch_api}
+                  onCheckedChange={(checked) =>
+                    setDefaults((prev) => ({
+                      ...prev,
+                      llm_supports_batch_api: !!checked,
+                    }))
+                  }
+                  disabled={defaults.llm_provider === 'openai'}
+                />
+                <div className="space-y-1.5">
+                  <Label htmlFor="consolidation-batch-capability">
+                    Endpoint supports OpenAI Batch API
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Leave this off for vLLM, Ollama, and TGI unless you are
+                    routing through a gateway that exposes compatible batch
+                    endpoints. The current consolidation workflow will refuse to
+                    submit batch jobs when this is disabled.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between border-t pt-4">
+              <div className="flex gap-2">
+                <Badge variant={statuses.openai.configured ? 'default' : 'secondary'}>
+                  OpenAI {statuses.openai.configured ? 'Ready' : 'Missing'}
+                </Badge>
+                <Badge
+                  variant={
+                    defaults.llm_provider === 'openai_compatible' &&
+                    (!defaults.llm_base_url || !statuses.openai_compatible.configured)
+                      ? 'secondary'
+                      : 'default'
+                  }
+                >
+                  Local Batch{' '}
+                  {defaults.llm_provider === 'openai_compatible'
+                    ? defaults.llm_supports_batch_api
+                      ? 'Enabled'
+                      : 'Disabled'
+                    : 'Optional'}
+                </Badge>
+              </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={fetchConfig} disabled={loading || saving}>
                   <RefreshCw className="mr-2 h-4 w-4" />

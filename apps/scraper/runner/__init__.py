@@ -870,6 +870,14 @@ def _run_ai_search_job(
     runner_name: str | None = None,
     job_logging: Any | None = None,
 ) -> Dict[str, Any]:
+    def _get_optional_string(payload: Dict[str, Any], key: str) -> str | None:
+        raw_value = payload.get(key)
+        if not isinstance(raw_value, str):
+            return None
+
+        trimmed = raw_value.strip()
+        return trimmed if trimmed else None
+
     search_cfg = job_config.job_config or {}
     scraper_name = "ai_search"
 
@@ -877,30 +885,60 @@ def _run_ai_search_job(
     max_search_results = int(search_cfg.get("max_search_results", 5) or 5)
     max_steps = int(search_cfg.get("max_steps", 15) or 15)
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
-    llm_model = str(search_cfg.get("llm_model", "gpt-4o-mini") or "gpt-4o-mini")
+    runtime_credentials: Dict[str, Any] = job_config.ai_credentials or {}
+    llm_provider = str(
+        search_cfg.get("llm_provider")
+        or runtime_credentials.get("llm_provider")
+        or "openai"
+    )
+    if llm_provider not in {"openai", "openai_compatible"}:
+        llm_provider = "openai"
+
+    llm_model = str(
+        search_cfg.get("llm_model")
+        or runtime_credentials.get("llm_model")
+        or "gpt-4o-mini"
+    )
     search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto")
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
     extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
 
-    previous_openai = os.environ.get("OPENAI_API_KEY")
+    llm_base_url = (
+        _get_optional_string(search_cfg, "llm_base_url")
+        if llm_provider == "openai_compatible"
+        else None
+    )
+    if llm_base_url is None and llm_provider == "openai_compatible":
+        runtime_base_url = _get_optional_string(runtime_credentials, "llm_base_url")
+        runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
+        if runtime_base_url and runtime_provider == "openai_compatible":
+            llm_base_url = runtime_base_url
+
+    runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
+    runtime_llm_api_key = _get_optional_string(runtime_credentials, "llm_api_key")
+    if llm_provider == "openai_compatible":
+        llm_api_key = _get_optional_string(runtime_credentials, "openai_compatible_api_key")
+        if llm_api_key is None and runtime_provider == "openai_compatible":
+            llm_api_key = runtime_llm_api_key
+    else:
+        llm_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
+        if llm_api_key is None and runtime_provider == "openai":
+            llm_api_key = runtime_llm_api_key
+
     previous_serpapi = os.environ.get("SERPAPI_API_KEY")
     previous_brave = os.environ.get("BRAVE_API_KEY")
-    runtime_credentials = job_config.ai_credentials or {}
-    runtime_openai = runtime_credentials.get("openai_api_key")
-    runtime_serpapi = runtime_credentials.get("serpapi_api_key")
-    runtime_brave = runtime_credentials.get("brave_api_key")
+    runtime_serpapi = _get_optional_string(runtime_credentials, "serpapi_api_key")
+    runtime_brave = _get_optional_string(runtime_credentials, "brave_api_key")
 
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
-    if runtime_openai:
-        logger.debug(f"Setting OPENAI_API_KEY from job payload: {runtime_openai[:4]}...")
+    if llm_api_key:
+        logger.debug(f"Resolved {llm_provider} LLM API key for AI Search: {llm_api_key[:4]}...")
     if runtime_serpapi:
         logger.debug(f"Setting SERPAPI_API_KEY from job payload: {runtime_serpapi[:4]}...")
     if runtime_brave:
         logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
 
-    if runtime_openai:
-        os.environ["OPENAI_API_KEY"] = runtime_openai
     if runtime_serpapi:
         os.environ["SERPAPI_API_KEY"] = runtime_serpapi
     if runtime_brave:
@@ -953,7 +991,9 @@ def _run_ai_search_job(
             "max_search_results": max_search_results,
             "max_steps": max_steps,
             "confidence_threshold": confidence_threshold,
+            "llm_provider": llm_provider,
             "llm_model": llm_model,
+            "llm_base_url": llm_base_url,
             "search_provider": search_provider,
             "cache_enabled": cache_enabled,
             "extraction_strategy": extraction_strategy,
@@ -979,7 +1019,10 @@ def _run_ai_search_job(
             max_search_results=max_search_results,
             max_steps=max_steps,
             confidence_threshold=confidence_threshold,
+            llm_provider=llm_provider,
             llm_model=llm_model,
+            llm_base_url=llm_base_url,
+            llm_api_key=llm_api_key,
             search_provider=search_provider,
             cache_enabled=cache_enabled,
             extraction_strategy=extraction_strategy,
@@ -989,12 +1032,6 @@ def _run_ai_search_job(
     try:
         batch_results = asyncio.run(_run())
     finally:
-        if runtime_openai:
-            if previous_openai is None:
-                os.environ.pop("OPENAI_API_KEY", None)
-            else:
-                os.environ["OPENAI_API_KEY"] = previous_openai
-
         if runtime_serpapi:
             if previous_serpapi is None:
                 os.environ.pop("SERPAPI_API_KEY", None)

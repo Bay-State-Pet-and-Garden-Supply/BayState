@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import {
+  type AIConsolidationDefaults,
+  type AIScrapingDefaults,
   getAIScrapingCredentialStatuses,
   getAIScrapingDefaults,
   setAIScrapingProviderSecret,
@@ -67,24 +69,21 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as {
       openai_api_key?: string;
+      openai_compatible_api_key?: string;
       serpapi_api_key?: string;
       brave_api_key?: string;
-      defaults?: {
-        llm_model?: 'gpt-4o-mini' | 'gpt-4o';
-        max_search_results?: number;
-        max_steps?: number;
-        confidence_threshold?: number;
-      };
-      consolidationDefaults?: {
-        llm_model?: 'gpt-4o-mini' | 'gpt-4o';
-        confidence_threshold?: number;
-      };
+      defaults?: Partial<AIScrapingDefaults>;
+      consolidationDefaults?: Partial<AIConsolidationDefaults>;
     };
 
     const tasks: Array<Promise<unknown>> = [];
 
     if (body.openai_api_key && body.openai_api_key.trim()) {
       tasks.push(setAIScrapingProviderSecret('openai', body.openai_api_key, auth.userId));
+    }
+
+    if (body.openai_compatible_api_key && body.openai_compatible_api_key.trim()) {
+      tasks.push(setAIScrapingProviderSecret('openai_compatible', body.openai_compatible_api_key, auth.userId));
     }
 
     if (body.serpapi_api_key && body.serpapi_api_key.trim()) {

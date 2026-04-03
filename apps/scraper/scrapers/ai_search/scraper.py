@@ -14,6 +14,7 @@ from scrapers.ai_search.models import AISearchResult
 from scrapers.ai_search.scoring import SearchScorer
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.extraction import ExtractionUtils
+from scrapers.ai_search.llm_runtime import resolve_llm_runtime
 from scrapers.ai_search.search import SearchClient, normalize_search_provider
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
@@ -79,6 +80,9 @@ class AISearchScraper:
         max_steps: int = 15,
         confidence_threshold: float = 0.7,
         llm_model: str = "gpt-4o-mini",
+        llm_provider: str = "openai",
+        llm_base_url: str | None = None,
+        llm_api_key: str | None = None,
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
@@ -92,16 +96,28 @@ class AISearchScraper:
             max_steps: Maximum browser actions per extraction
             confidence_threshold: Minimum confidence score to accept result
             llm_model: LLM model to use for AI extraction
+            llm_provider: LLM provider type (openai or openai_compatible)
+            llm_base_url: OpenAI-compatible base URL override
+            llm_api_key: Provider API key override
             cache_enabled: Whether to enable/disable Crawl4AI caching
             extraction_strategy: Strategy for data extraction (llm, json_ld, etc)
             prompt_version: Which prompt version to use (v1, v2, etc)
             search_provider: Search provider preference (auto, serpapi, brave)
         """
+        self._llm_runtime = resolve_llm_runtime(
+            provider=llm_provider,
+            model=llm_model,
+            base_url=llm_base_url,
+            api_key=llm_api_key,
+        )
         self.headless = headless
         self.max_search_results = max_search_results
         self.max_steps = max_steps
         self.confidence_threshold = confidence_threshold
-        self.llm_model = llm_model
+        self.llm_model = self._llm_runtime.model
+        self.llm_provider = self._llm_runtime.provider
+        self.llm_base_url = self._llm_runtime.base_url
+        self.llm_api_key = self._llm_runtime.api_key
         self.cache_enabled = cache_enabled
         self.extraction_strategy = extraction_strategy
         self.prompt_version = prompt_version
@@ -139,8 +155,18 @@ class AISearchScraper:
         self._search_client = SearchClient(max_results=max_search_results, provider=self.search_provider)
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
-        self._source_selector = LLMSourceSelector(model=llm_model)
-        self._name_consolidator = NameConsolidator(model=llm_model)
+        self._source_selector = LLMSourceSelector(
+            model=self.llm_model,
+            provider=self.llm_provider,
+            base_url=self.llm_base_url,
+            api_key=self.llm_api_key,
+        )
+        self._name_consolidator = NameConsolidator(
+            model=self.llm_model,
+            provider=self.llm_provider,
+            base_url=self.llm_base_url,
+            api_key=self.llm_api_key,
+        )
         self._two_step_refiner: TwoStepSearchRefiner | None = None
         if self.enable_two_step:
             self._two_step_refiner = TwoStepSearchRefiner(
@@ -160,7 +186,10 @@ class AISearchScraper:
 
         self._crawl4ai_extractor = Crawl4AIExtractor(
             headless=headless,
-            llm_model=llm_model,
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            llm_base_url=self.llm_base_url,
+            llm_api_key=self.llm_api_key,
             scoring=self._scoring,
             matching=self._matching,
             cache_enabled=cache_enabled,

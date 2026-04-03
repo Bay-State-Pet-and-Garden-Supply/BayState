@@ -1,18 +1,24 @@
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export type AIProvider = 'openai' | 'serpapi' | 'brave';
+export type AIProvider = 'openai' | 'openai_compatible' | 'serpapi' | 'brave';
+export type LLMProvider = 'openai' | 'openai_compatible';
 
-export interface AIScrapingDefaults {
-  llm_model: 'gpt-4o-mini' | 'gpt-4o';
+interface BaseLLMDefaults {
+  llm_provider: LLMProvider;
+  llm_model: string;
+  llm_base_url: string | null;
+}
+
+export interface AIScrapingDefaults extends BaseLLMDefaults {
   max_search_results: number;
   max_steps: number;
   confidence_threshold: number;
 }
 
-export interface AIConsolidationDefaults {
-  llm_model: 'gpt-4o-mini' | 'gpt-4o';
+export interface AIConsolidationDefaults extends BaseLLMDefaults {
   confidence_threshold: number;
+  llm_supports_batch_api: boolean;
 }
 
 export interface AICredentialStatus {
@@ -22,9 +28,31 @@ export interface AICredentialStatus {
   updated_at: string | null;
 }
 
+export interface AIScrapingRuntimeCredentials {
+  llm_provider: LLMProvider;
+  llm_model: string;
+  llm_base_url?: string;
+  llm_api_key?: string;
+  openai_api_key?: string;
+  openai_compatible_api_key?: string;
+  serpapi_api_key?: string;
+  brave_api_key?: string;
+}
+
+export interface AIConsolidationRuntimeConfig {
+  llm_provider: LLMProvider;
+  llm_model: string;
+  llm_base_url: string | null;
+  llm_api_key: string | null;
+  confidence_threshold: number;
+  llm_supports_batch_api: boolean;
+}
+
 const AI_DEFAULTS_SETTINGS_KEY = 'ai_scraping_defaults';
 const AI_CONSOLIDATION_DEFAULTS_SETTINGS_KEY = 'ai_consolidation_defaults';
 const ENCRYPTION_KEY_ENV_NAME = 'AI_CREDENTIALS_ENCRYPTION_KEY';
+const OPENAI_COMPATIBLE_API_KEY_ENV_NAME = 'OPENAI_COMPATIBLE_API_KEY';
+const OPENAI_COMPATIBLE_BASE_URL_ENV_NAME = 'OPENAI_COMPATIBLE_BASE_URL';
 const ENCRYPTION_KEY_HELP =
   'Set AI_CREDENTIALS_ENCRYPTION_KEY to a 32-byte UTF-8 string or base64-encoded 32-byte key (example: `openssl rand -base64 32`).';
 
@@ -33,15 +61,20 @@ let hasLoggedInvalidEncryptionKeyLength = false;
 const loggedDecryptFailures = new Set<AIProvider>();
 
 const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
+  llm_provider: 'openai',
   llm_model: 'gpt-4o-mini',
+  llm_base_url: null,
   max_search_results: 5,
   max_steps: 15,
   confidence_threshold: 0.7,
 };
 
 const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
+  llm_provider: 'openai',
   llm_model: 'gpt-4o-mini',
+  llm_base_url: null,
   confidence_threshold: 0.7,
+  llm_supports_batch_api: true,
 };
 
 function getSupabaseAdmin(): SupabaseClient {
@@ -164,10 +197,74 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
   console.error(`[Scraper API] Failed to decrypt ${provider} secret: ${getErrorMessage(error)}`);
 }
 
+function normalizeLLMProvider(value: unknown): LLMProvider {
+  return value === 'openai_compatible' ? 'openai_compatible' : 'openai';
+}
+
+function normalizeLLMModel(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function normalizeLLMBaseUrl(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.replace(/\/+$/, '');
+}
+
+function resolveOpenAICompatibleBaseUrl(baseUrl: string | null | undefined): string | null {
+  if (baseUrl && baseUrl.trim()) {
+    return normalizeLLMBaseUrl(baseUrl);
+  }
+
+  const envBaseUrl = process.env[OPENAI_COMPATIBLE_BASE_URL_ENV_NAME];
+  return normalizeLLMBaseUrl(envBaseUrl);
+}
+
+function resolveOpenAIApiKey(apiKey: string | null | undefined): string | null {
+  if (apiKey && apiKey.trim()) {
+    return apiKey.trim();
+  }
+
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim()) {
+    return process.env.OPENAI_API_KEY.trim();
+  }
+
+  return null;
+}
+
+function resolveOpenAICompatibleApiKey(apiKey: string | null | undefined): string | null {
+  if (apiKey && apiKey.trim()) {
+    return apiKey.trim();
+  }
+
+  const envApiKey = process.env[OPENAI_COMPATIBLE_API_KEY_ENV_NAME];
+  if (envApiKey && envApiKey.trim()) {
+    return envApiKey.trim();
+  }
+
+  return null;
+}
+
 function normalizeDefaults(raw: unknown): AIScrapingDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
-  const llmModel = value.llm_model === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini';
+  const llmProvider = normalizeLLMProvider(value.llm_provider);
+  const llmModel = normalizeLLMModel(value.llm_model, DEFAULT_AI_SCRAPING_DEFAULTS.llm_model);
+  const llmBaseUrl = llmProvider === 'openai_compatible'
+    ? resolveOpenAICompatibleBaseUrl(normalizeLLMBaseUrl(value.llm_base_url))
+    : null;
   const maxSearchResults = Number.isFinite(value.max_search_results) ? Number(value.max_search_results) : DEFAULT_AI_SCRAPING_DEFAULTS.max_search_results;
   const maxSteps = Number.isFinite(value.max_steps) ? Number(value.max_steps) : DEFAULT_AI_SCRAPING_DEFAULTS.max_steps;
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
@@ -175,7 +272,9 @@ function normalizeDefaults(raw: unknown): AIScrapingDefaults {
     : DEFAULT_AI_SCRAPING_DEFAULTS.confidence_threshold;
 
   return {
+    llm_provider: llmProvider,
     llm_model: llmModel,
+    llm_base_url: llmBaseUrl,
     max_search_results: Math.min(10, Math.max(1, Math.trunc(maxSearchResults))),
     max_steps: Math.min(50, Math.max(1, Math.trunc(maxSteps))),
     confidence_threshold: Math.min(1, Math.max(0, confidenceThreshold)),
@@ -223,14 +322,26 @@ export async function upsertAIScrapingDefaults(partial: Partial<AIScrapingDefaul
 function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
-  const llmModel = value.llm_model === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini';
+  const llmProvider = normalizeLLMProvider(value.llm_provider);
+  const llmModel = normalizeLLMModel(value.llm_model, DEFAULT_AI_CONSOLIDATION_DEFAULTS.llm_model);
+  const llmBaseUrl = llmProvider === 'openai_compatible'
+    ? resolveOpenAICompatibleBaseUrl(normalizeLLMBaseUrl(value.llm_base_url))
+    : null;
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
     ? Number(value.confidence_threshold)
     : DEFAULT_AI_CONSOLIDATION_DEFAULTS.confidence_threshold;
+  const llmSupportsBatchApi = llmProvider === 'openai'
+    ? true
+    : typeof value.llm_supports_batch_api === 'boolean'
+      ? value.llm_supports_batch_api
+      : DEFAULT_AI_CONSOLIDATION_DEFAULTS.llm_supports_batch_api;
 
   return {
+    llm_provider: llmProvider,
     llm_model: llmModel,
+    llm_base_url: llmBaseUrl,
     confidence_threshold: Math.min(1, Math.max(0, confidenceThreshold)),
+    llm_supports_batch_api: llmSupportsBatchApi,
   };
 }
 
@@ -318,13 +429,14 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
 
   const statuses: Record<AIProvider, AICredentialStatus> = {
     openai: { provider: 'openai', configured: false, last4: null, updated_at: null },
+    openai_compatible: { provider: 'openai_compatible', configured: false, last4: null, updated_at: null },
     serpapi: { provider: 'serpapi', configured: false, last4: null, updated_at: null },
     brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
   };
 
   for (const row of data || []) {
     const provider = row.provider as AIProvider;
-    if (provider !== 'openai' && provider !== 'serpapi' && provider !== 'brave') {
+    if (provider !== 'openai' && provider !== 'openai_compatible' && provider !== 'serpapi' && provider !== 'brave') {
       continue;
     }
     statuses[provider] = {
@@ -368,17 +480,40 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
   }
 }
 
-export async function getAIScrapingRuntimeCredentials(): Promise<{ openai_api_key?: string; serpapi_api_key?: string; brave_api_key?: string } | null> {
-  const [openai, serpapi, brave] = await Promise.all([
+export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
+  const [defaults, openai, openaiCompatible, serpapi, brave] = await Promise.all([
+    getAIScrapingDefaults(),
     getAIScrapingProviderSecret('openai'),
+    getAIScrapingProviderSecret('openai_compatible'),
     getAIScrapingProviderSecret('serpapi'),
     getAIScrapingProviderSecret('brave'),
   ]);
 
-  const credentials: { openai_api_key?: string; serpapi_api_key?: string; brave_api_key?: string } = {};
+  const resolvedOpenAI = resolveOpenAIApiKey(openai);
+  const resolvedOpenAICompatible = resolveOpenAICompatibleApiKey(openaiCompatible);
+  const llmBaseUrl = defaults.llm_provider === 'openai_compatible'
+    ? resolveOpenAICompatibleBaseUrl(defaults.llm_base_url)
+    : null;
+  const llmApiKey = defaults.llm_provider === 'openai'
+    ? resolvedOpenAI
+    : resolvedOpenAICompatible;
 
-  if (openai) {
-    credentials.openai_api_key = openai;
+  const credentials: AIScrapingRuntimeCredentials = {
+    llm_provider: defaults.llm_provider,
+    llm_model: defaults.llm_model,
+  };
+
+  if (llmBaseUrl) {
+    credentials.llm_base_url = llmBaseUrl;
+  }
+  if (llmApiKey) {
+    credentials.llm_api_key = llmApiKey;
+  }
+  if (resolvedOpenAI) {
+    credentials.openai_api_key = resolvedOpenAI;
+  }
+  if (resolvedOpenAICompatible) {
+    credentials.openai_compatible_api_key = resolvedOpenAICompatible;
   }
   if (serpapi) {
     credentials.serpapi_api_key = serpapi;
@@ -387,5 +522,26 @@ export async function getAIScrapingRuntimeCredentials(): Promise<{ openai_api_ke
     credentials.brave_api_key = brave;
   }
 
-  return Object.keys(credentials).length > 0 ? credentials : null;
+  return credentials;
+}
+
+export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
+  const [defaults, openai, openaiCompatible] = await Promise.all([
+    getAIConsolidationDefaults(),
+    getAIScrapingProviderSecret('openai'),
+    getAIScrapingProviderSecret('openai_compatible'),
+  ]);
+
+  return {
+    llm_provider: defaults.llm_provider,
+    llm_model: defaults.llm_model,
+    llm_base_url: defaults.llm_provider === 'openai_compatible'
+      ? resolveOpenAICompatibleBaseUrl(defaults.llm_base_url)
+      : null,
+    llm_api_key: defaults.llm_provider === 'openai'
+      ? resolveOpenAIApiKey(openai)
+      : resolveOpenAICompatibleApiKey(openaiCompatible),
+    confidence_threshold: defaults.confidence_threshold,
+    llm_supports_batch_api: defaults.llm_supports_batch_api,
+  };
 }

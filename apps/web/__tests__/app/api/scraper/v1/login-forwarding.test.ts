@@ -80,7 +80,7 @@ function createPollSupabase() {
         max_workers: 1,
       }],
       error: null,
-    })) as any,
+    })) as any),
     channel: jest.fn().mockReturnValue({
       send: (jest.fn().mockImplementation(async () => undefined)) as any,
     }),
@@ -149,7 +149,9 @@ describe('runner scraper config forwarding', () => {
     });
     getLocalScraperConfigs.mockResolvedValue([localScraperConfig]);
     getAIScrapingDefaults.mockResolvedValue({
+      llm_provider: 'openai',
       llm_model: 'gpt-4o-mini',
+      llm_base_url: null,
       max_search_results: 5,
       max_steps: 15,
       confidence_threshold: 0.7,

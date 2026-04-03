@@ -47,7 +47,12 @@ interface PollResponse {
         job_type?: string;
         job_config?: Record<string, unknown>;
         ai_credentials?: {
+            llm_provider?: 'openai' | 'openai_compatible';
+            llm_model?: string;
+            llm_base_url?: string;
+            llm_api_key?: string;
             openai_api_key?: string;
+            openai_compatible_api_key?: string;
             serpapi_api_key?: string;
             brave_api_key?: string;
         };
@@ -69,6 +74,9 @@ const DISCOVERY_CONFIG_KEYS = new Set([
     'max_search_results',
     'max_steps',
     'confidence_threshold',
+    'llm_provider',
+    'llm_model',
+    'llm_base_url',
     'search_provider',
     'prefer_manufacturer',
     'fallback_to_static',
@@ -140,7 +148,9 @@ function sanitizeDiscoveryConfig(
         max_search_results: number;
         max_steps: number;
         confidence_threshold: number;
-        llm_model: 'gpt-4o-mini' | 'gpt-4o';
+        llm_provider: 'openai' | 'openai_compatible';
+        llm_model: string;
+        llm_base_url: string | null;
     }
 ): Record<string, unknown> {
     const normalized: Record<string, unknown> = {};
@@ -161,7 +171,25 @@ function sanitizeDiscoveryConfig(
     normalized.max_search_results = pickNumber(config.max_search_results, defaults.max_search_results);
     normalized.max_steps = pickNumber(config.max_steps, defaults.max_steps);
     normalized.confidence_threshold = pickNumber(config.confidence_threshold, defaults.confidence_threshold);
-    normalized.llm_model = config.llm_model === 'gpt-4o' ? 'gpt-4o' : defaults.llm_model;
+
+    const llmProvider =
+        config.llm_provider === 'openai_compatible' ? 'openai_compatible' : defaults.llm_provider;
+    const llmModel =
+        typeof config.llm_model === 'string' && config.llm_model.trim().length > 0
+            ? config.llm_model.trim()
+            : defaults.llm_model;
+    const llmBaseUrl =
+        llmProvider === 'openai_compatible'
+            ? typeof config.llm_base_url === 'string' && config.llm_base_url.trim().length > 0
+                ? config.llm_base_url.trim()
+                : defaults.llm_base_url
+            : null;
+
+    normalized.llm_provider = llmProvider;
+    normalized.llm_model = llmModel;
+    if (llmBaseUrl) {
+        normalized.llm_base_url = llmBaseUrl;
+    }
 
     return normalized;
 }
@@ -411,7 +439,18 @@ export async function POST(request: NextRequest) {
                 const maxSearchResults = pickNumber(sanitizedDiscoveryConfig.max_search_results, aiDefaults.max_search_results);
                 const maxSteps = pickNumber(sanitizedDiscoveryConfig.max_steps, aiDefaults.max_steps);
                 const confidenceThreshold = pickNumber(sanitizedDiscoveryConfig.confidence_threshold, aiDefaults.confidence_threshold);
-                const llmModel = sanitizedDiscoveryConfig.llm_model === 'gpt-4o' ? 'gpt-4o' : aiDefaults.llm_model;
+                const llmProvider =
+                    sanitizedDiscoveryConfig.llm_provider === 'openai_compatible'
+                        ? 'openai_compatible'
+                        : aiDefaults.llm_provider;
+                const llmModel =
+                    typeof sanitizedDiscoveryConfig.llm_model === 'string' && sanitizedDiscoveryConfig.llm_model.length > 0
+                        ? sanitizedDiscoveryConfig.llm_model
+                        : aiDefaults.llm_model;
+                const llmBaseUrl =
+                    typeof sanitizedDiscoveryConfig.llm_base_url === 'string' && sanitizedDiscoveryConfig.llm_base_url.length > 0
+                        ? sanitizedDiscoveryConfig.llm_base_url
+                        : aiDefaults.llm_base_url;
 
                 const updatedScrapers = response.job.scrapers.map((scraper) => {
                     if (scraper.name !== 'ai_discovery') {
@@ -423,7 +462,9 @@ export async function POST(request: NextRequest) {
                         max_search_results: maxSearchResults,
                         max_steps: maxSteps,
                         confidence_threshold: confidenceThreshold,
+                        llm_provider: llmProvider,
                         llm_model: llmModel,
+                        ...(llmBaseUrl ? { llm_base_url: llmBaseUrl } : {}),
                     };
 
                     return {

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import {
-  getAIScrapingDefaults,
-  upsertAIScrapingDefaults,
+  type AIConsolidationDefaults,
+  getAIConsolidationDefaults,
+  upsertAIConsolidationDefaults,
   getAIScrapingCredentialStatuses,
-  setAIScrapingProviderSecret
+  setAIScrapingProviderSecret,
 } from '@/lib/ai-scraping/credentials';
 
 export async function GET() {
@@ -15,7 +16,7 @@ export async function GET() {
 
   try {
     const [defaults, statuses] = await Promise.all([
-      getAIScrapingDefaults(),
+      getAIConsolidationDefaults(),
       getAIScrapingCredentialStatuses(),
     ]);
 
@@ -39,16 +40,30 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    const body = (await req.json()) as Partial<AIConsolidationDefaults> & {
+      openai_api_key?: string;
+      openai_compatible_api_key?: string;
+      defaults?: Partial<AIConsolidationDefaults>;
+    };
+    const {
+      openai_api_key,
+      openai_compatible_api_key,
+      defaults,
+      ...rawDefaults
+    } = body;
 
-    // Check if we are updating the OpenAI key specifically
-    if (body.openai_api_key) {
-      await setAIScrapingProviderSecret('openai', body.openai_api_key, auth.user.id);
+    if (openai_api_key && openai_api_key.trim()) {
+      await setAIScrapingProviderSecret('openai', openai_api_key, auth.user.id);
       return NextResponse.json({ message: 'OpenAI API key updated successfully' });
     }
 
-    // Otherwise update defaults
-    const updatedDefaults = await upsertAIScrapingDefaults(body);
+    if (openai_compatible_api_key && openai_compatible_api_key.trim()) {
+      await setAIScrapingProviderSecret('openai_compatible', openai_compatible_api_key, auth.user.id);
+      return NextResponse.json({ message: 'OpenAI-compatible endpoint key updated successfully' });
+    }
+
+    const nextDefaults = defaults ?? rawDefaults;
+    const updatedDefaults = await upsertAIConsolidationDefaults(nextDefaults);
     return NextResponse.json({
       message: 'Settings updated successfully',
       defaults: updatedDefaults,
