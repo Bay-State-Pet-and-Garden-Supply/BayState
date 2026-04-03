@@ -44,8 +44,7 @@ export const DISPLAYABLE_PIPELINE_STATUSES = [
 export type PipelineStatus =
   | PersistedPipelineStatus
   | "monitoring"
-  | "published"
-  | LegacyPipelineTab;
+  | "published";
 
 const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
   PERSISTED_PIPELINE_STATUSES
@@ -171,11 +170,6 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
     label: "Consolidating",
     color: "#8B5CF6",
     description: "Track active AI consolidation batches",
-  },
-  consolidated: {
-    label: "Consolidated",
-    color: "#8B5CF6",
-    description: "Legacy consolidated status retained during migration to derived tabs",
   },
   finalized: {
     label: "Finalized",

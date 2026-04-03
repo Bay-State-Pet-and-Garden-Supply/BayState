@@ -156,7 +156,7 @@ export function PipelineProductCard({
         );
     }
 
-    const isStorefrontView = stage === 'consolidated' || stage === 'published' || stage === 'finalized';
+    const isStorefrontView = stage === 'finalized' || stage === 'published';
 
     if (isStorefrontView) {
         const imageSrc = product.consolidated?.images?.[0]?.trim();

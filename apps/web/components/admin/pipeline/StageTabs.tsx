@@ -53,9 +53,7 @@ export function StageTabs({
     }
 
     if (stage === "finalized") {
-      const consolidated = counts.find((c) => c.status === "consolidated")?.count ?? 0;
-      const finalized = counts.find((c) => c.status === "finalized")?.count ?? 0;
-      return consolidated + finalized;
+      return counts.find((c) => c.status === "finalized")?.count ?? 0;
     }
     const countData = counts.find((c) => c.status === stage);
     return countData?.count ?? 0;

@@ -14,8 +14,8 @@ describe('StatusFilter', () => {
 
   const mockCounts = {
     total: 100,
-    registered: 10,
-    enriched: 25,
+    imported: 10,   // WAS: registered
+    scraped: 25,    // WAS: enriched
     finalized: 60,
     failed: 5,
   };

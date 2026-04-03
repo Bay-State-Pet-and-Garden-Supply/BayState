@@ -12,17 +12,13 @@ describe('pipeline-tabs', () => {
         it('should include all required tabs', () => {
             const expectedTabs: PipelineTab[] = [
                 'imported',
-                'registered',
                 'monitoring',
-                'active-runs',
                 'scraped',
-                'enriched',
                 'consolidating',
-                'active-consolidations',
+                'finalized',
                 'published',
                 'images',
                 'export',
-                'finalized',
                 'failed',
             ];
 
@@ -78,10 +74,10 @@ describe('pipeline-tabs', () => {
         });
 
         it('should have correct isStatusTab values', () => {
-            expect(TAB_CONFIG['registered'].isStatusTab).toBe(true);
-            expect(TAB_CONFIG['active-runs'].isStatusTab).toBe(false);
-            expect(TAB_CONFIG['enriched'].isStatusTab).toBe(true);
-            expect(TAB_CONFIG['active-consolidations'].isStatusTab).toBe(false);
+            expect(TAB_CONFIG['imported'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['monitoring'].isStatusTab).toBe(false);
+            expect(TAB_CONFIG['scraped'].isStatusTab).toBe(true);
+            expect(TAB_CONFIG['consolidating'].isStatusTab).toBe(false);
             expect(TAB_CONFIG['images'].isStatusTab).toBe(false);
             expect(TAB_CONFIG['export'].isStatusTab).toBe(false);
             expect(TAB_CONFIG['finalized'].isStatusTab).toBe(true);
@@ -95,13 +91,9 @@ describe('pipeline-tabs', () => {
 
             expect(order).toEqual([
                 'imported',
-                'registered',
                 'monitoring',
-                'active-runs',
                 'scraped',
-                'enriched',
                 'consolidating',
-                'active-consolidations',
                 'finalized',
                 'published',
                 'images',
@@ -121,29 +113,27 @@ describe('pipeline-tabs', () => {
 
     describe('isStatusTab', () => {
         it('should return true for status tabs', () => {
-            expect(isStatusTab('registered')).toBe(true);
-            expect(isStatusTab('enriched')).toBe(true);
+            expect(isStatusTab('imported')).toBe(true);
+            expect(isStatusTab('scraped')).toBe(true);
             expect(isStatusTab('finalized')).toBe(true);
             expect(isStatusTab('failed')).toBe(true);
         });
 
         it('should return false for non-status tabs', () => {
-            expect(isStatusTab('active-runs')).toBe(false);
-            expect(isStatusTab('active-consolidations')).toBe(false);
+            expect(isStatusTab('monitoring')).toBe(false);
+            expect(isStatusTab('consolidating')).toBe(false);
             expect(isStatusTab('images')).toBe(false);
             expect(isStatusTab('export')).toBe(false);
         });
     });
 
     describe('isMonitoringTab', () => {
-        it('should return true for active-runs and active-consolidations', () => {
-            expect(isMonitoringTab('active-runs')).toBe(true);
-            expect(isMonitoringTab('active-consolidations')).toBe(true);
+        it('should return true for monitoring and consolidating tabs', () => {
+            expect(isMonitoringTab('monitoring')).toBe(true);
+            expect(isMonitoringTab('consolidating')).toBe(true);
         });
 
         it('should return false for other tabs', () => {
-            expect(isMonitoringTab('registered')).toBe(false);
-            expect(isMonitoringTab('enriched')).toBe(false);
             expect(isMonitoringTab('images')).toBe(false);
             expect(isMonitoringTab('export')).toBe(false);
             expect(isMonitoringTab('finalized')).toBe(false);
@@ -158,10 +148,8 @@ describe('pipeline-tabs', () => {
         });
 
         it('should return false for other tabs', () => {
-            expect(isActionTab('registered')).toBe(false);
-            expect(isActionTab('active-runs')).toBe(false);
-            expect(isActionTab('enriched')).toBe(false);
-            expect(isActionTab('active-consolidations')).toBe(false);
+            expect(isActionTab('monitoring')).toBe(false);
+            expect(isActionTab('consolidating')).toBe(false);
             expect(isActionTab('finalized')).toBe(false);
             expect(isActionTab('failed')).toBe(false);
         });

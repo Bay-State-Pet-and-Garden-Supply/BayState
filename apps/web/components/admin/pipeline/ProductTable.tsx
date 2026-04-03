@@ -110,8 +110,8 @@ export function ProductTable({
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const showSources = currentStage === "scraped" || currentStage === "consolidated";
-  const showConfidence = currentStage === "consolidated" || currentStage === "finalized";
+  const showSources = currentStage === "scraped";
+  const showConfidence = currentStage === "finalized";
 
   const columns = useMemo<ColumnDef<PipelineProduct>[]>(() => [
     {

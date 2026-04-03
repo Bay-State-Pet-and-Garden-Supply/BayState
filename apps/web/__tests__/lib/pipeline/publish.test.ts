@@ -70,7 +70,7 @@ describe('publishToStorefront', () => {
         expect(productsTable.update).toHaveBeenCalled();
     });
 
-    it('allows legacy approved rows to publish during compatibility migration', async () => {
+    it('rejects legacy approved rows that are not in a valid publishable status', async () => {
         const ingestionEq = jest.fn().mockResolvedValue({
             data: {
                 sku: 'SKU-2',
@@ -80,22 +80,6 @@ describe('publishToStorefront', () => {
             },
             error: null,
         });
-
-        const productsEq = jest.fn().mockReturnValue({
-            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-        });
-
-        const insertSingle = jest.fn().mockResolvedValue({ data: { id: 'product-2' }, error: null });
-
-        const productsTable = {
-            select: jest.fn().mockImplementation(() => ({
-                eq: productsEq,
-            })),
-            update: jest.fn(),
-            insert: jest.fn().mockImplementation(() => ({
-                select: jest.fn().mockReturnValue({ single: insertSingle }),
-            })),
-        };
 
         const ingestionTable = {
             select: jest.fn().mockImplementation(() => ({
@@ -107,7 +91,6 @@ describe('publishToStorefront', () => {
         const supabase = {
             from: jest.fn((table: string) => {
                 if (table === 'products_ingestion') return ingestionTable;
-                if (table === 'products') return productsTable;
                 throw new Error(`Unexpected table ${table}`);
             }),
         };
@@ -116,12 +99,7 @@ describe('publishToStorefront', () => {
 
         const result = await publishToStorefront('SKU-2');
 
-        expect(result).toEqual({ success: true, action: 'created', productId: 'product-2' });
-        expect(productsTable.insert).toHaveBeenCalledWith(
-            expect.objectContaining({
-                sku: 'SKU-2',
-                name: 'Legacy Approved Product',
-            })
-        );
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('reviewable status');
     });
 });

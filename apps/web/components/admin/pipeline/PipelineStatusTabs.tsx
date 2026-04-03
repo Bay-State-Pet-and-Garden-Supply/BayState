@@ -61,7 +61,7 @@ export function PipelineStatusTabs({
 }: PipelineStatusTabsProps) {
     const activeIndex = flowOrder.indexOf(activeTab);
     const [showLegend, setShowLegend] = useState(false);
-    const activeConfig = TAB_CONFIG[activeTab] ?? TAB_CONFIG.registered;
+    const activeConfig = TAB_CONFIG[activeTab] ?? TAB_CONFIG.imported;
 
     const getCount = (tab: PipelineTab): number => {
         if (isMonitoringTab(tab)) {

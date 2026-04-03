@@ -35,13 +35,6 @@ const statusConfig: Array<{
     bgColor: "bg-brand-burgundy/10",
   },
   {
-    status: "consolidated",
-    label: "Consolidated",
-    icon: AlertCircle,
-    color: "text-brand-gold",
-    bgColor: "bg-brand-gold/10",
-  },
-  {
     status: "finalized",
     label: "Finalized",
     icon: CheckCircle2,

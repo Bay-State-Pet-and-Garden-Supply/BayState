@@ -14,7 +14,6 @@ import {
     type PipelineTab as DerivedPipelineTab,
 } from './pipeline/types';
 
-type LegacyPipelineTab = 'registered' | 'active-runs' | 'enriched' | 'active-consolidations';
 
 /**
  * All tabs in the pipeline system.
@@ -22,8 +21,7 @@ type LegacyPipelineTab = 'registered' | 'active-runs' | 'enriched' | 'active-con
 /**
  * @deprecated Use PersistedPipelineStatus or PipelineTab from './pipeline/types'.
  */
-export type PipelineTab = PersistedPipelineStatus | DerivedPipelineTab | LegacyPipelineTab;
-
+export type PipelineTab = PersistedPipelineStatus | DerivedPipelineTab;
 /**
  * Configuration for a single pipeline tab.
  */
@@ -51,28 +49,10 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         isStatusTab: true,
         order: 1,
     },
-    registered: {
-        label: 'Imported',
-        icon: 'Inbox',
-        description: 'Legacy alias for imported products waiting for scraping',
-        color: '#6B7280',
-        bgColor: '#F3F4F6',
-        isStatusTab: true,
-        order: 1,
-    },
     monitoring: {
         label: 'Monitoring',
         icon: 'Play',
         description: 'Currently running scrape jobs',
-        color: '#3B82F6',
-        bgColor: '#DBEAFE',
-        isStatusTab: false,
-        order: 2,
-    },
-    'active-runs': {
-        label: 'Monitoring',
-        icon: 'Play',
-        description: 'Legacy alias for active scrape monitoring',
         color: '#3B82F6',
         bgColor: '#DBEAFE',
         isStatusTab: false,
@@ -87,28 +67,10 @@ export const TAB_CONFIG: Record<PipelineTab, TabConfig> = {
         isStatusTab: true,
         order: 3,
     },
-    enriched: {
-        label: 'Scraped',
-        icon: 'Download',
-        description: 'Legacy alias for products with completed scrape results',
-        color: '#8B5CF6',
-        bgColor: '#EDE9FE',
-        isStatusTab: true,
-        order: 3,
-    },
     consolidating: {
         label: 'Consolidating',
         icon: 'Brain',
         description: 'AI consolidation in progress',
-        color: '#EC4899',
-        bgColor: '#FCE7F3',
-        isStatusTab: false,
-        order: 4,
-    },
-    'active-consolidations': {
-        label: 'Consolidating',
-        icon: 'Brain',
-        description: 'Legacy alias for active AI consolidation tracking',
         color: '#EC4899',
         bgColor: '#FCE7F3',
         isStatusTab: false,
@@ -178,14 +140,8 @@ export function isStatusTab(tab: PipelineTab): boolean {
     return TAB_CONFIG[tab].isStatusTab;
 }
 
-/**
- * Checks if a tab is a monitoring tab.
- * Monitoring tabs show active operations (active-runs, active-consolidations).
- */
 export function isMonitoringTab(tab: PipelineTab): boolean {
-    return (isDerivedTab(tab) && (tab === 'monitoring' || tab === 'consolidating'))
-        || tab === 'active-runs'
-        || tab === 'active-consolidations';
+    return isDerivedTab(tab) && (tab === 'monitoring' || tab === 'consolidating');
 }
 
 /**

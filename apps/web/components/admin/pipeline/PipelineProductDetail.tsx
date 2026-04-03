@@ -42,7 +42,6 @@ interface PipelineProductDetailProps {
 const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
   { value: 'imported', label: 'Imported' },
   { value: 'scraped', label: 'Scraped' },
-  { value: 'consolidated', label: 'Consolidated' },
   { value: 'finalized', label: 'Finalized' },
   { value: 'published', label: 'Published' },
 ];
