@@ -1,12 +1,10 @@
 """LLM-powered product name consolidation."""
 
 import logging
-import os
 from typing import Any
 
-from openai import AsyncOpenAI
-
 from scrapers.ai_cost_tracker import AICostTracker
+from scrapers.ai_search.llm_runtime import create_async_openai_client, resolve_llm_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +12,23 @@ logger = logging.getLogger(__name__)
 class NameConsolidator:
     """Uses LLM to infer a canonical product name from search results."""
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini"):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str = "gpt-4o-mini",
+        provider: str = "openai",
+        base_url: str | None = None,
+    ):
         """Initialize the name consolidator."""
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = model
-        self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
+        self.runtime = resolve_llm_runtime(
+            provider=provider,
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
+        )
+        self.api_key = self.runtime.api_key
+        self.model = self.runtime.model
+        self.client = create_async_openai_client(self.runtime)
         self._cost_tracker = AICostTracker()
 
     async def consolidate_name(

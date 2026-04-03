@@ -668,6 +668,36 @@ export function createBatchContent(
     return lines.join('\n');
 }
 
+async function getConfiguredBatchClient(requireBatchApi: boolean): Promise<
+    | (Awaited<ReturnType<typeof getConsolidationConfig>> & {
+        client: NonNullable<Awaited<ReturnType<typeof getOpenAIClient>>>;
+    })
+    | BatchErrorResponse
+> {
+    const config = await getConsolidationConfig();
+
+    if (config.llm_provider === 'openai_compatible' && !config.llm_base_url) {
+        return { success: false, error: 'LLM provider not configured' };
+    }
+
+    if (requireBatchApi && !config.llm_supports_batch_api) {
+        return {
+            success: false,
+            error: 'Selected LLM endpoint does not support the Batch API required for consolidation',
+        };
+    }
+
+    const client = await getOpenAIClient();
+    if (!client) {
+        return { success: false, error: 'LLM provider not configured' };
+    }
+
+    return {
+        ...config,
+        client,
+    };
+}
+
 // =============================================================================
 // Batch Submission
 // =============================================================================
@@ -679,18 +709,17 @@ export async function submitBatch(
     products: ProductSource[],
     metadata: BatchMetadata = {}
 ): Promise<SubmitBatchResponse | BatchErrorResponse> {
-    const client = await getOpenAIClient();
-    if (!client) {
-        return { success: false, error: 'OpenAI API key not configured' };
-    }
-
     if (products.length === 0) {
         return { success: false, error: 'No products to consolidate' };
     }
 
     try {
-        // Load runtime config (key-version, model, etc.)
-        const config = await getConsolidationConfig();
+        const runtime = await getConfiguredBatchClient(true);
+        if ('success' in runtime && !runtime.success) {
+            return runtime;
+        }
+
+        const { client, ...config } = runtime;
 
         // Build prompt context with taxonomy
         const { systemPrompt, categories, productTypes, shopsitePages = [] } = await buildPromptContext();
@@ -715,6 +744,11 @@ export async function submitBatch(
             if (value !== undefined) {
                 stringMetadata[key] = String(value);
             }
+        }
+        stringMetadata.llm_provider = config.llm_provider;
+        stringMetadata.llm_model = config.model;
+        if (config.llm_base_url) {
+            stringMetadata.llm_base_url = config.llm_base_url;
         }
 
         // Create batch
@@ -764,12 +798,13 @@ export async function submitBatch(
  * Get the status of a batch job. Also syncs status to Supabase.
  */
 export async function getBatchStatus(batchId: string): Promise<BatchStatus | BatchErrorResponse> {
-    const client = await getOpenAIClient();
-    if (!client) {
-        return { success: false, error: 'OpenAI API key not configured' };
+    const runtime = await getConfiguredBatchClient(false);
+    if ('success' in runtime && !runtime.success) {
+        return runtime;
     }
 
     try {
+        const { client } = runtime;
         const resolvedBatchId = await resolveOpenAIBatchId(batchId);
         const batch = await client.batches.retrieve(resolvedBatchId);
         const requestCounts = batch.request_counts || { total: 0, completed: 0, failed: 0 };
@@ -853,12 +888,13 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
  * Retrieve and parse results from a completed batch.
  */
 export async function retrieveResults(batchId: string): Promise<ConsolidationResult[] | BatchErrorResponse> {
-    const client = await getOpenAIClient();
-    if (!client) {
-        return { success: false, error: 'OpenAI API key not configured' };
+    const runtime = await getConfiguredBatchClient(false);
+    if ('success' in runtime && !runtime.success) {
+        return runtime;
     }
 
     try {
+        const { client } = runtime;
         // Fetch taxonomy for validation
         const { categories, productTypes, shopsitePages = [] } = await buildPromptContext();
 
@@ -1721,12 +1757,13 @@ export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | Ba
  * Cancel a batch job.
  */
 export async function cancelBatch(batchId: string): Promise<{ status: string } | BatchErrorResponse> {
-    const client = await getOpenAIClient();
-    if (!client) {
-        return { success: false, error: 'OpenAI API key not configured' };
+    const runtime = await getConfiguredBatchClient(false);
+    if ('success' in runtime && !runtime.success) {
+        return runtime;
     }
 
     try {
+        const { client } = runtime;
         const resolvedBatchId = await resolveOpenAIBatchId(batchId);
         await client.batches.cancel(resolvedBatchId);
 

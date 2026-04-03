@@ -26,7 +26,10 @@ jest.mock('next/server', () => ({
 import { POST } from '@/app/api/scraper/v1/claim-chunk/route';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { createClient } from '@supabase/supabase-js';
-import { getAIScrapingRuntimeCredentials } from '@/lib/ai-scraping/credentials';
+import {
+    getAIScrapingDefaults,
+    getAIScrapingRuntimeCredentials,
+} from '@/lib/ai-scraping/credentials';
 import type { NextRequest } from 'next/server';
 import {
     RUNNER_BUILD_ID_HEADER,
@@ -42,6 +45,7 @@ jest.mock('@supabase/supabase-js', () => ({
 }));
 
 jest.mock('@/lib/ai-scraping/credentials', () => ({
+    getAIScrapingDefaults: jest.fn(),
     getAIScrapingRuntimeCredentials: jest.fn(),
 }));
 
@@ -101,6 +105,14 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
         };
 
         (createClient as jest.Mock).mockReturnValue(mockSupabase);
+        (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
+            llm_provider: 'openai',
+            llm_model: 'gpt-4o-mini',
+            llm_base_url: null,
+            max_search_results: 5,
+            max_steps: 15,
+            confidence_threshold: 0.7,
+        });
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue(null);
     });
 
@@ -189,6 +201,57 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             status: 'busy',
             current_job_id: 'job-1',
         }));
+    });
+
+    it('injects discovery LLM defaults for claimed discovery chunks', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+        (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
+            llm_provider: 'openai_compatible',
+            llm_model: 'google/gemma-3-12b-it',
+            llm_base_url: 'http://localhost:8000/v1',
+            max_search_results: 6,
+            max_steps: 12,
+            confidence_threshold: 0.9,
+        });
+        (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
+            llm_provider: 'openai_compatible',
+            llm_model: 'google/gemma-3-12b-it',
+            llm_base_url: 'http://localhost:8000/v1',
+            llm_api_key: 'baystate-local',
+        });
+        mockSupabase.rpc.mockResolvedValue({
+            data: [{
+                chunk_id: 'chunk-discovery',
+                job_id: 'job-discovery',
+                chunk_index: 0,
+                skus: ['SKU-1'],
+                scrapers: ['ai_discovery'],
+                test_mode: false,
+                max_workers: 3,
+                type: 'discovery',
+                config: {},
+                lease_token: null,
+                lease_expires_at: null,
+            }],
+            error: null,
+        });
+
+        const res = await POST(createRequest({ runner_name: 'test-runner' }));
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.chunk.ai_credentials.llm_provider).toBe('openai_compatible');
+        expect(data.chunk.job_config).toMatchObject({
+            max_search_results: 6,
+            max_steps: 12,
+            confidence_threshold: 0.9,
+            llm_provider: 'openai_compatible',
+            llm_model: 'google/gemma-3-12b-it',
+            llm_base_url: 'http://localhost:8000/v1',
+        });
     });
 
     it('rejects outdated runners before claiming a chunk', async () => {

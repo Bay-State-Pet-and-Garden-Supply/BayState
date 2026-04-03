@@ -11,7 +11,7 @@ import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 
 interface AISearchConfig {
     max_search_results: number; // 1-10, default 5
-    llm_model: 'gpt-4o-mini' | 'gpt-4o'; // default 'gpt-4o-mini'
+    llm_model?: string;
     max_steps: number; // 1-50, default 15
     confidence_threshold: number; // 0-1, default 0.7
     extraction_strategy: 'llm' | 'llm_free' | 'auto';
@@ -48,7 +48,7 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
 
     const [aiSearchConfig, setAiSearchConfig] = useState<AISearchConfig>({
         max_search_results: 5,
-        llm_model: 'gpt-4o-mini',
+        llm_model: '',
         max_steps: 15,
         confidence_threshold: 0.7,
         extraction_strategy: 'llm',
@@ -90,7 +90,13 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                 .map(s => s.name);
             onNext({ method, config: { scrapers: selectedScraperNames } });
         } else if (method === 'ai_search') {
-            onNext({ method, config: aiSearchConfig });
+            const nextConfig = aiSearchConfig.llm_model && aiSearchConfig.llm_model.trim().length > 0
+                ? { ...aiSearchConfig, llm_model: aiSearchConfig.llm_model.trim() }
+                : {
+                    ...aiSearchConfig,
+                    llm_model: undefined,
+                };
+            onNext({ method, config: nextConfig });
         } else {
             onNext({ method, config: {} });
         }
@@ -236,21 +242,16 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                         <div className="grid gap-6 sm:grid-cols-2">
                             <div className="space-y-3">
                                 <Label htmlFor="llm-model">LLM Model</Label>
-                                <Select
-                                    value={aiSearchConfig.llm_model}
-                                    onValueChange={(val: 'gpt-4o-mini' | 'gpt-4o') =>
-                                        setAiSearchConfig(prev => ({ ...prev, llm_model: val }))
+                                <Input
+                                    id="llm-model"
+                                    value={aiSearchConfig.llm_model || ""}
+                                    onChange={(e) =>
+                                        setAiSearchConfig(prev => ({ ...prev, llm_model: e.target.value }))
                                     }
                                     disabled={aiSearchConfig.extraction_strategy === 'llm_free'}
-                                >
-                                    <SelectTrigger id="llm-model" data-testid="config-llm-model">
-                                        <SelectValue placeholder="Select a model" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</SelectItem>
-                                        <SelectItem value="gpt-4o">GPT-4o (More Accurate)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                    placeholder="Leave blank to use the global default model"
+                                    data-testid="config-llm-model"
+                                />
                             </div>
 
                             <div className="space-y-3">

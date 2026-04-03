@@ -14,27 +14,34 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
 
+type ProviderName = "openai" | "openai_compatible" | "serpapi" | "brave";
+type LLMProvider = "openai" | "openai_compatible";
+
 interface ProviderStatus {
-  provider: "openai" | "serpapi" | "brave";
+  provider: ProviderName;
   configured: boolean;
   last4: string | null;
   updated_at: string | null;
 }
 
 interface ScrapingDefaults {
-  llm_model: "gpt-4o-mini" | "gpt-4o";
+  llm_provider: LLMProvider;
+  llm_model: string;
+  llm_base_url: string | null;
   max_search_results: number;
   max_steps: number;
   confidence_threshold: number;
 }
 
 interface ApiResponse {
-  statuses: Record<"openai" | "serpapi" | "brave", ProviderStatus>;
+  statuses: Record<ProviderName, ProviderStatus>;
   defaults: ScrapingDefaults;
 }
 
 const DEFAULTS: ScrapingDefaults = {
+  llm_provider: "openai",
   llm_model: "gpt-4o-mini",
+  llm_base_url: null,
   max_search_results: 5,
   max_steps: 15,
   confidence_threshold: 0.7,
@@ -45,13 +52,18 @@ export function AIScrapingSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [openAICompatibleApiKey, setOpenAICompatibleApiKey] = useState("");
   const [serpapiApiKey, setSerpapiApiKey] = useState("");
   const [braveApiKey, setBraveApiKey] = useState("");
-  const [statuses, setStatuses] = useState<
-    Record<"openai" | "serpapi" | "brave", ProviderStatus>
-  >({
+  const [statuses, setStatuses] = useState<Record<ProviderName, ProviderStatus>>({
     openai: {
       provider: "openai",
+      configured: false,
+      last4: null,
+      updated_at: null,
+    },
+    openai_compatible: {
+      provider: "openai_compatible",
       configured: false,
       last4: null,
       updated_at: null,
@@ -100,25 +112,36 @@ export function AIScrapingSettingsCard() {
   const hasChanges = useMemo(() => {
     return (
       openaiApiKey.trim().length > 0 ||
+      openAICompatibleApiKey.trim().length > 0 ||
       serpapiApiKey.trim().length > 0 ||
       braveApiKey.trim().length > 0 ||
+      defaults.llm_provider !== initialDefaults.llm_provider ||
       defaults.llm_model !== initialDefaults.llm_model ||
+      (defaults.llm_base_url || "") !== (initialDefaults.llm_base_url || "") ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [openaiApiKey, serpapiApiKey, braveApiKey, defaults, initialDefaults]);
+  }, [
+    openaiApiKey,
+    openAICompatibleApiKey,
+    serpapiApiKey,
+    braveApiKey,
+    defaults,
+    initialDefaults,
+  ]);
 
   const onSave = async () => {
     setSaving(true);
     setError(null);
 
-    try {
-      const payload = {
-        openai_api_key: openaiApiKey.trim() || undefined,
-        serpapi_api_key: serpapiApiKey.trim() || undefined,
-        brave_api_key: braveApiKey.trim() || undefined,
-        defaults,
+      try {
+        const payload = {
+          openai_api_key: openaiApiKey.trim() || undefined,
+          openai_compatible_api_key: openAICompatibleApiKey.trim() || undefined,
+          serpapi_api_key: serpapiApiKey.trim() || undefined,
+          brave_api_key: braveApiKey.trim() || undefined,
+          defaults,
       };
 
       const res = await fetch("/api/admin/ai-scraping/credentials", {
@@ -142,6 +165,7 @@ export function AIScrapingSettingsCard() {
       setDefaults(body.defaults);
       setInitialDefaults(body.defaults);
       setOpenaiApiKey("");
+      setOpenAICompatibleApiKey("");
       setSerpapiApiKey("");
       setBraveApiKey("");
     } catch (e) {
@@ -161,8 +185,8 @@ export function AIScrapingSettingsCard() {
           <div>
             <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
-              Configure OpenAI, SerpAPI, and optional Brave fallback keys for
-              runner-dispatched AI scraping jobs.
+              Configure the LLM provider for Crawl4AI and AI search, plus the
+              search provider keys used by runner-dispatched scraping jobs.
             </CardDescription>
           </div>
         </div>
@@ -180,7 +204,7 @@ export function AIScrapingSettingsCard() {
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="openai-api-key">OpenAI API Key</Label>
                 <Input
@@ -194,6 +218,24 @@ export function AIScrapingSettingsCard() {
                   {statuses.openai.configured
                     ? `Configured (ending in ${statuses.openai.last4 ?? "****"})`
                     : "Not configured"}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="openai-compatible-api-key">
+                  OpenAI-Compatible Endpoint Key
+                </Label>
+                <Input
+                  id="openai-compatible-api-key"
+                  type="password"
+                  value={openAICompatibleApiKey}
+                  onChange={(e) => setOpenAICompatibleApiKey(e.target.value)}
+                  placeholder="Optional bearer token"
+                />
+                <div className="text-xs text-muted-foreground">
+                  {statuses.openai_compatible.configured
+                    ? `Configured (ending in ${statuses.openai_compatible.last4 ?? "****"})`
+                    : "Optional for local/openai-compatible endpoints"}
                 </div>
               </div>
 
@@ -232,26 +274,70 @@ export function AIScrapingSettingsCard() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="scraping-llm-provider">LLM Provider</Label>
+                <select
+                  id="scraping-llm-provider"
+                  value={defaults.llm_provider}
+                  onChange={(e) =>
+                    setDefaults((prev) => ({
+                      ...prev,
+                      llm_provider: e.target.value as LLMProvider,
+                      llm_base_url:
+                        e.target.value === "openai_compatible"
+                          ? prev.llm_base_url
+                          : null,
+                    }))
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="openai">OpenAI</option>
+                  <option value="openai_compatible">
+                    Self-hosted / OpenAI-compatible
+                  </option>
+                </select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="scraping-ai-model">Scraping Model</Label>
-                <select
+                <Input
                   id="scraping-ai-model"
                   value={defaults.llm_model}
                   onChange={(e) =>
                     setDefaults((prev) => ({
                       ...prev,
-                      llm_model: e.target
-                        .value as ScrapingDefaults["llm_model"],
+                      llm_model: e.target.value,
                     }))
                   }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="gpt-4o-mini">gpt-4o-mini</option>
-                  <option value="gpt-4o">gpt-4o</option>
-                </select>
+                  placeholder={
+                    defaults.llm_provider === "openai"
+                      ? "gpt-4o-mini"
+                      : "google/gemma-4-31B-it"
+                  }
+                />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="scraping-llm-base-url">
+                  LLM Base URL
+                </Label>
+                <Input
+                  id="scraping-llm-base-url"
+                  value={defaults.llm_base_url || ""}
+                  onChange={(e) =>
+                    setDefaults((prev) => ({
+                      ...prev,
+                      llm_base_url: e.target.value.trim() || null,
+                    }))
+                  }
+                  placeholder="http://localhost:8000/v1"
+                  disabled={defaults.llm_provider !== "openai_compatible"}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="max-search-results">Max Search Results</Label>
                 <Input
@@ -313,6 +399,24 @@ export function AIScrapingSettingsCard() {
                   variant={statuses.openai.configured ? "default" : "secondary"}
                 >
                   OpenAI {statuses.openai.configured ? "Ready" : "Missing"}
+                </Badge>
+                <Badge
+                  variant={
+                    defaults.llm_provider === "openai_compatible" &&
+                    (!defaults.llm_base_url ||
+                      !statuses.openai_compatible.configured)
+                      ? "secondary"
+                      : "default"
+                  }
+                >
+                  Local LLM{" "}
+                  {defaults.llm_provider === "openai_compatible"
+                    ? defaults.llm_base_url
+                      ? statuses.openai_compatible.configured
+                        ? "Configured"
+                        : "No Key"
+                      : "Missing URL"
+                    : "Optional"}
                 </Badge>
                 <Badge
                   variant={

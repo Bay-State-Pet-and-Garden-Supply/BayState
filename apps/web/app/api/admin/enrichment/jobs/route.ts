@@ -16,7 +16,9 @@ interface EnrichmentJobRequest {
             max_search_results?: number;
             max_steps?: number;
             confidence_threshold?: number;
-            llm_model?: 'gpt-4o-mini' | 'gpt-4o';
+            llm_provider?: 'openai' | 'openai_compatible';
+            llm_model?: string;
+            llm_base_url?: string | null;
             prefer_manufacturer?: boolean;
             fallback_to_static?: boolean;
             max_concurrency?: number;
@@ -24,7 +26,9 @@ interface EnrichmentJobRequest {
         crawl4ai?: {
             extraction_strategy?: 'llm' | 'llm_free' | 'auto';
             cache_enabled?: boolean;
-            llm_model?: 'gpt-4o-mini' | 'gpt-4o';
+            llm_provider?: 'openai' | 'openai_compatible';
+            llm_model?: string;
+            llm_base_url?: string | null;
             max_retries?: number;
             timeout?: number;
         };
