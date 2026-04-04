@@ -9,6 +9,11 @@ import {
     normalizeProductTypeValue,
     splitMultiValueFacet,
 } from '@/lib/facets/normalization';
+import {
+    getGenericFacetDefinition,
+    normalizeGenericFacetValue,
+    normalizeGenericFacetValues,
+} from '@/lib/facets/generic-normalization';
 
 describe('facet normalization', () => {
     it('normalizes product type casing, typos, and duplicate pipe-delimited values', () => {
@@ -53,5 +58,29 @@ describe('facet normalization', () => {
         ]).map((item) => item.name);
 
         expect(names).toEqual(['Apparel', 'Gloves']);
+    });
+
+    it('normalizes generic facet definitions and dedupes pipe-delimited values', () => {
+        expect(getGenericFacetDefinition('ProductField19')).toEqual({
+            name: 'pet_size',
+            slug: 'pet-size',
+            description: 'Normalized ProductField19 values for pet size filtering.',
+        });
+
+        expect(normalizeGenericFacetValue(' small breed | SMALL BREED | extra small '))
+            .toBe('Small Breed|Extra Small');
+
+        expect(normalizeGenericFacetValues(' grain free | Grain Free | high protein ')).toEqual([
+            {
+                value: 'grain free',
+                normalizedValue: 'Grain Free',
+                slug: 'grain-free',
+            },
+            {
+                value: 'high protein',
+                normalizedValue: 'High Protein',
+                slug: 'high-protein',
+            },
+        ]);
     });
 });
