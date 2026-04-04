@@ -40,14 +40,29 @@ export interface ShopSiteProduct {
     productId?: string;               // <ProductID> - ShopSite internal ID
     productGuid?: string;             // <ProductGUID> - ShopSite UUID
     gtin?: string;                    // <GTIN> - barcode (UPC/EAN)
-    // Brand and Category from ProductFields
+    // Operational ProductFields
+    shortName?: string;               // <ProductField7> - Child / Short Name
+    isSpecialOrder?: boolean;         // <ProductField11> - special order flag
+    inStorePickup?: boolean;          // <ProductField15> - in-store pickup flag
+    // Brand and taxonomy ProductFields
     brandName?: string;               // <ProductField16> or <Brand>
+    petTypeName?: string;             // <ProductField17> - canonical pet type input
+    lifeStage?: string;               // <ProductField18>
+    petSize?: string;                 // <ProductField19>
+    specialDiet?: string;             // <ProductField20>
+    healthFeature?: string;           // <ProductField21>
+    foodForm?: string;                // <ProductField22>
+    flavor?: string;                  // <ProductField23>
     categoryName?: string;            // <ProductField24> - Department/Category
     productTypeName?: string;         // <ProductField25> - Subcategory/Product Type
+    productFeature?: string;          // <ProductField26>
+    size?: string;                    // <ProductField27>
+    color?: string;                   // <ProductField29>
+    packagingType?: string;           // <ProductField30>
+    crossSellSkus?: string[];         // <ProductField32> - pipe-delimited related SKUs
     // Status fields
     isDisabled?: boolean;             // <ProductDisabled> === 'checked'
     availability?: string;            // <Availability> ('in stock', 'out of stock', etc.)
-    isSpecialOrder?: boolean;         // <ProductField11> === 'yes'
     // SEO and content
     fileName?: string;                // <FileName> - legacy URL slug
     moreInfoText?: string;            // <MoreInformationText> - HTML product details
@@ -57,6 +72,7 @@ export interface ShopSiteProduct {
     minimumQuantity?: number;         // <MinimumQuantity>
     googleProductCategory?: string;   // <GoogleProductCategory>
     shopsitePages?: string[];         // <ProductOnPages>
+    // Raw payload may still contain audit-only fields like ProductField31.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rawXml?: any;                     // To store in shopsite_data
 }

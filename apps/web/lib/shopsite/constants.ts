@@ -199,10 +199,25 @@ export const SHOPSITE_XML_VERSION = '15.0';
  */
 export const SHOPSITE_FIELD_MAP = {
     ProductField1: 'Upload_Tag',
+    ProductField7: 'Short_Name',
     ProductField11: 'Special_Order',
+    ProductField15: 'In_Store_Pickup',
     ProductField16: 'Brand',
+    ProductField17: 'Pet_Type',
+    ProductField18: 'Life_Stage',
+    ProductField19: 'Pet_Size',
+    ProductField20: 'Special_Diet',
+    ProductField21: 'Health_Feature',
+    ProductField22: 'Food_Form',
+    ProductField23: 'Flavor',
     ProductField24: 'Category',
     ProductField25: 'Product_Type',
+    ProductField26: 'Product_Feature',
+    ProductField27: 'Size',
+    ProductField29: 'Color',
+    ProductField30: 'Packaging_Type',
+    ProductField31: 'Category_Audit_Only',
+    ProductField32: 'Cross_Sell',
 } as const;
 
 /**
