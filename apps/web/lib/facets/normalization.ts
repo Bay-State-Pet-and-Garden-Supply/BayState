@@ -53,7 +53,14 @@ export function normalizeBrandName(value: string | null | undefined): string | n
         return null;
     }
 
-    const normalized = collapseWhitespace(value);
+    // Split by | and take the first brand (products typically have one brand)
+    const brands = splitMultiValueFacet(value);
+    if (brands.length === 0) {
+        return null;
+    }
+
+    // Take the first brand and normalize it
+    const normalized = collapseWhitespace(brands[0]);
     return normalized.length > 0 ? normalized : null;
 }
 
