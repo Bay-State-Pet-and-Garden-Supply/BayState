@@ -1,24 +1,21 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/shopsite-supabase-migration.md",
-  "started_at": "2026-04-04T08:04:32.361Z",
+  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\shopsite-field-mapping-corrections.md",
+  "started_at": "2026-04-04T18:10:49.132Z",
   "session_ids": [
-    "ses_2a87a5073ffeV8wmDkBnf9ewYh",
-    "ses_2a87897beffe5E5SW3znL1Q8r0",
-    "ses_2a86f3e4effeVqrkklfXjC3a9u",
-    "ses_2a8727951ffeaesvGrLilv2hLo",
-    "ses_2a873034fffe0AV2fDMkf1qXf7",
-    "ses_2a872bf8affeTFm7kIEK3rIZNf",
-    "ses_2a86ec611ffeAceyHBIdZ6FfN6",
-    "ses_2a8693ad5ffej6ASRTkuLKNjym",
-    "ses_2a860b8c3ffenmOY2DMjwJOvTe",
-    "ses_2a86031c8ffeFWxK695gJ8KwWz",
-    "ses_2a8584978ffen33ti1tM74Ru95",
-    "ses_2a8590d6fffeIIYCuzqBBZGyIw",
-    "ses_2a857e703ffedh7gE7ubJxJs17",
-    "ses_2a858a38bffeDXmnxmEJUwsTDE",
-    "ses_2a8534d89ffeQP0d7cmH0edITN"
+    "ses_2a660d136fferPlznXbrbOtmo5",
+    "ses_2a64d3571ffeYBco1HG29iNDzT"
   ],
-  "plan_name": "shopsite-supabase-migration",
+  "plan_name": "shopsite-field-mapping-corrections",
   "agent": "atlas",
-  "task_sessions": {}
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Freeze corrected ShopSite field contract and fixture coverage",
+      "session_id": "ses_2a64d3571ffeYBco1HG29iNDzT",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-04T18:24:09.573Z"
+    }
+  }
 }

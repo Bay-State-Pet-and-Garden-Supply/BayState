@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">
+<ShopSiteProducts version="15.0">
+  <Response>
+    <ResponseCode>1</ResponseCode>
+  </Response>
+  <Products>
+    <Product>
+      <SKU>PF24-WINS-001</SKU>
+      <Name>Canonical Category Kibble</Name>
+      <Price>24.99</Price>
+      <ProductDescription>Category precedence fixture.</ProductDescription>
+      <QuantityOnHand>7</QuantityOnHand>
+      <Graphic>pf24-wins.jpg</Graphic>
+      <ProductField16>Acme Pet</ProductField16>
+      <ProductField17>Dog</ProductField17>
+      <ProductField18>Adult</ProductField18>
+      <ProductField19>Medium</ProductField19>
+      <ProductField20>Grain Free</ProductField20>
+      <ProductField21>Digestive Support</ProductField21>
+      <ProductField22>Dry</ProductField22>
+      <ProductField23>Chicken</ProductField23>
+      <ProductField24>Dog Food</ProductField24>
+      <ProductField25>Kibble</ProductField25>
+      <ProductField26>High Protein</ProductField26>
+      <ProductField27>15 lb</ProductField27>
+      <ProductField29>Brown</ProductField29>
+      <ProductField30>Bag</ProductField30>
+      <ProductField31>Legacy Toy Bin</ProductField31>
+    </Product>
+    <Product>
+      <SKU>DIRECT-PET-001</SKU>
+      <Name>Direct Pet Training Treats</Name>
+      <Price>9.99</Price>
+      <ProductDescription>Operational field fixture.</ProductDescription>
+      <QuantityOnHand>14</QuantityOnHand>
+      <Graphic>direct-pet.jpg</Graphic>
+      <ProductField7>Mini Trainers</ProductField7>
+      <ProductField11>yes</ProductField11>
+      <ProductField15>checked</ProductField15>
+      <ProductField16>Bay State Bakery</ProductField16>
+      <ProductField17>Dog</ProductField17>
+      <ProductField18>Adult</ProductField18>
+      <ProductField19>Small</ProductField19>
+      <ProductField20>Limited Ingredient</ProductField20>
+      <ProductField21>Hip &amp; Joint</ProductField21>
+      <ProductField22>Baked</ProductField22>
+      <ProductField23>Peanut Butter</ProductField23>
+      <ProductField24>Dog Treats</ProductField24>
+      <ProductField25>Training Treats</ProductField25>
+      <ProductField26>Soft Chew</ProductField26>
+      <ProductField27>8 oz</ProductField27>
+      <ProductField29>Tan</ProductField29>
+      <ProductField30>Pouch</ProductField30>
+      <ProductField32></ProductField32>
+    </Product>
+    <Product>
+      <SKU>FALLBACK-PET-001</SKU>
+      <Name>Catnip Crunchies for Cats</Name>
+      <Price>6.49</Price>
+      <ProductDescription>Blank canonical rerun fixture.</ProductDescription>
+      <QuantityOnHand>3</QuantityOnHand>
+      <Graphic>fallback-pet.jpg</Graphic>
+      <ProductField7></ProductField7>
+      <ProductField11></ProductField11>
+      <ProductField15></ProductField15>
+      <ProductField16></ProductField16>
+      <ProductField17></ProductField17>
+      <ProductField18></ProductField18>
+      <ProductField19></ProductField19>
+      <ProductField20></ProductField20>
+      <ProductField21></ProductField21>
+      <ProductField22></ProductField22>
+      <ProductField23></ProductField23>
+      <ProductField24></ProductField24>
+      <ProductField25></ProductField25>
+      <ProductField26></ProductField26>
+      <ProductField27></ProductField27>
+      <ProductField29></ProductField29>
+      <ProductField30></ProductField30>
+      <ProductField32></ProductField32>
+    </Product>
+    <Product>
+      <SKU>XSELL-SOURCE-001</SKU>
+      <Name>Cross Sell Source</Name>
+      <Price>18.99</Price>
+      <ProductDescription>Cross sell filtering fixture.</ProductDescription>
+      <QuantityOnHand>9</QuantityOnHand>
+      <Graphic>xsell-source.jpg</Graphic>
+      <ProductField16>Cross Sell Co</ProductField16>
+      <ProductField17>Dog</ProductField17>
+      <ProductField24>Dog Accessories</ProductField24>
+      <ProductField25>Leashes</ProductField25>
+      <ProductField32>XSELL-TARGET-001|XSELL-TARGET-001|XSELL-SOURCE-001|MISSING-SKU||</ProductField32>
+    </Product>
+    <Product>
+      <SKU>XSELL-TARGET-001</SKU>
+      <Name>Cross Sell Target</Name>
+      <Price>11.99</Price>
+      <ProductDescription>Cross sell target fixture.</ProductDescription>
+      <QuantityOnHand>4</QuantityOnHand>
+      <Graphic>xsell-target.jpg</Graphic>
+      <ProductField16>Cross Sell Co</ProductField16>
+      <ProductField17>Dog</ProductField17>
+      <ProductField24>Dog Accessories</ProductField24>
+      <ProductField25>Collars</ProductField25>
+    </Product>
+  </Products>
+</ShopSiteProducts>

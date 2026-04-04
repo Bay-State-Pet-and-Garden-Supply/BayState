@@ -114,7 +114,7 @@ jest.mock('@/lib/supabase/server', () => ({
 describe('Admin Products Page', () => {
   it('displays a list of products', async () => {
     // Resolve the async component
-    const Page = await AdminProductsPage();
+    const Page = await AdminProductsPage({ searchParams: Promise.resolve({}) });
     render(Page);
 
     expect(screen.getByText('Test Product 1')).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe('Admin Products Page', () => {
   });
 
   it('displays product count', async () => {
-    const Page = await AdminProductsPage();
+    const Page = await AdminProductsPage({ searchParams: Promise.resolve({}) });
     render(Page);
 
     expect(screen.getByText('2 published products total')).toBeInTheDocument();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Package, AlertCircle, Info, Search, Plus, Check, X } from 'lucide-react';
+import { Save, Package, AlertCircle, Info, Search, Plus, Check, X, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,14 +31,22 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { SearchableMultiSelect } from './SearchableMultiSelect';
 import { PetTypeSelector } from './PetTypeSelector';
 import { updateProduct } from '@/app/admin/products/actions';
-import { cn } from '@/lib/utils';
+import { cn, formatImageUrl } from '@/lib/utils';
 
 interface Brand {
     id: string;
     name: string;
     slug: string;
+}
+
+interface Category {
+    id: string;
+    name: string;
 }
 
 interface ProductPetType {
@@ -63,6 +71,9 @@ export interface PublishedProduct {
     gtin?: string | null;
     availability?: string | null;
     minimum_quantity?: number | null;
+    quantity?: number | null;
+    low_stock_threshold?: number | null;
+    published_at?: string | null;
     is_special_order?: boolean;
     is_taxable?: boolean;
     product_on_pages?: string[] | string | null;
@@ -85,6 +96,7 @@ export function ProductEditModal({
     onSave,
 }: ProductEditModalProps) {
     const [brands, setBrands] = useState<Brand[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -97,24 +109,35 @@ export function ProductEditModal({
     const [price, setPrice] = useState(String(product.price));
     const [weight, setWeight] = useState(product.weight || '');
     const [brandId, setBrandId] = useState(product.brand_id || 'none');
-    const [category, setCategory] = useState(product.category || '');
+    
+    const [selectedCategories, setSelectedCategories] = useState<string[]>(
+        product.category
+            ? product.category.split('|').map((c) => c.trim()).filter(Boolean)
+            : []
+    );
+    
     const [productType, setProductType] = useState<string[]>(
         product.product_type
             ? product.product_type.split('|').map((t) => t.trim()).filter(Boolean)
             : []
     );
 
-    // Product Type reference data state
+    // Taxonomy reference data state
     const [productTypes, setProductTypes] = useState<{ id: string; name: string }[]>([]);
-    const [productTypeSearch, setProductTypeSearch] = useState("");
     const [creatingProductType, setCreatingProductType] = useState(false);
-    const [productTypePopoverOpen, setProductTypePopoverOpen] = useState(false);
     const [searchKeywords, setSearchKeywords] = useState(product.search_keywords || '');
     const [gtin, setGtin] = useState(product.gtin || '');
+    const [sku, setSku] = useState(product.sku || '');
+    
+    // Inventory & Settings state
     const [availability, setAvailability] = useState(product.availability || 'in stock');
-    const [minQty, setMinQty] = useState(String(product.minimum_quantity || '0'));
+    const [stockStatus, setStockStatus] = useState(product.stock_status || 'in_stock');
+    const [minQty, setMinQty] = useState(String(product.minimum_quantity ?? 0));
+    const [quantity, setQuantity] = useState(product.quantity !== null && product.quantity !== undefined ? String(product.quantity) : '');
+    const [lowStockThreshold, setLowStockThreshold] = useState(product.low_stock_threshold !== null && product.low_stock_threshold !== undefined ? String(product.low_stock_threshold) : '');
     const [isSpecialOrder, setIsSpecialOrder] = useState(product.is_special_order || false);
     const [isTaxable, setIsTaxable] = useState(product.is_taxable ?? true);
+    const [publishedAt, setPublishedAt] = useState(product.published_at || '');
     
     const initialPages = Array.isArray(product.product_on_pages) 
         ? product.product_on_pages 
@@ -123,6 +146,8 @@ export function ProductEditModal({
             : [];
     const [productOnPages, setProductOnPages] = useState<string[]>(initialPages);
     const [selectedPetTypes, setSelectedPetTypes] = useState<ProductPetType[]>([]);
+
+    const shopsitePageOptions = SHOPSITE_PAGES.map(page => ({ id: page, name: page }));
 
     const parseImages = (images: unknown): string[] => {
         if (!images) return [];
@@ -138,50 +163,37 @@ export function ProductEditModal({
         } else {
             return [];
         }
-
-        // Ensure relative paths start with a leading slash
-        return parsed.map(img => {
-            if (typeof img !== 'string') return '';
-            const trimmed = img.trim();
-            if (trimmed.startsWith('http') || trimmed.startsWith('/')) {
-                return trimmed;
-            }
-            // If it's a relative path without a leading slash, prepend it
-            if (trimmed.length > 0) {
-                return `/${trimmed}`;
-            }
-            return '';
-        }).filter(Boolean);
+        return parsed.map(img => formatImageUrl(img)).filter((img): img is string => Boolean(img));
     };
 
-    const isValidImageUrl = (url: string) => {
-        return url && (url.startsWith('/') || url.startsWith('http'));
-    };
-
+    const isValidImageUrl = (url: string) => url && (url.startsWith('/') || url.startsWith('http'));
     const images = parseImages(product.images);
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const [brandsRes, petTypesRes, productTypesRes] = await Promise.all([
+                const [brandsRes, petTypesRes, productTypesRes, categoriesRes] = await Promise.all([
                     fetch('/api/admin/brands'),
                     fetch(`/api/admin/products/${product.id}/pet-types`),
                     fetch('/api/admin/product-types'),
+                    fetch('/api/admin/categories'),
                 ]);
                 
                 if (brandsRes.ok) {
                     const data = await brandsRes.json();
                     setBrands(data.brands || []);
                 }
-                
                 if (petTypesRes.ok) {
                     const data = await petTypesRes.json();
                     setSelectedPetTypes(data.petTypes || []);
                 }
-
                 if (productTypesRes.ok) {
                     const data = await productTypesRes.json();
                     setProductTypes(data.productTypes || []);
+                }
+                if (categoriesRes.ok) {
+                    const data = await categoriesRes.json();
+                    setCategories(data.categories || []);
                 }
             } catch (err) {
                 console.error('Failed to load data', err);
@@ -209,22 +221,13 @@ export function ProductEditModal({
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
 
-    const togglePage = (page: string) => {
-        setProductOnPages(prev => 
-            prev.includes(page) 
-                ? prev.filter(p => p !== page) 
-                : [...prev, page]
-        );
-    };
-
-    const handleCreateProductType = async () => {
-        if (!productTypeSearch.trim()) return;
+    const handleCreateProductType = async (name: string) => {
         setCreatingProductType(true);
         try {
             const res = await fetch("/api/admin/product-types", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: productTypeSearch.trim() }),
+                body: JSON.stringify({ name }),
             });
             if (res.ok) {
                 const { productType: newPT } = await res.json();
@@ -232,8 +235,6 @@ export function ProductEditModal({
                     [...prev, newPT].sort((a, b) => a.name.localeCompare(b.name)),
                 );
                 setProductType((prev) => [...prev, newPT.name]);
-                setProductTypeSearch("");
-                setProductTypePopoverOpen(false);
                 toast.success(`Product type "${newPT.name}" created`);
             } else {
                 const data = await res.json();
@@ -254,18 +255,23 @@ export function ProductEditModal({
             const formData = new FormData();
             formData.append('name', name.trim());
             formData.append('slug', slug.trim());
+            formData.append('sku', sku.trim());
             formData.append('description', description.trim());
             formData.append('long_description', longDescription.trim());
             formData.append('price', price);
             formData.append('weight', weight.trim());
-            formData.append('category', category.trim());
+            formData.append('category', selectedCategories.join('|'));
             formData.append('product_type', productType.join('|'));
             formData.append('search_keywords', searchKeywords.trim());
             formData.append('gtin', gtin.trim());
             formData.append('availability', availability.trim());
+            formData.append('stock_status', stockStatus);
             formData.append('minimum_quantity', minQty);
+            if (quantity) formData.append('quantity', quantity);
+            if (lowStockThreshold) formData.append('low_stock_threshold', lowStockThreshold);
             formData.append('is_special_order', String(isSpecialOrder));
             formData.append('is_taxable', String(isTaxable));
+            if (publishedAt) formData.append('published_at', publishedAt);
             formData.append('product_on_pages', JSON.stringify(productOnPages));
 
             if (brandId !== 'none') {
@@ -286,7 +292,6 @@ export function ProductEditModal({
             if (!productResult.success) {
                 throw new Error(productResult.error || 'Failed to update product');
             }
-
             if (!petTypesRes.ok) {
                 throw new Error('Failed to update pet types');
             }
@@ -307,398 +312,240 @@ export function ProductEditModal({
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0">
-                <DialogHeader className="p-6 pb-0">
+            <DialogContent className="max-w-6xl w-[95vw] h-[90vh] overflow-hidden p-0 flex flex-col">
+                <DialogHeader className="p-6 pb-2 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
                             <Package className="size-6 text-muted-foreground" />
                         </div>
                         <div>
-                            <DialogTitle className="text-xl">Edit Published Product</DialogTitle>
+                            <DialogTitle className="text-xl">Edit Product</DialogTitle>
                             <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">{product.sku}</p>
                         </div>
                     </div>
                 </DialogHeader>
 
-                <div className="flex flex-col gap-6 p-6">
-                    {/* Error Banner */}
+                <div className="flex-1 overflow-hidden flex flex-col">
                     {error && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="size-4" />
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
+                        <div className="px-6 pb-2">
+                            <Alert variant="destructive">
+                                <AlertCircle className="size-4" />
+                                <AlertTitle>Error</AlertTitle>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        </div>
                     )}
 
-                    {/* Form Content */}
-                    <div className="grid gap-8 lg:grid-cols-2">
-                        {/* Left Column: Core Fields */}
-                        <div className="space-y-6">
-                            <div className="space-y-4 rounded-xl border bg-card p-5">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Core Information</h3>
-                                
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Product Name *</Label>
-                                    <Input
-                                        id="name"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Enter product name"
-                                    />
-                                </div>
+                    <Tabs defaultValue="general" className="flex-1 flex flex-col h-full overflow-hidden">
+                        <div className="px-6 border-b shrink-0">
+                            <TabsList className="w-full justify-start h-auto bg-transparent p-0 gap-4 overflow-x-auto rounded-none">
+                                <TabsTrigger value="general" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-2 py-3 bg-transparent">General</TabsTrigger>
+                                <TabsTrigger value="inventory" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-2 py-3 bg-transparent">Inventory & Pricing</TabsTrigger>
+                                <TabsTrigger value="taxonomy" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-2 py-3 bg-transparent">Taxonomy</TabsTrigger>
+                                <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-2 py-3 bg-transparent">Settings</TabsTrigger>
+                                <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-2 py-3 bg-transparent">Media</TabsTrigger>
+                            </TabsList>
+                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="slug">Storefront Slug *</Label>
-                                    <Input
-                                        id="slug"
-                                        value={slug}
-                                        onChange={(e) => setSlug(e.target.value)}
-                                        placeholder="product-url-slug"
-                                    />
-                                </div>
+                        <ScrollArea className="flex-1">
+                            <div className="p-6">
+                                <TabsContent value="general" className="mt-0 outline-none flex flex-col gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-2">
+                                            <Label htmlFor="name">Product Name *</Label>
+                                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter product name" />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <Label htmlFor="slug">Storefront Slug *</Label>
+                                            <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="product-url-slug" />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="description">Short Description</Label>
+                                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary" rows={3} />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="longDescription">Long Description</Label>
+                                        <Textarea id="longDescription" value={longDescription} onChange={(e) => setLongDescription(e.target.value)} placeholder="Detailed features and information" rows={10} />
+                                    </div>
+                                </TabsContent>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                <TabsContent value="inventory" className="mt-0 outline-none grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="price">Price ($) *</Label>
-                                        <Input
-                                            id="price"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={price}
-                                            onChange={(e) => setPrice(e.target.value)}
-                                            placeholder="0.00"
-                                        />
+                                        <Input id="price" type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="sku">SKU</Label>
+                                        <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Stock Keeping Unit" />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="quantity">Quantity (Stock)</Label>
+                                        <Input id="quantity" type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="e.g. 50" />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="lowStockThreshold">Low Stock Threshold</Label>
+                                        <Input id="lowStockThreshold" type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} placeholder="e.g. 5" />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="minQty">Minimum Order Qty</Label>
+                                        <Input id="minQty" type="number" min="0" value={minQty} onChange={(e) => setMinQty(e.target.value)} placeholder="0" />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="weight">Weight (lb)</Label>
-                                        <Input
-                                            id="weight"
-                                            value={weight}
-                                            onChange={(e) => setWeight(e.target.value)}
-                                            placeholder="e.g. 30"
-                                        />
+                                        <Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 30" />
                                     </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="brand">Brand</Label>
-                                    <Select value={brandId} onValueChange={setBrandId}>
-                                        <SelectTrigger id="brand">
-                                            <SelectValue placeholder="Select a brand" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">No brand</SelectItem>
-                                            {brands.map((brand) => (
-                                                <SelectItem key={brand.id} value={brand.id}>
-                                                    {brand.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="gtin">GTIN / UPC</Label>
-                                        <Input
-                                            id="gtin"
-                                            value={gtin}
-                                            onChange={(e) => setGtin(e.target.value)}
-                                            placeholder="Barcode"
-                                        />
+                                        <Input id="gtin" value={gtin} onChange={(e) => setGtin(e.target.value)} placeholder="Barcode" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="minQty">Min. Quantity</Label>
-                                        <Input
-                                            id="minQty"
-                                            type="number"
-                                            min="0"
-                                            value={minQty}
-                                            onChange={(e) => setMinQty(e.target.value)}
-                                        />
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="stockStatus">Stock Status</Label>
+                                        <Select value={stockStatus} onValueChange={setStockStatus}>
+                                            <SelectTrigger id="stockStatus">
+                                                <SelectValue placeholder="Status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="in_stock">In Stock</SelectItem>
+                                                <SelectItem value="low_stock">Low Stock</SelectItem>
+                                                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                                                <SelectItem value="pre_order">Pre-order</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                </div>
-                            </div>
+                                </TabsContent>
 
-                            <div className="space-y-4 rounded-xl border bg-card p-5">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Taxonomy & Meta</h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="category">Category</Label>
-                                        <Input
-                                            id="category"
-                                            value={category}
-                                            onChange={(e) => setCategory(e.target.value)}
-                                            placeholder="e.g. Dog Food"
-                                        />
+                                <TabsContent value="taxonomy" className="mt-0 outline-none flex flex-col gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-2">
+                                            <Label htmlFor="brand">Brand</Label>
+                                            <Select value={brandId} onValueChange={setBrandId}>
+                                                <SelectTrigger id="brand">
+                                                    <SelectValue placeholder="Select a brand" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">No brand</SelectItem>
+                                                    {brands.map((brand) => (
+                                                        <SelectItem key={brand.id} value={brand.id}>
+                                                            {brand.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <Label htmlFor="category">Category</Label>
+                                            <SearchableMultiSelect
+                                                options={categories}
+                                                selected={selectedCategories}
+                                                onChange={setSelectedCategories}
+                                                placeholder="Select categories..."
+                                                searchPlaceholder="Search categories..."
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="productType">Product Type</Label>
-                                        <Popover
-                                            open={productTypePopoverOpen}
-                                            onOpenChange={setProductTypePopoverOpen}
-                                        >
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    id="productType"
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={productTypePopoverOpen}
-                                                    className="w-full justify-between font-normal min-h-[40px] h-auto px-3"
-                                                >
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {productType.length > 0 ? (
-                                                            productType.map((type) => (
-                                                                <Badge key={type} variant="secondary" className="gap-1 px-1 py-0 h-5">
-                                                                    {type}
-                                                                    <X
-                                                                        className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setProductType(prev => prev.filter(t => t !== type));
-                                                                        }}
-                                                                    />
-                                                                </Badge>
-                                                            ))
-                                                        ) : (
-                                                            <span className="text-muted-foreground">Select types...</span>
-                                                        )}
-                                                    </div>
-                                                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent
-                                                className="w-[var(--radix-popover-trigger-width)] p-0"
-                                                align="start"
-                                            >
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center border-b px-3 py-2">
-                                                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        <input
-                                                            className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                                            placeholder="Search product types..."
-                                                            value={productTypeSearch}
-                                                            onChange={(e) =>
-                                                                setProductTypeSearch(e.target.value)
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div className="max-h-[200px] overflow-y-auto p-1">
-                                                        {productTypes
-                                                            .filter((pt) =>
-                                                                pt.name.toLowerCase().includes(productTypeSearch.toLowerCase())
-                                                            )
-                                                            .map((pt) => {
-                                                                const isSelected = productType.includes(pt.name);
-                                                                return (
-                                                                    <div
-                                                                        key={pt.id}
-                                                                        className={cn(
-                                                                            "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                                                            isSelected &&
-                                                                            "bg-accent text-accent-foreground",
-                                                                        )}
-                                                                        onClick={() => {
-                                                                            setProductType(prev =>
-                                                                                isSelected
-                                                                                    ? prev.filter(t => t !== pt.name)
-                                                                                    : [...prev, pt.name]
-                                                                            );
-                                                                        }}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                isSelected
-                                                                                    ? "opacity-100"
-                                                                                    : "opacity-0",
-                                                                            )}
-                                                                        />
-                                                                        {pt.name}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        {productTypes.filter((pt) =>
-                                                            pt.name.toLowerCase().includes(productTypeSearch.toLowerCase())
-                                                        ).length === 0 &&
-                                                            productTypeSearch && (
-                                                                <div className="p-2 text-xs text-muted-foreground italic">
-                                                                    No product types found.
-                                                                </div>
-                                                            )}
-                                                    </div>
-                                                    {productTypeSearch.trim() &&
-                                                        !productTypes.find(
-                                                            (pt) =>
-                                                                pt.name.toLowerCase() ===
-                                                                productTypeSearch.toLowerCase().trim(),
-                                                        ) && (
-                                                            <div className="border-t p-1">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="w-full justify-start text-xs font-normal"
-                                                                    onClick={handleCreateProductType}
-                                                                    disabled={creatingProductType}
-                                                                >
-                                                                    <Plus className="mr-2 h-3 w-3" />
-                                                                    {creatingProductType
-                                                                        ? "Creating..."
-                                                                        : `Create "${productTypeSearch.trim()}"`}
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-2">
+                                            <Label htmlFor="productType">Product Type</Label>
+                                            <SearchableMultiSelect
+                                                options={productTypes}
+                                                selected={productType}
+                                                onChange={setProductType}
+                                                placeholder="Select product types..."
+                                                searchPlaceholder="Search product types..."
+                                                onCreate={handleCreateProductType}
+                                                creating={creatingProductType}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-sm font-medium">Assign to Pages (ShopSite)</Label>
+                                            <SearchableMultiSelect
+                                                options={shopsitePageOptions}
+                                                selected={productOnPages}
+                                                onChange={setProductOnPages}
+                                                placeholder="Select ShopSite pages..."
+                                                searchPlaceholder="Search pages..."
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="keywords">Search Keywords</Label>
-                                    <Input
-                                        id="keywords"
-                                        value={searchKeywords}
-                                        onChange={(e) => setSearchKeywords(e.target.value)}
-                                        placeholder="comma-separated terms"
-                                    />
-                                </div>
-                                
-                                <div className="flex gap-6 pt-2">
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            id="specialOrder"
-                                            checked={isSpecialOrder}
-                                            onCheckedChange={(checked) => setIsSpecialOrder(checked === true)}
-                                        />
-                                        <Label htmlFor="specialOrder" className="cursor-pointer text-sm">
-                                            Special Order
-                                        </Label>
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="keywords">Search Keywords</Label>
+                                        <Input id="keywords" value={searchKeywords} onChange={(e) => setSearchKeywords(e.target.value)} placeholder="comma-separated terms" />
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            id="taxable"
-                                            checked={isTaxable}
-                                            onCheckedChange={(checked) => setIsTaxable(checked === true)}
-                                        />
-                                        <Label htmlFor="taxable" className="cursor-pointer text-sm">
-                                            Taxable
-                                        </Label>
+                                    <div className="pt-2 border-t">
+                                        <PetTypeSelector selectedPetTypes={selectedPetTypes} onChange={setSelectedPetTypes} />
                                     </div>
-                                </div>
+                                </TabsContent>
 
-                                <div className="pt-4 border-t">
-                                    <PetTypeSelector
-                                        selectedPetTypes={selectedPetTypes}
-                                        onChange={setSelectedPetTypes}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right Column: Descriptions & Images */}
-                        <div className="space-y-6">
-                            <div className="space-y-4 rounded-xl border bg-card p-5">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">ShopSite Display</h3>
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Assign to Pages</Label>
-                                    <div className="flex flex-wrap gap-2 p-3 rounded-md border bg-muted/30 min-h-[80px]">
-                                        {SHOPSITE_PAGES.map(page => (
-                                            <Badge
-                                                key={page}
-                                                variant={productOnPages.includes(page) ? "default" : "outline"}
-                                                className="cursor-pointer select-none transition-colors"
-                                                onClick={() => togglePage(page)}
-                                            >
-                                                {page}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                    <Label htmlFor="description">Short Description</Label>
-                                    <Textarea
-                                        id="description"
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="Brief summary"
-                                        rows={3}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="longDescription">Long Description</Label>
-                                    <Textarea
-                                        id="longDescription"
-                                        value={longDescription}
-                                        onChange={(e) => setLongDescription(e.target.value)}
-                                        placeholder="Detailed features and information"
-                                        rows={8}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Images Preview - Read Only for now */}
-                            {images.length > 0 && (
-                                <div className="space-y-4 rounded-xl border bg-card p-5">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Product Images</h3>
-                                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                            {images.length} total
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {images
-                                            .filter(isValidImageUrl)
-                                            .slice(0, 8)
-                                            .map((img, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="size-16 rounded-md border bg-background overflow-hidden relative"
-                                                >
-                                                    <img
-                                                        src={img}
-                                                        alt={`Product image ${idx + 1}`}
-                                                        className="h-full w-full object-cover"
-                                                    />
-                                                </div>
-                                            ))}
-                                        {images.length > 8 && (
-                                            <div className="flex size-16 items-center justify-center rounded-md border bg-muted text-xs font-medium">
-                                                +{images.length - 8}
+                                <TabsContent value="settings" className="mt-0 outline-none flex flex-col gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-4 p-4 rounded-lg border bg-muted/30">
+                                            <div className="flex items-center gap-3">
+                                                <Checkbox id="specialOrder" checked={isSpecialOrder} onCheckedChange={(checked) => setIsSpecialOrder(checked === true)} />
+                                                <Label htmlFor="specialOrder" className="cursor-pointer font-medium leading-none">Special Order</Label>
                                             </div>
-                                        )}
+                                            <div className="flex items-center gap-3">
+                                                <Checkbox id="taxable" checked={isTaxable} onCheckedChange={(checked) => setIsTaxable(checked === true)} />
+                                                <Label htmlFor="taxable" className="cursor-pointer font-medium leading-none">Taxable Item</Label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex flex-col gap-2">
+                                            <Label htmlFor="availability">Availability Text</Label>
+                                            <Input id="availability" value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="e.g. Usually ships in 2-3 days" />
+                                        </div>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-                                        <Info className="h-3 w-3" />
-                                        Image management coming soon
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="publishedAt" className="flex items-center gap-2">
+                                            Published At <CalendarIcon className="size-3 text-muted-foreground" />
+                                        </Label>
+                                        <Input id="publishedAt" type="datetime-local" value={publishedAt ? new Date(publishedAt).toISOString().slice(0, 16) : ''} onChange={(e) => setPublishedAt(e.target.value ? new Date(e.target.value).toISOString() : '')} />
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="media" className="mt-0 outline-none flex flex-col gap-6">
+                                    {images.length > 0 ? (
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-foreground">Current Images</span>
+                                                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{images.length} total</span>
+                                            </div>
+                                            <div className="flex gap-2 flex-wrap">
+                                                {images.filter(isValidImageUrl).map((img, idx) => (
+                                                    <div key={idx} className="size-20 rounded-md border bg-background overflow-hidden relative">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={img} alt={`Product image ${idx + 1}`} className="h-full w-full object-cover" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 p-3 bg-muted/50 rounded-md border">
+                                                <Info className="size-4 shrink-0" />
+                                                Image management handles uploads separately. These are display-only previews.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-muted/30">
+                                            <Package className="size-8 text-muted-foreground mb-3" />
+                                            <p className="text-sm font-medium text-foreground">No images available</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Images can be added via the scraper or external system.</p>
+                                        </div>
+                                    )}
+                                </TabsContent>
+                            </div>
+                        </ScrollArea>
+                    </Tabs>
                 </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-4 bg-muted/50 p-6">
+                <DialogFooter className="shrink-0 flex-col sm:flex-row gap-4 bg-muted/50 p-6 border-t">
                     <div className="flex-1 text-[10px] text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider font-semibold">
-                        <span className="flex items-center gap-1">
-                            Esc to close
-                        </span>
+                        <span>Esc to close</span>
                         <span className="text-muted-foreground/30">•</span>
-                        <span className="flex items-center gap-1">
-                            Ctrl+S to save
-                        </span>
+                        <span>Ctrl+S to save</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={onClose} disabled={saving}>
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="min-w-[120px]"
-                        >
+                        <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+                        <Button onClick={handleSave} disabled={saving} className="min-w-[120px]">
                             {saving ? (
                                 <>
                                     <Spinner data-icon="inline-start" />

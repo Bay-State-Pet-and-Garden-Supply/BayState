@@ -1,5 +1,5 @@
+import { parseRegisterWorkbook } from "@/lib/admin/register-file";
 import { createClient } from "@/lib/supabase/server";
-import * as XLSX from "xlsx";
 
 export interface IntegraProduct {
   sku: string;
@@ -25,40 +25,11 @@ const INITIAL_ONBOARDING_PIPELINE_STATUS = "imported";
 export async function parseIntegraExcel(
   buffer: ArrayBuffer,
 ): Promise<IntegraProduct[]> {
-  const workbook = XLSX.read(buffer, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
-
-  const products: IntegraProduct[] = rows
-    .map((row) => {
-      const sku = String(row["SKU_NO"] || row["SKU"] || "").trim();
-      const price = parseFloat(
-        String(row["LIST_PRICE"] || row["PRICE"] || "0"),
-      );
-
-      const desc1 = String(row["DESCRIPTION1"] || row["NAME"] || "").trim();
-      const desc2 = String(row["DESCRIPTION2"] || "").trim();
-      const name = desc2 ? `${desc1} ${desc2}` : desc1;
-
-      return {
-        sku,
-        name,
-        price: isNaN(price) ? 0 : price,
-      };
-    })
-    .filter((p) => p.sku && p.name); // Basic validation
-
-  // Deduplicate by SKU to ensure analysis and import counts match
-  const uniqueMap = new Map<string, IntegraProduct>();
-  for (const p of products) {
-    if (!uniqueMap.has(p.sku)) {
-      uniqueMap.set(p.sku, p);
-    }
-  }
-
-  return Array.from(uniqueMap.values());
+  return parseRegisterWorkbook(buffer).map((product) => ({
+    sku: product.sku,
+    name: product.name,
+    price: product.price,
+  }));
 }
 
 /**
