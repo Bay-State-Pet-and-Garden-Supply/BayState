@@ -196,29 +196,97 @@ export const SHOPSITE_XML_VERSION = '15.0';
 /**
  * ShopSite custom field mappings.
  * Maps custom ProductField numbers to their business meanings.
+ *
+ * CORRECTED CONTRACT (18 Fields):
+ * - ProductField24 is the ONLY canonical category source (PF31 is audit-only)
+ * - ProductField17 direct values are canonical; inference is fallback only
+ * - ProductField32 cross-sells are one-way, split on '|', skip duplicates/self/missing
+ * - Blank canonical values clear normalized joins on rerun
+ *
+ * @see docs/field-mapping-matrix.md for full contract documentation
+ * @see docs/shopsite-xml-mapping.md for XML-to-database mapping
  */
 export const SHOPSITE_FIELD_MAP = {
+    // Informational fields (not part of canonical contract)
     ProductField1: 'Upload_Tag',
+
+    // Operational fields (first-class product columns)
     ProductField7: 'Short_Name',
     ProductField11: 'Special_Order',
     ProductField15: 'In_Store_Pickup',
+
+    // Canonical normalized fields (dedicated tables)
     ProductField16: 'Brand',
     ProductField17: 'Pet_Type',
+    ProductField24: 'Category',
+    ProductField25: 'Product_Type',
+
+    // Generic normalized facet fields (facet_definitions/values/joins)
     ProductField18: 'Life_Stage',
     ProductField19: 'Pet_Size',
     ProductField20: 'Special_Diet',
     ProductField21: 'Health_Feature',
     ProductField22: 'Food_Form',
     ProductField23: 'Flavor',
-    ProductField24: 'Category',
-    ProductField25: 'Product_Type',
     ProductField26: 'Product_Feature',
     ProductField27: 'Size',
     ProductField29: 'Color',
     ProductField30: 'Packaging_Type',
+
+    // Audit-only (never used for normalized behavior)
     ProductField31: 'Category_Audit_Only',
+
+    // Relation fields (cross-sell linking)
     ProductField32: 'Cross_Sell',
 } as const;
+
+/**
+ * ProductFields that are part of the canonical migration contract.
+ * These 18 fields are actively mapped during import.
+ */
+export const CANONICAL_PRODUCT_FIELDS = [
+    'ProductField7',
+    'ProductField11',
+    'ProductField15',
+    'ProductField16',
+    'ProductField17',
+    'ProductField18',
+    'ProductField19',
+    'ProductField20',
+    'ProductField21',
+    'ProductField22',
+    'ProductField23',
+    'ProductField24',
+    'ProductField25',
+    'ProductField26',
+    'ProductField27',
+    'ProductField29',
+    'ProductField30',
+    'ProductField32',
+] as const;
+
+/**
+ * ProductFields that populate generic normalized facet tables.
+ * These use facet_definitions / facet_values / product_facet_values.
+ */
+export const GENERIC_FACET_FIELDS = [
+    'ProductField18',
+    'ProductField19',
+    'ProductField20',
+    'ProductField21',
+    'ProductField22',
+    'ProductField23',
+    'ProductField26',
+    'ProductField27',
+    'ProductField29',
+    'ProductField30',
+] as const;
+
+/**
+ * ProductFields excluded from normalized behavior.
+ * These are preserved in raw payload for audit only.
+ */
+export const AUDIT_ONLY_PRODUCT_FIELDS = ['ProductField31'] as const;
 
 /**
  * ShopSite image field mappings.

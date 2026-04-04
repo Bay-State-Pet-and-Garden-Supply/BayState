@@ -14,7 +14,14 @@ This document provides a comprehensive mapping of XML elements from ShopSite's `
 | `ProductDescription` | `products.description` | `text` | Short description |
 | `MoreInformationText` | `products.long_description` | `text` | HTML content |
 | `Graphic` | `products.images[0]` | `text[]` | Primary image path |
+| `ProductField7` | `products.short_name` | `text` | Child / Short Name |
+| `ProductField11` | `products.is_special_order` | `boolean` | Special Order flag |
+| `ProductField15` | `products.in_store_pickup` | `boolean` | In Store Pick-up flag |
 | `ProductField16` / `Brand` | `brands.name` → `products.brand_id` | `uuid` (FK) | Lookup/create brand |
+| `ProductField17` | `pet_types` → `product_pet_types` | `uuid` (FK) | Canonical pet type |
+| `ProductField24` | `categories` → `product_categories` | `uuid[]` | **Canonical category** |
+| `ProductField25` | `product_types` → `products.product_type_id` | `uuid` (FK) | Canonical product type |
+| `ProductField32` | `related_products` | junction table | Cross-sell relations |
 
 ---
 
@@ -102,10 +109,13 @@ const stockStatus = availability === 'out of stock'
 |------------|-----------|----------|---------|-------|
 | `Brand` | `brands.name` → `products.brand_id` | string | `uuid` (FK) | Lookup or create brand |
 | `ProductField16` | `brands.name` (fallback) | string | `uuid` (FK) | Alternative brand source |
-| `ProductField24` | `categories` (create/link) | string | `uuid[]` | Department/Category name |
-| `ProductField25` | `products.product_type` | string | `text` | Subcategory/product type |
+| `ProductField24` | `categories` (create/link) | string | `uuid[]` | **Canonical category source** |
+| `ProductField25` | `products.product_type` | string | `text` | Canonical product type source |
+| `ProductField31` | **Audit only** | string | `jsonb` | Never used for normalized categories |
 | `ProductOnPages` | `product_categories` | XML block | junction table | Parse nested `<Name>` elements |
 | `GoogleProductCategory` | `products.shopsite_data.google_category` | string | `jsonb` | Google taxonomy |
+
+**Category Precedence Rule**: `ProductField24` is the only canonical category source. `ProductField31` is preserved only in raw payload for audit purposes and must never drive normalized category behavior.
 
 **ProductOnPages Parsing:**
 ```xml
@@ -163,7 +173,11 @@ These are internal ShopSite fields that don't map to e-commerce columns but shou
 
 | XML Element | Purpose |
 |------------|---------|
-| `ProductField1`...`ProductField32` | Custom fields (some used for brand/category) |
+| `ProductField1` - `ProductField6` | Custom fields (informational only) |
+| `ProductField8` - `ProductField10` | Custom fields (informational only) |
+| `ProductField12` - `ProductField14` | Custom fields (informational only) |
+| `ProductField28` | Custom field (informational only) |
+| `ProductField31` | **Audit-only category** (excluded from normalization) |
 | `Template` | ShopSite page template |
 | `CrossSell` | Cross-sell product IDs |
 | `ProductCrossSell` | Enable cross-selling |
@@ -173,22 +187,60 @@ These are internal ShopSite fields that don't map to e-commerce columns but shou
 | `AddtoCartButton`, `ViewCartButton` | Button text |
 | `ProductSitemap`, `ProductSitemapPriority` | Sitemap config |
 
+**Note**: See [Custom ProductFields Usage](#custom-productfields-usage-corrected-contract) section for the 18 ProductFields that are part of the canonical migration contract.
+
 ---
 
-## Custom ProductFields Usage
+## Custom ProductFields Usage (Corrected Contract)
 
-Based on analysis of the XML data:
+Based on user-approved field mappings. This is the canonical contract for migration.
 
-| Field | Observed Usage | Recommendation |
-|-------|----------------|----------------|
-| `ProductField1` | Stock status tags (e.g., `"instock041421"`) | Parse for dates |
-| `ProductField2` | Sales period (e.g., `"sold0920"`) | Analytics |
-| `ProductField3` | Distributor code (e.g., `"BCI"`) | `shopsite_data.distributor` |
+### Canonical Rules
+
+- `ProductField24` is the **only canonical category source**. Never use `ProductField31` for normalized category behavior.
+- `ProductField17` direct values are **canonical**; inference is fallback only when PF17 is blank.
+- `ProductField32` cross-sells are **one-way**, split on `|`, and skip duplicates, self-links, and missing SKUs.
+- Blank canonical values **clear** normalized joins and nullable first-class fields on rerun.
+
+### Full ProductField Mapping (18 Fields)
+
+| Field | Business Meaning | Database Target | Notes |
+|-------|------------------|-----------------|-------|
+| `ProductField7` | Child / Short Name | `products.short_name` | Operational field; blank clears on rerun |
+| `ProductField11` | Special Order | `products.is_special_order` | Boolean; truthy: `yes`, `checked`, `true`, `1` |
+| `ProductField15` | In Store Pick-up | `products.in_store_pickup` | Boolean; truthy: `yes`, `checked`, `true`, `1` |
+| `ProductField16` | Facet - Brand | `brands` table | Canonical brand input |
+| `ProductField17` | Facet - Pet Type | `pet_types` table | Direct value wins; inference fallback only if blank |
+| `ProductField18` | Facet - Lifestage | Generic normalized facet | Product-to-facet join |
+| `ProductField19` | Facet - Pet Size | Generic normalized facet | Product-to-facet join |
+| `ProductField20` | Facet - Special Diet | Generic normalized facet | Product-to-facet join |
+| `ProductField21` | Facet - Health Feature | Generic normalized facet | Product-to-facet join |
+| `ProductField22` | Facet - Food Form | Generic normalized facet | Product-to-facet join |
+| `ProductField23` | Facet - Flavor | Generic normalized facet | Product-to-facet join |
+| `ProductField24` | Facet - Category | `categories` table | **Only** normalized category source |
+| `ProductField25` | Facet - Product Type | `product_types` table | Canonical product-type input |
+| `ProductField26` | Facet - Product Feature | Generic normalized facet | Product-to-facet join |
+| `ProductField27` | Facet - Size | Generic normalized facet | Product-to-facet join |
+| `ProductField29` | Facet - Color | Generic normalized facet | Product-to-facet join |
+| `ProductField30` | Facet - Packaging Type | Generic normalized facet | Product-to-facet join |
+| `ProductField32` | Product Cross Sell | `related_products` | One-way relations; split on `|`, skip duplicates/self/missing |
+
+### Explicit Exclusions
+
+| Field | Status | Reason |
+|-------|--------|--------|
+| `ProductField31` | **Excluded from normalization** | Preserved only in raw ShopSite payload for audit/drift review. Never used for normalized category behavior. |
+
+### Deprecated/Observed (Non-Canonical)
+
+These fields are observed in XML exports but are **not part of the corrected contract**:
+
+| Field | Observed Usage | Status |
+|-------|----------------|--------|
+| `ProductField1` | Stock status tags (e.g., `"instock041421"`) | Informational only |
+| `ProductField2` | Sales period (e.g., `"sold0920"`) | Informational only |
+| `ProductField3` | Distributor code (e.g., `"BCI"`) | Informational only |
 | `ProductField10` | Active flag (`"Y"`) | Derive from `ProductDisabled` instead |
-| `ProductField16` | **Brand name** | Primary brand source |
-| `ProductField24` | **Department/Category** | Map to `categories` table |
-| `ProductField25` | **Product Type** | Map to `products.product_type` |
-| `ProductField32` | Related SKUs (pipe-delimited) | Cross-sell array |
 
 ---
 
@@ -235,6 +287,21 @@ Based on this mapping, the following columns may need to be added:
 - [ ] `products.low_stock_threshold` — `integer`
 - [ ] `products.sku` — `text UNIQUE NOT NULL` (if not exists)
 - [ ] `products.search_keywords` — `text` (or keep in `shopsite_data`)
+- [ ] `products.short_name` — `text` (ProductField7)
+- [ ] `products.is_special_order` — `boolean` (ProductField11)
+- [ ] `products.in_store_pickup` — `boolean` (ProductField15)
+
+### Normalized Facet Tables (Generic)
+
+For ProductField18/19/20/21/22/23/26/27/29/30:
+
+- [ ] `facet_definitions` — dimension metadata table
+- [ ] `facet_values` — normalized value table per dimension
+- [ ] `product_facet_values` — product-to-facet-value join table
+
+### Cross-Sell Relations
+
+- [ ] `related_products` — one-way cross-sell relations (PF32)
 
 ---
 
@@ -243,4 +310,6 @@ Based on this mapping, the following columns may need to be added:
 - [Parser Implementation](../lib/admin/migration/shopsite-client.ts)
 - [Type Definitions](../lib/admin/migration/types.ts)
 - [Initial Schema](../supabase/migrations/20251230150000_initial_schema.sql)
+- [Field Mapping Matrix](./field-mapping-matrix.md) — Canonical contract documentation
+- [ShopSite Constants](../lib/shopsite/constants.ts) — Field mapping constants
 
