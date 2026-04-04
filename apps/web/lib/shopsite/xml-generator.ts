@@ -18,6 +18,7 @@ export interface ShopSiteExportProduct {
     name: string;
     price: number | string;
     weight?: string | number | null;
+    short_name?: string | null;
     brand_name?: string | null;
     description?: string | null;
     long_description?: string | null;
@@ -27,6 +28,7 @@ export interface ShopSiteExportProduct {
     shopsite_pages?: string[] | null;
     search_keywords?: string | null;
     is_special_order?: boolean;
+    in_store_pickup?: boolean;
     is_taxable?: boolean;
     file_name?: string | null;
     gtin?: string | null;
@@ -107,6 +109,10 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('Weight', String(product.weight)));
     }
 
+    if (product.short_name) {
+        lines.push(xmlElement('ProductField7', product.short_name));
+    }
+
     const primaryImage = product.images[0] ?? null;
     if (primaryImage) {
         lines.push(xmlElement('Graphic', primaryImage));
@@ -132,6 +138,10 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
 
     if (product.is_special_order) {
         lines.push(xmlElement('ProductField11', 'yes'));
+    }
+
+    if (product.in_store_pickup) {
+        lines.push(xmlElement('ProductField15', 'checked'));
     }
 
     if (product.gtin) {

@@ -12,6 +12,7 @@ describe('generateShopSiteXml', () => {
                     name: 'Feathered Friend Favorite 20 lb.',
                     price: 24.99,
                     description: 'Short shelf copy',
+                    short_name: 'Favorite 20 lb.',
                     brand_name: 'Feathered Friend',
                     category: 'Wild Bird Food',
                     product_type: 'Seeds & Seed Mixes',
@@ -21,6 +22,7 @@ describe('generateShopSiteXml', () => {
                     ],
                     weight: '20 lb.',
                     is_special_order: true,
+                    in_store_pickup: true,
                 },
             ],
             { markerDate: new Date('2026-03-26T15:13:29.698Z') },
@@ -34,6 +36,7 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<ProductField1>new032626</ProductField1>');
         expect(xml).toContain('<![CDATA[Short shelf copy]]>');
         expect(xml).toContain('<Weight>20 lb.</Weight>');
+        expect(xml).toContain('<ProductField7>Favorite 20 lb.</ProductField7>');
         expect(xml).toContain('<Graphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</Graphic>');
         expect(xml).toContain('<MoreInformationGraphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</MoreInformationGraphic>');
         expect(xml).toContain('<MoreInfoImage1>feathered-friend/feathered-friend-favorite-20-lb-2.jpg</MoreInfoImage1>');
@@ -41,6 +44,7 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<ProductField24>Wild Bird Food</ProductField24>');
         expect(xml).toContain('<ProductField25>Seeds &amp; Seed Mixes</ProductField25>');
         expect(xml).toContain('<ProductField11>yes</ProductField11>');
+        expect(xml).toContain('<ProductField15>checked</ProductField15>');
         expect(xml).not.toContain('<Taxable>');
         expect(xml).not.toContain('<MinimumQuantity>');
         expect(xml).not.toContain('<Availability>');
@@ -66,10 +70,12 @@ describe('generateShopSiteXml', () => {
         expect(xml).not.toContain('<Graphic>');
         expect(xml).not.toContain('<MoreInformationGraphic>');
         expect(xml).not.toContain('<MoreInfoImage1>');
+        expect(xml).not.toContain('<ProductField7>');
         expect(xml).not.toContain('<ProductField16>');
         expect(xml).not.toContain('<ProductField24>');
         expect(xml).not.toContain('<ProductField25>');
         expect(xml).not.toContain('<ProductField11>');
+        expect(xml).not.toContain('<ProductField15>');
     });
 });
 

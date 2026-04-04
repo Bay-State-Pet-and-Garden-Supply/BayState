@@ -1,4 +1,12 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { ShopSiteClient } from '../lib/admin/migration/shopsite-client';
+
+const CORRECTED_FIELD_FIXTURE = readFileSync(
+    path.resolve(__dirname, './fixtures/corrected-field-contract.xml'),
+    'utf8',
+);
 
 describe('ShopSite XML Parsing', () => {
     // @ts-ignore - Mock config is enough for testing private parsing methods
@@ -203,6 +211,66 @@ describe('ShopSite XML Parsing', () => {
             const products = (client as any).parseProductsXml(xml);
             expect(products[0].imageUrl).toBe('');
             expect(products[0].additionalImages).toEqual(['real-image.jpg']);
+        });
+
+        it('should parse corrected ProductFields and keep blank values deterministic', () => {
+            const products = (client as any).parseProductsXml(CORRECTED_FIELD_FIXTURE);
+            const directPetProduct = products.find((product: { sku: string; }) => product.sku === 'DIRECT-PET-001');
+            const blankProduct = products.find((product: { sku: string; }) => product.sku === 'FALLBACK-PET-001');
+            const crossSellProduct = products.find((product: { sku: string; }) => product.sku === 'XSELL-SOURCE-001');
+            const canonicalCategoryProduct = products.find((product: { sku: string; }) => product.sku === 'PF24-WINS-001');
+
+            expect(directPetProduct).toMatchObject({
+                shortName: 'Mini Trainers',
+                isSpecialOrder: true,
+                inStorePickup: true,
+                brandName: 'Bay State Bakery',
+                petTypeName: 'Dog',
+                lifeStage: 'Adult',
+                petSize: 'Small',
+                specialDiet: 'Limited Ingredient',
+                healthFeature: 'Hip & Joint',
+                foodForm: 'Baked',
+                flavor: 'Peanut Butter',
+                categoryName: 'Dog Treats',
+                productTypeName: 'Training Treats',
+                productFeature: 'Soft Chew',
+                size: '8 oz',
+                color: 'Tan',
+                packagingType: 'Pouch',
+                crossSellSkus: [],
+            });
+
+            expect(blankProduct).toMatchObject({
+                shortName: '',
+                isSpecialOrder: false,
+                inStorePickup: false,
+                brandName: '',
+                petTypeName: '',
+                lifeStage: '',
+                petSize: '',
+                specialDiet: '',
+                healthFeature: '',
+                foodForm: '',
+                flavor: '',
+                categoryName: '',
+                productTypeName: '',
+                productFeature: '',
+                size: '',
+                color: '',
+                packagingType: '',
+                crossSellSkus: [],
+            });
+
+            expect(crossSellProduct?.crossSellSkus).toEqual([
+                'XSELL-TARGET-001',
+                'XSELL-TARGET-001',
+                'XSELL-SOURCE-001',
+                'MISSING-SKU',
+            ]);
+            expect(canonicalCategoryProduct?.categoryName).toBe('Dog Food');
+            expect(canonicalCategoryProduct?.rawXml).toContain('<ProductField31>Legacy Toy Bin</ProductField31>');
+            expect(canonicalCategoryProduct).not.toHaveProperty('auditOnlyCategory');
         });
     });
 

@@ -135,6 +135,44 @@ describe('ShopSiteClient', () => {
                 })
             );
         });
+
+        it('requests the corrected ProductField contract and excludes PF31 from the downloader field list', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                text: () => Promise.resolve('<?xml version="1.0"?><products></products>'),
+                arrayBuffer: () => Promise.resolve(Buffer.from('<?xml version="1.0"?><products></products>')),
+            });
+
+            const client = new ShopSiteClient(validConfig);
+            await client.fetchProducts();
+
+            const requestUrl = new URL(mockFetch.mock.calls[0][0] as string);
+            const requestedFields = (requestUrl.searchParams.get('fields') ?? '')
+                .split('|')
+                .filter(Boolean);
+
+            expect(requestedFields).toEqual(expect.arrayContaining([
+                'ProductField7',
+                'ProductField11',
+                'ProductField15',
+                'ProductField16',
+                'ProductField17',
+                'ProductField18',
+                'ProductField19',
+                'ProductField20',
+                'ProductField21',
+                'ProductField22',
+                'ProductField23',
+                'ProductField24',
+                'ProductField25',
+                'ProductField26',
+                'ProductField27',
+                'ProductField29',
+                'ProductField30',
+                'ProductField32',
+            ]));
+            expect(requestedFields).not.toContain('ProductField31');
+        });
     });
 
     describe('fetchOrders', () => {

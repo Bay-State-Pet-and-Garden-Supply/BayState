@@ -3,7 +3,8 @@
   "started_at": "2026-04-04T18:10:49.132Z",
   "session_ids": [
     "ses_2a660d136fferPlznXbrbOtmo5",
-    "ses_2a64d3571ffeYBco1HG29iNDzT"
+    "ses_2a64d3571ffeYBco1HG29iNDzT",
+    "ses_2a6402f31ffegFBR7sQ7nbQoy8"
   ],
   "plan_name": "shopsite-field-mapping-corrections",
   "agent": "atlas",
@@ -16,6 +17,15 @@
       "agent": "Sisyphus-Junior",
       "category": "deep",
       "updated_at": "2026-04-04T18:24:09.573Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "Expand ShopSite parser, types, and requested download fields",
+      "session_id": "ses_2a6402f31ffegFBR7sQ7nbQoy8",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-04T18:37:09.154Z"
     }
   }
 }

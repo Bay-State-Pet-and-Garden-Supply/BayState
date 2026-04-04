@@ -75,10 +75,24 @@ const PRODUCT_DOWNLOAD_FIELDS = [
     'ProductID',
     'ProductGUID',
     'GTIN',
+    'ProductField7',
     'ProductField11',
+    'ProductField15',
     'ProductField16',
+    'ProductField17',
+    'ProductField18',
+    'ProductField19',
+    'ProductField20',
+    'ProductField21',
+    'ProductField22',
+    'ProductField23',
     'ProductField24',
     'ProductField25',
+    'ProductField26',
+    'ProductField27',
+    'ProductField29',
+    'ProductField30',
+    'ProductField32',
     'Availability',
     'FileName',
     'MoreInformationText',
@@ -609,9 +623,24 @@ export class ShopSiteClient {
             const productGuid = this.extractXmlValue(productXml, 'ProductGUID');
             const gtin = this.extractXmlValue(productXml, 'GTIN') || this.extractXmlValue(productXml, 'gtin');
 
-            // Brand extraction moved up
+            // ProductField extraction
+            const shortName = this.extractXmlValue(productXml, 'ProductField7');
+            const specialOrderRaw = this.extractXmlValue(productXml, 'ProductField11');
+            const inStorePickupRaw = this.extractXmlValue(productXml, 'ProductField15');
+            const petTypeName = this.extractXmlValue(productXml, 'ProductField17');
+            const lifeStage = this.extractXmlValue(productXml, 'ProductField18');
+            const petSize = this.extractXmlValue(productXml, 'ProductField19');
+            const specialDiet = this.extractXmlValue(productXml, 'ProductField20');
+            const healthFeature = this.extractXmlValue(productXml, 'ProductField21');
+            const foodForm = this.extractXmlValue(productXml, 'ProductField22');
+            const flavor = this.extractXmlValue(productXml, 'ProductField23');
             const categoryName = this.extractXmlValue(productXml, 'ProductField24');
             const productTypeName = this.extractXmlValue(productXml, 'ProductField25');
+            const productFeature = this.extractXmlValue(productXml, 'ProductField26');
+            const size = this.extractXmlValue(productXml, 'ProductField27');
+            const color = this.extractXmlValue(productXml, 'ProductField29');
+            const packagingType = this.extractXmlValue(productXml, 'ProductField30');
+            const crossSellSkus = this.parseDelimitedField(this.extractXmlValue(productXml, 'ProductField32'));
             const availability = this.extractXmlValue(productXml, 'Availability') ||
                 this.extractXmlValue(productXml, 'availability') ||
                 undefined;
@@ -656,9 +685,24 @@ export class ShopSiteClient {
                 productId,
                 productGuid,
                 gtin,
+                shortName,
+                isSpecialOrder: this.parseProductFieldBoolean(specialOrderRaw),
+                inStorePickup: this.parseProductFieldBoolean(inStorePickupRaw),
                 brandName,
+                petTypeName,
+                lifeStage,
+                petSize,
+                specialDiet,
+                healthFeature,
+                foodForm,
+                flavor,
                 categoryName,
                 productTypeName,
+                productFeature,
+                size,
+                color,
+                packagingType,
+                crossSellSkus,
                 isDisabled,
                 availability,
                 fileName,
@@ -668,7 +712,6 @@ export class ShopSiteClient {
                 outOfStockLimit,
                 googleProductCategory,
                 shopsitePages,
-                isSpecialOrder: this.extractXmlValue(productXml, 'ProductField11')?.toLowerCase() === 'yes',
                 rawXml: includeRawXml ? productXml : undefined,
             });
 
@@ -855,6 +898,22 @@ export class ShopSiteClient {
             .replace(/&euro;/g, '€')
             .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
             .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    }
+
+    private parseProductFieldBoolean(value: string): boolean {
+        const normalized = value.trim().toLowerCase();
+        return normalized === 'yes' || normalized === 'checked' || normalized === 'true' || normalized === '1';
+    }
+
+    private parseDelimitedField(value: string, delimiter: string = '|'): string[] {
+        if (!value) {
+            return [];
+        }
+
+        return value
+            .split(delimiter)
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0);
     }
 
     /**
