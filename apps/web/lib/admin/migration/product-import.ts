@@ -4,8 +4,14 @@ import {
     generateUniqueSlug,
     transformShopSiteProduct,
 } from './product-sync';
-import { inferPetTypes, PetTypeName } from './pet-type-inference';
+import { PetTypeName, resolveCanonicalPetTypes } from './pet-type-inference';
 import type { MigrationError, ShopSiteProduct, SyncResult } from './types';
+import {
+    GENERIC_FACET_FIELDS,
+    GenericFacetName,
+    getGenericFacetDefinition,
+    normalizeGenericFacetValues,
+} from '@/lib/facets/generic-normalization';
 import {
     buildFacetSlug,
     normalizeBrandName,
@@ -20,6 +26,220 @@ interface ImportShopSiteProductsOptions {
     shopSiteProducts: ShopSiteProduct[];
     logId?: string;
     updateProgress?: ProgressUpdater;
+}
+
+const GENERIC_FACET_INPUTS = [
+    { field: 'ProductField18', transformedKey: 'life_stage' },
+    { field: 'ProductField19', transformedKey: 'pet_size' },
+    { field: 'ProductField20', transformedKey: 'special_diet' },
+    { field: 'ProductField21', transformedKey: 'health_feature' },
+    { field: 'ProductField22', transformedKey: 'food_form' },
+    { field: 'ProductField23', transformedKey: 'flavor' },
+    { field: 'ProductField26', transformedKey: 'product_feature' },
+    { field: 'ProductField27', transformedKey: 'size' },
+    { field: 'ProductField29', transformedKey: 'color' },
+    { field: 'ProductField30', transformedKey: 'packaging_type' },
+] as const;
+
+type TransformedShopSiteProduct = ReturnType<typeof transformShopSiteProduct>;
+
+function dedupeIds(values: string[]): string[] {
+    return Array.from(new Set(values));
+}
+
+async function replaceProductCategories(
+    supabase: SupabaseClient,
+    productId: string,
+    categoryIds: string[],
+) {
+    const { error: deleteError } = await supabase
+        .from('product_categories')
+        .delete()
+        .eq('product_id', productId);
+
+    if (deleteError) {
+        throw new Error(`Failed to replace product categories: ${deleteError.message}`);
+    }
+
+    const dedupedCategoryIds = dedupeIds(categoryIds);
+    if (dedupedCategoryIds.length === 0) {
+        return;
+    }
+
+    const { error: linkError } = await supabase
+        .from('product_categories')
+        .upsert(
+            dedupedCategoryIds.map((categoryId) => ({
+                product_id: productId,
+                category_id: categoryId,
+            })),
+            { onConflict: 'product_id, category_id' },
+        );
+
+    if (linkError) {
+        throw new Error(`Failed to link product categories: ${linkError.message}`);
+    }
+}
+
+async function replaceProductPetTypes(
+    supabase: SupabaseClient,
+    productId: string,
+    petTypeIds: string[],
+) {
+    const { error: deleteError } = await supabase
+        .from('product_pet_types')
+        .delete()
+        .eq('product_id', productId);
+
+    if (deleteError) {
+        throw new Error(`Failed to replace product pet types: ${deleteError.message}`);
+    }
+
+    const dedupedPetTypeIds = dedupeIds(petTypeIds);
+    if (dedupedPetTypeIds.length === 0) {
+        return;
+    }
+
+    const { error: linkError } = await supabase
+        .from('product_pet_types')
+        .upsert(
+            dedupedPetTypeIds.map((petTypeId) => ({
+                product_id: productId,
+                pet_type_id: petTypeId,
+            })),
+            { onConflict: 'product_id, pet_type_id' },
+        );
+
+    if (linkError) {
+        throw new Error(`Failed to link product pet types: ${linkError.message}`);
+    }
+}
+
+async function ensureGenericFacetDefinitionId(
+    supabase: SupabaseClient,
+    facetName: GenericFacetName,
+    facetDefinitionMap: Map<GenericFacetName, string>,
+) {
+    const existingFacetDefinitionId = facetDefinitionMap.get(facetName);
+    if (existingFacetDefinitionId) {
+        return existingFacetDefinitionId;
+    }
+
+    const genericField = Object.entries(GENERIC_FACET_FIELDS).find(([, value]) => value.name === facetName)?.[0];
+    if (!genericField) {
+        throw new Error(`Unsupported generic facet definition: ${facetName}`);
+    }
+
+    const definition = getGenericFacetDefinition(genericField as keyof typeof GENERIC_FACET_FIELDS);
+    const { data: upsertedDefinition, error } = await supabase
+        .from('facet_definitions')
+        .upsert(
+            {
+                name: definition.name,
+                slug: definition.slug,
+                description: definition.description,
+            },
+            { onConflict: 'name' },
+        )
+        .select('id')
+        .single();
+
+    if (error || !upsertedDefinition) {
+        throw new Error(`Failed to resolve generic facet definition "${facetName}": ${error?.message ?? 'Missing facet definition row'}`);
+    }
+
+    facetDefinitionMap.set(facetName, upsertedDefinition.id);
+    return upsertedDefinition.id;
+}
+
+async function ensureGenericFacetValueId(
+    supabase: SupabaseClient,
+    facetDefinitionId: string,
+    facetName: GenericFacetName,
+    value: ReturnType<typeof normalizeGenericFacetValues>[number],
+    facetValueMap: Map<string, string>,
+) {
+    const cacheKey = `${facetName}:${value.normalizedValue.toLowerCase()}`;
+    const existingFacetValueId = facetValueMap.get(cacheKey);
+    if (existingFacetValueId) {
+        return existingFacetValueId;
+    }
+
+    const { data: upsertedFacetValue, error } = await supabase
+        .from('facet_values')
+        .upsert(
+            {
+                facet_definition_id: facetDefinitionId,
+                value: value.value,
+                normalized_value: value.normalizedValue,
+                slug: value.slug,
+            },
+            { onConflict: 'facet_definition_id, normalized_value' },
+        )
+        .select('id')
+        .single();
+
+    if (error || !upsertedFacetValue) {
+        throw new Error(`Failed to resolve generic facet value "${value.normalizedValue}": ${error?.message ?? 'Missing facet value row'}`);
+    }
+
+    facetValueMap.set(cacheKey, upsertedFacetValue.id);
+    return upsertedFacetValue.id;
+}
+
+async function replaceProductGenericFacets(
+    supabase: SupabaseClient,
+    productId: string,
+    transformedProduct: TransformedShopSiteProduct,
+    facetDefinitionMap: Map<GenericFacetName, string>,
+    facetValueMap: Map<string, string>,
+) {
+    const { error: deleteError } = await supabase
+        .from('product_facets')
+        .delete()
+        .eq('product_id', productId);
+
+    if (deleteError) {
+        throw new Error(`Failed to replace product generic facets: ${deleteError.message}`);
+    }
+
+    const facetValueIds: string[] = [];
+
+    for (const { field, transformedKey } of GENERIC_FACET_INPUTS) {
+        const definition = getGenericFacetDefinition(field);
+        const facetDefinitionId = await ensureGenericFacetDefinitionId(supabase, definition.name, facetDefinitionMap);
+        const normalizedValues = normalizeGenericFacetValues(transformedProduct[transformedKey]);
+
+        for (const normalizedValue of normalizedValues) {
+            const facetValueId = await ensureGenericFacetValueId(
+                supabase,
+                facetDefinitionId,
+                definition.name,
+                normalizedValue,
+                facetValueMap,
+            );
+            facetValueIds.push(facetValueId);
+        }
+    }
+
+    const dedupedFacetValueIds = dedupeIds(facetValueIds);
+    if (dedupedFacetValueIds.length === 0) {
+        return;
+    }
+
+    const { error: linkError } = await supabase
+        .from('product_facets')
+        .upsert(
+            dedupedFacetValueIds.map((facetValueId) => ({
+                product_id: productId,
+                facet_value_id: facetValueId,
+            })),
+            { onConflict: 'product_id, facet_value_id' },
+        );
+
+    if (linkError) {
+        throw new Error(`Failed to link product generic facets: ${linkError.message}`);
+    }
 }
 
 export async function importShopSiteProducts({
@@ -102,13 +322,17 @@ export async function importShopSiteProducts({
 
         const normalizedCategoryValue = normalizeCategoryValue(p.categoryName);
         if (normalizedCategoryValue) {
-            splitMultiValueFacet(normalizedCategoryValue).forEach((categoryName) => categoryNames.add(categoryName));
+            splitMultiValueFacet(normalizedCategoryValue).forEach((categoryName) => {
+                categoryNames.add(categoryName);
+            });
         }
     }
 
     const brandMap = new Map<string, string>();
     const categoryMap = new Map<string, string>();
     const petTypeMap = new Map<PetTypeName, string>();
+    const facetDefinitionMap = new Map<GenericFacetName, string>();
+    const facetValueMap = new Map<string, string>();
 
     for (const name of Array.from(brandNames)) {
         const slug = buildFacetSlug(name);
@@ -148,14 +372,69 @@ export async function importShopSiteProducts({
         petTypeMap.set(pt.name as PetTypeName, pt.id);
     }
 
-    const productCategoryLinks: { product_id: string, category_id: string }[] = [];
-    const productPetTypeLinks: { product_id: string, pet_type_id: string }[] = [];
+    const genericFacetDefinitions = Object.keys(GENERIC_FACET_FIELDS).map((field) =>
+        getGenericFacetDefinition(field as keyof typeof GENERIC_FACET_FIELDS),
+    );
+
+    const { data: existingFacetDefinitions } = await supabase
+        .from('facet_definitions')
+        .select('id, name');
+
+    for (const facetDefinition of existingFacetDefinitions || []) {
+        if (genericFacetDefinitions.some((definition) => definition.name === facetDefinition.name)) {
+            facetDefinitionMap.set(facetDefinition.name as GenericFacetName, facetDefinition.id);
+        }
+    }
+
+    const resolvedPetTypeNames = new Set<PetTypeName>();
+    for (const shopSiteProduct of shopSiteProducts) {
+        for (const petTypeName of resolveCanonicalPetTypes(shopSiteProduct).petTypes) {
+            resolvedPetTypeNames.add(petTypeName);
+        }
+    }
+
+    for (const petTypeName of Array.from(resolvedPetTypeNames)) {
+        if (petTypeMap.has(petTypeName)) {
+            continue;
+        }
+
+        const { data: createdPetType, error: createdPetTypeError } = await supabase
+            .from('pet_types')
+            .insert({
+                name: petTypeName,
+                display_order: 0,
+            })
+            .select('id')
+            .single();
+
+        if (createdPetTypeError || !createdPetType) {
+            throw new Error(`Failed to create pet type "${petTypeName}": ${createdPetTypeError?.message ?? 'Missing pet type row'}`);
+        }
+
+        petTypeMap.set(petTypeName, createdPetType.id);
+    }
 
     for (const shopSiteProduct of shopSiteProducts) {
         try {
-            const { brand_name, category_name, ...transformed } = transformShopSiteProduct(shopSiteProduct);
+            const {
+                brand_name,
+                category_name,
+                pet_type_name,
+                life_stage,
+                pet_size,
+                special_diet,
+                health_feature,
+                food_form,
+                flavor,
+                product_feature,
+                size,
+                color,
+                packaging_type,
+                ...transformed
+            } = transformShopSiteProduct(shopSiteProduct);
             const productRecord: Record<string, unknown> = {
                 ...transformed,
+                brand_id: null,
                 category: category_name || null,
             };
 
@@ -187,36 +466,38 @@ export async function importShopSiteProducts({
                 addError(shopSiteProduct.sku, error.message);
                 failed++;
             } else {
-                if (upserted && category_name) {
-                    const cats = splitMultiValueFacet(category_name);
-                    let primaryCategoryId: string | null = null;
-                    for (const c of cats) {
-                        const catId = categoryMap.get(c);
-                        if (catId) {
-                            if (!primaryCategoryId) {
-                                primaryCategoryId = catId;
-                            }
-                            productCategoryLinks.push({
-                                product_id: upserted.id,
-                                category_id: catId,
-                            });
-                        }
-                    }
-
-                }
-
                 if (upserted) {
-                    const inference = inferPetTypes(shopSiteProduct);
+                    const categoryIds = splitMultiValueFacet(category_name)
+                        .map((categoryToken) => categoryMap.get(categoryToken))
+                        .filter((categoryId): categoryId is string => !!categoryId);
 
-                    for (const petTypeName of inference.petTypes) {
-                        const petTypeId = petTypeMap.get(petTypeName);
-                        if (petTypeId) {
-                            productPetTypeLinks.push({
-                                product_id: upserted.id,
-                                pet_type_id: petTypeId,
-                            });
-                        }
-                    }
+                    await replaceProductCategories(supabase, upserted.id, categoryIds);
+
+                    const resolvedPetTypes = resolveCanonicalPetTypes({
+                        ...shopSiteProduct,
+                        petTypeName: pet_type_name ?? shopSiteProduct.petTypeName,
+                    });
+                    const petTypeIds = resolvedPetTypes.petTypes
+                        .map((petType) => petTypeMap.get(petType))
+                        .filter((petTypeId): petTypeId is string => !!petTypeId);
+
+                    await replaceProductPetTypes(supabase, upserted.id, petTypeIds);
+                    await replaceProductGenericFacets(supabase, upserted.id, {
+                        ...transformed,
+                        brand_name,
+                        category_name,
+                        pet_type_name,
+                        life_stage,
+                        pet_size,
+                        special_diet,
+                        health_feature,
+                        food_form,
+                        flavor,
+                        product_feature,
+                        size,
+                        color,
+                        packaging_type,
+                    }, facetDefinitionMap, facetValueMap);
                 }
 
                 if (isUpdate) {
@@ -241,44 +522,6 @@ export async function importShopSiteProducts({
                 errors: [],
                 duration: Date.now() - startTime,
             });
-        }
-    }
-
-    if (productCategoryLinks.length > 0) {
-        const dedupedProductCategoryLinks = Array.from(
-            new Map(
-                productCategoryLinks.map((link) => [`${link.product_id}:${link.category_id}`, link]),
-            ).values(),
-        );
-        const BATCH_SIZE = 1000;
-        for (let i = 0; i < dedupedProductCategoryLinks.length; i += BATCH_SIZE) {
-            const batch = dedupedProductCategoryLinks.slice(i, i + BATCH_SIZE);
-            const { error: linkError } = await supabase
-                .from('product_categories')
-                .upsert(batch, { onConflict: 'product_id, category_id' });
-
-            if (linkError) {
-                addError('CATEGORY_LINKS', `Failed to link ${batch.length} categories: ${linkError.message}`);
-            }
-        }
-    }
-
-    if (productPetTypeLinks.length > 0) {
-        const dedupedProductPetTypeLinks = Array.from(
-            new Map(
-                productPetTypeLinks.map((link) => [`${link.product_id}:${link.pet_type_id}`, link]),
-            ).values(),
-        );
-        const BATCH_SIZE = 1000;
-        for (let i = 0; i < dedupedProductPetTypeLinks.length; i += BATCH_SIZE) {
-            const batch = dedupedProductPetTypeLinks.slice(i, i + BATCH_SIZE);
-            const { error: linkError } = await supabase
-                .from('product_pet_types')
-                .upsert(batch, { onConflict: 'product_id, pet_type_id' });
-
-            if (linkError) {
-                addError('PET_TYPE_LINKS', `Failed to link ${batch.length} pet types: ${linkError.message}`);
-            }
         }
     }
 

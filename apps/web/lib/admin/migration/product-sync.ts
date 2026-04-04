@@ -5,6 +5,10 @@
  */
 
 import { ShopSiteProduct } from './types';
+import { normalizePetTypeValue } from './pet-type-inference';
+import {
+    normalizeGenericFacetValue,
+} from '@/lib/facets/generic-normalization';
 import {
     normalizeBrandName,
     normalizeCategoryValue,
@@ -42,7 +46,9 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
     description: string | null;
     stock_status: 'in_stock' | 'out_of_stock' | 'pre_order';
     images: string[];
+    short_name: string | null;
     is_special_order: boolean;
+    in_store_pickup: boolean;
     shopsite_pages: string[];
     weight: number | null;
     quantity: number;
@@ -55,7 +61,18 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
     product_type: string | null;
     search_keywords: string | null;
     brand_name: string | null; // Used for brand lookup, not stored directly
+    pet_type_name: string | null; // Used for pet-type lookup, not stored directly
+    life_stage: string | null; // Used for generic facet lookup, not stored directly
+    pet_size: string | null; // Used for generic facet lookup, not stored directly
+    special_diet: string | null; // Used for generic facet lookup, not stored directly
+    health_feature: string | null; // Used for generic facet lookup, not stored directly
+    food_form: string | null; // Used for generic facet lookup, not stored directly
+    flavor: string | null; // Used for generic facet lookup, not stored directly
     category_name: string | null; // Used for category lookup, not stored directly
+    product_feature: string | null; // Used for generic facet lookup, not stored directly
+    size: string | null; // Used for generic facet lookup, not stored directly
+    color: string | null; // Used for generic facet lookup, not stored directly
+    packaging_type: string | null; // Used for generic facet lookup, not stored directly
 } {
     // Collect all images (primary + additional)
     const images: string[] = [];
@@ -86,7 +103,9 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
         description: product.description || null,
         stock_status: stockStatus,
         images,
+        short_name: product.shortName?.trim() || null,
         is_special_order: !!product.isSpecialOrder,
+        in_store_pickup: !!product.inStorePickup,
         shopsite_pages: product.shopsitePages || [],
         weight: product.weight || null,
         quantity: product.quantityOnHand || 0,
@@ -99,7 +118,18 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
         product_type: normalizeProductTypeValue(product.productTypeName),
         search_keywords: product.searchKeywords || null,
         brand_name: normalizeBrandName(product.brandName),
+        pet_type_name: normalizePetTypeValue(product.petTypeName),
+        life_stage: normalizeGenericFacetValue(product.lifeStage),
+        pet_size: normalizeGenericFacetValue(product.petSize),
+        special_diet: normalizeGenericFacetValue(product.specialDiet),
+        health_feature: normalizeGenericFacetValue(product.healthFeature),
+        food_form: normalizeGenericFacetValue(product.foodForm),
+        flavor: normalizeGenericFacetValue(product.flavor),
         category_name: normalizeCategoryValue(product.categoryName),
+        product_feature: normalizeGenericFacetValue(product.productFeature),
+        size: normalizeGenericFacetValue(product.size),
+        color: normalizeGenericFacetValue(product.color),
+        packaging_type: normalizeGenericFacetValue(product.packagingType),
     };
 }
 
@@ -107,17 +137,30 @@ export interface ShopSitePipelineInput {
     name: string;
     price: number;
     product_on_pages: string[];
-    description?: string;
-    long_description?: string;
-    category?: string;
-    product_type?: string;
-    brand?: string;
-    weight?: string;
-    search_keywords?: string;
-    gtin?: string;
-    availability?: string;
+    description?: string | null;
+    long_description?: string | null;
+    short_name?: string | null;
+    category?: string | null;
+    product_type?: string | null;
+    brand?: string | null;
+    pet_type?: string | null;
+    lifestage?: string | null;
+    pet_size?: string | null;
+    special_diet?: string | null;
+    health_feature?: string | null;
+    food_form?: string | null;
+    flavor?: string | null;
+    product_feature?: string | null;
+    size?: string | null;
+    color?: string | null;
+    packaging_type?: string | null;
+    weight?: string | null;
+    search_keywords?: string | null;
+    gtin?: string | null;
+    availability?: string | null;
     minimum_quantity?: number;
     is_special_order?: boolean;
+    in_store_pickup?: boolean;
     is_taxable?: boolean;
 }
 
@@ -136,40 +179,32 @@ export function buildPipelineInputFromTransformedShopSiteProduct(
         name: transformed.name,
         price: transformed.price,
         product_on_pages: transformed.shopsite_pages,
+        description: transformed.description,
+        long_description: transformed.long_description,
+        short_name: transformed.short_name,
+        category: transformed.category_name,
+        product_type: transformed.product_type,
+        brand: transformed.brand_name,
+        pet_type: transformed.pet_type_name,
+        lifestage: transformed.life_stage,
+        pet_size: transformed.pet_size,
+        special_diet: transformed.special_diet,
+        health_feature: transformed.health_feature,
+        food_form: transformed.food_form,
+        flavor: transformed.flavor,
+        product_feature: transformed.product_feature,
+        size: transformed.size,
+        color: transformed.color,
+        packaging_type: transformed.packaging_type,
+        weight: formatOptionalNumber(transformed.weight) ?? null,
+        search_keywords: transformed.search_keywords,
+        gtin: transformed.gtin,
+        availability: transformed.availability,
         minimum_quantity: transformed.minimum_quantity,
         is_special_order: transformed.is_special_order,
+        in_store_pickup: transformed.in_store_pickup,
         is_taxable: transformed.is_taxable,
     };
-
-    if (transformed.description) {
-        input.description = transformed.description;
-    }
-    if (transformed.long_description) {
-        input.long_description = transformed.long_description;
-    }
-    if (transformed.category_name) {
-        input.category = transformed.category_name;
-    }
-    if (transformed.product_type) {
-        input.product_type = transformed.product_type;
-    }
-    if (transformed.brand_name) {
-        input.brand = transformed.brand_name;
-    }
-    if (transformed.search_keywords) {
-        input.search_keywords = transformed.search_keywords;
-    }
-    if (transformed.gtin) {
-        input.gtin = transformed.gtin;
-    }
-    if (transformed.availability) {
-        input.availability = transformed.availability;
-    }
-
-    const formattedWeight = formatOptionalNumber(transformed.weight);
-    if (formattedWeight) {
-        input.weight = formattedWeight;
-    }
 
     return input;
 }
