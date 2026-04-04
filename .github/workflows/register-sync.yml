@@ -33,7 +33,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: '15 10 * * *'
+    - cron: "15 10 * * *"
 
 concurrency:
   group: register-sync
@@ -43,7 +43,7 @@ jobs:
   sync:
     name: Sync register inventory
     environment: register-sync
-    runs-on: [self-hosted, windows]
+    runs-on: [self-hosted, windows, register-sync]
     timeout-minutes: 30
     defaults:
       run:
