@@ -1,11 +1,20 @@
 /**
  * @jest-environment node
  */
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import {
     buildPipelineInputFromShopSiteProduct,
     buildProductSlug,
     transformShopSiteProduct,
 } from '@/lib/admin/migration/product-sync';
+
+const CORRECTED_FACET_MIGRATION_PATH = path.resolve(
+    __dirname,
+    '../../../../supabase/migrations/20260404120000_normalize_corrected_product_facets.sql',
+);
+const CORRECTED_FACET_MIGRATION = readFileSync(CORRECTED_FACET_MIGRATION_PATH, 'utf8');
 
 describe('Product Sync Utilities', () => {
     describe('transformShopSiteProduct', () => {
@@ -172,6 +181,44 @@ describe('Product Sync Utilities', () => {
 
         it('appends SKU for uniqueness when provided', () => {
             expect(buildProductSlug('Common Product', 'SKU-123')).toBe('common-product-sku-123');
+        });
+    });
+
+    describe('corrected facet schema migration', () => {
+        it('adds PF7 and PF15 operational columns on products', () => {
+            expect(CORRECTED_FACET_MIGRATION).toContain('ADD COLUMN IF NOT EXISTS short_name text');
+            expect(CORRECTED_FACET_MIGRATION).toContain('ADD COLUMN IF NOT EXISTS in_store_pickup boolean NOT NULL DEFAULT false');
+        });
+
+        it('creates generic facet tables with unique relational constraints', () => {
+            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.facet_definitions');
+            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.facet_values');
+            expect(CORRECTED_FACET_MIGRATION).toContain('UNIQUE (facet_definition_id, normalized_value)');
+            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.product_facets');
+            expect(CORRECTED_FACET_MIGRATION).toContain('UNIQUE (product_id, facet_value_id)');
+            expect(CORRECTED_FACET_MIGRATION).toContain('REFERENCES public.products(id) ON DELETE CASCADE');
+            expect(CORRECTED_FACET_MIGRATION).toContain('REFERENCES public.facet_values(id) ON DELETE CASCADE');
+        });
+
+        it('seeds the ten corrected generic facet definitions and exposes them via public-read RLS', () => {
+            for (const facetName of [
+                'lifestage',
+                'pet_size',
+                'special_diet',
+                'health_feature',
+                'food_form',
+                'flavor',
+                'product_feature',
+                'size',
+                'color',
+                'packaging_type',
+            ]) {
+                expect(CORRECTED_FACET_MIGRATION).toContain(`('${facetName}'`);
+            }
+
+            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE POLICY "Allow public read access to facet_definitions"');
+            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE POLICY "Allow public read access to facet_values"');
+            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE POLICY "Allow public read access to product_facets"');
         });
     });
 });

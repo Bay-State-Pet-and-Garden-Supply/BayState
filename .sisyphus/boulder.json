@@ -4,7 +4,8 @@
   "session_ids": [
     "ses_2a660d136fferPlznXbrbOtmo5",
     "ses_2a64d3571ffeYBco1HG29iNDzT",
-    "ses_2a6402f31ffegFBR7sQ7nbQoy8"
+    "ses_2a6402f31ffegFBR7sQ7nbQoy8",
+    "ses_2a634921fffe18KQDaFbcjChlK"
   ],
   "plan_name": "shopsite-field-mapping-corrections",
   "agent": "atlas",
@@ -26,6 +27,15 @@
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
       "updated_at": "2026-04-04T18:37:09.154Z"
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "Add normalized schema for corrected facets and operational columns",
+      "session_id": "ses_2a634921fffe18KQDaFbcjChlK",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-04T18:47:57.349Z"
     }
   }
 }
