@@ -8,7 +8,13 @@
     "ses_2a634921fffe18KQDaFbcjChlK",
     "ses_2a62b3b08ffeNcAsNC20TJuMD4",
     "ses_2a614345fffehTbS0Sfxe7a38f",
-    "ses_2a60c8478ffeaM7pVOJ3m7ixnW"
+    "ses_2a60c8478ffeaM7pVOJ3m7ixnW",
+    "ses_2a600eaacffe0fl299aOa6jMLl",
+    "ses_2a6010fc9ffesAzyxomiUkG5By",
+    "ses_2a6014c8dffeU6PMOa4K2y1DIb",
+    "ses_2a6012e71ffenGjY2pQsy7jPdp",
+    "ses_2a5debdf5ffe4cUkxLY6S05aCX",
+    "ses_2a5d88dcdffePKAiZD3hBi5bnT"
   ],
   "plan_name": "shopsite-field-mapping-corrections",
   "agent": "atlas",
@@ -66,6 +72,15 @@
       "agent": "Sisyphus-Junior",
       "category": "writing",
       "updated_at": "2026-04-04T19:33:31.762Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "Plan Compliance Audit — oracle",
+      "session_id": "ses_2a5d88dcdffePKAiZD3hBi5bnT",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-04T20:21:26.832Z"
     }
   }
 }
