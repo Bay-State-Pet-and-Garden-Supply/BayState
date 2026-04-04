@@ -1,3 +1,5 @@
+import { splitMultiValueFacet } from '@/lib/facets/normalization';
+
 import { ShopSiteProduct } from './types';
 
 export type PetTypeName = 
@@ -29,6 +31,11 @@ export interface PetTypeInferenceResult {
     specialNeeds: SpecialNeed[];
     minWeightLbs: number | null;
     maxWeightLbs: number | null;
+}
+
+export interface ResolvedPetTypesResult {
+    petTypes: PetTypeName[];
+    source: 'direct' | 'inference' | 'none';
 }
 
 const PET_TYPE_PATTERNS: Record<PetTypeName, RegExp> = {
@@ -76,6 +83,50 @@ const WEIGHT_RANGE_PATTERNS = [
     { pattern: /\bup to\s*(\d+)\s*lb/i, minIdx: null, maxIdx: 1 },
 ];
 
+function collapseWhitespace(value: string): string {
+    return value.replace(/\s+/g, ' ').trim();
+}
+
+export function normalizePetTypeToken(value: string | null | undefined): PetTypeName | null {
+    if (!value) {
+        return null;
+    }
+
+    const normalizedValue = collapseWhitespace(value);
+    if (!normalizedValue) {
+        return null;
+    }
+
+    for (const [petType, pattern] of Object.entries(PET_TYPE_PATTERNS)) {
+        if (pattern.test(normalizedValue)) {
+            return petType as PetTypeName;
+        }
+    }
+
+    return null;
+}
+
+export function normalizePetTypeValues(value: string | null | undefined): PetTypeName[] {
+    const deduped = new Map<string, PetTypeName>();
+
+    for (const token of splitMultiValueFacet(value)) {
+        const normalizedToken = normalizePetTypeToken(token);
+
+        if (!normalizedToken) {
+            continue;
+        }
+
+        deduped.set(normalizedToken.toLowerCase(), normalizedToken);
+    }
+
+    return Array.from(deduped.values());
+}
+
+export function normalizePetTypeValue(value: string | null | undefined): string | null {
+    const normalizedValues = normalizePetTypeValues(value);
+    return normalizedValues.length > 0 ? normalizedValues.join('|') : null;
+}
+
 function buildSearchableText(product: ShopSiteProduct): string {
     const parts = [
         product.name,
@@ -101,15 +152,33 @@ function extractWeightRange(text: string): { min: number | null; max: number | n
     return { min: null, max: null };
 }
 
+export function resolveCanonicalPetTypes(product: ShopSiteProduct): ResolvedPetTypesResult {
+    const directPetTypes = normalizePetTypeValues(product.petTypeName);
+
+    if (directPetTypes.length > 0) {
+        return {
+            petTypes: directPetTypes,
+            source: 'direct',
+        };
+    }
+
+    const inferredPetTypes = inferPetTypesFromText(buildSearchableText(product));
+    if (inferredPetTypes.length > 0) {
+        return {
+            petTypes: inferredPetTypes,
+            source: 'inference',
+        };
+    }
+
+    return {
+        petTypes: [],
+        source: 'none',
+    };
+}
+
 export function inferPetTypes(product: ShopSiteProduct): PetTypeInferenceResult {
     const text = buildSearchableText(product);
-    
-    const petTypes: PetTypeName[] = [];
-    for (const [petType, pattern] of Object.entries(PET_TYPE_PATTERNS)) {
-        if (pattern.test(text)) {
-            petTypes.push(petType as PetTypeName);
-        }
-    }
+    const petTypeResolution = resolveCanonicalPetTypes(product);
 
     const lifeStages: LifeStage[] = [];
     for (const [stage, pattern] of Object.entries(LIFE_STAGE_PATTERNS)) {
@@ -135,7 +204,7 @@ export function inferPetTypes(product: ShopSiteProduct): PetTypeInferenceResult 
     const weightRange = extractWeightRange(text);
 
     return {
-        petTypes,
+        petTypes: petTypeResolution.petTypes,
         lifeStages: lifeStages.length > 0 ? lifeStages : ['all'],
         sizeClasses: sizeClasses.length > 0 ? sizeClasses : ['all'],
         specialNeeds,

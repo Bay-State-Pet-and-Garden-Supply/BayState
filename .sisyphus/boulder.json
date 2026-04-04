@@ -5,7 +5,8 @@
     "ses_2a660d136fferPlznXbrbOtmo5",
     "ses_2a64d3571ffeYBco1HG29iNDzT",
     "ses_2a6402f31ffegFBR7sQ7nbQoy8",
-    "ses_2a634921fffe18KQDaFbcjChlK"
+    "ses_2a634921fffe18KQDaFbcjChlK",
+    "ses_2a62b3b08ffeNcAsNC20TJuMD4"
   ],
   "plan_name": "shopsite-field-mapping-corrections",
   "agent": "atlas",
@@ -36,6 +37,15 @@
       "agent": "Sisyphus-Junior",
       "category": "deep",
       "updated_at": "2026-04-04T18:47:57.349Z"
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "Persist corrected canonical mappings during import and reruns",
+      "session_id": "ses_2a62b3b08ffeNcAsNC20TJuMD4",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-04T19:13:24.105Z"
     }
   }
 }
