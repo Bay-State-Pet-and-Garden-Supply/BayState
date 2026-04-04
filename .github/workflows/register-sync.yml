@@ -65,23 +65,107 @@ jobs:
 
       - name: Run register sync
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REGISTER_SYNC_SOURCE: ${{ vars.REGISTER_SYNC_SOURCE }}
-          REGISTER_SYNC_FILE_PATH: ${{ vars.REGISTER_SYNC_FILE_PATH }}
-          REGISTER_SYNC_FILE_GLOB: ${{ vars.REGISTER_SYNC_FILE_GLOB }}
-          REGISTER_SYNC_FIELDS: ${{ vars.REGISTER_SYNC_FIELDS }}
-          REGISTER_ODBC_CONNECTION_STRING: ${{ secrets.REGISTER_ODBC_CONNECTION_STRING }}
-          REGISTER_ODBC_DSN: ${{ vars.REGISTER_ODBC_DSN }}
-          REGISTER_ODBC_DRIVER: ${{ vars.REGISTER_ODBC_DRIVER }}
-          REGISTER_ODBC_SERVER: ${{ vars.REGISTER_ODBC_SERVER }}
-          REGISTER_ODBC_PORT: ${{ vars.REGISTER_ODBC_PORT }}
-          REGISTER_ODBC_SSL_PORT: ${{ vars.REGISTER_ODBC_SSL_PORT }}
-          REGISTER_ODBC_TIMEOUT_SECONDS: ${{ vars.REGISTER_ODBC_TIMEOUT_SECONDS }}
-          REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS: ${{ vars.REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS }}
-          REGISTER_ODBC_UID: ${{ secrets.REGISTER_ODBC_UID }}
-          REGISTER_ODBC_PWD: ${{ secrets.REGISTER_ODBC_PWD }}
+          GITHUB_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          GITHUB_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_REGISTER_SYNC_SOURCE: ${{ vars.REGISTER_SYNC_SOURCE }}
+          GITHUB_REGISTER_SYNC_FILE_PATH: ${{ vars.REGISTER_SYNC_FILE_PATH }}
+          GITHUB_REGISTER_SYNC_FILE_GLOB: ${{ vars.REGISTER_SYNC_FILE_GLOB }}
+          GITHUB_REGISTER_SYNC_FIELDS: ${{ vars.REGISTER_SYNC_FIELDS }}
+          GITHUB_REGISTER_ODBC_CONNECTION_STRING: ${{ secrets.REGISTER_ODBC_CONNECTION_STRING }}
+          GITHUB_REGISTER_ODBC_DSN: ${{ vars.REGISTER_ODBC_DSN }}
+          GITHUB_REGISTER_ODBC_DRIVER: ${{ vars.REGISTER_ODBC_DRIVER }}
+          GITHUB_REGISTER_ODBC_SERVER: ${{ vars.REGISTER_ODBC_SERVER }}
+          GITHUB_REGISTER_ODBC_PORT: ${{ vars.REGISTER_ODBC_PORT }}
+          GITHUB_REGISTER_ODBC_SSL_PORT: ${{ vars.REGISTER_ODBC_SSL_PORT }}
+          GITHUB_REGISTER_ODBC_TIMEOUT_SECONDS: ${{ vars.REGISTER_ODBC_TIMEOUT_SECONDS }}
+          GITHUB_REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS: ${{ vars.REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS }}
+          GITHUB_REGISTER_ODBC_UID: ${{ secrets.REGISTER_ODBC_UID }}
+          GITHUB_REGISTER_ODBC_PWD: ${{ secrets.REGISTER_ODBC_PWD }}
         run: |
+          function Get-RunnerEnvValue {
+            param([string]$Name)
+
+            foreach ($scope in @(
+              [System.EnvironmentVariableTarget]::Process,
+              [System.EnvironmentVariableTarget]::User,
+              [System.EnvironmentVariableTarget]::Machine
+            )) {
+              $value = [Environment]::GetEnvironmentVariable($Name, $scope)
+              if (-not [string]::IsNullOrWhiteSpace($value)) {
+                return $value.Trim()
+              }
+            }
+
+            return $null
+          }
+
+          function Set-ResolvedEnvValue {
+            param(
+              [string]$Name,
+              [string]$WorkflowValue,
+              [bool]$Mask = $false
+            )
+
+            $resolvedValue = $WorkflowValue
+            if ([string]::IsNullOrWhiteSpace($resolvedValue)) {
+              $resolvedValue = Get-RunnerEnvValue -Name $Name
+            }
+
+            if ([string]::IsNullOrWhiteSpace($resolvedValue)) {
+              return $false
+            }
+
+            if ($Mask) {
+              Write-Host "::add-mask::$resolvedValue"
+            }
+
+            [Environment]::SetEnvironmentVariable($Name, $resolvedValue, [System.EnvironmentVariableTarget]::Process)
+            return $true
+          }
+
+          function Use-DefaultRegisterDsn {
+            $defaultDsn = 'integra.udd'
+
+            try {
+              $null = Get-OdbcDsn -Name $defaultDsn -ErrorAction Stop
+              [Environment]::SetEnvironmentVariable('REGISTER_ODBC_DSN', $defaultDsn, [System.EnvironmentVariableTarget]::Process)
+              return $true
+            } catch {
+              return $false
+            }
+          }
+
+          $hasSupabaseUrl = Set-ResolvedEnvValue -Name 'SUPABASE_URL' -WorkflowValue $env:GITHUB_SUPABASE_URL -Mask $true
+          $hasSupabaseServiceRoleKey = Set-ResolvedEnvValue -Name 'SUPABASE_SERVICE_ROLE_KEY' -WorkflowValue $env:GITHUB_SUPABASE_SERVICE_ROLE_KEY -Mask $true
+
+          if (-not $hasSupabaseUrl -or -not $hasSupabaseServiceRoleKey) {
+            throw 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the register-sync GitHub environment or on the labeled runner machine.'
+          }
+
+          $hasConnectionString = Set-ResolvedEnvValue -Name 'REGISTER_ODBC_CONNECTION_STRING' -WorkflowValue $env:GITHUB_REGISTER_ODBC_CONNECTION_STRING -Mask $true
+          $hasDsn = Set-ResolvedEnvValue -Name 'REGISTER_ODBC_DSN' -WorkflowValue $env:GITHUB_REGISTER_ODBC_DSN
+          $hasDriver = Set-ResolvedEnvValue -Name 'REGISTER_ODBC_DRIVER' -WorkflowValue $env:GITHUB_REGISTER_ODBC_DRIVER
+          $hasServer = Set-ResolvedEnvValue -Name 'REGISTER_ODBC_SERVER' -WorkflowValue $env:GITHUB_REGISTER_ODBC_SERVER
+
+          Set-ResolvedEnvValue -Name 'REGISTER_SYNC_SOURCE' -WorkflowValue $env:GITHUB_REGISTER_SYNC_SOURCE | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_SYNC_FILE_PATH' -WorkflowValue $env:GITHUB_REGISTER_SYNC_FILE_PATH | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_SYNC_FILE_GLOB' -WorkflowValue $env:GITHUB_REGISTER_SYNC_FILE_GLOB | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_SYNC_FIELDS' -WorkflowValue $env:GITHUB_REGISTER_SYNC_FIELDS | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_ODBC_PORT' -WorkflowValue $env:GITHUB_REGISTER_ODBC_PORT | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_ODBC_SSL_PORT' -WorkflowValue $env:GITHUB_REGISTER_ODBC_SSL_PORT | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_ODBC_TIMEOUT_SECONDS' -WorkflowValue $env:GITHUB_REGISTER_ODBC_TIMEOUT_SECONDS | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS' -WorkflowValue $env:GITHUB_REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_ODBC_UID' -WorkflowValue $env:GITHUB_REGISTER_ODBC_UID -Mask $true | Out-Null
+          Set-ResolvedEnvValue -Name 'REGISTER_ODBC_PWD' -WorkflowValue $env:GITHUB_REGISTER_ODBC_PWD -Mask $true | Out-Null
+
+          if (-not $hasConnectionString -and -not $hasDsn -and -not ($hasDriver -and $hasServer)) {
+            $hasDsn = Use-DefaultRegisterDsn
+          }
+
+          if (-not $hasConnectionString -and -not $hasDsn -and -not ($hasDriver -and $hasServer)) {
+            throw 'Missing register ODBC configuration. Define REGISTER_ODBC_CONNECTION_STRING (preferred), REGISTER_ODBC_DSN, or REGISTER_ODBC_DRIVER with REGISTER_ODBC_SERVER in the register-sync GitHub environment or on the labeled runner machine.'
+          }
+
           $scriptArgs = @()
 
           $source = "${{ github.event.inputs.source }}"
