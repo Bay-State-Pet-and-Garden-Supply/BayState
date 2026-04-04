@@ -3,6 +3,16 @@
  *
  * Generates a minimal ShopSite upload payload aligned to the current Bay State
  * upload flow (DTD 2.9 / version 15.0).
+ *
+ * CORRECTED CONTRACT COMPLIANCE:
+ * This generator implements the user-approved ProductField mapping contract:
+ * - All 18 canonical ProductFields are supported (PF7, PF11, PF15, PF16-27, PF29, PF30, PF32)
+ * - ProductField24 is the only canonical category source (PF31 excluded from normalization)
+ * - ProductField17 provides canonical pet type values
+ * - ProductField32 cross-sells are pipe-delimited
+ *
+ * @see docs/field-mapping-matrix.md for full contract documentation
+ * @see lib/shopsite/constants.ts for field mapping constants
  */
 
 import {
@@ -34,6 +44,19 @@ export interface ShopSiteExportProduct {
     gtin?: string | null;
     availability?: string | null;
     minimum_quantity?: number | null;
+    // Canonical facet fields (corrected contract)
+    pet_type?: string | null;
+    life_stage?: string | null;
+    pet_size?: string | null;
+    special_diet?: string | null;
+    health_feature?: string | null;
+    food_form?: string | null;
+    flavor?: string | null;
+    product_feature?: string | null;
+    size?: string | null;
+    color?: string | null;
+    packaging_type?: string | null;
+    cross_sell_skus?: string[] | null;
 }
 
 export interface ShopSiteXmlOptions {
@@ -142,6 +165,55 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
 
     if (product.in_store_pickup) {
         lines.push(xmlElement('ProductField15', 'checked'));
+    }
+
+    // Canonical facet fields (corrected contract)
+    if (product.pet_type) {
+        lines.push(xmlElement('ProductField17', product.pet_type));
+    }
+
+    if (product.life_stage) {
+        lines.push(xmlElement('ProductField18', product.life_stage));
+    }
+
+    if (product.pet_size) {
+        lines.push(xmlElement('ProductField19', product.pet_size));
+    }
+
+    if (product.special_diet) {
+        lines.push(xmlElement('ProductField20', product.special_diet));
+    }
+
+    if (product.health_feature) {
+        lines.push(xmlElement('ProductField21', product.health_feature));
+    }
+
+    if (product.food_form) {
+        lines.push(xmlElement('ProductField22', product.food_form));
+    }
+
+    if (product.flavor) {
+        lines.push(xmlElement('ProductField23', product.flavor));
+    }
+
+    if (product.product_feature) {
+        lines.push(xmlElement('ProductField26', product.product_feature));
+    }
+
+    if (product.size) {
+        lines.push(xmlElement('ProductField27', product.size));
+    }
+
+    if (product.color) {
+        lines.push(xmlElement('ProductField29', product.color));
+    }
+
+    if (product.packaging_type) {
+        lines.push(xmlElement('ProductField30', product.packaging_type));
+    }
+
+    if (product.cross_sell_skus && product.cross_sell_skus.length > 0) {
+        lines.push(xmlElement('ProductField32', product.cross_sell_skus.join('|')));
     }
 
     if (product.gtin) {
