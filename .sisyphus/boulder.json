@@ -6,7 +6,8 @@
     "ses_2a64d3571ffeYBco1HG29iNDzT",
     "ses_2a6402f31ffegFBR7sQ7nbQoy8",
     "ses_2a634921fffe18KQDaFbcjChlK",
-    "ses_2a62b3b08ffeNcAsNC20TJuMD4"
+    "ses_2a62b3b08ffeNcAsNC20TJuMD4",
+    "ses_2a614345fffehTbS0Sfxe7a38f"
   ],
   "plan_name": "shopsite-field-mapping-corrections",
   "agent": "atlas",
@@ -46,6 +47,15 @@
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
       "updated_at": "2026-04-04T19:13:24.105Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "Resolve PF32 cross-sells and verify import audit logging",
+      "session_id": "ses_2a614345fffehTbS0Sfxe7a38f",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-04T19:22:07.725Z"
     }
   }
 }
