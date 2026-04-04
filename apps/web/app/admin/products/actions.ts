@@ -8,8 +8,11 @@ import * as z from 'zod';
 const productSchema = z.object({
     name: z.string().min(1),
     slug: z.string().min(1),
+    sku: z.string().optional().nullable(),
     price: z.coerce.number().min(0),
     stock_status: z.string().optional(),
+    quantity: z.coerce.number().int().min(0).optional().nullable(),
+    low_stock_threshold: z.coerce.number().int().min(0).optional().nullable(),
     description: z.string().optional(),
     long_description: z.string().optional(),
     brand_id: z.string().optional().nullable(),
@@ -19,10 +22,11 @@ const productSchema = z.object({
     search_keywords: z.string().optional().nullable(),
     gtin: z.string().optional().nullable(),
     availability: z.string().optional().nullable(),
-    minimum_quantity: z.coerce.number().int().min(0).optional(),
+    minimum_quantity: z.coerce.number().int().min(0).optional().nullable(),
     is_special_order: z.coerce.boolean().optional(),
     is_taxable: z.coerce.boolean().optional(),
     shopsite_pages: z.array(z.string()).optional().nullable(),
+    published_at: z.string().optional().nullable(),
 });
 
 export type ActionState = {
@@ -39,8 +43,11 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
     const rawData: Record<string, unknown> = {
         name: formData.get('name'),
         slug: formData.get('slug'),
+        sku: formData.get('sku'),
         price: formData.get('price'),
         stock_status: formData.get('stock_status') || 'in_stock',
+        quantity: formData.get('quantity'),
+        low_stock_threshold: formData.get('low_stock_threshold'),
         description: formData.get('description'),
         long_description: formData.get('long_description'),
         weight: formData.get('weight'),
@@ -52,6 +59,7 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
         minimum_quantity: formData.get('minimum_quantity'),
         is_special_order: formData.get('is_special_order') === 'true',
         is_taxable: formData.get('is_taxable') === 'true',
+        published_at: formData.get('published_at') ? new Date(formData.get('published_at') as string).toISOString() : null,
     };
 
     // Only include brand_id if it has a value
