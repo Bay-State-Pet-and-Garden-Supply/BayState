@@ -7,6 +7,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { SyncResult } from './types';
 
+type SyncResultWithAudit = SyncResult & {
+    skipped?: number;
+    audit?: {
+        crossSell?: {
+            sourcesProcessed?: number;
+            linked?: number;
+            skipped?: number;
+            skippedDuplicates?: number;
+            skippedSelfLinks?: number;
+            skippedMissing?: number;
+        };
+    };
+};
+
 export interface MigrationLogEntry {
     id: string;
     sync_type: string;
@@ -19,6 +33,31 @@ export interface MigrationLogEntry {
     failed: number;
     duration_ms: number | null;
     errors: Array<{ record: string; error: string; timestamp: string }>;
+}
+
+function buildLoggedErrors(result: SyncResult): Array<{ record: string; error: string; timestamp: string }> {
+    const resultWithAudit = result as SyncResultWithAudit;
+    const errors = [...result.errors];
+    const timestamp = new Date().toISOString();
+
+    if (typeof resultWithAudit.skipped === 'number') {
+        errors.push({
+            record: '__audit__',
+            error: `Audit summary: processed=${result.processed}, skipped=${resultWithAudit.skipped}, failed=${result.failed}`,
+            timestamp,
+        });
+    }
+
+    if (resultWithAudit.audit?.crossSell) {
+        const crossSell = resultWithAudit.audit.crossSell;
+        errors.push({
+            record: '__audit_cross_sell__',
+            error: `Cross-sell summary: sources=${crossSell.sourcesProcessed ?? 0}, linked=${crossSell.linked ?? 0}, skipped=${crossSell.skipped ?? 0}, duplicate=${crossSell.skippedDuplicates ?? 0}, self=${crossSell.skippedSelfLinks ?? 0}, missing=${crossSell.skippedMissing ?? 0}`,
+            timestamp,
+        });
+    }
+
+    return errors;
 }
 
 /**
@@ -49,6 +88,7 @@ export async function startMigrationLog(syncType: 'products' | 'customers'): Pro
  */
 export async function completeMigrationLog(logId: string, result: SyncResult): Promise<void> {
     const supabase = await createClient();
+    const loggedErrors = buildLoggedErrors(result);
 
     const { error } = await supabase
         .from('migration_log')
@@ -60,7 +100,7 @@ export async function completeMigrationLog(logId: string, result: SyncResult): P
             updated: result.updated,
             failed: result.failed,
             duration_ms: result.duration,
-            errors: result.errors,
+            errors: loggedErrors,
         })
         .eq('id', logId);
 
@@ -74,6 +114,7 @@ export async function completeMigrationLog(logId: string, result: SyncResult): P
  */
 export async function updateMigrationProgress(logId: string, result: SyncResult): Promise<void> {
     const supabase = await createClient();
+    const loggedErrors = buildLoggedErrors(result);
 
     const { error } = await supabase
         .from('migration_log')
@@ -82,7 +123,7 @@ export async function updateMigrationProgress(logId: string, result: SyncResult)
             created: result.created,
             updated: result.updated,
             failed: result.failed,
-            errors: result.errors,
+            errors: loggedErrors,
         })
         .eq('id', logId);
 

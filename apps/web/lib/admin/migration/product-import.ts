@@ -43,8 +43,120 @@ const GENERIC_FACET_INPUTS = [
 
 type TransformedShopSiteProduct = ReturnType<typeof transformShopSiteProduct>;
 
+interface CrossSellAuditCounters {
+    sourcesProcessed: number;
+    linked: number;
+    skipped: number;
+    skippedDuplicates: number;
+    skippedSelfLinks: number;
+    skippedMissing: number;
+}
+
+interface ImportAuditResult extends SyncResult {
+    skipped?: number;
+    audit?: {
+        crossSell: CrossSellAuditCounters;
+    };
+}
+
 function dedupeIds(values: string[]): string[] {
     return Array.from(new Set(values));
+}
+
+function normalizeCrossSellSkus(crossSellSkus: ShopSiteProduct['crossSellSkus']): string[] {
+    if (!Array.isArray(crossSellSkus) || crossSellSkus.length === 0) {
+        return [];
+    }
+
+    return crossSellSkus
+        .flatMap((value) => value.split('|'))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+}
+
+async function replaceProductCrossSells(
+    supabase: SupabaseClient,
+    sourceProductId: string,
+    sourceSku: string,
+    crossSellSkus: ShopSiteProduct['crossSellSkus'],
+    productIdBySku: Map<string, string>,
+): Promise<Omit<CrossSellAuditCounters, 'sourcesProcessed'>> {
+    const { error: deleteError } = await supabase
+        .from('related_products')
+        .delete()
+        .eq('product_id', sourceProductId)
+        .eq('relation_type', 'cross_sell');
+
+    if (deleteError) {
+        throw new Error(`Failed to replace product cross-sells: ${deleteError.message}`);
+    }
+
+    const normalizedTargets = normalizeCrossSellSkus(crossSellSkus);
+    if (normalizedTargets.length === 0) {
+        return {
+            linked: 0,
+            skipped: 0,
+            skippedDuplicates: 0,
+            skippedSelfLinks: 0,
+            skippedMissing: 0,
+        };
+    }
+
+    const seenTargetSkus = new Set<string>();
+    const relationRows: Array<{
+        product_id: string;
+        related_product_id: string;
+        relation_type: 'cross_sell';
+        position: number;
+    }> = [];
+    let skippedDuplicates = 0;
+    let skippedSelfLinks = 0;
+    let skippedMissing = 0;
+
+    for (const targetSku of normalizedTargets) {
+        if (seenTargetSkus.has(targetSku)) {
+            skippedDuplicates++;
+            continue;
+        }
+
+        seenTargetSkus.add(targetSku);
+
+        if (targetSku === sourceSku) {
+            skippedSelfLinks++;
+            continue;
+        }
+
+        const targetProductId = productIdBySku.get(targetSku);
+        if (!targetProductId) {
+            skippedMissing++;
+            continue;
+        }
+
+        relationRows.push({
+            product_id: sourceProductId,
+            related_product_id: targetProductId,
+            relation_type: 'cross_sell',
+            position: relationRows.length,
+        });
+    }
+
+    if (relationRows.length > 0) {
+        const { error: upsertError } = await supabase
+            .from('related_products')
+            .upsert(relationRows, { onConflict: 'product_id, related_product_id, relation_type' });
+
+        if (upsertError) {
+            throw new Error(`Failed to link product cross-sells: ${upsertError.message}`);
+        }
+    }
+
+    return {
+        linked: relationRows.length,
+        skipped: skippedDuplicates + skippedSelfLinks + skippedMissing,
+        skippedDuplicates,
+        skippedSelfLinks,
+        skippedMissing,
+    };
 }
 
 async function replaceProductCategories(
@@ -254,6 +366,15 @@ export async function importShopSiteProducts({
     let created = 0;
     let updated = 0;
     let failed = 0;
+    const crossSellAudit: CrossSellAuditCounters = {
+        sourcesProcessed: 0,
+        linked: 0,
+        skipped: 0,
+        skippedDuplicates: 0,
+        skippedSelfLinks: 0,
+        skippedMissing: 0,
+    };
+    const importedProductIdsBySku = new Map<string, string>();
 
     const addError = (record: string, message: string) => {
         if (errors.length < MAX_ERRORS) {
@@ -280,12 +401,13 @@ export async function importShopSiteProducts({
     const existingSlugs = new Set<string>();
     const existingSkus = new Set<string>();
     const existingSlugBySku = new Map<string, string>();
+    const existingProductIdBySku = new Map<string, string>();
     const PAGE_SIZE = 1000;
 
     for (let from = 0; ; from += PAGE_SIZE) {
         const { data: existingProductsPage, error: existingProductsError } = await supabase
             .from('products')
-            .select('slug, sku')
+            .select('id, slug, sku')
             .range(from, from + PAGE_SIZE - 1);
 
         if (existingProductsError) {
@@ -300,6 +422,9 @@ export async function importShopSiteProducts({
             if (product.slug) existingSlugs.add(product.slug);
             if (product.sku) {
                 existingSkus.add(product.sku);
+                if (product.id) {
+                    existingProductIdBySku.set(product.sku, product.id);
+                }
                 if (product.slug) {
                     existingSlugBySku.set(product.sku, product.slug);
                 }
@@ -467,6 +592,8 @@ export async function importShopSiteProducts({
                 failed++;
             } else {
                 if (upserted) {
+                    importedProductIdsBySku.set(shopSiteProduct.sku, upserted.id);
+                    existingProductIdBySku.set(shopSiteProduct.sku, upserted.id);
                     const categoryIds = splitMultiValueFacet(category_name)
                         .map((categoryToken) => categoryMap.get(categoryToken))
                         .filter((categoryId): categoryId is string => !!categoryId);
@@ -515,13 +642,44 @@ export async function importShopSiteProducts({
         if ((created + updated + failed) % 10 === 0 && logId && updateProgress) {
             await updateProgress({
                 success: true,
-                processed: shopSiteProducts.length,
+                processed: created + updated + failed,
                 created,
                 updated,
                 failed,
                 errors: [],
                 duration: Date.now() - startTime,
-            });
+                skipped: crossSellAudit.skipped,
+                audit: {
+                    crossSell: { ...crossSellAudit },
+                },
+            } as ImportAuditResult);
+        }
+    }
+
+    for (const shopSiteProduct of shopSiteProducts) {
+        const sourceProductId = importedProductIdsBySku.get(shopSiteProduct.sku);
+        if (!sourceProductId) {
+            continue;
+        }
+
+        try {
+            crossSellAudit.sourcesProcessed++;
+            const crossSellResult = await replaceProductCrossSells(
+                supabase,
+                sourceProductId,
+                shopSiteProduct.sku,
+                shopSiteProduct.crossSellSkus,
+                existingProductIdBySku,
+            );
+
+            crossSellAudit.linked += crossSellResult.linked;
+            crossSellAudit.skipped += crossSellResult.skipped;
+            crossSellAudit.skippedDuplicates += crossSellResult.skippedDuplicates;
+            crossSellAudit.skippedSelfLinks += crossSellResult.skippedSelfLinks;
+            crossSellAudit.skippedMissing += crossSellResult.skippedMissing;
+        } catch (err) {
+            addError(shopSiteProduct.sku, err instanceof Error ? err.message : 'Unknown error');
+            failed++;
         }
     }
 
@@ -533,7 +691,11 @@ export async function importShopSiteProducts({
         failed,
         errors,
         duration: Date.now() - startTime,
-    };
+        skipped: crossSellAudit.skipped,
+        audit: {
+            crossSell: crossSellAudit,
+        },
+    } as ImportAuditResult;
 }
 
 export async function syncExistingProductsIngestionInputFromShopSite({

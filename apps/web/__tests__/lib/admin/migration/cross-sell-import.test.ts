@@ -5,9 +5,15 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { completeMigrationLog, updateMigrationProgress } from '@/lib/admin/migration/history';
 import { importShopSiteProducts } from '@/lib/admin/migration/product-import';
-import type { ShopSiteProduct } from '@/lib/admin/migration/types';
+import type { ShopSiteProduct, SyncResult } from '@/lib/admin/migration/types';
 import { GENERIC_FACET_FIELDS, getGenericFacetDefinition } from '@/lib/facets/generic-normalization';
+import { createClient } from '@/lib/supabase/server';
+
+jest.mock('@/lib/supabase/server', () => ({
+    createClient: jest.fn(),
+}));
 
 type TableName =
     | 'products'
@@ -234,124 +240,167 @@ function buildShopSiteProduct(overrides: Partial<ShopSiteProduct> = {}): ShopSit
         size: overrides.size ?? '',
         color: overrides.color ?? '',
         packagingType: overrides.packagingType ?? '',
+        crossSellSkus: overrides.crossSellSkus ?? [],
         ...overrides,
     };
 }
 
-describe('importShopSiteProducts pet-type canonical mapping', () => {
-    it('creates direct PF17 joins without falling back to inference when the canonical pet type is recognized', async () => {
+describe('importShopSiteProducts cross-sell linking', () => {
+    it('creates one-way PF32 relations after upserts and records skipped counters', async () => {
         const { supabase, state } = createMockSupabase({
-            pet_types: [
-                { id: 'pet-type-dog', name: 'Dog' },
-                { id: 'pet-type-cat', name: 'Cat' },
-            ],
-        });
-
-        const result = await importShopSiteProducts({
-            supabase,
-            shopSiteProducts: [buildShopSiteProduct({
-                sku: 'DIRECT-001',
-                name: 'Cat Crunchy Snacks',
-                petTypeName: 'Dog',
-            })],
-        });
-
-        expect(result).toMatchObject({ success: true, created: 1, failed: 0 });
-        expect(state.product_pet_types).toEqual([
-            expect.objectContaining({
-                product_id: 'products-1',
-                pet_type_id: 'pet-type-dog',
-            }),
-        ]);
-    });
-
-    it('falls back to inferred pet types only when PF17 is blank or unrecognized', async () => {
-        const { supabase, state } = createMockSupabase({
-            pet_types: [
-                { id: 'pet-type-dog', name: 'Dog' },
-                { id: 'pet-type-cat', name: 'Cat' },
-            ],
-        });
-
-        const result = await importShopSiteProducts({
-            supabase,
-            shopSiteProducts: [buildShopSiteProduct({
-                sku: 'FALLBACK-001',
-                name: 'Cat Crunchy Snacks',
-                petTypeName: '',
-            })],
-        });
-
-        expect(result).toMatchObject({ success: true, created: 1, failed: 0 });
-        expect(state.product_pet_types).toEqual([
-            expect.objectContaining({
-                product_id: 'products-1',
-                pet_type_id: 'pet-type-cat',
-            }),
-        ]);
-    });
-
-    it('clears prior normalized links and operational fields when corrected canonical values are blank on rerun', async () => {
-        const { supabase, state } = createMockSupabase({
-            products: [
-                {
-                    id: 'existing-product-1',
-                    sku: 'CLEAR-001',
-                    slug: 'existing-product',
-                    brand_id: 'brand-1',
-                    short_name: 'Legacy Short Name',
-                    is_special_order: true,
-                    in_store_pickup: true,
-                    category: 'Dog Food',
-                },
-            ],
             pet_types: [{ id: 'pet-type-dog', name: 'Dog' }],
-            product_categories: [{ product_id: 'existing-product-1', category_id: 'category-1' }],
-            product_pet_types: [{ product_id: 'existing-product-1', pet_type_id: 'pet-type-dog' }],
-            facet_values: [
+        });
+        const updateProgress = jest.fn().mockResolvedValue(undefined);
+
+        const result = await importShopSiteProducts({
+            supabase,
+            logId: 'migration-log-1',
+            updateProgress,
+            shopSiteProducts: [
+                buildShopSiteProduct({
+                    sku: 'XSELL-SOURCE-001',
+                    name: 'Cross Sell Source',
+                    petTypeName: 'Dog',
+                    crossSellSkus: [' XSELL-TARGET-001|XSELL-TARGET-001|XSELL-SOURCE-001|MISSING-SKU|| '],
+                }),
+                buildShopSiteProduct({
+                    sku: 'XSELL-TARGET-001',
+                    name: 'Cross Sell Target',
+                    petTypeName: 'Dog',
+                }),
+            ],
+        });
+
+        expect(result).toMatchObject({
+            success: true,
+            created: 2,
+            failed: 0,
+            skipped: 3,
+            audit: {
+                crossSell: {
+                    sourcesProcessed: 2,
+                    linked: 1,
+                    skipped: 3,
+                    skippedDuplicates: 1,
+                    skippedSelfLinks: 1,
+                    skippedMissing: 1,
+                },
+            },
+        });
+
+        expect(state.related_products).toEqual([
+            expect.objectContaining({
+                product_id: 'products-1',
+                related_product_id: 'products-2',
+                relation_type: 'cross_sell',
+                position: 0,
+            }),
+        ]);
+        expect(state.related_products).toHaveLength(1);
+        expect(updateProgress).not.toHaveBeenCalled();
+    });
+
+    it('clears stale cross-sell rows when a rerun has no PF32 values', async () => {
+        const { supabase, state } = createMockSupabase({
+            pet_types: [{ id: 'pet-type-dog', name: 'Dog' }],
+            products: [
+                { id: 'existing-source', sku: 'XSELL-SOURCE-001', slug: 'cross-sell-source' },
+                { id: 'existing-target', sku: 'XSELL-TARGET-001', slug: 'cross-sell-target' },
+            ],
+            related_products: [
                 {
-                    id: 'facet-value-1',
-                    facet_definition_id: 'facet-definition-1',
-                    value: 'Adult',
-                    normalized_value: 'Adult',
-                    slug: 'adult',
+                    id: 'related-1',
+                    product_id: 'existing-source',
+                    related_product_id: 'existing-target',
+                    relation_type: 'cross_sell',
+                    position: 0,
                 },
             ],
-            product_facets: [{ product_id: 'existing-product-1', facet_value_id: 'facet-value-1' }],
         });
 
         const result = await importShopSiteProducts({
             supabase,
-            shopSiteProducts: [buildShopSiteProduct({
-                sku: 'CLEAR-001',
-                name: 'Garden Hose',
-                shortName: '',
-                brandName: '',
-                categoryName: '',
-                productTypeName: '',
-                petTypeName: '',
-                isSpecialOrder: false,
-                inStorePickup: false,
-                lifeStage: '',
-            })],
+            shopSiteProducts: [
+                buildShopSiteProduct({
+                    sku: 'XSELL-SOURCE-001',
+                    name: 'Cross Sell Source',
+                    petTypeName: 'Dog',
+                    crossSellSkus: [],
+                }),
+            ],
         });
 
-        expect(result).toMatchObject({ success: true, updated: 1, failed: 0 });
-        expect(state.products).toEqual([
-            expect.objectContaining({
-                id: 'existing-product-1',
-                sku: 'CLEAR-001',
-                slug: 'existing-product',
-                brand_id: null,
-                short_name: null,
-                is_special_order: false,
-                in_store_pickup: false,
-                category: null,
-                product_type: null,
-            }),
-        ]);
-        expect(state.product_categories).toEqual([]);
-        expect(state.product_pet_types).toEqual([]);
-        expect(state.product_facets).toEqual([]);
+        expect(result).toMatchObject({ success: true, updated: 1, skipped: 0 });
+        expect(state.related_products).toEqual([]);
+    });
+});
+
+describe('migration history audit summaries', () => {
+    let mockSupabase: {
+        from: jest.Mock;
+        update: jest.Mock;
+        eq: jest.Mock;
+    };
+
+    beforeEach(() => {
+        mockSupabase = {
+            from: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    });
+
+    it('adds processed, skipped, and cross-sell bookkeeping to persisted migration logs', async () => {
+        const result = {
+            success: true,
+            processed: 5,
+            created: 3,
+            updated: 2,
+            failed: 0,
+            errors: [],
+            duration: 250,
+            skipped: 3,
+            audit: {
+                crossSell: {
+                    sourcesProcessed: 2,
+                    linked: 1,
+                    skipped: 3,
+                    skippedDuplicates: 1,
+                    skippedSelfLinks: 1,
+                    skippedMissing: 1,
+                },
+            },
+        } satisfies SyncResult & {
+            skipped: number;
+            audit: {
+                crossSell: {
+                    sourcesProcessed: number;
+                    linked: number;
+                    skipped: number;
+                    skippedDuplicates: number;
+                    skippedSelfLinks: number;
+                    skippedMissing: number;
+                };
+            };
+        };
+
+        await updateMigrationProgress('log-1', result);
+        await completeMigrationLog('log-1', result);
+
+        expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({
+            processed: 5,
+            failed: 0,
+            errors: expect.arrayContaining([
+                expect.objectContaining({
+                    record: '__audit__',
+                    error: 'Audit summary: processed=5, skipped=3, failed=0',
+                }),
+                expect.objectContaining({
+                    record: '__audit_cross_sell__',
+                    error: 'Cross-sell summary: sources=2, linked=1, skipped=3, duplicate=1, self=1, missing=1',
+                }),
+            ]),
+        }));
     });
 });
