@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,9 +18,10 @@ import {
 } from '@/components/ui/select';
 import { Plus, Package, ExternalLink, Pencil, RefreshCw, Search, X } from 'lucide-react';
 import { ProductEditModal, PublishedProduct } from './ProductEditModal';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { splitMultiValueFacet } from '@/lib/facets/normalization';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, formatImageUrl } from '@/lib/utils';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface AdminProductsClientProps {
     initialProducts: PublishedProduct[];
@@ -38,29 +39,49 @@ export function AdminProductsClient({
     productTypes
 }: AdminProductsClientProps) {
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
-    const [products] = useState<PublishedProduct[]>(initialProducts);
+    
+    // Sync products with initialProducts prop (which changes on server re-render)
+    const products = initialProducts;
+    
     const [editingProduct, setEditingProduct] = useState<PublishedProduct | null>(null);
-    const [search, setSearch] = useState('');
-    const [brandFilter, setBrandFilter] = useState('all');
-    const [categoryFilter, setCategoryFilter] = useState('all');
-    const [typeFilter, setTypeFilter] = useState('all');
-    const [stockFilter, setStockFilter] = useState('all');
-    const [featuredFilter, setFeaturedFilter] = useState('all');
+    
+    // Search state
+    const [search, setSearch] = useState(searchParams.get('search') || '');
+    const debouncedSearch = useDebounce(search, 500);
 
-    const filteredProducts = products.filter(p => {
-        const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-                             p.sku.toLowerCase().includes(search.toLowerCase());
-        const matchesBrand = brandFilter === 'all' || p.brand_id === brandFilter;
-        const matchesCategory = categoryFilter === 'all' || (p.category_ids ?? []).includes(categoryFilter);
-        const matchesType = typeFilter === 'all' || splitMultiValueFacet(p.product_type).includes(typeFilter);
-        const matchesStock = stockFilter === 'all' || p.stock_status === stockFilter;
-        const matchesFeatured = featuredFilter === 'all' || 
-                                (featuredFilter === 'featured' && p.is_featured) ||
-                                (featuredFilter === 'not_featured' && !p.is_featured);
+    // Filter states from URL
+    const brandFilter = searchParams.get('brand') || 'all';
+    const categoryFilter = searchParams.get('category') || 'all';
+    const typeFilter = searchParams.get('type') || 'all';
+    const stockFilter = searchParams.get('stock') || 'all';
+    const featuredFilter = searchParams.get('featured') || 'all';
+
+    // Update URL when filters or search change
+    const updateFilters = useCallback((updates: Record<string, string | null>) => {
+        const params = new URLSearchParams(searchParams.toString());
         
-        return matchesSearch && matchesBrand && matchesCategory && matchesType && matchesStock && matchesFeatured;
-    });
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === 'all' || value === '') {
+                params.delete(key);
+            } else {
+                params.set(key, value);
+            }
+        });
+
+        startTransition(() => {
+            router.push(`${pathname}?${params.toString()}`);
+        });
+    }, [pathname, router, searchParams]);
+
+    // Handle debounced search update
+    useEffect(() => {
+        if (debouncedSearch !== (searchParams.get('search') || '')) {
+            updateFilters({ search: debouncedSearch });
+        }
+    }, [debouncedSearch, searchParams, updateFilters]);
 
     const hasActiveFilters = search !== '' || 
                             brandFilter !== 'all' || 
@@ -71,15 +92,10 @@ export function AdminProductsClient({
 
     const clearFilters = () => {
         setSearch('');
-        setBrandFilter('all');
-        setCategoryFilter('all');
-        setTypeFilter('all');
-        setStockFilter('all');
-        setFeaturedFilter('all');
+        router.push(pathname);
     };
 
     const parseImages = (images: unknown): string[] => {
-// ... existing parseImages code ...
         if (!images) return [];
         let parsed: string[] = [];
         if (Array.isArray(images)) {
@@ -94,19 +110,7 @@ export function AdminProductsClient({
             return [];
         }
 
-        // Ensure relative paths start with a leading slash
-        return parsed.map(img => {
-            if (typeof img !== 'string') return '';
-            const trimmed = img.trim();
-            if (trimmed.startsWith('http') || trimmed.startsWith('/')) {
-                return trimmed;
-            }
-            // If it's a relative path without a leading slash, prepend it
-            if (trimmed.length > 0) {
-                return `/${trimmed}`;
-            }
-            return '';
-        }).filter(Boolean);
+        return parsed.map(img => formatImageUrl(img)).filter((img): img is string => Boolean(img));
     };
 
     const isValidImageUrl = (url: string) => {
@@ -140,9 +144,11 @@ export function AdminProductsClient({
                     <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
                         <Package className="size-6 text-primary" />
                     </div>
-                    <div>
+                    <div className="flex flex-col gap-1">
                         <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-                        <p className="text-muted-foreground">{totalCount} published products total</p>
+                        <p className="text-muted-foreground">
+                            {searchParams.get('search') ? `Found ${totalCount} matches` : `${totalCount} published products total`}
+                        </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -167,16 +173,21 @@ export function AdminProductsClient({
                         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             type="text"
-                            placeholder="Search by name or SKU…"
+                            placeholder="Search across all products by name or SKU…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-10"
-                            aria-label="Search loaded products"
+                            aria-label="Search all products"
                         />
+                        {isPending && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Spinner className="size-4" />
+                            </div>
+                        )}
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-2">
-                        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <Select value={categoryFilter} onValueChange={(val) => updateFilters({ category: val })}>
                             <SelectTrigger className="w-[160px]">
                                 <SelectValue placeholder="All Categories" />
                             </SelectTrigger>
@@ -188,7 +199,7 @@ export function AdminProductsClient({
                             </SelectContent>
                         </Select>
 
-                        <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <Select value={typeFilter} onValueChange={(val) => updateFilters({ type: val })}>
                             <SelectTrigger className="w-[160px]">
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
@@ -200,7 +211,7 @@ export function AdminProductsClient({
                             </SelectContent>
                         </Select>
 
-                        <Select value={brandFilter} onValueChange={setBrandFilter}>
+                        <Select value={brandFilter} onValueChange={(val) => updateFilters({ brand: val })}>
                             <SelectTrigger className="w-[160px]">
                                 <SelectValue placeholder="All Brands" />
                             </SelectTrigger>
@@ -212,7 +223,7 @@ export function AdminProductsClient({
                             </SelectContent>
                         </Select>
 
-                        <Select value={stockFilter} onValueChange={setStockFilter}>
+                        <Select value={stockFilter} onValueChange={(val) => updateFilters({ stock: val })}>
                             <SelectTrigger className="w-[140px]">
                                 <SelectValue placeholder="Stock Status" />
                             </SelectTrigger>
@@ -225,7 +236,7 @@ export function AdminProductsClient({
                             </SelectContent>
                         </Select>
 
-                        <Select value={featuredFilter} onValueChange={setFeaturedFilter}>
+                        <Select value={featuredFilter} onValueChange={(val) => updateFilters({ featured: val })}>
                             <SelectTrigger className="w-[140px]">
                                 <SelectValue placeholder="Featured" />
                             </SelectTrigger>
@@ -243,11 +254,7 @@ export function AdminProductsClient({
                             className="size-9 p-0"
                             title="Refresh data"
                         >
-                            {isPending ? (
-                                <Spinner className="size-4" />
-                            ) : (
-                                <RefreshCw className="size-4" />
-                            )}
+                            <RefreshCw className={cn("size-4", isPending && "animate-spin")} />
                         </Button>
 
                         {hasActiveFilters && (
@@ -261,8 +268,11 @@ export function AdminProductsClient({
                 
                 <div className="flex items-center justify-between border-t pt-4">
                     <p className="text-xs text-muted-foreground">
-                        Showing <span className="font-semibold text-foreground">{filteredProducts.length}</span> 
-                        {filteredProducts.length === products.length ? ' products' : ` of ${products.length} loaded products`}
+                        {searchParams.get('search') ? (
+                            <>Found <span className="font-semibold text-foreground">{totalCount}</span> matching products</>
+                        ) : (
+                            <>Showing the <span className="font-semibold text-foreground">{products.length}</span> most recent products</>
+                        )}
                     </p>
                 </div>
             </div>
@@ -270,20 +280,20 @@ export function AdminProductsClient({
             {(!products || products.length === 0) ? (
                 <EmptyState
                     icon={Package}
-                    title="No published products yet"
-                    description="Products flow through the pipeline before being published"
-                    actionLabel="Go to Pipeline"
-                    actionHref="/admin/pipeline"
+                    title={searchParams.get('search') ? "No matches found" : "No published products yet"}
+                    description={searchParams.get('search') ? "Try adjusting your search or filters" : "Products flow through the pipeline before being published"}
+                    actionLabel={searchParams.get('search') ? "Clear Search" : "Go to Pipeline"}
+                    actionHref={searchParams.get('search') ? undefined : "/admin/pipeline"}
+                    onAction={searchParams.get('search') ? clearFilters : undefined}
                 />
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {filteredProducts.map((product) => {
+                    {products.map((product) => {
                         const images = parseImages(product.images);
                         const imageUrl = images[0];
 
                         return (
                             <Card key={product.id} className="group flex flex-col overflow-hidden transition-all hover:shadow-md">
-                                {/* Product Image */}
                                 <div className="relative aspect-square overflow-hidden bg-muted">
                                     {imageUrl && isValidImageUrl(imageUrl) ? (
                                         <Image
@@ -292,7 +302,7 @@ export function AdminProductsClient({
                                             fill
                                             className="object-cover transition-transform group-hover:scale-105"
                                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                                            unoptimized // For now while we use external/unvalidated paths
+                                            unoptimized
                                         />
                                     ) : (
                                         <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -315,6 +325,11 @@ export function AdminProductsClient({
                                             {product.stock_status === 'in_stock' ? 'In Stock' :
                                                 product.stock_status === 'out_of_stock' ? 'Out of Stock' : 'Pre-order'}
                                         </Badge>
+                                        {product.quantity !== null && product.quantity !== undefined && (
+                                            <Badge variant="outline" className="bg-background/80 backdrop-blur-sm shadow-sm self-end">
+                                                Qty: {product.quantity}
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
 
@@ -324,7 +339,7 @@ export function AdminProductsClient({
                                             {product.name}
                                         </CardTitle>
                                     </div>
-                                    <div className="flex flex-col gap-0.5">
+                                    <div className="flex flex-col gap-0.5 mt-1">
                                         {product.brand_name && (
                                             <p className="text-xs text-muted-foreground font-medium">{product.brand_name}</p>
                                         )}
@@ -358,12 +373,9 @@ export function AdminProductsClient({
                 </div>
             )}
 
-            {products && products.length >= 50 && (
+            {totalCount > products.length && !searchParams.get('search') && (
                 <div className="flex flex-col items-center gap-3 py-6 border-t border-dashed">
-                    <p className="text-sm text-muted-foreground">Only showing the most recent 50 products. Use Data Explorer to see all.</p>
-                    <Button variant="outline" asChild>
-                        <Link href="/admin/data/products">View All Products in Data Explorer</Link>
-                    </Button>
+                    <p className="text-sm text-muted-foreground">Only showing the most recent 50 products. Use the search bar to find others.</p>
                 </div>
             )}
 

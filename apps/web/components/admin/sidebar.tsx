@@ -83,6 +83,12 @@ const navSections: NavSection[] = [
         adminOnly: true,
       },
       {
+        href: "/admin/scrapers/runs",
+        label: "Runs",
+        icon: LayoutGrid,
+        adminOnly: true,
+      },
+      {
         href: "/admin/scrapers/network",
         label: "Network",
         icon: Network,

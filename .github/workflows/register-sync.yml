@@ -1,0 +1,129 @@
+name: Register Sync
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Source to use for the sync
+        required: false
+        type: choice
+        options:
+          - odbc
+          - workbook
+        default: odbc
+      file_path:
+        description: Optional absolute or repo-relative workbook path on the local runner when source=workbook
+        required: false
+        type: string
+      file_glob:
+        description: Optional wildcard used to pick the newest workbook on the local runner when source=workbook
+        required: false
+        type: string
+      apply_changes:
+        description: Apply updates to Supabase instead of running a preview
+        required: false
+        type: boolean
+        default: false
+      sync_price:
+        description: Also sync LIST_PRICE into products.price
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '15 10 * * *'
+
+concurrency:
+  group: register-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync register inventory
+    environment: register-sync
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: .
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run register sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REGISTER_SYNC_SOURCE: ${{ vars.REGISTER_SYNC_SOURCE }}
+          REGISTER_SYNC_FILE_PATH: ${{ vars.REGISTER_SYNC_FILE_PATH }}
+          REGISTER_SYNC_FILE_GLOB: ${{ vars.REGISTER_SYNC_FILE_GLOB }}
+          REGISTER_SYNC_FIELDS: ${{ vars.REGISTER_SYNC_FIELDS }}
+          REGISTER_ODBC_CONNECTION_STRING: ${{ secrets.REGISTER_ODBC_CONNECTION_STRING }}
+          REGISTER_ODBC_DSN: ${{ vars.REGISTER_ODBC_DSN }}
+          REGISTER_ODBC_DRIVER: ${{ vars.REGISTER_ODBC_DRIVER }}
+          REGISTER_ODBC_SERVER: ${{ vars.REGISTER_ODBC_SERVER }}
+          REGISTER_ODBC_PORT: ${{ vars.REGISTER_ODBC_PORT }}
+          REGISTER_ODBC_SSL_PORT: ${{ vars.REGISTER_ODBC_SSL_PORT }}
+          REGISTER_ODBC_TIMEOUT_SECONDS: ${{ vars.REGISTER_ODBC_TIMEOUT_SECONDS }}
+          REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS: ${{ vars.REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS }}
+          REGISTER_ODBC_UID: ${{ secrets.REGISTER_ODBC_UID }}
+          REGISTER_ODBC_PWD: ${{ secrets.REGISTER_ODBC_PWD }}
+        run: |
+          $scriptArgs = @()
+
+          $source = "${{ github.event.inputs.source }}"
+          if ([string]::IsNullOrWhiteSpace($source)) {
+            $source = $env:REGISTER_SYNC_SOURCE
+          }
+          if ([string]::IsNullOrWhiteSpace($source)) {
+            $source = "odbc"
+          }
+          $scriptArgs += "--source=$source"
+
+          $filePath = "${{ github.event.inputs.file_path }}"
+          if (-not [string]::IsNullOrWhiteSpace($filePath)) {
+            $scriptArgs += "--file=$filePath"
+          }
+
+          $fileGlob = "${{ github.event.inputs.file_glob }}"
+          if (-not [string]::IsNullOrWhiteSpace($fileGlob)) {
+            $scriptArgs += "--file-glob=$fileGlob"
+          }
+
+          $fields = $env:REGISTER_SYNC_FIELDS
+          if ([string]::IsNullOrWhiteSpace($fields)) {
+            $fields = "quantity,stock_status"
+            if ("${{ github.event.inputs.sync_price }}" -eq "true") {
+              $fields = "quantity,stock_status,price"
+            }
+          }
+          $scriptArgs += "--fields=$fields"
+
+          $applyChanges = $false
+          if ("${{ github.event_name }}" -eq "schedule") {
+            $applyChanges = $true
+          } elseif ("${{ github.event.inputs.apply_changes }}" -eq "true") {
+            $applyChanges = $true
+          }
+
+          if ($applyChanges) {
+            $scriptArgs += "--apply"
+          } else {
+            $scriptArgs += "--dry-run"
+          }
+
+          Set-Location apps\web
+          & bun run sync:register @scriptArgs
