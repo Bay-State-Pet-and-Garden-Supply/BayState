@@ -39,6 +39,10 @@ export async function createBrand(formData: FormData): Promise<ActionState> {
         }
 
         revalidatePath('/admin/brands');
+        revalidatePath('/');
+        revalidatePath('/brands');
+        revalidatePath('/products');
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (err) {
         if (err instanceof z.ZodError) {
@@ -72,6 +76,10 @@ export async function updateBrand(id: string, formData: FormData): Promise<Actio
         }
 
         revalidatePath('/admin/brands');
+        revalidatePath('/');
+        revalidatePath('/brands');
+        revalidatePath('/products');
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (err) {
         if (err instanceof z.ZodError) {
@@ -95,5 +103,9 @@ export async function deleteBrand(id: string): Promise<ActionState> {
     }
 
     revalidatePath('/admin/brands');
+    revalidatePath('/');
+    revalidatePath('/brands');
+    revalidatePath('/products');
+    revalidatePath('/', 'layout');
     return { success: true };
 }

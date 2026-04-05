@@ -12,21 +12,12 @@ import {
   WifiOff,
   Loader2,
   Key,
-  Trash2,
   RefreshCw,
   Plus,
   Settings,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   Activity,
-  Users,
-  Clock,
-  Terminal,
-  Play,
-  MoreVertical,
-  Power,
-  RotateCcw,
   Eye,
   Network,
 } from 'lucide-react';
@@ -52,6 +43,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useDocumentVisible } from '@/hooks/useDocumentVisible';
 
 interface Runner {
   id: string;
@@ -90,6 +82,7 @@ interface NetworkClientProps {
 
 export function NetworkClient({ initialRunners = [], initialJobs = [] }: NetworkClientProps) {
   const router = useRouter();
+  const isDocumentVisible = useDocumentVisible();
   const [runners, setRunners] = useState<Runner[]>(initialRunners);
   const [accounts, setAccounts] = useState<RunnerAccount[]>([]);
   const [jobs, setJobs] = useState<ScrapeJob[]>(initialJobs);
@@ -142,15 +135,25 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
 
   useEffect(() => {
     if (initialRunners.length === 0) {
-      fetchRunners();
+      void fetchRunners();
     }
-    fetchAccounts();
+    void fetchAccounts();
     if (initialJobs.length === 0) {
-      fetchJobs();
+      void fetchJobs();
     }
-    const interval = setInterval(refreshData, 30000);
+  }, [fetchAccounts, fetchJobs, fetchRunners, initialJobs.length, initialRunners.length]);
+
+  useEffect(() => {
+    if (!isDocumentVisible) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void refreshData();
+    }, 60000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [isDocumentVisible, refreshData]);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'Never';

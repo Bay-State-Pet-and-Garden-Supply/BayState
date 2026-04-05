@@ -2,15 +2,16 @@
  * @jest-environment node
  */
 import { getFeaturedProducts, getActiveServices, getBrands, getProducts } from '@/lib/data';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createPublicClient: jest.fn(),
 }));
 
 import type { Product } from '@/lib/types';
 
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 
 type QueryError = { message: string };
 
@@ -85,7 +86,7 @@ describe('Data Fetching Functions', () => {
       }
     });
 
-    mockCreateClient.mockResolvedValue({
+    mockCreatePublicClient.mockReturnValue({
       from: mockFrom,
     } as never);
   });

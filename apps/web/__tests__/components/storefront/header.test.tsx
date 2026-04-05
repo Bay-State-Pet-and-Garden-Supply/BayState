@@ -1,6 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import { StorefrontHeader } from '@/components/storefront/header';
 
+const defaultProps = {
+  user: null,
+  userRole: null,
+  categories: [],
+  petTypes: [],
+  brands: [],
+};
+
+const categoriesWithDogMenu = [
+  { id: 'dog', name: 'Dog', slug: 'dog', parent_id: null },
+  { id: 'dog-food', name: 'Dog Food', slug: 'dog-food', parent_id: 'dog' },
+];
+
+const brands = [{ id: 'brand-1', name: 'Acme', slug: 'acme', logo_url: null }];
+
 // Mock the search provider
 jest.mock('@/components/storefront/search-provider', () => ({
   useSearch: () => ({ openSearch: jest.fn() }),
@@ -28,98 +43,47 @@ jest.mock('next/navigation', () => ({
 
 describe('StorefrontHeader', () => {
   it('renders the logo with store name', () => {
-    render(
-      <StorefrontHeader
-        user={null}
-        userRole={null}
-        categories={[]}
-        petTypes={[]}
-        brands={[]}
-      />
-    );
-    expect(screen.getByText('Bay State')).toBeInTheDocument();
+    render(<StorefrontHeader {...defaultProps} />);
+    expect(screen.getAllByText('Bay State')).toHaveLength(2);
   });
 
   it('renders inline search component', () => {
-    render(
-      <StorefrontHeader
-        user={null}
-        userRole={null}
-        categories={[]}
-        petTypes={[]}
-        brands={[]}
-      />
-    );
+    render(<StorefrontHeader {...defaultProps} />);
     expect(screen.getAllByTestId('inline-search')).toHaveLength(2);
   });
 
 
 
   it('renders cart button with accessible label', () => {
-    render(
-      <StorefrontHeader
-        user={null}
-        userRole={null}
-        categories={[]}
-        petTypes={[]}
-        brands={[]}
-      />
-    );
+    render(<StorefrontHeader {...defaultProps} />);
     expect(screen.getAllByRole('button', { name: /shopping cart/i })).toHaveLength(2);
   });
 
   it('renders desktop navigation links', () => {
     render(
       <StorefrontHeader
-        user={null}
-        userRole={null}
-        categories={[]}
-        petTypes={[]}
-        brands={[]}
+        {...defaultProps}
+        categories={categoriesWithDogMenu}
+        brands={brands}
       />
     );
-    expect(screen.getByRole('button', { name: /shop pet supplies/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /shop by brand/i })).toBeInTheDocument();
-    expect(screen.getByText(/Shop Farm/i)).toBeInTheDocument();
-    expect(screen.getByText(/Services/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^dog$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /brands/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /our services/i })).toBeInTheDocument();
   });
 
   it('renders menu button for mobile', () => {
-    render(
-      <StorefrontHeader
-        user={null}
-        userRole={null}
-        categories={[]}
-        petTypes={[]}
-        brands={[]}
-      />
-    );
+    render(<StorefrontHeader {...defaultProps} />);
     expect(screen.getByRole('button', { name: /menu/i })).toBeInTheDocument();
   });
 
   it('renders user menu', () => {
-    render(
-      <StorefrontHeader
-        user={null}
-        userRole={null}
-        categories={[]}
-        petTypes={[]}
-        brands={[]}
-      />
-    );
+    render(<StorefrontHeader {...defaultProps} />);
     expect(screen.getByTestId('user-menu')).toBeInTheDocument();
   });
 
   it('is hidden on mobile and visible on desktop', () => {
-    const { container } = render(
-      <StorefrontHeader
-        user={null}
-        userRole={null}
-        categories={[]}
-        petTypes={[]}
-        brands={[]}
-      />
-    );
+    const { container } = render(<StorefrontHeader {...defaultProps} />);
     const headerElement = container.querySelector('header');
     // Using max-md:hidden to hide on mobile only
     expect(headerElement).toHaveClass('max-md:hidden');

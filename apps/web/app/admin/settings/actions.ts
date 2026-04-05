@@ -29,4 +29,5 @@ export async function updateCampaignBannerAction(formData: FormData) {
 
   revalidatePath('/admin/settings');
   revalidatePath('/'); // Revalidate storefront to show updated banner
+  revalidatePath('/', 'layout');
 }

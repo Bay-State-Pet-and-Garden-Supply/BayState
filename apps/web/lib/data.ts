@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 
 // Re-export types from lib/types.ts for backward compatibility
 export type { Brand, Product, Service, Category } from '@/lib/types';
@@ -8,7 +8,7 @@ import type { Service, Brand } from '@/lib/types';
  * Fetches all active services.
  */
 export async function getActiveServices(): Promise<Service[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('services')
     .select('*')
@@ -27,7 +27,7 @@ export async function getActiveServices(): Promise<Service[]> {
  * Fetches all brands.
  */
 export async function getBrands(): Promise<Brand[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('brands')
     .select('*')
@@ -53,7 +53,7 @@ export async function getNavCategories(): Promise<Array<{
   image_url: string | null;
   is_featured: boolean | null;
 }>> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('categories')
     .select('id, name, slug, parent_id, display_order, image_url, is_featured')
@@ -71,7 +71,7 @@ export async function getNavCategories(): Promise<Array<{
  * Fetches pet types for navigation.
  */
 export async function getPetTypesNav() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('pet_types')
     .select('id, name, icon, display_order')

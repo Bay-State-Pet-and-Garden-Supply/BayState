@@ -1,5 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
-import type { PostgrestError } from '@supabase/supabase-js';
+import { createClient, createPublicClient } from '@/lib/supabase/server';
 
 export interface BannerMessage {
   text: string;
@@ -177,7 +176,7 @@ function normalizeCampaignBanner(settings: CampaignBannerSettings): CampaignBann
 export async function getSetting<K extends keyof SiteSettings>(
   key: K
 ): Promise<SiteSettings[K]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('site_settings')
     .select('value')

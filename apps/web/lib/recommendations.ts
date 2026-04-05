@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createPublicClient } from '@/lib/supabase/server';
 import type { Product } from '@/lib/types';
 
 export interface PersonalizedProduct extends Product {
@@ -120,7 +120,7 @@ export async function getProductsForUserPets(
 }
 
 export async function getPetTypes(): Promise<{ id: string; name: string }[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data, error } = await supabase
     .from('pet_types')
@@ -139,7 +139,7 @@ export async function getRelatedProductsByPetType(
   productId: string,
   limit = 4
 ): Promise<{ petTypeName: string; products: Product[] } | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: productPetTypes } = await supabase
     .from('product_pet_types')

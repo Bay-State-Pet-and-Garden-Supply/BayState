@@ -38,6 +38,7 @@ export async function updateCampaignBannerAction(formData: FormData) {
 
         revalidatePath('/admin/design');
         revalidatePath('/'); // Revalidate storefront to show updated banner
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (error: unknown) {
         console.error('Action error:', error);
@@ -88,6 +89,7 @@ export async function updateHomepageSettingsAction(formData: FormData) {
 
         revalidatePath('/admin/design');
         revalidatePath('/'); // Revalidate homepage
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (error: unknown) {
         console.error('Action error:', error);
@@ -123,6 +125,7 @@ export async function updateNavigationSettingsAction(formData: FormData) {
 
         revalidatePath('/admin/design');
         revalidatePath('/'); // Revalidate storefront
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (error: unknown) {
         console.error('Action error:', error);
@@ -163,6 +166,7 @@ export async function updateBrandingSettingsAction(formData: FormData) {
 
         revalidatePath('/admin/design');
         revalidatePath('/'); // Revalidate storefront
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (error: unknown) {
         console.error('Action error:', error);
@@ -170,4 +174,3 @@ export async function updateBrandingSettingsAction(formData: FormData) {
         return { success: false, error: errorMessage };
     }
 }
-

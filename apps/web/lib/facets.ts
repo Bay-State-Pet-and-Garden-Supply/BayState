@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 
 export interface FacetDefinition {
   id: string;
@@ -19,7 +19,7 @@ export interface FacetValue {
  * In a fully optimized system, this would be scoped to the current category/search result set.
  */
 export async function getDynamicFacets(): Promise<FacetDefinition[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: facetDefs, error: defError } = await supabase
     .from('facet_definitions')

@@ -9,8 +9,8 @@ from typing import Literal
 from openai import AsyncOpenAI
 
 LLMProvider = Literal["openai", "openai_compatible", "gemini"]
-DEFAULT_LLM_MODEL = "gemini-2.5-flash"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_LLM_MODEL = "gemini-3.1-flash-lite-preview"
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
 DEFAULT_OPENAI_COMPATIBLE_MODEL = "google/gemma-3-12b-it"
 LOCAL_OPENAI_COMPATIBLE_API_KEY = "baystate-local"
 
