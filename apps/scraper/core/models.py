@@ -88,8 +88,6 @@ class RawScrapedProduct(BaseModel):
     weight: float | None = None
     description: str | None = None
     images: list[str] = Field(default_factory=list)
-    category: str | None = None
-    product_type: str | None = None
     features: list[str] | str | None = None
     ingredients: str | None = None
     dimensions: str | None = None
@@ -149,8 +147,6 @@ class RawScrapedProduct(BaseModel):
             "weight": self.weight,
             "images": self.images,
             "description": self.description,
-            "category": self.category,
-            "product_type": self.product_type,
             "features": self.features,
             "ingredients": self.ingredients,
             "dimensions": self.dimensions,

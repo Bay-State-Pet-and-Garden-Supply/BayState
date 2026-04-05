@@ -24,8 +24,6 @@ FIELD_ALIASES = {
     "description": "description",
     "weight": "weight",
     "category": "category",
-    "categories": "categories",
-    "product_type": "product_type",
     "item_number": "item_number",
     "manufacturer_part_number": "manufacturer_part_number",
     "unit_of_measure": "unit_of_measure",
@@ -253,8 +251,6 @@ def sanitize_product_payload(payload: dict[str, Any]) -> tuple[dict[str, Any], l
     sanitized["title"] = _normalize_text(canonical.get("title"), max_length=300)
     sanitized["brand"] = _normalize_text(canonical.get("brand"), max_length=120)
     sanitized["description"] = _normalize_text(canonical.get("description"))
-    sanitized["category"] = _normalize_text(canonical.get("category"), max_length=120)
-    sanitized["product_type"] = _normalize_text(canonical.get("product_type"), max_length=120)
     sanitized["unit_of_measure"] = _normalize_short_identifier(
         "unit_of_measure",
         canonical.get("unit_of_measure"),

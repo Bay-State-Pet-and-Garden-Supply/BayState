@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { Home } from 'lucide-react';
+import { Home, ShieldCheck, Info } from 'lucide-react';
 import Link from 'next/link';
 import { type Metadata } from 'next';
 import { getProductBySlug, getProductGroupBySlug } from '@/lib/products';
@@ -224,6 +224,16 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           <BreadcrumbItem>
             <BreadcrumbLink href="/products">Products</BreadcrumbLink>
           </BreadcrumbItem>
+          {product.primary_category && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href={`/products?category=${product.primary_category.slug}`} className="capitalize">
+                  {product.primary_category.name}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </>
+          )}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage className="font-medium">
@@ -242,22 +252,40 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
         {/* Product Info */}
         <div className="space-y-6">
-          {product.brand && (
-            <Link
-              href={`/products?brand=${product.brand.slug}`}
-              className="text-sm text-zinc-700 hover:text-zinc-900"
-            >
-              {product.brand.name}
-            </Link>
-          )}
-
-          <div className="flex items-start justify-between gap-4">
-            <h1 className="text-3xl font-bold text-zinc-900">
-              {isGroupPage ? group?.name : product.name}
-            </h1>
-            {canEditProducts && (
-              <ProductAdminEdit product={editableProduct} />
+          <div className="space-y-2">
+            {product.brand && (
+              <Link
+                href={`/products?brand=${product.brand.slug}`}
+                className="text-sm font-bold uppercase tracking-widest text-primary hover:underline"
+              >
+                {product.brand.name}
+              </Link>
             )}
+
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-3xl font-extrabold text-zinc-900 leading-tight">
+                {isGroupPage ? group?.name : product.name}
+              </h1>
+              {canEditProducts && (
+                <ProductAdminEdit product={editableProduct} />
+              )}
+            </div>
+            
+            {/* Trust Badges & Microdata */}
+            <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="h-4 w-4 text-green-600" />
+                Satisfaction Guaranteed
+              </span>
+              <span>•</span>
+              <span>Item #{product.sku || product.slug}</span>
+              {product.gtin && (
+                <>
+                  <span>•</span>
+                  <span>GTIN: {product.gtin}</span>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Product Group Size Selector */}
@@ -270,107 +298,136 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             />
           )}
 
-          <div className="flex items-center gap-4">
-            <span className="text-3xl font-bold text-zinc-900">
-              {formattedPrice}
-            </span>
-            <Badge className={stockStatusColor}>{stockStatusLabel}</Badge>
+          {/* Pricing & Stock Action Box */}
+          <div className="rounded-lg border-2 border-zinc-100 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-zinc-900">Purchase Options</h3>
+              {(product.stock_status !== 'out_of_stock' || !product.is_special_order) && (
+                <Badge className={`${stockStatusColor} text-sm px-3 py-1`}>
+                  {stockStatusLabel}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              {/* One-time Purchase Tier */}
+              <label className="flex items-start gap-3 p-4 rounded-md border border-zinc-200 cursor-pointer hover:bg-zinc-50 transition-colors">
+                <input 
+                  type="radio" 
+                  name="purchase-option" 
+                  defaultChecked 
+                  className="mt-1 h-4 w-4 text-primary" 
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-zinc-900">{formattedPrice}</span>
+                    <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">One-time</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1">Standard delivery or in-store pickup.</p>
+                </div>
+              </label>
+
+              {/* Autoship Tier (Chewy Style) */}
+              <label className="flex items-start gap-3 p-4 rounded-md bg-blue-50/30 border border-blue-100 cursor-pointer hover:bg-blue-50 transition-colors relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+                <input 
+                  type="radio" 
+                  name="purchase-option" 
+                  className="mt-1 h-4 w-4 text-blue-600" 
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-blue-700">
+                        {formatCurrency(product.price * 0.95)}
+                      </span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-[10px] h-5">
+                        Save 5%
+                      </Badge>
+                    </div>
+                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Autoship</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 mt-1 font-medium">Set your own schedule.</p>
+                  <p className="text-[10px] text-zinc-500">Skip or cancel anytime. Extra savings on every order.</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Urgency & Fulfillment Badges */}
+            <div className="flex flex-col gap-2 mb-6 text-sm">
+              {product.quantity !== undefined && product.quantity > 0 && product.quantity <= (product.low_stock_threshold || 5) && (
+                <p className="text-orange-600 font-medium flex items-center gap-1.5">
+                  <Info className="h-4 w-4" />
+                  Only {product.quantity} left in stock - order soon.
+                </p>
+              )}
+              {product.minimum_quantity !== undefined && product.minimum_quantity !== null && product.minimum_quantity > 1 && (
+                <p className="text-zinc-600">
+                  Minimum order quantity: {product.minimum_quantity}
+                </p>
+              )}
+              {product.pickup_only && (
+                <p className="text-yellow-700 font-medium bg-yellow-50 px-2 py-1 rounded-sm w-fit">
+                  Available for In-Store Pickup Only
+                </p>
+              )}
+              {product.is_special_order && (
+                <p className="text-purple-700 font-medium bg-purple-50 px-2 py-1 rounded-sm w-fit">
+                  Special Order Item - Extra fulfillment time required
+                </p>
+              )}
+            </div>
+
+            {/* Add to Cart */}
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <AddToCartButton
+                product={product}
+                preorderGroup={preorderData.preorderGroup}
+                preorderBatches={preorderData.preorderBatches}
+                isPickupOnly={preorderData.isPickupOnly}
+              />
+            </div>
           </div>
 
+          {/* Product Description */}
           {product.description && (
-            <p className="text-zinc-700">{product.description}</p>
+            <p className="text-base leading-relaxed text-zinc-700">
+              {product.description}
+            </p>
           )}
 
-          {/* Add to Cart */}
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <AddToCartButton
-              product={product}
-              preorderGroup={preorderData.preorderGroup}
-              preorderBatches={preorderData.preorderBatches}
-              isPickupOnly={preorderData.isPickupOnly}
-            />
-          </div>
-
-          {/* Product Details */}
+          {/* Expanded Product Details */}
           <div className="border-t pt-6">
-            <h2 className="mb-4 font-semibold text-zinc-900">Product Details</h2>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-zinc-700">SKU</dt>
-                <dd className="font-medium text-zinc-900">{product.slug}</dd>
+            <h2 className="mb-4 text-xl font-bold text-zinc-900">Product Details</h2>
+            <dl className="space-y-3 text-sm">
+              <div className="grid grid-cols-3 border-b border-zinc-100 pb-2">
+                <dt className="text-zinc-500">Item Number</dt>
+                <dd className="font-medium text-zinc-900 col-span-2">{product.slug}</dd>
               </div>
               {product.brand && (
-                <div className="flex justify-between">
-                  <dt className="text-zinc-700">Brand</dt>
-                  <dd className="font-medium text-zinc-900">{product.brand.name}</dd>
+                <div className="grid grid-cols-3 border-b border-zinc-100 pb-2">
+                  <dt className="text-zinc-500">Brand</dt>
+                  <dd className="font-medium text-zinc-900 col-span-2">{product.brand.name}</dd>
                 </div>
               )}
-              <div className="flex justify-between">
-                <dt className="text-zinc-700">Availability</dt>
-                <dd className="font-medium text-zinc-900">{stockStatusLabel}</dd>
-              </div>
-              {isGroupPage && (
-                <div className="flex justify-between">
-                  <dt className="text-zinc-700">Options</dt>
-                  <dd className="font-medium text-zinc-900">
-                    {members.length} size{members.length !== 1 ? 's' : ''} available
-                  </dd>
+              {product.weight !== null && product.weight !== undefined && (
+                <div className="grid grid-cols-3 border-b border-zinc-100 pb-2">
+                  <dt className="text-zinc-500">Weight</dt>
+                  <dd className="font-medium text-zinc-900 col-span-2">{product.weight} lbs</dd>
                 </div>
               )}
+
             </dl>
           </div>
+          
+          {/* Long Description (Rich Text) */}
+          {product.long_description && (
+            <div className="border-t pt-6 prose prose-sm max-w-none text-zinc-700">
+              <div dangerouslySetInnerHTML={{ __html: product.long_description }} />
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Related Products for Pet Type */}
-      {relatedByPetType && (
-        <section className="mt-12 border-t pt-8">
-          <h2 className="mb-6 text-xl font-semibold text-zinc-900">
-            More Products for {relatedByPetType.petTypeName}s
-          </h2>
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-            {relatedByPetType.products.map((relatedProduct) => (
-              <ProductCard key={relatedProduct.id} product={relatedProduct} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Customer Reviews */}
-      <section className="mt-12 border-t pt-8">
-        <h2 className="mb-6 text-xl font-semibold text-zinc-900">
-          Customer Reviews
-        </h2>
-        <ProductReviews reviews={reviews} stats={reviewStats} />
-        <div className="mt-8">
-          <ReviewSubmissionForm
-            productId={product.id}
-            productSlug={product.slug}
-            isLoggedIn={isLoggedIn}
-            hasAlreadyReviewed={hasReviewed}
-          />
-        </div>
-      </section>
-
-      {/* Questions & Answers */}
-      <section className="mt-12 border-t pt-8">
-        <h2 className="mb-6 text-xl font-semibold text-zinc-900">
-          Questions & Answers
-        </h2>
-        <ProductQA
-          productId={product.id}
-          productSlug={product.slug}
-          questions={questions}
-          isLoggedIn={isLoggedIn}
-        />
-      </section>
-
-      {/* Recently Viewed */}
-      {recentlyViewed.length > 0 && (
-        <section className="mt-12 border-t pt-8">
-          <RecentlyViewedSection products={recentlyViewed} />
-        </section>
-      )}
     </div>
   );
 }

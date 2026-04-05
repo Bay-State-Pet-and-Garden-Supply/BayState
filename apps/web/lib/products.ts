@@ -21,9 +21,7 @@ const PRODUCT_SELECT = `
   images,
   is_special_order,
   is_taxable,
-  category,
   weight,
-  product_type,
   search_keywords,
   shopsite_pages,
   published_at,
@@ -35,7 +33,10 @@ const PRODUCT_SELECT = `
   created_at,
   updated_at,
   brand:brands(id, name, slug, logo_url),
-  ${PRODUCT_STOREFRONT_SETTINGS_SELECT}
+  product_categories(
+    category:categories(id, name, slug, parent_id, description, image_url, created_at)
+  ),
+  storefront_settings:product_storefront_settings(is_featured, pickup_only)
 `;
 
 /**
@@ -44,31 +45,29 @@ const PRODUCT_SELECT = `
  */
 interface ProductRow {
   id: string;
-  sku: string | null;
-  brand_id: string | null;
+  sku?: string | null;
+  brand_id?: string | null;
   name: string;
-  slug: string;
-  description: string | null;
-  long_description: string | null;
+  slug?: string;
+  description?: string | null;
+  long_description?: string | null;
   price: number;
-  stock_status: string;
-  images: unknown;
-  is_special_order: boolean | null;
-  is_taxable: boolean | null;
-  category: string | null;
-  product_type: string | null;
-  weight: number | null;
-  search_keywords: string | null;
-  shopsite_pages: unknown;
-  published_at: string | null;
-  gtin: string | null;
-  availability: string | null;
-  minimum_quantity: number | null;
-  quantity: number | null;
-  low_stock_threshold: number | null;
-  created_at: string;
-  updated_at: string;
-  brand:
+  stock_status?: string;
+  images?: unknown;
+  is_special_order?: boolean | null;
+  is_taxable?: boolean | null;
+  weight?: number | null;
+  search_keywords?: string | null;
+  shopsite_pages?: unknown;
+  published_at?: string | null;
+  gtin?: string | null;
+  availability?: string | null;
+  minimum_quantity?: number | null;
+  quantity?: number | null;
+  low_stock_threshold?: number | null;
+  created_at?: string;
+  updated_at?: string;
+  brand?:
     | {
         id: string;
         name: string;
@@ -82,52 +81,74 @@ interface ProductRow {
         logo_url: string | null;
       }>
     | null;
-  storefront_settings: ProductStorefrontSettingsRelation;
+  product_categories?: Array<{
+    category?: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      parent_id: string | null;
+      description: string | null;
+      image_url: string | null;
+      created_at: string;
+    }> | null;
+  }> | null;
+  storefront_settings?: ProductStorefrontSettingsRelation;
 }
 
 function transformProductRow(row: ProductRow): Product {
   const storefrontSettings = normalizeProductStorefrontSettings(row.storefront_settings);
   const brand = Array.isArray(row.brand) ? row.brand[0] ?? null : row.brand;
+  const categories = (row.product_categories || [])
+    .flatMap((productCategory) => productCategory.category || [])
+    .filter((category): category is NonNullable<typeof category> => Boolean(category));
+  const primaryCategory = categories[0];
   const product: Product = {
     id: row.id,
-    sku: row.sku,
-    brand_id: row.brand_id,
+    sku: row.sku ?? null,
+    brand_id: row.brand_id ?? null,
     name: row.name,
-    slug: row.slug,
-    description: row.description,
-    long_description: row.long_description,
+    slug: row.slug ?? row.id,
+    description: row.description ?? null,
+    long_description: row.long_description ?? null,
     price: Number(row.price),
     stock_status: (row.stock_status as Product['stock_status']) || 'in_stock',
     images: parseImages(row.images),
     is_featured: storefrontSettings.is_featured,
     is_special_order: Boolean(row.is_special_order),
     pickup_only: storefrontSettings.pickup_only,
-    weight: row.weight !== null ? Number(row.weight) : null,
-    search_keywords: row.search_keywords,
-    category: row.category,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    weight: row.weight !== undefined && row.weight !== null ? Number(row.weight) : null,
+    search_keywords: row.search_keywords ?? null,
+    category_ids: categories.map((category) => category.id),
+    created_at: row.created_at ?? new Date().toISOString(),
+    updated_at: row.updated_at ?? new Date().toISOString(),
     quantity: row.quantity ?? 0,
     low_stock_threshold: row.low_stock_threshold ?? 5,
     is_taxable: row.is_taxable ?? true,
-    published_at: row.published_at,
-    gtin: row.gtin,
-    availability: row.availability,
+    published_at: row.published_at ?? null,
+    gtin: row.gtin ?? null,
+    availability: row.availability ?? null,
     minimum_quantity: row.minimum_quantity ?? 0,
-    product_type: row.product_type,
-    shopsite_pages: parseImages(row.shopsite_pages),
+    shopsite_pages: parseShopsitePages(row.shopsite_pages),
+    brand: brand
+      ? {
+          id: brand.id,
+          name: brand.name,
+          slug: brand.slug,
+          logo_url: brand.logo_url ?? null,
+        }
+      : undefined,
+    primary_category: primaryCategory
+      ? {
+          id: primaryCategory.id,
+          name: primaryCategory.name,
+          slug: primaryCategory.slug,
+          parent_id: primaryCategory.parent_id,
+          description: primaryCategory.description,
+          image_url: primaryCategory.image_url,
+          created_at: primaryCategory.created_at,
+        }
+      : undefined,
   };
-
-  // Brand data is included via join
-  if (brand) {
-    product.brand = {
-      id: brand.id,
-      name: brand.name,
-      slug: brand.slug,
-      logo_url: brand.logo_url,
-    };
-  }
-
   return product;
 }
 
@@ -155,10 +176,35 @@ async function resolveCategoryProductIds(
     return null;
   }
 
+  // Fetch all categories to build the tree in memory
+  const { data: allCategories, error: catError } = await supabase
+    .from('categories')
+    .select('id, parent_id');
+
+  if (catError || !allCategories) {
+    console.error('Error fetching categories for resolution:', catError);
+    return [];
+  }
+
+  // Find all descendant IDs recursively
+  const descendantIds = new Set<string>([resolvedCategoryId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const cat of allCategories) {
+      if (cat.parent_id && descendantIds.has(cat.parent_id) && !descendantIds.has(cat.id)) {
+        descendantIds.add(cat.id);
+        added = true;
+      }
+    }
+  }
+
+  const targetCategoryIds = Array.from(descendantIds);
+
   const { data: productCategories, error } = await supabase
     .from('product_categories')
     .select('product_id')
-    .eq('category_id', resolvedCategoryId);
+    .in('category_id', targetCategoryIds);
 
   if (error) {
     console.error('Error resolving product categories:', error);
@@ -212,6 +258,28 @@ function parseImages(images: unknown): string[] {
 }
 
 /**
+ * Parse shopsite pages from various formats (JSONB array, string array, etc.)
+ */
+function parseShopsitePages(pages: unknown): string[] {
+  if (!pages) return [];
+  if (Array.isArray(pages)) {
+    return pages.filter((page): page is string => typeof page === 'string');
+  }
+  if (typeof pages === 'string') {
+    try {
+      const parsed = JSON.parse(pages);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((page): page is string => typeof page === 'string');
+      }
+    } catch {
+      // Not valid JSON, treat as single page
+      return pages.trim() ? [pages] : [];
+    }
+  }
+  return [];
+}
+
+/**
  * Fetches a single product by slug.
  * Uses products table which includes brand data.
  */
@@ -257,9 +325,56 @@ export async function getProductById(id: string): Promise<Product | null> {
   return transformProductRow(data);
 }
 
+async function resolveFacetProductIds(
+  supabase: ServerSupabaseClient,
+  facetsString?: string
+): Promise<string[] | null> {
+  if (!facetsString) return null;
+  
+  const facetPairs = facetsString.split(',').filter(Boolean);
+  if (facetPairs.length === 0) return null;
+
+  // Get all facet_values to resolve the slugs
+  const { data: facetValues, error } = await supabase
+    .from('facet_values')
+    .select('id, slug, facet_definitions(slug)');
+
+  if (error) {
+    console.error('Error resolving facet values:', JSON.stringify(error, null, 2));
+    return [];
+  }
+
+  if (!facetValues) return [];
+
+  // Find the facet_value_ids that match our requested pairs
+  const matchingValueIds = facetPairs.map(pair => {
+    const [defSlug, valSlug] = pair.split(':');
+    const match = facetValues.find(fv => 
+      fv.slug === valSlug && (fv.facet_definitions as any)?.slug === defSlug
+    );
+    return match?.id;
+  }).filter(Boolean) as string[];
+
+  if (matchingValueIds.length === 0) return [];
+
+  // Get all product IDs that have ANY of these facet values (OR logic for simplicity in v1)
+  const { data: productFacets, error: pfError } = await supabase
+    .from('product_facets')
+    .select('product_id')
+    .in('facet_value_id', matchingValueIds);
+
+  if (pfError) {
+    console.error('Error resolving product facets:', JSON.stringify(pfError, null, 2));
+    return [];
+  }
+
+  if (!productFacets) return [];
+
+  return Array.from(new Set(productFacets.map(pf => pf.product_id)));
+}
+
 /**
- * Fetches products with optional filtering and pagination.
- * Uses products table which includes brand data.
+ * Fetches products with optional filtering and pagination. * Uses products table which includes brand data.
  */
 export async function getFilteredProducts(options?: {
   brandSlug?: string;
@@ -272,13 +387,28 @@ export async function getFilteredProducts(options?: {
   maxPrice?: number;
   search?: string;
   featured?: boolean;
+  facets?: string;
   limit?: number;
   offset?: number;
 }): Promise<{ products: Product[]; count: number }> {
   const supabase = await createClient();
+  
+  // Base selection
+  let selectString = PRODUCT_SELECT;
+  
+  // If filtering by pet type, add the inner join to the select string
+  if (options?.petTypeId) {
+    selectString += `, product_pet_types!inner(pet_type_id)`;
+  }
+
   let query = supabase
     .from('products')
-    .select(PRODUCT_SELECT, { count: 'exact' });
+    .select(selectString, { count: 'exact' });
+
+  // Filter by pet type ID if provided
+  if (options?.petTypeId) {
+    query = query.eq('product_pet_types.pet_type_id', options.petTypeId);
+  }
 
   const categoryProductIds = await resolveCategoryProductIds(supabase, {
     categoryId: options?.categoryId,
@@ -292,6 +422,17 @@ export async function getFilteredProducts(options?: {
 
     query = query.in('id', categoryProductIds);
   }
+
+  const facetProductIds = await resolveFacetProductIds(supabase, options?.facets);
+  
+  if (facetProductIds) {
+    if (facetProductIds.length === 0) {
+      return { products: [], count: 0 };
+    }
+
+    query = query.in('id', facetProductIds);
+  }
+
   // Filter by brand slug - resolve to ID first for performance/simplicity
   if (options?.brandSlug) {
     const { data: brand } = await supabase
@@ -309,20 +450,6 @@ export async function getFilteredProducts(options?: {
   // Filter by brand ID
   if (options?.brandId) {
     query = query.eq('brand_id', options.brandId);
-  }
-  // Filter by pet type - join with product_pet_types table
-  if (options?.petTypeId) {
-    const { data: productIds } = await supabase
-      .from('product_pet_types')
-      .select('product_id')
-      .eq('pet_type_id', options.petTypeId);
-
-    if (productIds && productIds.length > 0) {
-      const ids = productIds.map((p) => p.product_id);
-      query = query.in('id', ids);
-    } else {
-      return { products: [], count: 0 };
-    }
   }
   // Filter by stock status
   if (options?.stockStatus) {
@@ -358,12 +485,12 @@ export async function getFilteredProducts(options?: {
   const { data, error, count } = await query;
 
   if (error) {
-    console.error('Error fetching products:', error);
+    console.error('Error fetching products:', JSON.stringify(error, null, 2));
     return { products: [], count: 0 };
   }
 
   return {
-    products: (data || []).map(transformProductRow),
+    products: ((data || []) as unknown as ProductRow[]).map(transformProductRow),
     count: count || 0,
   };
 }
@@ -463,7 +590,7 @@ export async function getProductGroupBySlug(
       product:products(
         id, sku, name, slug, description, long_description, price,
         stock_status, images, brand_id, is_special_order, is_taxable,
-        category, weight, product_type, search_keywords, shopsite_pages,
+        YV|        weight, search_keywords, shopsite_pages,
         published_at, gtin, availability, minimum_quantity, quantity,
         low_stock_threshold, created_at, updated_at,
         storefront_settings:product_storefront_settings(is_featured, pickup_only)
@@ -481,7 +608,7 @@ export async function getProductGroupBySlug(
   const members: Array<{ member: ProductGroupMember; product: Product }> = [];
   let defaultMember: ProductGroupMember | null = null;
 
-  for (const row of membersData || []) {
+  for (const row of (membersData || []) as unknown as Array<{ product: Record<string, unknown> | undefined; group_id: string; product_id: string; sort_order: number; is_default: boolean; display_label: string | null; metadata: Record<string, unknown> | null; created_at: string }>) {
     const product = row.product as Record<string, unknown> | undefined;
     if (!product) continue;
     const storefrontSettings = normalizeProductStorefrontSettings(
@@ -514,7 +641,7 @@ export async function getProductGroupBySlug(
       pickup_only: storefrontSettings.pickup_only,
       weight: typeof product.weight === 'number' ? (product.weight as number) : null,
       search_keywords: product.search_keywords as string | null,
-      category: product.category as string | null,
+
       created_at: (product.created_at as string | undefined) ?? '',
       updated_at: product.updated_at as string | undefined,
       quantity: typeof product.quantity === 'number' ? (product.quantity as number) : 0,
@@ -530,7 +657,6 @@ export async function getProductGroupBySlug(
         typeof product.minimum_quantity === 'number'
           ? (product.minimum_quantity as number)
           : 0,
-      product_type: product.product_type as string | null,
       shopsite_pages: parseImages(product.shopsite_pages),
     };
 

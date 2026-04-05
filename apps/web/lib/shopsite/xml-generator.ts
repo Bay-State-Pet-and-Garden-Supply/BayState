@@ -34,7 +34,7 @@ export interface ShopSiteExportProduct {
     long_description?: string | null;
     images: string[];
     category?: string | null;
-    product_type?: string | null;
+
     shopsite_pages?: string[] | null;
     search_keywords?: string | null;
     is_special_order?: boolean;
@@ -155,9 +155,7 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('ProductField24', product.category));
     }
 
-    if (product.product_type) {
-        lines.push(xmlElement('ProductField25', product.product_type));
-    }
+
 
     if (product.is_special_order) {
         lines.push(xmlElement('ProductField11', 'yes'));

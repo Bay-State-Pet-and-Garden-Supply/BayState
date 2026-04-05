@@ -128,8 +128,6 @@ def _build_data_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "brand": payload.get("brand"),
         "weight": payload.get("weight"),
         "availability": payload.get("availability"),
-        "category": payload.get("category"),
-        "product_type": payload.get("product_type"),
         "image_count": image_count,
     }
 
@@ -668,8 +666,6 @@ def run_job(
                             "images": images,
                             "availability": extracted_data.get("Availability"),
                             "category": extracted_data.get("Category"),
-                            "categories": extracted_data.get("Categories"),
-                            "product_type": extracted_data.get("ProductType"),
                             "item_number": extracted_data.get("ItemNumber")
                             or extracted_data.get("Item Number")
                             or extracted_data.get("BCI Item Number")

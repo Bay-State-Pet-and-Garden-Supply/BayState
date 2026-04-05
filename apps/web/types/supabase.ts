@@ -1625,27 +1625,7 @@ export type Database = {
           },
         ]
       }
-      product_types: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+
       product_variants: {
         Row: {
           barcode: string | null
@@ -1721,7 +1701,7 @@ export type Database = {
         Row: {
           availability: string | null
           brand_id: string | null
-          category: string | null
+
           created_at: string
           description: string | null
           gtin: string | null
@@ -1734,7 +1714,7 @@ export type Database = {
           minimum_quantity: number
           name: string
           price: number
-          product_type: string | null
+
           published_at: string | null
           quantity: number
           search_keywords: string | null
@@ -1748,7 +1728,7 @@ export type Database = {
         Insert: {
           availability?: string | null
           brand_id?: string | null
-          category?: string | null
+
           created_at?: string
           description?: string | null
           gtin?: string | null
@@ -1761,7 +1741,7 @@ export type Database = {
           minimum_quantity?: number
           name: string
           price: number
-          product_type?: string | null
+
           published_at?: string | null
           quantity?: number
           search_keywords?: string | null
@@ -1775,7 +1755,7 @@ export type Database = {
         Update: {
           availability?: string | null
           brand_id?: string | null
-          category?: string | null
+
           created_at?: string
           description?: string | null
           gtin?: string | null
@@ -1788,7 +1768,7 @@ export type Database = {
           minimum_quantity?: number
           name?: string
           price?: number
-          product_type?: string | null
+
           published_at?: string | null
           quantity?: number
           search_keywords?: string | null

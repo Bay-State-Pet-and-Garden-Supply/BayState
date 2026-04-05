@@ -41,6 +41,11 @@
       "sourceType": "github",
       "computedHash": "ac0ee19a6c01837e02fe4d79464acc59dd0fe203f9b27608d87617f865c1d814"
     },
+    "gemini-api-dev": {
+      "source": "google-gemini/gemini-skills",
+      "sourceType": "github",
+      "computedHash": "a72a3164552bd1764bca52d33806f4578572af3c279611a5bda420b6a9ca68c4"
+    },
     "honest-review": {
       "source": "wyattowalsh/agents",
       "sourceType": "github",

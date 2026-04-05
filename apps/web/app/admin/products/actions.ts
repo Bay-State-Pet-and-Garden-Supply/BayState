@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { syncProductCategoryLinks } from '@/lib/product-category-sync';
+import { syncProductCategoryIds } from '@/lib/product-category-sync';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
 
@@ -17,8 +17,6 @@ const productSchema = z.object({
     long_description: z.string().optional(),
     brand_id: z.string().optional().nullable(),
     weight: z.string().optional().nullable(),
-    category: z.string().optional().nullable(),
-    product_type: z.string().optional().nullable(),
     search_keywords: z.string().optional().nullable(),
     gtin: z.string().optional().nullable(),
     availability: z.string().optional().nullable(),
@@ -38,7 +36,9 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
     const supabase = await createClient();
 
     const rawBrandId = formData.get('brand_id');
+    const rawCategoryIds = formData.get('category_ids');
     const shopsitePagesRaw = formData.get('product_on_pages');
+    let categoryIds: string[] = [];
     
     const rawData: Record<string, unknown> = {
         name: formData.get('name'),
@@ -51,8 +51,6 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
         description: formData.get('description'),
         long_description: formData.get('long_description'),
         weight: formData.get('weight'),
-        category: formData.get('category'),
-        product_type: formData.get('product_type'),
         search_keywords: formData.get('search_keywords'),
         gtin: formData.get('gtin'),
         availability: formData.get('availability'),
@@ -78,6 +76,19 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
         }
     }
 
+    if (rawCategoryIds) {
+        try {
+            const parsedCategoryIds = JSON.parse(rawCategoryIds as string);
+            if (Array.isArray(parsedCategoryIds)) {
+                categoryIds = parsedCategoryIds.filter(
+                    (categoryId): categoryId is string => typeof categoryId === 'string' && categoryId.trim().length > 0
+                );
+            }
+        } catch (e) {
+            console.error('Failed to parse category_ids:', e);
+        }
+    }
+
     try {
         const validatedData = productSchema.parse(rawData);
 
@@ -91,7 +102,7 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
             return { success: false, error: 'Failed to update product in database' };
         }
 
-        await syncProductCategoryLinks(supabase, id, validatedData.category ?? null);
+        await syncProductCategoryIds(supabase, id, categoryIds);
 
         revalidatePath('/admin/products');
         return { success: true };
@@ -100,5 +111,109 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
             return { success: false, error: 'Validation failed: ' + err.issues[0].message };
         }
         return { success: false, error: 'Failed to update product' };
+    }
+}
+
+export async function bulkUpdateProducts(ids: string[], formData: FormData): Promise<ActionState> {
+    if (!ids || ids.length === 0) return { success: true };
+    const supabase = await createClient();
+
+    const rawData: Record<string, unknown> = {};
+    let categoryIds: string[] | undefined;
+    
+    // Only extract what was provided in formData (meaning it wasn't 'mixed' and was actively changed or kept)
+    if (formData.has('brand_id')) {
+        const val = formData.get('brand_id');
+        rawData.brand_id = val === '' ? null : val;
+    }
+    if (formData.has('search_keywords')) rawData.search_keywords = formData.get('search_keywords');
+    if (formData.has('stock_status')) rawData.stock_status = formData.get('stock_status');
+    if (formData.has('availability')) rawData.availability = formData.get('availability');
+    if (formData.has('is_special_order')) rawData.is_special_order = formData.get('is_special_order') === 'true';
+    if (formData.has('is_taxable')) rawData.is_taxable = formData.get('is_taxable') === 'true';
+    if (formData.has('published_at')) {
+        const val = formData.get('published_at');
+        rawData.published_at = val ? new Date(val as string).toISOString() : null;
+    }
+
+    if (formData.has('product_on_pages')) {
+        try {
+            rawData.shopsite_pages = JSON.parse(formData.get('product_on_pages') as string);
+        } catch (e) {
+            console.error('Failed to parse shopsite_pages for bulk update:', e);
+        }
+    }
+
+    if (formData.has('category_ids')) {
+        try {
+            const parsedCategoryIds = JSON.parse(formData.get('category_ids') as string);
+            if (Array.isArray(parsedCategoryIds)) {
+                categoryIds = parsedCategoryIds.filter(
+                    (categoryId): categoryId is string => typeof categoryId === 'string' && categoryId.trim().length > 0
+                );
+            }
+        } catch (e) {
+            console.error('Failed to parse category_ids for bulk update:', e);
+        }
+    }
+
+    try {
+        const validatedData = productSchema.partial().parse(rawData);
+
+        // Update main product data if there are any changes
+        if (Object.keys(validatedData).length > 0) {
+            const { error } = await supabase
+                .from('products')
+                .update(validatedData)
+                .in('id', ids);
+
+            if (error) {
+                console.error('Bulk Update Database Error:', error);
+                return { success: false, error: 'Failed to bulk update products' };
+            }
+        }
+
+        if (categoryIds !== undefined) {
+            for (const id of ids) {
+                await syncProductCategoryIds(supabase, id, categoryIds);
+            }
+        }
+
+        // Handle pet types update
+        if (formData.has('pet_types')) {
+            try {
+                const petTypes = JSON.parse(formData.get('pet_types') as string);
+                if (Array.isArray(petTypes)) {
+                    for (const id of ids) {
+                        // Delete existing
+                        await supabase
+                            .from('product_pet_types')
+                            .delete()
+                            .eq('product_id', id);
+
+                        // Insert new
+                        if (petTypes.length > 0) {
+                            const newLinks = petTypes.map(pt => ({
+                                product_id: id,
+                                pet_type_id: pt.pet_type_id
+                            }));
+                            await supabase
+                                .from('product_pet_types')
+                                .insert(newLinks);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to parse and update pet types for bulk update:', e);
+            }
+        }
+
+        revalidatePath('/admin/products');
+        return { success: true };
+    } catch (err) {
+        if (err instanceof z.ZodError) {
+            return { success: false, error: 'Validation failed: ' + err.issues[0].message };
+        }
+        return { success: false, error: 'Failed to bulk update products' };
     }
 }

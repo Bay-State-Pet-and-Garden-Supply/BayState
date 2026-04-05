@@ -106,7 +106,7 @@ export async function streamWorkbookRows(
     { header: 'Brand', key: 'brand', width: 24 },
     { header: 'Weight', key: 'weight', width: 16 },
     { header: 'Category', key: 'category', width: 24 },
-    { header: 'Product_Type', key: 'productType', width: 24 },
+
     { header: 'Stock_Status', key: 'stockStatus', width: 20 },
     { header: 'Selected Images', key: 'selectedImages', width: 80 },
   ];
@@ -123,7 +123,7 @@ export async function streamWorkbookRows(
       brand: asString(consolidated.brand) || asString(consolidated.brand_name) || asString(consolidated.brand_id) || asString(input.brand),
       weight: asString(consolidated.weight),
       category: asString(consolidated.category),
-      productType: asString(consolidated.product_type),
+
       stockStatus: asString(consolidated.stock_status),
       selectedImages: extractSelectedImages(product.selected_images) || extractSelectedImages(consolidated.images),
     }).commit();

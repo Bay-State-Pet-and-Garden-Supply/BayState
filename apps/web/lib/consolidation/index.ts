@@ -17,7 +17,6 @@ export type {
     BatchErrorResponse,
     ApplyResultsResponse,
     Category,
-    ProductType,
 } from './types';
 
 // Batch Service
@@ -36,13 +35,11 @@ export {
 export { getOpenAIClient, isOpenAIConfigured, CONSOLIDATION_CONFIG } from './openai-client';
 
 // Prompt Builder
-export { getCategories, getProductTypes, generateSystemPrompt, buildPromptContext } from './prompt-builder';
 
 // Taxonomy Validator
 export {
     findClosestMatch,
     validateCategory,
-    validateProductType,
     buildResponseSchema,
     validateRequiredConsolidationFields,
     validateConsolidationTaxonomy,

@@ -16,10 +16,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Plus, Package, ExternalLink, Pencil, RefreshCw, Search, X } from 'lucide-react';
+import { Plus, Package, ExternalLink, Pencil, RefreshCw, Search, X, CheckSquare, Square, Check } from 'lucide-react';
 import { ProductEditModal, PublishedProduct } from './ProductEditModal';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { splitMultiValueFacet } from '@/lib/facets/normalization';
 import { formatCurrency, cn, formatImageUrl } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 
@@ -28,15 +27,13 @@ interface AdminProductsClientProps {
     totalCount: number;
     brands: { id: string; name: string }[];
     categories: { id: string; name: string }[];
-    productTypes: string[];
 }
 
 export function AdminProductsClient({ 
     initialProducts, 
     totalCount, 
     brands,
-    categories,
-    productTypes
+    categories
 }: AdminProductsClientProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -46,7 +43,8 @@ export function AdminProductsClient({
     // Sync products with initialProducts prop (which changes on server re-render)
     const products = initialProducts;
     
-    const [editingProduct, setEditingProduct] = useState<PublishedProduct | null>(null);
+    const [editingProducts, setEditingProducts] = useState<PublishedProduct[] | null>(null);
+    const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
     
     // Search state
     const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -55,7 +53,6 @@ export function AdminProductsClient({
     // Filter states from URL
     const brandFilter = searchParams.get('brand') || 'all';
     const categoryFilter = searchParams.get('category') || 'all';
-    const typeFilter = searchParams.get('type') || 'all';
     const stockFilter = searchParams.get('stock') || 'all';
     const featuredFilter = searchParams.get('featured') || 'all';
 
@@ -86,7 +83,6 @@ export function AdminProductsClient({
     const hasActiveFilters = search !== '' || 
                             brandFilter !== 'all' || 
                             categoryFilter !== 'all' || 
-                            typeFilter !== 'all' || 
                             stockFilter !== 'all' || 
                             featuredFilter !== 'all';
 
@@ -118,14 +114,25 @@ export function AdminProductsClient({
     };
 
     const handleEdit = (product: PublishedProduct) => {
-        setEditingProduct(product);
+        setEditingProducts([product]);
+    };
+    
+    const handleBulkEdit = () => {
+        const selectedProducts = products.filter(p => selectedProductIds.has(p.id));
+        if (selectedProducts.length > 0) {
+            setEditingProducts(selectedProducts);
+        }
     };
 
-    const handeCloseModal = () => {
-        setEditingProduct(null);
+    const handleCloseModal = () => {
+        setEditingProducts(null);
     };
 
     const handleSave = () => {
+        // Clear selection after bulk save
+        if (editingProducts && editingProducts.length > 1) {
+            setSelectedProductIds(new Set());
+        }
         startTransition(() => {
             router.refresh();
         });
@@ -137,8 +144,26 @@ export function AdminProductsClient({
         });
     };
 
+    const toggleSelection = (productId: string) => {
+        const newSet = new Set(selectedProductIds);
+        if (newSet.has(productId)) {
+            newSet.delete(productId);
+        } else {
+            newSet.add(productId);
+        }
+        setSelectedProductIds(newSet);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedProductIds.size === products.length) {
+            setSelectedProductIds(new Set());
+        } else {
+            setSelectedProductIds(new Set(products.map(p => p.id)));
+        }
+    };
+
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 pb-20">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
@@ -159,7 +184,7 @@ export function AdminProductsClient({
                     </Button>
                     <Button asChild>
                         <Link href="/admin/pipeline">
-                            <Plus data-icon="inline-start" />
+                            <Plus className="mr-2 size-4" />
                             Add via Pipeline
                         </Link>
                     </Button>
@@ -195,18 +220,6 @@ export function AdminProductsClient({
                                 <SelectItem value="all">All Categories</SelectItem>
                                 {categories.map(cat => (
                                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        <Select value={typeFilter} onValueChange={(val) => updateFilters({ type: val })}>
-                            <SelectTrigger className="w-[160px]">
-                                <SelectValue placeholder="All Types" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Types</SelectItem>
-                                {productTypes.map(type => (
-                                    <SelectItem key={type} value={type}>{type}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -259,7 +272,7 @@ export function AdminProductsClient({
 
                         {hasActiveFilters && (
                             <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground hover:text-foreground h-9 px-2">
-                                <X data-icon="inline-start" className="size-3" />
+                                <X className="mr-1.5 size-3" />
                                 Clear
                             </Button>
                         )}
@@ -267,6 +280,26 @@ export function AdminProductsClient({
                 </div>
                 
                 <div className="flex items-center justify-between border-t pt-4">
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={toggleSelectAll}
+                            className="h-8 text-xs bg-muted/50"
+                            disabled={products.length === 0}
+                        >
+                            {selectedProductIds.size === products.length && products.length > 0 ? (
+                                <><CheckSquare className="mr-2 size-3.5" /> Deselect All</>
+                            ) : (
+                                <><Square className="mr-2 size-3.5" /> Select All Visible</>
+                            )}
+                        </Button>
+                        {selectedProductIds.size > 0 && (
+                            <Badge variant="secondary" className="font-normal">
+                                {selectedProductIds.size} selected
+                            </Badge>
+                        )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                         {searchParams.get('search') ? (
                             <>Found <span className="font-semibold text-foreground">{totalCount}</span> matching products</>
@@ -291,22 +324,38 @@ export function AdminProductsClient({
                     {products.map((product) => {
                         const images = parseImages(product.images);
                         const imageUrl = images[0];
+                        const isSelected = selectedProductIds.has(product.id);
 
                         return (
-                            <Card key={product.id} className="group flex flex-col overflow-hidden transition-all hover:shadow-md">
-                                <div className="relative aspect-square overflow-hidden bg-muted">
+                            <Card 
+                                key={product.id} 
+                                className={cn(
+                                    "group flex flex-col overflow-hidden transition-all hover:shadow-md relative cursor-pointer",
+                                    isSelected ? "ring-2 ring-primary border-primary" : "border-border/50"
+                                )}
+                                onClick={() => toggleSelection(product.id)}
+                            >
+                                <div className="absolute top-2 left-2 z-10">
+                                    <div className={cn(
+                                        "flex size-6 items-center justify-center rounded border bg-background/80 backdrop-blur transition-all",
+                                        isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border group-hover:border-primary/50"
+                                    )}>
+                                        {isSelected && <Check className="size-3.5" />}
+                                    </div>
+                                </div>
+                                <div className="relative aspect-square overflow-hidden bg-muted/30">
                                     {imageUrl && isValidImageUrl(imageUrl) ? (
                                         <Image
                                             src={imageUrl}
                                             alt={product.name}
                                             fill
-                                            className="object-cover transition-transform group-hover:scale-105"
+                                            className={cn("object-cover transition-transform duration-500", isSelected ? "scale-[1.02]" : "group-hover:scale-[1.03]")}
                                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                                             unoptimized
                                         />
                                     ) : (
-                                        <div className="flex h-full items-center justify-center text-muted-foreground">
-                                            <Package className="size-12" />
+                                        <div className="flex h-full items-center justify-center text-muted-foreground/30">
+                                            <Package className="size-16" />
                                         </div>
                                     )}
                                     <div className="absolute top-2 right-2 flex flex-col gap-1">
@@ -325,11 +374,6 @@ export function AdminProductsClient({
                                             {product.stock_status === 'in_stock' ? 'In Stock' :
                                                 product.stock_status === 'out_of_stock' ? 'Out of Stock' : 'Pre-order'}
                                         </Badge>
-                                        {product.quantity !== null && product.quantity !== undefined && (
-                                            <Badge variant="outline" className="bg-background/80 backdrop-blur-sm shadow-sm self-end">
-                                                Qty: {product.quantity}
-                                            </Badge>
-                                        )}
                                     </div>
                                 </div>
 
@@ -343,7 +387,7 @@ export function AdminProductsClient({
                                         {product.brand_name && (
                                             <p className="text-xs text-muted-foreground font-medium">{product.brand_name}</p>
                                         )}
-                                        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">{product.sku}</p>
+                                        <p className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wider">{product.sku}</p>
                                     </div>
                                 </CardHeader>
 
@@ -352,14 +396,19 @@ export function AdminProductsClient({
                                         <span className="text-lg font-bold text-foreground">
                                             {formatCurrency(Number(product.price))}
                                         </span>
+                                        {product.quantity !== null && product.quantity !== undefined && (
+                                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                Qty: {product.quantity}
+                                            </span>
+                                        )}
                                     </div>
 
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(product)}>
-                                            <Pencil data-icon="inline-start" />
+                                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                        <Button variant="secondary" size="sm" className="flex-1 bg-muted/50 hover:bg-muted" onClick={() => handleEdit(product)}>
+                                            <Pencil className="mr-2 size-3.5" />
                                             Edit
                                         </Button>
-                                        <Button variant="ghost" size="sm" asChild className="size-8 p-0" title="View in Storefront">
+                                        <Button variant="ghost" size="sm" asChild className="size-8 p-0 border border-border/50" title="View in Storefront">
                                             <Link href={`/products/${product.slug}`} target="_blank">
                                                 <ExternalLink className="size-4" />
                                                 <span className="sr-only">View in Storefront</span>
@@ -373,16 +422,38 @@ export function AdminProductsClient({
                 </div>
             )}
 
+            {/* Floating Action Bar for Bulk Edit */}
+            {selectedProductIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-8 fade-in duration-300">
+                    <div className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-background/90 backdrop-blur-xl border border-border/50 shadow-2xl shadow-primary/10">
+                        <div className="flex items-center gap-3">
+                            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <span className="text-sm font-bold">{selectedProductIds.size}</span>
+                            </div>
+                            <span className="text-sm font-medium">products selected</span>
+                        </div>
+                        <div className="w-px h-6 bg-border/50 mx-2" />
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedProductIds(new Set())} className="text-muted-foreground hover:text-foreground">
+                            Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleBulkEdit} className="shadow-md">
+                            <Pencil className="mr-2 size-4" />
+                            Edit Selected
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {totalCount > products.length && !searchParams.get('search') && (
                 <div className="flex flex-col items-center gap-3 py-6 border-t border-dashed">
                     <p className="text-sm text-muted-foreground">Only showing the most recent 50 products. Use the search bar to find others.</p>
                 </div>
             )}
 
-            {editingProduct && (
+            {editingProducts && (
                 <ProductEditModal
-                    product={editingProduct}
-                    onClose={handeCloseModal}
+                    products={editingProducts}
+                    onClose={handleCloseModal}
                     onSave={handleSave}
                 />
             )}

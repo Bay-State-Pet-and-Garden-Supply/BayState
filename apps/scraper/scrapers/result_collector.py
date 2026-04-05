@@ -80,8 +80,6 @@ class ResultCollector:
                     weight=result_data.get("Weight"),
                     description=result_data.get("Description"),
                     images=images,
-                    category=result_data.get("Category"),
-                    product_type=result_data.get("ProductType"),
                     scraped_price=result_data.get("Price"),
                     image_quality=image_quality,
                     features=result_data.get("Features"),

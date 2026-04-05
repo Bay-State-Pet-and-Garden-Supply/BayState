@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Info, Search, Plus, Check, X } from 'lucide-react';
+import { Save, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,13 +18,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PetTypeSelector } from './PetTypeSelector';
+import { SearchableMultiSelect } from './SearchableMultiSelect';
 import { updateProduct } from '@/app/admin/products/actions';
 import { cn } from '@/lib/utils';
 
@@ -38,8 +34,7 @@ export interface PublishedProduct {
     price: number;
     weight?: string | null;
     brand_id: string | null;
-    category?: string | null;
-    product_type?: string | null;
+    category_ids?: string[];
     search_keywords?: string | null;
     gtin?: string | null;
     availability?: string | null;
@@ -60,12 +55,18 @@ interface Brand {
     slug: string;
 }
 
+interface Category {
+    id: string;
+    name: string;
+}
+
 interface ProductPetType {
     pet_type_id: string;
 }
 
 export function ProductEditForm({ product }: { product: PublishedProduct }) {
     const [brands, setBrands] = useState<Brand[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -78,17 +79,7 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
     const [price, setPrice] = useState(String(product.price));
     const [weight, setWeight] = useState(product.weight || '');
     const [brandId, setBrandId] = useState(product.brand_id || 'none');
-    const [category, setCategory] = useState(product.category || '');
-    const [productType, setProductType] = useState<string[]>(
-        product.product_type
-            ? product.product_type.split('|').map((t) => t.trim()).filter(Boolean)
-            : []
-    );
-
-    const [productTypes, setProductTypes] = useState<{ id: string; name: string }[]>([]);
-    const [productTypeSearch, setProductTypeSearch] = useState("");
-    const [creatingProductType, setCreatingProductType] = useState(false);
-    const [productTypePopoverOpen, setProductTypePopoverOpen] = useState(false);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState(product.category_ids || []);
     const [searchKeywords, setSearchKeywords] = useState(product.search_keywords || '');
     const [gtin, setGtin] = useState(product.gtin || '');
     const [availability, setAvailability] = useState(product.availability || 'in stock');
@@ -130,26 +121,27 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
 
     const isValidImageUrl = (url: string) => url && (url.startsWith('/') || url.startsWith('http'));
     const images = parseImages(product.images);
+    const categoryOptions = categories.map((category) => ({ id: category.id, name: category.name }));
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const [brandsRes, petTypesRes, productTypesRes] = await Promise.all([
+                const [brandsRes, categoriesRes, petTypesRes] = await Promise.all([
                     fetch('/api/admin/brands'),
+                    fetch('/api/admin/categories'),
                     fetch(`/api/admin/products/${product.id}/pet-types`),
-                    fetch('/api/admin/product-types'),
                 ]);
                 if (brandsRes.ok) {
                     const data = await brandsRes.json();
                     setBrands(data.brands || []);
                 }
+                if (categoriesRes.ok) {
+                    const data = await categoriesRes.json();
+                    setCategories(data.categories || []);
+                }
                 if (petTypesRes.ok) {
                     const data = await petTypesRes.json();
                     setSelectedPetTypes(data.petTypes || []);
-                }
-                if (productTypesRes.ok) {
-                    const data = await productTypesRes.json();
-                    setProductTypes(data.productTypes || []);
                 }
             } catch (err) {
                 console.error('Failed to load data', err);
@@ -164,33 +156,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
         setProductOnPages(prev => prev.includes(page) ? prev.filter(p => p !== page) : [...prev, page]);
     };
 
-    const handleCreateProductType = async () => {
-        if (!productTypeSearch.trim()) return;
-        setCreatingProductType(true);
-        try {
-            const res = await fetch("/api/admin/product-types", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: productTypeSearch.trim() }),
-            });
-            if (res.ok) {
-                const { productType: newPT } = await res.json();
-                setProductTypes((prev) => [...prev, newPT].sort((a, b) => a.name.localeCompare(b.name)));
-                setProductType((prev) => [...prev, newPT.name]);
-                setProductTypeSearch("");
-                setProductTypePopoverOpen(false);
-                toast.success(`Product type "${newPT.name}" created`);
-            } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to create product type");
-            }
-        } catch {
-            toast.error("An error occurred while creating product type");
-        } finally {
-            setCreatingProductType(false);
-        }
-    };
-
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -202,8 +167,7 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
             formData.append('long_description', longDescription.trim());
             formData.append('price', price);
             if (weight) formData.append('weight', weight.trim());
-            if (category) formData.append('category', category.trim());
-            formData.append('product_type', productType.join('|'));
+            formData.append('category_ids', JSON.stringify(selectedCategoryIds));
             if (searchKeywords) formData.append('search_keywords', searchKeywords.trim());
             if (gtin) formData.append('gtin', gtin.trim());
             if (availability) formData.append('availability', availability.trim());
@@ -401,8 +365,14 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="category">Category</Label>
-                            <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} />
+                            <Label htmlFor="categories">Categories</Label>
+                            <SearchableMultiSelect
+                                options={categoryOptions}
+                                selected={selectedCategoryIds}
+                                onChange={setSelectedCategoryIds}
+                                placeholder="Select categories..."
+                                searchPlaceholder="Search categories..."
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-sm font-medium">Assign to ShopSite Pages</Label>
@@ -441,8 +411,9 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
                                     {images.filter(isValidImageUrl).map((img, idx) => (
-                                        <div key={idx} className="size-16 rounded-md border bg-background overflow-hidden relative">
-                                            <img src={img} alt={`Product image ${idx + 1}`} className="h-full w-full object-cover" />
+                                        <div key={img} className="size-16 rounded-md border bg-background overflow-hidden relative">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={img} alt={`Product view ${idx + 1}`} className="h-full w-full object-cover" />
                                         </div>
                                     ))}
                                 </div>

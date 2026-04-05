@@ -36,7 +36,7 @@ export function ProductAdminEdit({ product }: ProductAdminEditProps) {
 
             {isOpen && (
                 <ProductEditModal
-                    product={product}
+                    products={[product]}
                     onClose={() => setIsOpen(false)}
                     onSave={handleSave}
                 />

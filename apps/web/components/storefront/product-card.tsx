@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { type Product } from '@/lib/data';
+import { type Product } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { WishlistButton } from './wishlist-button';
@@ -13,10 +13,12 @@ interface ProductCardProps {
 
 /**
  * ProductCard - Displays a product in grid layouts.
- * Shows image, name, price, and stock status.
+ * Shows image, name, price, stock status, and fulfillment badges.
  */
 export function ProductCard({ product }: ProductCardProps) {
   const formattedPrice = formatCurrency(product.price);
+  // Calculate a 5% Autoship discount placeholder
+  const autoshipPrice = formatCurrency(product.price * 0.95);
 
   const rawImageSrc = product.images?.[0];
   const imageSrc = formatImageUrl(rawImageSrc);
@@ -28,27 +30,30 @@ export function ProductCard({ product }: ProductCardProps) {
         <WishlistButton productId={product.id} />
       </div>
       <Link href={`/products/${product.slug}`} className="block h-full">
-        <Card className="h-full cursor-pointer overflow-hidden border-zinc-200 bg-white transition-all duration-[--animate-duration-slow] hover:shadow-lg hover:border-zinc-300">
-          <CardContent className="flex h-full flex-col p-0">
-            {/* Product Image */}
-            <div className="relative aspect-square w-full overflow-hidden bg-zinc-50">
+        <Card className="h-full flex flex-col cursor-pointer overflow-hidden border-zinc-200 bg-white transition-all duration-[--animate-duration-slow] hover:shadow-lg hover:border-zinc-300">
+          <CardContent className="flex flex-1 flex-col p-0">
+            {/* Product Image Area */}
+            <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-white p-4">
               {hasValidImage ? (
-                <Image
-                  src={imageSrc!}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  className="object-cover transition-transform duration-[--animate-duration-slower] group-hover:scale-105"
-                />
+                <div className="relative h-full w-full">
+                  <Image
+                    src={imageSrc!}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-contain transition-transform duration-[--animate-duration-slower] group-hover:scale-105"
+                  />
+                </div>
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-zinc-300">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-zinc-50 text-zinc-300 rounded-md">
                   <ImageIcon className="size-[--icon-size-2xl]" />
                   <span className="text-xs font-medium text-zinc-400">No Image</span>
                 </div>
               )}
               
-              <div className="absolute left-3 top-3 flex flex-col gap-1.5">
-                {product.stock_status === 'out_of_stock' && (
+              {/* Badges Overlay */}
+              <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+                {product.stock_status === 'out_of_stock' && !product.is_special_order && (
                   <Badge variant="destructive" className="bg-[--color-stock-out-bg] hover:bg-[--color-stock-out-bg-hover] text-[--color-stock-out-text] shadow-sm">
                     Out of Stock
                   </Badge>
@@ -58,25 +63,48 @@ export function ProductCard({ product }: ProductCardProps) {
                     Pre-Order
                   </Badge>
                 )}
+                {product.pickup_only && (
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200 shadow-sm">
+                    Pickup Only
+                  </Badge>
+                )}
+                {product.is_special_order && (
+                  <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200 shadow-sm">
+                    Special Order
+                  </Badge>
+                )}
               </div>
             </div>
 
-            {/* Product Info */}
-            <div className="flex flex-1 flex-col p-4">
+            {/* Product Info Area */}
+            <div className="flex flex-1 flex-col p-4 pt-2">
               {product.brand && (
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <p className="mb-1 text-xs font-bold uppercase tracking-wide text-zinc-500">
                   {product.brand.name}
                 </p>
               )}
               
-              <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-zinc-900 group-hover:text-primary transition-colors">
+              <h3 className="mb-2 line-clamp-2 text-sm font-medium leading-tight text-zinc-800 group-hover:text-primary transition-colors">
                 {product.name}
               </h3>
               
-              <div className="mt-auto flex items-end justify-between pt-2">
-                <span className="text-lg font-bold tracking-tight text-zinc-900">
-                  {formattedPrice}
-                </span>
+              {/* Tiered Pricing Section */}
+              <div className="mt-auto flex flex-col gap-1 pt-2">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-bold tracking-tight text-zinc-900">
+                    {formattedPrice}
+                  </span>
+                </div>
+                
+                {/* Autoship Placeholder - Chewy Style */}
+                <div className="flex items-center gap-1 rounded-sm bg-blue-50 px-2 py-1 border border-blue-100">
+                  <span className="text-xs font-bold text-blue-700">
+                    {autoshipPrice}
+                  </span>
+                  <span className="text-[10px] font-medium text-blue-600">
+                    Autoship & Save
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>

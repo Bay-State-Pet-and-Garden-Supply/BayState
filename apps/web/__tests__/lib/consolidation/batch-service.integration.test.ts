@@ -58,7 +58,6 @@ describe('consolidation batch integration behavior', () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
             categories: ['Dog'],
-            productTypes: ['Dog Toys'],
         });
 
         const openAiMock = {
@@ -105,7 +104,6 @@ describe('consolidation batch integration behavior', () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
             categories: ['Dog'],
-            productTypes: ['Dog Toys'],
         });
 
         const outputLine = JSON.stringify({
@@ -125,7 +123,6 @@ describe('consolidation batch integration behavior', () => {
                                     search_keywords: 'dog toy, fetch toy, squeaker ball',
                                     product_on_pages: ['Dog Toys', 'Dog Supplies Shop All'],
                                     category: ['Dog'],
-                                    product_type: ['Dog Toys'],
                                     confidence_score: 0.93,
                                 }),
                             },
@@ -160,7 +157,6 @@ describe('consolidation batch integration behavior', () => {
                 expect.objectContaining({
                     sku: 'SKU-1',
                     category: 'Dog',
-                    product_type: 'Dog Toys',
                     search_keywords: 'dog toy, fetch toy, squeaker ball',
                     confidence_score: 0.93,
                 })
@@ -172,7 +168,6 @@ describe('consolidation batch integration behavior', () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
             categories: ['Horse Feed & Treats'],
-            productTypes: ['Treats'],
             shopsitePages: ['Horse Treats'],
         });
 
@@ -192,7 +187,6 @@ describe('consolidation batch integration behavior', () => {
                                     long_description: 'Horse treats.',
                                     product_on_pages: ['Horse Treats'],
                                     category: ['Horse Feed & Treats'],
-                                    product_type: ['Treats'],
                                     confidence_score: 0.95,
                                 }),
                             },
@@ -329,7 +323,6 @@ describe('consolidation batch integration behavior', () => {
                     search_keywords: 'dog toy, fetch toy, squeaker ball',
                     product_on_pages: 'Dog Toys|Dog Supplies Shop All',
                     category: 'Dog',
-                    product_type: 'Dog Toys',
                     confidence_score: 0.91,
                 },
             ],
