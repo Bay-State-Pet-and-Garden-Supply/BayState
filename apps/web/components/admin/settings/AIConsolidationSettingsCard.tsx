@@ -163,8 +163,9 @@ export function AIConsolidationSettingsCard() {
           <div>
             <CardTitle>AI Consolidation Settings</CardTitle>
             <CardDescription>
-              Consolidation now submits directly to Gemini batch processing. Configure the shared
-              Gemini API key and the default Gemini model used for product enrichment.
+              Consolidation now submits directly to Gemini batch processing. The
+              OpenAI migration is complete, so only the shared Gemini API key
+              and default Gemini model are configurable here.
             </CardDescription>
           </div>
         </div>
