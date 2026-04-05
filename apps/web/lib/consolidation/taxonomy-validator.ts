@@ -1,7 +1,7 @@
 /**
  * Taxonomy Validator
  *
- * Utilities for validating and normalizing category and product_type values
+ * Utilities for validating and normalizing category values
  * against the predefined taxonomy stored in Supabase.
  * Ported from BayStateTools.
  */
@@ -121,17 +121,6 @@ export function validateCategory(value: string | undefined | null, validCategori
     return findClosestMatch(value, validCategories);
 }
 
-/**
- * Validate and normalize a product type value against valid product types.
- * Returns the exact valid product type or the closest match.
- */
-export function validateProductType(value: string | undefined | null, validTypes: string[]): string {
-    if (!value || typeof value !== 'string') {
-        return validTypes[0] || '';
-    }
-    return findClosestMatch(value, validTypes);
-}
-
 const REQUIRED_STRING_FIELDS = [
     'name',
     'brand',
@@ -175,7 +164,6 @@ export function validateRequiredConsolidationFields(result: Record<string, unkno
  */
 export function buildResponseSchema(
     categories: string[],
-    productTypes: string[],
     shopsitePages: string[] = []
 ): object {
     return {
@@ -226,20 +214,12 @@ export function buildResponseSchema(
                         },
                         description: 'List of applicable product categories using exact values from the provided taxonomy list',
                     },
-                    product_type: {
-                        type: 'array',
-                        items: {
-                            type: 'string',
-                            enum: productTypes,
-                        },
-                        description: 'List of applicable product types using exact values from the provided taxonomy list',
-                    },
                     confidence_score: {
                         type: 'number',
                         description: 'Confidence score between 0.0 and 1.0',
                     },
                 },
-                required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'product_type', 'confidence_score'],
+                required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'confidence_score'],
                 additionalProperties: false,
             },
         },
@@ -248,12 +228,12 @@ export function buildResponseSchema(
 
 /**
  * Validate and normalize a full consolidation result.
- * Ensures category and product_type are valid taxonomy values.
+ * Ensures category is a valid taxonomy value.
+
  */
 export function validateConsolidationTaxonomy(
     result: Record<string, unknown>,
-    validCategories: string[],
-    validProductTypes: string[]
+    validCategories: string[]
 ): Record<string, unknown> {
     const validated = { ...result };
 
@@ -274,32 +254,10 @@ export function validateConsolidationTaxonomy(
         }
     }
 
-    if ('product_type' in validated) {
-        if (Array.isArray(validated.product_type)) {
-            const uniqueValues = new Set<string>();
-            const normalizedValues = validated.product_type
-                .map((value) => validateProductType(value, validProductTypes))
-                .filter((value) => {
-                    if (!value) return false;
-                    if (uniqueValues.has(value)) return false;
-                    uniqueValues.add(value);
-                    return true;
-                });
-            validated.product_type = normalizedValues.join('|');
-        } else {
-            validated.product_type = validateProductType(validated.product_type as string, validProductTypes);
-        }
-    }
-
     const categoryValue = typeof validated.category === 'string' ? validated.category : '';
-    const productTypeValue = typeof validated.product_type === 'string' ? validated.product_type : '';
 
     if (!categoryValue.trim()) {
         throw new Error('Invalid consolidation taxonomy: category is required');
-    }
-
-    if (!productTypeValue.trim()) {
-        throw new Error('Invalid consolidation taxonomy: product_type is required');
     }
 
     return validated;

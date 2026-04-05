@@ -79,3 +79,40 @@ export async function syncProductCategoryLinks(
         throw new Error(`Failed to link product categories: ${linkError.message}`);
     }
 }
+
+export async function syncProductCategoryIds(
+    supabase: SupabaseClient,
+    productId: string,
+    categoryIds: string[]
+) {
+    const uniqueCategoryIds = Array.from(
+        new Set(categoryIds.map((categoryId) => categoryId.trim()).filter(Boolean))
+    );
+
+    const { error: deleteError } = await supabase
+        .from('product_categories')
+        .delete()
+        .eq('product_id', productId);
+
+    if (deleteError) {
+        throw new Error(`Failed to replace product categories: ${deleteError.message}`);
+    }
+
+    if (uniqueCategoryIds.length === 0) {
+        return;
+    }
+
+    const { error: linkError } = await supabase
+        .from('product_categories')
+        .upsert(
+            uniqueCategoryIds.map((categoryId) => ({
+                product_id: productId,
+                category_id: categoryId,
+            })),
+            { onConflict: 'product_id, category_id' }
+        );
+
+    if (linkError) {
+        throw new Error(`Failed to link product categories: ${linkError.message}`);
+    }
+}

@@ -24,8 +24,6 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       price,
       weight,
       brand_id,
-      category,
-      product_type,
       search_keywords,
       gtin,
       availability,
@@ -38,6 +36,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       low_stock_threshold,
       published_at,
       images,
+      product_categories(category_id),
       storefront_settings:product_storefront_settings(is_featured, pickup_only)
     `)
     .eq('id', id)
@@ -57,6 +56,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   // Map database fields to the component expectations
   const formProduct = {
     ...product,
+    category_ids: (product.product_categories || [])
+      .map((productCategory: { category_id?: string | null }) => productCategory.category_id)
+      .filter((categoryId: string | null | undefined): categoryId is string => Boolean(categoryId)),
     product_on_pages: product.shopsite_pages,
   }
 

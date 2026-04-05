@@ -8,9 +8,8 @@
 import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 import {
     normalizeCategoryOptions,
-    normalizeProductTypeOptions,
 } from '@/lib/facets/normalization';
-import type { Category, ProductType } from './types';
+import type { Category } from './types';
 
 /**
  * Fetch categories from the database.
@@ -29,45 +28,25 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 /**
- * Fetch product types from the database.
- */
-export async function getProductTypes(): Promise<ProductType[]> {
-    const { createAdminClient } = await import('@/lib/supabase/server');
-    const supabase = await createAdminClient();
-    const { data, error } = await supabase.from('product_types').select('id, name').order('name');
-
-    if (error) {
-        console.error('[Consolidation] Failed to fetch product types:', error);
-        return [];
-    }
-
-    return normalizeProductTypeOptions(data || []);
-}
-
-/**
  * Generate the system prompt for product consolidation.
  * Includes taxonomy constraints and formatting rules.
  */
-export function generateSystemPrompt(categories: string[], productTypes: string[]): string {
+export function generateSystemPrompt(categories: string[]): string {
     const categoryGuidance =
         categories.length > 0
             ? categories.join(', ')
             : 'No category values were provided.';
-    const productTypeGuidance =
-        productTypes.length > 0
-            ? productTypes.join(', ')
-            : 'No product_type values were provided.';
     const pageGuidance = SHOPSITE_PAGES.join(', ');
 
     return `You consolidate multi-source product data into one storefront-ready canonical record.
 
-Use only values allowed by the response schema for category, product_type, and product_on_pages.
+Use only values allowed by the response schema for category and product_on_pages.
 
 Source trust rules:
 - Highest trust: "shopsite_input" because it reflects the current storefront record.
 - High trust: manufacturer and distributor/catalog sources.
 - Lower trust: marketplace and retailer listings such as Amazon, Walmart, eBay, and seller-provided labels.
-- When sources conflict on brand, category, product_type, or product_on_pages, prefer the highest-trust source with direct evidence.
+- When sources conflict on brand, category, or product_on_pages, prefer the highest-trust source with direct evidence.
 - Never let a marketplace seller label, alias, or "Brand: ..." prefix override higher-trust brand evidence.
 - If a source named "shopsite_input" includes product_on_pages, treat those as the current ShopSite assignments and preserve them unless higher-trust source evidence clearly supports a change.
 
@@ -94,7 +73,6 @@ Field rules:
 - weight: numeric string only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
 
 Allowed category values: ${categoryGuidance}
-Allowed product_type values: ${productTypeGuidance}
 Allowed product_on_pages values: ${pageGuidance}
 
 Return valid JSON only through the response schema. Every required string field must be non-empty.`;
@@ -105,19 +83,12 @@ Return valid JSON only through the response schema. Every required string field 
  */
 export async function buildPromptContext(): Promise<{
     systemPrompt: string;
-    categories: string[];
-    productTypes: string[];
     shopsitePages: string[];
 }> {
-    const [categories, productTypes] = await Promise.all([getCategories(), getProductTypes()]);
-
-    const categoryNames = categories.map((c) => c.name);
-    const productTypeNames = productTypes.map((t) => t.name);
+    const categories = await getCategories();
 
     return {
-        systemPrompt: generateSystemPrompt(categoryNames, productTypeNames),
-        categories: categoryNames,
-        productTypes: productTypeNames,
+        systemPrompt: generateSystemPrompt(categories.map((c) => c.name)),
         shopsitePages: [...SHOPSITE_PAGES],
     };
 }

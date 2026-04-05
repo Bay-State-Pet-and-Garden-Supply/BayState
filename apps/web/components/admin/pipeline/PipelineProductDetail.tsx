@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, CheckCircle, Package, Info, Search, Plus, Check } from 'lucide-react';
+import { X, Save, CheckCircle, Package, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
 import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
@@ -16,15 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ImageSelector } from './ImageSelector';
 import { Badge } from '@/components/ui/badge';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 
 interface Brand {
@@ -64,14 +57,8 @@ export function PipelineProductDetail({
   const [weight, setWeight] = useState('');
   const [brandId, setBrandId] = useState('none');
   const [category, setCategory] = useState<string[]>([]);
-  const [productType, setProductType] = useState<string[]>([]);
   const [productOnPages, setProductOnPages] = useState<string[]>([]);
 
-  // Product Type reference data state
-  const [productTypes, setProductTypes] = useState<{ id: string; name: string }[]>([]);
-  const [productTypeSearch, setProductTypeSearch] = useState("");
-  const [creatingProductType, setCreatingProductType] = useState(false);
-  const [productTypePopoverOpen, setProductTypePopoverOpen] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('imported');
   const [imageCandidates, setImageCandidates] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -80,10 +67,9 @@ export function PipelineProductDetail({
   useEffect(() => {
     async function fetchData() {
       try {
-        const [productRes, brandsRes, productTypesRes] = await Promise.all([
+        const [productRes, brandsRes] = await Promise.all([
           fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`),
           fetch('/api/admin/brands'),
-          fetch('/api/admin/product-types'),
         ]);
 
         if (!productRes.ok) {
@@ -92,11 +78,9 @@ export function PipelineProductDetail({
 
         const productData = await productRes.json();
         const brandsData = brandsRes.ok ? await brandsRes.json() : { brands: [] };
-        const productTypesData = productTypesRes.ok ? await productTypesRes.json() : { productTypes: [] };
 
         setProduct(productData.product);
         setBrands(brandsData.brands || []);
-        setProductTypes(productTypesData.productTypes || []);
 
         // Initialize form with consolidated data
         const consolidated = productData.product?.consolidated || {};
@@ -118,11 +102,6 @@ export function PipelineProductDetail({
         setCategory(Array.isArray(catData) 
           ? catData 
           : catData.split('|').map((c: string) => c.trim()).filter(Boolean)
-        );
-        const ptData = consolidated.product_type || input.product_type || '';
-        setProductType(Array.isArray(ptData) 
-          ? ptData 
-          : ptData.split('|').map((t: string) => t.trim()).filter(Boolean)
         );
         
         // Handle pages (product_on_pages is the internal field name)
@@ -210,35 +189,6 @@ export function PipelineProductDetail({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const handleCreateProductType = async () => {
-    if (!productTypeSearch.trim()) return;
-    setCreatingProductType(true);
-    try {
-      const res = await fetch("/api/admin/product-types", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: productTypeSearch.trim() }),
-      });
-      if (res.ok) {
-        const { productType: newPT } = await res.json();
-        setProductTypes((prev) =>
-          [...prev, newPT].sort((a, b) => a.name.localeCompare(b.name)),
-        );
-        setProductType((prev) => [...prev, newPT.name]);
-        setProductTypeSearch("");
-        setProductTypePopoverOpen(false);
-        toast.success(`Product type "${newPT.name}" created`);
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Failed to create product type");
-      }
-    } catch {
-      toast.error("An error occurred while creating product type");
-    } finally {
-      setCreatingProductType(false);
-    }
-  };
-
   const handleSave = async (andApprove = false) => {
     setSaving(true);
     setError(null);
@@ -251,7 +201,6 @@ export function PipelineProductDetail({
         brand_id: brandId === 'none' ? null : brandId,
         weight: weight.trim(),
         category: category,
-        product_type: productType.join('|'),
         product_on_pages: productOnPages,
         images: selectedImages
           .map((img) => img.trim())
@@ -313,10 +262,6 @@ export function PipelineProductDetail({
         : [...prev, page]
     );
   };
-
-  const filteredProductTypes = productTypes.filter((pt) =>
-    pt.name.toLowerCase().includes(productTypeSearch.toLowerCase())
-  );
 
   return (
     <div 
@@ -425,150 +370,32 @@ export function PipelineProductDetail({
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="category" className="text-sm font-medium">Category</Label>
-                    <div className="flex flex-wrap gap-2 p-2 rounded-md border bg-muted/30 min-h-[40px]">
-                      {category.map(cat => (
-                        <Badge key={cat} variant="secondary" className="gap-1">
-                          {cat}
-                          <X 
-                            className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                            onClick={() => setCategory(prev => prev.filter(c => c !== cat))}
-                          />
-                        </Badge>
-                      ))}
-                      <Input
-                        className="flex-1 min-w-[120px] h-6 border-none bg-transparent focus-visible:ring-0 p-0 text-sm"
-                        placeholder="Add category..."
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = e.currentTarget.value.trim();
-                            if (val && !category.includes(val)) {
-                              setCategory(prev => [...prev, val]);
-                              e.currentTarget.value = '';
-                            }
+                <div className="space-y-2">
+                  <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                  <div className="flex flex-wrap gap-2 p-2 rounded-md border bg-muted/30 min-h-[40px]">
+                    {category.map(cat => (
+                      <Badge key={cat} variant="secondary" className="gap-1">
+                        {cat}
+                        <X 
+                          className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                          onClick={() => setCategory(prev => prev.filter(c => c !== cat))}
+                        />
+                      </Badge>
+                    ))}
+                    <Input
+                      className="flex-1 min-w-[120px] h-6 border-none bg-transparent focus-visible:ring-0 p-0 text-sm"
+                      placeholder="Add category..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = e.currentTarget.value.trim();
+                          if (val && !category.includes(val)) {
+                            setCategory(prev => [...prev, val]);
+                            e.currentTarget.value = '';
                           }
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="productType" className="text-sm font-medium">Product Type</Label>
-                    <Popover
-                      open={productTypePopoverOpen}
-                      onOpenChange={setProductTypePopoverOpen}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          id="productType"
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={productTypePopoverOpen}
-                          className="w-full justify-between font-normal min-h-[40px] h-auto"
-                        >
-                          <div className="flex flex-wrap gap-1">
-                            {productType.length > 0 ? (
-                              productType.map((type) => (
-                                <Badge key={type} variant="secondary" className="gap-1">
-                                  {type}
-                                  <X 
-                                    className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setProductType(prev => prev.filter(t => t !== type));
-                                    }}
-                                  />
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                Select Product Types
-                              </span>
-                            )}
-                          </div>
-                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[var(--radix-popover-trigger-width)] p-0"
-                        align="start"
-                      >
-                        <div className="flex flex-col">
-                          <div className="flex items-center border-b px-3 py-2">
-                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                            <input
-                              className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                              placeholder="Search product types..."
-                              value={productTypeSearch}
-                              onChange={(e) =>
-                                setProductTypeSearch(e.target.value)
-                              }
-                            />
-                          </div>
-                          <div className="max-h-[200px] overflow-y-auto p-1">
-                            {filteredProductTypes.map((pt) => {
-                              const isSelected = productType.includes(pt.name);
-                              return (
-                                <div
-                                  key={pt.id}
-                                  className={cn(
-                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                    isSelected &&
-                                      "bg-accent text-accent-foreground",
-                                  )}
-                                  onClick={() => {
-                                    setProductType(prev => 
-                                      isSelected
-                                        ? prev.filter(t => t !== pt.name)
-                                        : [...prev, pt.name]
-                                    );
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      isSelected
-                                        ? "opacity-100"
-                                        : "opacity-0",
-                                    )}
-                                  />
-                                  {pt.name}
-                                </div>
-                              );
-                            })}
-                            {filteredProductTypes.length === 0 &&
-                              productTypeSearch && (
-                                <div className="p-2 text-xs text-muted-foreground italic">
-                                  No product types found.
-                                </div>
-                              )}
-                        </div>
-                          {productTypeSearch.trim() &&
-                            !productTypes.find(
-                              (pt) =>
-                                pt.name.toLowerCase() ===
-                                productTypeSearch.toLowerCase().trim(),
-                            ) && (
-                              <div className="border-t p-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start text-xs font-normal"
-                                  onClick={handleCreateProductType}
-                                  disabled={creatingProductType}
-                                >
-                                  <Plus className="mr-2 h-3 w-3" />
-                                  {creatingProductType
-                                    ? "Creating..."
-                                    : `Create "${productTypeSearch.trim()}"`}
-                                </Button>
-                              </div>
-                            )}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -686,4 +513,4 @@ export function PipelineProductDetail({
       </div>
     </div>
   );
-};
+}

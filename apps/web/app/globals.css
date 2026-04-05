@@ -21,13 +21,13 @@
 
   /* Button Heights
 
-  /* Button Heights (consistent touch targets) */
-  --size-btn-height-sm: 2rem;         /* 32px - small actions, table buttons */
-  --size-btn-height-default: 2.25rem; /* 36px - standard buttons */
-  --size-btn-height-lg: 2.5rem;       /* 40px - prominent CTAs */
-  --size-btn-height-icon-sm: 2.5rem;  /* 40px - icon-only small */
+  /* Button Heights (consistent touch targets - Retail Heavy) */
+  --size-btn-height-sm: 2.25rem;      /* 36px - small actions */
+  --size-btn-height-default: 2.75rem; /* 44px - standard buttons */
+  --size-btn-height-lg: 3.25rem;      /* 52px - prominent CTAs */
+  --size-btn-height-icon-sm: 2.25rem; /* 36px - icon-only small */
   --size-btn-height-icon: 2.75rem;    /* 44px - icon-only default */
-  --size-btn-height-icon-lg: 3rem;    /* 48px - icon-only large */
+  --size-btn-height-icon-lg: 3.25rem; /* 52px - icon-only large */
 
   /* Icon Sizes (standardized for consistency) */
   --icon-size-xs: 0.75rem;    /* 12px - very small indicators, badges */

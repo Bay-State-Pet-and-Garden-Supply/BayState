@@ -32,7 +32,7 @@ export const PipelineProductConsolidatedSchema = z.object({
     brand_id: z.string().optional(),
     stock_status: z.string().optional(),
     category: z.string().optional(),
-    product_type: z.string().optional(),
+
     product_on_pages: z.array(z.string()).optional(),
     weight: z.string().optional(),
     is_special_order: z.boolean().optional(),

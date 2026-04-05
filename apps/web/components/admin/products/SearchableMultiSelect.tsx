@@ -69,40 +69,43 @@ export function SearchableMultiSelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          asChild
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between font-normal min-h-10 h-auto px-3 py-2 text-left flex flex-wrap gap-1.5"
         >
-          {selected.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {selected.map((item) => (
-                <Badge
-                  key={item}
-                  variant="secondary"
-                  className="gap-1 px-1.5 py-0.5"
-                >
-                  {item}
-                  <button
-                    type="button"
-                    className="ml-1 rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    onClick={(e) => removeItem(e, item)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        removeItem(e as any, item);
-                      }
-                    }}
+          <div>
+            {selected.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {selected.map((item) => (
+                  <Badge
+                    key={item}
+                    variant="secondary"
+                    className="gap-1 px-1.5 py-0.5"
                   >
-                    <X className="size-3 text-muted-foreground hover:text-foreground" />
-                    <span className="sr-only">Remove {item}</span>
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-          <Search className="ml-auto size-4 shrink-0 opacity-50" />
+                    {item}
+                    <button
+                      type="button"
+                      className="ml-1 rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      onClick={(e) => removeItem(e, item)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          removeItem(e as any, item);
+                        }
+                      }}
+                    >
+                      <X className="size-3 text-muted-foreground hover:text-foreground" />
+                      <span className="sr-only">Remove {item}</span>
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+            <Search className="ml-auto size-4 shrink-0 opacity-50" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">

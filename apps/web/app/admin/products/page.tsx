@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { AdminProductsClient } from '@/components/admin/products/AdminProductsClient';
 import { PublishedProduct } from '@/components/admin/products/ProductEditModal';
-import { splitMultiValueFacet } from '@/lib/facets/normalization';
 import { normalizeProductStorefrontSettings } from '@/lib/product-storefront-settings';
 import { Metadata } from 'next';
 
@@ -13,10 +12,13 @@ export const metadata: Metadata = {
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; brand?: string; category?: string; type?: string; stock?: string; featured?: string }>;
+  searchParams: Promise<{ search?: string; brand?: string; category?: string; stock?: string; featured?: string }>;
 }) {
-  const { search, brand, category, type, stock, featured } = await searchParams;
+  const { search, brand, category, stock, featured } = await searchParams;
   const supabase = await createClient();
+  const productCategoriesSelect = category && category !== 'all'
+    ? 'product_categories!inner(category_id)'
+    : 'product_categories(category_id)';
 
   // Build the products query
   let productsQuery = supabase
@@ -34,8 +36,6 @@ export default async function AdminProductsPage({
         stock_status,
         images,
         brand_id,
-        category,
-        product_type,
         search_keywords,
         gtin,
         availability,
@@ -49,7 +49,7 @@ export default async function AdminProductsPage({
         created_at,
         brand:brands(id, name, slug),
         storefront_settings:product_storefront_settings(is_featured, pickup_only),
-        product_categories(category_id)
+        ${productCategoriesSelect}
       `,
       { count: 'exact' }
     )
@@ -64,19 +64,14 @@ export default async function AdminProductsPage({
     productsQuery = productsQuery.eq('brand_id', brand);
   }
   if (category && category !== 'all') {
-    // Note: product_categories is a join, filtering by it might be complex in a single query
-    // but we can try to filter by the 'category' field if it's populated
-    productsQuery = productsQuery.eq('category', category);
-  }
-  if (type && type !== 'all') {
-    productsQuery = productsQuery.ilike('product_type', `%${type}%`);
+    productsQuery = productsQuery.eq('product_categories.category_id', category);
   }
   if (stock && stock !== 'all') {
     productsQuery = productsQuery.eq('stock_status', stock);
   }
 
   // Fetch data in parallel
-  const [productsRes, brandsRes, categoriesRes, productTypesRes] = await Promise.all([
+  const [productsRes, brandsRes, categoriesRes] = await Promise.all([
     productsQuery,
     supabase
       .from('brands')
@@ -85,22 +80,13 @@ export default async function AdminProductsPage({
     supabase
       .from('categories')
       .select('id, name')
-      .order('name', { ascending: true }),
-    supabase
-      .from('products')
-      .select('product_type')
-      .not('product_type', 'is', null)
+      .order('name', { ascending: true })
   ]);
 
   const { data: products, count } = productsRes;
   const { data: brands } = brandsRes;
   const { data: categories } = categoriesRes;
   
-  // Get unique product types
-  const productTypes = Array.from(new Set((productTypesRes.data || [])
-    .flatMap(p => splitMultiValueFacet(p.product_type))))
-    .sort();
-
   // Transform products to match PublishedProduct interface
   const clientProducts: PublishedProduct[] = (products || []).map((product) => {
     const storefrontSettings = normalizeProductStorefrontSettings(product.storefront_settings);
@@ -121,8 +107,6 @@ export default async function AdminProductsPage({
       brand_id: product.brand_id,
       brand_name: brand?.name || null,
       brand_slug: brand?.slug || null,
-      category: product.category || null,
-      product_type: product.product_type || null,
       search_keywords: product.search_keywords || null,
       gtin: product.gtin || null,
       availability: product.availability || null,
@@ -146,7 +130,6 @@ export default async function AdminProductsPage({
       totalCount={count || 0}
       brands={brands || []}
       categories={categories || []}
-      productTypes={productTypes}
     />
   );
 }

@@ -42,7 +42,6 @@ export function InlineSearch() {
   // Focus input when opened
   useEffect(() => {
     if (isOpen) {
-        // Small delay to ensure input is rendered and transition started
         setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
@@ -50,9 +49,7 @@ export function InlineSearch() {
   // Close on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Only handle click outside if open
       if (!isOpen) return;
-      
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
          closeSearch();
       }
@@ -67,7 +64,7 @@ export function InlineSearch() {
       return [];
     }
 
-    const searchResults = searchIndex.search(query, { limit: 8 });
+    const searchResults = searchIndex.search(query, { limit: 6 });
     return searchResults.map((r) => {
       const item = r.item as SearchResult;
       return {
@@ -95,6 +92,14 @@ export function InlineSearch() {
     setQuery('');
   }, [router, closeSearch]);
 
+  const handleFullSearch = useCallback(() => {
+    if (query.trim()) {
+      router.push(`/products?search=${encodeURIComponent(query.trim())}`);
+      closeSearch();
+      setQuery('');
+    }
+  }, [query, router, closeSearch]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!isOpen) return;
@@ -110,63 +115,76 @@ export function InlineSearch() {
           break;
         case 'Enter':
           e.preventDefault();
-          if (results[boundedSelectedIndex]) {
+          // If we have a result highlighted, go to it. Otherwise do a full search.
+          if (results.length > 0 && selectedIndex < results.length) {
             navigateToResult(results[boundedSelectedIndex]);
+          } else {
+            handleFullSearch();
           }
           break;
         case 'Escape':
             e.preventDefault();
             closeSearch();
-            // Optional: clear query on close?
-            // setQuery(''); 
             inputRef.current?.blur();
             break;
       }
     },
-    [isOpen, results, boundedSelectedIndex, navigateToResult, closeSearch]
+    [isOpen, results, boundedSelectedIndex, navigateToResult, closeSearch, handleFullSearch, selectedIndex]
   );
 
   return (
-    <div ref={containerRef} className="relative z-50">
+    <div ref={containerRef} className="relative z-50 flex-1">
       <div 
         className={cn(
-            "flex items-center transition-all duration-300 ease-in-out relative",
-            isOpen ? "w-[280px]" : "w-11"
+            "flex items-center transition-all duration-300 ease-in-out relative origin-left",
+            isOpen ? "w-full max-w-xl" : "w-11"
         )}
       >
         {isOpen ? (
-            <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-700 pointer-events-none" />
-<Input
+            <form 
+              className="relative w-full" 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleFullSearch();
+              }}
+            >
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                <Input
                     ref={inputRef}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Search..."
-                    aria-label="Search products, services, and brands"
-                    className="pl-10 pr-10 h-10 bg-white text-zinc-900 border-none shadow-sm focus-visible:ring-2 focus-visible:ring-white/20"
-                    autoFocus
+                    placeholder="Search products, brands, or services..."
+                    aria-label="Search"
+                    className="pl-10 pr-24 h-11 bg-white text-zinc-900 border-none shadow-lg focus-visible:ring-2 focus-visible:ring-primary/20 rounded-lg text-base"
                   />
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    aria-label="Clear search"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-700 hover:text-zinc-700 hover:bg-zinc-100"
-                    onClick={() => { 
-                        setQuery(''); 
-                        closeSearch(); 
-                    }}
-                >
-                    <X className="h-4 w-4" />
-                </Button>
-            </div>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {query && (
+                    <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-9 w-9 text-zinc-400 hover:text-zinc-600"
+                        onClick={() => setQuery('')}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button 
+                    type="submit"
+                    className="h-9 px-3 text-xs bg-primary text-white hover:bg-primary/90 rounded-md"
+                  >
+                    Search
+                  </Button>
+                </div>
+            </form>
         ) : (
             <Button
                 variant="ghost"
                 size="icon"
                 className="h-11 w-11 text-white hover:bg-white/20"
                 onClick={openSearch}
-                aria-label="Search"
+                aria-label="Open search"
             >
                 <Search className="h-5 w-5" />
             </Button>
@@ -174,65 +192,82 @@ export function InlineSearch() {
       </div>
 
       {/* Results Dropdown */}
-      {isOpen && query.length >= 2 && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-zinc-200 max-h-[70vh] overflow-auto z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
-          <ul className="py-1">
-            {results.map((result, index) => {
-              const Icon = typeIcons[result.type];
-              const isSelected = index === boundedSelectedIndex;
+      {isOpen && query.length >= 2 && (
+        <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-2xl border border-zinc-200 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+          {results.length > 0 ? (
+            <>
+              <div className="px-4 py-2 bg-zinc-50 border-b border-zinc-100 flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Suggestions</span>
+                <span className="text-[10px] font-bold text-zinc-400">{results.length} found</span>
+              </div>
+              <ul>
+                {results.map((result, index) => {
+                  const Icon = typeIcons[result.type];
+                  const isSelected = index === boundedSelectedIndex;
 
-              return (
-                <li key={`${result.type}-${result.id}`}>
-                  <button
-                    className={cn(
-                        "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
-                        isSelected ? "bg-zinc-100" : "hover:bg-zinc-50"
-                    )}
-                    onClick={() => navigateToResult(result)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                  >
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-zinc-100">
-                      <Icon className="h-4 w-4 text-zinc-700" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-zinc-900 truncate">
-                          {result.name}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-700 bg-zinc-50 px-1.5 py-0.5 rounded border border-zinc-100">
-                          {typeLabels[result.type]}
-                        </span>
-                      </div>
-                      {result.description && (
-                        <p className="text-xs text-zinc-700 truncate mt-0.5">
-                          {result.description}
-                        </p>
-                      )}
-                    </div>
-                    {result.price && (
-                      <span className="text-sm font-medium text-zinc-900 whitespace-nowrap">
-                        {formatCurrency(result.price)}
-                      </span>
-                    )}
-                      <ArrowRight className="h-3 w-3 text-zinc-700 ml-2" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="border-t border-zinc-100 px-3 py-1.5 bg-zinc-50 text-[10px] text-zinc-700 flex justify-between items-center rounded-b-lg">
-             <span>Press <kbd className="font-sans border border-zinc-200 rounded px-1 bg-white">↵</kbd> to select</span>
-             <span><kbd className="font-sans border border-zinc-200 rounded px-1 bg-white">esc</kbd> to close</span>
-          </div>
+                  return (
+                    <li key={`${result.type}-${result.id}`}>
+                      <button
+                        className={cn(
+                            "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+                            isSelected ? "bg-primary/5" : "hover:bg-zinc-50"
+                        )}
+                        onClick={() => navigateToResult(result)}
+                        onMouseEnter={() => setSelectedIndex(index)}
+                      >
+                        <div className={cn(
+                          "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border",
+                          isSelected ? "bg-white border-primary/20" : "bg-zinc-100 border-transparent"
+                        )}>
+                          <Icon className={cn("h-5 w-5", isSelected ? "text-primary" : "text-zinc-500")} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("font-bold text-sm truncate", isSelected ? "text-primary" : "text-zinc-900")}>
+                              {result.name}
+                            </span>
+                            <span className="text-[9px] uppercase tracking-tighter font-black text-zinc-400 border border-zinc-200 px-1 rounded">
+                              {typeLabels[result.type]}
+                            </span>
+                          </div>
+                          {result.description && (
+                            <p className="text-xs text-zinc-500 truncate mt-0.5">
+                              {result.description}
+                            </p>
+                          )}
+                        </div>
+                        {result.price && (
+                          <span className="text-sm font-black text-zinc-900 whitespace-nowrap bg-zinc-100 px-2 py-1 rounded">
+                            {formatCurrency(result.price)}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <button 
+                onClick={handleFullSearch}
+                className="w-full py-3 bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+              >
+                See all results for &quot;{query}&quot;
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </>
+          ) : (
+            <div className="p-8 text-center">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 mb-3">
+                <Search className="h-6 w-6 text-zinc-400" />
+              </div>
+              <p className="text-sm font-bold text-zinc-900">No instant matches</p>
+              <p className="text-xs text-zinc-500 mb-4">But we might still have it!</p>
+              <Button size="sm" onClick={handleFullSearch} className="rounded-full px-6">
+                Try Full Search
+              </Button>
+            </div>
+          )}
         </div>
       )}
-
-       {/* Empty state */}
-       {isOpen && query.length >= 2 && results.length === 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-zinc-200 p-6 text-center z-[100]">
-            <p className="text-sm text-zinc-700">No results found for &quot;{query}&quot;</p>
-          </div>
-        )}
     </div>
   );
 }

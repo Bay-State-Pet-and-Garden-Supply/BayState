@@ -10,7 +10,7 @@ export interface CanonicalProductSourceRecord extends SourceRecord {
     images?: string[];
     category?: string;
     categories?: string[];
-    product_type?: string;
+
     ingredients?: string | string[];
     features?: string | string[];
     dimensions?: string;
@@ -71,8 +71,8 @@ const SOURCE_FIELD_ALIASES: Record<string, string> = {
     product_name: 'title',
     product_title: 'title',
     product_url: 'url',
-    product_type: 'product_type',
-    producttype: 'product_type',
+
+
     rating: 'ratings',
     ratings: 'ratings',
     review_count: 'reviews_count',
@@ -547,7 +547,7 @@ export function buildConsolidationSourcesPayload(
             'description',
             'long_description',
             'category',
-            'product_type',
+
             'weight',
             'search_keywords',
             'gtin',

@@ -27,7 +27,7 @@ export const ENRICHABLE_FIELDS = [
   'ingredients',
   'specifications',
   'category',
-  'product_type',
+
   'upc',
   'stock_status',
 ] as const;

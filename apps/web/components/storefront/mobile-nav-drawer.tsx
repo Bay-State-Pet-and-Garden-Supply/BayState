@@ -12,10 +12,10 @@ import {
 } from '@/components/ui/sheet';
 import { ShoppingBag, Package, Wrench, Info, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface MobileNavDrawerProps {
-  categories: Array<{ id: string; name: string; slug: string | null }>;
+  categories: Array<{ id: string; name: string; slug: string | null; parent_id?: string | null }>;
   petTypes: Array<{ id: string; name: string; icon: string | null }>;
   brands: Array<{ id: string; name: string; slug: string; logo_url: string | null }>;
   userRole: string | null;
@@ -39,6 +39,10 @@ export function MobileNavDrawer({
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
+  const topLevel = useMemo(() => {
+    return categories.filter(c => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories]);
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
@@ -51,7 +55,7 @@ export function MobileNavDrawer({
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-sm p-0">
+      <SheetContent side="right" className="w-full max-w-sm p-0 overflow-y-auto">
         <SheetHeader className="border-b px-4 py-4">
           <SheetTitle className="text-lg font-bold">Menu</SheetTitle>
         </SheetHeader>
@@ -98,31 +102,31 @@ export function MobileNavDrawer({
           )}
 
           {/* Categories Section */}
-          {petTypes.length > 0 && (
-            <>
-              <div className="my-2 border-t" />
-              <div className="px-4 py-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Shop by Pet
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {petTypes.slice(0, 6).map((pet) => (
+          <div className="my-4 border-t" />
+          <div className="px-4 py-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Shop by Department
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <div className="grid grid-cols-1 gap-1">
+                  {topLevel.map((cat) => (
                     <Link
-                      key={pet.id}
-                      href={`/products?petTypeId=${pet.id}`}
+                      key={cat.id}
+                      href={`/products?category=${cat.slug}`}
                       onClick={() => setIsOpen(false)}
-                      className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="block rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
-                      {pet.name}
+                      {cat.name.replace(' Department', '')}
                     </Link>
                   ))}
                 </div>
               </div>
-            </>
-          )}
+            </div>
+          </div>
 
           {/* Quick Links */}
-          <div className="mt-auto border-t pt-4">
+          <div className="mt-8 border-t pt-4">
             <div className="space-y-2 px-4">
               <Link
                 href="/cart"

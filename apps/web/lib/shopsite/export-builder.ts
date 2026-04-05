@@ -266,7 +266,7 @@ export function preparePublishedShopSiteExport(
             image_sources: imageSources,
             brand_folder: brandFolder,
             category: coalesceString(consolidated.category, input.category),
-            product_type: coalesceString(consolidated.product_type, input.product_type),
+
             shopsite_pages: parsePages(consolidated.product_on_pages ?? input.product_on_pages),
             search_keywords: coalesceString(consolidated.search_keywords, input.search_keywords),
             is_special_order: coalesceBoolean(consolidated.is_special_order, input.is_special_order) ?? false,

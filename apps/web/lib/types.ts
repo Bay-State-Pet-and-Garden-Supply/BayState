@@ -27,7 +27,6 @@ export interface Product {
   pickup_only?: boolean;
   weight?: number | null;
   search_keywords?: string | null;
-  category?: string | null;
   category_ids?: string[];
   created_at: string;
   updated_at?: string;
@@ -38,7 +37,6 @@ export interface Product {
   gtin?: string | null;
   availability?: string | null;
   minimum_quantity?: number | null;
-  product_type?: string | null;
   shopsite_pages?: string[] | null;
   // Relations
   brand?: Brand;

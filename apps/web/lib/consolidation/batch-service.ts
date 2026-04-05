@@ -8,12 +8,12 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getOpenAIClient, CONSOLIDATION_CONFIG, getConsolidationConfig } from './openai-client';
-import { buildPromptContext } from './prompt-builder';
+import { buildPromptContext, getCategories } from './prompt-builder';
 import {
     buildResponseSchema,
     validateCategory,
     validateConsolidationTaxonomy,
-    validateProductType,
+
     validateRequiredConsolidationFields,
 } from './taxonomy-validator';
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
@@ -51,7 +51,6 @@ const RELEVANT_FIELDS = [
     'long_description',
     'category',
     'categories',
-    'product_type',
     'product_on_pages',
     'flavor',
     'color',
@@ -98,7 +97,6 @@ function hasRelevantKeyName(key: string): boolean {
         'title',
         'confidence',
         'categories',
-        'product_type',
         'pet',
         'age',
         'life',
@@ -544,7 +542,6 @@ function collectExpectedAnimalSignals(
 function collectOutputAnimalSignals(nextFields: Record<string, unknown>): Set<AnimalSignal> {
     const detected = new Set<AnimalSignal>();
     collectAnimalSignalsFromValue(nextFields.category, detected);
-    collectAnimalSignalsFromValue(nextFields.product_type, detected);
     collectAnimalSignalsFromValue(nextFields.product_on_pages, detected);
     return detected;
 }
@@ -724,10 +721,12 @@ export async function submitBatch(
 
 
         // Build prompt context with taxonomy
-        const { systemPrompt, categories, productTypes, shopsitePages = [] } = await buildPromptContext();
+        const { systemPrompt, shopsitePages = [] } = await buildPromptContext();
+        const categoryList = await getCategories();
+        const categoryNames = categoryList.map(c => c.name);
 
         // Build JSON schema with enum constraints
-        const responseFormat = buildResponseSchema(categories, productTypes, shopsitePages);
+        const responseFormat = buildResponseSchema(categoryNames, shopsitePages);
 
         // Create JSONL content
         const content = createBatchContent(products, systemPrompt, responseFormat, config);
@@ -928,7 +927,9 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
     try {
         const { client } = runtime;
         // Fetch taxonomy for validation
-        const { categories, productTypes, shopsitePages = [] } = await buildPromptContext();
+        const { shopsitePages = [] } = await buildPromptContext();
+        const categoryList = await getCategories();
+        const categories = categoryList.map(c => c.name);
 
         const resolvedBatchId = await resolveOpenAIBatchId(batchId);
         const batch = await client.batches.retrieve(resolvedBatchId);
@@ -976,23 +977,17 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                         if (parsed) {
                             const normalized = normalizeConsolidationResult(parsed, shopsitePages);
                             const requiredFieldsValidated = validateRequiredConsolidationFields(normalized);
-                            const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories, productTypes);
+                            const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories);
 
                             const categoryValues = parseDelimitedTaxonomy(
                                 typeof validated.category === 'string' ? validated.category : undefined
-                            );
-                            const productTypeValues = parseDelimitedTaxonomy(
-                                typeof validated.product_type === 'string' ? validated.product_type : undefined
                             );
 
                             const normalizedCategory = categoryValues
                                 .map((value) => validateCategory(value, categories))
                                 .filter((value, index, array) => array.indexOf(value) === index);
-                            const normalizedProductType = productTypeValues
-                                .map((value) => validateProductType(value, productTypes))
-                                .filter((value, index, array) => array.indexOf(value) === index);
 
-                            if (normalizedCategory.length === 0 || normalizedProductType.length === 0) {
+                            if (normalizedCategory.length === 0) {
                                 results.push({
                                     sku,
                                     error: 'Invalid taxonomy values returned by consolidation model',
@@ -1011,7 +1006,6 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                                 sku,
                                 ...validated,
                                 category: normalizedCategory.join('|'),
-                                product_type: normalizedProductType.join('|'),
                                 ...(productOnPages ? { product_on_pages: productOnPages } : {}),
                             } as ConsolidationResult);
                         } else {
@@ -1327,7 +1321,6 @@ export async function applyConsolidationResults(
             const normalizedBrand = cleanBrandLabel(result.brand);
 
             const nextCategory = parseDelimitedTaxonomy(result.category);
-            const nextProductType = parseDelimitedTaxonomy(result.product_type);
             const parsedPrice =
                 typeof result.price === 'number'
                     ? result.price
@@ -1350,7 +1343,6 @@ export async function applyConsolidationResults(
                 ...(Number.isFinite(parsedPrice) ? { price: parsedPrice } : {}),
                 ...(normalizedBrand ? { brand: normalizedBrand } : {}),
                 ...(nextCategory.length > 0 ? { category: nextCategory.join('|') } : {}),
-                ...(nextProductType.length > 0 ? { product_type: nextProductType.join('|') } : {}),
                 ...(typeof result.confidence_score === 'number'
                     ? { confidence_score: result.confidence_score }
                     : {}),

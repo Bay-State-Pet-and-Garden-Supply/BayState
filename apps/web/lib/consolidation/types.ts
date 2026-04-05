@@ -107,7 +107,6 @@ export interface ConsolidationResult {
     weight?: string;
     price?: string;
     category?: string;
-    product_type?: string;
     product_on_pages?: string;
     description?: string;
     long_description?: string;
@@ -129,7 +128,6 @@ export interface ConsolidatedData {
     stock_status?: string;
     is_special_order?: boolean;
     category?: string;
-    product_type?: string;
     product_on_pages?: string[];
     weight?: string;
     search_keywords?: string;
@@ -189,14 +187,6 @@ export interface Category {
     id: string;
     name: string;
     slug: string | null;
-}
-
-/**
- * Product type from the product_types table.
- */
-export interface ProductType {
-    id: string;
-    name: string;
 }
 
 /**

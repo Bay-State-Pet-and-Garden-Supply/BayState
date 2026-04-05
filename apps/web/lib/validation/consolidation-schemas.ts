@@ -79,7 +79,7 @@ export const ConsolidationResultSchema = z.object({
     weight: z.string().optional(),
     price: z.string().optional(),
     category: z.string().optional(),
-    product_type: z.string().optional(),
+
     product_on_pages: z.string().optional(),
     description: z.string().optional(),
     long_description: z.string().optional(),
@@ -96,7 +96,7 @@ export const ConsolidatedDataSchema = z.object({
     brand_id: z.string().optional(),
     stock_status: z.string().optional(),
     category: z.string().optional(),
-    product_type: z.string().optional(),
+
     weight: z.string().optional(),
     product_on_pages: z.array(z.string()).optional(),
     is_special_order: z.boolean().optional(),
@@ -162,7 +162,7 @@ export const ScrapedDataItemSchema = z.object({
     images: z.array(z.string().url()).optional(),
     category: z.string().optional(),
     categories: z.array(z.string()).optional(),
-    product_type: z.string().optional(),
+
     ingredients: z.union([z.string(), z.array(z.string())]).optional(),
     features: z.union([z.string(), z.array(z.string())]).optional(),
     dimensions: z.string().optional(),

@@ -57,7 +57,6 @@ export async function getNavCategories(): Promise<Array<{
   const { data, error } = await supabase
     .from('categories')
     .select('id, name, slug, parent_id, display_order, image_url, is_featured')
-    .is('parent_id', null)
     .order('display_order');
 
   if (error) {
