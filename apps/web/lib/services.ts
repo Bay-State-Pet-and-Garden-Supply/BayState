@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 import { type Service } from '@/lib/data';
 
 /**
  * Fetches a single service by slug.
  */
 export async function getServiceBySlug(slug: string): Promise<Service | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('services')
     .select('*')
@@ -25,7 +25,7 @@ export async function getServiceBySlug(slug: string): Promise<Service | null> {
  * Fetches all active services.
  */
 export async function getAllActiveServices(): Promise<Service[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('services')
     .select('*')

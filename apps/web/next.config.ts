@@ -31,8 +31,8 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     // Image sizes for srcset
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    // Minimum cache TTL for optimized images (1 minute)
-    minimumCacheTTL: 60,
+    // Cache optimized images for a day to avoid repeated transforms on stable assets.
+    minimumCacheTTL: 86400,
     // Disable SVG upload for security (use only if needed)
     dangerouslyAllowSVG: false,
     // Content disposition for security

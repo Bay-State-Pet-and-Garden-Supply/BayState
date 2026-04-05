@@ -43,6 +43,9 @@ export async function createService(formData: FormData): Promise<ActionState> {
         }
 
         revalidatePath('/admin/services');
+        revalidatePath('/');
+        revalidatePath('/services');
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (err) {
         if (err instanceof z.ZodError) {
@@ -92,6 +95,9 @@ export async function updateService(id: string, formData: FormData): Promise<Act
         }
 
         revalidatePath('/admin/services');
+        revalidatePath('/');
+        revalidatePath('/services');
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (err) {
         if (err instanceof z.ZodError) {
@@ -115,6 +121,9 @@ export async function toggleServiceStatus(id: string, isActive: boolean): Promis
     }
 
     revalidatePath('/admin/services');
+    revalidatePath('/');
+    revalidatePath('/services');
+    revalidatePath('/', 'layout');
     return { success: true };
 }
 
@@ -133,5 +142,8 @@ export async function deleteService(id: string): Promise<ActionState> {
     }
 
     revalidatePath('/admin/services');
+    revalidatePath('/');
+    revalidatePath('/services');
+    revalidatePath('/', 'layout');
     return { success: true };
 }

@@ -6,11 +6,12 @@ import { getFeaturedProducts, getFilteredProducts } from '@/lib/products';
 // Mock the Supabase client
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createPublicClient: jest.fn(),
 }));
 
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 
 describe('getFeaturedProducts - Data Fetching Waterfall Fix', () => {
   let mockFrom: jest.Mock;
@@ -97,7 +98,7 @@ describe('getFeaturedProducts - Data Fetching Waterfall Fix', () => {
       return { select: mockProductSelect };
     });
 
-    mockCreateClient.mockResolvedValue({
+    mockCreatePublicClient.mockReturnValue({
       from: mockFrom,
     } as never);
   });
@@ -192,7 +193,7 @@ describe('getFilteredProducts - Embedded Join Verification', () => {
       return { select: mockSelect };
     });
 
-    mockCreateClient.mockResolvedValue({
+    mockCreatePublicClient.mockReturnValue({
       from: mockFrom,
     } as never);
   });

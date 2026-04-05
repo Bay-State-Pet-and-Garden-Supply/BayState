@@ -6,11 +6,12 @@ import { getFeaturedProducts, getFilteredProducts } from '@/lib/products';
 // Mock the Supabase client
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createPublicClient: jest.fn(),
 }));
 
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 
 describe('Issue #3: Data Fetching Waterfall - VERIFIED', () => {
     let mockFrom: jest.Mock;
@@ -66,7 +67,7 @@ describe('Issue #3: Data Fetching Waterfall - VERIFIED', () => {
             };
         });
 
-        mockCreateClient.mockResolvedValue({
+        mockCreatePublicClient.mockReturnValue({
             from: mockFrom,
         } as never);
     });

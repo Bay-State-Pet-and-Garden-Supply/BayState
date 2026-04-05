@@ -1,8 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import {
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY,
   requireSupabaseConfig,
 } from './config'
@@ -42,6 +40,24 @@ export async function createClient() {
             // In Server Actions, this should work if called correctly.
             console.warn('Could not set cookies:', error)
           }
+        },
+      },
+    }
+  )
+}
+
+export function createPublicClient() {
+  const { url, anonKey } = requireSupabaseConfig()
+
+  return createServerClient(
+    url,
+    anonKey,
+    {
+      cookies: {
+        getAll() {
+          return []
+        },
+        setAll() {
         },
       },
     }
@@ -91,7 +107,7 @@ export function createClientFromRequest(request: Request) {
             value,
           }))
         },
-        setAll(cookiesToSet) {
+        setAll() {
           // Can't set cookies from a non-middleware context without access to response
           // This is a no-op in Server Components
         },

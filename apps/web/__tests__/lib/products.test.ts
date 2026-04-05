@@ -6,11 +6,12 @@ import { getProductBySlug, getFilteredProducts } from '@/lib/products';
 // Mock the Supabase client
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createPublicClient: jest.fn(),
 }));
 
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 
 describe('Products Data Functions', () => {
   const mockSingle = jest.fn();
@@ -37,7 +38,7 @@ describe('Products Data Functions', () => {
     mockSelect.mockReturnValue({ eq: mockEq, order: mockOrder });
     mockFrom.mockReturnValue({ select: mockSelect });
 
-    mockCreateClient.mockResolvedValue({
+    mockCreatePublicClient.mockReturnValue({
       from: mockFrom,
     } as never);
   });

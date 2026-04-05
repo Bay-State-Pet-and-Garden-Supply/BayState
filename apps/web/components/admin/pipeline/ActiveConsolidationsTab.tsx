@@ -28,6 +28,7 @@ import type {
   ConsolidationJob,
   BatchHistoryJob,
 } from "@/components/admin/pipeline/consolidation";
+import { useDocumentVisible } from "@/hooks/useDocumentVisible";
 
 // ============================================================================
 // Types
@@ -284,6 +285,7 @@ function AISettingsDialog() {
 export function ActiveConsolidationsTab({
   className,
 }: ActiveConsolidationsTabProps) {
+  const isDocumentVisible = useDocumentVisible();
   const [jobs, setJobs] = useState<ConsolidationJob[]>([]);
   const [historyJobs, setHistoryJobs] = useState<BatchHistoryJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -331,11 +333,20 @@ export function ActiveConsolidationsTab({
   }, []);
 
   useEffect(() => {
-    fetchJobs();
-    fetchHistory();
-    const interval = setInterval(fetchJobs, 10000);
-    return () => clearInterval(interval);
+    void Promise.all([fetchJobs(), fetchHistory()]);
   }, [fetchJobs, fetchHistory]);
+
+  useEffect(() => {
+    if (!isDocumentVisible || jobs.length === 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void Promise.all([fetchJobs(), fetchHistory()]);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchHistory, fetchJobs, isDocumentVisible, jobs.length]);
 
   // Cancel a batch
   const handleCancelClick = (batchId: string) => {

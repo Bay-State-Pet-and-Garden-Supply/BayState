@@ -1,16 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   ShoppingCart,
-  Dog,
-  Cat,
-  Bird,
-  Fish,
-  Rabbit,
-  Bug,
   Facebook,
   Instagram,
   Twitter,
@@ -31,6 +25,22 @@ import {
 
 import { User } from "@supabase/supabase-js";
 import { UserMenu } from "@/components/auth/user-menu";
+import { createClient } from "@/lib/supabase/client";
+
+function normalizeStorefrontUserRole(user: User | null): string | null {
+  const metadataRoles = [
+    user?.app_metadata?.role,
+    user?.user_metadata?.role,
+  ];
+
+  for (const role of metadataRoles) {
+    if (role === "admin" || role === "staff" || role === "customer") {
+      return role;
+    }
+  }
+
+  return null;
+}
 
 export function StorefrontHeader({
   user,
@@ -39,8 +49,8 @@ export function StorefrontHeader({
   petTypes,
   brands,
 }: {
-  user: User | null;
-  userRole: string | null;
+  user?: User | null;
+  userRole?: string | null;
   categories: Array<{ id: string; name: string; slug: string | null; parent_id?: string | null }>;
   petTypes: Array<{ id: string; name: string; icon: string | null }>;
   brands: Array<{
@@ -52,6 +62,49 @@ export function StorefrontHeader({
 }) {
   const itemCount = useCartStore((state) => state.getItemCount());
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const hasServerProvidedAuth = user !== undefined || userRole !== undefined;
+  const [clientUser, setClientUser] = useState<User | null>(null);
+  const [clientUserRole, setClientUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (hasServerProvidedAuth) {
+      return;
+    }
+
+    const supabase = createClient();
+    let isActive = true;
+
+    async function syncUser() {
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+
+      if (!isActive) {
+        return;
+      }
+
+      setClientUser(currentUser ?? null);
+      setClientUserRole(normalizeStorefrontUserRole(currentUser ?? null));
+    }
+
+    void syncUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user ?? null;
+      setClientUser(nextUser);
+      setClientUserRole(normalizeStorefrontUserRole(nextUser));
+    });
+
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
+  }, [hasServerProvidedAuth]);
+
+  const resolvedUser = hasServerProvidedAuth ? (user ?? null) : clientUser;
+  const resolvedUserRole = hasServerProvidedAuth ? (userRole ?? null) : clientUserRole;
 
   // Group categories into a hierarchy for the Mega Menu
   const { topLevel, childrenMap } = useMemo(() => {
@@ -149,7 +202,7 @@ export function StorefrontHeader({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <UserMenu user={user} userRole={userRole} />
+              <UserMenu user={resolvedUser} userRole={resolvedUserRole} />
               <Button
                 variant="ghost"
                 size="icon"
@@ -290,7 +343,7 @@ export function StorefrontHeader({
           categories={categories}
           petTypes={petTypes}
           brands={brands}
-          userRole={userRole}
+          userRole={resolvedUserRole}
         />
         <Link href="/" className="flex items-center gap-2 group">
           <div className="h-10 w-10 relative bg-transparent rounded p-0.5">

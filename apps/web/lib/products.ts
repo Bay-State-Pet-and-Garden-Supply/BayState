@@ -1,12 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createPublicClient } from '@/lib/supabase/server';
 import {
   normalizeProductStorefrontSettings,
-  PRODUCT_STOREFRONT_SETTINGS_SELECT,
   type ProductStorefrontSettingsRelation,
 } from '@/lib/product-storefront-settings';
 import type { Product, ProductGroup, ProductGroupMember } from '@/lib/types';
 
-type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+type ProductReadClient = Awaited<ReturnType<typeof createPublicClient>>;
 
 const PRODUCT_SELECT = `
   id,
@@ -95,6 +94,26 @@ interface ProductRow {
   storefront_settings?: ProductStorefrontSettingsRelation;
 }
 
+interface FacetDefinitionLookup {
+  slug: string | null;
+}
+
+interface FacetValueLookup {
+  id: string;
+  slug: string | null;
+  facet_definitions: FacetDefinitionLookup | FacetDefinitionLookup[] | null;
+}
+
+function getFacetDefinitionSlug(
+  facetDefinitions: FacetValueLookup['facet_definitions']
+): string | null {
+  if (Array.isArray(facetDefinitions)) {
+    return facetDefinitions[0]?.slug ?? null;
+  }
+
+  return facetDefinitions?.slug ?? null;
+}
+
 function transformProductRow(row: ProductRow): Product {
   const storefrontSettings = normalizeProductStorefrontSettings(row.storefront_settings);
   const brand = Array.isArray(row.brand) ? row.brand[0] ?? null : row.brand;
@@ -153,7 +172,7 @@ function transformProductRow(row: ProductRow): Product {
 }
 
 async function resolveCategoryProductIds(
-  supabase: ServerSupabaseClient,
+  supabase: ProductReadClient,
   options: { categoryId?: string; categorySlug?: string }
 ): Promise<string[] | null> {
   let resolvedCategoryId = options.categoryId ?? null;
@@ -215,7 +234,7 @@ async function resolveCategoryProductIds(
 }
 
 async function resolveFeaturedProductIds(
-  supabase: ServerSupabaseClient,
+  supabase: ProductReadClient,
   featured?: boolean
 ): Promise<string[] | null> {
   if (!featured) {
@@ -284,7 +303,7 @@ function parseShopsitePages(pages: unknown): string[] {
  * Uses products table which includes brand data.
  */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
@@ -326,7 +345,7 @@ export async function getProductById(id: string): Promise<Product | null> {
 }
 
 async function resolveFacetProductIds(
-  supabase: ServerSupabaseClient,
+  supabase: ProductReadClient,
   facetsString?: string
 ): Promise<string[] | null> {
   if (!facetsString) return null;
@@ -335,7 +354,7 @@ async function resolveFacetProductIds(
   if (facetPairs.length === 0) return null;
 
   // Get all facet_values to resolve the slugs
-  const { data: facetValues, error } = await supabase
+  const { data: facetValuesData, error } = await supabase
     .from('facet_values')
     .select('id, slug, facet_definitions(slug)');
 
@@ -344,13 +363,15 @@ async function resolveFacetProductIds(
     return [];
   }
 
+  const facetValues = facetValuesData as FacetValueLookup[] | null;
+
   if (!facetValues) return [];
 
   // Find the facet_value_ids that match our requested pairs
   const matchingValueIds = facetPairs.map(pair => {
     const [defSlug, valSlug] = pair.split(':');
     const match = facetValues.find(fv => 
-      fv.slug === valSlug && (fv.facet_definitions as any)?.slug === defSlug
+      fv.slug === valSlug && getFacetDefinitionSlug(fv.facet_definitions) === defSlug
     );
     return match?.id;
   }).filter(Boolean) as string[];
@@ -391,7 +412,7 @@ export async function getFilteredProducts(options?: {
   limit?: number;
   offset?: number;
 }): Promise<{ products: Product[]; count: number }> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   
   // Base selection
   let selectString = PRODUCT_SELECT;
@@ -513,7 +534,7 @@ export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
  * Uses products table with embedded brand join.
  */
 export async function getAllProducts(): Promise<Product[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
@@ -562,7 +583,7 @@ export async function getProductGroupBySlug(
   members: Array<{ member: ProductGroupMember; product: Product }>;
   defaultMember: ProductGroupMember | null;
 }> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // First, fetch the group
   const { data: groupData, error: groupError } = await supabase

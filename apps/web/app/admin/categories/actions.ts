@@ -45,6 +45,9 @@ export async function createCategory(formData: FormData): Promise<ActionState> {
         }
 
         revalidatePath('/admin/categories');
+        revalidatePath('/');
+        revalidatePath('/products');
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (err) {
         if (err instanceof z.ZodError) {
@@ -81,6 +84,9 @@ export async function updateCategory(id: string, formData: FormData): Promise<Ac
         }
 
         revalidatePath('/admin/categories');
+        revalidatePath('/');
+        revalidatePath('/products');
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (err) {
         if (err instanceof z.ZodError) {
@@ -104,5 +110,8 @@ export async function deleteCategory(id: string): Promise<ActionState> {
     }
 
     revalidatePath('/admin/categories');
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/', 'layout');
     return { success: true };
 }

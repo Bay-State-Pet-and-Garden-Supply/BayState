@@ -17,7 +17,7 @@ def _canonicalize_url(url: str) -> str:
 
 
 class GeminiSearchClient(BaseSearchProvider):
-    def __init__(self, max_results: int = 15, model: str = "gemini-2.5-flash", api_key: str | None = None) -> None:
+    def __init__(self, max_results: int = 15, model: str = "gemini-3.1-flash-lite-preview", api_key: str | None = None) -> None:
         self.max_results = max_results
         self.model = model
         self.api_key = (api_key or os.getenv("GEMINI_API_KEY") or "").strip()

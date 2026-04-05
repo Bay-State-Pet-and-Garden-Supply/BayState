@@ -7,9 +7,9 @@ import { StickyCart } from '@/components/storefront/sticky-cart';
 import { getProducts, getActiveServices, getBrands, getNavCategories, getPetTypesNav } from '@/lib/data';
 import { getCampaignBanner } from '@/lib/settings';
 
-import { createClient } from '@/lib/supabase/server';
-import { getUserRole } from '@/lib/auth/roles';
 import { SkipLink } from '@/components/ui/skip-link';
+
+export const revalidate = 900;
 
 /**
  * StorefrontLayout - Layout wrapper for all customer-facing pages.
@@ -20,11 +20,7 @@ export default async function StorefrontLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-
-  // Fetch search data, campaign settings, and user session
-  const [{ data: { user } }, { products }, services, brands, categories, petTypes, campaignBanner] = await Promise.all([
-    supabase.auth.getUser(),
+  const [{ products }, services, brands, categories, petTypes, campaignBanner] = await Promise.all([
     getProducts({ limit: 100 }),
     getActiveServices(),
     getBrands(),
@@ -32,8 +28,6 @@ export default async function StorefrontLayout({
     getPetTypesNav(),
     getCampaignBanner(),
   ]);
-
-  const userRole = user ? await getUserRole(user.id) : null;
 
   // JSON-LD structured data for local business
   const jsonLd = {
@@ -88,9 +82,7 @@ export default async function StorefrontLayout({
             cycleInterval={campaignBanner.cycleInterval}
           />
         )}
-        <StorefrontHeader 
-          user={user} 
-          userRole={userRole} 
+        <StorefrontHeader
           categories={categories}
           petTypes={petTypes}
           brands={brands}

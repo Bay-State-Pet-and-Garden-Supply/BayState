@@ -61,6 +61,8 @@ class Crawl4AIExtractor:
         self._matching = matching
         self._extraction = ExtractionUtils(scoring)
         self._fallback_extractor = FallbackExtractor(scoring=scoring, matching=matching)
+        # Pre-generate schema for performance
+        self._product_schema = ProductData.model_json_schema()
 
     async def _extract_with_fallback(
         self,
@@ -153,6 +155,7 @@ class Crawl4AIExtractor:
                     "timeout": 30000,
                     "pruning_enabled": True,
                     "fallback_fetch_function": _fallback_wrapper,
+                    "wait_until": "networkidle",
                 },
             }
 
@@ -273,7 +276,7 @@ class Crawl4AIExtractor:
                 # SECOND PASS: If lightweight extraction failed, use LLM/CSS strategy
                 if self.extraction_strategy == "json_css":
                     from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-                    strategy = JsonCssExtractionStrategy(schema=ProductData.model_json_schema())
+                    strategy = JsonCssExtractionStrategy(schema=self._product_schema)
                     method = "json-css"
                 else:
                     from crawl4ai import LLMConfig
@@ -298,7 +301,7 @@ class Crawl4AIExtractor:
                             api_token=self._llm_runtime.api_key,
                             base_url=self._llm_runtime.base_url,
                         ),
-                        schema=ProductData.model_json_schema(),
+                        schema=self._product_schema,
                         extraction_type="schema",
                         instruction=instruction,
                         input_format="fit_markdown",

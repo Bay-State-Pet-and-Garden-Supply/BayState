@@ -31,6 +31,7 @@ import type { LogEntry } from "@/lib/realtime/useLogSubscription";
 import type { JobAssignment } from "@/lib/realtime/types";
 import { progressUpdateFromJobRecord } from "@/lib/scraper-logs";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
+import { useDocumentVisible } from "@/hooks/useDocumentVisible";
 
 interface ActiveJob {
   id: string;
@@ -174,6 +175,7 @@ function toActiveJob(job: JobAssignment): ActiveJob {
 }
 
 export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
+  const isDocumentVisible = useDocumentVisible();
   const router = useRouter();
   const [jobs, setJobs] = useState<ActiveJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,11 +230,20 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   }, []);
 
   useEffect(() => {
-    fetchJobs();
-    // Fallback polling at 30s (realtime handles most updates)
-    const interval = setInterval(fetchJobs, 30000);
-    return () => clearInterval(interval);
+    void fetchJobs();
   }, [fetchJobs]);
+
+  useEffect(() => {
+    if (!isDocumentVisible || isRealtimeConnected) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void fetchJobs();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [fetchJobs, isDocumentVisible, isRealtimeConnected]);
 
   // Memoize the specific job arrays to stabilize the effect dependency
   const pendingJobs = realtimeJobs.pending;
