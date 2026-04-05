@@ -125,6 +125,116 @@ CATIT_PDP_HTML = """
 </html>
 """
 
+ALSIP_URL = "https://alsipnursery.com/products/lake-valley-corn-natural-bright-organic"
+ALSIP_HTML = """
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Lake Valley, Corn, Natural Bright, Organic - Alsip Nursery</title>
+    <meta property="og:title" content="Lake Valley, Corn, Natural Bright, Organic" />
+    <meta
+      property="og:description"
+      content="Seed Depth: 1-2 in (3-5cm) Plant Space: 12 in (30cm) Row Space: 36 in (91cm) Sprouts In: 8-12 days Corn is a warm season tender annual."
+    />
+    <meta
+      property="og:image"
+      content="http://alsipnursery.com/cdn/shop/files/2310835.jpg?v=1735873160"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "http://schema.org",
+        "@type": "Product",
+        "brand": "LKVLL",
+        "sku": "2310835",
+        "name": "Lake Valley, Corn, Natural Bright, Organic",
+        "category": "",
+        "description": "Seed Depth: 1-2 in (3-5cm) Plant Space: 12 in (30cm) Row Space: 36 in (91cm) Sprouts In: 8-12 days Corn is a warm season tender annual.",
+        "image": {
+          "@type": "ImageObject",
+          "url": "https://alsipnursery.com/cdn/shop/files/2310835_1024x1024.jpg?v=1735873160",
+          "image": "https://alsipnursery.com/cdn/shop/files/2310835_1024x1024.jpg?v=1735873160"
+        }
+      }
+    </script>
+  </head>
+  <body></body>
+</html>
+"""
+
+JOHNSONS_URL = "https://www.johnsonsflorists.com/products/organic-eggplant-black-beauty-heirloom"
+JOHNSONS_HTML = """
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>organic-eggplant-black-beauty-heirloom</title>
+    <meta property="og:title" content="organic-eggplant-black-beauty-heirloom" />
+    <meta property="og:description" content="ORGANIC EGGPLANT BLACK BEAUTY HEIRLOOM" />
+    <meta
+      property="og:image"
+      content="https://static.wixstatic.com/media/dcbbe3_4687c8609f444af486cf99f356a50380~mv2.jpg/v1/fill/w_217,h_300,al_c,q_80/file.jpg"
+    />
+  </head>
+  <body></body>
+</html>
+"""
+
+UNCLE_JOHNS_URL = "https://unclejohnsplants.com/product/beet-detroit-dark-red-organic-seed-pack-lv"
+UNCLE_JOHNS_HTML = """
+<!doctype html>
+<html lang="en">
+  <head>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org/",
+        "@graph": [
+          {
+            "@context": "https://schema.org/",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "item": {
+                  "name": "Home",
+                  "@id": "https://unclejohnsplants.com"
+                }
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "item": {
+                  "name": "For the Garden",
+                  "@id": "https://unclejohnsplants.com/product-category/for-garden/"
+                }
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "item": {
+                  "name": "Beet Detroit Dark Red Organic Seed Pack LV",
+                  "@id": "https://unclejohnsplants.com/product/beet-detroit-dark-red-organic-seed-pack-lv"
+                }
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "Product",
+            "@id": "https://unclejohnsplants.com/product/beet-detroit-dark-red-organic-seed-pack-lv#product",
+            "name": "Beet Detroit Dark Red Organic Seed Pack LV",
+            "url": "https://unclejohnsplants.com/product/beet-detroit-dark-red-organic-seed-pack-lv",
+            "description": "Plump, dark roots with sweet, juicy flesh are perfect for canning, pickling, freezing, and fresh use. Botanical Name: Beta vulgaris. Matures In: 60 days.",
+            "image": "https://unclejohnsplants.com/wp-content/uploads/2026/01/4281-OrgBeet-DetroitDkRed-wm.webp",
+            "sku": "125248"
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body></body>
+</html>
+"""
+
 
 async def _extract_and_validate(
     *,
@@ -245,3 +355,60 @@ def test_prepare_search_results_prefers_exact_catit_pdp_over_brand_family_page()
     )
 
     assert ranked[0]["url"] == CATIT_PDP_URL
+
+
+@pytest.mark.asyncio
+async def test_live_snapshot_extracts_jsonld_image_object_brand_alias_and_ignores_instructional_size() -> None:
+    extraction, validation = await _extract_and_validate(
+        url=ALSIP_URL,
+        html=ALSIP_HTML,
+        sku="051178046680",
+        product_name="LV SEED ORGANIC CORN NATURAL BRIGHT",
+        brand="Lake Valley Seed",
+    )
+
+    assert extraction["success"] is True
+    assert extraction["brand"] == "Lake Valley Seed"
+    assert extraction["size_metrics"] is None
+    assert extraction["images"] == ["https://alsipnursery.com/cdn/shop/files/2310835_1024x1024.jpg?v=1735873160"]
+    assert "Seeds" in extraction["categories"]
+    assert "Vegetables" in extraction["categories"]
+    assert validation == (True, "ok")
+
+
+@pytest.mark.asyncio
+async def test_live_snapshot_humanizes_slug_titles_and_infers_seed_categories() -> None:
+    extraction, validation = await _extract_and_validate(
+        url=JOHNSONS_URL,
+        html=JOHNSONS_HTML,
+        sku="051178040572",
+        product_name="LV SEED ORGANIC EGGP LANT BLACK HEIRLOOM",
+        brand="Lake Valley Seed",
+    )
+
+    assert extraction["success"] is True
+    assert extraction["product_name"] == "Organic Eggplant Black Beauty Heirloom"
+    assert extraction["brand"] == "Lake Valley Seed"
+    assert extraction["images"] == [
+        "https://static.wixstatic.com/media/dcbbe3_4687c8609f444af486cf99f356a50380~mv2.jpg/v1/fill/w_217,h_300,al_c,q_80/file.jpg"
+    ]
+    assert "Seeds" in extraction["categories"]
+    assert "Vegetables" in extraction["categories"]
+    assert validation == (True, "ok")
+
+
+@pytest.mark.asyncio
+async def test_live_snapshot_uses_breadcrumb_categories_for_seed_packets() -> None:
+    extraction, validation = await _extract_and_validate(
+        url=UNCLE_JOHNS_URL,
+        html=UNCLE_JOHNS_HTML,
+        sku="051178042811",
+        product_name="LV SEED ORGANIC BEET DETROIT HEIRLOOM",
+        brand="Lake Valley Seed",
+    )
+
+    assert extraction["success"] is True
+    assert extraction["brand"] == "Lake Valley Seed"
+    assert "For the Garden" in extraction["categories"]
+    assert "Seeds" in extraction["categories"]
+    assert validation == (True, "ok")

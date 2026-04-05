@@ -57,51 +57,52 @@ def load_prompt_from_file(version: str) -> Optional[str]:
 
 def get_hardcoded_prompt() -> str:
     """Return the default hardcoded extraction prompt."""
-    return """Extract structured product data for a single SKU-locked product page.
+    return """Extract structured product data for a single product detail page.
 
-TARGET CONTEXT
+TARGET HINTS
 - SKU: {sku}
-- Expected Brand (may be null): {brand}
-- Expected Product Name: {product_name}
+- Expected Brand (soft hint): {brand}
+- Expected Product Name (soft hint): {product_name}
 
-CRITICAL EXTRACTION RULES
-1) SKU / VARIANT LOCK (FUZZY VALIDATION)
-   - Ensure extracted product refers to the same variant as the target SKU context.
-   - Match using fuzzy evidence across: SKU text, size/weight, color, flavor, form-factor terms.
-   - Do NOT output data for a different variant from carousel/recommendations.
+CORE POLICY
+- Use only evidence from the current page.
+- The target hints above are weak hints, not facts. Do not copy them unless the page supports them.
+- Extract the exact product or selected variant shown on the page.
+- Ignore cross-sells, related items, bundle suggestions, review snippets, shipping copy, and store-wide marketing text.
 
-2) BRAND INFERENCE
-   - If Expected Brand is Unknown/null, infer brand from the product title, breadcrumb, manufacturer field, or structured data.
-   - Return the canonical brand string (not store name).
+FIELD RULES
+1) product_name
+   - Return the clean PDP title for the exact item.
+   - Remove store suffixes, price suffixes, and slug noise when possible.
+   - Do not return a category name, breadcrumb trail, or retailer name.
 
-3) MUST-FILL CHECKLIST BEFORE FINAL OUTPUT
-   - product_name: required
-   - images: at least 1 required
-   - brand, description, size_metrics, categories: strongly preferred
-   - If a required field cannot be found, keep searching the same page context (JSON-LD, meta, visible PDP modules) before giving up.
+2) brand
+   - Return the canonical manufacturer brand, not the retailer or site name.
+   - Infer from title, manufacturer text, breadcrumb, specs, or structured data.
 
-4) SIZE METRICS EXTRACTION
-   - Extract size, weight, volume, or dimensions (e.g., "5 lb bag", "12oz bottle", "24-pack")
-   - Look in title, product specs, variant selectors, or packaging information
+3) description
+   - Return concise product-specific description or spec text for the exact item.
+   - Prefer the main description, feature bullets, or product specs.
+   - Exclude generic SEO copy, shipping text, and instructions unrelated to the product package.
 
-5) CATEGORIES EXTRACTION
-   - Extract product types, categories, or tags (e.g., ["Dog Food", "Dry Food", "Grain-Free"])
-   - Look in breadcrumbs, category navigation, product tags, or structured data
+4) size_metrics
+   - Extract package size, count, weight, volume, or product dimensions only.
+   - Ignore planting depth, plant spacing, days to maturity, dosage, and other instructional measurements unless they are the package size.
 
-6) IMAGE PRIORITIZATION
-    - images: Extract ALL high-resolution product image URLs from the image carousel, gallery thumbnails, and JSON-LD structured data blocks.
-    - Look carefully for `data-src` attributes, `<script type="application/ld+json">`, and elements with classes like `carousel` or `gallery`.
-    - Do not just grab the first image. Return absolute URLs only (https://...).
-    - Put primary hero image first, then additional product angles, variants, and detail shots.
-    - Exclude sprites, icons, logos, and unrelated recommendation images.
-    - DO NOT HALLUCINATE OR INVENT URLS. If you cannot find absolute URLs on the current domain, return an empty list.
+5) images
+   - Return absolute product image URLs only.
+   - Put the main hero image first, then additional images for the same product.
+   - Exclude logos, icons, generic banners, and recommendation images.
 
-7) DESCRIPTION QUALITY
-   - Extract meaningful product description/spec text for the exact variant, not generic category copy.
+6) categories
+   - Return 1-4 useful product categories from breadcrumbs, tags, department text, or structured data.
+   - Exclude generic crumbs like Home, Shop, Products, Brands, Departments, and the brand name itself.
 
-OUTPUT QUALITY BAR
-- Return the most complete, variant-accurate record possible.
-- Do not hallucinate missing values."""
+OUTPUT
+- Fill only these schema fields: product_name, brand, description, size_metrics, images, categories.
+- Do not hallucinate missing values.
+- If a text field cannot be verified, return an empty string.
+- If a list field cannot be verified, return []."""
 
 def build_extraction_instruction(sku: str, brand: Optional[str], product_name: Optional[str], prompt_version: str = "v1") -> str:
     """Build the LLM extraction instruction."""
@@ -147,14 +148,23 @@ def extract_product_from_meta_tags(
     twitter_image = extraction_utils.extract_meta_content(html_text, "twitter:image", property_attr=False) or ""
     meta_brand = extraction_utils.extract_meta_content(html_text, "product:brand", property_attr=True) or ""
 
-    candidate_name = og_title or twitter_title
+    candidate_name = extraction_utils.normalize_product_title(og_title or twitter_title)
     if not candidate_name:
         return None
     if product_name and not matching_utils.is_name_match(product_name, candidate_name):
         return None
 
+    candidate_description = extraction_utils.clean_text(og_description or twitter_description)
+    resolved_brand = extraction_utils.infer_brand(
+        explicit_brand=meta_brand or brand,
+        candidate_name=candidate_name,
+        description=candidate_description,
+        source_url=source_url,
+        expected_name=product_name,
+    )
+
     if brand:
-        brand_candidate = meta_brand or candidate_name
+        brand_candidate = resolved_brand or candidate_name
         if not matching_utils.is_brand_match(brand, brand_candidate, source_url):
             return None
 
@@ -163,15 +173,22 @@ def extract_product_from_meta_tags(
     if not images:
         return None
 
-    candidate_description = og_description or twitter_description
+    categories = extraction_utils.infer_categories(
+        html_text=html_text,
+        source_url=source_url,
+        candidate_name=candidate_name,
+        expected_name=product_name,
+        explicit_brand=resolved_brand or brand,
+    )
+    size_source = f"{candidate_name} {extraction_utils.strip_instructional_copy(candidate_description)}"
     return {
         "success": True,
         "product_name": candidate_name,
-        "brand": meta_brand or brand,
+        "brand": resolved_brand,
         "description": candidate_description,
-        "size_metrics": extraction_utils.extract_size_metrics(f"{candidate_name} {candidate_description}"),
+        "size_metrics": extraction_utils.extract_size_metrics(size_source),
         "images": images,
-        "categories": ["Product"],
+        "categories": categories or ["Product"],
         "confidence": 0.8,
         "url": source_url,
     }

@@ -73,6 +73,15 @@ class TestPromptLoading:
         assert "price: required" in prompt
         assert "availability: required" in prompt
 
+    def test_load_v4_prompt_from_file(self):
+        prompt = load_prompt_from_file("v4")
+
+        assert prompt is not None
+        assert "Use only evidence from the current page." in prompt
+        assert "soft hint" in prompt.lower()
+        assert "price normalization" not in prompt.lower()
+        assert "availability normalization" not in prompt.lower()
+
     def test_fallback_to_hardcoded_when_file_missing(self):
         with patch.object(Path, "exists", return_value=False):
             prompt = load_prompt_from_file("nonexistent")
@@ -85,7 +94,7 @@ class TestPromptLoading:
             prompt_version="nonexistent",
         )
 
-        assert "Extract structured product data for a single SKU-locked product page" in instruction
+        assert "Extract structured product data for a single product detail page" in instruction
         assert "TEST123" in instruction
         assert "TestBrand" in instruction
         assert "Test Product" in instruction
@@ -162,6 +171,15 @@ class TestHardcodedPrompt:
         assert "{sku}" in prompt
         assert "{brand}" in prompt
         assert "{product_name}" in prompt
+
+    def test_hardcoded_prompt_is_schema_aligned(self):
+        prompt = get_hardcoded_prompt().lower()
+
+        assert "product_name" in prompt
+        assert "size_metrics" in prompt
+        assert "categories" in prompt
+        assert "price normalization" not in prompt
+        assert "availability normalization" not in prompt
 
 
 class TestPromptVersionHandling:

@@ -22,7 +22,7 @@ class TestCSSExtractionStrategy:
 
     def test_init_with_schema(self, sample_schema):
         """Test strategy initialization with schema."""
-        with patch("src.crawl4ai_engine.strategies.css_strategy.import_module") as mock_import:
+        with patch("src.crawl4ai_engine.strategies.base.import_module") as mock_import:
             mock_extraction_module = MagicMock()
             mock_strategy_cls = MagicMock()
             mock_extraction_module.extraction_strategy = {"JsonCssExtractionStrategy": mock_strategy_cls}
@@ -38,7 +38,7 @@ class TestCSSExtractionStrategy:
 
     def test_build_schema_from_yaml_selectors_simple(self):
         """Test building schema from simple YAML selectors."""
-        with patch("src.crawl4ai_engine.strategies.css_strategy.import_module"):
+        with patch("src.crawl4ai_engine.strategies.base.import_module"):
             from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
 
             selectors = [
@@ -57,7 +57,7 @@ class TestCSSExtractionStrategy:
 
     def test_build_schema_from_yaml_selectors_with_base_selector(self):
         """Test building schema with base selector."""
-        with patch("src.crawl4ai_engine.strategies.css_strategy.import_module"):
+        with patch("src.crawl4ai_engine.strategies.base.import_module"):
             from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
 
             selectors = {
@@ -74,7 +74,7 @@ class TestCSSExtractionStrategy:
 
     def test_build_schema_nested_fields(self):
         """Test building schema with nested fields."""
-        with patch("src.crawl4ai_engine.strategies.css_strategy.import_module"):
+        with patch("src.crawl4ai_engine.strategies.base.import_module"):
             from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
 
             selectors = [
@@ -96,7 +96,7 @@ class TestCSSExtractionStrategy:
 
     def test_build_schema_nested_list(self):
         """Test building schema with nested list."""
-        with patch("src.crawl4ai_engine.strategies.css_strategy.import_module"):
+        with patch("src.crawl4ai_engine.strategies.base.import_module"):
             from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
 
             selectors = [
@@ -118,7 +118,7 @@ class TestCSSExtractionStrategy:
     @pytest.mark.asyncio
     async def test_extract_success(self, sample_schema):
         """Test successful extraction."""
-        with patch("src.crawl4ai_engine.strategies.css_strategy.import_module") as mock_import:
+        with patch("src.crawl4ai_engine.strategies.base.import_module") as mock_import:
             mock_extraction_module = MagicMock()
             mock_strategy_cls = MagicMock()
             mock_strategy_instance = MagicMock()
@@ -142,7 +142,7 @@ class TestCSSExtractionStrategy:
     @pytest.mark.asyncio
     async def test_extract_json_decode_error(self, sample_schema):
         """Test extraction with JSON decode error falls back to raw."""
-        with patch("src.crawl4ai_engine.strategies.css_strategy.import_module") as mock_import:
+        with patch("src.crawl4ai_engine.strategies.base.import_module") as mock_import:
             mock_extraction_module = MagicMock()
             mock_strategy_cls = MagicMock()
             mock_strategy_instance = MagicMock()
@@ -180,7 +180,7 @@ class TestXPathExtractionStrategy:
 
     def test_init_with_schema(self, sample_schema):
         """Test strategy initialization with schema."""
-        with patch("src.crawl4ai_engine.strategies.xpath_strategy.import_module") as mock_import:
+        with patch("src.crawl4ai_engine.strategies.base.import_module") as mock_import:
             mock_extraction_module = MagicMock()
             mock_strategy_cls = MagicMock()
             mock_extraction_module.extraction_strategy = {"JsonXPathExtractionStrategy": mock_strategy_cls}
@@ -196,7 +196,7 @@ class TestXPathExtractionStrategy:
 
     def test_build_schema_from_yaml_selectors(self):
         """Test building schema from YAML selectors."""
-        with patch("src.crawl4ai_engine.strategies.xpath_strategy.import_module"):
+        with patch("src.crawl4ai_engine.strategies.base.import_module"):
             from src.crawl4ai_engine.strategies.xpath_strategy import XPathExtractionStrategy
 
             selectors = [
@@ -214,7 +214,7 @@ class TestXPathExtractionStrategy:
     @pytest.mark.asyncio
     async def test_extract_success(self, sample_schema):
         """Test successful extraction."""
-        with patch("src.crawl4ai_engine.strategies.xpath_strategy.import_module") as mock_import:
+        with patch("src.crawl4ai_engine.strategies.base.import_module") as mock_import:
             mock_extraction_module = MagicMock()
             mock_strategy_cls = MagicMock()
             mock_strategy_instance = MagicMock()
@@ -244,10 +244,12 @@ class TestExtractorFallbackBehavior:
         """Create a Crawl4AIExtractor with mocked collaborators."""
         return Crawl4AIExtractor(
             headless=True,
-            llm_model="gpt-4o",
+            llm_model="gemini-3.1-flash-lite-preview",
             scoring=MagicMock(),
             matching=MagicMock(),
             extraction_strategy="llm",
+            llm_provider="gemini",
+            llm_api_key="test-key",
         )
 
     @pytest.fixture
@@ -375,10 +377,12 @@ class TestExtractorFallbackBehavior:
         """Test that json_css extraction uses the JSON/CSS strategy on the second crawl."""
         extractor = Crawl4AIExtractor(
             headless=True,
-            llm_model="gpt-4o",
+            llm_model="gemini-3.1-flash-lite-preview",
             scoring=MagicMock(),
             matching=MagicMock(),
             extraction_strategy="json_css",
+            llm_provider="gemini",
+            llm_api_key="test-key",
         )
         extractor._extraction.extract_product_from_html_jsonld = MagicMock(return_value=None)
 
@@ -401,7 +405,7 @@ class TestExtractorFallbackBehavior:
                     "description": "A product",
                     "size_metrics": "1 lb",
                     "images": ["https://example.com/image.jpg"],
-                    "categories": ["Product"],
+                    "categories": ["Garden Supplies"],
                 },
             },
         ]
@@ -585,21 +589,17 @@ class TestFallbackChain:
 
     def test_css_to_xpath_fallback(self, sample_schema):
         """Test CSS can fall back to XPath."""
-        with (
-            patch("src.crawl4ai_engine.strategies.css_strategy.import_module") as mock_css,
-            patch("src.crawl4ai_engine.strategies.xpath_strategy.import_module") as mock_xpath,
-        ):
+        with patch("src.crawl4ai_engine.strategies.base.import_module") as mock_import:
             # Setup CSS mock
             mock_extraction_css = MagicMock()
             mock_strategy_cls_css = MagicMock()
             mock_extraction_css.extraction_strategy = {"JsonCssExtractionStrategy": mock_strategy_cls_css}
-            mock_css.return_value = mock_extraction_css
 
             # Setup XPath mock
             mock_extraction_xpath = MagicMock()
             mock_strategy_cls_xpath = MagicMock()
             mock_extraction_xpath.extraction_strategy = {"JsonXPathExtractionStrategy": mock_strategy_cls_xpath}
-            mock_xpath.return_value = mock_extraction_xpath
+            mock_import.side_effect = [mock_extraction_css, mock_extraction_xpath]
 
             from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
             from src.crawl4ai_engine.strategies.xpath_strategy import XPathExtractionStrategy
