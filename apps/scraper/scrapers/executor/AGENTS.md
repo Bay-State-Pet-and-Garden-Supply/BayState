@@ -6,7 +6,7 @@
 ```
 executor/
 ├── workflow_executor.py   # Main orchestrator (~589 lines)
-├── browser_manager.py     # Browser lifecycle management
+├── browser_manager.py     # Browser lifecycle
 ├── selector_resolver.py   # Element finding and extraction
 ├── step_executor.py       # Step execution with retry logic
 ├── debug_capture.py       # Debug artifact capture
@@ -15,94 +15,30 @@ executor/
 
 ## MODULES
 
-### workflow_executor.py
-Main orchestrator for workflow execution:
-- Loads and validates API-published config payloads
-- Manages browser lifecycle via BrowserManager
-- Executes workflow steps sequentially
-- Handles errors and retry logic
-- Emits events for monitoring
-
-Key class: `WorkflowExecutor`
-
-### browser_manager.py
-Browser lifecycle management:
-- Initialize/quit Playwright browser
-- Navigation with timeout handling
-- HTTP status monitoring
-- Page state management
-
-Key class: `BrowserManager`
-
-### selector_resolver.py
-Element finding and extraction:
-- `find_element_safe()` - Safe element lookup with timeout
-- `find_elements_safe()` - Multiple element lookup
-- `extract_value_from_element()` - Extract text/attributes
-- CSS and XPath selector support
-
-Key class: `SelectorResolver`
-
-### step_executor.py
-Step execution with retry:
-- Execute individual workflow steps
-- Retry logic with exponential backoff
-- Circuit breaker pattern
-- Error classification
-
-Key class: `StepExecutor`
-
-### debug_capture.py
-Debug artifact capture:
-- Screenshots on failure
-- Page source capture
-- Console log collection
-- Network request logging
-
-Key functions: `capture_screenshot()`, `capture_page_source()`
-
-### normalization.py
-Result normalization:
-- Price formatting
-- Unit standardization
-- Text cleanup (strip, lowercase)
-- Image URL processing
-
-Key class: `ResultNormalizer`
+**workflow_executor.py:** Loads API config, manages browser lifecycle, executes steps, handles errors.
+**browser_manager.py:** Initialize/quit Playwright, navigation, HTTP status, page state.
+**selector_resolver.py:** `find_element_safe()`, `find_elements_safe()`, CSS/XPath support.
+**step_executor.py:** Execute steps with exponential backoff, circuit breaker, error classification.
+**debug_capture.py:** Screenshots, page source, console logs, network requests on failure.
+**normalization.py:** Price formatting, unit standardization, text cleanup, image URL processing.
 
 ## ARCHITECTURE
 
-### Before (God Class)
-```
-WorkflowExecutor (797 lines)
-  - Browser management
-  - Selector resolution
-  - Step execution
-  - Debug capture
-  - Normalization
-```
-
-### After (Decomposed)
-```
-WorkflowExecutor (589 lines)
-  - Orchestration only
-  
-BrowserManager      - Browser lifecycle
-SelectorResolver    - Element finding
-StepExecutor        - Step execution
-debug_capture       - Debug artifacts
-normalization       - Result transformation
-```
+Decomposed from single 797-line god class:
+- `WorkflowExecutor` (589 lines) - Orchestration only
+- `BrowserManager` - Browser lifecycle
+- `SelectorResolver` - Element finding
+- `StepExecutor` - Step execution
+- `debug_capture` - Debug artifacts
+- `normalization` - Result transformation
 
 ## USAGE
 ```python
 from scrapers.executor.workflow_executor import WorkflowExecutor
 from core.api_client import ScraperAPIClient
-from scrapers.parser.yaml_parser import ScraperConfigParser
 
 client = ScraperAPIClient()
-published = client.get_published_config("amazon")
-config = ScraperConfigParser().load_from_dict(published["config"])
+config = client.get_published_config("amazon")
 executor = WorkflowExecutor(config)
 results = await executor.run(["sku123"])
 ```

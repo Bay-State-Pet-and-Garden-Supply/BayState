@@ -7,11 +7,7 @@
 events/
 ├── emitter.py             # EventEmitter - central event bus
 ├── websocket_server.py    # WebSocket server for real-time streaming
-├── handlers/              # Event handlers
-│   ├── console.py         # Console logging handler
-│   ├── extraction.py      # Extraction event handler
-│   ├── login.py           # Login event handler
-│   └── selector.py        # Selector event handler
+├── handlers/              # Event handlers (console, extraction, login, selector)
 ├── base.py                # Base event classes
 ├── extraction.py          # Extraction event definitions
 ├── login.py               # Login event definitions
@@ -20,7 +16,6 @@ events/
 
 ## EVENT EMITTER
 
-### EventEmitter
 Central event bus with WebSocket support:
 ```python
 from scrapers.events.emitter import EventEmitter
@@ -30,97 +25,32 @@ emitter.on("extraction.complete", handler)
 emitter.emit("extraction.complete", data)
 ```
 
-Features:
-- Event subscription with `on(event, handler)`
-- Event emission with `emit(event, data)`
-- Async handler support
-- WebSocket broadcasting
-- Event persistence
+Features: subscribe with `on()`, emit with `emit()`, async handlers, WebSocket broadcast, persistence.
 
 ## EVENT TYPES
 
-### Extraction Events
-- `extraction.start` - Extraction started
-- `extraction.complete` - Extraction finished
-- `extraction.error` - Extraction failed
-- `extraction.field_found` - Field extracted
-
-### Login Events
-- `login.start` - Login process started
-- `login.success` - Login successful
-- `login.failed` - Login failed
-- `login.captcha_detected` - CAPTCHA encountered
-
-### Selector Events
-- `selector.attempt` - Selector lookup attempted
-- `selector.found` - Selector found element
-- `selector.not_found` - Selector missed element
-- `selector.timeout` - Selector timed out
-
-### Workflow Events
-- `workflow.start` - Workflow started
-- `workflow.step` - Step executed
-- `workflow.complete` - Workflow finished
-- `workflow.error` - Workflow error
+**Extraction:** `extraction.start`, `extraction.complete`, `extraction.error`, `extraction.field_found`
+**Login:** `login.start`, `login.success`, `login.failed`, `login.captcha_detected`
+**Selector:** `selector.attempt`, `selector.found`, `selector.not_found`, `selector.timeout`
+**Workflow:** `workflow.start`, `workflow.step`, `workflow.complete`, `workflow.error`
 
 ## WEBSOCKET SERVER
 
-Real-time event streaming via WebSocket:
-```python
-from scrapers.events.websocket_server import WebSocketServer
-
-server = WebSocketServer(port=8765)
-await server.start()
-```
-
-Use cases:
-- Live scraping monitoring
-- Real-time debugging
-- External tool integration
-- Dashboard updates
-
-## HANDLERS
-
-### Console Handler
-Logs events to console with structured formatting
-
-### Extraction Handler
-Tracks extraction progress and results
-
-### Login Handler
-Monitors authentication flow
-
-### Selector Handler
-Logs selector performance and issues
+Real-time event streaming via WebSocket: `WebSocketServer(port=8765)`
+Use cases: live monitoring, real-time debugging, external tools, dashboards.
 
 ## USAGE IN ACTIONS
 
 ```python
-from scrapers.actions.base import BaseAction
-
-class MyAction(BaseAction):
-    async def execute(self, params):
-        # Emit custom event
-        if self.ctx.event_emitter:
-            self.ctx.event_emitter.emit("my_action.start", {
-                "action": "my_action",
-                "params": params
-            })
-        
-        # Do work...
-        
-        # Emit completion
-        if self.ctx.event_emitter:
-            self.ctx.event_emitter.emit("my_action.complete", {
-                "result": result
-            })
+if self.ctx.event_emitter:
+    self.ctx.event_emitter.emit("my_action.start", {"action": "my_action"})
 ```
 
 ## CONVENTIONS
-- **Always check**: Verify `event_emitter` exists before emitting
-- **Structured data**: Emit dictionaries with consistent keys
-- **Event names**: Use dot notation (e.g., `category.action`)
-- **Async handlers**: Handlers can be async
+- Check `event_emitter` exists before emitting
+- Structured data with consistent keys
+- Use dot notation (e.g., `category.action`)
+- Handlers can be async
 
 ## ANTI-PATTERNS
 - **NO** emitting without checking emitter exists

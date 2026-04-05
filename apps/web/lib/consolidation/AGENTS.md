@@ -5,7 +5,7 @@
 ## OVERVIEW
 Batch processing engine that transforms raw scraped data into normalized product records using OpenAI. Handles taxonomy validation, attribute extraction, and data enrichment.
 
-**Stack:** TypeScript, OpenAI Batch API, Supabase.
+**Stack:** TypeScript, OpenAI Batch API, Gemini (migration in progress), Supabase.
 
 ## STRUCTURE
 ```
@@ -52,8 +52,9 @@ Batch processing engine that transforms raw scraped data into normalized product
 - **Pricing**: Normalize to USD, calculate `msrp` and `sale_price`
 
 ## BATCH PROCESSING
-- **API**: OpenAI Batch API (async, cost-effective for bulk)
-- **Size**: Process 100-500 products per batch
+- **OpenAI**: Batch API (async, cost-effective for bulk). Primary provider.
+- **Gemini**: Migration in progress via `lib/providers/`. Feature-flagged in `lib/config/`.
+- **Size**: 100-500 products per batch
 - **Retry**: Exponential backoff on failures
 - **Logging**: Track batch ID, token usage, processing time
 
