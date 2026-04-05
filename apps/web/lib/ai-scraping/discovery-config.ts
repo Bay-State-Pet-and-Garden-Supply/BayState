@@ -40,7 +40,7 @@ export function pickNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-export function normalizeDiscoveryLLMProvider(): LLMProvider {
+export function normalizeDiscoveryLLMProvider(_provider?: unknown, _fallback?: unknown): LLMProvider {
   return 'gemini';
 }
 
