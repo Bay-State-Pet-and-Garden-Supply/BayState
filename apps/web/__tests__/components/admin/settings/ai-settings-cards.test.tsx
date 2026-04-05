@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AIScrapingSettingsCard } from '@/components/admin/settings/AIScrapingSettingsCard';
 import { AIConsolidationSettingsCard } from '@/components/admin/settings/AIConsolidationSettingsCard';
 
@@ -38,20 +38,23 @@ describe('AI settings cards', () => {
     jest.resetAllMocks();
   });
 
-  it('renders Gemini and Brave scraping settings without SerpAPI controls', async () => {
+  it('renders Gemini-only scraping settings without SerpAPI or Brave controls', async () => {
     render(<AIScrapingSettingsCard />);
 
     await waitFor(() => {
       expect(screen.getByLabelText('Gemini API Key')).toBeInTheDocument();
     });
 
-    expect(screen.getByLabelText('Brave Search API Key')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Brave Search API Key')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('SerpAPI Key')).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Brave Search remains the only optional discovery fallback/i)
+      screen.getByText(/Legacy SerpAPI and Brave Search discovery keys are deprecated/i)
     ).toBeInTheDocument();
+    const scrapingModelCombobox = screen.getByRole('combobox', { name: 'Gemini Model' });
+    expect(scrapingModelCombobox).toHaveTextContent('Gemini 2.5 Flash');
+    fireEvent.click(scrapingModelCombobox);
+    expect(screen.getByText('Gemini 2.5 Pro')).toBeInTheDocument();
     expect(screen.getByText('Gemini Ready')).toBeInTheDocument();
-    expect(screen.getByText('Brave Ready')).toBeInTheDocument();
   });
 
   it('renders Gemini-only consolidation messaging after the OpenAI migration', async () => {
@@ -62,6 +65,10 @@ describe('AI settings cards', () => {
     });
 
     expect(screen.getByText(/OpenAI migration is complete/i)).toBeInTheDocument();
+    const consolidationModelCombobox = screen.getByRole('combobox', { name: 'Gemini Model' });
+    expect(consolidationModelCombobox).toHaveTextContent('Gemini 2.5 Flash');
+    fireEvent.click(consolidationModelCombobox);
+    expect(screen.getByText('Higher quality reasoning for tougher extraction and enrichment cases.')).toBeInTheDocument();
     expect(screen.getByText('Gemini Batch Ready')).toBeInTheDocument();
   });
 });

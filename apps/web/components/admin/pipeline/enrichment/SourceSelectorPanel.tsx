@@ -91,7 +91,7 @@ export function SourceSelectorPanel({
               )}
             </div>
             {isAI && (
-              <span className="text-[10px] text-purple-500 mt-0.5">Brave Search + AI Extract</span>
+              <span className="text-[10px] text-purple-500 mt-0.5">Gemini Search + AI Extract</span>
             )}
           </div>
         </div>
@@ -161,4 +161,3 @@ export function SourceSelectorPanel({
     </div>
   );
 }
-

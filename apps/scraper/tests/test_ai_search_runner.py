@@ -14,7 +14,6 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
         def __init__(self, **kwargs):
             init_args.update(kwargs)
             assert os.environ["SERPAPI_API_KEY"] == "serpapi-runtime-key-1234567890"
-            assert os.environ["BRAVE_API_KEY"] == "brave-runtime-key-1234567890"
 
         async def scrape_products_batch(self, items, max_concurrency):
             assert items == [
@@ -43,7 +42,7 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
 
     monkeypatch.setattr("runner.AISearchScraper", StubAISearchScraper)
     monkeypatch.setitem(settings.browser_settings, "headless", True)
-    monkeypatch.setenv("BRAVE_API_KEY", "brave-existing-key-1234567890")
+    monkeypatch.delenv("BRAVE_API_KEY", raising=False)
     monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
 
     results = {
@@ -68,7 +67,6 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
             ai_credentials={
                 "gemini_api_key": "gemini-runtime-key-1234567890",
                 "serpapi_api_key": "serpapi-runtime-key-1234567890",
-                "brave_api_key": "brave-runtime-key-1234567890",
             },
         ),
         skus=["SKU-1"],
@@ -81,17 +79,16 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
     assert init_args["llm_model"] == "gemini-2.5-flash"
     assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
     assert updated["data"]["SKU-1"]["ai_search"]["title"] == "Acme Squeaky Ball"
-    assert os.environ["BRAVE_API_KEY"] == "brave-existing-key-1234567890"
     assert "SERPAPI_API_KEY" not in os.environ
 
 
-def test_run_ai_search_job_forces_gemini_for_legacy_provider_payloads(monkeypatch) -> None:
+def test_run_ai_search_job_forces_gemini_for_legacy_provider_payloads_and_brave_search(monkeypatch) -> None:
     init_args: dict[str, object] = {}
 
     class StubAISearchScraper:
         def __init__(self, **kwargs):
             init_args.update(kwargs)
-            assert os.environ["BRAVE_API_KEY"] == "brave-runtime-key-1234567890"
+            assert "BRAVE_API_KEY" not in os.environ
 
         async def scrape_products_batch(self, items, max_concurrency):
             assert max_concurrency == 1
@@ -124,13 +121,13 @@ def test_run_ai_search_job_forces_gemini_for_legacy_provider_payloads(monkeypatc
             job_config={
                 "product_name": "Local Model Product",
                 "brand": "Acme",
+                "search_provider": "brave",
                 "llm_provider": "openai_compatible",
                 "llm_model": "gpt-4o-mini",
                 "llm_base_url": "http://localhost:8000/v1",
             },
             ai_credentials={
                 "gemini_api_key": "gemini-runtime-key-2222222222",
-                "brave_api_key": "brave-runtime-key-1234567890",
             },
         ),
         skus=["SKU-2"],

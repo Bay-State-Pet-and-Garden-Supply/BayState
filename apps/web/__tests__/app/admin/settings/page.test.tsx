@@ -23,7 +23,7 @@ describe('Admin Settings Page', () => {
       screen.getByText(/OpenAI and SerpAPI credentials have been removed from this admin UI/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Brave Search remains the only optional discovery fallback/i)
+      screen.getByText(/Brave Search has been deprecated in favor of Gemini-powered discovery/i)
     ).toBeInTheDocument();
   });
 });

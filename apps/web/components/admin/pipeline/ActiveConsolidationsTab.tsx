@@ -48,11 +48,6 @@ interface AISettings {
       last4: string | null;
       updated_at: string | null;
     };
-    brave: {
-      configured: boolean;
-      last4: string | null;
-      updated_at: string | null;
-    };
   };
 }
 

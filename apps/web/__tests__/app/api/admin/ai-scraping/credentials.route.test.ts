@@ -172,7 +172,7 @@ describe('AI scraping credentials admin route', () => {
 
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('gemini', 'gemini-test', 'user-1');
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('serpapi', 'serpapi-test', 'user-1');
-    expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('brave', 'brave-test', 'user-1');
+    expect(setAIScrapingProviderSecret).not.toHaveBeenCalledWith('brave', 'brave-test', 'user-1');
     expect(upsertAIScrapingDefaults).toHaveBeenCalled();
     expect(upsertAIConsolidationDefaults).toHaveBeenCalled();
   });

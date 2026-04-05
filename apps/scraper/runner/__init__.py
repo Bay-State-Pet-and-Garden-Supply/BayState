@@ -895,7 +895,9 @@ def _run_ai_search_job(
     elif llm_model.startswith("gpt-"):
         llm_model = "gemini-2.5-flash"
     search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto")
-    if search_provider not in {"auto", "serpapi", "brave", "gemini"}:
+    if search_provider == "brave":
+        search_provider = "gemini"
+    elif search_provider not in {"auto", "serpapi", "gemini"}:
         search_provider = "auto"
     if search_provider == "auto":
         search_provider = "gemini"
@@ -911,9 +913,7 @@ def _run_ai_search_job(
         llm_api_key = runtime_llm_api_key
 
     previous_serpapi = os.environ.get("SERPAPI_API_KEY")
-    previous_brave = os.environ.get("BRAVE_API_KEY")
     runtime_serpapi = _get_optional_string(runtime_credentials, "serpapi_api_key")
-    runtime_brave = _get_optional_string(runtime_credentials, "brave_api_key")
 
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
@@ -921,13 +921,9 @@ def _run_ai_search_job(
         logger.debug(f"Resolved {llm_provider} LLM API key for AI Search: {llm_api_key[:4]}...")
     if runtime_serpapi:
         logger.debug(f"Setting SERPAPI_API_KEY from job payload: {runtime_serpapi[:4]}...")
-    if runtime_brave:
-        logger.debug(f"Setting BRAVE_API_KEY from job payload: {runtime_brave[:4]}...")
 
     if runtime_serpapi:
         os.environ["SERPAPI_API_KEY"] = runtime_serpapi
-    if runtime_brave:
-        os.environ["BRAVE_API_KEY"] = runtime_brave
 
     item_context_by_sku: Dict[str, Dict[str, Any]] = {}
 
@@ -1035,12 +1031,6 @@ def _run_ai_search_job(
                 os.environ.pop("SERPAPI_API_KEY", None)
             else:
                 os.environ["SERPAPI_API_KEY"] = previous_serpapi
-
-        if runtime_brave:
-            if previous_brave is None:
-                os.environ.pop("BRAVE_API_KEY", None)
-            else:
-                os.environ["BRAVE_API_KEY"] = previous_brave
 
     for search_result in batch_results:
         sku = search_result.sku

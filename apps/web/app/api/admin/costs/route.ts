@@ -1,6 +1,38 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+const GEMINI_COST_PROVIDER_LABEL = 'Google Gemini API';
+
+interface ServiceCostRecord {
+  id: string;
+  service: string;
+  display_name: string;
+  monthly_cost: string | number;
+  billing_cycle: string;
+  category: string;
+  notes: string | null;
+  is_active: boolean;
+}
+
+function normalizeServiceCostForDisplay(service: ServiceCostRecord): ServiceCostRecord {
+  if (service.service !== 'openai') {
+    return service;
+  }
+
+  const normalizedNotes = service.notes
+    ? service.notes
+        .replace(/openai/gi, GEMINI_COST_PROVIDER_LABEL)
+        .replace(/gpt models/gi, 'Gemini models')
+    : 'Gemini models for product consolidation and AI scraping (usage-based)';
+
+  return {
+    ...service,
+    service: 'google',
+    display_name: GEMINI_COST_PROVIDER_LABEL,
+    notes: normalizedNotes,
+  };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const days = parseInt(searchParams.get('days') || '30', 10);
@@ -22,7 +54,7 @@ export async function GET(request: Request) {
 
     if (servicesError) throw servicesError;
 
-    // Fetch OpenAI batch consolidation costs from batch_jobs
+    // Fetch Google Gemini batch consolidation costs from batch_jobs
     const { data: batchJobs, error: batchError } = await supabase
       .from('batch_jobs')
       .select(
@@ -33,6 +65,10 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false });
 
     if (batchError) throw batchError;
+
+    const normalizedServices = (services ?? []).map((service) =>
+      normalizeServiceCostForDisplay(service as ServiceCostRecord)
+    );
 
     // Aggregate batch job costs
     const batchSummary = (batchJobs ?? []).reduce(
@@ -58,13 +94,13 @@ export async function GET(request: Request) {
     );
 
     // Calculate fixed monthly total
-    const fixedMonthlyTotal = (services ?? []).reduce(
+    const fixedMonthlyTotal = normalizedServices.reduce(
       (sum, svc) => sum + parseFloat(String(svc.monthly_cost ?? 0)),
       0
     );
 
     // Group services by category
-    const servicesByCategory = (services ?? []).reduce(
+    const servicesByCategory = normalizedServices.reduce(
       (acc, svc) => {
         const cat = svc.category as string;
         if (!acc[cat]) acc[cat] = [];
@@ -77,10 +113,13 @@ export async function GET(request: Request) {
     return NextResponse.json({
       dateRange: { start: startDate, end: endDate, days },
       fixedMonthlyTotal,
-      services: services ?? [],
+      services: normalizedServices,
       servicesByCategory,
       ai: {
-        consolidation: batchSummary,
+        consolidation: {
+          ...batchSummary,
+          providerLabel: GEMINI_COST_PROVIDER_LABEL,
+        },
         recentJobs: (batchJobs ?? []).slice(0, 10),
       },
       estimatedMonthlyTotal: fixedMonthlyTotal + batchSummary.totalCost,

@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
+import { GeminiModelCombobox } from "@/components/admin/settings/GeminiModelCombobox";
 
-type ProviderName = "gemini" | "brave";
+type ProviderName = "gemini";
 
 interface ProviderStatus {
   provider: string;
@@ -53,12 +54,6 @@ const EMPTY_STATUSES: Record<ProviderName, ProviderStatus> = {
     last4: null,
     updated_at: null,
   },
-  brave: {
-    provider: "brave",
-    configured: false,
-    last4: null,
-    updated_at: null,
-  },
 };
 
 export function AIScrapingSettingsCard() {
@@ -66,7 +61,6 @@ export function AIScrapingSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [braveApiKey, setBraveApiKey] = useState("");
   const [statuses, setStatuses] =
     useState<Record<ProviderName, ProviderStatus>>(EMPTY_STATUSES);
   const [defaults, setDefaults] = useState<ScrapingDefaults>(DEFAULTS);
@@ -86,7 +80,6 @@ export function AIScrapingSettingsCard() {
       const data = (await res.json()) as ApiResponse;
       setStatuses({
         gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
-        brave: data.statuses.brave ?? EMPTY_STATUSES.brave,
       });
       setDefaults({
         ...DEFAULTS,
@@ -114,13 +107,12 @@ export function AIScrapingSettingsCard() {
   const hasChanges = useMemo(() => {
     return (
       geminiApiKey.trim().length > 0 ||
-      braveApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [braveApiKey, defaults, geminiApiKey, initialDefaults]);
+  }, [defaults, geminiApiKey, initialDefaults]);
 
   const onSave = async () => {
     setSaving(true);
@@ -129,7 +121,6 @@ export function AIScrapingSettingsCard() {
     try {
       const payload = {
         gemini_api_key: geminiApiKey.trim() || undefined,
-        brave_api_key: braveApiKey.trim() || undefined,
         defaults: {
           ...defaults,
           llm_provider: "gemini" as const,
@@ -157,7 +148,6 @@ export function AIScrapingSettingsCard() {
 
       setStatuses({
         gemini: body.statuses.gemini ?? EMPTY_STATUSES.gemini,
-        brave: body.statuses.brave ?? EMPTY_STATUSES.brave,
       });
       setDefaults({
         ...DEFAULTS,
@@ -172,7 +162,6 @@ export function AIScrapingSettingsCard() {
         llm_base_url: null,
       });
       setGeminiApiKey("");
-      setBraveApiKey("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -191,8 +180,9 @@ export function AIScrapingSettingsCard() {
             <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
               AI scraping now runs on Gemini directly. Configure the Gemini API
-              key used for Crawl4AI and AI search. Brave Search remains the
-              only optional discovery fallback for runner jobs.
+              key used for Crawl4AI and AI search. Legacy SerpAPI and Brave
+              Search discovery keys are deprecated and no longer configured
+              here.
             </CardDescription>
           </div>
         </div>
@@ -210,53 +200,34 @@ export function AIScrapingSettingsCard() {
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="gemini-api-key">Gemini API Key</Label>
-                <Input
-                  id="gemini-api-key"
-                  type="password"
-                  value={geminiApiKey}
-                  onChange={(e) => setGeminiApiKey(e.target.value)}
-                  placeholder="AIza..."
-                />
-                <div className="text-xs text-muted-foreground">
-                  {statuses.gemini.configured
-                    ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
-                    : "Required for AI scraping"}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="brave-api-key">Brave Search API Key</Label>
-                <Input
-                  id="brave-api-key"
-                  type="password"
-                  value={braveApiKey}
-                  onChange={(e) => setBraveApiKey(e.target.value)}
-                  placeholder="BSA..."
-                />
-                <div className="text-xs text-muted-foreground">
-                  {statuses.brave.configured
-                    ? `Configured (ending in ${statuses.brave.last4 ?? "****"})`
-                    : "Optional search fallback"}
-                </div>
+            <div className="max-w-md space-y-2">
+              <Label htmlFor="gemini-api-key">Gemini API Key</Label>
+              <Input
+                id="gemini-api-key"
+                type="password"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder="AIza..."
+              />
+              <div className="text-xs text-muted-foreground">
+                {statuses.gemini.configured
+                  ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
+                  : "Required for AI scraping"}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="scraping-ai-model">Gemini Model</Label>
-                <Input
+                <GeminiModelCombobox
                   id="scraping-ai-model"
                   value={defaults.llm_model}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setDefaults((prev) => ({
                       ...prev,
-                      llm_model: e.target.value,
+                      llm_model: value,
                     }))
                   }
-                  placeholder="gemini-2.5-flash"
                 />
               </div>
 
@@ -323,11 +294,6 @@ export function AIScrapingSettingsCard() {
                   variant={statuses.gemini.configured ? "default" : "secondary"}
                 >
                   Gemini {statuses.gemini.configured ? "Ready" : "Missing"}
-                </Badge>
-                <Badge
-                  variant={statuses.brave.configured ? "default" : "secondary"}
-                >
-                  Brave {statuses.brave.configured ? "Ready" : "Optional"}
                 </Badge>
               </div>
 

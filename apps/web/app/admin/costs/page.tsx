@@ -3,7 +3,7 @@ import { CostTrackingDashboard } from '@/components/admin/costs/CostTrackingDash
 
 export const metadata: Metadata = {
   title: 'Cost Tracking | Admin | Bay State Pet & Garden',
-  description: 'Monitor and manage monthly costs across all services and AI usage.',
+  description: 'Monitor and manage monthly costs across all services and Google Gemini API usage.',
   robots: {
     index: false,
     follow: false,

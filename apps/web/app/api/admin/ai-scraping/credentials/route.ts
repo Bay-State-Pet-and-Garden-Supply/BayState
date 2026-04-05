@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as {
       gemini_api_key?: string;
       serpapi_api_key?: string;
-      brave_api_key?: string;
       defaults?: Partial<AIScrapingDefaults>;
       consolidationDefaults?: Partial<AIConsolidationDefaults>;
     };
@@ -83,10 +82,6 @@ export async function POST(request: NextRequest) {
 
     if (body.serpapi_api_key && body.serpapi_api_key.trim()) {
       tasks.push(setAIScrapingProviderSecret('serpapi', body.serpapi_api_key, auth.userId));
-    }
-
-    if (body.brave_api_key && body.brave_api_key.trim()) {
-      tasks.push(setAIScrapingProviderSecret('brave', body.brave_api_key, auth.userId));
     }
 
     if (body.defaults) {

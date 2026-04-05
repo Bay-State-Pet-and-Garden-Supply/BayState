@@ -37,8 +37,9 @@ def validate_config() -> ValidationReport:
 
     Checks:
     - OPENAI_API_KEY: exists, not empty, starts with "sk-"
-    - AI_SEARCH_PROVIDER: optional, one of auto/serpapi/brave
-    - SERPAPI_API_KEY / BRAVE_API_KEY: at least one valid search key based on provider
+    - AI_SEARCH_PROVIDER: optional, one of auto/serpapi/gemini
+    - SERPAPI_API_KEY: required only when provider is serpapi
+    - BRAVE_API_KEY: deprecated and ignored
     - SCRAPER_API_URL: exists, valid URL format
     - SCRAPER_API_KEY: exists, not empty
 
@@ -63,8 +64,8 @@ def validate_config() -> ValidationReport:
 
     # Validate search provider credentials
     provider = str(os.environ.get("AI_SEARCH_PROVIDER") or "auto").strip().lower() or "auto"
-    if provider not in {"auto", "serpapi", "brave"}:
-        errors.append("AI_SEARCH_PROVIDER must be one of: auto, serpapi, brave")
+    if provider not in {"auto", "serpapi", "gemini"}:
+        errors.append("AI_SEARCH_PROVIDER must be one of: auto, serpapi, gemini")
         provider = "auto"
 
     serpapi_key = os.environ.get("SERPAPI_API_KEY")
@@ -75,20 +76,12 @@ def validate_config() -> ValidationReport:
     if serpapi_present and len(str(serpapi_key).strip()) < 20:
         warnings.append("SERPAPI_API_KEY may be truncated or invalid")
 
-    if brave_present and len(str(brave_key).strip()) < 20:
-        warnings.append("BRAVE_API_KEY may be truncated or invalid")
+    if brave_present:
+        warnings.append("BRAVE_API_KEY is deprecated and ignored")
 
     if provider == "serpapi":
         if not serpapi_present:
             errors.append("SERPAPI_API_KEY is not set")
-    elif provider == "brave":
-        if not brave_present:
-            errors.append("BRAVE_API_KEY is not set")
-    else:
-        if not serpapi_present and not brave_present:
-            errors.append("Either SERPAPI_API_KEY or BRAVE_API_KEY must be set")
-        elif not serpapi_present and brave_present:
-            warnings.append("SERPAPI_API_KEY is not set; AI Search will fall back to Brave")
 
     # Validate SCRAPER_API_URL
     scraper_url = os.environ.get("SCRAPER_API_URL")
