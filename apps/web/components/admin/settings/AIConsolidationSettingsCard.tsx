@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Layers, Save, RefreshCw } from 'lucide-react';
+import { GeminiModelCombobox } from '@/components/admin/settings/GeminiModelCombobox';
 
 interface ProviderStatus {
   provider: string;
@@ -198,13 +199,12 @@ export function AIConsolidationSettingsCard() {
 
               <div className="space-y-2">
                 <Label htmlFor="consolidation-ai-model">Gemini Model</Label>
-                <Input
+                <GeminiModelCombobox
                   id="consolidation-ai-model"
                   value={defaults.llm_model}
-                  onChange={(e) =>
-                    setDefaults((prev) => ({ ...prev, llm_model: e.target.value }))
+                  onChange={(value) =>
+                    setDefaults((prev) => ({ ...prev, llm_model: value }))
                   }
-                  placeholder="gemini-2.5-flash"
                 />
               </div>
             </div>

@@ -286,7 +286,6 @@ describe('POST /api/scraper/v1/poll', () => {
             llm_api_key: 'gemini-test-key',
             gemini_api_key: 'gemini-test-key',
             serpapi_api_key: 'serpapi-test-key',
-            brave_api_key: 'brave-test-key',
         });
 
         const mockScrapers = [
@@ -339,7 +338,6 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.ai_credentials.llm_api_key).toBe('gemini-test-key');
         expect(data.job.ai_credentials.gemini_api_key).toBe('gemini-test-key');
         expect(data.job.ai_credentials.serpapi_api_key).toBe('serpapi-test-key');
-        expect(data.job.ai_credentials.brave_api_key).toBe('brave-test-key');
         expect(data.job.feature_flags).toMatchObject({
             GEMINI_AI_SEARCH_ENABLED: false,
             GEMINI_CRAWL4AI_ENABLED: false,
@@ -389,6 +387,7 @@ describe('POST /api/scraper/v1/poll', () => {
                         max_steps: 12,
                         confidence_threshold: 0.9,
                         llm_model: 'gpt-4o',
+                        search_provider: 'brave',
                         cache_enabled: false,
                         extraction_strategy: 'auto',
                         timeout: 12345,
@@ -409,6 +408,7 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.max_steps).toBe(12);
         expect(data.job.job_config.confidence_threshold).toBe(0.9);
         expect(data.job.job_config.llm_model).toBe('gpt-4o');
+        expect(data.job.job_config.search_provider).toBe('gemini');
         expect(data.job.job_config.cache_enabled).toBe(false);
         expect(data.job.job_config.extraction_strategy).toBe('auto');
         expect(data.job.job_config.timeout).toBeUndefined();

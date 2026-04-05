@@ -41,6 +41,8 @@ export function pickNumber(value: unknown, fallback: number): number {
 }
 
 export function normalizeDiscoveryLLMProvider(_provider?: unknown, _fallback?: unknown): LLMProvider {
+  void _provider;
+  void _fallback;
   return 'gemini';
 }
 
@@ -51,6 +53,23 @@ function pickNonEmptyString(value: unknown): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serpapi' | 'gemini' | null {
+  const provider = pickNonEmptyString(value);
+  if (!provider) {
+    return null;
+  }
+
+  if (provider === 'brave') {
+    return 'gemini';
+  }
+
+  if (provider === 'auto' || provider === 'serpapi' || provider === 'gemini') {
+    return provider;
+  }
+
+  return null;
 }
 
 export function sanitizeDiscoveryConfig(
@@ -93,8 +112,8 @@ export function sanitizeDiscoveryConfig(
     normalized.llm_base_url = llmBaseUrl;
   }
 
-  const searchProvider = pickNonEmptyString(config.search_provider);
-  if (searchProvider && ['auto', 'serpapi', 'brave', 'gemini'].includes(searchProvider)) {
+  const searchProvider = normalizeDiscoverySearchProvider(config.search_provider);
+  if (searchProvider) {
     normalized.search_provider = searchProvider;
   }
 

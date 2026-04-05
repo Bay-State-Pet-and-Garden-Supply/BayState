@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   DollarSign,
   Brain,
+  Sparkles,
   Server,
   CreditCard,
   Mail,
@@ -59,10 +60,11 @@ interface CostData {
       completedJobs: number;
       failedJobs: number;
       promptTokens: number;
-      completionTokens: number;
-      totalTokens: number;
-    };
-    recentJobs: BatchJob[];
+    completionTokens: number;
+    totalTokens: number;
+    providerLabel: string;
+  };
+  recentJobs: BatchJob[];
   };
   estimatedMonthlyTotal: number;
 }
@@ -71,6 +73,7 @@ const SERVICE_ICONS: Record<string, React.ElementType> = {
   supabase: Server,
   vercel: Cloud,
   openai: Brain,
+  google: Sparkles,
   resend: Mail,
   github: GitBranch,
   stripe: CreditCard,
@@ -325,10 +328,12 @@ export function CostTrackingDashboard() {
   }
 
   const categories = Object.entries(data.servicesByCategory);
+  const providerLabel = data.ai.consolidation.providerLabel || 'Google Gemini API';
+  const providerSummaryLabel = providerLabel === 'Google Gemini API' ? 'Google API' : providerLabel;
 
   return (
     <div className="space-y-6">
-      <PageHeader />
+      <PageHeader providerLabel={providerLabel} />
 
       {/* Period Selector */}
       <div className="flex items-center gap-2">
@@ -367,7 +372,7 @@ export function CostTrackingDashboard() {
           bgAccent="bg-blue-500/10"
         />
         <SummaryCard
-          title={`AI Costs (${days}d)`}
+          title={`${providerSummaryLabel} Costs (${days}d)`}
           value={formatCurrency(data.ai.consolidation.totalCost)}
           icon={Brain}
           description={`${data.ai.consolidation.totalJobs} batch jobs`}
@@ -450,33 +455,33 @@ export function CostTrackingDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Brain className="h-4 w-4 text-purple-400" />
-              Recent AI Consolidation Jobs
+              Recent {providerLabel} Consolidation Jobs
               <Badge variant="outline" className="ml-auto text-[10px]">
                 Last {days} days
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable
-              data={data.ai.recentJobs}
-              columns={batchJobColumns}
-              pageSize={10}
-              emptyMessage="No recent AI consolidation jobs."
-            />
-          </CardContent>
-        </Card>
+              <DataTable
+                data={data.ai.recentJobs}
+                columns={batchJobColumns}
+                pageSize={10}
+                emptyMessage={`No recent ${providerLabel} consolidation jobs.`}
+              />
+            </CardContent>
+          </Card>
       )}
 
       {/* Footer Note */}
       <p className="text-xs text-muted-foreground text-center pb-4">
-        Fixed costs are manually entered estimates. AI costs are tracked automatically from batch jobs.
-        Click any cost value to update it.
+        Fixed costs are manually entered estimates. AI costs are tracked automatically from {providerLabel} batch jobs.
+        {' '}Click any cost value to update it.
       </p>
     </div>
   );
 }
 
-function PageHeader() {
+function PageHeader({ providerLabel = 'Google Gemini API' }: { providerLabel?: string }) {
   return (
     <div className="flex flex-col gap-1">
       <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
@@ -484,7 +489,7 @@ function PageHeader() {
         Cost Tracking
       </h1>
       <p className="text-muted-foreground text-sm">
-        Monitor and manage monthly costs across all services and AI usage.
+        Monitor and manage monthly costs across all services and {providerLabel} usage.
       </p>
     </div>
   );

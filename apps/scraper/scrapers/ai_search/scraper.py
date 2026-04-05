@@ -110,7 +110,7 @@ class AISearchScraper:
             cache_enabled: Whether to enable/disable Crawl4AI caching
             extraction_strategy: Strategy for data extraction (llm, json_ld, etc)
             prompt_version: Which prompt version to use (v1, v2, etc)
-            search_provider: Search provider preference (auto, serpapi, brave, gemini)
+            search_provider: Search provider preference (auto, serpapi, gemini)
         """
         self._llm_runtime = resolve_llm_runtime(
             provider=llm_provider,

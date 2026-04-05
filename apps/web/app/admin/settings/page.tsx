@@ -20,7 +20,7 @@ export default function AdminSettingsPage() {
         <AlertDescription>
           Scraping and consolidation settings now run on Gemini. OpenAI and
           SerpAPI credentials have been removed from this admin UI, and Brave
-          Search remains the only optional discovery fallback for scraping jobs.
+          Search has been deprecated in favor of Gemini-powered discovery.
         </AlertDescription>
       </Alert>
 

@@ -37,7 +37,6 @@ export interface AIScrapingRuntimeCredentials {
   openai_compatible_api_key?: string;
   gemini_api_key?: string;
   serpapi_api_key?: string;
-  brave_api_key?: string;
 }
 
 export interface AIConsolidationRuntimeConfig {
@@ -216,6 +215,7 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
 }
 
 function normalizeLLMProvider(_provider?: unknown): LLMProvider {
+  void _provider;
   return 'gemini';
 }
 
@@ -525,11 +525,10 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
 }
 
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const [defaults, gemini, serpapi, brave] = await Promise.all([
+  const [defaults, gemini, serpapi] = await Promise.all([
     getAIScrapingDefaults(),
     getAIScrapingProviderSecret('gemini'),
     getAIScrapingProviderSecret('serpapi'),
-    getAIScrapingProviderSecret('brave'),
   ]);
 
   const resolvedGemini = resolveGeminiApiKey(gemini);
@@ -548,9 +547,6 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
   }
   if (serpapi) {
     credentials.serpapi_api_key = serpapi;
-  }
-  if (brave) {
-    credentials.brave_api_key = brave;
   }
 
   return credentials;

@@ -23,7 +23,7 @@ def test_validate_config_accepts_serpapi_provider(monkeypatch: pytest.MonkeyPatc
     assert report.errors == []
 
 
-def test_validate_config_allows_auto_mode_with_brave_fallback_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_config_warns_when_brave_key_is_present_but_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_required_base_env(monkeypatch)
     monkeypatch.setenv("AI_SEARCH_PROVIDER", "auto")
     monkeypatch.setenv("BRAVE_API_KEY", "brave-key-12345678901234567890")
@@ -32,7 +32,7 @@ def test_validate_config_allows_auto_mode_with_brave_fallback_warning(monkeypatc
     report = validate_config()
 
     assert report.is_valid is True
-    assert any("fall back to Brave" in warning for warning in report.warnings)
+    assert "BRAVE_API_KEY is deprecated and ignored" in report.warnings
 
 
 def test_validate_config_requires_serpapi_key_when_provider_is_serpapi(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -47,7 +47,7 @@ def test_validate_config_requires_serpapi_key_when_provider_is_serpapi(monkeypat
     assert "SERPAPI_API_KEY is not set" in report.errors
 
 
-def test_validate_config_requires_search_key_in_auto_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_config_allows_auto_mode_without_search_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_required_base_env(monkeypatch)
     monkeypatch.setenv("AI_SEARCH_PROVIDER", "auto")
     monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
@@ -55,8 +55,8 @@ def test_validate_config_requires_search_key_in_auto_mode(monkeypatch: pytest.Mo
 
     report = validate_config()
 
-    assert report.is_valid is False
-    assert "Either SERPAPI_API_KEY or BRAVE_API_KEY must be set" in report.errors
+    assert report.is_valid is True
+    assert report.errors == []
 
 
 def test_validate_config_reports_invalid_provider_and_invalid_url(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,7 +70,7 @@ def test_validate_config_reports_invalid_provider_and_invalid_url(monkeypatch: p
 
     assert report.is_valid is False
     assert "OPENAI_API_KEY must start with 'sk-'" in report.errors
-    assert "AI_SEARCH_PROVIDER must be one of: auto, serpapi, brave" in report.errors
+    assert "AI_SEARCH_PROVIDER must be one of: auto, serpapi, gemini" in report.errors
     assert "SCRAPER_API_URL is not a valid URL format" in report.errors
     assert "SCRAPER_API_KEY may be truncated or invalid" in report.warnings
     assert "SERPAPI_API_KEY may be truncated or invalid" in report.warnings
