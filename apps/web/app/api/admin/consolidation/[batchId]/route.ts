@@ -8,7 +8,7 @@ interface RouteContext {
 
 /**
  * GET /api/admin/consolidation/[batchId]
- * Get the status of a batch job.
+ * Get the status of a provider batch job.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
     const auth = await requireAdminAuth();
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { batchId } = await context.params;
 
     if (!(await isOpenAIConfigured())) {
-        return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 });
+        return NextResponse.json({ error: 'No configured LLM batch provider is available' }, { status: 503 });
     }
 
     try {
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /**
  * DELETE /api/admin/consolidation/[batchId]
- * Cancel a batch job.
+ * Cancel a provider batch job.
  */
 export async function DELETE(request: NextRequest, context: RouteContext) {
     const auth = await requireAdminAuth();
@@ -61,7 +61,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { batchId } = await context.params;
 
     if (!(await isOpenAIConfigured())) {
-        return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 });
+        return NextResponse.json({ error: 'No configured LLM batch provider is available' }, { status: 503 });
     }
 
     try {

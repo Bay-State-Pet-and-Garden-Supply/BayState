@@ -4,7 +4,7 @@ import { listBatchJobs, isOpenAIConfigured } from '@/lib/consolidation';
 
 /**
  * GET /api/admin/consolidation/jobs
- * List recent batch jobs.
+ * List recent provider-neutral batch jobs.
  */
 export async function GET() {
     const auth = await requireAdminAuth();
@@ -12,7 +12,7 @@ export async function GET() {
 
     if (!(await isOpenAIConfigured())) {
         return NextResponse.json(
-            { error: 'OpenAI API key not configured' },
+            { error: 'No configured LLM batch provider is available' },
             { status: 503 }
         );
     }

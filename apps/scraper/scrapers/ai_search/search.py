@@ -10,15 +10,17 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
+from scrapers.providers.gemini_search import GeminiSearchClient
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_SEARCH_PROVIDERS = {"auto", "serpapi", "brave"}
+SUPPORTED_SEARCH_PROVIDERS = {"auto", "serpapi", "brave", "gemini"}
 TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "srsltid"}
 TRACKING_QUERY_PREFIXES = ("utm_",)
 DEFAULT_PROVIDER_COST_USD = {
     "serpapi": 0.01,
     "brave": 0.0,
+    "gemini": 0.014,
 }
 
 
@@ -305,9 +307,12 @@ class SearchClient:
         self._providers = {
             "serpapi": SerpAPISearchClient(max_results=max_results),
             "brave": BraveSearchClient(max_results=max_results),
+            "gemini": GeminiSearchClient(max_results=max_results),
         }
 
     def _provider_order(self) -> list[str]:
+        if self.provider == "gemini":
+            return ["gemini", "serpapi", "brave"]
         if self.provider == "serpapi":
             return ["serpapi", "brave"]
         if self.provider == "brave":

@@ -7,16 +7,15 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/submit
- * Submit a batch of products for LLM consolidation.
+ * Submit a provider-neutral batch of products for LLM consolidation.
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
-    // Check if OpenAI is configured
     if (!(await isOpenAIConfigured())) {
         return NextResponse.json(
-            { error: 'OpenAI API key not configured. Set OPENAI_API_KEY environment variable.' },
+            { error: 'No configured LLM batch provider is available for consolidation.' },
             { status: 503 }
         );
     }
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'skus array is required' }, { status: 400 });
         }
 
-        // Fetch product data for the SKUs
         const supabase = await createClient();
         const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
@@ -45,7 +43,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No products found for provided SKUs' }, { status: 404 });
         }
 
-        // Filter to products that have source data
         const productsWithSources: ProductSource[] = products
             .filter((p) => p.sources && Object.keys(p.sources).length > 0)
             .map((p) => ({
@@ -62,7 +59,6 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Submit batch
         const result = await submitBatch(productsWithSources, {
             description: description || `Consolidation batch for ${productsWithSources.length} products`,
             auto_apply: auto_apply || false,
@@ -75,6 +71,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             batch_id: result.batch_id,
+            provider: result.provider,
+            provider_batch_id: result.provider_batch_id,
             product_count: result.product_count,
             skipped_count: skus.length - productsWithSources.length,
         });

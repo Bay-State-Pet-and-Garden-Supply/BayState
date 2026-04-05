@@ -1,7 +1,7 @@
 /**
  * Consolidation Module
  *
- * Public API for the OpenAI Batch API consolidation system.
+ * Public API for the provider-neutral consolidation batch system.
  */
 
 // Types
@@ -10,6 +10,9 @@ export type {
     BatchMetadata,
     BatchStatus,
     BatchJobStatus,
+    ParallelRunComparison,
+    ParallelRunRecord,
+    ParallelRunStatus,
     ConsolidationResult,
     ConsolidatedData,
     ProductSource,
@@ -47,3 +50,19 @@ export {
 
 // Result Normalizer
 export { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
+
+// Evaluation helpers
+export {
+    calculateCompleteness,
+    calculateTaxonomyCorrectness,
+    compareConsolidationResults,
+    summarizeComparisons,
+} from './evaluation';
+
+// Parallel run tracking
+export {
+    listParallelRuns,
+    registerParallelRun,
+    syncParallelRunComparison,
+    syncPendingParallelRuns,
+} from './parallel-runs';

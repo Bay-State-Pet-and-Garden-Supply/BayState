@@ -4,7 +4,8 @@ import logging
 from typing import Any
 
 from scrapers.ai_cost_tracker import AICostTracker
-from scrapers.ai_search.llm_runtime import create_async_openai_client, resolve_llm_runtime
+from scrapers.ai_search.llm_runtime import resolve_llm_runtime
+from scrapers.providers.factory import create_llm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,12 @@ class NameConsolidator:
         )
         self.api_key = self.runtime.api_key
         self.model = self.runtime.model
-        self.client = create_async_openai_client(self.runtime)
+        self.provider = create_llm_provider(
+            provider=provider,
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
+        )
         self._cost_tracker = AICostTracker()
 
     async def consolidate_name(
@@ -47,7 +53,7 @@ class NameConsolidator:
         Returns:
             Tuple of (Consolidated Name, Cost in USD)
         """
-        if not self.client or not search_snippets:
+        if not self.provider or not search_snippets:
             return abbreviated_name, 0.0
 
         # Limit snippets to top 5
@@ -70,20 +76,17 @@ TASK:
 4. If the search results are contradictory or don't provide a clear name, return the original abbreviated name.
 5. Return ONLY the consolidated name. No other text.
 
-CONSOLIDATED NAME:"""
+        CONSOLIDATED NAME:"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a product data expert specializing in name canonicalization."},
-                    {"role": "user", "content": prompt},
-                ],
+            response = await self.provider.generate_text(
+                system_prompt="You are a product data expert specializing in name canonicalization.",
+                user_prompt=prompt,
                 temperature=0.0,
-                max_tokens=60,
+                max_output_tokens=60,
             )
 
-            content = str(response.choices[0].message.content or "").strip()
+            content = response.text.strip()
 
             # Record cost
             if response.usage:

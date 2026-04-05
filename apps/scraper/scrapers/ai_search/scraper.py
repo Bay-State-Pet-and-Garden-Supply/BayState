@@ -83,6 +83,10 @@ class AISearchScraper:
         llm_provider: str = "openai",
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
+        crawl4ai_llm_provider: str | None = None,
+        crawl4ai_llm_model: str | None = None,
+        crawl4ai_llm_base_url: str | None = None,
+        crawl4ai_llm_api_key: str | None = None,
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
@@ -96,19 +100,29 @@ class AISearchScraper:
             max_steps: Maximum browser actions per extraction
             confidence_threshold: Minimum confidence score to accept result
             llm_model: LLM model to use for AI extraction
-            llm_provider: LLM provider type (openai or openai_compatible)
+            llm_provider: LLM provider type (openai, openai_compatible, or gemini)
             llm_base_url: OpenAI-compatible base URL override
             llm_api_key: Provider API key override
+            crawl4ai_llm_provider: Optional provider override for crawl4ai extraction
+            crawl4ai_llm_model: Optional model override for crawl4ai extraction
+            crawl4ai_llm_base_url: Optional base URL override for crawl4ai extraction
+            crawl4ai_llm_api_key: Optional API key override for crawl4ai extraction
             cache_enabled: Whether to enable/disable Crawl4AI caching
             extraction_strategy: Strategy for data extraction (llm, json_ld, etc)
             prompt_version: Which prompt version to use (v1, v2, etc)
-            search_provider: Search provider preference (auto, serpapi, brave)
+            search_provider: Search provider preference (auto, serpapi, brave, gemini)
         """
         self._llm_runtime = resolve_llm_runtime(
             provider=llm_provider,
             model=llm_model,
             base_url=llm_base_url,
             api_key=llm_api_key,
+        )
+        self._crawl4ai_runtime = resolve_llm_runtime(
+            provider=crawl4ai_llm_provider or llm_provider,
+            model=crawl4ai_llm_model or llm_model,
+            base_url=crawl4ai_llm_base_url or llm_base_url,
+            api_key=crawl4ai_llm_api_key or llm_api_key,
         )
         self.headless = headless
         self.max_search_results = max_search_results
@@ -186,10 +200,10 @@ class AISearchScraper:
 
         self._crawl4ai_extractor = Crawl4AIExtractor(
             headless=headless,
-            llm_model=self.llm_model,
-            llm_provider=self.llm_provider,
-            llm_base_url=self.llm_base_url,
-            llm_api_key=self.llm_api_key,
+            llm_model=self._crawl4ai_runtime.model,
+            llm_provider=self._crawl4ai_runtime.provider,
+            llm_base_url=self._crawl4ai_runtime.base_url,
+            llm_api_key=self._crawl4ai_runtime.api_key,
             scoring=self._scoring,
             matching=self._matching,
             cache_enabled=cache_enabled,

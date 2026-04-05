@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/admin/consolidation/sync
- * Sync status of all non-terminal batch jobs from OpenAI.
- * Fetches active batches from DB, checks OpenAI, and updates DB.
+ * Sync status of all non-terminal provider batch jobs.
  */
 export async function POST() {
     const auth = await requireAdminAuth();
@@ -14,7 +13,7 @@ export async function POST() {
 
     if (!(await isOpenAIConfigured())) {
         return NextResponse.json(
-            { error: 'OpenAI API key not configured' },
+            { error: 'No configured LLM batch provider is available' },
             { status: 503 }
         );
     }
@@ -22,10 +21,9 @@ export async function POST() {
     try {
         const supabase = await createClient();
 
-        // Get all non-terminal batches
         const { data: activeBatches, error: fetchError } = await supabase
             .from('batch_jobs')
-            .select('id, openai_batch_id, status')
+            .select('id, provider, provider_batch_id, openai_batch_id, status')
             .not('status', 'in', '(completed,failed,expired,cancelled)')
             .order('created_at', { ascending: false });
 
@@ -41,9 +39,8 @@ export async function POST() {
         const errors: string[] = [];
 
         for (const batch of activeBatches) {
-            const batchId = batch.openai_batch_id || batch.id;
+            const batchId = batch.provider_batch_id || batch.openai_batch_id || batch.id;
             try {
-                // getBatchStatus already syncs to Supabase
                 const status = await getBatchStatus(batchId);
                 if (!('success' in status && !status.success)) {
                     syncedCount++;

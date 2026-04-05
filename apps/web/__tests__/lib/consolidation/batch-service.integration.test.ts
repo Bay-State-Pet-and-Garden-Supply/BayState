@@ -6,7 +6,7 @@ import {
     submitBatch,
 } from '@/lib/consolidation/batch-service';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { buildPromptContext } from '@/lib/consolidation/prompt-builder';
+import { buildPromptContext, getCategories } from '@/lib/consolidation/prompt-builder';
 import { getConsolidationConfig, getOpenAIClient } from '@/lib/consolidation/openai-client';
 
 jest.mock('@/lib/supabase/server', () => ({
@@ -16,6 +16,7 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/consolidation/prompt-builder', () => ({
     buildPromptContext: jest.fn(),
+    getCategories: jest.fn(),
 }));
 
 jest.mock('@/lib/consolidation/openai-client', () => ({
@@ -29,6 +30,21 @@ jest.mock('@/lib/consolidation/openai-client', () => ({
     },
 }));
 
+const BATCH_LOOKUP_COLUMNS =
+    'id, provider, provider_batch_id, openai_batch_id, total_requests, completed_requests, failed_requests, metadata';
+
+function makeBatchLookupQuery(data: Record<string, unknown> | null) {
+    return {
+        or: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+            data,
+            error: null,
+        }),
+    };
+}
+
 describe('consolidation batch integration behavior', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -39,8 +55,14 @@ describe('consolidation batch integration behavior', () => {
             completionWindow: '24h',
             confidence_threshold: 0.7,
             llm_provider: 'openai',
+            configured_llm_provider: 'openai',
+            llm_api_key: 'test-openai-key',
+            llm_base_url: null,
+            gemini_api_key: null,
             llm_supports_batch_api: true,
+            routing_key: null,
         });
+        (getCategories as jest.Mock).mockResolvedValue([{ id: 'cat-1', name: 'Dog', slug: 'dog' }]);
     });
 
     it('submitBatch persists OpenAI batch id and string metadata', async () => {
@@ -55,9 +77,26 @@ describe('consolidation batch integration behavior', () => {
         };
 
         (createClient as jest.Mock).mockResolvedValue(supabaseMock);
+        (createAdminClient as jest.Mock).mockResolvedValue({
+            from: jest.fn((table: string) => {
+                if (table !== 'batch_jobs') {
+                    throw new Error(`Unexpected table ${table}`);
+                }
+
+                return {
+                    select: jest.fn((columns: string) => {
+                        if (columns !== BATCH_LOOKUP_COLUMNS) {
+                            throw new Error(`Unexpected select columns ${columns}`);
+                        }
+
+                        return makeBatchLookupQuery(null);
+                    }),
+                };
+            }),
+        });
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
-            categories: ['Dog'],
+            shopsitePages: ['Dog Toys', 'Dog Supplies Shop All'],
         });
 
         const openAiMock = {
@@ -68,7 +107,7 @@ describe('consolidation batch integration behavior', () => {
                 create: jest.fn().mockResolvedValue({ id: 'batch_123', status: 'validating' }),
             },
         };
-        (getOpenAIClient as jest.Mock).mockReturnValue(openAiMock);
+        (getOpenAIClient as jest.Mock).mockResolvedValue(openAiMock);
 
         const response = await submitBatch(
             [
@@ -87,15 +126,21 @@ describe('consolidation batch integration behavior', () => {
         expect('success' in response && response.success).toBe(true);
         expect(insert).toHaveBeenCalledWith(
             expect.objectContaining({
+                provider: 'openai',
+                provider_batch_id: 'batch_123',
                 openai_batch_id: 'batch_123',
                 auto_apply: true,
-                metadata: {
+                input_file_id: 'file_123',
+                provider_input_file_id: 'file_123',
+                metadata: expect.objectContaining({
                     description: 'test batch',
                     auto_apply: 'true',
                     scrape_job_id: 'job-1',
                     llm_provider: 'openai',
                     llm_model: 'gpt-4o-mini',
-                },
+                    configured_llm_provider: 'openai',
+                    routing_key: 'job-1',
+                }),
             })
         );
     });
@@ -103,7 +148,25 @@ describe('consolidation batch integration behavior', () => {
     it('retrieveResults parses structured output and returns normalized taxonomy fields', async () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
-            categories: ['Dog'],
+            shopsitePages: ['Dog Toys', 'Dog Supplies Shop All'],
+        });
+        (getCategories as jest.Mock).mockResolvedValue([{ id: 'cat-1', name: 'Dog', slug: 'dog' }]);
+        (createAdminClient as jest.Mock).mockResolvedValue({
+            from: jest.fn((table: string) => {
+                if (table !== 'batch_jobs') {
+                    throw new Error(`Unexpected table ${table}`);
+                }
+
+                return {
+                    select: jest.fn((columns: string) => {
+                        if (columns !== BATCH_LOOKUP_COLUMNS) {
+                            throw new Error(`Unexpected select columns ${columns}`);
+                        }
+
+                        return makeBatchLookupQuery(null);
+                    }),
+                };
+            }),
         });
 
         const outputLine = JSON.stringify({
@@ -147,7 +210,7 @@ describe('consolidation batch integration behavior', () => {
                 }),
             },
         };
-        (getOpenAIClient as jest.Mock).mockReturnValue(openAiMock);
+        (getOpenAIClient as jest.Mock).mockResolvedValue(openAiMock);
 
         const results = await retrieveResults('batch_1');
 
@@ -167,8 +230,27 @@ describe('consolidation batch integration behavior', () => {
     it('retrieveResults returns actionable errors when required fields are missing', async () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
-            categories: ['Horse Feed & Treats'],
             shopsitePages: ['Horse Treats'],
+        });
+        (getCategories as jest.Mock).mockResolvedValue([
+            { id: 'cat-1', name: 'Horse Feed & Treats', slug: 'horse-feed-treats' },
+        ]);
+        (createAdminClient as jest.Mock).mockResolvedValue({
+            from: jest.fn((table: string) => {
+                if (table !== 'batch_jobs') {
+                    throw new Error(`Unexpected table ${table}`);
+                }
+
+                return {
+                    select: jest.fn((columns: string) => {
+                        if (columns !== BATCH_LOOKUP_COLUMNS) {
+                            throw new Error(`Unexpected select columns ${columns}`);
+                        }
+
+                        return makeBatchLookupQuery(null);
+                    }),
+                };
+            }),
         });
 
         const outputLine = JSON.stringify({
@@ -211,7 +293,7 @@ describe('consolidation batch integration behavior', () => {
                 }),
             },
         };
-        (getOpenAIClient as jest.Mock).mockReturnValue(openAiMock);
+        (getOpenAIClient as jest.Mock).mockResolvedValue(openAiMock);
 
         const results = await retrieveResults('batch_missing');
 
@@ -275,10 +357,17 @@ describe('consolidation batch integration behavior', () => {
         });
 
         const batchJobsSelectQuery = {
+            or: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
             limit: jest.fn().mockReturnThis(),
             maybeSingle: jest.fn().mockResolvedValue({
-                data: { id: 'batch-db-1', metadata: { source: 'test' } },
+                data: {
+                    id: 'batch-db-1',
+                    provider: 'openai',
+                    provider_batch_id: 'batch_1',
+                    openai_batch_id: 'batch_1',
+                    metadata: { source: 'test' },
+                },
                 error: null,
             }),
         };
@@ -303,7 +392,12 @@ describe('consolidation batch integration behavior', () => {
                 }
                 if (table === 'batch_jobs') {
                     return {
-                        select: jest.fn(() => batchJobsSelectQuery),
+                        select: jest.fn((columns: string) => {
+                            if (columns !== BATCH_LOOKUP_COLUMNS) {
+                                throw new Error(`Unexpected batch_jobs select columns: ${columns}`);
+                            }
+                            return batchJobsSelectQuery;
+                        }),
                         update: batchJobsUpdate,
                     };
                 }
@@ -364,26 +458,14 @@ describe('consolidation batch integration behavior', () => {
 
                 return {
                     select: jest.fn((columns: string) => {
-                        if (columns === 'openai_batch_id') {
-                            return {
-                                eq: jest.fn().mockReturnThis(),
-                                limit: jest.fn().mockReturnThis(),
-                                maybeSingle: jest.fn().mockResolvedValue({
-                                    data: { openai_batch_id: 'batch_resolved' },
-                                    error: null,
-                                }),
-                            };
-                        }
-
-                        if (columns === 'id, metadata') {
-                            return {
-                                eq: jest.fn().mockReturnThis(),
-                                limit: jest.fn().mockReturnThis(),
-                                maybeSingle: jest.fn().mockResolvedValue({
-                                    data: { id: legacyId, metadata: {} },
-                                    error: null,
-                                }),
-                            };
+                        if (columns === BATCH_LOOKUP_COLUMNS) {
+                            return makeBatchLookupQuery({
+                                id: legacyId,
+                                provider: 'openai',
+                                provider_batch_id: 'batch_resolved',
+                                openai_batch_id: 'batch_resolved',
+                                metadata: {},
+                            });
                         }
 
                         throw new Error(`Unexpected select columns ${columns}`);
@@ -408,7 +490,7 @@ describe('consolidation batch integration behavior', () => {
         (createClient as jest.Mock).mockResolvedValue(clientSupabaseMock);
 
         const cancel = jest.fn().mockResolvedValue({ id: 'batch_resolved', status: 'cancelled' });
-        (getOpenAIClient as jest.Mock).mockReturnValue({
+        (getOpenAIClient as jest.Mock).mockResolvedValue({
             batches: {
                 cancel,
             },
@@ -435,7 +517,10 @@ describe('consolidation batch integration behavior', () => {
             metadata: { description: 'batch' },
         };
 
-        const upsert = jest.fn().mockResolvedValue({ error: null });
+        const updateEq = jest.fn().mockResolvedValue({ error: null });
+        const update = jest.fn(() => ({
+            eq: updateEq,
+        }));
         const adminSupabaseMock = {
             from: jest.fn((table: string) => {
                 if (table !== 'batch_jobs') {
@@ -443,27 +528,26 @@ describe('consolidation batch integration behavior', () => {
                 }
                 return {
                     select: jest.fn((columns: string) => {
-                        if (columns !== 'openai_batch_id') {
+                        if (columns !== BATCH_LOOKUP_COLUMNS) {
                             throw new Error(`Unexpected select columns ${columns}`);
                         }
 
-                        return {
-                            eq: jest.fn().mockReturnThis(),
-                            limit: jest.fn().mockReturnThis(),
-                            maybeSingle: jest.fn().mockResolvedValue({
-                                data: { openai_batch_id: 'batch_resolved' },
-                                error: null,
-                            }),
-                        };
+                        return makeBatchLookupQuery({
+                            id: legacyId,
+                            provider: 'openai',
+                            provider_batch_id: 'batch_resolved',
+                            openai_batch_id: 'batch_resolved',
+                            metadata: { description: 'batch' },
+                        });
                     }),
-                    upsert,
+                    update,
                 };
             }),
         };
         (createAdminClient as jest.Mock).mockResolvedValue(adminSupabaseMock);
 
         const retrieve = jest.fn().mockResolvedValue(batchResponse);
-        (getOpenAIClient as jest.Mock).mockReturnValue({
+        (getOpenAIClient as jest.Mock).mockResolvedValue({
             batches: {
                 retrieve,
             },
@@ -473,11 +557,15 @@ describe('consolidation batch integration behavior', () => {
 
         expect('status' in status && status.status === 'in_progress').toBe(true);
         expect(retrieve).toHaveBeenCalledWith('batch_resolved');
-        expect(upsert).toHaveBeenCalledWith(
+        expect(update).toHaveBeenCalledWith(
             expect.objectContaining({
-                openai_batch_id: 'batch_resolved',
+                provider: 'openai',
+                provider_batch_id: 'batch_resolved',
+                provider_input_file_id: 'file_1',
+                provider_output_file_id: 'out_1',
+                status: 'in_progress',
             }),
-            { onConflict: 'openai_batch_id' }
         );
+        expect(updateEq).toHaveBeenCalledWith('id', legacyId);
     });
 });

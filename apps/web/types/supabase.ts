@@ -242,6 +242,11 @@ export type Database = {
           openai_batch_id: string | null
           output_file_id: string | null
           parent_batch_id: string | null
+          provider: string
+          provider_batch_id: string | null
+          provider_error_file_id: string | null
+          provider_input_file_id: string | null
+          provider_output_file_id: string | null
           prompt_tokens: number | null
           retry_count: number | null
           status: string
@@ -269,6 +274,11 @@ export type Database = {
           openai_batch_id?: string | null
           output_file_id?: string | null
           parent_batch_id?: string | null
+          provider?: string
+          provider_batch_id?: string | null
+          provider_error_file_id?: string | null
+          provider_input_file_id?: string | null
+          provider_output_file_id?: string | null
           prompt_tokens?: number | null
           retry_count?: number | null
           status?: string
@@ -296,6 +306,11 @@ export type Database = {
           openai_batch_id?: string | null
           output_file_id?: string | null
           parent_batch_id?: string | null
+          provider?: string
+          provider_batch_id?: string | null
+          provider_error_file_id?: string | null
+          provider_input_file_id?: string | null
+          provider_output_file_id?: string | null
           prompt_tokens?: number | null
           retry_count?: number | null
           status?: string
@@ -314,6 +329,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      llm_parallel_runs: {
+        Row: {
+          comparison: Json
+          completed_at: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          primary_batch_id: string
+          primary_provider: string
+          primary_summary: Json
+          sample_percent: number
+          shadow_batch_id: string | null
+          shadow_provider: string
+          shadow_summary: Json
+          status: string
+          subject_key: string
+          updated_at: string
+          workflow: string
+        }
+        Insert: {
+          comparison?: Json
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          primary_batch_id: string
+          primary_provider: string
+          primary_summary?: Json
+          sample_percent?: number
+          shadow_batch_id?: string | null
+          shadow_provider: string
+          shadow_summary?: Json
+          status?: string
+          subject_key: string
+          updated_at?: string
+          workflow?: string
+        }
+        Update: {
+          comparison?: Json
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          primary_batch_id?: string
+          primary_provider?: string
+          primary_summary?: Json
+          sample_percent?: number
+          shadow_batch_id?: string | null
+          shadow_provider?: string
+          shadow_summary?: Json
+          status?: string
+          subject_key?: string
+          updated_at?: string
+          workflow?: string
+        }
+        Relationships: []
       }
       brands: {
         Row: {

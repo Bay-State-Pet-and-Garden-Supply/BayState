@@ -147,3 +147,62 @@ def test_run_ai_search_job_prefers_openai_compatible_runtime(monkeypatch) -> Non
     assert init_args["llm_api_key"] is None
     assert updated["data"]["SKU-2"]["ai_search"]["title"] == "Local Model Product"
     assert "BRAVE_API_KEY" not in os.environ
+
+
+def test_run_ai_search_job_uses_gemini_when_flag_enabled(monkeypatch) -> None:
+    init_args: dict[str, object] = {}
+
+    class StubAISearchScraper:
+        def __init__(self, **kwargs):
+            init_args.update(kwargs)
+
+        async def scrape_products_batch(self, items, max_concurrency):
+            assert max_concurrency == 1
+            return [
+                AISearchResult(
+                    success=True,
+                    sku="SKU-3",
+                    product_name="Gemini Product",
+                    brand="Acme",
+                    description="Grounded by Gemini",
+                    images=["https://acmepets.com/images/gemini.jpg"],
+                    categories=["Dog Toys"],
+                    url="https://acmepets.com/products/gemini",
+                    source_website="acmepets.com",
+                    confidence=0.95,
+                )
+            ]
+
+    monkeypatch.setattr("runner.AISearchScraper", StubAISearchScraper)
+    monkeypatch.setitem(settings.browser_settings, "headless", True)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    updated = _run_ai_search_job(
+        job_config=JobConfig(
+            job_id="job-789",
+            skus=["SKU-3"],
+            scrapers=[],
+            max_workers=1,
+            job_config={
+                "product_name": "Gemini Product",
+                "brand": "Acme",
+                "llm_provider": "gemini",
+            },
+            ai_credentials={
+                "gemini_api_key": "gemini-runtime-key-1234567890",
+            },
+            feature_flags={
+                "GEMINI_AI_SEARCH_ENABLED": True,
+                "GEMINI_CRAWL4AI_ENABLED": True,
+            },
+        ),
+        skus=["SKU-3"],
+        results={"data": {}, "scrapers_run": [], "skus_processed": 0},
+        log_buffer=[],
+    )
+
+    assert init_args["llm_provider"] == "gemini"
+    assert init_args["llm_model"] == "gemini-2.5-flash"
+    assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
+    assert init_args["search_provider"] == "gemini"
+    assert updated["data"]["SKU-3"]["ai_search"]["title"] == "Gemini Product"

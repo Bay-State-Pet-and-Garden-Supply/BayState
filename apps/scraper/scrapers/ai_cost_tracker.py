@@ -61,6 +61,9 @@ class AICostTracker:
         "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
         "gpt-4": {"input": 0.03, "output": 0.06},
         "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
+        "gemini-2.5-flash": {"input": 0.00025, "output": 0.0015},
+        "gemini-2.5-pro": {"input": 0.002, "output": 0.012},
+        "gemini-3-flash-preview": {"input": 0.00025, "output": 0.0015},
     }
 
     def __init__(self):

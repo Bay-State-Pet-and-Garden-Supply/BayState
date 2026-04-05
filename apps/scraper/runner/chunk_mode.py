@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from core.api_client import *
+from core.api_client import JobConfig, ScraperAPIClient
 from utils.logging_handlers import JobLoggingSession
 
 from runner import run_job
@@ -138,6 +138,7 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                 job_type=base_job_config.job_type,
                 job_config=base_job_config.job_config,
                 ai_credentials=base_job_config.ai_credentials,
+                feature_flags=base_job_config.feature_flags,
                 lease_token=chunk.lease_token or base_job_config.lease_token,
                 lease_expires_at=chunk.lease_expires_at or base_job_config.lease_expires_at,
             )

@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import {
+    type AIScrapingRuntimeCredentials,
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
 } from '@/lib/ai-scraping/credentials';
+import {
+    DISCOVERY_CONFIG_KEYS,
+    hasKnownConfigKeys,
+    normalizeDiscoveryLLMProvider,
+    pickNumber,
+    sanitizeDiscoveryConfig,
+} from '@/lib/ai-scraping/discovery-config';
+import { getGeminiFeatureFlags, type GeminiFeatureFlags } from '@/lib/config/gemini-feature-flags';
 import {
     buildRunnerBuildHeaders,
     buildRunnerBuildMetadata,
@@ -37,16 +46,8 @@ interface ChunkResponse {
     max_workers: number;
     job_type?: string;
     job_config?: Record<string, unknown>;
-    ai_credentials?: {
-        llm_provider?: 'openai' | 'openai_compatible';
-        llm_model?: string;
-        llm_base_url?: string;
-        llm_api_key?: string;
-        openai_api_key?: string;
-        openai_compatible_api_key?: string;
-        serpapi_api_key?: string;
-        brave_api_key?: string;
-    };
+    ai_credentials?: AIScrapingRuntimeCredentials;
+    feature_flags?: GeminiFeatureFlags;
     lease_token?: string;
     lease_expires_at?: string;
 }
@@ -62,88 +63,6 @@ interface RunnerRecord {
     enabled: boolean;
     status: string | null;
     metadata: Record<string, unknown> | null;
-}
-
-const DISCOVERY_CONFIG_KEYS = new Set([
-    'product_name',
-    'brand',
-    'max_search_results',
-    'max_steps',
-    'confidence_threshold',
-    'llm_provider',
-    'llm_model',
-    'llm_base_url',
-    'search_provider',
-    'prefer_manufacturer',
-    'fallback_to_static',
-    'max_concurrency',
-]);
-
-function hasKnownConfigKeys(
-    config: Record<string, unknown> | undefined,
-    keys: Set<string>
-): boolean {
-    if (!config) {
-        return false;
-    }
-
-    return Object.keys(config).some((key) => keys.has(key));
-}
-
-function pickNumber(value: unknown, fallback: number): number {
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-function sanitizeDiscoveryConfig(
-    config: Record<string, unknown>,
-    defaults: {
-        max_search_results: number;
-        max_steps: number;
-        confidence_threshold: number;
-        llm_provider: 'openai' | 'openai_compatible';
-        llm_model: string;
-        llm_base_url: string | null;
-    }
-): Record<string, unknown> {
-    const normalized: Record<string, unknown> = {};
-
-    if (typeof config.product_name === 'string') {
-        normalized.product_name = config.product_name;
-    }
-    if (typeof config.brand === 'string') {
-        normalized.brand = config.brand;
-    }
-    if (typeof config.prefer_manufacturer === 'boolean') {
-        normalized.prefer_manufacturer = config.prefer_manufacturer;
-    }
-    if (typeof config.fallback_to_static === 'boolean') {
-        normalized.fallback_to_static = config.fallback_to_static;
-    }
-
-    normalized.max_search_results = pickNumber(config.max_search_results, defaults.max_search_results);
-    normalized.max_steps = pickNumber(config.max_steps, defaults.max_steps);
-    normalized.confidence_threshold = pickNumber(config.confidence_threshold, defaults.confidence_threshold);
-
-    const llmProvider =
-        config.llm_provider === 'openai_compatible' ? 'openai_compatible' : defaults.llm_provider;
-    const llmModel =
-        typeof config.llm_model === 'string' && config.llm_model.trim().length > 0
-            ? config.llm_model.trim()
-            : defaults.llm_model;
-    const llmBaseUrl =
-        llmProvider === 'openai_compatible'
-            ? typeof config.llm_base_url === 'string' && config.llm_base_url.trim().length > 0
-                ? config.llm_base_url.trim()
-                : defaults.llm_base_url
-            : null;
-
-    normalized.llm_provider = llmProvider;
-    normalized.llm_model = llmModel;
-    if (llmBaseUrl) {
-        normalized.llm_base_url = llmBaseUrl;
-    }
-
-    return normalized;
 }
 
 function toRecord(value: unknown): Record<string, unknown> | undefined {
@@ -286,9 +205,10 @@ export async function POST(request: NextRequest) {
         const chunk = claimedChunks[0];
         
         // Fetch AI credentials and defaults
-        const [aiDefaults, aiCredentials] = await Promise.all([
+        const [aiDefaults, aiCredentials, featureFlags] = await Promise.all([
             getAIScrapingDefaults(),
             getAIScrapingRuntimeCredentials(),
+            getGeminiFeatureFlags(),
         ]);
 
         // Update runner status
@@ -316,6 +236,7 @@ export async function POST(request: NextRequest) {
                 job_type: chunk.type || 'standard',
                 job_config: chunk.config || undefined,
                 ai_credentials: aiCredentials || undefined,
+                feature_flags: featureFlags,
                 lease_token: chunk.lease_token || undefined,
                 lease_expires_at: chunk.lease_expires_at || undefined,
             },
@@ -333,10 +254,10 @@ export async function POST(request: NextRequest) {
                 const maxSearchResults = pickNumber(sanitizedDiscoveryConfig.max_search_results, aiDefaults.max_search_results);
                 const maxSteps = pickNumber(sanitizedDiscoveryConfig.max_steps, aiDefaults.max_steps);
                 const confidenceThreshold = pickNumber(sanitizedDiscoveryConfig.confidence_threshold, aiDefaults.confidence_threshold);
-                const llmProvider =
-                    sanitizedDiscoveryConfig.llm_provider === 'openai_compatible'
-                        ? 'openai_compatible'
-                        : aiDefaults.llm_provider;
+                const llmProvider = normalizeDiscoveryLLMProvider(
+                    sanitizedDiscoveryConfig.llm_provider,
+                    aiDefaults.llm_provider
+                );
                 const llmModel =
                     typeof sanitizedDiscoveryConfig.llm_model === 'string' && sanitizedDiscoveryConfig.llm_model.length > 0
                         ? sanitizedDiscoveryConfig.llm_model
