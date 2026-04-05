@@ -215,7 +215,7 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
   console.error(`[Scraper API] Failed to decrypt ${provider} secret: ${getErrorMessage(error)}`);
 }
 
-function normalizeLLMProvider(): LLMProvider {
+function normalizeLLMProvider(_provider?: unknown): LLMProvider {
   return 'gemini';
 }
 
