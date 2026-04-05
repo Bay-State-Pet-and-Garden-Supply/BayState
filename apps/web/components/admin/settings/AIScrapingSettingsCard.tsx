@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
 
-type ProviderName = "gemini" | "serpapi" | "brave";
+type ProviderName = "gemini" | "brave";
 
 interface ProviderStatus {
   provider: string;
@@ -33,7 +33,7 @@ interface ScrapingDefaults {
 }
 
 interface ApiResponse {
-  statuses: Record<ProviderName, ProviderStatus>;
+  statuses: Record<string, ProviderStatus | undefined>;
   defaults: ScrapingDefaults;
 }
 
@@ -53,12 +53,6 @@ const EMPTY_STATUSES: Record<ProviderName, ProviderStatus> = {
     last4: null,
     updated_at: null,
   },
-  serpapi: {
-    provider: "serpapi",
-    configured: false,
-    last4: null,
-    updated_at: null,
-  },
   brave: {
     provider: "brave",
     configured: false,
@@ -72,7 +66,6 @@ export function AIScrapingSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [serpapiApiKey, setSerpapiApiKey] = useState("");
   const [braveApiKey, setBraveApiKey] = useState("");
   const [statuses, setStatuses] =
     useState<Record<ProviderName, ProviderStatus>>(EMPTY_STATUSES);
@@ -93,7 +86,6 @@ export function AIScrapingSettingsCard() {
       const data = (await res.json()) as ApiResponse;
       setStatuses({
         gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
-        serpapi: data.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
         brave: data.statuses.brave ?? EMPTY_STATUSES.brave,
       });
       setDefaults({
@@ -122,14 +114,13 @@ export function AIScrapingSettingsCard() {
   const hasChanges = useMemo(() => {
     return (
       geminiApiKey.trim().length > 0 ||
-      serpapiApiKey.trim().length > 0 ||
       braveApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [braveApiKey, defaults, geminiApiKey, initialDefaults, serpapiApiKey]);
+  }, [braveApiKey, defaults, geminiApiKey, initialDefaults]);
 
   const onSave = async () => {
     setSaving(true);
@@ -138,7 +129,6 @@ export function AIScrapingSettingsCard() {
     try {
       const payload = {
         gemini_api_key: geminiApiKey.trim() || undefined,
-        serpapi_api_key: serpapiApiKey.trim() || undefined,
         brave_api_key: braveApiKey.trim() || undefined,
         defaults: {
           ...defaults,
@@ -167,7 +157,6 @@ export function AIScrapingSettingsCard() {
 
       setStatuses({
         gemini: body.statuses.gemini ?? EMPTY_STATUSES.gemini,
-        serpapi: body.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
         brave: body.statuses.brave ?? EMPTY_STATUSES.brave,
       });
       setDefaults({
@@ -183,7 +172,6 @@ export function AIScrapingSettingsCard() {
         llm_base_url: null,
       });
       setGeminiApiKey("");
-      setSerpapiApiKey("");
       setBraveApiKey("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -203,8 +191,8 @@ export function AIScrapingSettingsCard() {
             <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
               AI scraping now runs on Gemini directly. Configure the Gemini API
-              key used for Crawl4AI and AI search, plus optional search
-              provider fallbacks for runner jobs.
+              key used for Crawl4AI and AI search. Brave Search remains the
+              only optional discovery fallback for runner jobs.
             </CardDescription>
           </div>
         </div>
@@ -222,7 +210,7 @@ export function AIScrapingSettingsCard() {
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="gemini-api-key">Gemini API Key</Label>
                 <Input
@@ -236,22 +224,6 @@ export function AIScrapingSettingsCard() {
                   {statuses.gemini.configured
                     ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
                     : "Required for AI scraping"}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="serpapi-api-key">SerpAPI Key</Label>
-                <Input
-                  id="serpapi-api-key"
-                  type="password"
-                  value={serpapiApiKey}
-                  onChange={(e) => setSerpapiApiKey(e.target.value)}
-                  placeholder="7aad..."
-                />
-                <div className="text-xs text-muted-foreground">
-                  {statuses.serpapi.configured
-                    ? `Configured (ending in ${statuses.serpapi.last4 ?? "****"})`
-                    : "Optional external search fallback"}
                 </div>
               </div>
 
@@ -351,13 +323,6 @@ export function AIScrapingSettingsCard() {
                   variant={statuses.gemini.configured ? "default" : "secondary"}
                 >
                   Gemini {statuses.gemini.configured ? "Ready" : "Missing"}
-                </Badge>
-                <Badge
-                  variant={
-                    statuses.serpapi.configured ? "default" : "secondary"
-                  }
-                >
-                  SerpAPI {statuses.serpapi.configured ? "Ready" : "Optional"}
                 </Badge>
                 <Badge
                   variant={statuses.brave.configured ? "default" : "secondary"}
