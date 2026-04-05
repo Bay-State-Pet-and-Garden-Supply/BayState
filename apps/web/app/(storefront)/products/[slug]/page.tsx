@@ -301,7 +301,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           {/* Pricing & Stock Action Box */}
           <div className="rounded-lg border-2 border-zinc-100 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-zinc-900">Purchase Options</h3>
+              <h3 className="text-xl font-bold text-zinc-900">{formattedPrice}</h3>
               {(product.stock_status !== 'out_of_stock' || !product.is_special_order) && (
                 <Badge className={`${stockStatusColor} text-sm px-3 py-1`}>
                   {stockStatusLabel}
@@ -310,47 +310,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             </div>
             
             <div className="space-y-3 mb-6">
-              {/* One-time Purchase Tier */}
-              <label className="flex items-start gap-3 p-4 rounded-md border border-zinc-200 cursor-pointer hover:bg-zinc-50 transition-colors">
-                <input 
-                  type="radio" 
-                  name="purchase-option" 
-                  defaultChecked 
-                  className="mt-1 h-4 w-4 text-primary" 
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-zinc-900">{formattedPrice}</span>
-                    <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">One-time</span>
-                  </div>
-                  <p className="text-xs text-zinc-500 mt-1">Standard delivery or in-store pickup.</p>
-                </div>
-              </label>
-
-              {/* Autoship Tier (Chewy Style) */}
-              <label className="flex items-start gap-3 p-4 rounded-md bg-blue-50/30 border border-blue-100 cursor-pointer hover:bg-blue-50 transition-colors relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-                <input 
-                  type="radio" 
-                  name="purchase-option" 
-                  className="mt-1 h-4 w-4 text-blue-600" 
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-blue-700">
-                        {formatCurrency(product.price * 0.95)}
-                      </span>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-[10px] h-5">
-                        Save 5%
-                      </Badge>
-                    </div>
-                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Autoship</span>
-                  </div>
-                  <p className="text-xs text-zinc-600 mt-1 font-medium">Set your own schedule.</p>
-                  <p className="text-[10px] text-zinc-500">Skip or cancel anytime. Extra savings on every order.</p>
-                </div>
-              </label>
+              <p className="text-sm text-zinc-500">Standard delivery or in-store pickup available.</p>
             </div>
 
             {/* Urgency & Fulfillment Badges */}

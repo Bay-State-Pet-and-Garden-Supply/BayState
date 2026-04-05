@@ -17,8 +17,6 @@ interface ProductCardProps {
  */
 export function ProductCard({ product }: ProductCardProps) {
   const formattedPrice = formatCurrency(product.price);
-  // Calculate a 5% Autoship discount placeholder
-  const autoshipPrice = formatCurrency(product.price * 0.95);
 
   const rawImageSrc = product.images?.[0];
   const imageSrc = formatImageUrl(rawImageSrc);
@@ -93,16 +91,6 @@ export function ProductCard({ product }: ProductCardProps) {
                 <div className="flex items-baseline gap-1">
                   <span className="text-xl font-bold tracking-tight text-zinc-900">
                     {formattedPrice}
-                  </span>
-                </div>
-                
-                {/* Autoship Placeholder - Chewy Style */}
-                <div className="flex items-center gap-1 rounded-sm bg-blue-50 px-2 py-1 border border-blue-100">
-                  <span className="text-xs font-bold text-blue-700">
-                    {autoshipPrice}
-                  </span>
-                  <span className="text-[10px] font-medium text-blue-600">
-                    Autoship & Save
                   </span>
                 </div>
               </div>
