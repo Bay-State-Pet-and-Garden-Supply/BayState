@@ -33,6 +33,18 @@ except ImportError:
 class Crawl4AIExtractor:
     """Handles product extraction using crawl4ai."""
 
+    _PLACEHOLDER_TEXT = {
+        "",
+        "unknown",
+        "n/a",
+        "na",
+        "none",
+        "null",
+        "not specified",
+        "not available",
+        "not provided",
+    }
+
     def __init__(
         self,
         headless: bool,
@@ -119,6 +131,93 @@ class Crawl4AIExtractor:
 
         logger.info(f"[AI Search] Extraction telemetry: {json.dumps(telemetry)}")
 
+    @staticmethod
+    def _should_retry_with_relaxed_wait(result: dict[str, Any]) -> bool:
+        """Detect navigation failures that should retry with a looser wait strategy."""
+        error_text = str(result.get("error") or "").lower()
+        if not error_text:
+            return False
+        return "timeout" in error_text or "networkidle" in error_text or "failed on navigating acs-goto" in error_text
+
+    @classmethod
+    def _is_placeholder_text(cls, value: Any) -> bool:
+        text = str(value or "").strip().lower()
+        if not text:
+            return True
+        if text in cls._PLACEHOLDER_TEXT:
+            return True
+        return text.startswith("not specified") or text.startswith("not explicitly stated")
+
+    def _normalize_llm_product_data(
+        self,
+        product_data: dict[str, Any],
+        *,
+        url: str,
+        html: str,
+        expected_name: Optional[str],
+        expected_brand: Optional[str],
+    ) -> dict[str, Any]:
+        """Normalize second-pass LLM output into the same shape as heuristic extraction."""
+        normalized_name = self._extraction.normalize_product_title(product_data.get("product_name"))
+
+        description = self._extraction.clean_text(product_data.get("description"))
+        if self._is_placeholder_text(description):
+            description = ""
+
+        raw_brand = self._extraction.clean_text(product_data.get("brand"))
+        explicit_brand = None if self._is_placeholder_text(raw_brand) else raw_brand
+        normalized_brand = self._extraction.infer_brand(
+            explicit_brand=explicit_brand or expected_brand,
+            candidate_name=normalized_name,
+            description=description,
+            source_url=url,
+            expected_name=expected_name,
+        )
+
+        raw_size = self._extraction.clean_text(product_data.get("size_metrics"))
+        size_metrics = ""
+        if not self._is_placeholder_text(raw_size):
+            # Keep concise metric-like strings; collapse verbose/speculative text back
+            # to an explicit package metric found in the trusted item text.
+            extracted_metric = self._extraction.extract_size_metrics(raw_size)
+            if extracted_metric and len(raw_size) > 40:
+                size_metrics = self._extraction.clean_text(extracted_metric)
+            elif len(raw_size) <= 40:
+                size_metrics = raw_size
+
+        if not size_metrics:
+            inferred_metric = self._extraction.extract_size_metrics(f"{normalized_name} {description}")
+            size_metrics = self._extraction.clean_text(inferred_metric) if inferred_metric else ""
+
+        images = self._extraction.normalize_images(
+            self._extraction.coerce_string_list(product_data.get("images")),
+            url,
+        )
+        if not images and html:
+            meta_images = [
+                self._extraction.extract_meta_content(html, "og:image", property_attr=True) or "",
+                self._extraction.extract_meta_content(html, "twitter:image", property_attr=False) or "",
+            ]
+            images = self._extraction.normalize_images([value for value in meta_images if value], url)
+
+        categories = self._extraction.infer_categories(
+            html_text=html,
+            source_url=url,
+            candidate_name=normalized_name,
+            expected_name=expected_name,
+            explicit_categories=product_data.get("categories"),
+            explicit_brand=normalized_brand or expected_brand,
+        )
+
+        normalized = dict(product_data)
+        normalized["product_name"] = normalized_name
+        normalized["brand"] = normalized_brand or ""
+        normalized["description"] = description
+        normalized["size_metrics"] = size_metrics
+        normalized["images"] = images
+        normalized["categories"] = categories
+        return normalized
+
     async def extract(
         self,
         url: str,
@@ -169,6 +268,10 @@ class Crawl4AIExtractor:
             async with Crawl4AIEngine(engine_config) as engine:
                 # FIRST CRAWL: Fetch raw content for lightweight extraction (JSON-LD/Meta)
                 result = await engine.crawl(url)
+                if not result.get("success") and self._should_retry_with_relaxed_wait(result):
+                    logger.info("[AI Search] Retrying Crawl4AI fetch with domcontentloaded after networkidle navigation failure")
+                    engine.config.setdefault("crawler", {})["wait_until"] = "domcontentloaded"
+                    result = await engine.crawl(url)
                 
                 # Strict validation: ensure html and markdown are strings
                 html_raw = result.get("html")
@@ -283,16 +386,16 @@ class Crawl4AIExtractor:
                     from crawl4ai.extraction_strategy import LLMExtractionStrategy
 
                     if self._llm_runtime.provider == "openai" and not self._llm_runtime.api_key:
-                        self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, 0, "LLM provider not configured")
-                        return {"success": False, "error": "LLM provider not configured"}
+                        logger.info("[AI Search] OpenAI API key missing, using fallback extractor instead of LLM second pass")
+                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
                     if self._llm_runtime.provider == "gemini" and not self._llm_runtime.api_key:
-                        self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, 0, "Gemini API key not configured")
-                        return {"success": False, "error": "Gemini API key not configured"}
+                        logger.info("[AI Search] Gemini API key missing, using fallback extractor instead of LLM second pass")
+                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
                     if self._llm_runtime.provider == "openai_compatible" and not self._llm_runtime.base_url:
-                        self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, 0, "OpenAI-compatible base URL not configured")
-                        return {"success": False, "error": "OpenAI-compatible base URL not configured"}
+                        logger.info("[AI Search] OpenAI-compatible base URL missing, using fallback extractor instead of LLM second pass")
+                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
                     instruction = build_extraction_instruction(sku, brand, product_name, self.prompt_version)
                     strategy = LLMExtractionStrategy(
@@ -311,8 +414,15 @@ class Crawl4AIExtractor:
                     method = "llm"
 
                 engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
+                # The second pass changes extraction strategy for the same URL. Bypass
+                # Crawl4AI's response cache here so we do not just replay the first crawl
+                # result without running extraction.
+                engine.config["crawler"]["cache_mode"] = "BYPASS"
                 llm_start = time.perf_counter()
                 result = await engine.crawl(url)
+                if not result.get("success") and self._should_retry_with_relaxed_wait(result):
+                    engine.config["crawler"]["wait_until"] = "domcontentloaded"
+                    result = await engine.crawl(url)
                 
                 # Strict validation for second crawl results
                 result_html = result.get("html")
@@ -345,7 +455,13 @@ class Crawl4AIExtractor:
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
 
                         if data and isinstance(data, list):
-                            product_data = data[0]
+                            product_data = self._normalize_llm_product_data(
+                                data[0],
+                                url=url,
+                                html=html,
+                                expected_name=product_name,
+                                expected_brand=brand,
+                            )
                             product_data["success"] = True
                             product_data["url"] = url
 
@@ -513,13 +629,17 @@ class FallbackExtractor:
 
             # Fallback to meta tags
             import re
-            import html as html_module
 
             title_match = re.search(r"<title[^>]*>(.*?)</title>", html_text, flags=re.IGNORECASE | re.DOTALL)
-            title_text = html_module.unescape(title_match.group(1)).strip() if title_match else ""
-            og_title = self._extraction.extract_meta_content(html_text, "og:title", property_attr=True) or ""
-            og_description = self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or ""
+            title_text = self._extraction.normalize_product_title(title_match.group(1)) if title_match else ""
+            og_title = self._extraction.normalize_product_title(
+                self._extraction.extract_meta_content(html_text, "og:title", property_attr=True) or ""
+            )
+            og_description = self._extraction.clean_text(
+                self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or ""
+            )
             og_image = self._extraction.extract_meta_content(html_text, "og:image", property_attr=True) or ""
+            meta_brand = self._extraction.extract_meta_content(html_text, "product:brand", property_attr=True) or ""
             # Check for JSON-LD structured data presence (even if extraction failed)
             has_jsonld = bool(re.search(r"<script[^>]*type=[\"']application/ld\+json[\"']", html_text, flags=re.IGNORECASE))
             has_structured_data = has_jsonld or bool(og_title) or bool(og_description)
@@ -527,6 +647,13 @@ class FallbackExtractor:
             images = self._extraction.normalize_images([og_image], response_url) if og_image else []
 
             candidate_name = og_title or title_text
+            inferred_brand = self._extraction.infer_brand(
+                explicit_brand=meta_brand or brand,
+                candidate_name=candidate_name,
+                description=og_description or title_text,
+                source_url=response_url,
+                expected_name=product_name,
+            )
             if candidate_name and product_name and not self._matching.is_name_match(product_name, candidate_name):
                 self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "title mismatch")
                 return {
@@ -534,7 +661,7 @@ class FallbackExtractor:
                     "error": "Fallback extraction title does not match expected product",
                 }
 
-            if brand and candidate_name and not self._matching.is_brand_match(brand, candidate_name, response_url):
+            if brand and candidate_name and not self._matching.is_brand_match(brand, inferred_brand or candidate_name, response_url):
                 self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "brand mismatch")
                 return {
                     "success": False,
@@ -549,7 +676,16 @@ class FallbackExtractor:
                 }
 
             fallback_description = og_description or title_text
-            fallback_size = self._extraction.extract_size_metrics(f"{candidate_name} {fallback_description}")
+            fallback_categories = self._extraction.infer_categories(
+                html_text=html_text,
+                source_url=response_url,
+                candidate_name=candidate_name,
+                expected_name=product_name,
+                explicit_brand=inferred_brand or brand,
+            )
+            fallback_size = self._extraction.extract_size_metrics(
+                f"{candidate_name} {self._extraction.strip_instructional_copy(fallback_description)}"
+            )
             # Confidence formula (FallbackExtractor):
             # Base: 0.65 (increased from 0.58 for Crawl4AI HTML reuse)
             # +0.15 if JSON-LD or structured data present
@@ -572,11 +708,11 @@ class FallbackExtractor:
             return {
                 "success": True,
                 "product_name": candidate_name,
-                "brand": brand,
+                "brand": inferred_brand,
                 "description": fallback_description,
                 "size_metrics": fallback_size,
                 "images": images,
-                "categories": ["Product"],
+                "categories": fallback_categories or ["Product"],
                 "confidence": confidence,
                 "url": response_url,
             }

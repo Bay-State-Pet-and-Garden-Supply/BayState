@@ -53,8 +53,8 @@ class TestCrawl4AIEngineV04:
             from crawl4ai_engine.engine import Crawl4AIEngine
 
             engine = Crawl4AIEngine(v04_config)
-            # The __init__ calls it once
-            assert mock_run_config.call_count >= 1
+            _ = engine._build_run_config()
+            assert mock_run_config.call_count == 1
             
             last_call_args = mock_run_config.call_args.kwargs
             
@@ -167,8 +167,7 @@ class TestCrawl4AIEngineV04:
                 
             mock_crawler.arun.assert_called_once()
             
-            # Check constructor calls for CrawlerRunConfig
-            assert mock_run_config.call_count >= 2
+            assert mock_run_config.call_count == 1
             last_call = mock_run_config.call_args
             assert last_call.kwargs.get("session_id") == "session_test_com"
 
@@ -192,13 +191,12 @@ class TestCrawl4AIEngineV04:
                 
             mock_crawler.arun_many.assert_called_once()
             
-            # Constructor should be called for each URL (+1 for __init__)
-            assert mock_run_config.call_count >= 3
+            assert mock_run_config.call_count == 2
             
             # Get the session IDs passed to constructors
             constructor_session_ids = [
                 call.kwargs.get("session_id") 
-                for call in mock_run_config.call_args_list[1:]
+                for call in mock_run_config.call_args_list
             ]
             assert "session_a_com" in constructor_session_ids
             assert "session_b_com" in constructor_session_ids

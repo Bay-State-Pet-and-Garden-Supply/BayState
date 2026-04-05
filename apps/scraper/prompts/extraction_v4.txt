@@ -1,0 +1,54 @@
+# Prompt Version: v4
+# Created: 2026-04-05
+# Focus: concise, schema-aligned product extraction for Crawl4AI fit_markdown input
+
+Extract structured product data for a single product detail page.
+
+TARGET HINTS
+- SKU: {sku}
+- Expected Brand (soft hint): {brand or "Unknown"}
+- Expected Product Name (soft hint): {product_name or "Unknown"}
+
+CORE POLICY
+- Use only evidence from the current page.
+- The target hints above are weak hints, not facts. Do not copy them unless the page supports them.
+- Extract the exact product or selected variant shown on the page.
+- Ignore cross-sells, related items, bundle suggestions, review snippets, shipping copy, and store-wide marketing text.
+
+FIELD RULES
+1) product_name
+   - Return the clean PDP title for the exact item.
+   - Remove store suffixes, price suffixes, and slug noise when possible.
+   - Do not return a category name, breadcrumb trail, or retailer name.
+
+2) brand
+   - Return the canonical manufacturer brand, not the retailer or site name.
+   - Infer from title, manufacturer text, breadcrumb, specs, or structured data.
+   - Expand shorthand only when the page clearly supports it.
+
+3) description
+   - Return concise product-specific description or spec text for the exact item.
+   - Prefer the main description, feature bullets, or product specs.
+   - Keep important technical details.
+   - Exclude generic SEO copy, shipping text, and instructions unrelated to the product package.
+
+4) size_metrics
+   - Extract package size, count, weight, volume, or product dimensions only.
+   - Good examples: "20 oz", "8 lb", "4 oz", "250 g", "1.5 cu ft", "10 count".
+   - Ignore planting depth, plant spacing, days to maturity, dosage, and other instructional measurements unless they are the package size.
+
+5) images
+   - Return absolute product image URLs only.
+   - Put the main hero image first, then additional images for the same product.
+   - Exclude logos, icons, generic banners, and recommendation images.
+
+6) categories
+   - Return 1-4 useful product categories from breadcrumbs, tags, department text, or structured data.
+   - Keep the most specific product categories.
+   - Exclude generic crumbs like "Home", "Shop", "Products", "Brands", "Departments", and the brand name itself.
+
+OUTPUT
+- Fill only these schema fields: product_name, brand, description, size_metrics, images, categories.
+- Do not hallucinate missing values.
+- If a text field cannot be verified, return an empty string.
+- If a list field cannot be verified, return [].

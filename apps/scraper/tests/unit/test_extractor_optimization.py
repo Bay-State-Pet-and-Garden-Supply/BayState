@@ -13,10 +13,12 @@ class TestCrawl4AIExtractorOptimization:
         """Initialize extractor with default settings."""
         return Crawl4AIExtractor(
             headless=True,
-            llm_model="gpt-4o",
+            llm_model="gemini-3.1-flash-lite-preview",
             scoring=MagicMock(),
             matching=MagicMock(),
             extraction_strategy="llm",
+            llm_provider="gemini",
+            llm_api_key="test-key",
         )
 
     @pytest.mark.asyncio
@@ -28,17 +30,25 @@ class TestCrawl4AIExtractorOptimization:
         # Mock dependencies
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.return_value = {
-            "success": True,
-            "extracted_content": '[{"name": "Test Product"}]'
-        }
+        mock_engine.crawl.side_effect = [
+            {
+                "success": True,
+                "html": "",
+                "fit_markdown": "",
+                "raw_markdown": "",
+                "markdown": "",
+            },
+            {
+                "success": True,
+                "extracted_content": '[{"name": "Test Product"}]',
+            },
+        ]
         
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True) as mock_strategy_cls,
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
-            patch("os.environ.get", return_value="fake-key"),
         ):
             # We need to simulate the engine's context manager
             mock_engine.__aenter__.return_value = mock_engine
@@ -53,6 +63,37 @@ class TestCrawl4AIExtractorOptimization:
             assert kwargs.get("input_format") == "fit_markdown"
             assert kwargs.get("chunk_token_threshold") == 4000
             assert kwargs.get("overlap_rate") == 0.1
+
+    @pytest.mark.asyncio
+    async def test_extract_relaxes_wait_strategy_after_timeout(self, extractor):
+        """Live storefronts should retry with domcontentloaded when network idle fails."""
+        mock_engine = AsyncMock()
+        mock_engine.crawl.side_effect = [
+            {
+                "success": False,
+                "error": 'Page.goto: Timeout 30000ms exceeded while waiting until "networkidle"',
+                "html": "",
+                "markdown": "",
+            },
+            {
+                "success": False,
+                "error": "navigation timeout",
+                "html": "",
+                "markdown": "",
+            },
+        ]
+
+        def build_engine(config):
+            mock_engine.config = config
+            return mock_engine
+
+        with patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", side_effect=build_engine):
+            mock_engine.__aenter__.return_value = mock_engine
+
+            await extractor.extract("https://example.com/p/123", "SKU123", "Test Product", "Test Brand")
+
+        assert mock_engine.crawl.await_count == 2
+        assert mock_engine.config["crawler"]["wait_until"] == "domcontentloaded"
 
     @pytest.mark.asyncio
     async def test_extract_reuses_fit_markdown_for_fallback_when_html_missing(self, extractor):
@@ -88,6 +129,127 @@ class TestCrawl4AIExtractorOptimization:
             assert result == {"success": False, "error": "fallback"}
 
     @pytest.mark.asyncio
+    async def test_extract_bypasses_cache_for_second_pass(self, extractor):
+        """Second-pass extraction must bypass the first crawl's cached response."""
+        url = "https://example.com/p/123"
+        sku = "SKU123"
+        observed_cache_modes = []
+
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+
+        async def fake_crawl(_url):
+            observed_cache_modes.append(mock_engine.config["crawler"]["cache_mode"])
+            if len(observed_cache_modes) == 1:
+                return {
+                    "success": True,
+                    "html": "<html><body>product</body></html>",
+                    "fit_markdown": "product markdown",
+                    "raw_markdown": "product markdown",
+                    "markdown": "product markdown",
+                }
+            return {
+                "success": True,
+                "html": "<html></html>",
+                "extracted_content": [
+                    {
+                        "product_name": "Test Product",
+                        "brand": "Test Brand",
+                        "description": "Structured payload",
+                        "size_metrics": "12 oz",
+                        "images": ["https://example.com/image.jpg"],
+                        "categories": ["Garden Supplies"],
+                    }
+                ],
+            }
+
+        mock_engine.crawl.side_effect = fake_crawl
+
+        def build_engine(config):
+            mock_engine.config = config
+            return mock_engine
+
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", side_effect=build_engine),
+            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
+            patch("crawl4ai.LLMConfig", create=True),
+            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch.object(extractor._extraction, "extract_product_from_html_jsonld", return_value=None),
+            patch("scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags", return_value=None),
+        ):
+            mock_engine.__aenter__.return_value = mock_engine
+
+            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+
+            assert result is not None
+            assert result["success"] is True
+            assert observed_cache_modes == ["ENABLED", "BYPASS"]
+
+    @pytest.mark.asyncio
+    async def test_extract_relaxes_wait_strategy_for_second_pass_after_timeout(self, extractor):
+        """LLM second pass should retry with domcontentloaded after a navigation timeout."""
+        url = "https://example.com/p/123"
+        sku = "SKU123"
+        observed_wait_modes = []
+
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+
+        async def fake_crawl(_url):
+            observed_wait_modes.append(mock_engine.config["crawler"]["wait_until"])
+            if len(observed_wait_modes) == 1:
+                return {
+                    "success": True,
+                    "html": "<html><body>product</body></html>",
+                    "fit_markdown": "product markdown",
+                    "raw_markdown": "product markdown",
+                    "markdown": "product markdown",
+                }
+            if len(observed_wait_modes) == 2:
+                return {
+                    "success": False,
+                    "error": 'Page.goto: Timeout 30000ms exceeded while waiting until "networkidle"',
+                    "html": "",
+                    "markdown": "",
+                }
+            return {
+                "success": True,
+                "html": "<html></html>",
+                "extracted_content": [
+                    {
+                        "product_name": "Test Product",
+                        "brand": "Test Brand",
+                        "description": "Structured payload",
+                        "size_metrics": "12 oz",
+                        "images": ["https://example.com/image.jpg"],
+                        "categories": ["Garden Supplies"],
+                    }
+                ],
+            }
+
+        mock_engine.crawl.side_effect = fake_crawl
+
+        def build_engine(config):
+            mock_engine.config = config
+            return mock_engine
+
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", side_effect=build_engine),
+            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
+            patch("crawl4ai.LLMConfig", create=True),
+            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch.object(extractor._extraction, "extract_product_from_html_jsonld", return_value=None),
+            patch("scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags", return_value=None),
+        ):
+            mock_engine.__aenter__.return_value = mock_engine
+
+            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+
+            assert result is not None
+            assert result["success"] is True
+            assert observed_wait_modes == ["networkidle", "networkidle", "domcontentloaded"]
+
+    @pytest.mark.asyncio
     async def test_extract_accepts_structured_extracted_content_payload(self, extractor):
         """Test that structured extracted_content payloads are accepted without JSON parsing."""
         url = "https://example.com/p/123"
@@ -105,6 +267,13 @@ class TestCrawl4AIExtractorOptimization:
             },
             {
                 "success": True,
+                "html": """
+                <html>
+                  <head>
+                    <meta property=\"og:image\" content=\"https://example.com/image.jpg\" />
+                  </head>
+                </html>
+                """,
                 "extracted_content": [
                     {
                         "product_name": "Test Product",
@@ -112,7 +281,7 @@ class TestCrawl4AIExtractorOptimization:
                         "description": "Structured payload",
                         "size_metrics": "12 oz",
                         "images": ["https://example.com/image.jpg"],
-                        "categories": ["Product"],
+                        "categories": ["Garden Supplies"],
                     }
                 ],
             },
@@ -123,7 +292,6 @@ class TestCrawl4AIExtractorOptimization:
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
-            patch("os.environ.get", return_value="fake-key"),
         ):
             mock_engine.__aenter__.return_value = mock_engine
 
@@ -134,6 +302,62 @@ class TestCrawl4AIExtractorOptimization:
             assert result["product_name"] == "Test Product"
             assert result["brand"] == "Test Brand"
             assert result["confidence"] == 1.0
+
+    @pytest.mark.asyncio
+    async def test_extract_normalizes_llm_output_with_aliases_and_meta_images(self, extractor):
+        """LLM payloads should be normalized before confidence and return."""
+        url = "https://example.com/p/123"
+        sku = "SKU123"
+
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.crawl.side_effect = [
+            {
+                "success": True,
+                "html": None,
+                "fit_markdown": None,
+                "raw_markdown": None,
+                "markdown": None,
+            },
+            {
+                "success": True,
+                "html": """
+                <html>
+                  <head>
+                    <meta property=\"og:image\" content=\"/hero.jpg\" />
+                  </head>
+                </html>
+                """,
+                "extracted_content": [
+                    {
+                        "product_name": "Organic Eggplant Black Beauty Heirloom",
+                        "brand": "LV Seed",
+                        "description": "A productive heirloom variety for home gardens.",
+                        "size_metrics": "Not specified",
+                        "images": [],
+                        "categories": ["Garden Center", "Seeds"],
+                    }
+                ],
+            },
+        ]
+
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
+            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
+            patch("crawl4ai.LLMConfig", create=True),
+            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+        ):
+            mock_engine.__aenter__.return_value = mock_engine
+
+            result = await extractor.extract(url, sku, "LV SEED ORGANIC EGGP LANT BLACK HEIRLOOM", None)
+
+            assert result is not None
+            assert result["success"] is True
+            assert result["brand"] == "Lake Valley Seed"
+            assert result["size_metrics"] == ""
+            assert result["images"] == ["https://example.com/hero.jpg"]
+            assert "Garden Center" not in result["categories"]
+            assert "Seeds" in result["categories"]
 
     @pytest.mark.asyncio
     async def test_extract_returns_first_pass_jsonld_result(self, extractor):
@@ -163,10 +387,20 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.crawl.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_extract_returns_error_when_openai_key_missing(self, extractor):
-        """Test that LLM extraction fails clearly when OPENAI_API_KEY is absent."""
+    async def test_extract_uses_fallback_when_gemini_key_missing(self):
+        """Test that missing LLM credentials defer to the zero-cost fallback path."""
         url = "https://example.com/p/123"
         sku = "SKU123"
+
+        extractor = Crawl4AIExtractor(
+            headless=True,
+            llm_model="gemini-3.1-flash-lite-preview",
+            scoring=MagicMock(),
+            matching=MagicMock(),
+            extraction_strategy="llm",
+            llm_provider="gemini",
+            llm_api_key=None,
+        )
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -180,13 +414,21 @@ class TestCrawl4AIExtractorOptimization:
 
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
-            patch("os.environ.get", return_value=None),
         ):
             mock_engine.__aenter__.return_value = mock_engine
+            extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback Product"})
 
             result = await extractor.extract(url, sku, "Test Product", "Test Brand")
 
-            assert result == {"success": False, "error": "OPENAI_API_KEY not set"}
+            extractor._extract_with_fallback.assert_awaited_once_with(
+                url,
+                sku,
+                "Test Product",
+                "Test Brand",
+                "",
+                "",
+            )
+            assert result == {"success": True, "product_name": "Fallback Product"}
 
     @pytest.mark.asyncio
     async def test_extract_falls_back_on_auth_error_payload(self, extractor):
@@ -217,7 +459,6 @@ class TestCrawl4AIExtractorOptimization:
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
-            patch("os.environ.get", return_value="fake-key"),
         ):
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "fallback"})
@@ -263,7 +504,6 @@ class TestCrawl4AIExtractorOptimization:
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
-            patch("os.environ.get", return_value="fake-key"),
         ):
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback"})
@@ -306,7 +546,6 @@ class TestCrawl4AIExtractorOptimization:
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
-            patch("os.environ.get", return_value="fake-key"),
         ):
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback"})
