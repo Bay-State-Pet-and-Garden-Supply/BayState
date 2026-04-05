@@ -17,7 +17,6 @@ import {
   ShieldCheck,
   Package,
   DollarSign,
-  Brain,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -105,12 +104,6 @@ const navSections: NavSection[] = [
         href: "/admin/costs",
         label: "Costs",
         icon: DollarSign,
-        adminOnly: true,
-      },
-      {
-        href: "/admin/monitoring/gemini-migration",
-        label: "Gemini Migration",
-        icon: Brain,
         adminOnly: true,
       },
       {

@@ -68,8 +68,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as {
-      openai_api_key?: string;
-      openai_compatible_api_key?: string;
       gemini_api_key?: string;
       serpapi_api_key?: string;
       brave_api_key?: string;
@@ -78,14 +76,6 @@ export async function POST(request: NextRequest) {
     };
 
     const tasks: Array<Promise<unknown>> = [];
-
-    if (body.openai_api_key && body.openai_api_key.trim()) {
-      tasks.push(setAIScrapingProviderSecret('openai', body.openai_api_key, auth.userId));
-    }
-
-    if (body.openai_compatible_api_key && body.openai_compatible_api_key.trim()) {
-      tasks.push(setAIScrapingProviderSecret('openai_compatible', body.openai_compatible_api_key, auth.userId));
-    }
 
     if (body.gemini_api_key && body.gemini_api_key.trim()) {
       tasks.push(setAIScrapingProviderSecret('gemini', body.gemini_api_key, auth.userId));

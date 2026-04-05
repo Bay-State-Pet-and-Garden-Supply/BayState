@@ -14,18 +14,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
 
-type ProviderName = "openai" | "openai_compatible" | "serpapi" | "brave";
-type LLMProvider = "openai" | "openai_compatible";
+type ProviderName = "gemini" | "serpapi" | "brave";
 
 interface ProviderStatus {
-  provider: ProviderName;
+  provider: string;
   configured: boolean;
   last4: string | null;
   updated_at: string | null;
 }
 
 interface ScrapingDefaults {
-  llm_provider: LLMProvider;
+  llm_provider: "gemini";
   llm_model: string;
   llm_base_url: string | null;
   max_search_results: number;
@@ -39,48 +38,44 @@ interface ApiResponse {
 }
 
 const DEFAULTS: ScrapingDefaults = {
-  llm_provider: "openai",
-  llm_model: "gpt-4o-mini",
+  llm_provider: "gemini",
+  llm_model: "gemini-2.5-flash",
   llm_base_url: null,
   max_search_results: 5,
   max_steps: 15,
   confidence_threshold: 0.7,
 };
 
+const EMPTY_STATUSES: Record<ProviderName, ProviderStatus> = {
+  gemini: {
+    provider: "gemini",
+    configured: false,
+    last4: null,
+    updated_at: null,
+  },
+  serpapi: {
+    provider: "serpapi",
+    configured: false,
+    last4: null,
+    updated_at: null,
+  },
+  brave: {
+    provider: "brave",
+    configured: false,
+    last4: null,
+    updated_at: null,
+  },
+};
+
 export function AIScrapingSettingsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
-  const [openAICompatibleApiKey, setOpenAICompatibleApiKey] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [serpapiApiKey, setSerpapiApiKey] = useState("");
   const [braveApiKey, setBraveApiKey] = useState("");
-  const [statuses, setStatuses] = useState<Record<ProviderName, ProviderStatus>>({
-    openai: {
-      provider: "openai",
-      configured: false,
-      last4: null,
-      updated_at: null,
-    },
-    openai_compatible: {
-      provider: "openai_compatible",
-      configured: false,
-      last4: null,
-      updated_at: null,
-    },
-    serpapi: {
-      provider: "serpapi",
-      configured: false,
-      last4: null,
-      updated_at: null,
-    },
-    brave: {
-      provider: "brave",
-      configured: false,
-      last4: null,
-      updated_at: null,
-    },
-  });
+  const [statuses, setStatuses] =
+    useState<Record<ProviderName, ProviderStatus>>(EMPTY_STATUSES);
   const [defaults, setDefaults] = useState<ScrapingDefaults>(DEFAULTS);
   const [initialDefaults, setInitialDefaults] =
     useState<ScrapingDefaults>(DEFAULTS);
@@ -88,6 +83,7 @@ export function AIScrapingSettingsCard() {
   const fetchConfig = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const res = await fetch("/api/admin/ai-scraping/credentials");
       if (!res.ok) {
@@ -95,9 +91,23 @@ export function AIScrapingSettingsCard() {
       }
 
       const data = (await res.json()) as ApiResponse;
-      setStatuses(data.statuses);
-      setDefaults(data.defaults);
-      setInitialDefaults(data.defaults);
+      setStatuses({
+        gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
+        serpapi: data.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
+        brave: data.statuses.brave ?? EMPTY_STATUSES.brave,
+      });
+      setDefaults({
+        ...DEFAULTS,
+        ...data.defaults,
+        llm_provider: "gemini",
+        llm_base_url: null,
+      });
+      setInitialDefaults({
+        ...DEFAULTS,
+        ...data.defaults,
+        llm_provider: "gemini",
+        llm_base_url: null,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -111,37 +121,30 @@ export function AIScrapingSettingsCard() {
 
   const hasChanges = useMemo(() => {
     return (
-      openaiApiKey.trim().length > 0 ||
-      openAICompatibleApiKey.trim().length > 0 ||
+      geminiApiKey.trim().length > 0 ||
       serpapiApiKey.trim().length > 0 ||
       braveApiKey.trim().length > 0 ||
-      defaults.llm_provider !== initialDefaults.llm_provider ||
       defaults.llm_model !== initialDefaults.llm_model ||
-      (defaults.llm_base_url || "") !== (initialDefaults.llm_base_url || "") ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [
-    openaiApiKey,
-    openAICompatibleApiKey,
-    serpapiApiKey,
-    braveApiKey,
-    defaults,
-    initialDefaults,
-  ]);
+  }, [braveApiKey, defaults, geminiApiKey, initialDefaults, serpapiApiKey]);
 
   const onSave = async () => {
     setSaving(true);
     setError(null);
 
-      try {
-        const payload = {
-          openai_api_key: openaiApiKey.trim() || undefined,
-          openai_compatible_api_key: openAICompatibleApiKey.trim() || undefined,
-          serpapi_api_key: serpapiApiKey.trim() || undefined,
-          brave_api_key: braveApiKey.trim() || undefined,
-          defaults,
+    try {
+      const payload = {
+        gemini_api_key: geminiApiKey.trim() || undefined,
+        serpapi_api_key: serpapiApiKey.trim() || undefined,
+        brave_api_key: braveApiKey.trim() || undefined,
+        defaults: {
+          ...defaults,
+          llm_provider: "gemini" as const,
+          llm_base_url: null,
+        },
       };
 
       const res = await fetch("/api/admin/ai-scraping/credentials", {
@@ -161,11 +164,25 @@ export function AIScrapingSettingsCard() {
         statuses: ApiResponse["statuses"];
         defaults: ScrapingDefaults;
       };
-      setStatuses(body.statuses);
-      setDefaults(body.defaults);
-      setInitialDefaults(body.defaults);
-      setOpenaiApiKey("");
-      setOpenAICompatibleApiKey("");
+
+      setStatuses({
+        gemini: body.statuses.gemini ?? EMPTY_STATUSES.gemini,
+        serpapi: body.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
+        brave: body.statuses.brave ?? EMPTY_STATUSES.brave,
+      });
+      setDefaults({
+        ...DEFAULTS,
+        ...body.defaults,
+        llm_provider: "gemini",
+        llm_base_url: null,
+      });
+      setInitialDefaults({
+        ...DEFAULTS,
+        ...body.defaults,
+        llm_provider: "gemini",
+        llm_base_url: null,
+      });
+      setGeminiApiKey("");
       setSerpapiApiKey("");
       setBraveApiKey("");
     } catch (e) {
@@ -185,8 +202,9 @@ export function AIScrapingSettingsCard() {
           <div>
             <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
-              Configure the LLM provider for Crawl4AI and AI search, plus the
-              search provider keys used by runner-dispatched scraping jobs.
+              AI scraping now runs on Gemini directly. Configure the Gemini API
+              key used for Crawl4AI and AI search, plus optional search
+              provider fallbacks for runner jobs.
             </CardDescription>
           </div>
         </div>
@@ -204,38 +222,20 @@ export function AIScrapingSettingsCard() {
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="openai-api-key">OpenAI API Key</Label>
+                <Label htmlFor="gemini-api-key">Gemini API Key</Label>
                 <Input
-                  id="openai-api-key"
+                  id="gemini-api-key"
                   type="password"
-                  value={openaiApiKey}
-                  onChange={(e) => setOpenaiApiKey(e.target.value)}
-                  placeholder="sk-proj-..."
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  placeholder="AIza..."
                 />
                 <div className="text-xs text-muted-foreground">
-                  {statuses.openai.configured
-                    ? `Configured (ending in ${statuses.openai.last4 ?? "****"})`
-                    : "Not configured"}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="openai-compatible-api-key">
-                  OpenAI-Compatible Endpoint Key
-                </Label>
-                <Input
-                  id="openai-compatible-api-key"
-                  type="password"
-                  value={openAICompatibleApiKey}
-                  onChange={(e) => setOpenAICompatibleApiKey(e.target.value)}
-                  placeholder="Optional bearer token"
-                />
-                <div className="text-xs text-muted-foreground">
-                  {statuses.openai_compatible.configured
-                    ? `Configured (ending in ${statuses.openai_compatible.last4 ?? "****"})`
-                    : "Optional for local/openai-compatible endpoints"}
+                  {statuses.gemini.configured
+                    ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
+                    : "Required for AI scraping"}
                 </div>
               </div>
 
@@ -251,14 +251,12 @@ export function AIScrapingSettingsCard() {
                 <div className="text-xs text-muted-foreground">
                   {statuses.serpapi.configured
                     ? `Configured (ending in ${statuses.serpapi.last4 ?? "****"})`
-                    : "Not configured"}
+                    : "Optional external search fallback"}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="brave-api-key">
-                  Brave Search API Key (Optional Fallback)
-                </Label>
+                <Label htmlFor="brave-api-key">Brave Search API Key</Label>
                 <Input
                   id="brave-api-key"
                   type="password"
@@ -269,38 +267,14 @@ export function AIScrapingSettingsCard() {
                 <div className="text-xs text-muted-foreground">
                   {statuses.brave.configured
                     ? `Configured (ending in ${statuses.brave.last4 ?? "****"})`
-                    : "Not configured"}
+                    : "Optional search fallback"}
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="scraping-llm-provider">LLM Provider</Label>
-                <select
-                  id="scraping-llm-provider"
-                  value={defaults.llm_provider}
-                  onChange={(e) =>
-                    setDefaults((prev) => ({
-                      ...prev,
-                      llm_provider: e.target.value as LLMProvider,
-                      llm_base_url:
-                        e.target.value === "openai_compatible"
-                          ? prev.llm_base_url
-                          : null,
-                    }))
-                  }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="openai_compatible">
-                    Self-hosted / OpenAI-compatible
-                  </option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="scraping-ai-model">Scraping Model</Label>
+                <Label htmlFor="scraping-ai-model">Gemini Model</Label>
                 <Input
                   id="scraping-ai-model"
                   value={defaults.llm_model}
@@ -310,34 +284,10 @@ export function AIScrapingSettingsCard() {
                       llm_model: e.target.value,
                     }))
                   }
-                  placeholder={
-                    defaults.llm_provider === "openai"
-                      ? "gpt-4o-mini"
-                      : "google/gemma-4-31B-it"
-                  }
+                  placeholder="gemini-2.5-flash"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="scraping-llm-base-url">
-                  LLM Base URL
-                </Label>
-                <Input
-                  id="scraping-llm-base-url"
-                  value={defaults.llm_base_url || ""}
-                  onChange={(e) =>
-                    setDefaults((prev) => ({
-                      ...prev,
-                      llm_base_url: e.target.value.trim() || null,
-                    }))
-                  }
-                  placeholder="http://localhost:8000/v1"
-                  disabled={defaults.llm_provider !== "openai_compatible"}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="max-search-results">Max Search Results</Label>
                 <Input
@@ -371,7 +321,9 @@ export function AIScrapingSettingsCard() {
                   }
                 />
               </div>
+            </div>
 
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="scraping-confidence-threshold">
                   Confidence Threshold
@@ -396,40 +348,21 @@ export function AIScrapingSettingsCard() {
             <div className="flex items-center justify-between border-t pt-4">
               <div className="flex gap-2">
                 <Badge
-                  variant={statuses.openai.configured ? "default" : "secondary"}
+                  variant={statuses.gemini.configured ? "default" : "secondary"}
                 >
-                  OpenAI {statuses.openai.configured ? "Ready" : "Missing"}
-                </Badge>
-                <Badge
-                  variant={
-                    defaults.llm_provider === "openai_compatible" &&
-                    (!defaults.llm_base_url ||
-                      !statuses.openai_compatible.configured)
-                      ? "secondary"
-                      : "default"
-                  }
-                >
-                  Local LLM{" "}
-                  {defaults.llm_provider === "openai_compatible"
-                    ? defaults.llm_base_url
-                      ? statuses.openai_compatible.configured
-                        ? "Configured"
-                        : "No Key"
-                      : "Missing URL"
-                    : "Optional"}
+                  Gemini {statuses.gemini.configured ? "Ready" : "Missing"}
                 </Badge>
                 <Badge
                   variant={
                     statuses.serpapi.configured ? "default" : "secondary"
                   }
                 >
-                  SerpAPI {statuses.serpapi.configured ? "Ready" : "Missing"}
+                  SerpAPI {statuses.serpapi.configured ? "Ready" : "Optional"}
                 </Badge>
                 <Badge
                   variant={statuses.brave.configured ? "default" : "secondary"}
                 >
-                  Brave Fallback{" "}
-                  {statuses.brave.configured ? "Ready" : "Optional"}
+                  Brave {statuses.brave.configured ? "Ready" : "Optional"}
                 </Badge>
               </div>
 

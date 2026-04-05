@@ -9,7 +9,7 @@ from typing import Literal
 from openai import AsyncOpenAI
 
 LLMProvider = Literal["openai", "openai_compatible", "gemini"]
-DEFAULT_LLM_MODEL = "gpt-4o-mini"
+DEFAULT_LLM_MODEL = "gemini-2.5-flash"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 DEFAULT_OPENAI_COMPATIBLE_MODEL = "google/gemma-3-12b-it"
 LOCAL_OPENAI_COMPATIBLE_API_KEY = "baystate-local"
@@ -36,7 +36,7 @@ def normalize_llm_provider(value: str | None) -> LLMProvider:
         return "openai_compatible"
     if value == "gemini":
         return "gemini"
-    return "openai"
+    return "gemini"
 
 
 @dataclass(frozen=True)
