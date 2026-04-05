@@ -61,6 +61,10 @@ core/
 - Parent: `../AGENTS.md` (root scraper overview)
 - Runner: `../runner/AGENTS.md` (execution modes)
 - Scrapers: `../scrapers/AGENTS.md` (scraping domain)
+- crawl4ai: `../src/crawl4ai_engine/AGENTS.md` (extraction engine)
+- Parent: `../AGENTS.md` (root scraper overview)
+- Runner: `../runner/AGENTS.md` (execution modes)
+- Scrapers: `../scrapers/AGENTS.md` (scraping domain)
 
 ## DEPRECATED
 

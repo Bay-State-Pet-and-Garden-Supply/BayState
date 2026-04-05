@@ -58,6 +58,10 @@ python runner.py --mode realtime
 - Parent: `../AGENTS.md` (root scraper overview)
 - Core: `../core/AGENTS.md` (infrastructure services)
 - Scrapers: `../scrapers/AGENTS.md` (scraping domain)
+- crawl4ai: `../src/crawl4ai_engine/AGENTS.md` (extraction engine)
+- Parent: `../AGENTS.md` (root scraper overview)
+- Core: `../core/AGENTS.md` (infrastructure services)
+- Scrapers: `../scrapers/AGENTS.md` (scraping domain)
 
 ## ANTI-PATTERNS
 - **NO** mode-specific logic outside this package
