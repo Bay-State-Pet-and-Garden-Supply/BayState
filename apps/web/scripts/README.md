@@ -59,3 +59,52 @@ bun scripts/backfill-amazon-image-duplicates.ts --limit 100
 ```
 
 Dry runs are the default. Add `--execute` to persist the cleanup.
+
+## Gemini Migration Utilities
+
+These scripts support the Gemini rollout plan, shadow-run evaluation, and rollback operations.
+
+### Golden Dataset Generation
+
+```bash
+cd apps/web
+bun scripts/generate-golden-dataset.ts
+```
+
+This exports the current `products_ingestion` consolidation corpus to `tests/fixtures/golden-dataset.jsonl`. The live data source is currently smaller than the original 1000-row target, so the generator reports the remaining gap instead of fabricating records.
+
+### Golden Dataset Validation
+
+```bash
+cd apps/web
+bun scripts/validate-golden-dataset.ts
+```
+
+Add `--strict` to fail when the dataset is below the requested minimum size or contains validation warnings.
+
+### Side-by-Side Provider Evaluation
+
+```bash
+cd apps/web
+bun scripts/evaluate-golden-dataset.ts --providers openai,gemini --limit 10
+```
+
+This runs live structured-output evaluations against the selected providers and compares them to the golden dataset expectations.
+
+### Feature Flag Management
+
+```bash
+cd apps/web
+bun scripts/manage-gemini-flags.ts --get
+```
+
+Use this to inspect or update the Gemini rollout flags stored in `site_settings`.
+
+### Monitoring Snapshot
+
+```bash
+cd apps/web
+bun scripts/gemini-migration-monitoring.ts --days 7
+```
+
+This prints a provider-neutral rollout snapshot that can also be captured by the root rollout and rollback shell scripts.

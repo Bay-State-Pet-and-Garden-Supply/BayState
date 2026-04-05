@@ -159,69 +159,73 @@ export function validateRequiredConsolidationFields(result: Record<string, unkno
 }
 
 /**
- * Build a JSON schema for OpenAI Structured Outputs with enum constraints.
- * This enforces that the LLM can only return values from the provided taxonomy.
+ * Build a provider-neutral JSON schema with enum constraints.
+ * This can be wrapped for OpenAI Structured Outputs or passed directly to Gemini.
  */
 export function buildResponseSchema(
     categories: string[],
     shopsitePages: string[] = []
 ): object {
     return {
+        type: 'object',
+        properties: {
+            name: {
+                type: 'string',
+                description: 'Formatted product name following naming conventions',
+            },
+            brand: {
+                type: 'string',
+                description: 'Brand name',
+            },
+            weight: {
+                type: ['string', 'null'],
+                description: 'Primary package size/weight/count as a numeric string with up to 2 decimal places and no units. Use null when no trustworthy weight is available.',
+            },
+            description: {
+                type: 'string',
+                description: 'Short product description (1-2 sentences) for category/listing pages',
+            },
+            long_description: {
+                type: 'string',
+                description: 'Detailed product description (3-5 sentences) for the product detail page',
+            },
+            search_keywords: {
+                type: 'string',
+                description: 'Comma-separated site-search phrases, source-supported and concise',
+            },
+            product_on_pages: {
+                type: 'array',
+                items: {
+                    type: 'string',
+                    ...(shopsitePages.length > 0 ? { enum: shopsitePages } : {}),
+                },
+                description: 'Store pages this product should appear on, using exact page names from the provided list',
+            },
+            category: {
+                type: 'array',
+                items: {
+                    type: 'string',
+                    enum: categories,
+                },
+                description: 'List of applicable product categories using exact values from the provided taxonomy list',
+            },
+            confidence_score: {
+                type: 'number',
+                description: 'Confidence score between 0.0 and 1.0',
+            },
+        },
+        required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'confidence_score'],
+        additionalProperties: false,
+    };
+}
+
+export function buildOpenAIResponseFormat(schema: object): object {
+    return {
         type: 'json_schema',
         json_schema: {
             name: 'product_consolidation',
             strict: true,
-            schema: {
-                type: 'object',
-                properties: {
-                    name: {
-                        type: 'string',
-                        description: 'Formatted product name following naming conventions',
-                    },
-                    brand: {
-                        type: 'string',
-                        description: 'Brand name',
-                    },
-                    weight: {
-                        type: ['string', 'null'],
-                        description: 'Primary package size/weight/count as a numeric string with up to 2 decimal places and no units. Use null when no trustworthy weight is available.',
-                    },
-                    description: {
-                        type: 'string',
-                        description: 'Short product description (1-2 sentences) for category/listing pages',
-                    },
-                    long_description: {
-                        type: 'string',
-                        description: 'Detailed product description (3-5 sentences) for the product detail page',
-                    },
-                    search_keywords: {
-                        type: 'string',
-                        description: 'Comma-separated site-search phrases, source-supported and concise',
-                    },
-                    product_on_pages: {
-                        type: 'array',
-                        items: {
-                            type: 'string',
-                            ...(shopsitePages.length > 0 ? { enum: shopsitePages } : {}),
-                        },
-                        description: 'Store pages this product should appear on, using exact page names from the provided list',
-                    },
-                    category: {
-                        type: 'array',
-                        items: {
-                            type: 'string',
-                            enum: categories,
-                        },
-                        description: 'List of applicable product categories using exact values from the provided taxonomy list',
-                    },
-                    confidence_score: {
-                        type: 'number',
-                        description: 'Confidence score between 0.0 and 1.0',
-                    },
-                },
-                required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'confidence_score'],
-                additionalProperties: false,
-            },
+            schema,
         },
     };
 }

@@ -1,70 +1,192 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { applyResults } from '@/lib/consolidation';
+import type { LLMProvider } from '@/lib/ai-scraping/credentials';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { applyResults, syncPendingParallelRuns } from '@/lib/consolidation';
+import { createAdminClient } from '@/lib/supabase/server';
+
+interface ConsolidationNotificationPayload {
+    batch_id?: string;
+    provider?: LLMProvider;
+    status?: string;
+    source?: 'manual' | 'internal';
+    timestamp?: string;
+    auto_apply?: boolean;
+    metadata?: Record<string, unknown>;
+}
 
 function isUuid(value: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim());
 }
 
-/**
- * POST /api/admin/consolidation/webhook
- * Webhook handler for OpenAI Batch API completion notifications.
- *
- * Note: OpenAI doesn't currently support webhooks for batch completion,
- * but this endpoint is ready for when they do, or for manual polling triggers.
- */
-export async function POST(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const { batch_id, status } = body;
+function normalizeProvider(value: unknown): LLMProvider | null {
+    if (value === 'gemini' || value === 'openai_compatible' || value === 'openai') {
+        return value;
+    }
 
-        if (!batch_id) {
-            return NextResponse.json({ error: 'batch_id is required' }, { status: 400 });
-        }
+    return null;
+}
 
-        const supabase = await createClient();
-        const openAiLookup = await supabase
+function parseSignature(headerValue: string | null): string | null {
+    if (!headerValue) {
+        return null;
+    }
+
+    const trimmed = headerValue.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    return trimmed.startsWith('sha256=') ? trimmed.slice('sha256='.length) : trimmed;
+}
+
+function hasValidSignature(bodyText: string, headerValue: string | null): boolean {
+    const secret = process.env.CONSOLIDATION_WEBHOOK_SECRET;
+    const signature = parseSignature(headerValue);
+
+    if (!secret || !signature) {
+        return false;
+    }
+
+    const expected = createHmac('sha256', secret).update(bodyText).digest('hex');
+    const providedBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expected, 'hex');
+
+    if (providedBuffer.length !== expectedBuffer.length) {
+        return false;
+    }
+
+    return timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+async function authorizeNotification(request: NextRequest, bodyText: string) {
+    const signatureHeader =
+        request.headers.get('x-consolidation-signature')
+        ?? request.headers.get('x-baystate-signature');
+
+    if (hasValidSignature(bodyText, signatureHeader)) {
+        return { authorized: true as const, mode: 'signature' as const };
+    }
+
+    const adminAuth = await requireAdminAuth();
+    if (!adminAuth.authorized) {
+        return {
+            authorized: false as const,
+            response: NextResponse.json(
+                {
+                    error: 'Unauthorized. Provide an admin session or a valid x-consolidation-signature header.',
+                },
+                { status: 401 }
+            ),
+        };
+    }
+
+    return { authorized: true as const, mode: 'admin' as const };
+}
+
+async function findBatchJob(batchId: string, provider: LLMProvider | null) {
+    const supabase = await createAdminClient();
+    const select = 'id, provider, auto_apply';
+
+    if (isUuid(batchId)) {
+        const { data, error } = await supabase
             .from('batch_jobs')
-            .select('id, auto_apply')
-            .eq('openai_batch_id', batch_id)
+            .select(select)
+            .eq('id', batchId)
             .limit(1)
             .maybeSingle();
 
-        let batchJob = openAiLookup.data;
-        if (!batchJob && isUuid(batch_id)) {
-            const legacyLookup = await supabase
-                .from('batch_jobs')
-                .select('id, auto_apply')
-                .eq('id', batch_id)
-                .limit(1)
-                .maybeSingle();
-            batchJob = legacyLookup.data;
+        if (error) {
+            throw new Error(error.message);
         }
 
-        if (batchJob) {
-            await supabase
-                .from('batch_jobs')
-                .update({
-                    webhook_received_at: new Date().toISOString(),
-                    webhook_payload: body,
-                })
-                .eq('id', batchJob.id);
+        return data;
+    }
+
+    let query = supabase
+        .from('batch_jobs')
+        .select(select)
+        .or(`provider_batch_id.eq.${batchId},openai_batch_id.eq.${batchId}`)
+        .limit(1);
+
+    if (provider) {
+        query = query.eq('provider', provider);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error && error.code !== 'PGRST204') {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * POST /api/admin/consolidation/webhook
+ * Provider-aware internal/manual notification endpoint for consolidation batches.
+ *
+ * Gemini batch processing does not emit native webhooks, so this route accepts either:
+ * 1. An authenticated admin request, or
+ * 2. An HMAC-signed request using CONSOLIDATION_WEBHOOK_SECRET.
+ */
+export async function POST(request: NextRequest) {
+    try {
+        const bodyText = await request.text();
+        const authorization = await authorizeNotification(request, bodyText);
+        if (!authorization.authorized) {
+            return authorization.response;
         }
 
-        if (status === 'completed' && batchJob?.auto_apply) {
-            console.log(`[Consolidation Webhook] Auto-applying results for batch ${batch_id}`);
-            const result = await applyResults(batch_id);
+        let body: ConsolidationNotificationPayload;
+        try {
+            body = JSON.parse(bodyText) as ConsolidationNotificationPayload;
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+        }
 
+        const batchId = typeof body.batch_id === 'string' ? body.batch_id.trim() : '';
+        const status = typeof body.status === 'string' ? body.status.trim() : '';
+        const provider = normalizeProvider(body.provider);
+
+        if (!batchId) {
+            return NextResponse.json({ error: 'batch_id is required' }, { status: 400 });
+        }
+
+        const batchJob = await findBatchJob(batchId, provider);
+        if (!batchJob) {
+            return NextResponse.json({ error: 'Batch job not found' }, { status: 404 });
+        }
+
+        const supabase = await createAdminClient();
+        await supabase
+            .from('batch_jobs')
+            .update({
+                webhook_received_at: new Date().toISOString(),
+                webhook_payload: {
+                    ...body,
+                    auth_mode: authorization.mode,
+                },
+            })
+            .eq('id', batchJob.id);
+
+        const shouldAutoApply = Boolean(body.auto_apply ?? batchJob.auto_apply);
+        if (status === 'completed' && shouldAutoApply) {
+            const result = await applyResults(batchId);
             if ('success' in result && !result.success) {
-                console.error(`[Consolidation Webhook] Auto-apply failed:`, result.error);
-            } else if ('success_count' in result) {
-                console.log(
-                    `[Consolidation Webhook] Auto-applied: ${result.success_count}/${result.total} successful`
-                );
+                console.error('[Consolidation Webhook] Auto-apply failed:', result.error);
             }
         }
 
-        return NextResponse.json({ received: true });
+        if (status === 'completed' || status === 'failed' || status === 'cancelled' || status === 'expired') {
+            await syncPendingParallelRuns(10);
+        }
+
+        return NextResponse.json({
+            received: true,
+            batch_id: batchId,
+            provider: provider ?? batchJob.provider ?? 'openai',
+            auth_mode: authorization.mode,
+        });
     } catch (error) {
         console.error('[Consolidation Webhook] Error:', error);
         return NextResponse.json(

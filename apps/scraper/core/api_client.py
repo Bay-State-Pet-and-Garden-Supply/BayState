@@ -69,7 +69,8 @@ class JobConfig:
     max_workers: int = 3
     job_type: str = "standard"
     job_config: dict[str, Any] | None = None
-    ai_credentials: dict[str, str] | None = None
+    ai_credentials: dict[str, Any] | None = None
+    feature_flags: dict[str, Any] | None = None
     lease_token: str | None = None
     lease_expires_at: str | None = None
 
@@ -83,6 +84,10 @@ class ClaimedChunk:
     scrapers: list[str]
     test_mode: bool = False
     max_workers: int = 3
+    job_type: str = "standard"
+    job_config: dict[str, Any] | None = None
+    ai_credentials: dict[str, Any] | None = None
+    feature_flags: dict[str, Any] | None = None
     lease_token: str | None = None
     lease_expires_at: str | None = None
 
@@ -206,7 +211,7 @@ class ScraperAPIClient:
         self.runner_name = runner_name or os.environ.get("RUNNER_NAME", "unknown-runner")
         self.timeout = timeout
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("SCRAPER_API_MAX_RETRIES", str(DEFAULT_MAX_RETRIES)))
-        self._credential_cache: dict[str, dict[str, str]] = {}
+        self._credential_cache: dict[str, dict[str, Any]] = {}
 
         if not self.api_url:
             logger.warning("SCRAPER_API_URL not configured")
@@ -404,6 +409,7 @@ class ScraperAPIClient:
                 job_type=data.get("job_type", "standard"),
                 job_config=data.get("job_config"),
                 ai_credentials=data.get("ai_credentials"),
+                feature_flags=data.get("feature_flags"),
                 lease_token=data.get("lease_token"),
                 lease_expires_at=data.get("lease_expires_at"),
             )
@@ -513,6 +519,10 @@ class ScraperAPIClient:
                 scrapers=chunk.get("scrapers", []),
                 test_mode=chunk.get("test_mode", False),
                 max_workers=chunk.get("max_workers", 3),
+                job_type=chunk.get("job_type", "standard"),
+                job_config=chunk.get("job_config"),
+                ai_credentials=chunk.get("ai_credentials"),
+                feature_flags=chunk.get("feature_flags"),
                 lease_token=chunk.get("lease_token"),
                 lease_expires_at=chunk.get("lease_expires_at"),
             )

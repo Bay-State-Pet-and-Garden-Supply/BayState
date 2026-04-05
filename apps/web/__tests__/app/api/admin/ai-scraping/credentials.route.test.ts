@@ -82,6 +82,7 @@ describe('AI scraping credentials admin route', () => {
     (getAIScrapingCredentialStatuses as jest.Mock).mockResolvedValue({
       openai: { provider: 'openai', configured: true, last4: '1234', updated_at: null },
       openai_compatible: { provider: 'openai_compatible', configured: true, last4: '9876', updated_at: null },
+      gemini: { provider: 'gemini', configured: true, last4: '2468', updated_at: null },
       serpapi: { provider: 'serpapi', configured: true, last4: '5678', updated_at: null },
       brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
     });
@@ -107,6 +108,7 @@ describe('AI scraping credentials admin route', () => {
     const body = await res!.json();
     expect(body.statuses.openai.configured).toBe(true);
     expect(body.statuses.openai_compatible.configured).toBe(true);
+    expect(body.statuses.gemini.configured).toBe(true);
     expect(body.defaults.max_steps).toBe(15);
     expect(body.consolidationDefaults.llm_supports_batch_api).toBe(true);
   });
@@ -118,6 +120,7 @@ describe('AI scraping credentials admin route', () => {
     (getAIScrapingCredentialStatuses as jest.Mock).mockResolvedValue({
       openai: { provider: 'openai', configured: true, last4: 'abcd', updated_at: null },
       openai_compatible: { provider: 'openai_compatible', configured: true, last4: '1234', updated_at: null },
+      gemini: { provider: 'gemini', configured: true, last4: '2468', updated_at: null },
       serpapi: { provider: 'serpapi', configured: true, last4: 'efgh', updated_at: null },
       brave: { provider: 'brave', configured: true, last4: 'wxyz', updated_at: null },
     });
@@ -141,6 +144,7 @@ describe('AI scraping credentials admin route', () => {
       json: async () => ({
         openai_api_key: 'sk-test',
         openai_compatible_api_key: 'local-test',
+        gemini_api_key: 'gemini-test',
         serpapi_api_key: 'serpapi-test',
         brave_api_key: 'brave-test',
         defaults: {
@@ -169,6 +173,7 @@ describe('AI scraping credentials admin route', () => {
 
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('openai', 'sk-test', 'user-1');
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('openai_compatible', 'local-test', 'user-1');
+    expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('gemini', 'gemini-test', 'user-1');
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('serpapi', 'serpapi-test', 'user-1');
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('brave', 'brave-test', 'user-1');
     expect(upsertAIScrapingDefaults).toHaveBeenCalled();

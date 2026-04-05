@@ -4,7 +4,8 @@ import logging
 from typing import Any
 
 from scrapers.ai_cost_tracker import AICostTracker
-from scrapers.ai_search.llm_runtime import create_async_openai_client, resolve_llm_runtime
+from scrapers.ai_search.llm_runtime import resolve_llm_runtime
+from scrapers.providers.factory import create_llm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,12 @@ class LLMSourceSelector:
         )
         self.api_key = self.runtime.api_key
         self.model = self.runtime.model
-        self.client = create_async_openai_client(self.runtime)
+        self.provider = create_llm_provider(
+            provider=provider,
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
+        )
         self._cost_tracker = AICostTracker()
 
     async def select_best_url(
@@ -47,7 +53,7 @@ class LLMSourceSelector:
         Returns:
             Tuple of (Selected URL or None, Cost in USD)
         """
-        if not self.client:
+        if not self.provider:
             logger.warning("[LLM Source Selector] LLM client is not configured, skipping")
             return None, 0.0
 
@@ -61,21 +67,17 @@ class LLMSourceSelector:
         prompt = self._build_prompt(sku, product_name, candidates)
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a product sourcing expert. Your task is to identify "
-                        "the official manufacturer's product detail page from a list of search results.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
+            response = await self.provider.generate_text(
+                system_prompt=(
+                    "You are a product sourcing expert. Your task is to identify "
+                    "the official manufacturer's product detail page from a list of search results."
+                ),
+                user_prompt=prompt,
                 temperature=0.0,
-                max_tokens=100,
+                max_output_tokens=100,
             )
 
-            content = str(response.choices[0].message.content or "").strip()
+            content = response.text.strip()
 
             # Record cost
             if response.usage:

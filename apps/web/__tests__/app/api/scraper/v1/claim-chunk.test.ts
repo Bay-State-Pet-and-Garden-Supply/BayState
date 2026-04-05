@@ -30,6 +30,7 @@ import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
 } from '@/lib/ai-scraping/credentials';
+import { getGeminiFeatureFlags } from '@/lib/config/gemini-feature-flags';
 import type { NextRequest } from 'next/server';
 import {
     RUNNER_BUILD_ID_HEADER,
@@ -47,6 +48,10 @@ jest.mock('@supabase/supabase-js', () => ({
 jest.mock('@/lib/ai-scraping/credentials', () => ({
     getAIScrapingDefaults: jest.fn(),
     getAIScrapingRuntimeCredentials: jest.fn(),
+}));
+
+jest.mock('@/lib/config/gemini-feature-flags', () => ({
+    getGeminiFeatureFlags: jest.fn(),
 }));
 
 describe('POST /api/scraper/v1/claim-chunk', () => {
@@ -114,6 +119,14 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             confidence_threshold: 0.7,
         });
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue(null);
+        (getGeminiFeatureFlags as jest.Mock).mockResolvedValue({
+            GEMINI_AI_SEARCH_ENABLED: false,
+            GEMINI_CRAWL4AI_ENABLED: false,
+            GEMINI_BATCH_ENABLED: false,
+            GEMINI_PARALLEL_RUN_ENABLED: false,
+            GEMINI_TRAFFIC_PERCENT: 0,
+            GEMINI_PARALLEL_SAMPLE_PERCENT: 10,
+        });
     });
 
     const createRequest = (body: any = {}, headers: Record<string, string> = {}) => {
@@ -196,6 +209,14 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
                 openai_api_key: 'sk-test-key',
                 serpapi_api_key: 'serpapi-test-key',
             },
+            feature_flags: {
+                GEMINI_AI_SEARCH_ENABLED: false,
+                GEMINI_CRAWL4AI_ENABLED: false,
+                GEMINI_BATCH_ENABLED: false,
+                GEMINI_PARALLEL_RUN_ENABLED: false,
+                GEMINI_TRAFFIC_PERCENT: 0,
+                GEMINI_PARALLEL_SAMPLE_PERCENT: 10,
+            },
         });
         expect(mockRunnerTable.update).toHaveBeenCalledWith(expect.objectContaining({
             status: 'busy',
@@ -252,6 +273,7 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             llm_model: 'google/gemma-3-12b-it',
             llm_base_url: 'http://localhost:8000/v1',
         });
+        expect(data.chunk.feature_flags.GEMINI_AI_SEARCH_ENABLED).toBe(false);
     });
 
     it('rejects outdated runners before claiming a chunk', async () => {

@@ -283,6 +283,10 @@ class Crawl4AIExtractor:
                         self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, 0, "LLM provider not configured")
                         return {"success": False, "error": "LLM provider not configured"}
 
+                    if self._llm_runtime.provider == "gemini" and not self._llm_runtime.api_key:
+                        self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, 0, "Gemini API key not configured")
+                        return {"success": False, "error": "Gemini API key not configured"}
+
                     if self._llm_runtime.provider == "openai_compatible" and not self._llm_runtime.base_url:
                         self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, 0, "OpenAI-compatible base URL not configured")
                         return {"success": False, "error": "OpenAI-compatible base URL not configured"}

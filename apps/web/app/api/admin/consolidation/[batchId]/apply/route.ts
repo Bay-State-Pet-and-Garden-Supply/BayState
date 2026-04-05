@@ -8,7 +8,7 @@ interface RouteContext {
 
 /**
  * POST /api/admin/consolidation/[batchId]/apply
- * Apply the results of a completed batch job to products.
+ * Apply the results of a completed provider batch job to products.
  */
 export async function POST(request: NextRequest, context: RouteContext) {
     const auth = await requireAdminAuth();
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { batchId } = await context.params;
 
     if (!(await isOpenAIConfigured())) {
-        return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 });
+        return NextResponse.json({ error: 'No configured LLM batch provider is available' }, { status: 503 });
     }
 
     try {

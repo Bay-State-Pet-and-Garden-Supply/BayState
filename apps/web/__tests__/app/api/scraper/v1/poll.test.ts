@@ -30,6 +30,7 @@ import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
 } from '@/lib/ai-scraping/credentials';
+import { getGeminiFeatureFlags } from '@/lib/config/gemini-feature-flags';
 import type { NextRequest } from 'next/server';
 import {
     RUNNER_BUILD_ID_HEADER,
@@ -47,6 +48,10 @@ jest.mock('@supabase/supabase-js', () => ({
 jest.mock('@/lib/ai-scraping/credentials', () => ({
     getAIScrapingDefaults: jest.fn(),
     getAIScrapingRuntimeCredentials: jest.fn(),
+}));
+
+jest.mock('@/lib/config/gemini-feature-flags', () => ({
+    getGeminiFeatureFlags: jest.fn(),
 }));
 
 describe('POST /api/scraper/v1/poll', () => {
@@ -114,6 +119,14 @@ describe('POST /api/scraper/v1/poll', () => {
             confidence_threshold: 0.7,
         });
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue(null);
+        (getGeminiFeatureFlags as jest.Mock).mockResolvedValue({
+            GEMINI_AI_SEARCH_ENABLED: false,
+            GEMINI_CRAWL4AI_ENABLED: false,
+            GEMINI_BATCH_ENABLED: false,
+            GEMINI_PARALLEL_RUN_ENABLED: false,
+            GEMINI_TRAFFIC_PERCENT: 0,
+            GEMINI_PARALLEL_SAMPLE_PERCENT: 10,
+        });
     });
 
     const createRequest = (body: any = {}, headers: Record<string, string> = {}) => {
@@ -233,6 +246,7 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job).not.toBeNull();
         expect(data.job.job_id).toBe('job-123');
         expect(data.job.skus).toHaveLength(2);
+        expect(data.job.feature_flags.GEMINI_AI_SEARCH_ENABLED).toBe(false);
     });
 
     it('rejects outdated runners before claiming a job', async () => {
@@ -330,6 +344,10 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.ai_credentials.openai_compatible_api_key).toBe('baystate-local');
         expect(data.job.ai_credentials.serpapi_api_key).toBe('serpapi-test-key');
         expect(data.job.ai_credentials.brave_api_key).toBe('brave-test-key');
+        expect(data.job.feature_flags).toMatchObject({
+            GEMINI_AI_SEARCH_ENABLED: false,
+            GEMINI_CRAWL4AI_ENABLED: false,
+        });
         expect(data.job.job_config.max_search_results).toBe(7);
         expect(data.job.job_config.max_steps).toBe(20);
         expect(data.job.job_config.confidence_threshold).toBe(0.82);
@@ -338,7 +356,7 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.llm_base_url).toBe('http://localhost:8000/v1');
     });
 
-    it('strips crawl4ai-only keys from discovery job config', async () => {
+    it('preserves shared discovery keys and strips unsupported ones from discovery job config', async () => {
         (validateRunnerAuth as jest.Mock).mockResolvedValue({
             runnerName: 'test-runner',
             allowedScrapers: null,
@@ -395,8 +413,8 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.max_steps).toBe(12);
         expect(data.job.job_config.confidence_threshold).toBe(0.9);
         expect(data.job.job_config.llm_model).toBe('gpt-4o');
-        expect(data.job.job_config.cache_enabled).toBeUndefined();
-        expect(data.job.job_config.extraction_strategy).toBeUndefined();
+        expect(data.job.job_config.cache_enabled).toBe(false);
+        expect(data.job.job_config.extraction_strategy).toBe('auto');
         expect(data.job.job_config.timeout).toBeUndefined();
     });
 

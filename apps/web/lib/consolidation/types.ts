@@ -5,6 +5,8 @@
  * Ported from BayStateTools and adapted for BayStateApp patterns.
  */
 
+import type { LLMProvider } from '@/lib/ai-scraping/credentials';
+
 // =============================================================================
 // Batch Job Types
 // =============================================================================
@@ -16,7 +18,7 @@ export interface BatchMetadata {
     description?: string;
     auto_apply?: boolean;
     use_web_search?: boolean;
-    [key: string]: string | boolean | undefined;
+    [key: string]: string | number | boolean | undefined;
 }
 
 /**
@@ -25,6 +27,8 @@ export interface BatchMetadata {
 export interface BatchStatus {
     id: string;
     status: BatchJobStatus;
+    provider?: LLMProvider;
+    provider_batch_id?: string | null;
     is_complete: boolean;
     is_failed: boolean;
     is_processing: boolean;
@@ -59,6 +63,11 @@ export type BatchJobStatus =
 export interface BatchJob {
     id: string;
     db_id?: string;
+    provider: LLMProvider;
+    provider_batch_id?: string | null;
+    provider_input_file_id?: string | null;
+    provider_output_file_id?: string | null;
+    provider_error_file_id?: string | null;
     openai_batch_id?: string | null;
     status: string;
     description: string | null;
@@ -148,6 +157,8 @@ export interface ConsolidatedData {
 export interface SubmitBatchResponse {
     success: true;
     batch_id: string;
+    provider: 'openai' | 'openai_compatible' | 'gemini';
+    provider_batch_id: string;
     product_count: number;
 }
 
@@ -174,6 +185,36 @@ export interface ApplyResultsResponse {
         overwritten_field_count: number;
     };
     errors?: string[];
+}
+
+export type ParallelRunStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface ParallelRunComparison {
+    accuracy: number;
+    completeness: number;
+    taxonomy_correctness: number;
+    mismatch_count: number;
+    compared_count: number;
+    mismatched_fields: string[];
+}
+
+export interface ParallelRunRecord {
+    id: string;
+    workflow: 'consolidation';
+    subject_key: string;
+    primary_provider: LLMProvider;
+    primary_batch_id: string;
+    shadow_provider: LLMProvider;
+    shadow_batch_id: string | null;
+    sample_percent: number;
+    status: ParallelRunStatus;
+    primary_summary: Record<string, unknown>;
+    shadow_summary: Record<string, unknown>;
+    comparison: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+    completed_at: string | null;
 }
 
 // =============================================================================

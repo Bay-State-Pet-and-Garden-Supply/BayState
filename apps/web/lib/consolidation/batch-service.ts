@@ -7,9 +7,19 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { getOpenAIClient, CONSOLIDATION_CONFIG, getConsolidationConfig } from './openai-client';
+import {
+    CONSOLIDATION_CONFIG,
+    getConsolidationConfig,
+    getOpenAIClient,
+    type ConsolidationRuntimeConfig,
+} from './openai-client';
+import {
+    getGeminiFeatureFlagsSafe,
+    shouldCreateGeminiParallelRun,
+} from '@/lib/config/gemini-feature-flags';
 import { buildPromptContext, getCategories } from './prompt-builder';
 import {
+    buildOpenAIResponseFormat,
     buildResponseSchema,
     validateCategory,
     validateConsolidationTaxonomy,
@@ -21,6 +31,7 @@ import { calculateAICost } from '@/lib/ai-scraping/pricing';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
+import { GeminiBatchProvider } from '@/lib/providers/gemini-batch';
 import type {
     BatchJob,
     BatchMetadata,
@@ -288,7 +299,41 @@ function isUuid(value: string): boolean {
 
 interface BatchRowLookup {
     id: string;
+    provider: ConsolidationRuntimeConfig['llm_provider'];
+    provider_batch_id: string | null;
+    total_requests?: number | null;
+    completed_requests?: number | null;
+    failed_requests?: number | null;
     metadata: Record<string, unknown> | null;
+}
+
+type BatchProviderKey = ConsolidationRuntimeConfig['llm_provider'];
+
+function normalizeBatchProvider(value: unknown): BatchProviderKey {
+    if (value === 'openai_compatible' || value === 'gemini') {
+        return value;
+    }
+
+    return 'openai';
+}
+
+function buildBatchRoutingKey(products: ProductSource[], metadata: BatchMetadata): string {
+    const explicitKey =
+        typeof metadata.scrape_job_id === 'string' && metadata.scrape_job_id.trim().length > 0
+            ? metadata.scrape_job_id.trim()
+            : typeof metadata.description === 'string' && metadata.description.trim().length > 0
+                ? metadata.description.trim()
+                : null;
+
+    if (explicitKey) {
+        return explicitKey;
+    }
+
+    return products
+        .map((product) => product.sku.trim())
+        .filter((sku) => sku.length > 0)
+        .sort()
+        .join('|');
 }
 
 async function findBatchJobRow(
@@ -297,12 +342,12 @@ async function findBatchJobRow(
     const { createAdminClient } = await import('@/lib/supabase/server');
     const supabase = await createAdminClient();
 
-    // 1. Try to find by openai_batch_id if it's not a UUID
+    // 1. Try to find by provider-native identifiers if it's not a UUID.
     if (!isUuid(batchIdentifier)) {
         const { data, error } = await supabase
             .from('batch_jobs')
-            .select('id, metadata')
-            .eq('openai_batch_id', batchIdentifier)
+            .select('id, provider, provider_batch_id, openai_batch_id, total_requests, completed_requests, failed_requests, metadata')
+            .or(`provider_batch_id.eq.${batchIdentifier},openai_batch_id.eq.${batchIdentifier}`)
             .limit(1)
             .maybeSingle();
 
@@ -310,7 +355,27 @@ async function findBatchJobRow(
             return { row: null, lookupError: error.message };
         }
         if (data) {
-            return { row: data as BatchRowLookup, lookupError: null };
+            const rowData = data as Record<string, unknown>;
+            return {
+                row: {
+                    id: String(rowData.id),
+                    provider: normalizeBatchProvider(rowData.provider),
+                    provider_batch_id:
+                        typeof rowData.provider_batch_id === 'string'
+                            ? rowData.provider_batch_id
+                            : typeof rowData.openai_batch_id === 'string'
+                                ? rowData.openai_batch_id
+                                : null,
+                    total_requests:
+                        typeof rowData.total_requests === 'number' ? rowData.total_requests : null,
+                    completed_requests:
+                        typeof rowData.completed_requests === 'number' ? rowData.completed_requests : null,
+                    failed_requests:
+                        typeof rowData.failed_requests === 'number' ? rowData.failed_requests : null,
+                    metadata: parseBatchMetadata(rowData.metadata),
+                },
+                lookupError: null,
+            };
         }
     }
 
@@ -318,7 +383,7 @@ async function findBatchJobRow(
     if (isUuid(batchIdentifier)) {
         const { data, error } = await supabase
             .from('batch_jobs')
-            .select('id, metadata')
+            .select('id, provider, provider_batch_id, openai_batch_id, total_requests, completed_requests, failed_requests, metadata')
             .eq('id', batchIdentifier)
             .limit(1)
             .maybeSingle();
@@ -327,33 +392,60 @@ async function findBatchJobRow(
             return { row: null, lookupError: error.message };
         }
 
-        return { row: (data as BatchRowLookup | null) || null, lookupError: null };
+        if (!data) {
+            return { row: null, lookupError: null };
+        }
+
+        const rowData = data as Record<string, unknown>;
+        return {
+            row: {
+                id: String(rowData.id),
+                provider: normalizeBatchProvider(rowData.provider),
+                provider_batch_id:
+                    typeof rowData.provider_batch_id === 'string'
+                        ? rowData.provider_batch_id
+                        : typeof rowData.openai_batch_id === 'string'
+                            ? rowData.openai_batch_id
+                            : null,
+                total_requests:
+                    typeof rowData.total_requests === 'number' ? rowData.total_requests : null,
+                completed_requests:
+                    typeof rowData.completed_requests === 'number' ? rowData.completed_requests : null,
+                failed_requests:
+                    typeof rowData.failed_requests === 'number' ? rowData.failed_requests : null,
+                metadata: parseBatchMetadata(rowData.metadata),
+            },
+            lookupError: null,
+        };
     }
 
     return { row: null, lookupError: null };
 }
 
-async function resolveOpenAIBatchId(batchIdentifier: string): Promise<string> {
+async function resolveProviderBatchId(batchIdentifier: string): Promise<{
+    provider: BatchProviderKey;
+    providerBatchId: string;
+}> {
     if (!isUuid(batchIdentifier)) {
-        return batchIdentifier;
+        const { row } = await findBatchJobRow(batchIdentifier);
+        return {
+            provider: row?.provider ?? 'openai',
+            providerBatchId: row?.provider_batch_id ?? batchIdentifier,
+        };
     }
 
-    const { createAdminClient } = await import('@/lib/supabase/server');
-    const supabase = await createAdminClient();
-    const { data, error } = await supabase
-        .from('batch_jobs')
-        .select('openai_batch_id')
-        .eq('id', batchIdentifier)
-        .limit(1)
-        .maybeSingle();
-
-    if (error || !data || !data.openai_batch_id) {
-        // If we can't resolve it (column missing or null), 
-        // return the identifier as is - maybe it was used as the PK.
-        return batchIdentifier;
+    const { row } = await findBatchJobRow(batchIdentifier);
+    if (!row) {
+        return {
+            provider: 'openai',
+            providerBatchId: batchIdentifier,
+        };
     }
 
-    return data.openai_batch_id;
+    return {
+        provider: row.provider,
+        providerBatchId: row.provider_batch_id ?? batchIdentifier,
+    };
 }
 
 function parseBatchMetadata(value: unknown): Record<string, unknown> {
@@ -376,12 +468,72 @@ function toInteger(value: unknown): number {
     return 0;
 }
 
+function toUnixTimestamp(value: unknown): number | null | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) {
+            return Math.trunc(parsed / 1000);
+        }
+    }
+
+    return undefined;
+}
+
 function parseDelimitedTaxonomy(value: string | undefined): string[] {
     if (!value) return [];
     return value
         .split('|')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
+}
+
+function parseStructuredConsolidationText(
+    sku: string,
+    content: string,
+    shopsitePages: string[],
+    categories: string[]
+): ConsolidationResult {
+    const parsed = parseJsonResponse(content);
+
+    if (!parsed) {
+        return { sku, error: 'Failed to parse JSON response' };
+    }
+
+    const normalized = normalizeConsolidationResult(parsed, shopsitePages);
+    const requiredFieldsValidated = validateRequiredConsolidationFields(normalized);
+    const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories);
+
+    const categoryValues = parseDelimitedTaxonomy(
+        typeof validated.category === 'string' ? validated.category : undefined
+    );
+
+    const normalizedCategory = categoryValues
+        .map((value) => validateCategory(value, categories))
+        .filter((value, index, array) => array.indexOf(value) === index);
+
+    if (normalizedCategory.length === 0) {
+        return {
+            sku,
+            error: 'Invalid taxonomy values returned by consolidation model',
+        };
+    }
+
+    const productOnPages = Array.isArray(validated.product_on_pages)
+        ? (validated.product_on_pages as string[]).join('|')
+        : typeof validated.product_on_pages === 'string'
+            ? validated.product_on_pages
+            : undefined;
+
+    return {
+        sku,
+        ...validated,
+        category: normalizedCategory.join('|'),
+        ...(productOnPages ? { product_on_pages: productOnPages } : {}),
+    } as ConsolidationResult;
 }
 
 type SourceTrustLevel = 'canonical' | 'trusted' | 'standard' | 'marketplace';
@@ -612,14 +764,21 @@ function extractSelectedImageUrls(value: unknown): string[] {
 export function createBatchContent(
     products: ProductSource[],
     systemPrompt: string,
-    responseFormat?: object,
-    config?: { model: string; maxTokens: number; temperature: number }
+    responseSchema?: object,
+    config?: {
+        provider?: BatchProviderKey;
+        model: string;
+        maxTokens: number;
+        temperature: number;
+    }
 ): string {
     const lines: string[] = [];
 
     const model = config?.model || CONSOLIDATION_CONFIG.model;
     const maxTokens = config?.maxTokens || CONSOLIDATION_CONFIG.maxTokens;
     const temperature = config?.temperature || CONSOLIDATION_CONFIG.temperature;
+    const provider = config?.provider || 'openai';
+    const openAIResponseFormat = responseSchema ? buildOpenAIResponseFormat(responseSchema) : undefined;
 
     for (const product of products) {
         // Filter sources to only include relevant fields
@@ -644,21 +803,54 @@ export function createBatchContent(
             sources: sourceEvidence,
         })}`;
 
-        const request = {
-            custom_id: product.sku,
-            method: 'POST',
-            url: '/v1/chat/completions',
-            body: {
-                model: model,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt },
-                ],
-                max_tokens: maxTokens,
-                temperature: temperature,
-                ...(responseFormat ? { response_format: responseFormat } : {}),
-            },
-        };
+        const request = provider === 'gemini'
+            ? {
+                key: product.sku,
+                request: {
+                    contents: [
+                        {
+                            role: 'user',
+                            parts: [
+                                {
+                                    text: userPrompt,
+                                },
+                            ],
+                        },
+                    ],
+                    system_instruction: {
+                        parts: [
+                            {
+                                text: systemPrompt,
+                            },
+                        ],
+                    },
+                    generation_config: {
+                        max_output_tokens: maxTokens,
+                        temperature: temperature,
+                        ...(responseSchema
+                            ? {
+                                response_mime_type: 'application/json',
+                                response_json_schema: responseSchema,
+                            }
+                            : {}),
+                    },
+                },
+            }
+            : {
+                custom_id: product.sku,
+                method: 'POST',
+                url: '/v1/chat/completions',
+                body: {
+                    model: model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt },
+                    ],
+                    max_tokens: maxTokens,
+                    temperature: temperature,
+                    ...(openAIResponseFormat ? { response_format: openAIResponseFormat } : {}),
+                },
+            };
 
         lines.push(JSON.stringify(request));
     }
@@ -666,13 +858,14 @@ export function createBatchContent(
     return lines.join('\n');
 }
 
-async function getConfiguredBatchClient(requireBatchApi: boolean): Promise<
-    | (Awaited<ReturnType<typeof getConsolidationConfig>> & {
-        client: NonNullable<Awaited<ReturnType<typeof getOpenAIClient>>>;
-    })
-    | BatchErrorResponse
-> {
-    const config = await getConsolidationConfig();
+async function getConfiguredBatchRuntime(
+    requireBatchApi: boolean,
+    options?: {
+        routingKey?: string;
+        forceProvider?: BatchProviderKey;
+    }
+): Promise<ConsolidationRuntimeConfig | BatchErrorResponse> {
+    const config = await getConsolidationConfig(options);
 
     if (config.llm_provider === 'openai_compatible' && !config.llm_base_url) {
         return { success: false, error: 'LLM provider not configured' };
@@ -685,15 +878,125 @@ async function getConfiguredBatchClient(requireBatchApi: boolean): Promise<
         };
     }
 
-    const client = await getOpenAIClient();
-    if (!client) {
+    if (!config.llm_api_key && config.llm_provider !== 'openai_compatible') {
         return { success: false, error: 'LLM provider not configured' };
     }
 
+    return config;
+}
+
+function isRuntimeErrorResponse(
+    value: ConsolidationRuntimeConfig | BatchErrorResponse
+): value is BatchErrorResponse {
+    return 'success' in value;
+}
+
+function resolveParallelShadowProvider(
+    runtime: ConsolidationRuntimeConfig
+): BatchProviderKey | null {
+    if (runtime.llm_provider === 'gemini') {
+        return runtime.configured_llm_provider !== 'gemini'
+            ? runtime.configured_llm_provider
+            : null;
+    }
+
+    return runtime.gemini_api_key ? 'gemini' : null;
+}
+
+async function submitBatchToProvider(
+    runtime: ConsolidationRuntimeConfig,
+    content: string,
+    displayName: string,
+    metadata: Record<string, string>
+): Promise<{
+    providerBatchId: string;
+    providerStatus: string;
+    inputFileId: string | null;
+    outputFileId: string | null;
+    errorFileId: string | null;
+}> {
+    if (runtime.llm_provider === 'gemini') {
+        if (!runtime.llm_api_key) {
+            throw new Error('Gemini API key not configured');
+        }
+
+        const geminiProvider = new GeminiBatchProvider(runtime.llm_api_key);
+        const submittedBatch = await geminiProvider.submitBatch({
+            model: runtime.model,
+            displayName,
+            content,
+        });
+
+        return {
+            providerBatchId: submittedBatch.id,
+            providerStatus: submittedBatch.status,
+            inputFileId: submittedBatch.inputFileId ?? null,
+            outputFileId: submittedBatch.outputFileId ?? null,
+            errorFileId: submittedBatch.errorFileId ?? null,
+        };
+    }
+
+    const client = await getOpenAIClient({ forceProvider: runtime.llm_provider });
+    if (!client) {
+        throw new Error('LLM provider not configured');
+    }
+
+    const blob = new Blob([content], { type: 'application/jsonl' });
+    const file = new File([blob], 'batch.jsonl', { type: 'application/jsonl' });
+    const fileResponse = await client.files.create({
+        file,
+        purpose: 'batch',
+    });
+
+    const batch = await client.batches.create({
+        input_file_id: fileResponse.id,
+        endpoint: '/v1/chat/completions',
+        completion_window: runtime.completionWindow,
+        metadata,
+    });
+
     return {
-        ...config,
-        client,
+        providerBatchId: batch.id,
+        providerStatus: batch.status,
+        inputFileId: fileResponse.id,
+        outputFileId: batch.output_file_id ?? null,
+        errorFileId: batch.error_file_id ?? null,
     };
+}
+
+async function persistBatchJobRecord(payload: {
+    provider: BatchProviderKey;
+    providerBatchId: string;
+    providerStatus: string;
+    inputFileId: string | null;
+    outputFileId: string | null;
+    errorFileId: string | null;
+    description: string | null;
+    autoApply: boolean;
+    totalRequests: number;
+    metadata: Record<string, string>;
+}): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase.from('batch_jobs').insert({
+        provider: payload.provider,
+        provider_batch_id: payload.providerBatchId,
+        provider_input_file_id: payload.inputFileId,
+        provider_output_file_id: payload.outputFileId,
+        provider_error_file_id: payload.errorFileId,
+        openai_batch_id: payload.provider === 'gemini' ? null : payload.providerBatchId,
+        status: payload.providerStatus,
+        description: payload.description,
+        auto_apply: payload.autoApply,
+        total_requests: payload.totalRequests,
+        input_file_id: payload.inputFileId,
+        output_file_id: payload.outputFileId,
+        error_file_id: payload.errorFileId,
+        metadata: payload.metadata,
+    });
+
+    if (error) {
+        console.error('[Consolidation] Failed to track batch in database:', error);
+    }
 }
 
 // =============================================================================
@@ -712,12 +1015,12 @@ export async function submitBatch(
     }
 
     try {
-        const runtime = await getConfiguredBatchClient(true);
-        if (!('client' in runtime)) {
-            return runtime as BatchErrorResponse;
+        const routingKey = buildBatchRoutingKey(products, metadata);
+        const runtime = await getConfiguredBatchRuntime(true, { routingKey });
+        if (isRuntimeErrorResponse(runtime)) {
+            return runtime;
         }
-
-        const { client, ...config } = runtime;
+        const config = runtime;
 
 
         // Build prompt context with taxonomy
@@ -726,20 +1029,21 @@ export async function submitBatch(
         const categoryNames = categoryList.map(c => c.name);
 
         // Build JSON schema with enum constraints
-        const responseFormat = buildResponseSchema(categoryNames, shopsitePages);
+        const responseSchema = buildResponseSchema(categoryNames, shopsitePages);
 
         // Create JSONL content
-        const content = createBatchContent(products, systemPrompt, responseFormat, config);
-        const blob = new Blob([content], { type: 'application/jsonl' });
-        const file = new File([blob], 'batch.jsonl', { type: 'application/jsonl' });
-
-        // Upload file to OpenAI
-        const fileResponse = await client.files.create({
-            file: file,
-            purpose: 'batch',
+        const content = createBatchContent(products, systemPrompt, responseSchema, {
+            provider: config.llm_provider,
+            model: config.model,
+            maxTokens: config.maxTokens,
+            temperature: config.temperature,
         });
+        const flags = await getGeminiFeatureFlagsSafe();
+        const shadowProvider = shouldCreateGeminiParallelRun(flags, routingKey)
+            ? resolveParallelShadowProvider(config)
+            : null;
 
-        // Convert metadata to strings (OpenAI requires string values)
+        // Convert metadata to strings for provider metadata and auditing.
         const stringMetadata: Record<string, string> = {};
         for (const [key, value] of Object.entries(metadata)) {
             if (value !== undefined) {
@@ -747,39 +1051,136 @@ export async function submitBatch(
             }
         }
         stringMetadata.llm_provider = config.llm_provider;
+        stringMetadata.configured_llm_provider = config.configured_llm_provider;
         stringMetadata.llm_model = config.model;
+        stringMetadata.routing_key = routingKey;
         if (config.llm_base_url) {
             stringMetadata.llm_base_url = config.llm_base_url;
         }
 
-        // Create batch
-        const batch = await client.batches.create({
-            input_file_id: fileResponse.id,
-            endpoint: '/v1/chat/completions',
-            completion_window: config.completionWindow,
-            metadata: stringMetadata,
-        });
+        const batchDisplayName =
+            typeof metadata.description === 'string' && metadata.description.trim().length > 0
+                ? metadata.description.trim()
+                : `consolidation-${Date.now()}`;
 
-        // Track batch job in Supabase
-        const supabase = await createClient();
-        
-        const { error: dbError } = await supabase.from('batch_jobs').insert({
-            openai_batch_id: batch.id,
-            status: batch.status,
+        const primaryBatch = await submitBatchToProvider(
+            config,
+            content,
+            batchDisplayName,
+            stringMetadata
+        );
+
+        await persistBatchJobRecord({
+            provider: config.llm_provider,
+            providerBatchId: primaryBatch.providerBatchId,
+            providerStatus: primaryBatch.providerStatus,
+            inputFileId: primaryBatch.inputFileId,
+            outputFileId: primaryBatch.outputFileId,
+            errorFileId: primaryBatch.errorFileId,
             description: metadata.description || null,
-            auto_apply: !!metadata.auto_apply,
-            total_requests: products.length,
-            input_file_id: fileResponse.id,
+            autoApply: !!metadata.auto_apply,
+            totalRequests: products.length,
             metadata: stringMetadata,
         });
 
-        if (dbError) {
-            console.error('[Consolidation] Failed to track batch in database:', dbError);
+        if (shadowProvider && shadowProvider !== config.llm_provider) {
+            const { registerParallelRun } = await import('./parallel-runs');
+            const shadowRuntime = await getConfiguredBatchRuntime(true, {
+                forceProvider: shadowProvider,
+            });
+
+            if (isRuntimeErrorResponse(shadowRuntime)) {
+                await registerParallelRun({
+                    subjectKey: routingKey,
+                    primaryProvider: config.llm_provider,
+                    primaryBatchId: primaryBatch.providerBatchId,
+                    shadowProvider,
+                    shadowBatchId: null,
+                    samplePercent: flags.GEMINI_PARALLEL_SAMPLE_PERCENT,
+                    status: 'failed',
+                    metadata: {
+                        reason: 'shadow_runtime_unavailable',
+                    },
+                    comparison: {
+                        error: shadowRuntime.error,
+                    },
+                });
+            } else {
+                const shadowMetadata = {
+                    ...stringMetadata,
+                    parallel_run_role: 'shadow',
+                    parallel_primary_provider: config.llm_provider,
+                    parallel_shadow_provider: shadowRuntime.llm_provider,
+                    shadow_of_batch_id: primaryBatch.providerBatchId,
+                };
+                const shadowContent = createBatchContent(products, systemPrompt, responseSchema, {
+                    provider: shadowRuntime.llm_provider,
+                    model: shadowRuntime.model,
+                    maxTokens: shadowRuntime.maxTokens,
+                    temperature: shadowRuntime.temperature,
+                });
+
+                try {
+                    const shadowBatch = await submitBatchToProvider(
+                        shadowRuntime,
+                        shadowContent,
+                        `${batchDisplayName}-shadow`,
+                        shadowMetadata
+                    );
+
+                    await persistBatchJobRecord({
+                        provider: shadowRuntime.llm_provider,
+                        providerBatchId: shadowBatch.providerBatchId,
+                        providerStatus: shadowBatch.providerStatus,
+                        inputFileId: shadowBatch.inputFileId,
+                        outputFileId: shadowBatch.outputFileId,
+                        errorFileId: shadowBatch.errorFileId,
+                        description: `${batchDisplayName} (shadow)`,
+                        autoApply: false,
+                        totalRequests: products.length,
+                        metadata: shadowMetadata,
+                    });
+
+                    await registerParallelRun({
+                        subjectKey: routingKey,
+                        primaryProvider: config.llm_provider,
+                        primaryBatchId: primaryBatch.providerBatchId,
+                        shadowProvider: shadowRuntime.llm_provider,
+                        shadowBatchId: shadowBatch.providerBatchId,
+                        samplePercent: flags.GEMINI_PARALLEL_SAMPLE_PERCENT,
+                        metadata: {
+                            primary_description: batchDisplayName,
+                        },
+                    });
+                } catch (parallelError) {
+                    console.error('[Consolidation] Failed to create parallel shadow batch:', parallelError);
+                    await registerParallelRun({
+                        subjectKey: routingKey,
+                        primaryProvider: config.llm_provider,
+                        primaryBatchId: primaryBatch.providerBatchId,
+                        shadowProvider: shadowRuntime.llm_provider,
+                        shadowBatchId: null,
+                        samplePercent: flags.GEMINI_PARALLEL_SAMPLE_PERCENT,
+                        status: 'failed',
+                        metadata: {
+                            primary_description: batchDisplayName,
+                            reason: 'shadow_batch_submission_failed',
+                        },
+                        comparison: {
+                            error: parallelError instanceof Error
+                                ? parallelError.message
+                                : 'Shadow batch submission failed',
+                        },
+                    });
+                }
+            }
         }
 
         return {
             success: true,
-            batch_id: batch.id,
+            batch_id: primaryBatch.providerBatchId,
+            provider: config.llm_provider,
+            provider_batch_id: primaryBatch.providerBatchId,
             product_count: products.length,
         };
     } catch (error: unknown) {
@@ -799,102 +1200,206 @@ export async function submitBatch(
  * Get the status of a batch job. Also syncs status to Supabase.
  */
 export async function getBatchStatus(batchId: string): Promise<BatchStatus | BatchErrorResponse> {
-    const runtime = await getConfiguredBatchClient(false);
-    if ('success' in runtime && !runtime.success) {
-        return runtime;
-    }
-    if (!('client' in runtime)) {
-        return runtime as BatchErrorResponse;
-    }
-
-
     try {
-        const { client } = runtime;
-        const resolvedBatchId = await resolveOpenAIBatchId(batchId);
-        const batch = await client.batches.retrieve(resolvedBatchId);
-        const requestCounts = batch.request_counts || { total: 0, completed: 0, failed: 0 };
-
-        const status: BatchStatus = {
-            id: batch.id,
-            status: batch.status as BatchStatus['status'],
-            is_complete: batch.status === 'completed',
-            is_failed: ['failed', 'expired', 'cancelled'].includes(batch.status),
-            is_processing: ['validating', 'in_progress', 'finalizing'].includes(batch.status),
-            total_requests: requestCounts.total || 0,
-            completed_requests: requestCounts.completed || 0,
-            failed_requests: requestCounts.failed || 0,
-            progress_percent:
-                requestCounts.total > 0
-                    ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
-                    : 0,
-            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens,
-            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens,
-            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens,
-            created_at: batch.created_at,
-            completed_at: batch.completed_at,
-            metadata: (batch.metadata || {}) as BatchMetadata,
-        };
-
-        // Sync status to Supabase
-        const { createAdminClient } = await import('@/lib/supabase/server');
-        const supabase = await createAdminClient();
-        const promptTokens = (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0;
-        const completionTokens = (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0;
-        const totalTokens = (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0;
-        const batchMetadata =
-            batch.metadata && typeof batch.metadata === 'object'
-                ? (batch.metadata as Record<string, unknown>)
-                : {};
-        const costModel =
-            typeof batch.model === 'string' && batch.model.trim().length > 0
-                ? batch.model.trim()
-                : typeof batchMetadata.llm_model === 'string' && batchMetadata.llm_model.trim().length > 0
-                    ? batchMetadata.llm_model.trim()
-                    : CONSOLIDATION_CONFIG.model;
-
-        const estimatedCost = calculateAICost(
-            costModel,
-            promptTokens,
-            completionTokens,
-            true // Batch API
-        );
-
-        const updateData: Record<string, unknown> = {
-            status: batch.status,
-            total_requests: requestCounts.total || 0,
-            completed_requests: requestCounts.completed || 0,
-            failed_requests: requestCounts.failed || 0,
-            prompt_tokens: promptTokens,
-            completion_tokens: completionTokens,
-            total_tokens: totalTokens,
-            estimated_cost: estimatedCost,
-            output_file_id: batch.output_file_id,
-            error_file_id: batch.error_file_id,
-        };
-
-        if (batch.completed_at) {
-            updateData.completed_at = new Date(batch.completed_at * 1000).toISOString();
+        const lookup = await findBatchJobRow(batchId);
+        if (lookup.lookupError) {
+            return { success: false, error: lookup.lookupError };
         }
 
-        const upsertPayload = {
-            ...updateData,
-            openai_batch_id: batch.id,
-            input_file_id: batch.input_file_id,
-        };
+        const resolved = await resolveProviderBatchId(batchId);
+        const runtime = await getConfiguredBatchRuntime(false, {
+            forceProvider: resolved.provider,
+        });
+        if (isRuntimeErrorResponse(runtime)) {
+            return runtime;
+        }
 
-        const { error: upsertError } = await supabase
-            .from('batch_jobs')
-            .upsert(upsertPayload, { onConflict: 'openai_batch_id' });
+        let status: BatchStatus;
+        let updateData: Record<string, unknown>;
+        let upsertPayload: Record<string, unknown> | null = null;
+        let upsertOnConflict: string | undefined;
 
-        if (upsertError && upsertError.code === 'PGRST204') {
-            console.warn('[Consolidation] openai_batch_id missing during status sync, falling back to id lookup');
-            // Find by UUID if possible, or just skip sync
-            const { row } = await findBatchJobRow(batch.id);
-            if (row) {
-                await supabase.from('batch_jobs').update(updateData).eq('id', row.id);
+        if (resolved.provider === 'gemini') {
+            if (!runtime.llm_api_key) {
+                return { success: false, error: 'Gemini API key not configured' };
             }
-        } else if (upsertError) {
-            console.warn('[Consolidation] Failed to sync batch status to DB:', upsertError.message);
+
+            const batchProvider = new GeminiBatchProvider(runtime.llm_api_key);
+            const batch = await batchProvider.getBatchStatus(resolved.providerBatchId);
+            const batchMetadata = lookup.row?.metadata || {};
+            const totalRequests = batch.totalRequests || lookup.row?.total_requests || 0;
+            const completedRequests = batch.completedRequests || lookup.row?.completed_requests || 0;
+            const failedRequests = batch.failedRequests || lookup.row?.failed_requests || 0;
+            const progressPercent =
+                totalRequests > 0
+                    ? ((completedRequests + failedRequests) / totalRequests) * 100
+                    : ['completed', 'failed', 'cancelled', 'expired'].includes(batch.status)
+                        ? 100
+                        : 0;
+            const rawBatch = batch.raw as {
+                createTime?: string;
+                endTime?: string;
+            };
+
+            status = {
+                id: batch.id,
+                provider: 'gemini',
+                provider_batch_id: batch.id,
+                status: batch.status as BatchStatus['status'],
+                is_complete: batch.status === 'completed',
+                is_failed: ['failed', 'expired', 'cancelled'].includes(batch.status),
+                is_processing: ['validating', 'in_progress', 'finalizing', 'pending'].includes(batch.status),
+                total_requests: totalRequests,
+                completed_requests: completedRequests,
+                failed_requests: failedRequests,
+                progress_percent: progressPercent,
+                prompt_tokens: batch.promptTokens,
+                completion_tokens: batch.completionTokens,
+                total_tokens: batch.totalTokens,
+                created_at: toUnixTimestamp(rawBatch.createTime),
+                completed_at: toUnixTimestamp(rawBatch.endTime),
+                metadata: batchMetadata as BatchMetadata,
+            };
+
+            updateData = {
+                provider: 'gemini',
+                provider_batch_id: batch.id,
+                status: batch.status,
+                total_requests: totalRequests,
+                completed_requests: completedRequests,
+                failed_requests: failedRequests,
+                prompt_tokens: batch.promptTokens ?? 0,
+                completion_tokens: batch.completionTokens ?? 0,
+                total_tokens: batch.totalTokens ?? 0,
+                estimated_cost: calculateAICost(
+                    batch.model || (typeof batchMetadata.llm_model === 'string' ? batchMetadata.llm_model : runtime.model),
+                    batch.promptTokens ?? 0,
+                    batch.completionTokens ?? 0,
+                    true
+                ),
+                provider_input_file_id: batch.inputFileId,
+                provider_output_file_id: batch.outputFileId,
+                provider_error_file_id: batch.errorFileId,
+                input_file_id: batch.inputFileId,
+                output_file_id: batch.outputFileId,
+                error_file_id: batch.errorFileId,
+            };
+
+            const completedAt = toUnixTimestamp(rawBatch.endTime);
+            if (completedAt) {
+                updateData.completed_at = new Date(completedAt * 1000).toISOString();
+            }
+
+            upsertPayload = {
+                ...updateData,
+                provider: 'gemini',
+                provider_batch_id: batch.id,
+            };
+            upsertOnConflict = 'provider,provider_batch_id';
+        } else {
+            const client = await getOpenAIClient({ forceProvider: resolved.provider });
+            if (!client) {
+                return { success: false, error: 'LLM provider not configured' };
+            }
+
+            const batch = await client.batches.retrieve(resolved.providerBatchId);
+            const requestCounts = batch.request_counts || { total: 0, completed: 0, failed: 0 };
+
+            status = {
+                id: batch.id,
+                provider: resolved.provider,
+                provider_batch_id: batch.id,
+                status: batch.status as BatchStatus['status'],
+                is_complete: batch.status === 'completed',
+                is_failed: ['failed', 'expired', 'cancelled'].includes(batch.status),
+                is_processing: ['validating', 'in_progress', 'finalizing'].includes(batch.status),
+                total_requests: requestCounts.total || 0,
+                completed_requests: requestCounts.completed || 0,
+                failed_requests: requestCounts.failed || 0,
+                progress_percent:
+                    requestCounts.total > 0
+                        ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
+                        : 0,
+                prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens,
+                completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens,
+                total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens,
+                created_at: batch.created_at,
+                completed_at: batch.completed_at,
+                metadata: (batch.metadata || {}) as BatchMetadata,
+            };
+
+            const promptTokens = (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0;
+            const completionTokens = (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0;
+            const totalTokens = (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0;
+            const batchMetadata =
+                batch.metadata && typeof batch.metadata === 'object'
+                    ? (batch.metadata as Record<string, unknown>)
+                    : {};
+            const costModel =
+                typeof batch.model === 'string' && batch.model.trim().length > 0
+                    ? batch.model.trim()
+                    : typeof batchMetadata.llm_model === 'string' && batchMetadata.llm_model.trim().length > 0
+                        ? batchMetadata.llm_model.trim()
+                        : CONSOLIDATION_CONFIG.model;
+
+            const estimatedCost = calculateAICost(
+                costModel,
+                promptTokens,
+                completionTokens,
+                true
+            );
+
+            updateData = {
+                provider: resolved.provider,
+                provider_batch_id: batch.id,
+                provider_input_file_id: batch.input_file_id ?? null,
+                provider_output_file_id: batch.output_file_id ?? null,
+                provider_error_file_id: batch.error_file_id ?? null,
+                status: batch.status,
+                total_requests: requestCounts.total || 0,
+                completed_requests: requestCounts.completed || 0,
+                failed_requests: requestCounts.failed || 0,
+                prompt_tokens: promptTokens,
+                completion_tokens: completionTokens,
+                total_tokens: totalTokens,
+                estimated_cost: estimatedCost,
+                output_file_id: batch.output_file_id ?? null,
+                error_file_id: batch.error_file_id ?? null,
+            };
+
+            if (batch.completed_at) {
+                updateData.completed_at = new Date(batch.completed_at * 1000).toISOString();
+            }
+
+            upsertPayload = {
+                ...updateData,
+                openai_batch_id: batch.id,
+                input_file_id: batch.input_file_id ?? null,
+            };
+            upsertOnConflict = 'openai_batch_id';
+        }
+
+        // Sync status to Supabase.
+        const { createAdminClient } = await import('@/lib/supabase/server');
+        const supabase = await createAdminClient();
+
+        if (lookup.row) {
+            const updateResponse = await supabase
+                .from('batch_jobs')
+                .update(updateData)
+                .eq('id', lookup.row.id);
+
+            if (updateResponse.error) {
+                console.warn('[Consolidation] Failed to sync batch status to DB:', updateResponse.error.message);
+            }
+        } else if (upsertPayload && upsertOnConflict) {
+            const { error: upsertError } = await supabase
+                .from('batch_jobs')
+                .upsert(upsertPayload, { onConflict: upsertOnConflict });
+
+            if (upsertError) {
+                console.warn('[Consolidation] Failed to sync batch status to DB:', upsertError.message);
+            }
         }
 
         return status;
@@ -915,134 +1420,149 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
  * Retrieve and parse results from a completed batch.
  */
 export async function retrieveResults(batchId: string): Promise<ConsolidationResult[] | BatchErrorResponse> {
-    const runtime = await getConfiguredBatchClient(false);
-    if ('success' in runtime && !runtime.success) {
-        return runtime;
-    }
-    if (!('client' in runtime)) {
-        return runtime as BatchErrorResponse;
-    }
-
-
     try {
-        const { client } = runtime;
         // Fetch taxonomy for validation
         const { shopsitePages = [] } = await buildPromptContext();
         const categoryList = await getCategories();
         const categories = categoryList.map(c => c.name);
-
-        const resolvedBatchId = await resolveOpenAIBatchId(batchId);
-        const batch = await client.batches.retrieve(resolvedBatchId);
-
-        if (!['completed', 'failed', 'cancelled'].includes(batch.status)) {
-            return { success: false, error: `Batch not complete. Status: ${batch.status}` };
+        const resolved = await resolveProviderBatchId(batchId);
+        const runtime = await getConfiguredBatchRuntime(false, {
+            forceProvider: resolved.provider,
+        });
+        if (isRuntimeErrorResponse(runtime)) {
+            return runtime;
         }
 
         const results: ConsolidationResult[] = [];
 
-        // Process Output File (Successes)
-        if (batch.output_file_id) {
-            try {
-                const fileContent = await client.files.content(batch.output_file_id);
-                const text = await fileContent.text();
+        if (resolved.provider === 'gemini') {
+            if (!runtime.llm_api_key) {
+                return { success: false, error: 'Gemini API key not configured' };
+            }
 
-                for (const line of text.trim().split('\n')) {
-                    if (!line) continue;
-                    let sku = 'unknown';
-                    try {
-                        const result = JSON.parse(line);
-                        sku = result.custom_id || 'unknown';
+            const batchProvider = new GeminiBatchProvider(runtime.llm_api_key);
+            const batch = await batchProvider.getBatchStatus(resolved.providerBatchId);
 
-                        if (result.error) {
-                            results.push({ sku, error: result.error.message || 'Unknown error' });
-                            continue;
-                        }
+            if (!['completed', 'failed', 'cancelled', 'expired'].includes(batch.status)) {
+                return { success: false, error: `Batch not complete. Status: ${batch.status}` };
+            }
 
-                        const response = result.response || {};
-                        if (response.status_code !== 200) {
-                            results.push({ sku, error: `API error: ${response.status_code}` });
-                            continue;
-                        }
+            const providerResults = await batchProvider.retrieveResults(resolved.providerBatchId);
 
-                        const body = response.body || {};
-                        const choices = body.choices || [];
-                        if (choices.length === 0) {
-                            results.push({ sku, error: 'No choices in response' });
-                            continue;
-                        }
+            for (const record of providerResults) {
+                const sku = record.key || 'unknown';
+                try {
+                    if (record.error) {
+                        results.push({ sku, error: record.error });
+                        continue;
+                    }
 
-                        const content = choices[0]?.message?.content || '';
-                        const parsed = parseJsonResponse(content);
+                    if (!record.text) {
+                        results.push({ sku, error: 'No content in Gemini batch response' });
+                        continue;
+                    }
 
-                        if (parsed) {
-                            const normalized = normalizeConsolidationResult(parsed, shopsitePages);
-                            const requiredFieldsValidated = validateRequiredConsolidationFields(normalized);
-                            const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories);
+                    results.push(
+                        parseStructuredConsolidationText(
+                            sku,
+                            record.text,
+                            shopsitePages,
+                            categories
+                        )
+                    );
+                } catch (e) {
+                    results.push({
+                        sku,
+                        error: e instanceof Error ? e.message : 'Failed to parse structured output',
+                    });
+                    console.warn('[Consolidation] Failed to parse Gemini result line:', e);
+                }
+            }
+        } else {
+            const client = await getOpenAIClient({ forceProvider: resolved.provider });
+            if (!client) {
+                return { success: false, error: 'LLM provider not configured' };
+            }
 
-                            const categoryValues = parseDelimitedTaxonomy(
-                                typeof validated.category === 'string' ? validated.category : undefined
-                            );
+            const batch = await client.batches.retrieve(resolved.providerBatchId);
 
-                            const normalizedCategory = categoryValues
-                                .map((value) => validateCategory(value, categories))
-                                .filter((value, index, array) => array.indexOf(value) === index);
+            if (!['completed', 'failed', 'cancelled'].includes(batch.status)) {
+                return { success: false, error: `Batch not complete. Status: ${batch.status}` };
+            }
 
-                            if (normalizedCategory.length === 0) {
-                                results.push({
-                                    sku,
-                                    error: 'Invalid taxonomy values returned by consolidation model',
-                                });
+            // Process Output File (Successes)
+            if (batch.output_file_id) {
+                try {
+                    const fileContent = await client.files.content(batch.output_file_id);
+                    const text = await fileContent.text();
+
+                    for (const line of text.trim().split('\n')) {
+                        if (!line) continue;
+                        let sku = 'unknown';
+                        try {
+                            const result = JSON.parse(line);
+                            sku = result.custom_id || 'unknown';
+
+                            if (result.error) {
+                                results.push({ sku, error: result.error.message || 'Unknown error' });
                                 continue;
                             }
 
-                            // Convert product_on_pages array to pipe-delimited string
-                            const productOnPages = Array.isArray(validated.product_on_pages)
-                                ? (validated.product_on_pages as string[]).join('|')
-                                : typeof validated.product_on_pages === 'string'
-                                    ? validated.product_on_pages
-                                    : undefined;
+                            const response = result.response || {};
+                            if (response.status_code !== 200) {
+                                results.push({ sku, error: `API error: ${response.status_code}` });
+                                continue;
+                            }
 
+                            const body = response.body || {};
+                            const choices = body.choices || [];
+                            if (choices.length === 0) {
+                                results.push({ sku, error: 'No choices in response' });
+                                continue;
+                            }
+
+                            const content = choices[0]?.message?.content || '';
+                            results.push(
+                                parseStructuredConsolidationText(
+                                    sku,
+                                    content,
+                                    shopsitePages,
+                                    categories
+                                )
+                            );
+                        } catch (e) {
                             results.push({
                                 sku,
-                                ...validated,
-                                category: normalizedCategory.join('|'),
-                                ...(productOnPages ? { product_on_pages: productOnPages } : {}),
-                            } as ConsolidationResult);
-                        } else {
-                            results.push({ sku, error: 'Failed to parse JSON response' });
+                                error: e instanceof Error ? e.message : 'Failed to parse structured output',
+                            });
+                            console.warn('[Consolidation] Failed to parse result line:', e);
                         }
-                    } catch (e) {
-                        results.push({
-                            sku,
-                            error: e instanceof Error ? e.message : 'Failed to parse structured output',
-                        });
-                        console.warn('[Consolidation] Failed to parse result line:', e);
                     }
+                } catch (e) {
+                    console.warn('[Consolidation] Failed to process output file:', e);
                 }
-            } catch (e) {
-                console.warn('[Consolidation] Failed to process output file:', e);
             }
-        }
 
-        // Process Error File (Failures)
-        if (batch.error_file_id) {
-            try {
-                const fileContent = await client.files.content(batch.error_file_id);
-                const text = await fileContent.text();
+            // Process Error File (Failures)
+            if (batch.error_file_id) {
+                try {
+                    const fileContent = await client.files.content(batch.error_file_id);
+                    const text = await fileContent.text();
 
-                for (const line of text.trim().split('\n')) {
-                    if (!line) continue;
-                    try {
-                        const errorRecord = JSON.parse(line);
-                        const sku = errorRecord.custom_id || 'unknown';
-                        const errMsg = errorRecord.error?.message || JSON.stringify(errorRecord);
-                        results.push({ sku, error: `Batch Error: ${errMsg}` });
-                    } catch (e) {
-                        console.warn('[Consolidation] Failed to parse error line:', e);
+                    for (const line of text.trim().split('\n')) {
+                        if (!line) continue;
+                        try {
+                            const errorRecord = JSON.parse(line);
+                            const sku = errorRecord.custom_id || 'unknown';
+                            const errMsg = errorRecord.error?.message || JSON.stringify(errorRecord);
+                            results.push({ sku, error: `Batch Error: ${errMsg}` });
+                        } catch (e) {
+                            console.warn('[Consolidation] Failed to parse error line:', e);
+                        }
                     }
+                } catch (e) {
+                    console.warn('[Consolidation] Failed to process error file:', e);
                 }
-            } catch (e) {
-                console.warn('[Consolidation] Failed to process error file:', e);
             }
         }
 
@@ -1727,10 +2247,13 @@ export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | Ba
 
         const mapped: BatchJob[] = (data || []).map((row) => {
             const rowData = row as Record<string, unknown>;
-            const openaiBatchId =
-                typeof rowData.openai_batch_id === 'string' && rowData.openai_batch_id.length > 0
-                    ? rowData.openai_batch_id
-                    : null;
+            const provider = normalizeBatchProvider(rowData.provider);
+            const providerBatchId =
+                typeof rowData.provider_batch_id === 'string' && rowData.provider_batch_id.length > 0
+                    ? rowData.provider_batch_id
+                    : typeof rowData.openai_batch_id === 'string' && rowData.openai_batch_id.length > 0
+                        ? rowData.openai_batch_id
+                        : null;
             const metadata = parseBatchMetadata(rowData.metadata);
             const applySummary = parseBatchMetadata(metadata.apply_summary);
             const totalRequests =
@@ -1754,9 +2277,29 @@ export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | Ba
             return {
                 ...(rowData as unknown as BatchJob),
                 db_id: String(rowData.id),
+                provider,
+                provider_batch_id: providerBatchId,
+                provider_input_file_id:
+                    typeof rowData.provider_input_file_id === 'string'
+                        ? rowData.provider_input_file_id
+                        : typeof rowData.input_file_id === 'string'
+                            ? rowData.input_file_id
+                            : null,
+                provider_output_file_id:
+                    typeof rowData.provider_output_file_id === 'string'
+                        ? rowData.provider_output_file_id
+                        : typeof rowData.output_file_id === 'string'
+                            ? rowData.output_file_id
+                            : null,
+                provider_error_file_id:
+                    typeof rowData.provider_error_file_id === 'string'
+                        ? rowData.provider_error_file_id
+                        : typeof rowData.error_file_id === 'string'
+                            ? rowData.error_file_id
+                            : null,
                 openai_batch_id:
                     typeof rowData.openai_batch_id === 'string' ? rowData.openai_batch_id : null,
-                id: openaiBatchId || String(rowData.id),
+                id: providerBatchId || String(rowData.id),
                 total_requests: totalRequests,
                 completed_requests: completedRequests,
                 failed_requests: failedRequests,
@@ -1781,19 +2324,28 @@ export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | Ba
  * Cancel a batch job.
  */
 export async function cancelBatch(batchId: string): Promise<{ status: string } | BatchErrorResponse> {
-    const runtime = await getConfiguredBatchClient(false);
-    if ('success' in runtime && !runtime.success) {
-        return runtime;
-    }
-    if (!('client' in runtime)) {
-        return runtime as BatchErrorResponse;
-    }
-
-
     try {
-        const { client } = runtime;
-        const resolvedBatchId = await resolveOpenAIBatchId(batchId);
-        await client.batches.cancel(resolvedBatchId);
+        const resolved = await resolveProviderBatchId(batchId);
+        const runtime = await getConfiguredBatchRuntime(false, {
+            forceProvider: resolved.provider,
+        });
+        if (isRuntimeErrorResponse(runtime)) {
+            return runtime;
+        }
+
+        if (resolved.provider === 'gemini') {
+            if (!runtime.llm_api_key) {
+                return { success: false, error: 'Gemini API key not configured' };
+            }
+            const batchProvider = new GeminiBatchProvider(runtime.llm_api_key);
+            await batchProvider.cancelBatch(resolved.providerBatchId);
+        } else {
+            const client = await getOpenAIClient({ forceProvider: resolved.provider });
+            if (!client) {
+                return { success: false, error: 'LLM provider not configured' };
+            }
+            await client.batches.cancel(resolved.providerBatchId);
+        }
 
         const supabase = await createClient();
         const { row } = await findBatchJobRow(batchId);
