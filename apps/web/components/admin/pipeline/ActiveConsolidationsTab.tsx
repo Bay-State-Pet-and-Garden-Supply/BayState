@@ -35,13 +35,14 @@ import type {
 
 interface AISettings {
   defaults: {
+    llm_provider?: "gemini";
     llm_model: string;
-    max_search_results: number;
-    max_steps: number;
+    llm_base_url?: string | null;
+    llm_supports_batch_api?: boolean;
     confidence_threshold: number;
   };
   statuses: {
-    openai: {
+    gemini: {
       configured: boolean;
       last4: string | null;
       updated_at: string | null;
@@ -64,13 +65,11 @@ interface ActiveConsolidationsTabProps {
 
 function AISettingsDialog() {
   const [settings, setSettings] = useState<AISettings | null>(null);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
-  const [openaiKey, setOpenaiKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
 
   const fetchSettings = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await fetch("/api/admin/consolidation/settings");
       if (res.ok) {
@@ -79,8 +78,6 @@ function AISettingsDialog() {
       }
     } catch (err) {
       console.error("Failed to fetch AI settings", err);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -91,7 +88,12 @@ function AISettingsDialog() {
       const res = await fetch("/api/admin/consolidation/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings.defaults),
+        body: JSON.stringify({
+          ...settings.defaults,
+          llm_provider: "gemini",
+          llm_base_url: null,
+          llm_supports_batch_api: true,
+        }),
       });
       if (res.ok) {
         toast.success("Defaults saved");
@@ -107,7 +109,7 @@ function AISettingsDialog() {
   };
 
   const handleSaveKey = async () => {
-    if (!openaiKey.trim()) {
+    if (!geminiKey.trim()) {
       toast.error("API key cannot be empty");
       return;
     }
@@ -116,11 +118,11 @@ function AISettingsDialog() {
       const res = await fetch("/api/admin/consolidation/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ openai_api_key: openaiKey }),
+        body: JSON.stringify({ gemini_api_key: geminiKey }),
       });
       if (res.ok) {
-        toast.success("OpenAI API Key updated");
-        setOpenaiKey("");
+        toast.success("Gemini API Key updated");
+        setGeminiKey("");
         await fetchSettings();
       } else {
         toast.error("Failed to update API Key");
@@ -148,7 +150,7 @@ function AISettingsDialog() {
         <DialogHeader>
           <DialogTitle>AI Consolidation Settings</DialogTitle>
           <DialogDescription>
-            Configure OpenAI credentials and default models for consolidation.
+            Configure Gemini credentials and default models for consolidation.
           </DialogDescription>
         </DialogHeader>
 
@@ -157,18 +159,18 @@ function AISettingsDialog() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Key className="h-4 w-4 text-brand-burgundy" />
-              <h4 className="text-sm font-semibold">OpenAI API Key</h4>
+              <h4 className="text-sm font-semibold">Gemini API Key</h4>
             </div>
 
             <div className="rounded-md border border-border bg-muted p-3">
-              {settings?.statuses.openai.configured ? (
+              {settings?.statuses.gemini.configured ? (
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5 text-xs text-green-700">
                     <CheckCircle className="h-3.5 w-3.5" />
-                    <span>Configured (Ends in {settings.statuses.openai.last4})</span>
+                    <span>Configured (Ends in {settings.statuses.gemini.last4})</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground">
-                    Updated {settings.statuses.openai.updated_at ? new Date(settings.statuses.openai.updated_at).toLocaleDateString() : 'N/A'}
+                    Updated {settings.statuses.gemini.updated_at ? new Date(settings.statuses.gemini.updated_at).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
               ) : (
@@ -181,9 +183,9 @@ function AISettingsDialog() {
               <div className="flex gap-2">
                 <Input
                   type="password"
-                  placeholder="sk-..."
-                  value={openaiKey}
-                  onChange={(e) => setOpenaiKey(e.target.value)}
+                  placeholder="AIza..."
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
                   className="h-8 text-xs"
                 />
                 <Button
@@ -191,7 +193,7 @@ function AISettingsDialog() {
                   variant="default"
                   className="h-8 px-3 text-xs"
                   onClick={handleSaveKey}
-                  disabled={saving || !openaiKey}
+                  disabled={saving || !geminiKey}
                 >
                   Update
                 </Button>
@@ -212,7 +214,7 @@ function AISettingsDialog() {
                 <select
                   id="model"
                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={settings?.defaults.llm_model || "gpt-4o-mini"}
+                  value={settings?.defaults.llm_model || "gemini-2.5-flash"}
                   onChange={(e) =>
                     setSettings((prev) =>
                       prev
@@ -220,15 +222,15 @@ function AISettingsDialog() {
                             ...prev,
                             defaults: {
                               ...prev.defaults,
-                              llm_model: e.target.value as "gpt-4o" | "gpt-4o-mini",
+                              llm_model: e.target.value as "gemini-2.5-flash" | "gemini-2.5-pro",
                             },
                           }
                         : null
                     )
                   }
                 >
-                  <option value="gpt-4o-mini">GPT-4o Mini (Cost Effective)</option>
-                  <option value="gpt-4o">GPT-4o (High Performance)</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                 </select>
               </div>
 
@@ -396,7 +398,7 @@ export function ActiveConsolidationsTab({
     }
   };
 
-  // Sync status for a single batch from OpenAI
+  // Sync status for a single batch from the configured provider
   const handleSyncStatus = async (batchId: string) => {
     setSyncingId(batchId);
     try {

@@ -14,7 +14,7 @@ export const schemaVersionSchema = z.enum(KNOWN_SCHEMA_VERSIONS);
 export const scraperTypeSchema = z.enum(['static', 'agentic']);
 export type ScraperType = z.infer<typeof scraperTypeSchema>;
 
-export const aiModelSchema = z.enum(['gpt-4o-mini', 'gpt-4o', 'gpt-4', 'gpt-3.5-turbo']);
+export const aiModelSchema = z.enum(['gemini-2.5-flash', 'gemini-2.5-pro']);
 export type AIModel = z.infer<typeof aiModelSchema>;
 
 export const aiConfigSchema = z.object({
@@ -22,7 +22,7 @@ export const aiConfigSchema = z.object({
   task: z.string().min(1, 'AI task description is required'),
   max_steps: z.number().min(1).max(50).default(10),
   confidence_threshold: z.number().min(0).max(1).default(0.7),
-  llm_model: aiModelSchema.default('gpt-4o-mini'),
+  llm_model: aiModelSchema.default('gemini-2.5-flash'),
   use_vision: z.boolean().default(true),
   headless: z.boolean().default(true),
 });

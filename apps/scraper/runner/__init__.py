@@ -883,60 +883,32 @@ def _run_ai_search_job(
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
     runtime_credentials: Dict[str, Any] = job_config.ai_credentials or {}
     feature_flags = GeminiFeatureFlags.from_payload(job_config.feature_flags)
-    llm_provider = str(
-        search_cfg.get("llm_provider")
-        or runtime_credentials.get("llm_provider")
-        or "openai"
-    )
-    if llm_provider not in {"openai", "openai_compatible", "gemini"}:
-        llm_provider = "openai"
-    if llm_provider == "gemini" and not feature_flags.gemini_ai_search_enabled:
-        llm_provider = "openai"
+    llm_provider = "gemini"
 
     llm_model = str(
         search_cfg.get("llm_model")
         or runtime_credentials.get("llm_model")
-        or "gpt-4o-mini"
+        or "gemini-2.5-flash"
     )
     if not llm_model.strip():
-        llm_model = "gemini-2.5-flash" if llm_provider == "gemini" else "gpt-4o-mini"
-    elif llm_provider == "gemini" and llm_model == "gpt-4o-mini":
+        llm_model = "gemini-2.5-flash"
+    elif llm_model.startswith("gpt-"):
         llm_model = "gemini-2.5-flash"
     search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto")
     if search_provider not in {"auto", "serpapi", "brave", "gemini"}:
         search_provider = "auto"
-    if search_provider == "gemini" and not feature_flags.gemini_ai_search_enabled:
-        search_provider = "auto"
-    if search_provider == "auto" and feature_flags.gemini_ai_search_enabled and llm_provider == "gemini":
+    if search_provider == "auto":
         search_provider = "gemini"
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
     extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
 
-    llm_base_url = (
-        _get_optional_string(search_cfg, "llm_base_url")
-        if llm_provider == "openai_compatible"
-        else None
-    )
-    if llm_base_url is None and llm_provider == "openai_compatible":
-        runtime_base_url = _get_optional_string(runtime_credentials, "llm_base_url")
-        runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
-        if runtime_base_url and runtime_provider == "openai_compatible":
-            llm_base_url = runtime_base_url
+    llm_base_url = None
 
     runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
     runtime_llm_api_key = _get_optional_string(runtime_credentials, "llm_api_key")
-    if llm_provider == "gemini":
-        llm_api_key = _get_optional_string(runtime_credentials, "gemini_api_key")
-        if llm_api_key is None and runtime_provider == "gemini":
-            llm_api_key = runtime_llm_api_key
-    elif llm_provider == "openai_compatible":
-        llm_api_key = _get_optional_string(runtime_credentials, "openai_compatible_api_key")
-        if llm_api_key is None and runtime_provider == "openai_compatible":
-            llm_api_key = runtime_llm_api_key
-    else:
-        llm_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
-        if llm_api_key is None and runtime_provider == "openai":
-            llm_api_key = runtime_llm_api_key
+    llm_api_key = _get_optional_string(runtime_credentials, "gemini_api_key")
+    if llm_api_key is None and runtime_provider == "gemini":
+        llm_api_key = runtime_llm_api_key
 
     previous_serpapi = os.environ.get("SERPAPI_API_KEY")
     previous_brave = os.environ.get("BRAVE_API_KEY")
@@ -1034,13 +1006,6 @@ def _run_ai_search_job(
     crawl4ai_llm_model = llm_model
     crawl4ai_llm_base_url = llm_base_url
     crawl4ai_llm_api_key = llm_api_key
-    if llm_provider == "gemini" and not feature_flags.gemini_crawl4ai_enabled:
-        fallback_openai_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
-        if fallback_openai_api_key is not None:
-            crawl4ai_llm_provider = "openai"
-            crawl4ai_llm_model = "gpt-4o-mini"
-            crawl4ai_llm_base_url = None
-            crawl4ai_llm_api_key = fallback_openai_api_key
 
     async def _run() -> list[Any]:
         scraper = AISearchScraper(

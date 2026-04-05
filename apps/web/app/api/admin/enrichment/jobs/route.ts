@@ -16,7 +16,7 @@ interface EnrichmentJobRequest {
             max_search_results?: number;
             max_steps?: number;
             confidence_threshold?: number;
-            llm_provider?: 'openai' | 'openai_compatible';
+            llm_provider?: 'gemini';
             llm_model?: string;
             llm_base_url?: string | null;
             prefer_manufacturer?: boolean;
@@ -26,7 +26,7 @@ interface EnrichmentJobRequest {
         crawl4ai?: {
             extraction_strategy?: 'llm' | 'llm_free' | 'auto';
             cache_enabled?: boolean;
-            llm_provider?: 'openai' | 'openai_compatible';
+            llm_provider?: 'gemini';
             llm_model?: string;
             llm_base_url?: string | null;
             max_retries?: number;

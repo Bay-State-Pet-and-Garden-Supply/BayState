@@ -11,7 +11,7 @@ const discoveryRequestSchema = z.object({
       max_search_results: z.number().min(1).max(10).optional(),
       max_steps: z.number().min(1).max(50).optional(),
       confidence_threshold: z.number().min(0).max(1).optional(),
-      llm_provider: z.enum(['openai', 'openai_compatible']).optional(),
+      llm_provider: z.literal('gemini').optional(),
       llm_model: z.string().min(1).optional(),
       llm_base_url: z.string().min(1).optional(),
       prefer_manufacturer: z.boolean().optional(),

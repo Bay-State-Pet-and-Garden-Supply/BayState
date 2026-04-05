@@ -43,7 +43,6 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
 
     monkeypatch.setattr("runner.AISearchScraper", StubAISearchScraper)
     monkeypatch.setitem(settings.browser_settings, "headless", True)
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-" + ("p" * 48))
     monkeypatch.setenv("BRAVE_API_KEY", "brave-existing-key-1234567890")
     monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
 
@@ -67,7 +66,7 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
                 "search_provider": "serpapi",
             },
             ai_credentials={
-                "openai_api_key": "sk-" + ("n" * 48),
+                "gemini_api_key": "gemini-runtime-key-1234567890",
                 "serpapi_api_key": "serpapi-runtime-key-1234567890",
                 "brave_api_key": "brave-runtime-key-1234567890",
             },
@@ -78,16 +77,15 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
     )
 
     assert init_args["search_provider"] == "serpapi"
-    assert init_args["llm_provider"] == "openai"
-    assert init_args["llm_model"] == "gpt-4o-mini"
-    assert init_args["llm_api_key"] == "sk-" + ("n" * 48)
+    assert init_args["llm_provider"] == "gemini"
+    assert init_args["llm_model"] == "gemini-2.5-flash"
+    assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
     assert updated["data"]["SKU-1"]["ai_search"]["title"] == "Acme Squeaky Ball"
-    assert os.environ["OPENAI_API_KEY"] == "sk-" + ("p" * 48)
     assert os.environ["BRAVE_API_KEY"] == "brave-existing-key-1234567890"
     assert "SERPAPI_API_KEY" not in os.environ
 
 
-def test_run_ai_search_job_prefers_openai_compatible_runtime(monkeypatch) -> None:
+def test_run_ai_search_job_forces_gemini_for_legacy_provider_payloads(monkeypatch) -> None:
     init_args: dict[str, object] = {}
 
     class StubAISearchScraper:
@@ -114,7 +112,6 @@ def test_run_ai_search_job_prefers_openai_compatible_runtime(monkeypatch) -> Non
 
     monkeypatch.setattr("runner.AISearchScraper", StubAISearchScraper)
     monkeypatch.setitem(settings.browser_settings, "headless", True)
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
     monkeypatch.delenv("BRAVE_API_KEY", raising=False)
 
@@ -128,11 +125,11 @@ def test_run_ai_search_job_prefers_openai_compatible_runtime(monkeypatch) -> Non
                 "product_name": "Local Model Product",
                 "brand": "Acme",
                 "llm_provider": "openai_compatible",
-                "llm_model": "google/gemma-3-12b-it",
+                "llm_model": "gpt-4o-mini",
                 "llm_base_url": "http://localhost:8000/v1",
             },
             ai_credentials={
-                "openai_compatible_api_key": "",
+                "gemini_api_key": "gemini-runtime-key-2222222222",
                 "brave_api_key": "brave-runtime-key-1234567890",
             },
         ),
@@ -141,15 +138,16 @@ def test_run_ai_search_job_prefers_openai_compatible_runtime(monkeypatch) -> Non
         log_buffer=[],
     )
 
-    assert init_args["llm_provider"] == "openai_compatible"
-    assert init_args["llm_model"] == "google/gemma-3-12b-it"
-    assert init_args["llm_base_url"] == "http://localhost:8000/v1"
-    assert init_args["llm_api_key"] is None
+    assert init_args["llm_provider"] == "gemini"
+    assert init_args["llm_model"] == "gemini-2.5-flash"
+    assert init_args["llm_base_url"] is None
+    assert init_args["llm_api_key"] == "gemini-runtime-key-2222222222"
+    assert init_args["search_provider"] == "gemini"
     assert updated["data"]["SKU-2"]["ai_search"]["title"] == "Local Model Product"
     assert "BRAVE_API_KEY" not in os.environ
 
 
-def test_run_ai_search_job_uses_gemini_when_flag_enabled(monkeypatch) -> None:
+def test_run_ai_search_job_uses_gemini_without_feature_flag_fallback(monkeypatch) -> None:
     init_args: dict[str, object] = {}
 
     class StubAISearchScraper:
@@ -175,7 +173,6 @@ def test_run_ai_search_job_uses_gemini_when_flag_enabled(monkeypatch) -> None:
 
     monkeypatch.setattr("runner.AISearchScraper", StubAISearchScraper)
     monkeypatch.setitem(settings.browser_settings, "headless", True)
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     updated = _run_ai_search_job(
         job_config=JobConfig(
@@ -192,8 +189,8 @@ def test_run_ai_search_job_uses_gemini_when_flag_enabled(monkeypatch) -> None:
                 "gemini_api_key": "gemini-runtime-key-1234567890",
             },
             feature_flags={
-                "GEMINI_AI_SEARCH_ENABLED": True,
-                "GEMINI_CRAWL4AI_ENABLED": True,
+                "GEMINI_AI_SEARCH_ENABLED": False,
+                "GEMINI_CRAWL4AI_ENABLED": False,
             },
         ),
         skus=["SKU-3"],

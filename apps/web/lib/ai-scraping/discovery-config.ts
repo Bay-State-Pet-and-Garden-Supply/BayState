@@ -40,12 +40,8 @@ export function pickNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-export function normalizeDiscoveryLLMProvider(value: unknown, fallback: LLMProvider): LLMProvider {
-  if (value === 'openai_compatible' || value === 'gemini') {
-    return value;
-  }
-
-  return fallback;
+export function normalizeDiscoveryLLMProvider(): LLMProvider {
+  return 'gemini';
 }
 
 function pickNonEmptyString(value: unknown): string | null {
@@ -89,9 +85,7 @@ export function sanitizeDiscoveryConfig(
 
   const llmProvider = normalizeDiscoveryLLMProvider(config.llm_provider, defaults.llm_provider);
   const llmModel = pickNonEmptyString(config.llm_model) ?? defaults.llm_model;
-  const llmBaseUrl = llmProvider === 'openai_compatible'
-    ? pickNonEmptyString(config.llm_base_url) ?? defaults.llm_base_url
-    : null;
+  const llmBaseUrl = null;
 
   normalized.llm_provider = llmProvider;
   normalized.llm_model = llmModel;

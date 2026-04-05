@@ -111,8 +111,8 @@ describe('POST /api/scraper/v1/poll', () => {
         };
         (createClient as jest.Mock).mockReturnValue(mockSupabase);
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
+            llm_provider: 'gemini',
+            llm_model: 'gemini-2.5-flash',
             llm_base_url: null,
             max_search_results: 5,
             max_steps: 15,
@@ -272,21 +272,19 @@ describe('POST /api/scraper/v1/poll', () => {
         });
 
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai_compatible',
-            llm_model: 'google/gemma-3-12b-it',
-            llm_base_url: 'http://localhost:8000/v1',
+            llm_provider: 'gemini',
+            llm_model: 'gemini-2.5-flash',
+            llm_base_url: null,
             max_search_results: 7,
             max_steps: 20,
             confidence_threshold: 0.82,
         });
 
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai_compatible',
-            llm_model: 'google/gemma-3-12b-it',
-            llm_base_url: 'http://localhost:8000/v1',
-            llm_api_key: 'baystate-local',
-            openai_api_key: 'sk-test-key',
-            openai_compatible_api_key: 'baystate-local',
+            llm_provider: 'gemini',
+            llm_model: 'gemini-2.5-flash',
+            llm_api_key: 'gemini-test-key',
+            gemini_api_key: 'gemini-test-key',
             serpapi_api_key: 'serpapi-test-key',
             brave_api_key: 'brave-test-key',
         });
@@ -336,12 +334,10 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(res.status).toBe(200);
 
         const data = await res.json();
-        expect(data.job.ai_credentials.llm_provider).toBe('openai_compatible');
-        expect(data.job.ai_credentials.llm_model).toBe('google/gemma-3-12b-it');
-        expect(data.job.ai_credentials.llm_base_url).toBe('http://localhost:8000/v1');
-        expect(data.job.ai_credentials.llm_api_key).toBe('baystate-local');
-        expect(data.job.ai_credentials.openai_api_key).toBe('sk-test-key');
-        expect(data.job.ai_credentials.openai_compatible_api_key).toBe('baystate-local');
+        expect(data.job.ai_credentials.llm_provider).toBe('gemini');
+        expect(data.job.ai_credentials.llm_model).toBe('gemini-2.5-flash');
+        expect(data.job.ai_credentials.llm_api_key).toBe('gemini-test-key');
+        expect(data.job.ai_credentials.gemini_api_key).toBe('gemini-test-key');
         expect(data.job.ai_credentials.serpapi_api_key).toBe('serpapi-test-key');
         expect(data.job.ai_credentials.brave_api_key).toBe('brave-test-key');
         expect(data.job.feature_flags).toMatchObject({
@@ -351,9 +347,9 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.max_search_results).toBe(7);
         expect(data.job.job_config.max_steps).toBe(20);
         expect(data.job.job_config.confidence_threshold).toBe(0.82);
-        expect(data.job.job_config.llm_provider).toBe('openai_compatible');
-        expect(data.job.job_config.llm_model).toBe('google/gemma-3-12b-it');
-        expect(data.job.job_config.llm_base_url).toBe('http://localhost:8000/v1');
+        expect(data.job.job_config.llm_provider).toBe('gemini');
+        expect(data.job.job_config.llm_model).toBe('gemini-2.5-flash');
+        expect(data.job.job_config.llm_base_url).toBeUndefined();
     });
 
     it('preserves shared discovery keys and strips unsupported ones from discovery job config', async () => {

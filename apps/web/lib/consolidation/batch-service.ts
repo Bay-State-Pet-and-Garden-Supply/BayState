@@ -13,10 +13,6 @@ import {
     getOpenAIClient,
     type ConsolidationRuntimeConfig,
 } from './openai-client';
-import {
-    getGeminiFeatureFlagsSafe,
-    shouldCreateGeminiParallelRun,
-} from '@/lib/config/gemini-feature-flags';
 import { buildPromptContext, getCategories } from './prompt-builder';
 import {
     buildOpenAIResponseFormat,
@@ -891,18 +887,6 @@ function isRuntimeErrorResponse(
     return 'success' in value;
 }
 
-function resolveParallelShadowProvider(
-    runtime: ConsolidationRuntimeConfig
-): BatchProviderKey | null {
-    if (runtime.llm_provider === 'gemini') {
-        return runtime.configured_llm_provider !== 'gemini'
-            ? runtime.configured_llm_provider
-            : null;
-    }
-
-    return runtime.gemini_api_key ? 'gemini' : null;
-}
-
 async function submitBatchToProvider(
     runtime: ConsolidationRuntimeConfig,
     content: string,
@@ -1004,7 +988,7 @@ async function persistBatchJobRecord(payload: {
 // =============================================================================
 
 /**
- * Submit a batch job to OpenAI and track it in Supabase.
+ * Submit a batch job to the configured provider and track it in Supabase.
  */
 export async function submitBatch(
     products: ProductSource[],
@@ -1038,11 +1022,6 @@ export async function submitBatch(
             maxTokens: config.maxTokens,
             temperature: config.temperature,
         });
-        const flags = await getGeminiFeatureFlagsSafe();
-        const shadowProvider = shouldCreateGeminiParallelRun(flags, routingKey)
-            ? resolveParallelShadowProvider(config)
-            : null;
-
         // Convert metadata to strings for provider metadata and auditing.
         const stringMetadata: Record<string, string> = {};
         for (const [key, value] of Object.entries(metadata)) {
@@ -1082,99 +1061,6 @@ export async function submitBatch(
             totalRequests: products.length,
             metadata: stringMetadata,
         });
-
-        if (shadowProvider && shadowProvider !== config.llm_provider) {
-            const { registerParallelRun } = await import('./parallel-runs');
-            const shadowRuntime = await getConfiguredBatchRuntime(true, {
-                forceProvider: shadowProvider,
-            });
-
-            if (isRuntimeErrorResponse(shadowRuntime)) {
-                await registerParallelRun({
-                    subjectKey: routingKey,
-                    primaryProvider: config.llm_provider,
-                    primaryBatchId: primaryBatch.providerBatchId,
-                    shadowProvider,
-                    shadowBatchId: null,
-                    samplePercent: flags.GEMINI_PARALLEL_SAMPLE_PERCENT,
-                    status: 'failed',
-                    metadata: {
-                        reason: 'shadow_runtime_unavailable',
-                    },
-                    comparison: {
-                        error: shadowRuntime.error,
-                    },
-                });
-            } else {
-                const shadowMetadata = {
-                    ...stringMetadata,
-                    parallel_run_role: 'shadow',
-                    parallel_primary_provider: config.llm_provider,
-                    parallel_shadow_provider: shadowRuntime.llm_provider,
-                    shadow_of_batch_id: primaryBatch.providerBatchId,
-                };
-                const shadowContent = createBatchContent(products, systemPrompt, responseSchema, {
-                    provider: shadowRuntime.llm_provider,
-                    model: shadowRuntime.model,
-                    maxTokens: shadowRuntime.maxTokens,
-                    temperature: shadowRuntime.temperature,
-                });
-
-                try {
-                    const shadowBatch = await submitBatchToProvider(
-                        shadowRuntime,
-                        shadowContent,
-                        `${batchDisplayName}-shadow`,
-                        shadowMetadata
-                    );
-
-                    await persistBatchJobRecord({
-                        provider: shadowRuntime.llm_provider,
-                        providerBatchId: shadowBatch.providerBatchId,
-                        providerStatus: shadowBatch.providerStatus,
-                        inputFileId: shadowBatch.inputFileId,
-                        outputFileId: shadowBatch.outputFileId,
-                        errorFileId: shadowBatch.errorFileId,
-                        description: `${batchDisplayName} (shadow)`,
-                        autoApply: false,
-                        totalRequests: products.length,
-                        metadata: shadowMetadata,
-                    });
-
-                    await registerParallelRun({
-                        subjectKey: routingKey,
-                        primaryProvider: config.llm_provider,
-                        primaryBatchId: primaryBatch.providerBatchId,
-                        shadowProvider: shadowRuntime.llm_provider,
-                        shadowBatchId: shadowBatch.providerBatchId,
-                        samplePercent: flags.GEMINI_PARALLEL_SAMPLE_PERCENT,
-                        metadata: {
-                            primary_description: batchDisplayName,
-                        },
-                    });
-                } catch (parallelError) {
-                    console.error('[Consolidation] Failed to create parallel shadow batch:', parallelError);
-                    await registerParallelRun({
-                        subjectKey: routingKey,
-                        primaryProvider: config.llm_provider,
-                        primaryBatchId: primaryBatch.providerBatchId,
-                        shadowProvider: shadowRuntime.llm_provider,
-                        shadowBatchId: null,
-                        samplePercent: flags.GEMINI_PARALLEL_SAMPLE_PERCENT,
-                        status: 'failed',
-                        metadata: {
-                            primary_description: batchDisplayName,
-                            reason: 'shadow_batch_submission_failed',
-                        },
-                        comparison: {
-                            error: parallelError instanceof Error
-                                ? parallelError.message
-                                : 'Shadow batch submission failed',
-                        },
-                    });
-                }
-            }
-        }
 
         return {
             success: true,
