@@ -29,6 +29,7 @@ import type {
   BatchHistoryJob,
 } from "@/components/admin/pipeline/consolidation";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/ai-scraping/models";
 
 // ============================================================================
 // Types
@@ -210,7 +211,7 @@ function AISettingsDialog() {
                 <select
                   id="model"
                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={settings?.defaults.llm_model || "gemini-2.5-flash"}
+                  value={settings?.defaults.llm_model || DEFAULT_GEMINI_MODEL}
                   onChange={(e) =>
                     setSettings((prev) =>
                       prev

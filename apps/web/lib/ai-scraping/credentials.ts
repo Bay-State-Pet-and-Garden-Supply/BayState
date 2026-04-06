@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
 
 export type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'serpapi' | 'brave';
 export type LLMProvider = 'openai' | 'openai_compatible' | 'gemini';
@@ -54,10 +55,12 @@ export interface AIConsolidationRuntimeConfig {
 
 const AI_DEFAULTS_SETTINGS_KEY = 'ai_scraping_defaults';
 const AI_CONSOLIDATION_DEFAULTS_SETTINGS_KEY = 'ai_consolidation_defaults';
+const AI_PROVIDER_COMPAT_SETTINGS_KEY_PREFIX = 'ai_provider_credentials_compat_';
 const ENCRYPTION_KEY_ENV_NAME = 'AI_CREDENTIALS_ENCRYPTION_KEY';
 const OPENAI_COMPATIBLE_API_KEY_ENV_NAME = 'OPENAI_COMPATIBLE_API_KEY';
 const OPENAI_COMPATIBLE_BASE_URL_ENV_NAME = 'OPENAI_COMPATIBLE_BASE_URL';
 const GEMINI_API_KEY_ENV_NAME = 'GEMINI_API_KEY';
+const SITE_SETTINGS_COMPATIBLE_PROVIDERS = ['gemini', 'openai_compatible'] as const;
 const ENCRYPTION_KEY_HELP =
   'Set AI_CREDENTIALS_ENCRYPTION_KEY to a 32-byte UTF-8 string or base64-encoded 32-byte key (example: `openssl rand -base64 32`).';
 
@@ -67,7 +70,7 @@ const loggedDecryptFailures = new Set<AIProvider>();
 
 const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
   llm_provider: 'gemini',
-  llm_model: 'gemini-2.5-flash',
+  llm_model: DEFAULT_GEMINI_MODEL,
   llm_base_url: null,
   max_search_results: 5,
   max_steps: 15,
@@ -76,7 +79,7 @@ const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
 
 const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
   llm_provider: 'gemini',
-  llm_model: 'gemini-2.5-flash',
+  llm_model: DEFAULT_GEMINI_MODEL,
   llm_base_url: null,
   confidence_threshold: 0.7,
   llm_supports_batch_api: true,
@@ -85,7 +88,7 @@ const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
 export function getDefaultModelForProvider(provider: LLMProvider): string {
   switch (provider) {
     case 'gemini':
-      return 'gemini-2.5-flash';
+      return DEFAULT_GEMINI_MODEL;
     case 'openai_compatible':
       return 'google/gemma-3-12b-it';
     case 'openai':
@@ -181,7 +184,199 @@ function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
+  if (error && typeof error === 'object') {
+    const message = 'message' in error ? error.message : null;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+    const details = 'details' in error ? error.details : null;
+    if (typeof details === 'string' && details.trim()) {
+      return details;
+    }
+  }
   return String(error);
+}
+
+interface StoredProviderSecretRecord {
+  encryptedValue: string;
+  iv: string;
+  authTag: string;
+  last4: string | null;
+  updatedAt: string | null;
+}
+
+function usesSiteSettingsProviderCompat(provider: AIProvider): provider is typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number] {
+  return provider === 'gemini' || provider === 'openai_compatible';
+}
+
+function getProviderCompatSettingKey(provider: typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number]): string {
+  return `${AI_PROVIDER_COMPAT_SETTINGS_KEY_PREFIX}${provider}`;
+}
+
+function isProviderConstraintError(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes('ai_provider_credentials_provider_check')
+    || message.includes('violates check constraint');
+}
+
+function toStoredProviderSecretRecord(
+  raw: unknown,
+  updatedAtFallback: string | null = null
+): StoredProviderSecretRecord | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+
+  const value = raw as Record<string, unknown>;
+  if (
+    typeof value.encrypted_value !== 'string'
+    || typeof value.iv !== 'string'
+    || typeof value.auth_tag !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    encryptedValue: value.encrypted_value,
+    iv: value.iv,
+    authTag: value.auth_tag,
+    last4: typeof value.last4 === 'string' ? value.last4 : null,
+    updatedAt:
+      typeof value.updated_at === 'string'
+        ? value.updated_at
+        : updatedAtFallback,
+  };
+}
+
+async function upsertProviderSecretCompatSetting(
+  admin: SupabaseClient,
+  provider: typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number],
+  record: StoredProviderSecretRecord
+): Promise<void> {
+  const settingKey = getProviderCompatSettingKey(provider);
+  const { error } = await admin
+    .from('site_settings')
+    .upsert(
+      {
+        key: settingKey,
+        value: {
+          provider,
+          encrypted_value: record.encryptedValue,
+          iv: record.iv,
+          auth_tag: record.authTag,
+          key_version: 1,
+          last4: record.last4,
+          updated_at: record.updatedAt,
+        },
+        updated_at: record.updatedAt,
+      },
+      { onConflict: 'key' }
+    );
+
+  if (error) {
+    throw new Error(`Failed to store ${provider} API key compatibility fallback: ${getErrorMessage(error)}`);
+  }
+}
+
+async function getPrimaryProviderSecretRecord(
+  admin: SupabaseClient,
+  provider: AIProvider
+): Promise<StoredProviderSecretRecord | null> {
+  const { data, error } = await admin
+    .from('ai_provider_credentials')
+    .select('encrypted_value, iv, auth_tag, last4, updated_at')
+    .eq('provider', provider)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[Scraper API] Failed to fetch encrypted ${provider} secret:`, error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    encryptedValue: data.encrypted_value as string,
+    iv: data.iv as string,
+    authTag: data.auth_tag as string,
+    last4: (data.last4 as string | null) ?? null,
+    updatedAt: (data.updated_at as string | null) ?? null,
+  };
+}
+
+async function getCompatProviderSecretRecord(
+  admin: SupabaseClient,
+  provider: typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number]
+): Promise<StoredProviderSecretRecord | null> {
+  const { data, error } = await admin
+    .from('site_settings')
+    .select('value, updated_at')
+    .eq('key', getProviderCompatSettingKey(provider))
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[Scraper API] Failed to fetch ${provider} compatibility credential:`, error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return toStoredProviderSecretRecord(data.value, (data.updated_at as string | null) ?? null);
+}
+
+async function getCompatProviderSecretStatuses(
+  admin: SupabaseClient
+): Promise<Partial<Record<typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number], StoredProviderSecretRecord>>> {
+  const keys = SITE_SETTINGS_COMPATIBLE_PROVIDERS.map((provider) => getProviderCompatSettingKey(provider));
+  const { data, error } = await admin
+    .from('site_settings')
+    .select('key, value, updated_at')
+    .in('key', keys);
+
+  if (error) {
+    throw new Error(`Failed to fetch compatibility AI credential statuses: ${getErrorMessage(error)}`);
+  }
+
+  const records: Partial<Record<typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number], StoredProviderSecretRecord>> = {};
+  for (const row of data || []) {
+    const provider = SITE_SETTINGS_COMPATIBLE_PROVIDERS.find(
+      (candidate) => getProviderCompatSettingKey(candidate) === row.key
+    );
+    if (!provider) {
+      continue;
+    }
+
+    const record = toStoredProviderSecretRecord(row.value, (row.updated_at as string | null) ?? null);
+    if (record) {
+      records[provider] = record;
+    }
+  }
+
+  return records;
+}
+
+function decryptStoredProviderSecret(
+  provider: AIProvider,
+  record: StoredProviderSecretRecord | null
+): string | null {
+  if (!record) {
+    return null;
+  }
+
+  try {
+    return decryptSecret({
+      encryptedValue: record.encryptedValue,
+      iv: record.iv,
+      authTag: record.authTag,
+    });
+  } catch (error) {
+    logDecryptFailure(provider, error);
+    return null;
+  }
 }
 
 function isEncryptionKeyMismatchError(error: unknown): boolean {
@@ -432,36 +627,55 @@ export async function setAIScrapingProviderSecret(
 
   const encrypted = encryptSecret(trimmed);
   const admin = getSupabaseAdmin();
+  const nowIso = new Date().toISOString();
+  const record: StoredProviderSecretRecord = {
+    encryptedValue: encrypted.encryptedValue,
+    iv: encrypted.iv,
+    authTag: encrypted.authTag,
+    last4: trimmed.slice(-4),
+    updatedAt: nowIso,
+  };
 
   const { error } = await admin
     .from('ai_provider_credentials')
     .upsert(
       {
         provider,
-        encrypted_value: encrypted.encryptedValue,
-        iv: encrypted.iv,
-        auth_tag: encrypted.authTag,
-        last4: trimmed.slice(-4),
+        encrypted_value: record.encryptedValue,
+        iv: record.iv,
+        auth_tag: record.authTag,
+        last4: record.last4,
         key_version: 1,
-        updated_at: new Date().toISOString(),
+        updated_at: nowIso,
         updated_by: updatedBy,
       },
       { onConflict: 'provider' }
     );
 
   if (error) {
-    throw new Error(`Failed to store ${provider} API key: ${error.message}`);
+    if (usesSiteSettingsProviderCompat(provider) && isProviderConstraintError(error)) {
+      await upsertProviderSecretCompatSetting(admin, provider, record);
+      console.warn(
+        `[Scraper API] Stored ${provider} API key in site_settings compatibility storage because ai_provider_credentials has not been migrated to accept that provider yet.`
+      );
+      return;
+    }
+
+    throw new Error(`Failed to store ${provider} API key: ${getErrorMessage(error)}`);
   }
 }
 
 export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvider, AICredentialStatus>> {
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from('ai_provider_credentials')
-    .select('provider, last4, updated_at');
+  const [{ data, error }, compatRecords] = await Promise.all([
+    admin
+      .from('ai_provider_credentials')
+      .select('provider, last4, updated_at'),
+    getCompatProviderSecretStatuses(admin),
+  ]);
 
   if (error) {
-    throw new Error(`Failed to fetch AI credential statuses: ${error.message}`);
+    throw new Error(`Failed to fetch AI credential statuses: ${getErrorMessage(error)}`);
   }
 
   const statuses: Record<AIProvider, AICredentialStatus> = {
@@ -491,6 +705,24 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
     };
   }
 
+  for (const provider of SITE_SETTINGS_COMPATIBLE_PROVIDERS) {
+    if (statuses[provider].configured) {
+      continue;
+    }
+
+    const record = compatRecords[provider];
+    if (!record) {
+      continue;
+    }
+
+    statuses[provider] = {
+      provider,
+      configured: true,
+      last4: record.last4,
+      updated_at: record.updatedAt,
+    };
+  }
+
   return statuses;
 }
 
@@ -501,27 +733,22 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
   }
 
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from('ai_provider_credentials')
-    .select('encrypted_value, iv, auth_tag')
-    .eq('provider', provider)
-    .single();
+  const directSecret = decryptStoredProviderSecret(
+    provider,
+    await getPrimaryProviderSecretRecord(admin, provider)
+  );
+  if (directSecret) {
+    return directSecret;
+  }
 
-  if (error || !data) {
-    console.error(`[Scraper API] Failed to fetch encrypted ${provider} secret:`, error || 'No data');
+  if (!usesSiteSettingsProviderCompat(provider)) {
     return null;
   }
 
-  try {
-    return decryptSecret({
-      encryptedValue: data.encrypted_value as string,
-      iv: data.iv as string,
-      authTag: data.auth_tag as string,
-    });
-  } catch (err) {
-    logDecryptFailure(provider, err);
-    return null;
-  }
+  return decryptStoredProviderSecret(
+    provider,
+    await getCompatProviderSecretRecord(admin, provider)
+  );
 }
 
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {

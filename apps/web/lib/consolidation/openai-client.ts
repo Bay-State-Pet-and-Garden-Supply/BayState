@@ -4,6 +4,7 @@ import {
     getAIConsolidationRuntimeConfig,
     getDefaultModelForProvider,
 } from '@/lib/ai-scraping/credentials';
+import { DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
 import { GeminiClientAdapter } from '@/lib/providers/gemini-client';
 
 // We cache the client but only if the effective connection settings haven't changed.
@@ -132,7 +133,7 @@ export async function isOpenAIConfigured(options?: ConsolidationConfigOptions): 
  */
 export const CONSOLIDATION_CONFIG = {
     /** Model to use for consolidation */
-    model: 'gemini-2.5-flash',
+    model: DEFAULT_GEMINI_MODEL,
     /** Maximum tokens per response */
     maxTokens: 1024,
     /** Temperature for responses (low = more deterministic) */
