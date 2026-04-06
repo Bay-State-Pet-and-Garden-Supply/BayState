@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Layers, Save, RefreshCw } from 'lucide-react';
 import { GeminiModelCombobox } from '@/components/admin/settings/GeminiModelCombobox';
+import { DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
 
 interface ProviderStatus {
   provider: string;
@@ -33,7 +34,7 @@ interface ApiResponse {
 
 const DEFAULTS: ConsolidationDefaults = {
   llm_provider: 'gemini',
-  llm_model: 'gemini-2.5-flash',
+  llm_model: DEFAULT_GEMINI_MODEL,
   llm_base_url: null,
   llm_supports_batch_api: true,
   confidence_threshold: 0.7,

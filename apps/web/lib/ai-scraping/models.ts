@@ -4,11 +4,14 @@ export interface GeminiModelOption {
   description: string;
 }
 
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+export const GEMINI_MODEL_VALUES = [DEFAULT_GEMINI_MODEL, 'gemini-2.5-pro'] as const;
+
 export const GEMINI_MODEL_OPTIONS: GeminiModelOption[] = [
   {
-    value: 'gemini-2.5-flash',
+    value: DEFAULT_GEMINI_MODEL,
     label: 'Gemini 2.5 Flash',
-    description: 'Recommended default for most scraping and consolidation workloads.',
+    description: 'Validated default for the Bay State scraping and consolidation runtime.',
   },
   {
     value: 'gemini-2.5-pro',

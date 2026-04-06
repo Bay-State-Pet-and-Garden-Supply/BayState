@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
 import { GeminiModelCombobox } from "@/components/admin/settings/GeminiModelCombobox";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/ai-scraping/models";
 
 type ProviderName = "gemini";
 
@@ -40,7 +41,7 @@ interface ApiResponse {
 
 const DEFAULTS: ScrapingDefaults = {
   llm_provider: "gemini",
-  llm_model: "gemini-2.5-flash",
+  llm_model: DEFAULT_GEMINI_MODEL,
   llm_base_url: null,
   max_search_results: 5,
   max_steps: 15,
