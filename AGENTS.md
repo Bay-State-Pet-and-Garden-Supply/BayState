@@ -24,7 +24,7 @@ Three-part system: **apps/web** (Next.js 16 PWA + Admin), **apps/scraper** (Pyth
 │       └── scripts/       # 17 operational scripts
 ├── conductor/             # Dev workflow docs (TDD, tracks, checkpoints) — NO runtime code
 ├── docker/                # Self-hosted GitHub Actions runner
-└── .github/workflows/     # 8 CI/CD workflows
+└── .github/workflows/     # 7 CI/CD workflows
 ```
 
 ## WHERE TO LOOK
@@ -96,7 +96,6 @@ Three-part system: **apps/web** (Next.js 16 PWA + Admin), **apps/scraper** (Pyth
 | `prompt-regression.yml` | PR | AI prompt accuracy checks |
 | `weekly-validation.yml` | cron | Scraper validation + GitHub issues |
 | `register-sync.yml` | schedule | Windows ODBC register sync |
-| `shopsite-sync.yml` | schedule/dispatch | ShopSite product sync |
 
 ## SUBPROJECTS
 - **apps/web/** → `apps/web/AGENTS.md`
