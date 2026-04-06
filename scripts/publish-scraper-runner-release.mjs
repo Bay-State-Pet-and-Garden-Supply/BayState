@@ -36,7 +36,10 @@ const payload = [
   },
 ];
 
-const response = await fetch(`${supabaseUrl}/rest/v1/site_settings`, {
+const endpoint = new URL(`${supabaseUrl}/rest/v1/site_settings`);
+endpoint.searchParams.set('on_conflict', 'key');
+
+const response = await fetch(endpoint, {
   method: 'POST',
   headers: {
     apikey: serviceRoleKey,
