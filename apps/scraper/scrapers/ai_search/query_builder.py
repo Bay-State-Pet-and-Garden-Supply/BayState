@@ -11,6 +11,7 @@ class QueryBuilder:
     _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
     _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
     _WHITESPACE_RE = re.compile(r"\s+")
+    _AMBIGUOUS_NUMERIC_IDENTIFIER_MAX_LENGTH = 5
 
     def _clean_text(self, value: Optional[str]) -> str:
         """Normalize free-form query text before interpolation into search queries."""
@@ -24,6 +25,11 @@ class QueryBuilder:
     def build_identifier_query(self, sku: Optional[str]) -> str:
         """Build the lowest-cost identifier-only query for a product."""
         return self._clean_text(sku)
+
+    def is_ambiguous_identifier(self, sku: Optional[str]) -> bool:
+        """Return True when an identifier-only query is likely too generic to stand on its own."""
+        sku_clean = self._clean_text(sku)
+        return bool(sku_clean) and sku_clean.isdigit() and len(sku_clean) < self._AMBIGUOUS_NUMERIC_IDENTIFIER_MAX_LENGTH
 
     def build_search_query(
         self,

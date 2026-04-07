@@ -129,8 +129,8 @@ async def test_search_client_coalesces_concurrent_identical_queries() -> None:
             )
 
     provider = ProviderStub()
-    client = SearchClient(max_results=5, provider="serpapi")
-    client._providers = {"serpapi": provider, "brave": provider}
+    client = SearchClient(max_results=5, provider="gemini")
+    client.gemini_client = provider
 
     tasks = [
         asyncio.create_task(client.search("Acme Squeaky Ball 12345"))

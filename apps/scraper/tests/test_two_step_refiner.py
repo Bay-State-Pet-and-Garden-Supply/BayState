@@ -13,7 +13,7 @@ from scrapers.ai_search.search import SearchClient
 from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
 
 pytestmark = pytest.mark.asyncio
-SERPAPI_COST_USD = 0.01
+SERPAPI_COST_USD = 0.0
 
 
 class ProviderStub:
@@ -60,16 +60,12 @@ def first_pass_results() -> list[dict[str, object]]:
 def search_client_fixture(
     monkeypatch,
 ) -> tuple[SearchClient, ProviderStub]:
-    monkeypatch.setenv("SERPAPI_API_KEY", "serpapi-test-key")
-    monkeypatch.setenv("AI_SEARCH_SERPAPI_COST_USD", str(SERPAPI_COST_USD))
+    monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
     monkeypatch.delenv("BRAVE_API_KEY", raising=False)
 
     provider = ProviderStub(([], None))
-    client = SearchClient(max_results=5, provider="serpapi")
-    client._providers = {
-        "serpapi": cast(Any, provider),
-        "brave": cast(Any, provider),
-    }
+    client = SearchClient(max_results=5, provider="gemini")
+    client.gemini_client = cast(Any, provider)
     return client, provider
 
 
