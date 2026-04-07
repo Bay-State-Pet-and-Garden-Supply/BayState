@@ -107,11 +107,11 @@ docker compose -p baystate-scraper -f compose.yml pull
 docker compose -p baystate-scraper -f compose.yml up -d
 ```
 
-`docker logs -f baystate-scraper` still works, but Compose commands are the source of truth for managing the installed stack.
+The installed runner now relies on Compose-managed container names, so Compose commands are the source of truth for managing the stack.
 
 ### Automatic Updates
 
-If you enable auto-updates during install, the stack includes a `watchtower` sidecar. It only watches containers labeled for the Bay State scraper runner, checks GHCR hourly, and recreates the scraper container when a newer image is available.
+If you enable auto-updates during install, the stack includes a `watchtower` sidecar. It only watches containers labeled for the Bay State scraper runner, checks GHCR hourly, and recreates the scraper container when a newer image is available. The installer intentionally avoids fixed `container_name` values so Watchtower can recreate the services without Docker name conflicts.
 
 The installer also sets Watchtower's `DOCKER_API_VERSION` from the host daemon so it stays compatible with newer Docker Engine releases that no longer accept Watchtower's legacy default API version.
 
@@ -122,7 +122,7 @@ This replaces the older cron-based updater, so there is no host-level cron job o
 If running in realtime mode, connect to the event stream:
 
 ```bash
-docker exec baystate-scraper python -c "from scrapers.events.emitter import EventEmitter; import asyncio; asyncio.run(EventEmitter().subscribe('*', lambda e: print(e)))"
+docker compose -p baystate-scraper -f compose.yml exec scraper python -c "from scrapers.events.emitter import EventEmitter; import asyncio; asyncio.run(EventEmitter().subscribe('*', lambda e: print(e)))"
 ```
 
 ### Update the Runner
