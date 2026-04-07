@@ -7,6 +7,8 @@ import { StickyCart } from '@/components/storefront/sticky-cart';
 import { getProducts, getActiveServices, getBrands, getNavCategories, getPetTypesNav } from '@/lib/data';
 import { getCampaignBanner } from '@/lib/settings';
 
+import { createClient } from '@/lib/supabase/server';
+import { getUserRole } from '@/lib/auth/roles';
 import { SkipLink } from '@/components/ui/skip-link';
 
 export const revalidate = 900;
@@ -20,14 +22,29 @@ export default async function StorefrontLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [{ products }, services, brands, categories, petTypes, campaignBanner] = await Promise.all([
+  const [
+    { products },
+    services,
+    brands,
+    categories,
+    petTypes,
+    campaignBanner,
+    supabase,
+  ] = await Promise.all([
     getProducts({ limit: 100 }),
     getActiveServices(),
     getBrands(),
     getNavCategories(),
     getPetTypesNav(),
     getCampaignBanner(),
+    createClient(),
   ]);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const userRole = user ? await getUserRole(user.id) : null;
 
   // JSON-LD structured data for local business
   const jsonLd = {
@@ -83,6 +100,8 @@ export default async function StorefrontLayout({
           />
         )}
         <StorefrontHeader
+          user={user}
+          userRole={userRole}
           categories={categories}
           petTypes={petTypes}
           brands={brands}
