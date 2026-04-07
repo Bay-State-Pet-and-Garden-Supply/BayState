@@ -5,7 +5,6 @@ import pytest
 from scrapers.ai_search.search import (
     SearchClient,
     canonicalize_result_url,
-    normalize_search_provider,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -71,6 +70,44 @@ async def test_search_client_uses_cache_on_repeated_queries() -> None:
     assert second_error is None
     assert first_results == second_results
     assert gemini_stub.calls == 1
+
+
+async def test_search_client_dedupes_canonicalized_urls() -> None:
+    class GeminiStub:
+        async def search(self, query: str):
+            _ = query
+            return (
+                [
+                    {
+                        "url": "https://acmepets.com/products/12345?utm_source=google",
+                        "title": "Acme Squeaky Ball",
+                        "description": "Official page",
+                        "provider": "gemini",
+                    },
+                    {
+                        "url": "https://acmepets.com/products/12345#details",
+                        "title": "Acme Squeaky Ball",
+                        "description": "Official page",
+                        "provider": "gemini",
+                    },
+                ],
+                None,
+            )
+
+    client = SearchClient(max_results=5)
+    client.gemini_client = GeminiStub()
+
+    results, error = await client.search("Acme Squeaky Ball 12345")
+
+    assert error is None
+    assert results == [
+        {
+            "url": "https://acmepets.com/products/12345",
+            "title": "Acme Squeaky Ball",
+            "description": "Official page",
+            "provider": "gemini",
+        }
+    ]
 
 
 async def test_normalize_search_provider_defaults_to_gemini(caplog: pytest.LogCaptureFixture) -> None:

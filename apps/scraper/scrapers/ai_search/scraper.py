@@ -281,6 +281,8 @@ class AISearchScraper:
     ) -> tuple[list[dict[str, Any]], Optional[str], Optional[str]]:
         """Search identifier-first, then expand into broader queries only when needed."""
         initial_query = self._query_builder.build_identifier_query(sku)
+        if initial_query and self._query_builder.is_ambiguous_identifier(sku) and any([product_name, brand, category]):
+            initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
         if not initial_query:
             initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
         logger.info(f"[AI Search] Primary search: {initial_query}")

@@ -6,6 +6,11 @@ import time
 from typing import Any, Optional
 
 from scrapers.ai_search.extraction import ExtractionUtils
+from scrapers.ai_search.google_redirects import (
+    GroundingRedirectResolver,
+    canonicalize_grounding_url,
+    is_grounding_redirect_url,
+)
 from scrapers.ai_search.llm_runtime import resolve_llm_runtime
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
@@ -28,6 +33,27 @@ try:
     logger.info(f"[AI Search] Crawl4AI version: {getattr(crawl4ai, '__version__', 'unknown')}")
 except ImportError:
     logger.warning("[AI Search] Crawl4AI not installed")
+
+
+async def _resolve_grounding_images(
+    resolver: GroundingRedirectResolver,
+    images: list[str],
+) -> list[str]:
+    resolved_redirects = await resolver.resolve_many(images, label="image URL")
+    resolved_images: list[str] = []
+    seen_images: set[str] = set()
+
+    for raw_image in images:
+        canonical_image = canonicalize_grounding_url(raw_image)
+        resolved_image = resolved_redirects.get(canonical_image, canonical_image)
+        if canonical_image and is_grounding_redirect_url(canonical_image) and not resolved_image:
+            continue
+        if not resolved_image or resolved_image in seen_images:
+            continue
+        seen_images.add(resolved_image)
+        resolved_images.append(resolved_image)
+
+    return resolved_images
 
 
 class Crawl4AIExtractor:
@@ -72,6 +98,7 @@ class Crawl4AIExtractor:
         self._scoring = scoring
         self._matching = matching
         self._extraction = ExtractionUtils(scoring)
+        self._grounding_redirect_resolver = GroundingRedirectResolver(logger_instance=logger)
         self._fallback_extractor = FallbackExtractor(scoring=scoring, matching=matching)
         # Pre-generate schema for performance
         self._product_schema = ProductData.model_json_schema()
@@ -320,6 +347,10 @@ class Crawl4AIExtractor:
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
                         if jsonld_result:
                             jsonld_result["url"] = url
+                            jsonld_result["images"] = await _resolve_grounding_images(
+                                self._grounding_redirect_resolver,
+                                self._extraction.coerce_string_list(jsonld_result.get("images"))
+                            )
                             jsonld_result["confidence"] = max(float(jsonld_result.get("confidence", 0.0)), 0.8)
                             logger.info("[AI Search] Extraction method used: json-ld")
                             self._log_telemetry(
@@ -349,6 +380,10 @@ class Crawl4AIExtractor:
                         )
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
                         if meta_result:
+                            meta_result["images"] = await _resolve_grounding_images(
+                                self._grounding_redirect_resolver,
+                                self._extraction.coerce_string_list(meta_result.get("images"))
+                            )
                             logger.info("[AI Search] Extraction method used: meta-tags")
                             self._log_telemetry(
                                 url,
@@ -462,6 +497,10 @@ class Crawl4AIExtractor:
                                 expected_name=product_name,
                                 expected_brand=brand,
                             )
+                            product_data["images"] = await _resolve_grounding_images(
+                                self._grounding_redirect_resolver,
+                                self._extraction.coerce_string_list(product_data.get("images"))
+                            )
                             product_data["success"] = True
                             product_data["url"] = url
 
@@ -536,6 +575,7 @@ class FallbackExtractor:
         self._scoring = scoring
         self._matching = matching
         self._extraction = ExtractionUtils(scoring)
+        self._grounding_redirect_resolver = GroundingRedirectResolver(logger_instance=logger)
 
     def _log_telemetry(
         self,
@@ -623,6 +663,10 @@ class FallbackExtractor:
 
             if jsonld_result:
                 jsonld_result["url"] = response_url
+                jsonld_result["images"] = await _resolve_grounding_images(
+                    self._grounding_redirect_resolver,
+                    self._extraction.coerce_string_list(jsonld_result.get("images"))
+                )
                 # Log JSON-LD extraction success
                 self._log_telemetry(response_url, sku, "jsonld", True, fetch_time_ms, parse_time_ms, None, jsonld_result.get("confidence", 0.0))
                 return jsonld_result
@@ -645,6 +689,7 @@ class FallbackExtractor:
             has_structured_data = has_jsonld or bool(og_title) or bool(og_description)
 
             images = self._extraction.normalize_images([og_image], response_url) if og_image else []
+            images = await _resolve_grounding_images(self._grounding_redirect_resolver, images)
 
             candidate_name = og_title or title_text
             inferred_brand = self._extraction.infer_brand(

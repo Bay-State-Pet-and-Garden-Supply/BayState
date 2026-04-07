@@ -24,6 +24,34 @@ def test_build_search_query_includes_category_when_present() -> None:
     assert "details" in query
 
 
+def test_collect_search_candidates_uses_contextual_primary_query_for_ambiguous_numeric_sku() -> None:
+    queries: list[str] = []
+
+    class SearchClientStub:
+        async def search_with_cost(self, query: str) -> tuple[list[dict[str, str]], str | None, float]:
+            queries.append(query)
+            return [], None, 0.0
+
+    scraper = AISearchScraper()
+    scraper.max_follow_up_queries = 0
+    scraper._search_client = SearchClientStub()
+
+    asyncio.run(
+        scraper._collect_search_candidates(
+            sku="4057",
+            product_name="Organic Eggplant Black Beauty Heirloom",
+            brand="Lake Valley Seed",
+            category="Vegetable Seeds",
+        )
+    )
+
+    assert queries
+    assert queries[0] != "4057"
+    assert "Lake Valley Seed" in queries[0]
+    assert "Organic Eggplant Black Beauty Heirloom" in queries[0]
+    assert "Vegetable Seeds" in queries[0]
+
+
 def test_validate_extraction_match_rejects_low_confidence() -> None:
     scraper = AISearchScraper(confidence_threshold=0.8)
 

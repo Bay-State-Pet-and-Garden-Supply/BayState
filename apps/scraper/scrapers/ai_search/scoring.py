@@ -55,6 +55,7 @@ class SearchScorer:
         "barcode-list.com",
         "digit-eyes.com",
         "upcindex.com",
+        "vertexaisearch.cloud.google.com",
     }
 
     # Low quality phrases to penalize. These are matched as words/phrases rather than

@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from collections import OrderedDict
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-import httpx
 from scrapers.providers.gemini_search import GeminiSearchClient
 
 logger = logging.getLogger(__name__)
@@ -180,10 +178,11 @@ class SearchClient:
 
         try:
             results, error = await self.gemini_client.search(query)
-            if results:
-                self._cache_set(cache_key, results)
-                future.set_result((results, None))
-                return results, None, 0.0
+            normalized_results = _dedupe_results(results, self.max_results)
+            if normalized_results:
+                self._cache_set(cache_key, normalized_results)
+                future.set_result((normalized_results, None))
+                return normalized_results, None, 0.0
             
             if error:
                 future.set_result(([], error))
