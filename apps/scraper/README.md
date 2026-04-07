@@ -215,13 +215,14 @@ The runner automatically loads the correct file based on the `--env` flag.
 
 ```bash
 # View logs
-docker logs -f baystate-scraper
+cd ~/.baystate-scraper
+docker compose -p baystate-scraper -f compose.yml logs -f scraper
 
 # Stop runner
-docker stop baystate-scraper
+docker compose -p baystate-scraper -f compose.yml stop
 
 # Start runner
-docker start baystate-scraper
+docker compose -p baystate-scraper -f compose.yml start
 
 # Update to latest version
 curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash

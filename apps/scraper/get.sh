@@ -10,6 +10,8 @@ BOLD='\033[1m'
 
 IMAGE="ghcr.io/bay-state-pet-and-garden-supply/baystate/scraper:latest"
 STACK_NAME="baystate-scraper"
+SCRAPER_SERVICE_NAME="scraper"
+WATCHTOWER_SERVICE_NAME="watchtower"
 SCRAPER_CONTAINER_NAME="baystate-scraper"
 WATCHTOWER_CONTAINER_NAME="baystate-scraper-watchtower"
 INSTALL_COMMAND="curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash"
@@ -101,6 +103,23 @@ compose() {
 
 compose_base_command() {
     printf 'cd "%s" && %s -p "%s" -f compose.yml' "$CONFIG_DIR" "${DOCKER_COMPOSE_CMD[*]}" "$STACK_NAME"
+}
+
+compose_service_container_id() {
+    local service_name="$1"
+    compose ps -q "$service_name" 2>/dev/null | head -n 1 || true
+}
+
+compose_service_status() {
+    local service_name="$1"
+    local container_id
+    container_id="$(compose_service_container_id "$service_name")"
+
+    if [ -z "$container_id" ]; then
+        return
+    fi
+
+    docker inspect --format '{{.State.Status}}' "$container_id" 2>/dev/null || true
 }
 
 is_truthy() {
@@ -268,7 +287,6 @@ write_compose_file() {
 services:
   scraper:
     image: $IMAGE
-    container_name: $SCRAPER_CONTAINER_NAME
     restart: unless-stopped
     init: true
     shm_size: 2g
@@ -299,7 +317,6 @@ EOF
 
   watchtower:
     image: containrrr/watchtower:latest
-    container_name: $WATCHTOWER_CONTAINER_NAME
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -391,21 +408,21 @@ verify_running() {
     sleep 2
 
     local scraper_status
-    scraper_status="$(docker inspect --format '{{.State.Status}}' "$SCRAPER_CONTAINER_NAME" 2>/dev/null || true)"
+    scraper_status="$(compose_service_status "$SCRAPER_SERVICE_NAME")"
 
     if [ "$scraper_status" != "running" ]; then
         echo -e "${RED}Error: Scraper container failed to start${NC}"
-        echo "Check logs with: docker logs $SCRAPER_CONTAINER_NAME"
+        echo "Check logs with: $(compose_base_command) logs $SCRAPER_SERVICE_NAME"
         exit 1
     fi
 
     if [ "$AUTO_UPDATES_ENABLED" = "true" ]; then
         local watchtower_status
-        watchtower_status="$(docker inspect --format '{{.State.Status}}' "$WATCHTOWER_CONTAINER_NAME" 2>/dev/null || true)"
+        watchtower_status="$(compose_service_status "$WATCHTOWER_SERVICE_NAME")"
 
         if [ "$watchtower_status" != "running" ]; then
             echo -e "${RED}Error: Watchtower failed to start${NC}"
-            echo "Check logs with: docker logs $WATCHTOWER_CONTAINER_NAME"
+            echo "Check logs with: $(compose_base_command) logs $WATCHTOWER_SERVICE_NAME"
             exit 1
         fi
     fi
