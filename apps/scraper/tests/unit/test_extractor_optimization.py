@@ -360,6 +360,60 @@ class TestCrawl4AIExtractorOptimization:
             assert "Seeds" in result["categories"]
 
     @pytest.mark.asyncio
+    async def test_extract_replaces_page_relative_files_image_with_meta_image(self, extractor):
+        """Malformed `files/...` image paths should fall back to valid OG images."""
+        url = "https://bentleyseeds.com/products/turnip-purple-white-globe"
+        sku = "HTG-017"
+
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.crawl.side_effect = [
+            {
+                "success": True,
+                "html": None,
+                "fit_markdown": None,
+                "raw_markdown": None,
+                "markdown": None,
+            },
+            {
+                "success": True,
+                "html": """
+                <html>
+                  <head>
+                    <meta property=\"og:image\" content=\"//bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744\" />
+                  </head>
+                </html>
+                """,
+                "extracted_content": [
+                    {
+                        "product_name": "Turnip Purple White Globe Seed Packets",
+                        "brand": "Bentley Seeds",
+                        "description": "Classic heirloom turnip packet.",
+                        "size_metrics": "Not specified",
+                        "images": ["files/HTG-017_front.jpg"],
+                        "categories": ["Seeds"],
+                    }
+                ],
+            },
+        ]
+
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
+            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
+            patch("crawl4ai.LLMConfig", create=True),
+            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+        ):
+            mock_engine.__aenter__.return_value = mock_engine
+
+            result = await extractor.extract(url, sku, "Turnip Purple White Globe", "Bentley Seeds")
+
+            assert result is not None
+            assert result["success"] is True
+            assert result["images"] == [
+                "https://bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744"
+            ]
+
+    @pytest.mark.asyncio
     async def test_extract_returns_first_pass_jsonld_result(self, extractor):
         """Test that first-pass JSON-LD extraction short-circuits LLM fallback."""
         url = "https://example.com/p/123"

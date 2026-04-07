@@ -903,6 +903,8 @@ def _run_ai_search_job(
         search_provider = "gemini"
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
     extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
+    raw_prefer_manufacturer = search_cfg.get("prefer_manufacturer")
+    prefer_manufacturer = True if raw_prefer_manufacturer is None else bool(raw_prefer_manufacturer)
 
     llm_base_url = None
 
@@ -978,6 +980,7 @@ def _run_ai_search_job(
             "search_provider": search_provider,
             "cache_enabled": cache_enabled,
             "extraction_strategy": extraction_strategy,
+            "prefer_manufacturer": prefer_manufacturer,
             "feature_flags": {
                 "gemini_ai_search_enabled": feature_flags.gemini_ai_search_enabled,
                 "gemini_crawl4ai_enabled": feature_flags.gemini_crawl4ai_enabled,
@@ -1020,6 +1023,7 @@ def _run_ai_search_job(
             search_provider=search_provider,
             cache_enabled=cache_enabled,
             extraction_strategy=extraction_strategy,
+            prefer_manufacturer=prefer_manufacturer,
         )
         return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
 

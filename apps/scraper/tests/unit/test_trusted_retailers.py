@@ -10,7 +10,6 @@ def test_new_trusted_retailers_are_recognized() -> None:
         "frontiercoop.com",
         "bradleycaldwell.com",
         "costco.com",
-        "ebay.com",
     ]
     
     for domain in new_retailers:
@@ -34,3 +33,10 @@ def test_subdomains_of_trusted_retailers_are_recognized() -> None:
     
     assert scorer.is_trusted_retailer("shop.petedge.com") is True
     assert scorer.is_trusted_retailer("www.animalsupply.com") is True
+
+
+def test_marketplaces_are_not_treated_as_trusted_retailers() -> None:
+    scorer = SearchScorer()
+
+    assert scorer.is_trusted_retailer("ebay.com") is False
+    assert scorer.is_marketplace("ebay.com") is True

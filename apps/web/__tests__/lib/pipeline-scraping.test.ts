@@ -15,6 +15,14 @@ describe('scrapeProducts', () => {
         jobInsertError?: unknown;
         unitInsertError?: unknown;
         pipelineRows?: Array<{ sku: string; input?: Record<string, unknown> | null }>;
+        productRows?: Array<{
+            sku: string;
+            name?: string | null;
+            brand?: { name?: string | null } | Array<{ name?: string | null }> | null;
+            product_categories?: Array<{
+                category?: { name?: string | null } | Array<{ name?: string | null }> | null;
+            }> | null;
+        }>;
     }) => {
         const scrapeJobsBuilder = {
             insert: jest.fn().mockReturnThis(),
@@ -37,16 +45,23 @@ describe('scrapeProducts', () => {
             in: jest.fn().mockResolvedValue({ data: options?.pipelineRows ?? [], error: null }),
         };
 
+        const productsBuilder = {
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ data: options?.productRows ?? [], error: null }),
+        };
+
         return {
             from: jest.fn().mockImplementation((table: string) => {
                 if (table === 'scrape_jobs') return scrapeJobsBuilder;
                 if (table === 'scrape_job_chunks') return scrapeUnitsBuilder;
                 if (table === 'products_ingestion') return productsIngestionBuilder;
+                if (table === 'products') return productsBuilder;
                 return scrapeJobsBuilder;
             }),
             _scrapeJobsBuilder: scrapeJobsBuilder,
             _scrapeUnitsBuilder: scrapeUnitsBuilder,
             _productsIngestionBuilder: productsIngestionBuilder,
+            _productsBuilder: productsBuilder,
         };
     };
 
@@ -209,5 +224,47 @@ describe('scrapeProducts', () => {
                 },
             },
         });
+    });
+
+    it('should prefer catalog product context for ai_search jobs when available', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    input: {
+                        name: 'LV SEED ORGANIC SAGE BROADLEAF HEIRLOOM',
+                        price: 2.49,
+                    },
+                },
+            ],
+            productRows: [
+                {
+                    sku: 'SKU-1',
+                    name: 'Lake Valley Seed Organic Sage Broadleaf Heirloom',
+                    brand: { name: 'Lake Valley Seed' },
+                    product_categories: [{ category: { name: 'Seeds' } }],
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+
+        expect(result.success).toBe(true);
+        expect(mockSupabase._productsBuilder.select).toHaveBeenCalledWith(
+            'sku, name, brand:brands(name), product_categories(category:categories(name))'
+        );
+        expect(mockSupabase._productsBuilder.in).toHaveBeenCalledWith('sku', ['SKU-1']);
+
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.config.items).toEqual([
+            {
+                sku: 'SKU-1',
+                product_name: 'Lake Valley Seed Organic Sage Broadleaf Heirloom',
+                price: 2.49,
+                brand: 'Lake Valley Seed',
+                category: 'Seeds',
+            },
+        ]);
     });
 });

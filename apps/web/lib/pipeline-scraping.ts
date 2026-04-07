@@ -14,6 +14,29 @@ interface PipelineInputRow {
     } | null;
 }
 
+interface ProductCatalogRow {
+    sku?: string | null;
+    name?: unknown;
+    brand?:
+        | {
+            name?: unknown;
+        }
+        | Array<{
+            name?: unknown;
+        }>
+        | null;
+    product_categories?: Array<{
+        category?:
+            | {
+                name?: unknown;
+            }
+            | Array<{
+                name?: unknown;
+            }>
+            | null;
+    }> | null;
+}
+
 interface PostgrestLikeError {
     code?: string;
     message?: string;
@@ -119,32 +142,93 @@ interface ScrapeContextItem {
     category?: string;
 }
 
-async function loadScrapeContextItems(
-    supabase: Awaited<ReturnType<typeof createClient>>,
-    skus: string[]
-): Promise<ScrapeContextItem[]> {
-    const { data, error } = await supabase
-        .from('products_ingestion')
-        .select('sku, input')
-        .in('sku', skus);
+function getCatalogBrandName(
+    brandRelation: ProductCatalogRow['brand']
+): string | undefined {
+    const brand = Array.isArray(brandRelation) ? brandRelation[0] ?? null : brandRelation;
+    return toOptionalString(brand?.name);
+}
 
-    if (error) {
-        console.warn('[Pipeline Scraping] Failed to load scrape context from products_ingestion:', error);
-        return skus.map((sku) => ({ sku }));
+function getCatalogCategoryName(
+    productCategories: ProductCatalogRow['product_categories']
+): string | undefined {
+    for (const productCategory of productCategories ?? []) {
+        const categoryRelation = productCategory.category;
+        const category = Array.isArray(categoryRelation)
+            ? categoryRelation[0] ?? null
+            : categoryRelation;
+        const categoryName = toOptionalString(category?.name);
+        if (categoryName) {
+            return categoryName;
+        }
     }
 
-    const rows = Array.isArray(data) ? (data as PipelineInputRow[]) : [];
-    const contextBySku = new Map(rows.map((row) => [row.sku, row.input ?? null]));
+    return undefined;
+}
+
+async function loadScrapeContextItems(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    skus: string[],
+    options?: {
+        preferCatalogContext?: boolean;
+    }
+): Promise<ScrapeContextItem[]> {
+    const preferCatalogContext = options?.preferCatalogContext ?? false;
+
+    const [{ data: ingestionData, error: ingestionError }, { data: productData, error: productError }] = await Promise.all([
+        supabase
+            .from('products_ingestion')
+            .select('sku, input')
+            .in('sku', skus),
+        supabase
+            .from('products')
+            .select('sku, name, brand:brands(name), product_categories(category:categories(name))')
+            .in('sku', skus),
+    ]);
+
+    if (ingestionError) {
+        console.warn('[Pipeline Scraping] Failed to load scrape context from products_ingestion:', ingestionError);
+    }
+
+    if (productError) {
+        console.warn('[Pipeline Scraping] Failed to load scrape context from products:', productError);
+    }
+
+    const ingestionRows = Array.isArray(ingestionData) ? (ingestionData as PipelineInputRow[]) : [];
+    const ingestionBySku = new Map(ingestionRows.map((row) => [row.sku, row.input ?? null]));
+
+    const productRows = Array.isArray(productData) ? (productData as ProductCatalogRow[]) : [];
+    const productBySku = new Map<string, ProductCatalogRow>();
+    productRows.forEach((row) => {
+        const rowSku = toOptionalString(row.sku);
+        if (rowSku) {
+            productBySku.set(rowSku, row);
+        }
+    });
 
     return skus.map((sku) => {
-        const input = contextBySku.get(sku);
+        const input = ingestionBySku.get(sku);
+        const product = productBySku.get(sku);
+
+        const ingestionName = toOptionalString(input?.name);
+        const catalogName = toOptionalString(product?.name);
+        const ingestionBrand = toOptionalString(input?.brand);
+        const catalogBrand = getCatalogBrandName(product?.brand);
+        const ingestionCategory = toOptionalString(input?.category);
+        const catalogCategory = getCatalogCategoryName(product?.product_categories);
 
         return {
             sku,
-            product_name: toOptionalString(input?.name),
+            product_name: preferCatalogContext
+                ? catalogName ?? ingestionName
+                : ingestionName ?? catalogName,
             price: toOptionalNumber(input?.price),
-            brand: toOptionalString(input?.brand),
-            category: toOptionalString(input?.category),
+            brand: preferCatalogContext
+                ? catalogBrand ?? ingestionBrand
+                : ingestionBrand ?? catalogBrand,
+            category: preferCatalogContext
+                ? catalogCategory ?? ingestionCategory
+                : ingestionCategory ?? catalogCategory,
         };
     });
 }
@@ -221,7 +305,9 @@ export async function scrapeProducts(
     }
 
     const supabase = await createClient();
-    const scrapeContextItems = await loadScrapeContextItems(supabase, skus);
+    const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {
+        preferCatalogContext: isAISearch,
+    });
     const standardSkuContext = isAISearch ? undefined : buildStandardSkuContext(scrapeContextItems);
 
     const maxAISearchCostUsd = isAISearch ? (options?.maxAISearchCostUsd ?? 5.00) : undefined;

@@ -78,6 +78,7 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
     assert init_args["llm_provider"] == "gemini"
     assert init_args["llm_model"] == "gemini-2.5-flash"
     assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
+    assert init_args["prefer_manufacturer"] is True
     assert updated["data"]["SKU-1"]["ai_search"]["title"] == "Acme Squeaky Ball"
     assert "SERPAPI_API_KEY" not in os.environ
 

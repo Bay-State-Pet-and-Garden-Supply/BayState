@@ -1,7 +1,7 @@
 """LLM-powered source selection and ranking."""
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from scrapers.ai_cost_tracker import AICostTracker
 from scrapers.ai_search.llm_runtime import resolve_llm_runtime
@@ -42,6 +42,8 @@ class LLMSourceSelector:
         results: list[dict[str, Any]],
         sku: str,
         product_name: str,
+        brand: Optional[str] = None,
+        preferred_domains: list[str] | None = None,
     ) -> tuple[str | None, float]:
         """Use LLM to select the best source URL from results.
 
@@ -64,7 +66,13 @@ class LLMSourceSelector:
         candidates = results[:5]
 
         # Build prompt
-        prompt = self._build_prompt(sku, product_name, candidates)
+        prompt = self._build_prompt(
+            sku=sku,
+            product_name=product_name,
+            brand=brand,
+            candidates=candidates,
+            preferred_domains=preferred_domains,
+        )
 
         try:
             response = await self.provider.generate_text(
@@ -105,27 +113,39 @@ class LLMSourceSelector:
             logger.error(f"[LLM Source Selector] LLM ranking failed: {e}")
             return None, 0.0
 
-    def _build_prompt(self, sku: str, product_name: str, candidates: list[dict[str, Any]]) -> str:
+    def _build_prompt(
+        self,
+        sku: str,
+        product_name: str,
+        brand: Optional[str],
+        candidates: list[dict[str, Any]],
+        preferred_domains: list[str] | None,
+    ) -> str:
         """Build the selection prompt."""
         result_list = []
         for i, res in enumerate(candidates):
             result_list.append(f"Result [{i}]:\nURL: {res['url']}\nTitle: {res['title']}\nDescription: {res['description']}\n")
 
         results_text = "\n".join(result_list)
+        preferred_domains_text = ", ".join(preferred_domains or []) or "None"
 
         return f"""Analyze the following search results for a product.
 TARGET PRODUCT:
 - SKU: {sku}
 - Name: {product_name}
+- Brand: {brand or "Unknown"}
+- Preferred cohort domains: {preferred_domains_text}
 
 INSTRUCTIONS:
 1. Identify which URL is most likely the OFFICIAL manufacturer's product detail page (PDP) for this exact product.
 2. Prioritize official brand domains (e.g., if the product is 'Advantage II' by Elanco, prioritize elanco.com).
-3. If no official manufacturer page is present, but a high-quality trusted retailer PDP \
+3. If sibling SKUs already validated on one of the preferred cohort domains, prefer that same domain when it contains the exact target variant.
+4. If no official manufacturer page is present, but a high-quality trusted retailer PDP \
    (like Chewy, Amazon, or Petco) is available for the EXACT product, you may select it.
-4. If multiple official pages exist, pick the one that most closely matches the SKU or specific variant.
-5. If none of the results are a clear product detail page for the target product, return "NONE".
-6. Return ONLY the URL of the best result, or "NONE". No other text.
+5. Treat marketplaces such as eBay as last-resort options, and only pick them when the result clearly proves the exact SKU/variant.
+6. If multiple official pages exist, pick the one that most closely matches the SKU or specific variant.
+7. If none of the results are a clear product detail page for the target product, return "NONE".
+8. Return ONLY the URL of the best result, or "NONE". No other text.
 
 SEARCH RESULTS:
 {results_text}

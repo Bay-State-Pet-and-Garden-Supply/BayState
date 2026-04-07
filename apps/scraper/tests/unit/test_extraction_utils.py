@@ -95,3 +95,27 @@ def test_infer_categories_adds_poultry_feed_and_supplement_keywords() -> None:
 
     assert "Poultry" in categories
     assert "Supplements" in categories
+
+
+def test_normalize_images_drops_page_relative_files_artifact() -> None:
+    utils = _build_utils()
+
+    images = utils.normalize_images(
+        ["files/HTG-017_front.jpg"],
+        "https://bentleyseeds.com/products/turnip-purple-white-globe",
+    )
+
+    assert images == []
+
+
+def test_normalize_images_preserves_valid_shopify_cdn_file_url() -> None:
+    utils = _build_utils()
+
+    images = utils.normalize_images(
+        ["//bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744"],
+        "https://bentleyseeds.com/products/turnip-purple-white-globe",
+    )
+
+    assert images == [
+        "https://bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744"
+    ]
