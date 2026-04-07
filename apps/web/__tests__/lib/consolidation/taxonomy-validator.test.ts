@@ -9,13 +9,13 @@ describe('validateConsolidationTaxonomy', () => {
     it('deduplicates category arrays while preserving unrelated fields', () => {
         const result = validateConsolidationTaxonomy(
             {
-                category: ['Dog', 'Dog', 'Cat'],
+                category: ['Dog > Food > Dry Food', 'Dog > Food > Dry Food', 'Cat > Food > Dry Food'],
                 search_keywords: 'kibble, salmon',
             },
-            ['Dog', 'Cat']
+            ['Dog > Food > Dry Food', 'Cat > Food > Dry Food']
         );
 
-        expect(result.category).toBe('Dog|Cat');
+        expect(result.category).toBe('Dog > Food > Dry Food|Cat > Food > Dry Food');
         expect(result.search_keywords).toBe('kibble, salmon');
     });
 
@@ -25,13 +25,13 @@ describe('validateConsolidationTaxonomy', () => {
                 {
                     search_keywords: 'kibble',
                 },
-                ['Dog']
+                ['Dog > Food > Dry Food']
             )
         ).toThrow('category is required');
     });
 
     it('buildResponseSchema includes search_keywords as a required field', () => {
-        const schema = buildResponseSchema(['Dog'], ['Food']) as {
+        const schema = buildResponseSchema(['Dog > Food > Dry Food'], ['Food']) as {
             properties?: Record<string, unknown>;
             required?: string[];
         };
@@ -44,7 +44,7 @@ describe('validateConsolidationTaxonomy', () => {
     });
 
     it('buildOpenAIResponseFormat wraps the raw response schema', () => {
-        const rawSchema = buildResponseSchema(['Dog'], ['Food']);
+        const rawSchema = buildResponseSchema(['Dog > Food > Dry Food'], ['Food']);
         const responseFormat = buildOpenAIResponseFormat(rawSchema) as {
             json_schema?: {
                 strict?: boolean;
@@ -57,7 +57,7 @@ describe('validateConsolidationTaxonomy', () => {
     });
 
     it('buildResponseSchema does not contain keywords unsupported by OpenAI Structured Outputs (strict mode)', () => {
-        const rootSchema = buildResponseSchema(['Dog'], ['Page 1']) as any;
+        const rootSchema = buildResponseSchema(['Dog > Food > Dry Food'], ['Page 1']) as any;
         const properties = rootSchema.properties || {};
 
         // Helper to check for unsupported keywords in an object
@@ -91,5 +91,17 @@ describe('validateConsolidationTaxonomy', () => {
                 confidence_score: 0.8,
             })
         ).toThrow('search_keywords is required');
+    });
+
+    it('normalizes taxonomy breadcrumbs without spaces around separators', () => {
+        const result = validateConsolidationTaxonomy(
+            {
+                category: ['Dog>Food>Dry Food'],
+                search_keywords: 'kibble',
+            },
+            ['Dog > Food > Dry Food']
+        );
+
+        expect(result.category).toBe('Dog > Food > Dry Food');
     });
 });

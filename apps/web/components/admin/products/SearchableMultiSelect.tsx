@@ -45,17 +45,22 @@ export function SearchableMultiSelect({
     option.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const toggleItem = (name: string) => {
-    if (selected.includes(name)) {
-      onChange(selected.filter((item) => item !== name));
+  const labelById = new Map(options.map((option) => [option.id, option.name]));
+
+  const toggleItem = (id: string) => {
+    if (selected.includes(id)) {
+      onChange(selected.filter((item) => item !== id));
     } else {
-      onChange([...selected, name]);
+      onChange([...selected, id]);
     }
   };
 
-  const removeItem = (e: React.MouseEvent, name: string) => {
+  const removeItem = (
+    e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
+    id: string
+  ) => {
     e.stopPropagation();
-    onChange(selected.filter((item) => item !== name));
+    onChange(selected.filter((item) => item !== id));
   };
 
   const handleCreate = async () => {
@@ -84,14 +89,14 @@ export function SearchableMultiSelect({
                     variant="secondary"
                     className="gap-1 px-1.5 py-0.5"
                   >
-                    {item}
+                    {labelById.get(item) || item}
                     <button
                       type="button"
                       className="ml-1 rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       onClick={(e) => removeItem(e, item)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          removeItem(e as any, item);
+                          removeItem(e, item);
                         }
                       }}
                     >
@@ -122,7 +127,7 @@ export function SearchableMultiSelect({
           <div className="max-h-60 overflow-y-auto p-1">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => {
-                const isSelected = selected.includes(option.name);
+                const isSelected = selected.includes(option.id);
                 return (
                   <div
                     key={option.id}
@@ -130,7 +135,7 @@ export function SearchableMultiSelect({
                       "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
                       isSelected && "bg-accent text-accent-foreground"
                     )}
-                    onClick={() => toggleItem(option.name)}
+                    onClick={() => toggleItem(option.id)}
                   >
                     <Check
                       className={cn(

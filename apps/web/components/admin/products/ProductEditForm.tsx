@@ -58,6 +58,7 @@ interface Brand {
 interface Category {
     id: string;
     name: string;
+    breadcrumb?: string;
 }
 
 interface ProductPetType {
@@ -121,7 +122,10 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
 
     const isValidImageUrl = (url: string) => url && (url.startsWith('/') || url.startsWith('http'));
     const images = parseImages(product.images);
-    const categoryOptions = categories.map((category) => ({ id: category.id, name: category.name }));
+    const categoryOptions = categories.map((category) => ({
+        id: category.id,
+        name: category.breadcrumb || category.name,
+    }));
 
     useEffect(() => {
         async function fetchData() {

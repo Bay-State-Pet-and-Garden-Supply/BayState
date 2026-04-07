@@ -25,6 +25,9 @@ interface CategorySummary {
   id: string;
   name: string;
   slug: string | null;
+  breadcrumb?: string;
+  depth?: number;
+  is_leaf?: boolean;
 }
 
 interface FacetSidebarProps {
@@ -46,6 +49,7 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
 
   const currentFacetsRaw = searchParams.get('facets') || '';
   const currentFacetsList = currentFacetsRaw ? currentFacetsRaw.split(',') : [];
+  const categoryFilterOptions = categories.filter((category) => category.is_leaf !== false);
 
   const [searchQuery, setSearchQuery] = useState(currentSearch);
 
@@ -87,7 +91,12 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
     const labels: Record<string, string> = { in_stock: 'In Stock', out_of_stock: 'Out of Stock', pre_order: 'Pre-Order' };
     activeFilters.push({ key: 'stock', label: labels[currentStock] || currentStock, value: null });
   }
-  if (currentCategory) activeFilters.push({ key: 'category', label: `Category: ${currentCategory}`, value: null });
+  if (currentCategory) {
+    const categoryLabel = categories.find((category) => category.slug === currentCategory)?.breadcrumb
+      || categories.find((category) => category.slug === currentCategory)?.name
+      || currentCategory;
+    activeFilters.push({ key: 'category', label: `Category: ${categoryLabel}`, value: null });
+  }
   if (currentBrand) {
     const brandName = brands.find(b => b.slug === currentBrand)?.name || currentBrand;
     activeFilters.push({ key: 'brand', label: `Brand: ${brandName}`, value: null });
@@ -117,7 +126,9 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
   };
 
   const filteredBrands = brands.filter(b => b.name.toLowerCase().includes(brandSearch.toLowerCase()));
-  const filteredCategories = categories.filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()));
+  const filteredCategories = categoryFilterOptions.filter((category) =>
+    (category.breadcrumb || category.name).toLowerCase().includes(categorySearch.toLowerCase())
+  );
   const filteredPetTypes = petTypes.filter(p => p.name.toLowerCase().includes(petTypeSearch.toLowerCase()));
 
   return (
@@ -179,11 +190,11 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
           </AccordionItem>
 
           {/* Categories */}
-          {categories.length > 0 && (
+          {categoryFilterOptions.length > 0 && (
             <AccordionItem value="category" className="border-t border-zinc-100">
               <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Category</AccordionTrigger>
               <AccordionContent className="pt-1 pb-4">
-                {categories.length > 10 && (
+                {categoryFilterOptions.length > 10 && (
                   <div className="relative mb-3">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-400" />
                     <Input
@@ -205,7 +216,7 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
                           onCheckedChange={(checked) => updateFilter('category', checked ? slug : null)}
                         />
                         <Label htmlFor={`cat-${category.id}`} className="text-sm font-medium cursor-pointer leading-none">
-                          {category.name}
+                          {category.breadcrumb || category.name}
                         </Label>
                       </div>
                     );

@@ -6,6 +6,8 @@
  * Ported from BayStateTools.
  */
 
+import { normalizeTaxonomyBreadcrumb } from '@/lib/taxonomy';
+
 /**
  * Calculate Levenshtein distance between two strings (case-insensitive).
  */
@@ -49,35 +51,44 @@ function levenshteinDistance(a: string, b: string): number {
  * @returns The closest matching option, or the first option if no good match
  */
 export function findClosestMatch(value: string, validOptions: string[]): string {
-    if (!value || validOptions.length === 0) {
-        return validOptions[0] || '';
+    const normalizedValidOptions = validOptions.filter(
+        (option): option is string => typeof option === 'string' && option.trim().length > 0
+    );
+
+    if (!value || normalizedValidOptions.length === 0) {
+        return normalizedValidOptions[0] || '';
     }
 
-    const valueLower = value.toLowerCase().trim();
+    const normalizedValue = normalizeTaxonomyBreadcrumb(value);
+    const valueLower = normalizedValue.toLowerCase().trim();
+    const normalizedOptions = normalizedValidOptions.map((option) => ({
+        raw: option,
+        normalized: normalizeTaxonomyBreadcrumb(option),
+        normalizedLower: normalizeTaxonomyBreadcrumb(option).toLowerCase(),
+    }));
 
     // 1. Exact match (case-insensitive)
-    const exactMatch = validOptions.find((opt) => opt.toLowerCase() === valueLower);
-    if (exactMatch) return exactMatch;
+    const exactMatch = normalizedOptions.find((option) => option.normalizedLower === valueLower);
+    if (exactMatch) return exactMatch.raw;
 
     // 2. Substring containment - if value contains or is contained by an option
-    const substringMatch = validOptions.find((opt) => {
-        const optLower = opt.toLowerCase();
-        return optLower.includes(valueLower) || valueLower.includes(optLower);
+    const substringMatch = normalizedOptions.find((option) => {
+        return option.normalizedLower.includes(valueLower) || valueLower.includes(option.normalizedLower);
     });
-    if (substringMatch) return substringMatch;
+    if (substringMatch) return substringMatch.raw;
 
     // 3. Word overlap - count common words
     const valueWords = new Set(valueLower.split(/\s+/).filter((w) => w.length > 2));
     let bestWordOverlap = { option: '', score: 0 };
 
-    for (const opt of validOptions) {
-        const optWords = new Set(opt.toLowerCase().split(/\s+/).filter((w) => w.length > 2));
+    for (const option of normalizedOptions) {
+        const optWords = new Set(option.normalizedLower.split(/\s+/).filter((w) => w.length > 2));
         let overlap = 0;
         for (const word of valueWords) {
             if (optWords.has(word)) overlap++;
         }
         if (overlap > bestWordOverlap.score) {
-            bestWordOverlap = { option: opt, score: overlap };
+            bestWordOverlap = { option: option.raw, score: overlap };
         }
     }
 
@@ -86,17 +97,17 @@ export function findClosestMatch(value: string, validOptions: string[]): string 
     }
 
     // 4. Levenshtein distance - find minimum edit distance
-    let bestMatch = validOptions[0];
+    let bestMatch = normalizedValidOptions[0];
     let bestDistance = Infinity;
 
-    for (const opt of validOptions) {
-        const distance = levenshteinDistance(value, opt);
+    for (const option of normalizedOptions) {
+        const distance = levenshteinDistance(normalizedValue, option.normalized);
         // Normalize by max length for fair comparison
-        const normalizedDistance = distance / Math.max(value.length, opt.length);
+        const normalizedDistance = distance / Math.max(normalizedValue.length, option.normalized.length);
 
         if (normalizedDistance < bestDistance) {
             bestDistance = normalizedDistance;
-            bestMatch = opt;
+            bestMatch = option.raw;
         }
     }
 
@@ -106,8 +117,8 @@ export function findClosestMatch(value: string, validOptions: string[]): string 
     }
 
     // 5. Fallback to first option (or "Other" if available)
-    const otherOption = validOptions.find((opt) => opt.toLowerCase() === 'other');
-    return otherOption || validOptions[0];
+    const otherOption = normalizedValidOptions.find((opt) => opt.toLowerCase() === 'other');
+    return otherOption || normalizedValidOptions[0];
 }
 
 /**
@@ -207,7 +218,7 @@ export function buildResponseSchema(
                     type: 'string',
                     enum: categories,
                 },
-                description: 'List of applicable product categories using exact values from the provided taxonomy list',
+                description: 'List of applicable leaf-category breadcrumbs using exact values from the provided taxonomy list',
             },
             confidence_score: {
                 type: 'number',

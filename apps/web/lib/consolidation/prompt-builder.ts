@@ -7,24 +7,28 @@
 
 import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 import {
-    normalizeCategoryOptions,
-} from '@/lib/facets/normalization';
-import type { Category } from './types';
+    getLeafTaxonomyNodes,
+    type TaxonomyCategoryRecord,
+} from '@/lib/taxonomy';
 
 /**
  * Fetch categories from the database.
  */
-export async function getCategories(): Promise<Category[]> {
+export async function getCategories() {
     const { createAdminClient } = await import('@/lib/supabase/server');
     const supabase = await createAdminClient();
-    const { data, error } = await supabase.from('categories').select('id, name, slug').order('name');
+    const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, slug, parent_id, description, display_order, image_url, is_featured')
+        .order('display_order')
+        .order('name');
 
     if (error) {
         console.error('[Consolidation] Failed to fetch categories:', error);
         return [];
     }
 
-    return normalizeCategoryOptions(data || []);
+    return getLeafTaxonomyNodes((data || []) as TaxonomyCategoryRecord[]);
 }
 
 /**
@@ -34,13 +38,21 @@ export async function getCategories(): Promise<Category[]> {
 export function generateSystemPrompt(categories: string[]): string {
     const categoryGuidance =
         categories.length > 0
-            ? categories.join(', ')
-            : 'No category values were provided.';
+            ? `\n- ${categories.join('\n- ')}`
+            : '\n- No category values were provided.';
     const pageGuidance = SHOPSITE_PAGES.join(', ');
 
     return `You consolidate multi-source product data into one storefront-ready canonical record.
 
 Use only values allowed by the response schema for category and product_on_pages.
+
+Taxonomy rules:
+- Classify from the product's actual function, ingredients, materials, form factor, and intended animal/use case.
+- Ignore legacy category strings when stronger evidence from the product name, description, attributes, or trusted sources points elsewhere.
+- Choose the deepest valid leaf taxonomy breadcrumb that best represents the primary purchase intent.
+- Do not return broad parent-only categories when a more specific leaf exists.
+- Do not invent new taxonomy values, abbreviate breadcrumb labels, or collapse the hierarchy.
+- Example: Ortho Home Defense belongs under Lawn & Garden > Pest & Weed Control > Insect Control.
 
 Source trust rules:
 - Highest trust: "shopsite_input" because it reflects the current storefront record.
@@ -71,6 +83,7 @@ Field rules:
 - long_description: 3-5 concise detail-page sentences. It must be non-empty.
 - search_keywords: a comma-separated string of 6-12 concise site-search phrases. Keep it source-supported, avoid duplicate phrases, avoid URLs, and do not stuff the brand repeatedly.
 - weight: numeric string only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
+- category: prefer a single best-fit leaf breadcrumb. Only return multiple category values when the product genuinely belongs in multiple customer-facing aisles, and never include an ancestor plus its child together.
 
 Allowed category values: ${categoryGuidance}
 Allowed product_on_pages values: ${pageGuidance}
@@ -88,7 +101,7 @@ export async function buildPromptContext(): Promise<{
     const categories = await getCategories();
 
     return {
-        systemPrompt: generateSystemPrompt(categories.map((c) => c.name)),
+        systemPrompt: generateSystemPrompt(categories.map((category) => category.breadcrumb)),
         shopsitePages: [...SHOPSITE_PAGES],
     };
 }

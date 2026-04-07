@@ -1,12 +1,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildFacetSlug, splitMultiValueFacet } from '@/lib/facets/normalization';
+import {
+    parseTaxonomyValues,
+    resolveTaxonomySelections,
+    type TaxonomyCategoryRecord,
+} from '@/lib/taxonomy';
 
-function uniqueCategoryNames(categoryValue: string | null | undefined): string[] {
-    return Array.from(
-        new Set(
-            splitMultiValueFacet(categoryValue).map((value) => value.trim()).filter(Boolean)
-        )
-    );
+async function fetchTaxonomyCategories(
+    supabase: SupabaseClient
+): Promise<TaxonomyCategoryRecord[]> {
+    const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, slug, parent_id, description, display_order, image_url, is_featured');
+
+    if (error) {
+        throw new Error(`Failed to fetch taxonomy categories: ${error.message}`);
+    }
+
+    return (data || []) as TaxonomyCategoryRecord[];
 }
 
 export async function syncProductCategoryLinks(
@@ -14,9 +24,9 @@ export async function syncProductCategoryLinks(
     productId: string,
     categoryValue: string | null | undefined
 ) {
-    const categoryNames = uniqueCategoryNames(categoryValue);
+    const categoryTokens = parseTaxonomyValues(categoryValue);
 
-    if (categoryNames.length === 0) {
+    if (categoryTokens.length === 0) {
         const { error } = await supabase
             .from('product_categories')
             .delete()
@@ -29,31 +39,19 @@ export async function syncProductCategoryLinks(
         return;
     }
 
-    const categoryIds: string[] = [];
+    const taxonomyCategories = await fetchTaxonomyCategories(supabase);
+    const { matched, unresolved } = resolveTaxonomySelections(categoryTokens, taxonomyCategories);
 
-    for (const categoryName of categoryNames) {
-        const slug = buildFacetSlug(categoryName);
+    if (matched.length === 0) {
+        throw new Error(
+            `Failed to resolve any categories from taxonomy values: ${categoryTokens.join(', ')}`
+        );
+    }
 
-        const { data: category, error } = await supabase
-            .from('categories')
-            .upsert(
-                {
-                    name: categoryName,
-                    slug,
-                    display_order: 0,
-                },
-                { onConflict: 'name' }
-            )
-            .select('id')
-            .single();
-
-        if (error || !category) {
-            throw new Error(
-                `Failed to resolve category "${categoryName}": ${error?.message ?? 'Missing category row'}`
-            );
-        }
-
-        categoryIds.push(category.id);
+    if (unresolved.length > 0) {
+        throw new Error(
+            `Unresolved taxonomy categories: ${unresolved.join(', ')}`
+        );
     }
 
     const { error: deleteError } = await supabase
@@ -68,9 +66,9 @@ export async function syncProductCategoryLinks(
     const { error: linkError } = await supabase
         .from('product_categories')
         .upsert(
-            categoryIds.map((categoryId) => ({
+            matched.map((category) => ({
                 product_id: productId,
-                category_id: categoryId,
+                category_id: category.id,
             })),
             { onConflict: 'product_id, category_id' }
         );

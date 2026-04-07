@@ -28,6 +28,7 @@ import { extractImageCandidatesFromSources, normalizeProductSources, normalizeIm
 import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
 import { GeminiBatchProvider } from '@/lib/providers/gemini-batch';
+import { parseTaxonomyValues } from '@/lib/taxonomy';
 import type {
     BatchJob,
     BatchMetadata,
@@ -479,14 +480,6 @@ function toUnixTimestamp(value: unknown): number | null | undefined {
     return undefined;
 }
 
-function parseDelimitedTaxonomy(value: string | undefined): string[] {
-    if (!value) return [];
-    return value
-        .split('|')
-        .map((entry) => entry.trim())
-        .filter((entry) => entry.length > 0);
-}
-
 function parseStructuredConsolidationText(
     sku: string,
     content: string,
@@ -503,7 +496,7 @@ function parseStructuredConsolidationText(
     const requiredFieldsValidated = validateRequiredConsolidationFields(normalized);
     const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories);
 
-    const categoryValues = parseDelimitedTaxonomy(
+    const categoryValues = parseTaxonomyValues(
         typeof validated.category === 'string' ? validated.category : undefined
     );
 
@@ -1010,7 +1003,7 @@ export async function submitBatch(
         // Build prompt context with taxonomy
         const { systemPrompt, shopsitePages = [] } = await buildPromptContext();
         const categoryList = await getCategories();
-        const categoryNames = categoryList.map(c => c.name);
+        const categoryNames = categoryList.map((category) => category.breadcrumb ?? category.name);
 
         // Build JSON schema with enum constraints
         const responseSchema = buildResponseSchema(categoryNames, shopsitePages);
@@ -1310,7 +1303,7 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
         // Fetch taxonomy for validation
         const { shopsitePages = [] } = await buildPromptContext();
         const categoryList = await getCategories();
-        const categories = categoryList.map(c => c.name);
+        const categories = categoryList.map((category) => category.breadcrumb ?? category.name);
         const resolved = await resolveProviderBatchId(batchId);
         const runtime = await getConfiguredBatchRuntime(false, {
             forceProvider: resolved.provider,
@@ -1726,7 +1719,7 @@ export async function applyConsolidationResults(
 
             const normalizedBrand = cleanBrandLabel(result.brand);
 
-            const nextCategory = parseDelimitedTaxonomy(result.category);
+            const nextCategory = parseTaxonomyValues(result.category);
             const parsedPrice =
                 typeof result.price === 'number'
                     ? result.price
