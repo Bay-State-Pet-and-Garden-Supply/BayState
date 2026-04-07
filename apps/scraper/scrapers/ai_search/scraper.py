@@ -166,7 +166,11 @@ class AISearchScraper:
         self._scoring = SearchScorer()
         self._matching = MatchingUtils()
         self._extraction = ExtractionUtils(self._scoring)
-        self._search_client = SearchClient(max_results=max_search_results, provider=self.search_provider)
+        self._search_client = SearchClient(
+            max_results=max_search_results,
+            provider=self.search_provider,
+            api_key=self.llm_api_key,
+        )
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
         self._source_selector = LLMSourceSelector(

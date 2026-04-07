@@ -124,6 +124,35 @@ def test_prepare_search_results_keeps_best_non_whitelisted_pdp_when_brand_presen
     assert prepared[0]["url"] == "https://independentpet.com/products/acme-squeaky-ball-12345"
 
 
+def test_scraper_passes_runtime_api_key_to_search_client(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class SearchClientStub:
+        def __init__(
+            self,
+            max_results: int = 15,
+            provider: str | None = None,
+            cache_max: int = 500,
+            api_key: str | None = None,
+        ) -> None:
+            captured["max_results"] = max_results
+            captured["provider"] = provider
+            captured["cache_max"] = cache_max
+            captured["api_key"] = api_key
+
+    monkeypatch.setattr("scrapers.ai_search.scraper.SearchClient", SearchClientStub)
+
+    AISearchScraper(
+        max_search_results=9,
+        llm_provider="gemini",
+        llm_api_key="gemini-runtime-key",
+    )
+
+    assert captured["max_results"] == 9
+    assert captured["provider"] == "auto"
+    assert captured["api_key"] == "gemini-runtime-key"
+
+
 def test_scrape_product_aggregates_candidates_across_query_variants() -> None:
     class VariantSearchClient:
         async def search(self, query: str) -> tuple[list[dict[str, str]], str | None]:

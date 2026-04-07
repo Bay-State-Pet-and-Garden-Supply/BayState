@@ -79,5 +79,26 @@ async def test_normalize_search_provider_defaults_to_gemini(caplog: pytest.LogCa
     assert client.provider == "gemini"
 
 
+async def test_search_client_passes_runtime_api_key_to_gemini_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    class GeminiClientStub:
+        def __init__(self, max_results: int = 15, api_key: str | None = None) -> None:
+            captured["max_results"] = max_results
+            captured["api_key"] = api_key
+
+        async def search(self, query: str) -> tuple[list[dict[str, str]], str | None]:
+            return [], None
+
+    monkeypatch.setattr("scrapers.ai_search.search.GeminiSearchClient", GeminiClientStub)
+
+    SearchClient(max_results=7, api_key="gemini-runtime-key")
+
+    assert captured == {
+        "max_results": 7,
+        "api_key": "gemini-runtime-key",
+    }
+
+
 async def test_canonicalize_result_url_strips_tracking_params() -> None:
     assert canonicalize_result_url("https://example.com/product?id=123&utm_source=google&ref=ads#details") == "https://example.com/product?id=123"
