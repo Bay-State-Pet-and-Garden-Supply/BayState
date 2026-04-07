@@ -28,6 +28,20 @@ class MatchingUtils:
         "lbs",
     }
 
+    VARIANT_UNIT_ALIASES = {
+        "count": "ct",
+        "ct": "ct",
+        "pack": "pk",
+        "packs": "pk",
+        "pk": "pk",
+        "inch": "in",
+        "inches": "in",
+        "in": "in",
+        "oz": "oz",
+        "lb": "lb",
+        "lbs": "lb",
+    }
+
     def normalize_token_text(self, value: Optional[str]) -> str:
         """Normalize text for token comparison."""
         text = (value or "").lower()
@@ -37,6 +51,36 @@ class MatchingUtils:
         """Extract keyword tokens from text."""
         tokens = re.findall(r"[a-z0-9]+", (value or "").lower())
         return {token for token in tokens if len(token) >= 3 and token not in self.STOP_WORDS}
+
+    def extract_variant_tokens(self, value: Optional[str]) -> set[str]:
+        """Extract normalized dimension/count/weight tokens for variant checks."""
+        text = (value or "").lower()
+        if not text:
+            return set()
+
+        normalized = re.sub(r"\b(inches?|inch)\b", "in", text)
+        tokens: set[str] = set()
+
+        for first, second in re.findall(r"(?<!\d)(\d{1,4})\s*(?:in)?\s*[x×]\s*(\d{1,4})(?:\s*in)?(?!\d)", normalized):
+            tokens.add(f"{first}x{second}")
+
+        for number, unit in re.findall(
+            r"(?<!\d)(\d{1,4})\s*(ct|count|pack|packs|pk|lb|lbs|oz|inch|inches|in)\b",
+            normalized,
+        ):
+            normalized_unit = self.VARIANT_UNIT_ALIASES.get(unit, unit)
+            tokens.add(f"{number}{normalized_unit}")
+
+        return tokens
+
+    def has_variant_token_overlap(self, expected_name: Optional[str], actual_text: Optional[str]) -> bool:
+        """Check whether expected structured variant tokens appear in the actual text."""
+        expected_variant_tokens = self.extract_variant_tokens(expected_name)
+        if not expected_variant_tokens:
+            return True
+
+        actual_variant_tokens = self.extract_variant_tokens(actual_text)
+        return len(expected_variant_tokens.intersection(actual_variant_tokens)) > 0
 
     def is_brand_match(
         self,

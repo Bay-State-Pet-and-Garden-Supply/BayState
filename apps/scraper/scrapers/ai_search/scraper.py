@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Optional, cast
@@ -63,6 +64,26 @@ class _ScrapeCostContext:
         return float(tracker_cost_usd or 0.0) + float(self.search_cost_usd or 0.0) + float(self.llm_cost_usd or 0.0) + float(self.refinement_cost_usd or 0.0)
 
 
+@dataclass
+class _BatchCohortState:
+    key: str
+    preferred_domain_counts: dict[str, int]
+
+    def ranked_domains(self) -> list[str]:
+        return [
+            domain
+            for domain, _count in sorted(
+                self.preferred_domain_counts.items(),
+                key=lambda item: (-item[1], item[0]),
+            )
+        ]
+
+    def remember_domain(self, domain: str) -> None:
+        if not domain:
+            return
+        self.preferred_domain_counts[domain] = self.preferred_domain_counts.get(domain, 0) + 1
+
+
 class AISearchScraper:
     """AI-powered search scraper for universal product extraction.
 
@@ -91,6 +112,7 @@ class AISearchScraper:
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
         search_provider: str | None = None,
+        prefer_manufacturer: bool = True,
     ):
         """Initialize the AI discovery scraper.
 
@@ -136,6 +158,7 @@ class AISearchScraper:
         self.extraction_strategy = extraction_strategy
         self.prompt_version = prompt_version
         self.search_provider = normalize_search_provider(search_provider or os.getenv("AI_SEARCH_PROVIDER"))
+        self.prefer_manufacturer = prefer_manufacturer
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
         self.max_follow_up_queries = _read_int_env("AI_SEARCH_MAX_FOLLOW_UP_QUERIES", default=2)
         # Two-step search refinement configuration
@@ -410,6 +433,7 @@ class AISearchScraper:
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
+        preferred_domains: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         return self._scoring.prepare_search_results(
             search_results,
@@ -417,6 +441,87 @@ class AISearchScraper:
             brand,
             product_name,
             category,
+            prefer_manufacturer=self.prefer_manufacturer,
+            preferred_domains=preferred_domains,
+        )
+
+    def _build_cohort_key(self, item: dict[str, Any]) -> str:
+        brand = self._matching.normalize_token_text(str(item.get("brand") or ""))
+        product_name = str(item.get("product_name") or "")
+        brand_tokens = self._matching.tokenize_keywords(str(item.get("brand") or ""))
+        cohort_variant_hints = {
+            "small",
+            "medium",
+            "large",
+            "xlarge",
+            "xl",
+            "jumbo",
+            "mini",
+            "fresh",
+            "scented",
+            "unscented",
+            "original",
+            "natural",
+            "count",
+            "gray",
+            "grey",
+            "white",
+            "black",
+            "blue",
+            "red",
+        }
+        name_tokens = [
+            token
+            for token in self._matching.tokenize_keywords(product_name)
+            if (
+                token not in brand_tokens
+                and token not in cohort_variant_hints
+                and not any(character.isdigit() for character in token)
+            )
+        ]
+        family_tokens = name_tokens[:4]
+        if family_tokens:
+            family_key = "-".join(family_tokens)
+        else:
+            normalized_name = self._matching.normalize_token_text(product_name)
+            family_key = normalized_name[:32] or self._matching.normalize_token_text(str(item.get("sku") or ""))
+
+        return f"{brand or 'unknown'}::{family_key or 'unknown'}"
+
+    def _score_item_context(self, item: dict[str, Any]) -> int:
+        score = 0
+        if item.get("brand"):
+            score += 4
+        if item.get("category"):
+            score += 2
+
+        product_name = str(item.get("product_name") or "")
+        score += min(4, len(self._matching.tokenize_keywords(product_name)))
+        if self._matching.extract_variant_tokens(product_name):
+            score += 2
+
+        return score
+
+    def _apply_cohort_preferences(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+        category: Optional[str],
+        cohort_state: _BatchCohortState | None,
+    ) -> list[dict[str, Any]]:
+        preferred_domains = cohort_state.ranked_domains() if cohort_state is not None else []
+        if not preferred_domains:
+            return search_results
+
+        return self._prepare_candidate_pool(
+            search_results=search_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+            preferred_domains=preferred_domains,
         )
 
     def _should_expand_search(
@@ -437,6 +542,7 @@ class AISearchScraper:
             brand=brand,
             product_name=product_name,
             category=category,
+            prefer_manufacturer=self.prefer_manufacturer,
         )
         if strong_candidate_url:
             return False
@@ -453,6 +559,7 @@ class AISearchScraper:
                     brand=brand,
                     product_name=product_name,
                     category=category,
+                    prefer_manufacturer=self.prefer_manufacturer,
                 )
                 >= 4.5
             ):
@@ -469,20 +576,65 @@ class AISearchScraper:
     ) -> list[AISearchResult]:
         """Scrape multiple products in batch."""
         semaphore = asyncio.Semaphore(max(1, max_concurrency))
+        indexed_items = list(enumerate(items))
+        cohort_items: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
 
-        async def _run_one(item: dict[str, Any]) -> AISearchResult:
+        for index, item in indexed_items:
+            cohort_items[self._build_cohort_key(item)].append((index, item))
+
+        async def _run_cohort(
+            cohort_key: str,
+            cohort_batch: list[tuple[int, dict[str, Any]]],
+        ) -> list[tuple[int, AISearchResult]]:
             async with semaphore:
-                sku = str(item.get("sku", "")).strip()
-                if not sku:
-                    return AISearchResult(success=False, sku="", error="Missing sku")
-                return await self.scrape_product(
-                    sku=sku,
-                    product_name=item.get("product_name"),
-                    brand=item.get("brand"),
-                    category=item.get("category"),
+                cohort_state = _BatchCohortState(
+                    key=cohort_key,
+                    preferred_domain_counts={},
                 )
+                ordered_batch = sorted(
+                    cohort_batch,
+                    key=lambda item: self._score_item_context(item[1]),
+                    reverse=True,
+                )
+                cohort_results: list[tuple[int, AISearchResult]] = []
 
-        return await asyncio.gather(*[_run_one(item) for item in items])
+                for original_index, item in ordered_batch:
+                    sku = str(item.get("sku", "")).strip()
+                    if not sku:
+                        cohort_results.append((original_index, AISearchResult(success=False, sku="", error="Missing sku")))
+                        continue
+
+                    result = await self.scrape_product(
+                        sku=sku,
+                        product_name=item.get("product_name"),
+                        brand=item.get("brand"),
+                        category=item.get("category"),
+                        cohort_state=cohort_state,
+                    )
+                    cohort_results.append((original_index, result))
+
+                    domain = self._scoring.domain_from_url(result.url or "")
+                    if result.success and domain and not self._scoring.is_marketplace(domain):
+                        cohort_state.remember_domain(domain)
+
+                return cohort_results
+
+        gathered_results = await asyncio.gather(
+            *[
+                _run_cohort(cohort_key, cohort_batch)
+                for cohort_key, cohort_batch in cohort_items.items()
+            ]
+        )
+
+        ordered_results: list[AISearchResult | None] = [None] * len(items)
+        for cohort_result_set in gathered_results:
+            for index, result in cohort_result_set:
+                ordered_results[index] = result
+
+        return [
+            result if result is not None else AISearchResult(success=False, sku="", error="Missing batch result")
+            for result in ordered_results
+        ]
 
     async def _identify_best_source(
         self,
@@ -491,6 +643,7 @@ class AISearchScraper:
         brand: Optional[str],
         product_name: Optional[str],
         cost_context: _ScrapeCostContext | None = None,
+        preferred_domains: Optional[list[str]] = None,
     ) -> Optional[str]:
         """Select the best source URL.
 
@@ -504,12 +657,15 @@ class AISearchScraper:
                 sku=sku,
                 brand=brand,
                 product_name=product_name,
+                preferred_domains=preferred_domains,
             )
 
             best_url, cost = await self._source_selector.select_best_url(
                 results=search_results,
                 sku=sku,
                 product_name=product_name or "",
+                brand=brand,
+                preferred_domains=preferred_domains,
             )
             if cost_context is not None:
                 cost_context.llm_cost_usd += float(cost or 0.0)
@@ -531,6 +687,7 @@ class AISearchScraper:
             sku=sku,
             brand=brand,
             product_name=product_name,
+            preferred_domains=preferred_domains,
         )
 
     def _heuristic_source_selection(
@@ -540,6 +697,7 @@ class AISearchScraper:
         brand: Optional[str] = None,
         product_name: Optional[str] = None,
         category: Optional[str] = None,
+        preferred_domains: Optional[list[str]] = None,
     ) -> Optional[str]:
         """Pick the highest-signal candidate URL using existing scoring logic."""
         if not search_results:
@@ -551,6 +709,8 @@ class AISearchScraper:
             brand=brand,
             product_name=product_name,
             category=category,
+            prefer_manufacturer=self.prefer_manufacturer,
+            preferred_domains=preferred_domains,
         )
         if strong_url:
             return strong_url
@@ -561,6 +721,8 @@ class AISearchScraper:
             brand=brand,
             product_name=product_name,
             category=category,
+            prefer_manufacturer=self.prefer_manufacturer,
+            preferred_domains=preferred_domains,
         )
         if ranked_results:
             return str(ranked_results[0].get("url") or "") or None
@@ -602,6 +764,7 @@ class AISearchScraper:
             brand=brand,
             product_name=product_name,
             category=category,
+            prefer_manufacturer=self.prefer_manufacturer,
         )
         second_score = 0.0
         if len(search_results) > 1:
@@ -611,6 +774,7 @@ class AISearchScraper:
                 brand=brand,
                 product_name=product_name,
                 category=category,
+                prefer_manufacturer=self.prefer_manufacturer,
             )
 
         gap_signal = max(0.0, min(1.0, (top_score - second_score) / 3.0))
@@ -624,6 +788,7 @@ class AISearchScraper:
             brand=brand,
             product_name=product_name,
             category=category,
+            prefer_manufacturer=self.prefer_manufacturer,
         )
         top_url = str(top_result.get("url") or "").strip()
         if strong_candidate_url and top_url == strong_candidate_url:
@@ -749,6 +914,7 @@ class AISearchScraper:
         product_name: Optional[str] = None,
         brand: Optional[str] = None,
         category: Optional[str] = None,
+        cohort_state: _BatchCohortState | None = None,
     ) -> AISearchResult:
         """Scrape a product using AI search.
 
@@ -787,6 +953,14 @@ class AISearchScraper:
                 brand=brand,
                 category=category,
                 cost_context=cost_context,
+            )
+            search_results = self._apply_cohort_preferences(
+                search_results=search_results,
+                sku=sku,
+                brand=brand,
+                product_name=product_name,
+                category=category,
+                cohort_state=cohort_state,
             )
 
             if not brand:
@@ -831,6 +1005,7 @@ class AISearchScraper:
                     brand,
                     product_name,
                     cost_context=cost_context,
+                    preferred_domains=cohort_state.ranked_domains() if cohort_state is not None else None,
                 )
             if not prioritized_url:
                 prioritized_url = self._heuristic_source_selection(
@@ -839,6 +1014,7 @@ class AISearchScraper:
                     brand,
                     product_name,
                     category,
+                    preferred_domains=cohort_state.ranked_domains() if cohort_state is not None else None,
                 )
 
             if prioritized_url:

@@ -240,6 +240,7 @@ class ExtractionUtils:
     # BigCommerce stencil template placeholder pattern
     _BIGCOMMERCE_SIZE_PLACEHOLDER = re.compile(r"\{:size\}", re.IGNORECASE)
     _BIGCOMMERCE_SIZE_DEFAULT = "3840w"
+    _PAGE_RESOURCE_SEGMENTS = {"products", "collections", "pages", "blogs", "search", "account"}
 
     def _resolve_template_placeholders(self, url: str) -> str | None:
         """Resolve known CDN template placeholders in image URLs.
@@ -261,6 +262,28 @@ class ExtractionUtils:
 
         return url
 
+    def _is_page_relative_files_artifact(self, raw: str, source_url: str, resolved_url: str) -> bool:
+        """Detect malformed `files/...` image paths resolved under page routes.
+
+        Some extractors/LLMs return bare `files/<name>.jpg` values for Shopify-style
+        assets. Resolving those against a PDP like `/products/<slug>` produces
+        `/products/files/<name>.jpg`, which is typically a broken URL.
+        """
+        value = str(raw or "").strip()
+        if not value or value.startswith(("/", "//", "./", "../")):
+            return False
+
+        raw_path = urlparse(value).path.lower()
+        if not raw_path.startswith("files/"):
+            return False
+
+        source_segments = [segment for segment in urlparse(source_url).path.lower().split("/") if segment]
+        if not source_segments or source_segments[0] not in self._PAGE_RESOURCE_SEGMENTS:
+            return False
+
+        resolved_path = urlparse(resolved_url).path.lower()
+        return resolved_path.startswith(f"/{source_segments[0]}/files/")
+
     def normalize_images(self, images: list[str], source_url: str) -> list[str]:
         """Normalize and dedupe image URLs."""
         normalized: list[str] = []
@@ -271,6 +294,8 @@ class ExtractionUtils:
             if not value:
                 continue
             absolute = urljoin(source_url, value)
+            if self._is_page_relative_files_artifact(value, source_url, absolute):
+                continue
             resolved = self._resolve_template_placeholders(absolute)
             if resolved is None:
                 continue

@@ -1,36 +1,36 @@
 {
-  "generated_at": "2026-04-05T03:35:12.299668+00:00",
+  "generated_at": "2026-04-07T22:58:41.909934+00:00",
   "metrics": {
     "memory": {
-      "current_mb": 0.456,
-      "peak_mb": 0.457
+      "current_mb": 0.009,
+      "peak_mb": 0.017
     },
     "throughput": {
       "sample_size": 50,
-      "skus_per_minute": 288366.821,
+      "skus_per_minute": 179299.834,
       "workers": 5
     },
     "timing": {
       "aggregate": {
-        "max_ms": 1.52,
-        "mean_ms": 0.715,
-        "min_ms": 0.203,
-        "p95_ms": 1.355,
-        "p99_ms": 1.498
+        "max_ms": 2.97,
+        "mean_ms": 0.996,
+        "min_ms": 0.135,
+        "p95_ms": 2.089,
+        "p99_ms": 2.751
       },
       "concurrent": {
-        "max_ms": 1.52,
-        "mean_ms": 0.956,
-        "min_ms": 0.513,
-        "p95_ms": 1.438,
-        "p99_ms": 1.505
+        "max_ms": 2.97,
+        "mean_ms": 1.398,
+        "min_ms": 0.281,
+        "p95_ms": 2.28,
+        "p99_ms": 2.825
       },
       "single_sku": {
-        "max_ms": 0.536,
-        "mean_ms": 0.233,
-        "min_ms": 0.203,
-        "p95_ms": 0.277,
-        "p99_ms": 0.475
+        "max_ms": 0.406,
+        "mean_ms": 0.191,
+        "min_ms": 0.135,
+        "p95_ms": 0.305,
+        "p99_ms": 0.384
       }
     }
   },
@@ -49,23 +49,23 @@
       "total_ms": 60.0
     },
     "total_sku": {
-      "avg_ms": 11.057,
+      "avg_ms": 6.017,
       "count": 1,
-      "max_ms": 11.057,
-      "min_ms": 11.057,
+      "max_ms": 6.017,
+      "min_ms": 6.017,
       "operation_type": "total_sku",
-      "p50_ms": 11.057,
-      "p95_ms": 11.057,
-      "p99_ms": 11.057,
+      "p50_ms": 6.017,
+      "p95_ms": 6.017,
+      "p99_ms": 6.017,
       "std_dev_ms": 0.0,
       "success_rate": 1.0,
-      "total_ms": 11.057
+      "total_ms": 6.017
     }
   },
   "raw": {
-    "concurrent_mean_ms": 0.956,
+    "concurrent_mean_ms": 1.398,
     "concurrent_run_count": 50,
-    "single_mean_ms": 0.233,
+    "single_mean_ms": 0.191,
     "single_run_count": 25
   },
   "task": "T18 Performance Benchmarking"

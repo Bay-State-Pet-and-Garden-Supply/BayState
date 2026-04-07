@@ -10,8 +10,8 @@ from scrapers.ai_search.matching import MatchingUtils
 class SearchScorer:
     """Handles scoring and filtering of search results."""
 
-    # Trusted retailer domains
-    TRUSTED_RETAILERS = {
+    # High-quality large retailers that are generally safe fallback PDP sources.
+    MAJOR_RETAILERS = {
         "amazon.com",
         "walmart.com",
         "target.com",
@@ -22,6 +22,12 @@ class SearchScorer:
         "homedepot.com",
         "lowes.com",
         "acehardware.com",
+        "costco.com",
+    }
+
+    # Smaller or specialty retailers/distributors that can still be useful, but
+    # should rank behind official sites and the major retailers above.
+    SECONDARY_RETAILERS = {
         "berings.com",
         "farmstore.com",
         "hugglepets.co.uk",
@@ -34,9 +40,13 @@ class SearchScorer:
         "frontiercoop.com",
         "petsuppliesplus.com",
         "bradleycaldwell.com",
-        "costco.com",
+    }
+
+    MARKETPLACES = {
         "ebay.com",
     }
+
+    TRUSTED_RETAILERS = MAJOR_RETAILERS | SECONDARY_RETAILERS
 
     # Blocked domains (social media, aggregators, etc.)
     BLOCKED_DOMAINS = {
@@ -133,9 +143,25 @@ class SearchScorer:
             domain = domain[4:]
         return domain
 
+    @staticmethod
+    def _domain_matches_candidates(domain: str, candidates: set[str] | list[str]) -> bool:
+        return any(domain == candidate or domain.endswith(f".{candidate}") for candidate in candidates)
+
     def is_trusted_retailer(self, domain: str) -> bool:
         """Check if domain is a trusted retailer."""
-        return any(domain == candidate or domain.endswith(f".{candidate}") for candidate in self.TRUSTED_RETAILERS)
+        return self._domain_matches_candidates(domain, self.TRUSTED_RETAILERS)
+
+    def is_major_retailer(self, domain: str) -> bool:
+        """Check if domain is a major retailer."""
+        return self._domain_matches_candidates(domain, self.MAJOR_RETAILERS)
+
+    def is_secondary_retailer(self, domain: str) -> bool:
+        """Check if domain is a secondary retailer."""
+        return self._domain_matches_candidates(domain, self.SECONDARY_RETAILERS)
+
+    def is_marketplace(self, domain: str) -> bool:
+        """Check if domain is a marketplace listing source."""
+        return self._domain_matches_candidates(domain, self.MARKETPLACES)
 
     def is_brand_domain(self, domain: str, brand: Optional[str]) -> bool:
         """Check if domain matches the brand."""
@@ -144,6 +170,18 @@ class SearchScorer:
         if not brand_normalized or not domain_normalized:
             return False
         return brand_normalized in domain_normalized
+
+    def classify_source_domain(self, domain: str, brand: Optional[str]) -> str:
+        """Classify a source domain for ranking and validation."""
+        if domain and self.is_brand_domain(domain, brand):
+            return "official"
+        if domain and self.is_major_retailer(domain):
+            return "major_retailer"
+        if domain and self.is_secondary_retailer(domain):
+            return "secondary_retailer"
+        if domain and self.is_marketplace(domain):
+            return "marketplace"
+        return "unknown"
 
     def is_category_like_url(self, url: str) -> bool:
         """Check if URL looks like a category page."""
@@ -216,6 +254,8 @@ class SearchScorer:
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
+        prefer_manufacturer: bool = False,
+        preferred_domains: Optional[list[str]] = None,
     ) -> float:
         """Score a search result for relevance."""
         url = str(result.get("url") or "")
@@ -242,6 +282,15 @@ class SearchScorer:
             overlap = len(expected_tokens.intersection(self._matching.tokenize_keywords(combined)))
             score += min(4.0, float(overlap) * 0.8)
 
+        expected_variant_tokens = self._matching.extract_variant_tokens(product_name)
+        if expected_variant_tokens:
+            actual_variant_tokens = self._matching.extract_variant_tokens(combined)
+            variant_overlap = len(expected_variant_tokens.intersection(actual_variant_tokens))
+            if variant_overlap:
+                score += min(3.0, float(variant_overlap) * 1.5)
+            else:
+                score -= 1.5
+
         # Category match
         category_tokens = self._matching.tokenize_keywords(category)
         if category_tokens:
@@ -251,13 +300,23 @@ class SearchScorer:
         if any(marker in combined for marker in ["/product", "/products", "/p/", "-p-"]):
             score += 1.0
 
-        # Brand domain bonus
-        if domain and brand and self._matching.normalize_token_text(brand) in self._matching.normalize_token_text(domain):
-            score += 4.0
+        source_tier = self.classify_source_domain(domain, brand)
+        if source_tier == "official":
+            score += 6.0 if prefer_manufacturer else 4.5
+        elif source_tier == "major_retailer":
+            score += 2.5
+        elif source_tier == "secondary_retailer":
+            score += 1.0
+        elif source_tier == "marketplace":
+            score -= 3.5
 
-        # Trusted retailer bonus
-        if self.is_trusted_retailer(domain):
-            score += 1.5
+        if preferred_domains and domain:
+            for index, preferred_domain in enumerate(preferred_domains):
+                if not preferred_domain:
+                    continue
+                if domain == preferred_domain or domain.endswith(f".{preferred_domain}"):
+                    score += max(0.5, 2.5 - float(index) * 0.5)
+                    break
 
         # Category page penalty
         if self.is_category_like_url(url):
@@ -280,6 +339,8 @@ class SearchScorer:
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
+        prefer_manufacturer: bool = False,
+        preferred_domains: Optional[list[str]] = None,
     ) -> Optional[str]:
         """Pick a strong candidate URL if one stands out."""
         if not search_results:
@@ -293,6 +354,8 @@ class SearchScorer:
                 brand=brand,
                 product_name=product_name,
                 category=category,
+                prefer_manufacturer=prefer_manufacturer,
+                preferred_domains=preferred_domains,
             )
             scored.append((result, score))
 
@@ -312,6 +375,8 @@ class SearchScorer:
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
+        prefer_manufacturer: bool = False,
+        preferred_domains: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         """Prepare and rank search results."""
         if not search_results:
@@ -336,6 +401,8 @@ class SearchScorer:
                     brand,
                     product_name,
                     category,
+                    prefer_manufacturer=prefer_manufacturer,
+                    preferred_domains=preferred_domains,
                 ),
             )
             for result in deduped

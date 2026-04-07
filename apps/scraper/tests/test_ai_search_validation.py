@@ -110,6 +110,42 @@ class TestSKUValidation:
         )
         assert result == (True, "ok")
 
+    def test_accepts_variant_match_when_size_tokens_appear_in_description(self, scraper):
+        result = scraper._validator.validate_extraction_match(
+            extraction_result={
+                "success": True,
+                "product_name": "Wee-Wee Cat Pads | 10 PK",
+                "brand": "FOUR PAWS",
+                "description": "Replacement pads sized 28x30 with 10 count packaging",
+                "size_metrics": "28x30 10ct",
+                "confidence": 0.86,
+                "images": ["https://bradleycaldwell.com/products/images/wee-wee-cat-pads.jpg"],
+            },
+            sku="045663976880",
+            product_name="WEE WEE CAT PADS 28X 30 10CT",
+            brand="FOUR PAWS",
+            source_url="https://www.bradleycaldwell.com/wee-wee-cat-pads-10-pk-436324",
+        )
+        assert result == (True, "ok")
+
+    def test_rejects_marketplace_without_exact_identifier_when_brand_missing(self, scraper):
+        result = scraper._validator.validate_extraction_match(
+            extraction_result={
+                "success": True,
+                "product_name": 'Four Paws Wee-Wee Cat Litter Box System Pads 11" x 17" (30 Count)',
+                "brand": "",
+                "description": "Replacement pads for the Wee-Wee cat litter box system",
+                "confidence": 0.85,
+                "images": ["https://i.ebayimg.com/images/g/example.jpg"],
+            },
+            sku="045663976873",
+            product_name="WEE WEE CAT PADS 11X 17 30CT",
+            brand=None,
+            source_url="https://www.ebay.com/itm/358054350515",
+        )
+        assert result[0] is False
+        assert "marketplace result missing exact identifier" in result[1].lower()
+
     def test_resolves_bigcommerce_size_placeholder_in_images(self, scraper):
         extraction_result = {
             "success": True,

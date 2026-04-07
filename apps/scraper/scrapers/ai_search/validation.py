@@ -115,10 +115,16 @@ class ExtractionValidator:
         """Validate that extracted data matches expected product context."""
         extracted_name = str(extraction_result.get("product_name") or "").strip()
         extracted_brand = str(extraction_result.get("brand") or "").strip()
+        description = str(extraction_result.get("description") or "").strip()
+        size_metrics = str(extraction_result.get("size_metrics") or "").strip()
         confidence = self._to_confidence(extraction_result.get("confidence", 0))
         source_domain = self._scoring.domain_from_url(source_url)
         brand_matches = self._matching.is_brand_match(brand, extracted_brand, source_url)
         name_matches = self._matching.is_name_match(product_name, extracted_name)
+        combined_variant_text = f"{extracted_name} {description} {size_metrics}".strip()
+        variant_matches = self._matching.has_variant_token_overlap(product_name, combined_variant_text)
+        specific_token_overlap = self._matching.has_specific_token_overlap(product_name, combined_variant_text, brand)
+        source_tier = self._scoring.classify_source_domain(source_domain, brand)
 
         validation_context = {
             "url": source_url,
@@ -128,6 +134,7 @@ class ExtractionValidator:
             "confidence": confidence,
             "extracted_brand": extracted_brand,
             "extracted_name": extracted_name,
+            "source_tier": source_tier,
         }
 
         logger.info(f"[AI Search Validation] Validating extraction from {source_url}")
@@ -150,12 +157,7 @@ class ExtractionValidator:
         # Replace images in the result so downstream consumers get clean data
         extraction_result["images"] = valid_images
 
-        normalized_brand = self._matching.normalize_token_text(str(brand or ""))
-        normalized_domain = self._matching.normalize_token_text(source_domain)
-        is_trusted_domain = bool(source_domain) and (
-            self._scoring.is_trusted_retailer(source_domain)
-            or (normalized_brand and normalized_brand in normalized_domain)
-        )
+        is_trusted_domain = source_tier in {"official", "major_retailer", "secondary_retailer"}
         minimum_confidence = self.confidence_threshold if is_trusted_domain else max(self.confidence_threshold, 0.76)
         validation_context["is_trusted_domain"] = is_trusted_domain
 
@@ -176,23 +178,39 @@ class ExtractionValidator:
         if product_name and not name_matches:
             return self._log_rejection(validation_context, "Product name mismatch with expected product context")
 
+        if product_name and not variant_matches and source_tier not in {"official", "major_retailer"}:
+            return self._log_rejection(validation_context, "Product page missing expected variant tokens")
+
         if (
             product_name
             and brand
-            and not self._matching.has_specific_token_overlap(product_name, extracted_name, brand)
-            and not self._scoring.is_trusted_retailer(source_domain)
+            and not specific_token_overlap
+            and source_tier not in {"official", "major_retailer"}
             and confidence < 0.9
         ):
             return self._log_rejection(validation_context, "Product title missing specific expected variant tokens")
 
+        combined = (
+            f"{source_url} {extracted_name} {extracted_brand} "
+            f"{description} {size_metrics}"
+        ).lower()
+        has_exact_identifier = bool(sku) and sku.lower() in combined
+
+        if source_tier == "marketplace" and not has_exact_identifier:
+            return self._log_rejection(validation_context, "Marketplace result missing exact identifier evidence")
+
+        if not brand and not extracted_brand and source_tier not in {"official", "major_retailer"} and not has_exact_identifier:
+            return self._log_rejection(validation_context, "Missing brand evidence for non-preferred source")
+
         if sku:
-            combined = (
-                f"{source_url} {extracted_name} {extracted_brand} "
-                f"{extraction_result.get('description') or ''} {extraction_result.get('size_metrics') or ''}"
-            ).lower()
-            if sku.lower() not in combined:
-                has_strong_signals = confidence >= max(0.8, self.confidence_threshold) and brand_matches and (
-                    not product_name or name_matches
+            if not has_exact_identifier:
+                has_brand_evidence = brand_matches if brand else bool(extracted_brand) or source_tier == "official"
+                has_variant_evidence = (not product_name) or variant_matches or specific_token_overlap
+                has_strong_signals = (
+                    confidence >= max(0.83, self.confidence_threshold)
+                    and has_brand_evidence
+                    and has_variant_evidence
+                    and source_tier != "marketplace"
                 )
                 if not has_strong_signals:
                     return self._log_rejection(validation_context, "SKU not found and weak match signals")

@@ -152,6 +152,33 @@ def test_prepare_search_results_keeps_best_non_whitelisted_pdp_when_brand_presen
     assert prepared[0]["url"] == "https://independentpet.com/products/acme-squeaky-ball-12345"
 
 
+def test_prepare_search_results_demotes_marketplaces_below_official_brand_pages() -> None:
+    scraper = AISearchScraper(prefer_manufacturer=True)
+    results = [
+        {
+            "url": "https://www.ebay.com/itm/1234567890",
+            "title": "NutriSource Ocean Select Entree Dog Food 26LB",
+            "description": "eBay listing for NutriSource Ocean Select Entree",
+        },
+        {
+            "url": "https://nutrisourcepetfoods.com/our-food/ocean-select-entree/",
+            "title": "Ocean Select Entree Dog Food | NutriSource",
+            "description": "Official NutriSource product page for Ocean Select Entree dog food",
+        },
+    ]
+
+    prepared = scraper._scoring.prepare_search_results(
+        search_results=results,
+        sku="073893281016",
+        brand="NutriSource",
+        product_name="Ocean Select Entree Dog Food",
+        category="Dog Food",
+        prefer_manufacturer=True,
+    )
+
+    assert prepared[0]["url"] == "https://nutrisourcepetfoods.com/our-food/ocean-select-entree/"
+
+
 def test_scraper_passes_runtime_api_key_to_search_client(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
@@ -260,6 +287,100 @@ def test_scrape_product_aggregates_candidates_across_query_variants() -> None:
     assert result.url == "https://acmepets.com/products/12345-squeaky-ball"
 
 
+def test_scrape_products_batch_prefers_previously_accepted_cohort_domain() -> None:
+    class CohortSearchClient:
+        async def search(self, query: str) -> tuple[list[dict[str, Any]], str | None]:
+            lowered = query.lower()
+            if "small" in lowered:
+                return (
+                    [
+                        {
+                            "url": "https://petswarehouse.com/products/acme-pads-small",
+                            "title": "Acme Pads Small 10 Count",
+                            "description": "Acme Pads Small 10 Count with add to cart",
+                        },
+                        {
+                            "url": "https://countrymax.com/acme-pads-small",
+                            "title": "Acme Pads Small 10 Count",
+                            "description": "Acme Pads Small 10 Count with add to cart",
+                        },
+                    ],
+                    None,
+                )
+
+            return (
+                [
+                    {
+                        "url": "https://countrymax.com/acme-pads-large",
+                        "title": "Acme Pads Large 20 Count",
+                        "description": "Acme Pads Large 20 Count with add to cart",
+                    },
+                    {
+                        "url": "https://petswarehouse.com/products/acme-pads-large",
+                        "title": "Acme Pads Large 20 Count",
+                        "description": "Acme Pads Large 20 Count with add to cart",
+                    },
+                ],
+                None,
+            )
+
+        async def search_with_cost(self, query: str) -> tuple[list[dict[str, Any]], str | None, float]:
+            results, error = await self.search(query)
+            return results, error, 0.0
+
+    class CohortScraper(AISearchScraper):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self._search_client = CohortSearchClient()
+
+        async def _extract_product_data(
+            self,
+            url: str,
+            sku: str,
+            product_name: str | None,
+            brand: str | None,
+        ) -> dict[str, object]:
+            count = "10 Count" if "small" in url else "20 Count"
+            size_metrics = "10ct" if "small" in url else "20ct"
+            return {
+                "success": True,
+                "product_name": product_name or "Acme Pads",
+                "brand": brand,
+                "description": f"{product_name} {count}",
+                "size_metrics": size_metrics,
+                "images": [f"{url}/image.jpg"],
+                "categories": ["Cat Supplies"],
+                "confidence": 0.87,
+            }
+
+    scraper = CohortScraper(confidence_threshold=0.7)
+
+    results = asyncio.run(
+        scraper.scrape_products_batch(
+            [
+                {
+                    "sku": "SKU-SMALL",
+                    "product_name": "Acme Pads Small 10 Count",
+                    "brand": "Acme",
+                    "category": "Cat Supplies",
+                },
+                {
+                    "sku": "SKU-LARGE",
+                    "product_name": "Acme Pads Large 20 Count",
+                    "brand": "Acme",
+                    "category": "Cat Supplies",
+                },
+            ],
+            max_concurrency=2,
+        )
+    )
+
+    assert [result.url for result in results] == [
+        "https://petswarehouse.com/products/acme-pads-small",
+        "https://petswarehouse.com/products/acme-pads-large",
+    ]
+
+
 def test_scrape_product_rejects_unrelated_result() -> None:
     class StubCrawl4AIExtractor:
         async def extract(
@@ -305,8 +426,10 @@ def test_scrape_product_rejects_unrelated_result() -> None:
             sku: str,
             brand: str | None,
             product_name: str | None,
+            cost_context=None,
+            preferred_domains: list[str] | None = None,
         ) -> str | None:
-            _ = sku, brand, product_name
+            _ = sku, brand, product_name, cost_context, preferred_domains
             return search_results[0]["url"] if search_results else None
 
         def _heuristic_source_selection(
@@ -316,8 +439,9 @@ def test_scrape_product_rejects_unrelated_result() -> None:
             brand: str | None = None,
             product_name: str | None = None,
             category: str | None = None,
+            preferred_domains: list[str] | None = None,
         ) -> str | None:
-            _ = sku, brand, product_name, category
+            _ = sku, brand, product_name, category, preferred_domains
             return search_results[0]["url"] if search_results else None
 
     scraper = StubScraper(confidence_threshold=0.7)
