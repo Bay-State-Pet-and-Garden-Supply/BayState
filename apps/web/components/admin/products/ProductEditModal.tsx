@@ -42,6 +42,7 @@ interface Brand {
 interface Category {
     id: string;
     name: string;
+    breadcrumb?: string;
 }
 
 interface ProductPetType {
@@ -204,7 +205,12 @@ export function ProductEditModal({
                 }
                 if (responses[1].ok) {
                     const data = await responses[1].json();
-                    setCategories(data.categories || []);
+                    setCategories(
+                        (data.categories || []).map((category: Category) => ({
+                            ...category,
+                            name: category.breadcrumb || category.name,
+                        }))
+                    );
                 }
                 
                 if (!isBulkEdit && responses[2] && responses[2].ok) {

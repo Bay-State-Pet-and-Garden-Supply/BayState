@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { normalizeCategoryOptions } from '@/lib/facets/normalization';
+import {
+  buildTaxonomyNodes,
+  type TaxonomyCategoryRecord,
+} from '@/lib/taxonomy';
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdminAuth();
@@ -89,5 +92,19 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ categories: normalizeCategoryOptions(data || []) });
+  const categoryRows = (data || []) as TaxonomyCategoryRecord[];
+  const taxonomyNodes = buildTaxonomyNodes(categoryRows);
+  const nodeById = new Map(taxonomyNodes.map((node) => [node.id, node]));
+
+  return NextResponse.json({
+    categories: categoryRows.map((category) => {
+      const node = nodeById.get(category.id);
+      return {
+        ...category,
+        breadcrumb: node?.breadcrumb ?? category.name,
+        depth: node?.depth ?? 0,
+        is_leaf: node?.is_leaf ?? true,
+      };
+    }),
+  });
 }

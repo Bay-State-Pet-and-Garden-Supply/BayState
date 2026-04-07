@@ -73,12 +73,15 @@ describe('brand exclusion in prompt-builder', () => {
         });
 
         it('includes source trust and keyword guidance', () => {
-            const prompt = generateSystemPrompt(['Dog Supplies']);
+            const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
 
             expect(prompt).toMatch(/highest trust.*shopsite_input/i);
             expect(prompt).toMatch(/marketplace/i);
             expect(prompt).toMatch(/search_keywords/i);
-            expect(prompt).toContain('Allowed category values: Dog Supplies');
+            expect(prompt).toContain('Allowed category values:');
+            expect(prompt).toContain('Dog > Food > Dry Food');
+            expect(prompt).toMatch(/deepest valid leaf taxonomy breadcrumb/i);
+            expect(prompt).toMatch(/ortho home defense/i);
         });
     });
 });

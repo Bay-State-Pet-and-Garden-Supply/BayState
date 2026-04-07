@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { Fragment } from 'react';
 import { Home, ShieldCheck, Info } from 'lucide-react';
 import Link from 'next/link';
 import { type Metadata } from 'next';
@@ -31,6 +32,7 @@ import { getRecentlyViewedProducts } from '@/lib/storefront/recently-viewed';
 import { getProductPreorderData } from '@/lib/storefront/preorder';
 import { formatCurrency } from '@/lib/utils';
 import type { Product } from '@/lib/types';
+import { getNavCategories } from '@/lib/data';
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -160,7 +162,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [userRole, relatedByPetType, reviews, reviewStats, questions, recentlyViewed, hasReviewed, preorderData] = await Promise.all([
+  const [userRole, relatedByPetType, reviews, reviewStats, questions, recentlyViewed, hasReviewed, preorderData, navCategories] = await Promise.all([
     user ? getUserRole(user.id) : null,
     getRelatedProductsByPetType(product.id, 4),
     getApprovedReviews(product.id),
@@ -169,6 +171,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     getRecentlyViewedProducts(product.id, 6),
     hasUserReviewedProduct(product.id),
     getProductPreorderData(product.id),
+    getNavCategories(),
   ]);
 
   const isLoggedIn = !!user;
@@ -189,6 +192,29 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     out_of_stock: 'bg-red-100 text-red-800',
     pre_order: 'bg-blue-100 text-blue-800',
   }[product.stock_status];
+
+  const categoryById = new Map(navCategories.map((category) => [category.id, category]));
+  const primaryCategoryTrail: Array<{
+    id: string;
+    name: string;
+    slug: string;
+  }> = [];
+
+  if (product.primary_category) {
+    let currentCategory = categoryById.get(product.primary_category.id);
+
+    while (currentCategory) {
+      primaryCategoryTrail.unshift({
+        id: currentCategory.id,
+        name: currentCategory.name,
+        slug: currentCategory.slug,
+      });
+
+      currentCategory = currentCategory.parent_id
+        ? categoryById.get(currentCategory.parent_id)
+        : undefined;
+    }
+  }
 
   // Transform product for the edit modal (add missing fields with defaults)
   const editableProduct = {
@@ -224,16 +250,16 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           <BreadcrumbItem>
             <BreadcrumbLink href="/products">Products</BreadcrumbLink>
           </BreadcrumbItem>
-          {product.primary_category && (
-            <>
+          {primaryCategoryTrail.map((category) => (
+            <Fragment key={category.id}>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink href={`/products?category=${product.primary_category.slug}`} className="capitalize">
-                  {product.primary_category.name}
+                <BreadcrumbLink href={`/products?category=${category.slug}`} className="capitalize">
+                  {category.name}
                 </BreadcrumbLink>
               </BreadcrumbItem>
-            </>
-          )}
+            </Fragment>
+          ))}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage className="font-medium">

@@ -1,4 +1,9 @@
 import { createPublicClient } from '@/lib/supabase/server';
+import {
+  buildTaxonomyNodes,
+  type TaxonomyCategoryNode,
+  type TaxonomyCategoryRecord,
+} from '@/lib/taxonomy';
 
 // Re-export types from lib/types.ts for backward compatibility
 export type { Brand, Product, Service, Category } from '@/lib/types';
@@ -44,15 +49,7 @@ export async function getBrands(): Promise<Brand[]> {
 /**
  * Fetches top-level categories for navigation.
  */
-export async function getNavCategories(): Promise<Array<{
-  id: string;
-  name: string;
-  slug: string | null;
-  parent_id: string | null;
-  display_order: number | null;
-  image_url: string | null;
-  is_featured: boolean | null;
-}>> {
+export async function getNavCategories(): Promise<TaxonomyCategoryNode[]> {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('categories')
@@ -64,7 +61,7 @@ export async function getNavCategories(): Promise<Array<{
     return [];
   }
 
-  return data || [];
+  return buildTaxonomyNodes((data || []) as TaxonomyCategoryRecord[]);
 }
 
 /**

@@ -6,6 +6,10 @@ import {
   writeJsonLines,
   type GoldenDatasetRecord,
 } from './gemini-migration-utils';
+import {
+  buildTaxonomyNodes,
+  type TaxonomyCategoryRecord,
+} from '@/lib/taxonomy';
 
 type ProductsIngestionRow = {
   sku: string;
@@ -32,8 +36,8 @@ type StorefrontProductRow = {
   product_categories:
     | Array<{
       category?:
-        | { name?: string | null }
-        | Array<{ name?: string | null }>
+        | { id?: string | null; name?: string | null }
+        | Array<{ id?: string | null; name?: string | null }>
         | null;
     }>
     | null;
@@ -124,39 +128,49 @@ function extractBrandName(value: StorefrontProductRow['brand']): string | undefi
   return toOptionalString(value?.name);
 }
 
-function extractCategoryNames(value: StorefrontProductRow['product_categories']): string[] {
-  const categoryNames: string[] = [];
+function extractCategoryBreadcrumbs(
+  value: StorefrontProductRow['product_categories'],
+  breadcrumbById: Map<string, string>
+): string[] {
+  const categoryBreadcrumbs: string[] = [];
 
   for (const entry of value ?? []) {
     const category = entry.category;
     if (Array.isArray(category)) {
       for (const item of category) {
-        const name = toOptionalString(item?.name);
-        if (name) {
-          categoryNames.push(name);
+        const breadcrumb = item?.id ? breadcrumbById.get(item.id) : undefined;
+        const fallbackName = toOptionalString(item?.name);
+        if (breadcrumb) {
+          categoryBreadcrumbs.push(breadcrumb);
+        } else if (fallbackName) {
+          categoryBreadcrumbs.push(fallbackName);
         }
       }
       continue;
     }
 
-    const name = toOptionalString(category?.name);
-    if (name) {
-      categoryNames.push(name);
+    const breadcrumb = category?.id ? breadcrumbById.get(category.id) : undefined;
+    const fallbackName = toOptionalString(category?.name);
+    if (breadcrumb) {
+      categoryBreadcrumbs.push(breadcrumb);
+    } else if (fallbackName) {
+      categoryBreadcrumbs.push(fallbackName);
     }
   }
 
-  return Array.from(new Set(categoryNames));
+  return Array.from(new Set(categoryBreadcrumbs));
 }
 
 function buildStorefrontFallbackOutput(
   row: StorefrontProductRow | undefined,
+  breadcrumbById: Map<string, string>,
   confidenceScore: number | null
 ): GoldenDatasetRecord['expected_output'] | null {
   if (!row) {
     return null;
   }
 
-  const categoryNames = extractCategoryNames(row.product_categories);
+  const categoryNames = extractCategoryBreadcrumbs(row.product_categories, breadcrumbById);
   const shopsitePages = toOptionalDelimitedString(row.shopsite_pages);
 
   return pickExpectedOutput({
@@ -223,6 +237,20 @@ async function main(): Promise<void> {
 
   const rows = (data ?? []) as ProductsIngestionRow[];
   const storefrontSkus = rows.map((row) => row.sku);
+  const { data: taxonomyRows, error: taxonomyError } = await supabase
+    .from('categories')
+    .select('id, name, slug, parent_id, description, display_order, image_url, is_featured');
+
+  if (taxonomyError) {
+    throw new Error(taxonomyError.message);
+  }
+
+  const breadcrumbById = new Map(
+    buildTaxonomyNodes((taxonomyRows || []) as TaxonomyCategoryRecord[]).map((category) => [
+      category.id,
+      category.breadcrumb,
+    ])
+  );
   const { data: storefrontProducts, error: storefrontError } = await supabase
     .from('products')
     .select(`
@@ -234,7 +262,7 @@ async function main(): Promise<void> {
       weight,
       shopsite_pages,
       brand:brands(name),
-      product_categories(category:categories(name))
+      product_categories(category:categories(id, name))
     `)
     .in('sku', storefrontSkus);
 
@@ -259,7 +287,11 @@ async function main(): Promise<void> {
 
     const consolidatedExpectedOutput = pickExpectedOutput(row.consolidated, row.confidence_score);
     const expectedOutput = consolidatedExpectedOutput
-      ?? buildStorefrontFallbackOutput(storefrontBySku.get(row.sku), row.confidence_score);
+      ?? buildStorefrontFallbackOutput(
+        storefrontBySku.get(row.sku),
+        breadcrumbById,
+        row.confidence_score
+      );
     if (!expectedOutput) {
       emptyExpectedCount += 1;
       continue;

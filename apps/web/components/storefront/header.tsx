@@ -51,7 +51,13 @@ export function StorefrontHeader({
 }: {
   user?: User | null;
   userRole?: string | null;
-  categories: Array<{ id: string; name: string; slug: string | null; parent_id?: string | null }>;
+  categories: Array<{
+    id: string;
+    name: string;
+    slug: string | null;
+    parent_id?: string | null;
+    is_featured?: boolean | null;
+  }>;
   petTypes: Array<{ id: string; name: string; icon: string | null }>;
   brands: Array<{
     id: string;
@@ -121,19 +127,7 @@ export function StorefrontHeader({
     return { topLevel, childrenMap };
   }, [categories]);
 
-  // Which main departments to show in the top nav
-  const primaryNavNames = [
-    "Dog", 
-    "Cat", 
-    "Farm Animal Department", 
-    "Lawn & Garden Department", 
-    "Wild Bird", 
-    "Small Pet"
-  ];
-  
-  const primaryNavCategories = primaryNavNames
-    .map(name => topLevel.find(c => c.name === name))
-    .filter(Boolean) as typeof categories;
+  const primaryNavCategories = topLevel.filter((category) => category.is_featured);
 
   return (
     <>
@@ -230,8 +224,7 @@ export function StorefrontHeader({
                   const children = childrenMap.get(parent.id) || [];
                   if (children.length === 0) return null;
 
-                  // Clean up name for display (e.g. "Farm Animal Department" -> "Farm Animal")
-                  const displayName = parent.name.replace(" Department", "");
+                  const displayName = parent.name;
 
                   // Split into columns of 8
                   const chunkSize = 8;
@@ -249,8 +242,8 @@ export function StorefrontHeader({
                         <div className="flex gap-8 p-6 w-max min-w-[400px] text-zinc-900 bg-white border shadow-lg rounded-b-md">
                           {columns.map((col, idx) => (
                             <div key={idx} className="flex flex-col gap-3 min-w-[180px]">
-                              {/* Show header only on first column, mock others to align grid */}
-                              {idx === 0 ? (
+                                {/* Show header only on first column, mock others to align grid */}
+                                {idx === 0 ? (
                                 <h4 className="font-black text-lg mb-2 border-b-2 border-primary/20 pb-2 text-zinc-800 tracking-tight">
                                   {displayName}
                                 </h4>
@@ -261,18 +254,13 @@ export function StorefrontHeader({
                               )}
                               
                               {col.map(child => {
-                                // Strip parent prefix for cleaner menu (e.g. "Dog Food" -> "Food")
-                                const childDisplayName = child.name.startsWith(displayName + " ") 
-                                  ? child.name.replace(displayName + " ", "") 
-                                  : child.name;
-
                                 return (
                                   <NavigationMenuLink key={child.id} asChild>
                                     <Link
                                       href={`/products?category=${child.slug}`}
                                       className="text-[14px] font-medium text-zinc-600 hover:text-primary hover:translate-x-1 transition-all"
                                     >
-                                      {childDisplayName}
+                                      {child.name}
                                     </Link>
                                   </NavigationMenuLink>
                                 );
