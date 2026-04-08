@@ -31,9 +31,9 @@ class MatchingUtils:
     VARIANT_UNIT_ALIASES = {
         "count": "ct",
         "ct": "ct",
-        "pack": "pk",
-        "packs": "pk",
-        "pk": "pk",
+        "pack": "ct",
+        "packs": "ct",
+        "pk": "ct",
         "inch": "in",
         "inches": "in",
         "in": "in",
@@ -41,6 +41,19 @@ class MatchingUtils:
         "lb": "lb",
         "lbs": "lb",
     }
+
+    @staticmethod
+    def _normalize_dimension_token(first: str, second: str) -> str:
+        """Normalize WxH dimension tokens so reversed dimensions still match."""
+        try:
+            first_value = int(first)
+            second_value = int(second)
+        except ValueError:
+            return f"{first}x{second}"
+
+        if first_value <= second_value:
+            return f"{first}x{second}"
+        return f"{second}x{first}"
 
     def normalize_token_text(self, value: Optional[str]) -> str:
         """Normalize text for token comparison."""
@@ -59,14 +72,19 @@ class MatchingUtils:
             return set()
 
         normalized = re.sub(r"\b(inches?|inch)\b", "in", text)
+        normalized = re.sub(r'(?<=\d)\s*["″”]\s*', " in ", normalized)
         tokens: set[str] = set()
+        dimension_pattern = re.compile(r"(?<!\d)(\d{1,4})\s*(?:in)?\s*[x×]\s*(\d{1,4})(?:\s*in)?(?!\d)")
+        normalized_without_dimensions = normalized
 
-        for first, second in re.findall(r"(?<!\d)(\d{1,4})\s*(?:in)?\s*[x×]\s*(\d{1,4})(?:\s*in)?(?!\d)", normalized):
-            tokens.add(f"{first}x{second}")
+        for match in dimension_pattern.finditer(normalized):
+            first, second = match.groups()
+            tokens.add(self._normalize_dimension_token(first, second))
+            normalized_without_dimensions = normalized_without_dimensions.replace(match.group(0), " ")
 
         for number, unit in re.findall(
             r"(?<!\d)(\d{1,4})\s*(ct|count|pack|packs|pk|lb|lbs|oz|inch|inches|in)\b",
-            normalized,
+            normalized_without_dimensions,
         ):
             normalized_unit = self.VARIANT_UNIT_ALIASES.get(unit, unit)
             tokens.add(f"{number}{normalized_unit}")

@@ -1,6 +1,7 @@
 import pytest
 
 from scrapers.ai_search import AISearchScraper
+from scrapers.ai_search.matching import MatchingUtils
 
 
 @pytest.fixture
@@ -9,6 +10,15 @@ def scraper():
 
 
 class TestSKUValidation:
+    def test_variant_tokens_normalize_count_pack_aliases_and_quoted_dimensions(self):
+        matching = MatchingUtils()
+
+        assert matching.extract_variant_tokens('11" x 17" (30 Count)') == {"11x17", "30ct"}
+        assert matching.has_variant_token_overlap(
+            "Wee-wee Cat Pads 28 X 30 in. 10 ct.",
+            "WEE-WEE CAT PADS | GENTLE FRESH SCENT | 10 PK",
+        )
+
     def test_accepts_when_sku_on_page(self, scraper):
         result = scraper._validator.validate_extraction_match(
             extraction_result={
@@ -125,6 +135,24 @@ class TestSKUValidation:
             product_name="WEE WEE CAT PADS 28X 30 10CT",
             brand="FOUR PAWS",
             source_url="https://www.bradleycaldwell.com/wee-wee-cat-pads-10-pk-436324",
+        )
+        assert result == (True, "ok")
+
+    def test_accepts_bradley_meta_only_page_when_pack_alias_matches_expected_count(self, scraper):
+        result = scraper._validator.validate_extraction_match(
+            extraction_result={
+                "success": True,
+                "product_name": "WEE-WEE CAT PADS | GENTLE FRESH SCENT | 10 PK",
+                "brand": "FOUR PAWS",
+                "description": "WEE-WEE CAT PADS | GENTLE FRESH SCENT | 10 PK | 436325",
+                "size_metrics": "10 PK",
+                "confidence": 0.98,
+                "images": ["https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16202/19479/436325__83576.1763035420.jpg?compression=lossy"],
+            },
+            sku="045663976903",
+            product_name="Wee-wee Cat Pads 28 X 30 in. 10 ct.",
+            brand="Four Paws",
+            source_url="https://www.bradleycaldwell.com/wee-wee-cat-pads-gentle-fresh-scent-10-pk-436325",
         )
         assert result == (True, "ok")
 
