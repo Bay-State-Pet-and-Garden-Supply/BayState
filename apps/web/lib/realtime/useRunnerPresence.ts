@@ -7,9 +7,12 @@
  */
 
 import { useEffect, useMemo, useCallback, useState, useRef } from "react";
-import { RealtimeChannel } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { RunnerPresence } from "./types";
+import {
+  useRealtimeChannel,
+  type RealtimePresenceState,
+} from "./useRealtimeChannel";
 
 const CHANNEL_RUNNER_PRESENCE = "runner-presence";
 
@@ -65,6 +68,45 @@ interface ApiRunnerData {
   last_seen?: string;
   active_jobs?: number;
   enabled: boolean;
+}
+
+function isRunnerStatus(value: unknown): value is RunnerPresence["status"] {
+  return value === "online" || value === "busy" || value === "idle" || value === "offline";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isRunnerPresence(value: unknown): value is RunnerPresence {
+  return (
+    isRecord(value) &&
+    typeof value.runner_id === "string" &&
+    typeof value.runner_name === "string" &&
+    isRunnerStatus(value.status) &&
+    typeof value.active_jobs === "number" &&
+    typeof value.last_seen === "string"
+  );
+}
+
+function extractRunnersFromPresenceState(
+  presenceState: RealtimePresenceState,
+): Record<string, RunnerPresence> {
+  const runners: Record<string, RunnerPresence> = {};
+
+  Object.values(presenceState).forEach((presences) => {
+    if (!Array.isArray(presences) || presences.length === 0) {
+      return;
+    }
+
+    const presence = presences[0];
+
+    if (isRunnerPresence(presence)) {
+      runners[presence.runner_id] = presence;
+    }
+  });
+
+  return runners;
 }
 
 /**
@@ -133,22 +175,11 @@ export function useRunnerPresence(
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const callbacksRef = useRef({ onJoin, onLeave, onSync });
+  const trackedChannelRef = useRef<RealtimeChannel | null>(null);
   callbacksRef.current.onJoin = onJoin;
   callbacksRef.current.onLeave = onLeave;
   callbacksRef.current.onSync = onSync;
-
-  /**
-   * Get the Supabase client (lazy initialization)
-   */
-  const getSupabase = useCallback(() => {
-    if (!supabaseRef.current) {
-      supabaseRef.current = createClient();
-    }
-    return supabaseRef.current;
-  }, []);
 
   /**
    * Fetch initial runners from the API endpoint
@@ -195,136 +226,154 @@ export function useRunnerPresence(
   }, []);
 
   /**
-   * Connect to the presence channel and subscribe to events
+   * Process presence sync events from the unified realtime channel
    */
-  const connect = useCallback(() => {
-    const supabase = getSupabase();
+  const handlePresenceSync = useCallback((presenceState: RealtimePresenceState) => {
+    setState((prev) => {
+      const syncedRunners = extractRunnersFromPresenceState(presenceState);
+      const nextOnlineIds = new Set(Object.keys(syncedRunners));
+      const nextRunners = { ...prev.runners };
+      const joined: Array<{ runnerId: string; presence: RunnerPresence }> = [];
+      const leftIds: string[] = [];
+      const { onJoin, onLeave, onSync } = callbacksRef.current;
 
-    // Don't create duplicate channels
-    if (channelRef.current) {
-      return;
-    }
+      Object.entries(syncedRunners).forEach(([runnerId, presence]) => {
+        nextRunners[runnerId] = presence;
 
-    try {
-      // Use private channel for RLS-based authorization (Supabase Realtime v2)
-      const channel = supabase.channel(channelName, {
-        config: {
-          private: true,
-          presence: {
-            key: "admin-dashboard",
-          },
-        },
+        if (!prev.onlineIds.has(runnerId)) {
+          joined.push({ runnerId, presence });
+        }
       });
 
-      // Set up presence event handlers
-      channel
-        .on("presence", { event: "sync" }, () => {
-          const presenceState = channel.presenceState();
-          const newRunners: Record<string, RunnerPresence> = {};
-          const newOnlineIds = new Set<string>();
+      prev.onlineIds.forEach((runnerId) => {
+        if (nextOnlineIds.has(runnerId)) {
+          return;
+        }
 
-          // Process presence state
-          setState((prev) => {
-            const newRunners: Record<string, RunnerPresence> = {};
-            const newOnlineIds = new Set<string>();
-            const { onJoin, onLeave, onSync } = callbacksRef.current;
+        leftIds.push(runnerId);
 
-            Object.entries(presenceState).forEach(([key, presences]) => {
-              // key is typically the runner_id or 'admin-dashboard'
-              // We only care about actual runner presence data
-              if (Array.isArray(presences) && presences.length > 0) {
-                const presence = presences[0] as unknown as RunnerPresence;
-                if (
-                  presence &&
-                  typeof presence === "object" &&
-                  "runner_id" in presence
-                ) {
-                  newRunners[presence.runner_id] = presence;
-                  newOnlineIds.add(presence.runner_id);
+        const previousRunner = nextRunners[runnerId];
 
-                  // Track join events
-                  if (prev.runners[presence.runner_id] === undefined) {
-                    onJoin?.(presence.runner_id, presence);
-                  }
-                }
-              }
-            });
+        if (!previousRunner) {
+          return;
+        }
 
-            // Track leave events
-            const previousIds = prev.onlineIds;
-            previousIds.forEach((id) => {
-              if (!newOnlineIds.has(id)) {
-                onLeave?.(id);
-              }
-            });
+        nextRunners[runnerId] = {
+          ...previousRunner,
+          status: "offline",
+          active_jobs: 0,
+          last_seen: new Date().toISOString(),
+        };
+      });
 
-            onSync?.(newRunners);
+      joined.forEach(({ runnerId, presence }) => {
+        onJoin?.(runnerId, presence);
+      });
 
-            return {
-              ...prev,
-              runners: { ...prev.runners, ...newRunners },
-              onlineIds: newOnlineIds,
-              isConnected: true,
-              error: null,
-            };
-          });
-        })
-        .on("presence", { event: "join" }, () => {
-          // Join events handled via sync
-        })
-        .on("presence", { event: "leave" }, () => {
-          // Leave events handled via sync
-        })
-        .subscribe(async (status) => {
-          if (status === "SUBSCRIBED") {
-            // Track our own presence (admin dashboard)
-            await channel.track({
-              user: "admin-dashboard",
-              online_at: new Date().toISOString(),
-            });
-          }
-        });
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to connect");
-      setState((prev) => ({ ...prev, error, isConnected: false }));
-    }
-  }, [channelName, getSupabase]);
+      leftIds.forEach((runnerId) => {
+        onLeave?.(runnerId);
+      });
+
+      onSync?.(syncedRunners);
+
+      return {
+        ...prev,
+        runners: nextRunners,
+        onlineIds: nextOnlineIds,
+        error: null,
+      };
+    });
+  }, []);
+
+  const {
+    connectionState,
+    lastError,
+    connect: connectToChannel,
+    disconnect: disconnectFromChannel,
+    getChannel,
+  } = useRealtimeChannel({
+    channelName,
+    autoConnect: false,
+    onMessage: () => undefined,
+    onPresenceSync: handlePresenceSync,
+  });
 
   /**
-   * Disconnect from the presence channel
+   * Connect to the presence channel through the unified realtime hook
+   */
+  const connect = useCallback(() => {
+    connectToChannel();
+    setState((prev) =>
+      prev.isConnected ? prev : { ...prev, isConnected: true, error: null },
+    );
+  }, [connectToChannel]);
+
+  /**
+   * Disconnect from the presence channel through the unified realtime hook
    */
   const disconnect = useCallback(() => {
-    if (channelRef.current) {
-      const supabase = getSupabase();
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
+    trackedChannelRef.current = null;
+    disconnectFromChannel();
     setState((prev) =>
       prev.isConnected ? { ...prev, isConnected: false } : prev,
     );
-  }, [getSupabase]);
+  }, [disconnectFromChannel]);
 
   /**
    * Manually trigger a presence sync
    */
   const sync = useCallback(() => {
-    if (channelRef.current) {
-      // Trigger sync by tracking current state again
-      channelRef.current.track({
+    const channel = getChannel();
+
+    if (channel) {
+      void channel.track({
         user: "admin-dashboard",
         synced_at: new Date().toISOString(),
       });
     }
-  }, []);
+  }, [getChannel]);
 
   const fetchInitialRunnersRef = useRef(fetchInitialRunners);
   const connectRef = useRef(connect);
-  const disconnectRef = useRef(disconnect);
 
   fetchInitialRunnersRef.current = fetchInitialRunners;
   connectRef.current = connect;
-  disconnectRef.current = disconnect;
+
+  useEffect(() => {
+    const isConnected = connectionState === "connecting" || connectionState === "connected";
+
+    setState((prev) => {
+      if (prev.isConnected === isConnected && prev.error === lastError) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        isConnected,
+        error: lastError,
+      };
+    });
+  }, [connectionState, lastError]);
+
+  useEffect(() => {
+    if (connectionState !== "connected") {
+      trackedChannelRef.current = null;
+      return;
+    }
+
+    const channel = getChannel();
+
+    if (!channel || trackedChannelRef.current === channel) {
+      return;
+    }
+
+    trackedChannelRef.current = channel;
+
+    void channel.track({
+      user: "admin-dashboard",
+      online_at: new Date().toISOString(),
+    });
+  }, [connectionState, getChannel]);
 
   /**
    * Get a specific runner's presence data
@@ -385,10 +434,8 @@ export function useRunnerPresence(
 
     void init();
 
-    // Cleanup on unmount
     return () => {
       isActive = false;
-      disconnectRef.current();
     };
   }, [autoConnect, fetchInitial]);
 

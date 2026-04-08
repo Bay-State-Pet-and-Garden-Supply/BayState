@@ -255,7 +255,7 @@ describe('useRunnerPresence', () => {
         await Promise.resolve();
       });
 
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toEqual(new Error('Network error'));
       expect(result.current.isLoading).toBe(false);
     });
   });
