@@ -139,6 +139,7 @@ export function useLogSubscription(
             sharedChannel.listeners.delete(handlePersistedLog);
 
             if (sharedChannel.listeners.size === 0 && sharedLogChannels.get(channelName) === sharedChannel) {
+                createClient().removeChannel(sharedChannel.channel);
                 sharedLogChannels.delete(channelName);
             }
         };
@@ -157,8 +158,8 @@ export function useLogSubscription(
                 handleLogMessage(payload as LogRecord, false);
             }
         },
-        onError: (channelError) => {
-            console.error('[useLogSubscription] Channel error:', channelError);
+        onError: () => {
+            // Error handling delegated to useRealtimeChannel state
         },
     });
 

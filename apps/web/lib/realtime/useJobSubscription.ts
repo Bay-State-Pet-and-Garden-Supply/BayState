@@ -437,8 +437,8 @@ export function useJobSubscription(
         handleRealtimePayload(payload as JobRealtimePayload);
       }
     },
-    onError: (channelError) => {
-      console.error('[useJobSubscription] Channel error:', channelError);
+    onError: () => {
+      // Error handling delegated to useRealtimeChannel state
     },
   });
 
@@ -497,9 +497,8 @@ export function useJobSubscription(
         counts: calculateCounts(nextJobs),
         latestJob: getLatestJob(nextJobs),
       });
-    } catch (error) {
-      const refetchError = error instanceof Error ? error : new Error('Failed to refetch jobs');
-      console.error('[useJobSubscription] Refetch error:', refetchError);
+    } catch {
+      // Error handling via refetch return value
     }
   }, [getSupabase, normalizeStatus]);
 
