@@ -187,10 +187,8 @@ export function useRunnerPresence(
         runners: initialRunners,
       }));
     } catch (err) {
-      console.error(
-        "[useRunnerPresence] Failed to fetch initial runners:",
-        err,
-      );
+      const error = err instanceof Error ? err : new Error("Failed to fetch initial runners");
+      setState((prev) => ({ ...prev, error }));
     } finally {
       setIsLoading(false);
     }
@@ -271,11 +269,11 @@ export function useRunnerPresence(
             };
           });
         })
-        .on("presence", { event: "join" }, ({ key, newPresences }) => {
-          console.log("[useRunnerPresence] Runner joined:", key, newPresences);
+        .on("presence", { event: "join" }, () => {
+          // Join events handled via sync
         })
-        .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
-          console.log("[useRunnerPresence] Runner left:", key, leftPresences);
+        .on("presence", { event: "leave" }, () => {
+          // Leave events handled via sync
         })
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
@@ -286,13 +284,8 @@ export function useRunnerPresence(
             });
           }
         });
-
-      channelRef.current = channel;
-
-      setState((prev) => ({ ...prev, isConnected: true, error: null }));
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to connect");
-      console.error("[useRunnerPresence] Connection error:", error);
       setState((prev) => ({ ...prev, error, isConnected: false }));
     }
   }, [channelName, getSupabase]);
