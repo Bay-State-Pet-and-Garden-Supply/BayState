@@ -547,7 +547,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/lib/realtime/useRealtimeChannel.ts`
 
 
-- [ ] 6. Add connection state management and error handling
+- [x] 6. Add connection state management and error handling
 
   **What to do**:
   - Implement connection state tracking:
@@ -611,7 +611,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/lib/realtime/useRealtimeChannel.ts`
 
 
-- [ ] 7. Write comprehensive unit tests for unified hook
+- [x] 7. Write comprehensive unit tests for unified hook
 
   **What to do**:
   - Complete test coverage for `useRealtimeChannel`:

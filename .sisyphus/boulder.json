@@ -45,6 +45,24 @@
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
       "updated_at": "2026-04-08T18:41:39.629Z"
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "Add connection state management and error handling",
+      "session_id": "ses_291989f76ffeSyR0wMmDEz3TEG",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-08T18:43:12.242Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Write comprehensive unit tests for unified hook",
+      "session_id": "ses_291972ce0ffee3X4q6ITA3JoZr",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-08T18:50:14.038Z"
     }
   }
 }
