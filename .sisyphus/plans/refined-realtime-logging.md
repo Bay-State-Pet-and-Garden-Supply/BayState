@@ -362,7 +362,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/hooks/useRealtimeJobs.ts` (new shim)
 
 
-- [ ] 3. Write tests for backward compatibility shim
+- [x] 3. Write tests for backward compatibility shim
 
   **What to do**:
   - Write unit tests for the backward compatibility shim

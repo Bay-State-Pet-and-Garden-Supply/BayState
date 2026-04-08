@@ -18,6 +18,15 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "updated_at": "2026-04-08T18:17:19.643Z"
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "Write tests for backward compatibility shim",
+      "session_id": "ses_291ae89d8ffefCBM4oIV0PtYSf",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-08T18:21:27.593Z"
     }
   }
 }
