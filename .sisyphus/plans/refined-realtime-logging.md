@@ -411,7 +411,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/__tests__/hooks/useRealtimeJobs.shim.test.ts`
 
 
-- [ ] 4. Create unified useRealtimeChannel hook (TDD: RED phase)
+- [x] 4. Create unified useRealtimeChannel hook (TDD: RED phase)
 
   **What to do**:
   - Create `/apps/web/lib/realtime/useRealtimeChannel.ts`

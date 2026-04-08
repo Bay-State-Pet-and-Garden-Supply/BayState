@@ -27,6 +27,15 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "updated_at": "2026-04-08T18:21:27.593Z"
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "Create unified useRealtimeChannel hook (TDD: RED phase)",
+      "session_id": "ses_291a66de3ffexugloQ6B61WmSg",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-08T18:34:04.581Z"
     }
   }
 }
