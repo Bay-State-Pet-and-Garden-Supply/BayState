@@ -36,6 +36,15 @@
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
       "updated_at": "2026-04-08T18:34:04.581Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "Implement channel pooling and lifecycle management",
+      "session_id": "ses_2919f80cdffe9Qo3CU7v7ryXLe",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-08T18:41:39.629Z"
     }
   }
 }
