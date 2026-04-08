@@ -72,3 +72,12 @@ The following issues were found in the codebase but are pre-existing and unrelat
 ### Summary
 
 All cleanup tasks completed successfully. The realtime module has no TestLab references, no TODO comments, and comprehensive documentation. Build passes successfully.
+
+26. Re-running realtime QA on 2026-04-08 showed the documented Jest CLI example needs `--testPathPatterns` (plural) with the custom runner; the singular `--testPathPattern` flag now fails before tests execute.
+27. Current realtime verification is blocked by a real syntax error in `apps/web/lib/realtime/useJobBroadcasts.ts` at line 381: a stray extra `}, []);` breaks both Jest compilation and `next build`.
+28. `useRunnerPresence` is the main remaining gap against the “unified realtime hook” goal: it still instantiates Supabase channels directly and also forgets to persist the created channel in `channelRef.current`, which explains duplicate-channel and disconnect test failures.
+29. The realtime refactor still has at least one true silent failure path: `useJobSubscription.refetch()` swallows all errors with `catch {}`.
+30. The scraper-side queue/backpressure and broadcast circuit-breaker logic are present, but verification still fails because the current web build/test state is red and `JobLogTransport.broadcast()` assumptions are not satisfied by one unit test path.
+31. For fidelity reviews in this workspace, LSP can miss parse/runtime issues that `next build` and Jest catch immediately; compiler/test execution is the real gate for approval.
+32. `useRunnerPresence` currently diverges structurally from the unified-hook migration because it still manages a private Supabase channel rather than delegating through `useRealtimeChannel` like the other refactored hooks.
+33. A removed compatibility shim can still count as scope-complete for Tasks 2-3 when Task 18 explicitly deletes it and the codebase contains no remaining `useRealtimeJobs` imports; the decisive check becomes migration completion, not shim presence.

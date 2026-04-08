@@ -378,7 +378,6 @@ export function useJobBroadcasts(
   const handleRealtimeError = useCallback((error: Error) => {
     // Error is already tracked via useRealtimeChannel's lastError
   }, []);
-  }, []);
 
   const { connectionState, lastError, connect, disconnect } = useRealtimeChannel({
     channelName,
