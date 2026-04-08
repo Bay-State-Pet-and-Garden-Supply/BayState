@@ -27,6 +27,25 @@ class MatchingUtils:
         "lb",
         "lbs",
     }
+    BRAND_PREFIX_EXCLUDED_TOKENS = {
+        "new",
+        "best",
+        "premium",
+        "organic",
+        "product",
+        "products",
+        "cat",
+        "dog",
+        "pad",
+        "pads",
+        "litter",
+        "box",
+        "system",
+        "count",
+        "pack",
+        "pk",
+        "ct",
+    }
 
     VARIANT_UNIT_ALIASES = {
         "count": "ct",
@@ -100,6 +119,39 @@ class MatchingUtils:
         actual_variant_tokens = self.extract_variant_tokens(actual_text)
         return len(expected_variant_tokens.intersection(actual_variant_tokens)) > 0
 
+    @staticmethod
+    def _variant_token_kind(token: str) -> str:
+        if "x" in token:
+            return "dimension"
+        if token.endswith("ct"):
+            return "count"
+        if token.endswith("oz"):
+            return "weight"
+        if token.endswith("lb"):
+            return "weight"
+        if token.endswith("in"):
+            return "length"
+        return "other"
+
+    def has_conflicting_variant_tokens(self, expected_name: Optional[str], actual_text: Optional[str]) -> bool:
+        """Check whether actual text introduces a conflicting variant of the same kind."""
+        expected_variant_tokens = self.extract_variant_tokens(expected_name)
+        if not expected_variant_tokens:
+            return False
+
+        expected_by_kind = {
+            self._variant_token_kind(token): token
+            for token in expected_variant_tokens
+        }
+        actual_variant_tokens = self.extract_variant_tokens(actual_text)
+        for token in actual_variant_tokens:
+            token_kind = self._variant_token_kind(token)
+            expected_token = expected_by_kind.get(token_kind)
+            if expected_token and token != expected_token:
+                return True
+
+        return False
+
     def is_brand_match(
         self,
         expected_brand: Optional[str],
@@ -163,3 +215,58 @@ class MatchingUtils:
             return True
 
         return len(specific_expected.intersection(actual_tokens)) > 0
+
+    def _format_brand_tokens(self, tokens: list[str]) -> str:
+        return " ".join(token.upper() if token.isupper() and len(token) <= 4 else token.capitalize() for token in tokens)
+
+    def _extract_brand_prefix(self, candidate_text: Optional[str], expected_tokens: set[str]) -> Optional[str]:
+        tokens = re.findall(r"[a-z0-9]+", (candidate_text or "").lower())
+        if not tokens or not expected_tokens:
+            return None
+
+        prefix_tokens: list[str] = []
+        matched_expected_token = False
+        for token in tokens:
+            if token in expected_tokens:
+                matched_expected_token = True
+                break
+            if token.isdigit():
+                if prefix_tokens:
+                    break
+                continue
+            prefix_tokens.append(token)
+            if len(prefix_tokens) > 3:
+                return None
+
+        if not matched_expected_token or not prefix_tokens:
+            return None
+
+        if all(token in self.BRAND_PREFIX_EXCLUDED_TOKENS for token in prefix_tokens):
+            return None
+
+        return self._format_brand_tokens(prefix_tokens)
+
+    def infer_brand_prefix(
+        self,
+        candidate_text: Optional[str],
+        expected_name: Optional[str],
+        source_url: str = "",
+    ) -> Optional[str]:
+        expected_tokens = {
+            token
+            for token in re.findall(r"[a-z0-9]+", (expected_name or "").lower())
+            if token and not token.isdigit()
+        }
+        if not expected_tokens:
+            return None
+
+        brand_from_text = self._extract_brand_prefix(candidate_text, expected_tokens)
+        if brand_from_text:
+            return brand_from_text
+
+        path_segments = [segment for segment in urlparse(source_url).path.split("/") if segment]
+        if not path_segments:
+            return None
+
+        slug_text = path_segments[-1].replace("-", " ").replace("_", " ")
+        return self._extract_brand_prefix(slug_text, expected_tokens)

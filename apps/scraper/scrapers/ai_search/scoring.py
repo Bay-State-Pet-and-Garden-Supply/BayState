@@ -40,6 +40,7 @@ class SearchScorer:
         "frontiercoop.com",
         "petsuppliesplus.com",
         "bradleycaldwell.com",
+        "petswarehouse.com",
     }
 
     MARKETPLACES = {
@@ -97,10 +98,18 @@ class SearchScorer:
         r"\bgtin search\b",
         r"\bproduct lookup\b",
     ]
+    GROUNDED_EXPLANATION_MARKERS = (
+        "the search for ",
+        "did not return any direct results",
+        "while it is not currently appearing in the indexed results",
+        "however, the upc",
+        "however, the product",
+    )
 
     LOW_QUALITY_URL_FRAGMENTS = [
         "category/",
         "/collections/",
+        "/blocked?url=",
     ]
 
     # Category-like URL patterns
@@ -229,15 +238,28 @@ class SearchScorer:
         url = str(result.get("url") or "").lower()
         title = str(result.get("title") or "").lower()
         description = str(result.get("description") or "").lower()
-        extra_snippets = " ".join(str(value) for value in (result.get("extra_snippets") or []))
-        combined = f"{title} {description} {extra_snippets} {url}"
+        # Gemini grounded results sometimes attach related-query suggestions in
+        # extra_snippets (for example "reviews" or "reddit discussion") that
+        # are not evidence about the target page itself. Treat only the URL,
+        # title, and main description as quality signals.
+        combined = f"{title} {description} {url}"
 
         domain = self.domain_from_url(url)
         if domain and any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self.BLOCKED_DOMAINS):
             return True
 
+        parsed_url = urlparse(url)
+        if parsed_url.path.lower() == "/blocked" and "url=" in parsed_url.query.lower():
+            return True
+
         if self.is_category_like_url(url):
             return True
+
+        provider = str(result.get("provider") or "").lower()
+        result_type = str(result.get("result_type") or "").lower()
+        if provider == "gemini" and result_type == "grounded":
+            if any(marker in description for marker in self.GROUNDED_EXPLANATION_MARKERS):
+                return True
 
         if any(fragment in combined for fragment in self.LOW_QUALITY_URL_FRAGMENTS):
             return True
@@ -290,6 +312,8 @@ class SearchScorer:
                 score += min(3.0, float(variant_overlap) * 1.5)
             else:
                 score -= 1.5
+            if self._matching.has_conflicting_variant_tokens(product_name, combined):
+                score -= 3.0
 
         # Category match
         category_tokens = self._matching.tokenize_keywords(category)

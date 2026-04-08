@@ -22,6 +22,25 @@ class QueryBuilder:
         text = self._WHITESPACE_RE.sub(" ", text)
         return text.strip()
 
+    def _normalize_domain(self, value: Optional[str]) -> str:
+        domain = self._clean_text(value).lower().strip("/")
+        if domain.startswith("http://"):
+            domain = domain[len("http://") :]
+        elif domain.startswith("https://"):
+            domain = domain[len("https://") :]
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain.split("/", 1)[0].strip()
+
+    def _dedupe_queries(self, queries: list[str]) -> list[str]:
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for query in queries:
+            if query and query not in seen:
+                seen.add(query)
+                deduped.append(query)
+        return deduped
+
     def build_identifier_query(self, sku: Optional[str]) -> str:
         """Build the lowest-cost identifier-only query for a product."""
         return self._clean_text(sku)
@@ -116,11 +135,40 @@ class QueryBuilder:
         elif not variants and category_clean:
             variants.append(category_clean)
 
-        seen: set[str] = set()
-        deduped: list[str] = []
-        for v in variants:
-            if v and v not in seen:
-                seen.add(v)
-                deduped.append(v)
+        return self._dedupe_queries(variants)
 
-        return deduped
+    def build_site_query_variants(
+        self,
+        domains: list[str] | None,
+        sku: Optional[str],
+        product_name: Optional[str],
+        brand: Optional[str],
+        category: Optional[str],
+    ) -> list[str]:
+        """Build site-constrained variants for a preferred cohort domain."""
+        sku_clean = self._clean_text(sku)
+        name_clean = self._clean_text(product_name)
+        brand_clean = self._clean_text(brand)
+        category_clean = self._clean_text(category)
+
+        variants: list[str] = []
+        for domain in domains or []:
+            domain_clean = self._normalize_domain(domain)
+            if not domain_clean:
+                continue
+
+            prefix = f"site:{domain_clean}"
+            if sku_clean:
+                variants.append(f"{prefix} {sku_clean}")
+            if brand_clean and name_clean:
+                variants.append(f"{prefix} {brand_clean} {name_clean}")
+            if name_clean:
+                variants.append(f"{prefix} {name_clean}")
+            if name_clean and sku_clean:
+                variants.append(f"{prefix} {name_clean} {sku_clean}")
+            if brand_clean and name_clean and sku_clean:
+                variants.append(f"{prefix} {brand_clean} {name_clean} {sku_clean}")
+            if brand_clean and category_clean and sku_clean:
+                variants.append(f"{prefix} {brand_clean} {category_clean} {sku_clean}")
+
+        return self._dedupe_queries(variants)

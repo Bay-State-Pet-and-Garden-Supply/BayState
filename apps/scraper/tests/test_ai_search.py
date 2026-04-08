@@ -4,6 +4,7 @@ import asyncio
 from typing import Any, Optional
 
 from scrapers.ai_search import AISearchScraper
+from scrapers.ai_search.models import AISearchResult
 
 
 def test_build_search_query_includes_category_when_present() -> None:
@@ -98,6 +99,54 @@ def test_validate_extraction_match_rejects_brand_mismatch() -> None:
 
     assert ok is False
     assert reason == "Brand mismatch with expected product context"
+
+
+def test_validate_extraction_match_accepts_trusted_secondary_retailer_without_sku_when_brand_and_variant_match() -> None:
+    scraper = AISearchScraper(confidence_threshold=0.7)
+
+    ok, reason = scraper._validator.validate_extraction_match(
+        extraction_result={
+            "success": True,
+            "product_name": "Four Paws Wee-Wee Cat Litter Box System Pads 11 in X 17 in (10 ct)",
+            "brand": "Four Paws",
+            "description": "Trusted retailer PDP for Four Paws Wee-Wee Cat Litter Box System Pads 11 in X 17 in (10 ct)",
+            "size_metrics": "10 ct",
+            "images": ["https://petswarehouse.com/cdn/shop/files/pads.jpg?v=1"],
+            "categories": ["Cat Supplies"],
+            "confidence": 0.8,
+        },
+        sku="045663976866",
+        product_name="WEE WEE CAT PADS 11X 17 10CT",
+        brand=None,
+        source_url="https://petswarehouse.com/products/four-paws-wee-wee-cat-litter-box-system-pads-11-in-x-17-in-10-ct",
+    )
+
+    assert ok is True
+    assert reason == "ok"
+
+
+def test_validate_extraction_match_rejects_conflicting_variant_tokens() -> None:
+    scraper = AISearchScraper(confidence_threshold=0.7)
+
+    ok, reason = scraper._validator.validate_extraction_match(
+        extraction_result={
+            "success": True,
+            "product_name": "Four Paws Wee-Wee Cat Pads Fresh Scent 28 in X 30 in (10 ct)",
+            "brand": "Four Paws",
+            "description": "While you searched for 11 x 17, the standard size is 28 x 30.",
+            "size_metrics": "10 ct",
+            "images": ["https://petswarehouse.com/cdn/shop/files/pads.jpg?v=1"],
+            "categories": ["Cat Supplies"],
+            "confidence": 0.85,
+        },
+        sku="045663976866",
+        product_name="WEE WEE CAT PADS 11X 17 10CT",
+        brand="Four Paws",
+        source_url="https://petswarehouse.com/products/four-paws-wee-wee-cat-pads-fresh-scent-28-in-x-30-in-10-ct",
+    )
+
+    assert ok is False
+    assert reason == "Product page contains conflicting variant tokens"
 
 
 def test_prepare_search_results_deprioritizes_low_quality_links() -> None:
@@ -379,6 +428,134 @@ def test_scrape_products_batch_prefers_previously_accepted_cohort_domain() -> No
         "https://petswarehouse.com/products/acme-pads-small",
         "https://petswarehouse.com/products/acme-pads-large",
     ]
+
+
+def test_scrape_products_batch_carries_forward_inferred_brand_and_domain_hints() -> None:
+    class CohortHintScraper(AISearchScraper):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.collect_calls: list[dict[str, Any]] = []
+
+        async def _collect_search_candidates(
+            self,
+            sku: str,
+            product_name: Optional[str],
+            brand: Optional[str],
+            category: Optional[str],
+            cost_context=None,
+            preferred_domains: list[str] | None = None,
+        ) -> tuple[list[dict[str, Any]], Optional[str], Optional[str]]:
+            self.collect_calls.append(
+                {
+                    "sku": sku,
+                    "brand": brand,
+                    "preferred_domains": preferred_domains or [],
+                }
+            )
+            slug = "small" if sku == "SKU-SMALL" else "large"
+            return (
+                [
+                    {
+                        "url": f"https://petswarehouse.com/products/acme-pads-{slug}",
+                        "title": f"Four Paws Wee-Wee Pads {slug}",
+                        "description": "Product details with add to cart",
+                    }
+                ],
+                product_name,
+                None,
+            )
+
+        async def _extract_product_data(
+            self,
+            url: str,
+            sku: str,
+            product_name: str | None,
+            brand: str | None,
+        ) -> dict[str, object]:
+            return {
+                "success": True,
+                "product_name": product_name or "Four Paws Wee-Wee Pads",
+                "brand": "FOUR PAWS",
+                "description": f"{product_name} 10 Count",
+                "size_metrics": "10ct",
+                "images": [f"{url}/image.jpg"],
+                "categories": ["Cat Supplies"],
+                "confidence": 0.9,
+            }
+
+    scraper = CohortHintScraper(confidence_threshold=0.7)
+
+    asyncio.run(
+        scraper.scrape_products_batch(
+            [
+                {
+                    "sku": "SKU-SMALL",
+                    "product_name": "WEE WEE CAT PADS 11X17 10CT",
+                    "category": "Cat Supplies",
+                },
+                {
+                    "sku": "SKU-LARGE",
+                    "product_name": "WEE WEE CAT PADS 28X30 10CT",
+                    "category": "Cat Supplies",
+                },
+            ],
+            max_concurrency=2,
+        )
+    )
+
+    assert scraper.collect_calls[0]["brand"] is None
+    assert scraper.collect_calls[0]["preferred_domains"] == []
+    assert scraper.collect_calls[1]["brand"] == "FOUR PAWS"
+    assert scraper.collect_calls[1]["preferred_domains"] == ["petswarehouse.com"]
+
+
+def test_scrape_products_batch_normalizes_failed_items_to_dominant_domain() -> None:
+    class CohortNormalizationScraper(AISearchScraper):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self._attempts: dict[str, int] = {}
+
+        async def scrape_product(
+            self,
+            sku: str,
+            product_name: Optional[str] = None,
+            brand: Optional[str] = None,
+            category: Optional[str] = None,
+            cohort_state=None,
+        ):
+            attempts = self._attempts.get(sku, 0)
+            self._attempts[sku] = attempts + 1
+
+            if sku == "SKU-1" and attempts == 0:
+                return AISearchResult(success=False, sku=sku, error="Initial failure")
+
+            return AISearchResult(
+                success=True,
+                sku=sku,
+                product_name=product_name,
+                brand="Acme",
+                url=f"https://petswarehouse.com/products/{sku.lower()}",
+                source_website="petswarehouse.com",
+                confidence=0.9,
+                images=["https://petswarehouse.com/image.jpg"],
+            )
+
+    scraper = CohortNormalizationScraper(confidence_threshold=0.7)
+
+    results = asyncio.run(
+        scraper.scrape_products_batch(
+            [
+                {"sku": "SKU-1", "product_name": "Acme Pads Small 10 Count", "brand": "Acme", "category": "Cat Supplies"},
+                {"sku": "SKU-2", "product_name": "Acme Pads Large 20 Count", "brand": "Acme", "category": "Cat Supplies"},
+                {"sku": "SKU-3", "product_name": "Acme Pads Jumbo 30 Count", "brand": "Acme", "category": "Cat Supplies"},
+            ],
+            max_concurrency=2,
+        )
+    )
+
+    assert all(result.success for result in results)
+    assert all(result.source_website == "petswarehouse.com" for result in results)
+    assert scraper._attempts["SKU-1"] == 2
 
 
 def test_scrape_product_rejects_unrelated_result() -> None:
