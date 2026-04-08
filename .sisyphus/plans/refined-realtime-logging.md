@@ -1431,19 +1431,19 @@ Wave FINAL (Review - After ALL tasks):
 
 > 4 review agents run in PARALLEL. ALL must APPROVE.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Verify all "Must Have" items exist. Check "Must NOT Have" items are absent.
   Output: VERDICT: APPROVE/REJECT
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `tsc --noEmit`, linter, tests. Review for AI slop patterns.
   Output: Build PASS/FAIL | Lint PASS/FAIL | Tests N/N | VERDICT
 
-- [ ] F3. **Real Manual QA** — `unspecified-high` (+ `playwright`)
+- [x] F3. **Real Manual QA** — `unspecified-high` (+ `playwright`)
   Execute ALL QA scenarios from EVERY task. Test edge cases.
   Output: Scenarios N/N pass | Integration N/N | VERDICT
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   Verify 1:1 between "What to do" and actual implementation.
   Output: Tasks N/N compliant | VERDICT
 
