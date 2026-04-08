@@ -17,6 +17,7 @@ interface CategorySummary {
   id: string;
   name: string;
   slug: string | null;
+  depth?: number;
 }
 
 interface ProductFiltersProps {
@@ -165,11 +166,14 @@ export function ProductFilters({ brands, petTypes, categories = [] }: ProductFil
             className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.slug || category.name.toLowerCase()}>
-                {category.name}
-              </option>
-            ))}
+            {categories.map((category) => {
+              const indent = category.depth ? '\u00A0\u00A0'.repeat(category.depth) : '';
+              return (
+                <option key={category.id} value={category.slug || category.name.toLowerCase()}>
+                  {indent}{category.name}
+                </option>
+              );
+            })}
           </select>
         </div>
       )}

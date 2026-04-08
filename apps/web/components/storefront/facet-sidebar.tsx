@@ -28,6 +28,9 @@ interface CategorySummary {
   breadcrumb?: string;
   depth?: number;
   is_leaf?: boolean;
+  parent_id?: string | null;
+  ancestor_slugs?: string[];
+  ancestor_names?: string[];
 }
 
 interface FacetSidebarProps {
@@ -49,7 +52,12 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
 
   const currentFacetsRaw = searchParams.get('facets') || '';
   const currentFacetsList = currentFacetsRaw ? currentFacetsRaw.split(',') : [];
-  const categoryFilterOptions = categories.filter((category) => category.is_leaf !== false);
+
+  // Compute Active Category Context for Drill-Down
+  const activeCategory = currentCategory ? categories.find((c) => (c.slug || c.name.toLowerCase()) === currentCategory) : undefined;
+  const renderCategories = activeCategory 
+    ? categories.filter((c) => c.parent_id === activeCategory.id)
+    : categories.filter((c) => !c.parent_id);
 
   const [searchQuery, setSearchQuery] = useState(currentSearch);
 
@@ -126,8 +134,8 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
   };
 
   const filteredBrands = brands.filter(b => b.name.toLowerCase().includes(brandSearch.toLowerCase()));
-  const filteredCategories = categoryFilterOptions.filter((category) =>
-    (category.breadcrumb || category.name).toLowerCase().includes(categorySearch.toLowerCase())
+  const filteredCategories = renderCategories.filter((category) =>
+    category.name.toLowerCase().includes(categorySearch.toLowerCase())
   );
   const filteredPetTypes = petTypes.filter(p => p.name.toLowerCase().includes(petTypeSearch.toLowerCase()));
 
@@ -190,11 +198,11 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
           </AccordionItem>
 
           {/* Categories */}
-          {categoryFilterOptions.length > 0 && (
+          {categories.length > 0 && (
             <AccordionItem value="category" className="border-t border-zinc-100">
               <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Category</AccordionTrigger>
               <AccordionContent className="pt-1 pb-4">
-                {categoryFilterOptions.length > 10 && (
+                {filteredCategories.length > 10 && (
                   <div className="relative mb-3">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-400" />
                     <Input
@@ -205,32 +213,64 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
                     />
                   </div>
                 )}
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                  {(expandedFacets['category'] ? filteredCategories : filteredCategories.slice(0, 8)).map((category) => {
-                    const slug = category.slug || category.name.toLowerCase();
-                    return (
-                      <div key={category.id} className="flex items-center space-x-3">
-                        <Checkbox
-                          id={`cat-${category.id}`}
-                          checked={currentCategory === slug}
-                          onCheckedChange={(checked) => updateFilter('category', checked ? slug : null)}
-                        />
-                        <Label htmlFor={`cat-${category.id}`} className="text-sm font-medium cursor-pointer leading-none">
-                          {category.breadcrumb || category.name}
-                        </Label>
+                <div className="space-y-3">
+                  {/* Ancestors navigation */}
+                  {activeCategory && (
+                    <div className="flex flex-col space-y-2 mb-3 pb-3 border-b border-zinc-100">
+                      {activeCategory.parent_id && activeCategory.ancestor_names && activeCategory.ancestor_slugs ? (
+                        <button
+                          onClick={() => {
+                            const parentSlug = activeCategory.ancestor_slugs![activeCategory.ancestor_slugs!.length - 1];
+                            updateFilter('category', parentSlug || null);
+                          }}
+                          className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
+                        >
+                          <span className="mr-1.5 text-xs">&lt;</span> Back to {activeCategory.ancestor_names[activeCategory.ancestor_names.length - 1]}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updateFilter('category', null)}
+                          className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
+                        >
+                          <span className="mr-1.5 text-xs">&lt;</span> Shop All Categories
+                        </button>
+                      )}
+                      
+                      <div className="pt-1 font-bold text-sm text-zinc-900 border-l-2 border-primary pl-2.5 ml-1">
+                        {activeCategory.name}
                       </div>
-                    );
-                  })}
-                  {filteredCategories.length > 8 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-0 text-xs text-primary font-bold hover:bg-transparent"
-                      onClick={() => setExpandedFacets(prev => ({ ...prev, category: !prev.category }))}
-                    >
-                      {expandedFacets['category'] ? 'Show Less' : `+ Show ${filteredCategories.length - 8} More`}
-                    </Button>
+                    </div>
                   )}
+
+                  {/* Children / Siblings List */}
+                  {filteredCategories.length > 0 ? (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1 pl-1">
+                      {(expandedFacets['category'] ? filteredCategories : filteredCategories.slice(0, 8)).map((category) => {
+                        const slug = category.slug || category.name.toLowerCase();
+                        return (
+                          <button
+                            key={category.id}
+                            onClick={() => updateFilter('category', slug)}
+                            className="block w-full text-left text-sm text-zinc-600 hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-2 ml-1"
+                          >
+                            {category.name}
+                          </button>
+                        );
+                      })}
+                      {filteredCategories.length > 8 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 text-xs text-primary font-bold hover:bg-transparent pl-3 mt-2"
+                          onClick={() => setExpandedFacets(prev => ({ ...prev, category: !prev.category }))}
+                        >
+                          {expandedFacets['category'] ? 'Show Less' : `+ Show ${filteredCategories.length - 8} More`}
+                        </Button>
+                      )}
+                    </div>
+                  ) : activeCategory ? (
+                    <div className="text-sm text-zinc-400 pl-1 italic">No subcategories</div>
+                  ) : null}
                 </div>
               </AccordionContent>
             </AccordionItem>
