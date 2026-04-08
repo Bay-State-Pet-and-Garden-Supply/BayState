@@ -21,6 +21,11 @@ export function useSearch() {
 
 interface SearchProviderProps {
   children: ReactNode;
+  initialData?: {
+    products: unknown[];
+    services: unknown[];
+    brands: unknown[];
+  };
 }
 
 /**

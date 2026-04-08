@@ -16,17 +16,23 @@ from __future__ import annotations
 import atexit
 import asyncio
 import logging
-import sys
 import threading
 import time
 import uuid
-from collections import deque
+from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
+from core.api_client import ConnectionError as ApiConnectionError
+from core.realtime_manager import RealtimeError
+
+logger = logging.getLogger(__name__)
+
 IGNORED_LOGGER_PREFIXES = ("httpx", "httpcore", "urllib3")
 LOG_RECORD_RESERVED_KEYS = set(logging.makeLogRecord({}).__dict__.keys()) | {"message", "asctime"}
+TRANSPORT_CIRCUIT_BREAKER_THRESHOLD = 5
+TRANSPORT_CIRCUIT_BREAKER_TIMEOUT_SECONDS = 60.0
 
 ROOT_CONTEXT_FIELDS = {
     "job_id",
@@ -92,11 +98,7 @@ def _serialize_json(value: Any) -> Any:
         return _to_iso_timestamp(value.timestamp())
 
     if isinstance(value, Mapping):
-        return {
-            str(key): serialized
-            for key, raw in value.items()
-            if (serialized := _serialize_json(raw)) is not None
-        }
+        return {str(key): serialized for key, raw in value.items() if (serialized := _serialize_json(raw)) is not None}
 
     if isinstance(value, (list, tuple, set)):
         return [_serialize_json(item) for item in value]
@@ -105,11 +107,7 @@ def _serialize_json(value: Any) -> Any:
 
 
 def _compact_dict(data: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        key: value
-        for key, value in data.items()
-        if value is not None and value != "" and value != {} and value != []
-    }
+    return {key: value for key, value in data.items() if value is not None and value != "" and value != {} and value != []}
 
 
 @dataclass(frozen=True)
@@ -184,19 +182,28 @@ class JobLogTransport:
         self.flush_interval = flush_interval
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self.max_queue_size = max_queue_size
+        self.max_queue_size = min(max_queue_size, 1000)
         self.history_limit = history_limit
 
         self._history: list[JobLogEntry] = []
-        self._pending: deque[JobLogEntry] = deque(maxlen=max_queue_size)
+        self._history_lock = threading.Lock()
         self._pending_progress: dict[str, Any] | None = None
-        self._lock = threading.Lock()
+        self._progress_lock = threading.Lock()
+        self._sequence_lock = threading.Lock()
         self._sequence = 0
-        self._stop_event = threading.Event()
-        self._flush_event = threading.Event()
+        self._stop_event: asyncio.Event | None = None
+        self._flush_event: asyncio.Event | None = None
         self._thread_local = threading.local()
         self._shipping_thread: threading.Thread | None = None
+        self._shipping_loop_ref: asyncio.AbstractEventLoop | None = None
+        self._shipping_queue: asyncio.Queue[JobLogEntry] | None = None
+        self._shipping_ready = threading.Event()
         self._closed = False
+        self._transport_consecutive_failures = 0
+        self._transport_circuit_open_until: float | None = None
+        self._transport_circuit_opened_at: float | None = None
+        self._last_transport_error: Exception | None = None
+        self._last_realtime_error: Exception | None = None
 
         try:
             self._loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
@@ -208,16 +215,20 @@ class JobLogTransport:
 
         if self.api_client:
             self._shipping_thread = threading.Thread(
-                target=self._shipping_loop,
+                target=self._run_shipping_loop,
                 daemon=True,
                 name=f"job-log-{job_id[:8]}",
             )
             self._shipping_thread.start()
+            self._shipping_ready.wait(timeout=1.0)
 
         atexit.register(self.close)
 
     def should_capture(self, record: logging.LogRecord) -> bool:
         if getattr(self._thread_local, "shipping", False):
+            return False
+
+        if getattr(record, "_job_logging_internal", False):
             return False
 
         if record.name.startswith(IGNORED_LOGGER_PREFIXES):
@@ -250,9 +261,14 @@ class JobLogTransport:
             if exc_message:
                 details["error_message"] = exc_message
 
-        ignored_fields = LOG_RECORD_RESERVED_KEYS | ROOT_CONTEXT_FIELDS | DETAIL_CONTEXT_FIELDS | {
-            "_job_log_entry",
-        }
+        ignored_fields = (
+            LOG_RECORD_RESERVED_KEYS
+            | ROOT_CONTEXT_FIELDS
+            | DETAIL_CONTEXT_FIELDS
+            | {
+                "_job_log_entry",
+            }
+        )
         for key, value in record.__dict__.items():
             if key in ignored_fields or key.startswith("_"):
                 continue
@@ -270,7 +286,7 @@ class JobLogTransport:
         if isinstance(cached_entry, JobLogEntry) and cached_entry.job_id == self.job_id:
             return cached_entry
 
-        with self._lock:
+        with self._sequence_lock:
             self._sequence += 1
             sequence = self._sequence
 
@@ -290,7 +306,7 @@ class JobLogTransport:
             details=self._build_details(record),
         )
 
-        with self._lock:
+        with self._history_lock:
             self._history.append(entry)
             if len(self._history) > self.history_limit:
                 self._history = self._history[-self.history_limit :]
@@ -302,99 +318,407 @@ class JobLogTransport:
         if not self.api_client:
             return
 
-        with self._lock:
-            self._pending.append(entry)
-            pending_count = len(self._pending)
+        if not self._shipping_ready.wait(timeout=1.0):
+            logger.error(
+                "Job log transport queue was not ready before enqueue",
+                extra={"transport_job_id": self.job_id},
+            )
+            return
 
-        if flush_immediately or pending_count >= self.batch_size:
+        if not self._shipping_loop_ref:
+            logger.error(
+                "Job log transport loop unavailable during enqueue",
+                extra={"transport_job_id": self.job_id},
+            )
+            return
+
+        self._shipping_loop_ref.call_soon_threadsafe(self._enqueue_on_loop, entry, flush_immediately)
+
+    def _enqueue_on_loop(self, entry: JobLogEntry, flush_immediately: bool) -> None:
+        if not self._shipping_queue:
+            logger.error(
+                "Job log transport queue unavailable during enqueue",
+                extra={"transport_job_id": self.job_id},
+            )
+            return
+
+        if self._shipping_queue.full():
+            try:
+                dropped = self._shipping_queue.get_nowait()
+                logger.warning(
+                    "Queue full, dropped oldest log: %s",
+                    dropped.message[:50],
+                    extra={
+                        "transport_job_id": self.job_id,
+                        "queue_maxsize": self.max_queue_size,
+                        "dropped_sequence": dropped.sequence,
+                    },
+                )
+            except asyncio.QueueEmpty:
+                logger.warning(
+                    "Queue reported full but oldest log was unavailable for eviction",
+                    extra={"transport_job_id": self.job_id, "queue_maxsize": self.max_queue_size},
+                )
+
+        try:
+            self._shipping_queue.put_nowait(entry)
+        except asyncio.QueueFull:
+            logger.error(
+                "Failed to enqueue job log after eviction",
+                extra={"transport_job_id": self.job_id, "queue_maxsize": self.max_queue_size},
+            )
+            return
+
+        should_flush = flush_immediately or self._shipping_queue.qsize() >= self.batch_size
+        if should_flush and self._flush_event:
             self._flush_event.set()
-
-    def _drain_pending(self) -> list[JobLogEntry]:
-        with self._lock:
-            if not self._pending:
-                return []
-            batch = list(self._pending)
-            self._pending.clear()
-            return batch
 
     def _queue_progress(self, payload: dict[str, Any]) -> None:
         if not self.api_client:
             return
 
-        with self._lock:
+        with self._progress_lock:
             self._pending_progress = payload
 
-        self._flush_event.set()
+        if self._shipping_loop_ref:
+            self._shipping_loop_ref.call_soon_threadsafe(self._set_flush_event)
 
     def _drain_progress(self) -> dict[str, Any] | None:
-        with self._lock:
+        with self._progress_lock:
             payload = self._pending_progress
             self._pending_progress = None
             return payload
 
-    def _send_batch(self, batch: list[JobLogEntry]) -> None:
+    def _transport_retry_after_seconds(self) -> float:
+        if self._transport_circuit_open_until is None:
+            return 0.0
+
+        return max(0.0, self._transport_circuit_open_until - time.monotonic())
+
+    def _is_transport_circuit_open(self) -> bool:
+        retry_after_seconds = self._transport_retry_after_seconds()
+        if retry_after_seconds > 0:
+            return True
+
+        if self._transport_circuit_open_until is not None:
+            self._transport_circuit_open_until = None
+            self._transport_circuit_opened_at = None
+            self._transport_consecutive_failures = 0
+
+        return False
+
+    def _record_transport_success(self) -> None:
+        self._transport_consecutive_failures = 0
+        self._transport_circuit_open_until = None
+        self._transport_circuit_opened_at = None
+        self._last_transport_error = None
+
+    def _record_transport_failure(self, error: Exception) -> None:
+        self._last_transport_error = error
+        self._transport_consecutive_failures += 1
+
+        if self._transport_consecutive_failures >= TRANSPORT_CIRCUIT_BREAKER_THRESHOLD:
+            self._transport_circuit_opened_at = time.monotonic()
+            self._transport_circuit_open_until = self._transport_circuit_opened_at + TRANSPORT_CIRCUIT_BREAKER_TIMEOUT_SECONDS
+
+    def _transport_log_extra(
+        self,
+        *,
+        operation: str,
+        error: Exception,
+        will_retry: bool,
+        attempts: int,
+        item_count: int,
+    ) -> dict[str, Any]:
+        retry_after_seconds = self._transport_retry_after_seconds()
+        return {
+            "job_id": self.job_id,
+            "runner_id": self.runner_id,
+            "runner_name": self.runner_name,
+            "phase": "job_logging",
+            "operation": operation,
+            "error": str(error),
+            "error_type": type(error).__name__,
+            "will_retry": will_retry,
+            "attempts": attempts,
+            "consecutive_failures": self._transport_consecutive_failures,
+            "circuit_open": retry_after_seconds > 0,
+            "retry_after_seconds": retry_after_seconds,
+            "_job_logging_internal": True,
+            "details": {
+                "operation": operation,
+                "item_count": item_count,
+                "opened_at": self._transport_circuit_opened_at,
+            },
+        }
+
+    async def _requeue_batch(self, batch: list[JobLogEntry]) -> None:
+        if not batch or not self._shipping_queue:
+            return
+
+        for entry in batch:
+            try:
+                self._shipping_queue.put_nowait(entry)
+            except asyncio.QueueFull:
+                logger.error(
+                    "Failed to requeue job log batch entry",
+                    extra={
+                        "job_id": self.job_id,
+                        "runner_id": self.runner_id,
+                        "runner_name": self.runner_name,
+                        "phase": "job_logging",
+                        "operation": "requeue_log_batch",
+                        "error": "shipping queue full",
+                        "error_type": "QueueFull",
+                        "will_retry": False,
+                        "_job_logging_internal": True,
+                        "details": {
+                            "event_id": entry.event_id,
+                            "sequence": entry.sequence,
+                            "max_queue_size": self.max_queue_size,
+                        },
+                    },
+                )
+
+    def _requeue_progress(self, payload: dict[str, Any]) -> None:
+        with self._progress_lock:
+            if self._pending_progress is None:
+                self._pending_progress = payload
+
+    def _handle_realtime_future(self, future: Future[Any], *, operation: str, payload: dict[str, Any]) -> None:
+        try:
+            future.result()
+            self._last_realtime_error = None
+        except RealtimeError as exc:
+            self._last_realtime_error = exc
+            logger.error(
+                f"Failed to {operation} for job {self.job_id}",
+                extra={
+                    "job_id": self.job_id,
+                    "runner_id": self.runner_id,
+                    "runner_name": self.runner_name,
+                    "phase": "job_logging",
+                    "operation": operation,
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "will_retry": False,
+                    "_job_logging_internal": True,
+                    "details": {
+                        "payload_keys": sorted(payload.keys()),
+                        "realtime_error": str(exc),
+                    },
+                },
+            )
+        except Exception as exc:  # noqa: BLE001 - preserve future executor failures in structured logs
+            self._last_realtime_error = exc
+            logger.error(
+                f"Unexpected realtime {operation} failure for job {self.job_id}",
+                extra={
+                    "job_id": self.job_id,
+                    "runner_id": self.runner_id,
+                    "runner_name": self.runner_name,
+                    "phase": "job_logging",
+                    "operation": operation,
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "will_retry": False,
+                    "_job_logging_internal": True,
+                    "details": {
+                        "payload_keys": sorted(payload.keys()),
+                        "realtime_error": str(exc),
+                    },
+                },
+            )
+
+    async def _send_batch(self, batch: list[JobLogEntry]) -> None:
         if not batch or not self.api_client:
             return
 
         payload = [entry.to_api_payload() for entry in batch]
+        if self._is_transport_circuit_open():
+            await self._requeue_batch(batch)
+            circuit_error = ApiConnectionError(f"Job log transport circuit is open for {self.job_id}; retry after {self._transport_retry_after_seconds():.1f}s")
+            logger.error(
+                f"Skipping job log batch shipment while circuit breaker is open for {self.job_id}",
+                extra=self._transport_log_extra(
+                    operation="post_logs",
+                    error=circuit_error,
+                    will_retry=True,
+                    attempts=0,
+                    item_count=len(batch),
+                ),
+            )
+            return
+
         delay = self.retry_delay
         last_error: Exception | None = None
 
         for attempt in range(self.max_retries + 1):
             try:
                 self._thread_local.shipping = True
-                self.api_client.post_logs(self.job_id, payload)
+                await asyncio.to_thread(self.api_client.post_logs, self.job_id, payload)
+                self._record_transport_success()
                 return
-            except Exception as exc:  # noqa: PERF203 - clearer retry loop
+            except ApiConnectionError as exc:
                 last_error = exc
                 if attempt < self.max_retries:
-                    time.sleep(delay)
+                    await asyncio.sleep(delay)
+                    delay *= 2
+            except Exception as exc:  # noqa: BLE001 - preserve backwards compatibility around API client failures
+                last_error = exc
+                if attempt < self.max_retries:
+                    await asyncio.sleep(delay)
                     delay *= 2
             finally:
                 self._thread_local.shipping = False
 
+        if last_error is None:
+            last_error = ApiConnectionError(f"Unknown job log shipping failure for {self.job_id}")
+
+        self._record_transport_failure(last_error)
+        await self._requeue_batch(batch)
+        logger.error(
+            f"Failed to ship {len(batch)} log(s) for job {self.job_id}",
+            extra=self._transport_log_extra(
+                operation="post_logs",
+                error=last_error,
+                will_retry=True,
+                attempts=self.max_retries + 1,
+                item_count=len(batch),
+            ),
+        )
+        self._set_flush_event()
+
+    def _run_shipping_loop(self) -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self._shipping_loop_ref = loop
+        self._shipping_queue = asyncio.Queue(maxsize=self.max_queue_size)
+        self._stop_event = asyncio.Event()
+        self._flush_event = asyncio.Event()
+        self._shipping_ready.set()
+
         try:
-            sys.stderr.write(
-                f"[job-logging] Failed to ship {len(batch)} log(s) for job {self.job_id} "
-                f"after {self.max_retries + 1} attempt(s): {last_error}\n"
-            )
-        except Exception:
-            pass
+            loop.run_until_complete(self._shipping_loop())
+        finally:
+            pending_tasks = [task for task in asyncio.all_tasks(loop) if not task.done()]
+            for task in pending_tasks:
+                task.cancel()
+            if pending_tasks:
+                loop.run_until_complete(asyncio.gather(*pending_tasks, return_exceptions=True))
+            loop.close()
 
-    def _shipping_loop(self) -> None:
+    async def _shipping_loop(self) -> None:
         while True:
-            self._flush_event.wait(timeout=self.flush_interval)
-            self._flush_event.clear()
-
-            batch = self._drain_pending()
+            batch = await self._next_batch()
             if batch:
-                self._send_batch(batch)
+                await self._send_batch(batch)
 
             progress_payload = self._drain_progress()
             if progress_payload:
-                self._send_progress(progress_payload)
+                await self._send_progress(progress_payload)
 
-            if self._stop_event.is_set():
-                final_batch = self._drain_pending()
+            if self._stop_event and self._stop_event.is_set():
+                final_batch = await self._drain_pending_async()
                 if final_batch:
-                    self._send_batch(final_batch)
+                    await self._send_batch(final_batch)
                 final_progress = self._drain_progress()
                 if final_progress:
-                    self._send_progress(final_progress)
+                    await self._send_progress(final_progress)
                 return
 
-    def broadcast(self, entry: JobLogEntry) -> None:
+    async def _next_batch(self) -> list[JobLogEntry]:
+        if not self._shipping_queue:
+            return []
+
+        wait_tasks: set[asyncio.Task[Any]] = {asyncio.create_task(self._shipping_queue.get())}
+        flush_wait: asyncio.Task[bool] | None = None
+        stop_wait: asyncio.Task[bool] | None = None
+
+        if self._flush_event:
+            flush_wait = asyncio.create_task(self._flush_event.wait())
+            wait_tasks.add(flush_wait)
+
+        if self._stop_event:
+            stop_wait = asyncio.create_task(self._stop_event.wait())
+            wait_tasks.add(stop_wait)
+
+        try:
+            done, pending = await asyncio.wait(wait_tasks, timeout=self.flush_interval, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            batch: list[JobLogEntry] = []
+
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+
+        queue_get = next(task for task in wait_tasks if task not in {flush_wait, stop_wait})
+        if queue_get in done and not queue_get.cancelled():
+            batch.append(queue_get.result())
+
+        if self._flush_event and self._flush_event.is_set():
+            self._flush_event.clear()
+
+        while self._shipping_queue and len(batch) < self.batch_size:
+            try:
+                batch.append(self._shipping_queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+
+        return batch
+
+    async def _drain_pending_async(self) -> list[JobLogEntry]:
+        if not self._shipping_queue:
+            return []
+
+        batch: list[JobLogEntry] = []
+        while True:
+            try:
+                batch.append(self._shipping_queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        return batch
+
+    def _set_flush_event(self) -> None:
+        if self._flush_event:
+            self._flush_event.set()
+
+    def broadcast(self, entry: JobLogEntry) -> Future[Any] | None:
         if not self.realtime_manager or not self._loop or not getattr(self.realtime_manager, "is_connected", False):
             return
 
         try:
-            asyncio.run_coroutine_threadsafe(
+            future = asyncio.run_coroutine_threadsafe(
                 self.realtime_manager.broadcast_job_log_entry(entry.to_broadcast_payload()),
                 self._loop,
             )
-        except Exception:
-            # Best effort only; coordinator persistence is the source of truth.
-            pass
+            future.add_done_callback(
+                lambda done: self._handle_realtime_future(
+                    done,
+                    operation="broadcast job log",
+                    payload=entry.to_broadcast_payload(),
+                )
+            )
+            return future
+        except RuntimeError as exc:
+            self._last_realtime_error = exc
+            logger.error(
+                f"Failed to schedule job log broadcast for job {self.job_id}",
+                extra={
+                    "job_id": self.job_id,
+                    "runner_id": self.runner_id,
+                    "runner_name": self.runner_name,
+                    "phase": "job_logging",
+                    "operation": "broadcast job log",
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "will_retry": False,
+                    "_job_logging_internal": True,
+                    "details": {"event_id": entry.event_id, "level": entry.level},
+                },
+            )
+            return None
 
     def emit_progress(
         self,
@@ -432,15 +756,54 @@ class JobLogTransport:
             return
 
         try:
-            asyncio.run_coroutine_threadsafe(
+            future = asyncio.run_coroutine_threadsafe(
                 self.realtime_manager.broadcast_job_progress_update(payload),
                 self._loop,
             )
-        except Exception:
-            pass
+            future.add_done_callback(
+                lambda done: self._handle_realtime_future(
+                    done,
+                    operation="broadcast job progress",
+                    payload=payload,
+                )
+            )
+        except RuntimeError as exc:
+            self._last_realtime_error = exc
+            logger.error(
+                f"Failed to schedule job progress broadcast for job {self.job_id}",
+                extra={
+                    "job_id": self.job_id,
+                    "runner_id": self.runner_id,
+                    "runner_name": self.runner_name,
+                    "phase": "job_logging",
+                    "operation": "broadcast job progress",
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "will_retry": False,
+                    "_job_logging_internal": True,
+                    "details": {"status": payload.get("status"), "progress": payload.get("progress")},
+                },
+            )
 
-    def _send_progress(self, payload: dict[str, Any]) -> None:
+    async def _send_progress(self, payload: dict[str, Any]) -> None:
         if not payload or not self.api_client:
+            return
+
+        if self._is_transport_circuit_open():
+            self._requeue_progress(payload)
+            circuit_error = ApiConnectionError(
+                f"Job progress transport circuit is open for {self.job_id}; retry after {self._transport_retry_after_seconds():.1f}s"
+            )
+            logger.error(
+                f"Skipping job progress shipment while circuit breaker is open for {self.job_id}",
+                extra=self._transport_log_extra(
+                    operation="post_progress",
+                    error=circuit_error,
+                    will_retry=True,
+                    attempts=0,
+                    item_count=1,
+                ),
+            )
             return
 
         delay = self.retry_delay
@@ -449,52 +812,65 @@ class JobLogTransport:
         for attempt in range(self.max_retries + 1):
             try:
                 self._thread_local.shipping = True
-                self.api_client.post_progress(payload)
+                await asyncio.to_thread(self.api_client.post_progress, payload)
+                self._record_transport_success()
                 return
-            except Exception as exc:  # noqa: PERF203 - clearer retry loop
+            except ApiConnectionError as exc:
                 last_error = exc
                 if attempt < self.max_retries:
-                    time.sleep(delay)
+                    await asyncio.sleep(delay)
+                    delay *= 2
+            except Exception as exc:  # noqa: BLE001 - preserve backwards compatibility around API client failures
+                last_error = exc
+                if attempt < self.max_retries:
+                    await asyncio.sleep(delay)
                     delay *= 2
             finally:
                 self._thread_local.shipping = False
 
-        try:
-            sys.stderr.write(
-                f"[job-logging] Failed to ship progress for job {self.job_id} "
-                f"after {self.max_retries + 1} attempt(s): {last_error}\n"
-            )
-        except Exception:
-            pass
+        if last_error is None:
+            last_error = ApiConnectionError(f"Unknown job progress shipping failure for {self.job_id}")
+
+        self._record_transport_failure(last_error)
+        self._requeue_progress(payload)
+        logger.error(
+            f"Failed to ship progress for job {self.job_id}",
+            extra=self._transport_log_extra(
+                operation="post_progress",
+                error=last_error,
+                will_retry=True,
+                attempts=self.max_retries + 1,
+                item_count=1,
+            ),
+        )
+        self._set_flush_event()
 
     def snapshot(self) -> list[dict[str, Any]]:
-        with self._lock:
+        with self._history_lock:
             return [entry.to_result_payload() for entry in self._history]
 
     def flush(self) -> None:
-        self._flush_event.set()
+        if self._shipping_loop_ref:
+            self._shipping_loop_ref.call_soon_threadsafe(self._set_flush_event)
+        else:
+            self._set_flush_event()
         if not self._shipping_thread:
-            batch = self._drain_pending()
-            if batch:
-                self._send_batch(batch)
             progress_payload = self._drain_progress()
             if progress_payload:
-                self._send_progress(progress_payload)
+                asyncio.run(self._send_progress(progress_payload))
 
     def close(self) -> None:
         if self._closed:
             return
 
         self._closed = True
-        self._stop_event.set()
-        self._flush_event.set()
+        if self._shipping_loop_ref and self._stop_event:
+            self._shipping_loop_ref.call_soon_threadsafe(self._stop_event.set)
+        if self._shipping_loop_ref:
+            self._shipping_loop_ref.call_soon_threadsafe(self._set_flush_event)
 
         if self._shipping_thread and self._shipping_thread.is_alive():
             self._shipping_thread.join(timeout=3.0)
-
-        final_batch = self._drain_pending()
-        if final_batch:
-            self._send_batch(final_batch)
 
 
 class RunnerLogHandler(logging.Handler):

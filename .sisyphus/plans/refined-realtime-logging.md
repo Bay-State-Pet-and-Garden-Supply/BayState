@@ -671,7 +671,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/__tests__/lib/realtime/useRealtimeChannel.test.ts`
 
 
-- [ ] 8. Fix RealtimeManager reconnection (integrate _auto_reconnect)
+- [x] 8. Fix RealtimeManager reconnection (integrate _auto_reconnect)
 
   **What to do**:
   - Fix the dead `_auto_reconnect()` method in `apps/scraper/core/realtime_manager.py`
@@ -747,7 +747,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/scraper/core/realtime_manager.py`
 
 
-- [ ] 9. Implement thread-safe shipping with backpressure
+- [x] 9. Implement thread-safe shipping with backpressure
 
   **What to do**:
   - Fix thread safety issues in `JobLogTransport` in `apps/scraper/utils/logging_handlers.py`
@@ -824,7 +824,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/scraper/utils/logging_handlers.py`
 
 
-- [ ] 10. Add proper error handling (remove silent failures)
+- [x] 10. Add proper error handling (remove silent failures)
 
   **What to do**:
   - Fix all silent failures identified:
@@ -900,7 +900,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/scraper/utils/logging_handlers.py`, `apps/scraper/core/realtime_manager.py`
 
 
-- [ ] 11. Write scraper integration tests
+- [x] 11. Write scraper integration tests
 
   **What to do**:
   - Write integration tests for scraper Realtime flow:
@@ -955,7 +955,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/scraper/tests/integration/test_realtime_integration.py`
 
 
-- [ ] 12. Refactor useJobBroadcasts to use unified channel
+- [x] 12. Refactor useJobBroadcasts to use unified channel
 
   **What to do**:
   - Refactor `apps/web/lib/realtime/useJobBroadcasts.ts` to use `useRealtimeChannel`
@@ -1030,7 +1030,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/lib/realtime/useJobBroadcasts.ts`
 
 
-- [ ] 13. Fix useRunnerPresence dependency array issues
+- [x] 13. Fix useRunnerPresence dependency array issues
 
   **What to do**:
   - Fix `useRunnerPresence.ts` dependency array issues identified by Metis
@@ -1108,7 +1108,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/lib/realtime/useRunnerPresence.ts`
 
 
-- [ ] 14. Fix useLogSubscription and useJobSubscription
+- [x] 14. Fix useLogSubscription and useJobSubscription
 
   **What to do**:
   - Apply same fixes to remaining hooks:
@@ -1165,7 +1165,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/lib/realtime/useLogSubscription.ts`, `apps/web/lib/realtime/useJobSubscription.ts`
 
 
-- [ ] 15. Write unit tests for refactored hooks
+- [x] 15. Write unit tests for refactored hooks
 
   **What to do**:
   - Write unit tests for refactored hooks:
@@ -1223,7 +1223,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: `apps/web/__tests__/lib/realtime/*.test.ts`
 
 
-- [ ] 16. Write end-to-end integration tests
+- [x] 16. Write end-to-end integration tests
 
   **What to do**:
   - Write end-to-end tests for full flow:
@@ -1292,7 +1292,7 @@ Wave FINAL (Review - After ALL tasks):
 
 
 
-- [ ] 17. Memory leak detection tests (heap snapshots)
+- [x] 17. Memory leak detection tests (heap snapshots)
 
   **What to do**:
   - Create memory leak detection tests using Chrome DevTools Protocol
@@ -1347,7 +1347,7 @@ Wave FINAL (Review - After ALL tasks):
   - Message: `test(web): add memory leak detection tests`
 
 
-- [ ] 18. Remove legacy WebSocket hook entirely
+- [x] 18. Remove legacy WebSocket hook entirely
 
   **What to do**:
   - Delete `apps/web/hooks/useRealtimeJobs.ts` (legacy WebSocket implementation)
@@ -1386,7 +1386,7 @@ Wave FINAL (Review - After ALL tasks):
   - Message: `chore(web): remove legacy useRealtimeJobs hook`
 
 
-- [ ] 19. Final cleanup and documentation
+- [x] 19. Final cleanup and documentation
 
   **What to do**:
   - Update `apps/scraper/docs/ARCHITECTURE.md` to remove TestLab references

@@ -63,6 +63,87 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "updated_at": "2026-04-08T18:50:14.038Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "Fix RealtimeManager reconnection (integrate _auto_reconnect)",
+      "session_id": "ses_2918d1bc7ffepyGMkAcdA8VM2H",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-08T19:07:11.394Z"
+    },
+    "todo:9": {
+      "task_key": "todo:9",
+      "task_label": "9",
+      "task_title": "Implement thread-safe shipping with backpressure",
+      "session_id": "ses_2917fe600ffeNw5ijgojX7pyd3",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-08T19:13:53.303Z"
+    },
+    "todo:11": {
+      "task_key": "todo:11",
+      "task_label": "11",
+      "task_title": "Write scraper integration tests",
+      "session_id": "ses_29177352fffe2whXHfRLZMVVtC",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-08T19:29:32.764Z"
+    },
+    "todo:12": {
+      "task_key": "todo:12",
+      "task_label": "12",
+      "task_title": "Refactor useJobBroadcasts to use unified channel",
+      "session_id": "ses_2916c8be3ffevYGxuOQ53gGzMS",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-08T19:40:07.320Z"
+    },
+    "todo:15": {
+      "task_key": "todo:15",
+      "task_label": "15",
+      "task_title": "Write unit tests for refactored hooks",
+      "session_id": "ses_2915e3941ffeB9VYpoiTOoA0HL",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-08T19:58:37.166Z"
+    },
+    "todo:16": {
+      "task_key": "todo:16",
+      "task_label": "16",
+      "task_title": "Write end-to-end integration tests",
+      "session_id": "ses_2915199a5ffe4OrlbQm48oBYzR",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-08T20:09:00.813Z"
+    },
+    "todo:17": {
+      "task_key": "todo:17",
+      "task_label": "17",
+      "task_title": "Memory leak detection tests (heap snapshots)",
+      "session_id": "ses_29148cf40ffeomxwbuK5Xcr4te",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-08T20:27:28.807Z"
+    },
+    "todo:19": {
+      "task_key": "todo:19",
+      "task_label": "19",
+      "task_title": "Final cleanup and documentation",
+      "session_id": "ses_29137d7daffefLP9ZbWzMdlS4Y",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-04-08T20:33:15.248Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "ses_29132d4c3ffeJywaWn5y0YduDh",
+      "agent": "Sisyphus-Junior",
+      "category": "ultrabrain",
+      "updated_at": "2026-04-08T20:39:50.669Z"
     }
   }
 }
