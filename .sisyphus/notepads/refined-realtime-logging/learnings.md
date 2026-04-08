@@ -1,0 +1,2 @@
+- Existing `lib/realtime` hooks already establish a useful baseline: lazy `createClient()` initialization, `removeChannel()` cleanup, stable callback refs, and auto-connect cleanup on unmount.
+- RED-phase coverage for `useRealtimeChannel` now documents the intended contract: pooled same-name channels, explicit connection states, exponential backoff reconnects, last-subscriber cleanup, and a hard cap of 5 reconnect attempts.
