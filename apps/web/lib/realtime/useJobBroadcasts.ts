@@ -7,8 +7,6 @@
  */
 
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
 import type { BroadcastEvent } from './types';
 import {
   mergeScrapeJobLogs,
@@ -17,6 +15,147 @@ import {
   type ScrapeJobLogEntry,
   type ScrapeJobProgressUpdate,
 } from '@/lib/scraper-logs';
+import { useRealtimeChannel } from './useRealtimeChannel';
+
+type BroadcastEventOverrides = Map<string, boolean>;
+
+interface BroadcastConfigSnapshot {
+  includeLogs: boolean;
+  includeProgress: boolean;
+  customEvents: string[];
+  maxLogs: number;
+  logLevels?: ('debug' | 'info' | 'warning' | 'error' | 'critical')[];
+}
+
+interface BroadcastEnvelope {
+  event: string;
+  payload: unknown;
+}
+
+const RUNNER_LOG_EVENT = 'runner_log';
+const JOB_PROGRESS_EVENT = 'job_progress';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isLogLevel(value: unknown): value is ScrapeJobLogEntry['level'] {
+  return value === 'debug' || value === 'info' || value === 'warning' || value === 'error' || value === 'critical';
+}
+
+function inferBroadcastEvent(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  if (
+    typeof payload.job_id === 'string' &&
+    typeof payload.level === 'string' &&
+    isLogLevel(payload.level) &&
+    typeof payload.message === 'string'
+  ) {
+    return RUNNER_LOG_EVENT;
+  }
+
+  if (typeof payload.job_id === 'string' && typeof payload.progress === 'number') {
+    return JOB_PROGRESS_EVENT;
+  }
+
+  if (
+    typeof payload.job_id === 'string' &&
+    Array.isArray(payload.scrapers) &&
+    typeof payload.skus_count === 'string' &&
+    typeof payload.runner_name === 'string'
+  ) {
+    return 'job_assigned';
+  }
+
+  if (
+    typeof payload.runner_id === 'string' &&
+    typeof payload.runner_name === 'string' &&
+    typeof payload.status === 'string'
+  ) {
+    if (typeof payload.active_jobs === 'number') {
+      return 'runner_heartbeat';
+    }
+
+    if ('jobs_processed' in payload || 'reason' in payload) {
+      return 'runner_status';
+    }
+  }
+
+  return null;
+}
+
+function isEventEnabled(event: string, config: BroadcastConfigSnapshot, overrides: BroadcastEventOverrides): boolean {
+  const override = overrides.get(event);
+
+  if (override !== undefined) {
+    return override;
+  }
+
+  if (event === RUNNER_LOG_EVENT) {
+    return config.includeLogs;
+  }
+
+  if (event === JOB_PROGRESS_EVENT) {
+    return config.includeProgress;
+  }
+
+  return config.customEvents.includes(event);
+}
+
+function getResolvableCustomEvents(config: BroadcastConfigSnapshot, overrides: BroadcastEventOverrides): string[] {
+  const activeCustomEvents = new Set(config.customEvents);
+
+  overrides.forEach((isEnabled, event) => {
+    if (event === RUNNER_LOG_EVENT || event === JOB_PROGRESS_EVENT) {
+      return;
+    }
+
+    if (isEnabled) {
+      activeCustomEvents.add(event);
+      return;
+    }
+
+    activeCustomEvents.delete(event);
+  });
+
+  return Array.from(activeCustomEvents);
+}
+
+function resolveBroadcastEnvelope(
+  message: unknown,
+  config: BroadcastConfigSnapshot,
+  overrides: BroadcastEventOverrides,
+): BroadcastEnvelope | null {
+  if (isRecord(message) && typeof message.event === 'string' && 'payload' in message) {
+    return {
+      event: message.event,
+      payload: message.payload,
+    };
+  }
+
+  const inferredEvent = inferBroadcastEvent(message);
+
+  if (inferredEvent) {
+    return {
+      event: inferredEvent,
+      payload: message,
+    };
+  }
+
+  const activeCustomEvents = getResolvableCustomEvents(config, overrides);
+
+  if (activeCustomEvents.length === 1) {
+    return {
+      event: activeCustomEvents[0],
+      payload: message,
+    };
+  }
+
+  return null;
+}
 
 /**
  * Broadcast subscription state
@@ -145,10 +284,7 @@ export function useJobBroadcasts(
     error: null,
   });
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
-  const subscribedEvents = useRef<Set<string>>(new Set());
-  const mountedRef = useRef(true);
+  const eventOverridesRef = useRef<BroadcastEventOverrides>(new Map());
   const callbacksRef = useRef({ onBroadcast, onLog, onProgress });
   const eventConfigRef = useRef({ includeLogs, includeProgress, customEvents, maxLogs, logLevels });
 
@@ -159,22 +295,6 @@ export function useJobBroadcasts(
   useEffect(() => {
     eventConfigRef.current = { includeLogs, includeProgress, customEvents, maxLogs, logLevels };
   }, [includeLogs, includeProgress, customEvents, maxLogs, logLevels]);
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  /**
-   * Get the Supabase client (lazy initialization)
-   */
-  const getSupabase = useCallback(() => {
-    if (!supabaseRef.current) {
-      supabaseRef.current = createClient();
-    }
-    return supabaseRef.current;
-  }, []);
 
   /**
    * Process an incoming broadcast event
@@ -211,7 +331,7 @@ export function useJobBroadcasts(
         };
 
         // Handle log events
-        if (includeLogs && event === 'runner_log') {
+        if (includeLogs && event === RUNNER_LOG_EVENT) {
           const log = normalizeScrapeLogEntry(payloadRecord, { persisted: false });
           if (!logLevels || logLevels.includes(log.level)) {
             updates.logs = mergeScrapeJobLogs(prev.logs, [log], maxLogs);
@@ -220,7 +340,7 @@ export function useJobBroadcasts(
         }
 
         // Handle progress events
-        if (includeProgress && event === 'job_progress') {
+        if (includeProgress && event === JOB_PROGRESS_EVENT) {
           const progressUpdate = normalizeScrapeProgressUpdate(payloadRecord);
           updates.progress = { ...prev.progress, [progressUpdate.job_id]: progressUpdate };
           onProgress?.(progressUpdate.job_id, progressUpdate);
@@ -237,105 +357,63 @@ export function useJobBroadcasts(
     []
   );
 
-  /**
-   * Connect to the broadcast channel and subscribe to events
-   */
-  const connect = useCallback(() => {
-    const supabase = getSupabase();
-    const { includeLogs, includeProgress, customEvents } = eventConfigRef.current;
+  const handleRealtimeMessage = useCallback(
+    (message: unknown) => {
+      const config = eventConfigRef.current;
+      const envelope = resolveBroadcastEnvelope(message, config, eventOverridesRef.current);
 
-    try {
-      if (channelRef.current) return;
-
-      const channel = supabase.channel(channelName, {
-        config: { private: true },
-      });
-
-      // Subscribe to log events
-      if (includeLogs) {
-        channel.on('broadcast', { event: 'runner_log' }, ({ payload }) => {
-          processBroadcast('runner_log', payload);
-        });
+      if (!envelope) {
+        return;
       }
 
-      // Subscribe to progress events
-      if (includeProgress) {
-        channel.on('broadcast', { event: 'job_progress' }, ({ payload }) => {
-          processBroadcast('job_progress', payload);
-        });
+      if (!isEventEnabled(envelope.event, config, eventOverridesRef.current)) {
+        return;
       }
 
-      // Subscribe to custom events
-      customEvents.forEach((event) => {
-        channel.on('broadcast', { event }, ({ payload }) => {
-          processBroadcast(event, payload);
-        });
-      });
+      processBroadcast(envelope.event, envelope.payload);
+    },
+    [processBroadcast]
+  );
 
-      channel.subscribe((status) => {
-        if (!mountedRef.current) return;
+  const handleRealtimeError = useCallback((error: Error) => {
+    console.error('[useJobBroadcasts] Channel error:', error);
+  }, []);
 
-        if (status === 'SUBSCRIBED') {
-          setState((prev) => ({ ...prev, isConnected: true, error: null }));
-        } else if (status === 'CHANNEL_ERROR') {
-          const lowerTopic = String((channel as unknown as { topic?: string }).topic || '').toLowerCase();
-          if (lowerTopic.includes('phoenix') || lowerTopic.includes('realtime')) {
-            return;
-          }
+  const { connectionState, lastError, connect, disconnect } = useRealtimeChannel({
+    channelName,
+    autoConnect,
+    onMessage: handleRealtimeMessage,
+    onError: handleRealtimeError,
+  });
 
-          const error = new Error('Broadcast channel error');
-          console.error('[useJobBroadcasts] Channel error:', error, { status, topic: lowerTopic });
-          supabase.removeChannel(channel);
-          if (channelRef.current === channel) {
-            channelRef.current = null;
-          }
-          setState((prev) => ({ ...prev, error, isConnected: false }));
-        }
-      });
+  useEffect(() => {
+    const isConnected = connectionState === 'connected';
 
-      channelRef.current = channel;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to connect');
-      console.error('[useJobBroadcasts] Connection error:', error);
-      setState((prev) => ({ ...prev, error, isConnected: false }));
-    }
-  }, [channelName, getSupabase, processBroadcast]);
+    setState((prev) => {
+      if (prev.isConnected === isConnected && prev.error === lastError) {
+        return prev;
+      }
 
-  /**
-   * Disconnect from the broadcast channel
-   */
-  const disconnect = useCallback(() => {
-    if (channelRef.current) {
-      const supabase = getSupabase();
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
-    setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
-  }, [getSupabase]);
+      return {
+        ...prev,
+        isConnected,
+        error: lastError,
+      };
+    });
+  }, [connectionState, lastError]);
 
   /**
    * Subscribe to a specific broadcast event
    */
-  const subscribe = useCallback(
-    (event: string) => {
-      if (channelRef.current && !subscribedEvents.current.has(event)) {
-        channelRef.current.on('broadcast', { event }, ({ payload }) => {
-          processBroadcast(event, payload);
-        });
-        subscribedEvents.current.add(event);
-      }
-    },
-    [processBroadcast]
-  );
+  const subscribe = useCallback((event: string) => {
+    eventOverridesRef.current.set(event, true);
+  }, []);
 
   /**
    * Unsubscribe from a specific broadcast event
    */
   const unsubscribe = useCallback((event: string) => {
-    // Note: unsubscribing from individual events in Supabase requires re-creating the channel
-    // For now, we just track it locally
-    subscribedEvents.current.delete(event);
+    eventOverridesRef.current.set(event, false);
   }, []);
 
   /**
@@ -368,27 +446,6 @@ export function useJobBroadcasts(
     },
     [state.logs]
   );
-
-  /**
-   * Auto-connect on mount if enabled
-   */
-  useEffect(() => {
-    mountedRef.current = true;
-
-    // Use a small delay or just wait for next tick to avoid sync setState in effect
-    const connectionTimeout = setTimeout(() => {
-      if (autoConnect && mountedRef.current) {
-        connect();
-      }
-    }, 0);
-
-    // Cleanup on unmount
-    return () => {
-      mountedRef.current = false;
-      clearTimeout(connectionTimeout);
-      disconnect();
-    };
-  }, [autoConnect, connect, disconnect]);
 
   return {
     ...state,

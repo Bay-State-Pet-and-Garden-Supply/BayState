@@ -120,9 +120,7 @@ export function useRunnerPresence(
   } = { ...DEFAULT_OPTIONS, ...options };
 
   const channelName = useMemo(
-    () =>
-      providedChannelName ??
-      `runners-presence-${Math.random().toString(36).substring(2, 9)}`,
+    () => providedChannelName ?? CHANNEL_RUNNER_PRESENCE,
     [providedChannelName],
   );
 
@@ -138,10 +136,9 @@ export function useRunnerPresence(
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const callbacksRef = useRef({ onJoin, onLeave, onSync });
-
-  useEffect(() => {
-    callbacksRef.current = { onJoin, onLeave, onSync };
-  }, [onJoin, onLeave, onSync]);
+  callbacksRef.current.onJoin = onJoin;
+  callbacksRef.current.onLeave = onLeave;
+  callbacksRef.current.onSync = onSync;
 
   /**
    * Get the Supabase client (lazy initialization)
@@ -212,7 +209,7 @@ export function useRunnerPresence(
 
     try {
       // Use private channel for RLS-based authorization (Supabase Realtime v2)
-      const channel = supabase.channel(CHANNEL_RUNNER_PRESENCE, {
+      const channel = supabase.channel(channelName, {
         config: {
           private: true,
           presence: {
@@ -328,6 +325,14 @@ export function useRunnerPresence(
     }
   }, []);
 
+  const fetchInitialRunnersRef = useRef(fetchInitialRunners);
+  const connectRef = useRef(connect);
+  const disconnectRef = useRef(disconnect);
+
+  fetchInitialRunnersRef.current = fetchInitialRunners;
+  connectRef.current = connect;
+  disconnectRef.current = disconnect;
+
   /**
    * Get a specific runner's presence data
    */
@@ -367,25 +372,32 @@ export function useRunnerPresence(
    * Auto-connect on mount if enabled
    */
   useEffect(() => {
+    let isActive = true;
+
     const init = async () => {
       // Fetch initial runners from API first
       if (fetchInitial) {
-        await fetchInitialRunners();
+        await fetchInitialRunnersRef.current();
+      }
+
+      if (!isActive) {
+        return;
       }
 
       // Then connect to presence channel
       if (autoConnect) {
-        connect();
+        connectRef.current();
       }
     };
 
-    init();
+    void init();
 
     // Cleanup on unmount
     return () => {
-      disconnect();
+      isActive = false;
+      disconnectRef.current();
     };
-  }, [autoConnect, fetchInitial, connect, disconnect, fetchInitialRunners]);
+  }, [autoConnect, fetchInitial]);
 
   return {
     ...state,

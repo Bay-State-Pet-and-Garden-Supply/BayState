@@ -6,9 +6,10 @@
  */
 
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeScrapeLogEntry, mergeScrapeJobLogs, type ScrapeJobLogEntry } from '@/lib/scraper-logs';
+import { useRealtimeChannel } from './useRealtimeChannel';
 
 export type LogEntry = ScrapeJobLogEntry;
 
@@ -38,6 +39,48 @@ export interface UseLogSubscriptionReturn {
     clearLogs: () => void;
 }
 
+type LogRecord = Record<string, unknown>;
+type LogInsertPayload = RealtimePostgresInsertPayload<LogRecord>;
+
+interface SharedLogChannelEntry {
+    channel: RealtimeChannel;
+    listeners: Set<(payload: LogInsertPayload) => void>;
+}
+
+const sharedLogChannels = new Map<string, SharedLogChannelEntry>();
+
+function ensureSharedLogChannel(channelName: string, jobId?: string): SharedLogChannelEntry {
+    const channel = createClient().channel(channelName);
+    const existingEntry = sharedLogChannels.get(channelName);
+
+    if (existingEntry && existingEntry.channel === channel) {
+        return existingEntry;
+    }
+
+    const entry: SharedLogChannelEntry = {
+        channel,
+        listeners: existingEntry?.listeners ?? new Set(),
+    };
+
+    channel.on(
+        'postgres_changes',
+        {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'scrape_job_logs',
+            ...(jobId ? { filter: `job_id=eq.${jobId}` } : {}),
+        },
+        (payload) => {
+            for (const listener of Array.from(entry.listeners)) {
+                listener(payload as LogInsertPayload);
+            }
+        }
+    );
+
+    sharedLogChannels.set(channelName, entry);
+    return entry;
+}
+
 export function useLogSubscription(
     options: UseLogSubscriptionOptions = {}
 ): UseLogSubscriptionReturn {
@@ -48,124 +91,94 @@ export function useLogSubscription(
         onLog,
     } = options;
 
+    const channelName = useMemo(() => `runner-logs:${jobId ?? 'all'}`, [jobId]);
     const [logs, setLogs] = useState<LogEntry[]>([]);
-    const [isConnected, setIsConnected] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-
-    const channelRef = useRef<RealtimeChannel | null>(null);
-    const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+    const activeRef = useRef(autoConnect);
     const onLogRef = useRef(onLog);
-    const mountedRef = useRef(true);
+    const optionsRef = useRef({ jobId, maxEntries });
 
     useEffect(() => {
         onLogRef.current = onLog;
     }, [onLog]);
 
     useEffect(() => {
-        mountedRef.current = true;
-        return () => {
-            mountedRef.current = false;
-        };
+        optionsRef.current = { jobId, maxEntries };
+    }, [jobId, maxEntries]);
+
+    useEffect(() => {
+        activeRef.current = autoConnect;
+    }, [autoConnect]);
+
+    const handleLogMessage = useCallback((payload: LogRecord, persisted: boolean) => {
+        if (!activeRef.current) {
+            return;
+        }
+
+        const { jobId, maxEntries } = optionsRef.current;
+        const nextLog = normalizeScrapeLogEntry(payload, { persisted, jobId });
+        if (!nextLog) {
+            return;
+        }
+
+        setLogs((previousLogs) => mergeScrapeJobLogs(previousLogs, [nextLog], maxEntries));
+        onLogRef.current?.(nextLog);
     }, []);
 
-    const getSupabase = useCallback(() => {
-        if (!supabaseRef.current) {
-            supabaseRef.current = createClient();
-        }
-        return supabaseRef.current;
-    }, []);
+    const handlePersistedLog = useCallback(
+        (payload: LogInsertPayload) => {
+            handleLogMessage(payload.new as LogRecord, true);
+        },
+        [handleLogMessage]
+    );
+
+    useEffect(() => {
+        const sharedChannel = ensureSharedLogChannel(channelName, jobId);
+        sharedChannel.listeners.add(handlePersistedLog);
+
+        return () => {
+            sharedChannel.listeners.delete(handlePersistedLog);
+
+            if (sharedChannel.listeners.size === 0 && sharedLogChannels.get(channelName) === sharedChannel) {
+                sharedLogChannels.delete(channelName);
+            }
+        };
+    }, [channelName, jobId, handlePersistedLog]);
+
+    const {
+        connectionState,
+        lastError,
+        connect: connectRealtimeChannel,
+        disconnect: disconnectRealtimeChannel,
+    } = useRealtimeChannel({
+        channelName,
+        autoConnect,
+        onMessage: (payload) => {
+            if (typeof payload === 'object' && payload !== null) {
+                handleLogMessage(payload as LogRecord, false);
+            }
+        },
+        onError: (channelError) => {
+            console.error('[useLogSubscription] Channel error:', channelError);
+        },
+    });
 
     const connect = useCallback(() => {
-        const supabase = getSupabase();
-
-        try {
-            if (channelRef.current) {
-                supabase.removeChannel(channelRef.current);
-                channelRef.current = null;
-            }
-
-            const channelName = `scrape-logs-${jobId ?? 'all'}-${Math.random().toString(36).substring(2, 9)}`;
-            const channel = supabase.channel(channelName);
-
-            const filter = jobId ? `job_id=eq.${jobId}` : undefined;
-
-            channel.on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'scrape_job_logs',
-                    ...(filter ? { filter } : {}),
-                },
-                (payload) => {
-                    const newLog = normalizeScrapeLogEntry(payload.new as Record<string, unknown>, {
-                        persisted: true,
-                        jobId,
-                    });
-                    if (!newLog) return;
-
-                    setLogs((prev) => {
-                        return mergeScrapeJobLogs(prev, [newLog], maxEntries);
-                    });
-
-                    onLogRef.current?.(newLog);
-                }
-            );
-
-            channel.subscribe((status, err) => {
-                if (status === 'SUBSCRIBED') {
-                    setIsConnected(true);
-                    setError(null);
-                } else if (status === 'CHANNEL_ERROR') {
-                    const channelError = new Error(
-                        `Log subscription error: ${err?.message || 'unknown'}`
-                    );
-                    console.error('[useLogSubscription] Channel error:', channelError);
-                    supabase.removeChannel(channel);
-                    if (channelRef.current === channel) {
-                        channelRef.current = null;
-                    }
-                    setIsConnected(false);
-                    setError(channelError);
-                }
-            });
-
-            channelRef.current = channel;
-        } catch (err) {
-            const connectError = err instanceof Error ? err : new Error('Failed to connect');
-            console.error('[useLogSubscription] Connection error:', connectError);
-            setIsConnected(false);
-            setError(connectError);
-        }
-    }, [getSupabase, jobId, maxEntries]);
+        ensureSharedLogChannel(channelName, jobId);
+        activeRef.current = true;
+        connectRealtimeChannel();
+    }, [channelName, jobId, connectRealtimeChannel]);
 
     const disconnect = useCallback(() => {
-        if (channelRef.current) {
-            const supabase = getSupabase();
-            supabase.removeChannel(channelRef.current);
-            channelRef.current = null;
-        }
-        setIsConnected(false);
-    }, [getSupabase]);
+        activeRef.current = false;
+        disconnectRealtimeChannel();
+    }, [disconnectRealtimeChannel]);
 
     const clearLogs = useCallback(() => {
         setLogs([]);
     }, []);
 
-    useEffect(() => {
-        if (autoConnect) {
-            const connectionTimeout = setTimeout(() => {
-                if (mountedRef.current) {
-                    connect();
-                }
-            }, 0);
-
-            return () => {
-                clearTimeout(connectionTimeout);
-                disconnect();
-            };
-        }
-    }, [autoConnect, connect, disconnect]);
+    const isConnected = connectionState === 'connected';
+    const error = lastError;
 
     return useMemo(
         () => ({
