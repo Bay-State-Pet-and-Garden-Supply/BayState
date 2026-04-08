@@ -1,86 +1,23 @@
 {
-  "active_plan": "C:\\Users\\thoma\\OneDrive\\Desktop\\scripts\\BayState\\.sisyphus\\plans\\shopsite-field-mapping-corrections.md",
-  "started_at": "2026-04-04T18:10:49.132Z",
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/refined-realtime-logging.md",
+  "started_at": "2026-04-08T18:11:33.590Z",
   "session_ids": [
-    "ses_2a660d136fferPlznXbrbOtmo5",
-    "ses_2a64d3571ffeYBco1HG29iNDzT",
-    "ses_2a6402f31ffegFBR7sQ7nbQoy8",
-    "ses_2a634921fffe18KQDaFbcjChlK",
-    "ses_2a62b3b08ffeNcAsNC20TJuMD4",
-    "ses_2a614345fffehTbS0Sfxe7a38f",
-    "ses_2a60c8478ffeaM7pVOJ3m7ixnW",
-    "ses_2a600eaacffe0fl299aOa6jMLl",
-    "ses_2a6010fc9ffesAzyxomiUkG5By",
-    "ses_2a6014c8dffeU6PMOa4K2y1DIb",
-    "ses_2a6012e71ffenGjY2pQsy7jPdp",
-    "ses_2a5debdf5ffe4cUkxLY6S05aCX",
-    "ses_2a5d88dcdffePKAiZD3hBi5bnT"
+    "ses_2938edf87ffeuo3TXravaW2lWP"
   ],
-  "plan_name": "shopsite-field-mapping-corrections",
+  "session_origins": {
+    "ses_2938edf87ffeuo3TXravaW2lWP": "direct"
+  },
+  "plan_name": "refined-realtime-logging",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Freeze corrected ShopSite field contract and fixture coverage",
-      "session_id": "ses_2a64d3571ffeYBco1HG29iNDzT",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-04T18:24:09.573Z"
-    },
-    "todo:2": {
-      "task_key": "todo:2",
-      "task_label": "2",
-      "task_title": "Expand ShopSite parser, types, and requested download fields",
-      "session_id": "ses_2a6402f31ffegFBR7sQ7nbQoy8",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-04T18:37:09.154Z"
-    },
-    "todo:3": {
-      "task_key": "todo:3",
-      "task_label": "3",
-      "task_title": "Add normalized schema for corrected facets and operational columns",
-      "session_id": "ses_2a634921fffe18KQDaFbcjChlK",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-04T18:47:57.349Z"
-    },
-    "todo:4": {
-      "task_key": "todo:4",
-      "task_label": "4",
-      "task_title": "Persist corrected canonical mappings during import and reruns",
-      "session_id": "ses_2a62b3b08ffeNcAsNC20TJuMD4",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-04T19:13:24.105Z"
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "Resolve PF32 cross-sells and verify import audit logging",
-      "session_id": "ses_2a614345fffehTbS0Sfxe7a38f",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-04T19:22:07.725Z"
-    },
-    "todo:6": {
-      "task_key": "todo:6",
-      "task_label": "6",
-      "task_title": "Align mapping docs, constants, and end-to-end verification",
-      "session_id": "ses_2a60c8478ffeaM7pVOJ3m7ixnW",
-      "agent": "Sisyphus-Junior",
-      "category": "writing",
-      "updated_at": "2026-04-04T19:33:31.762Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "Plan Compliance Audit — oracle",
-      "session_id": "ses_2a5d88dcdffePKAiZD3hBi5bnT",
+      "task_title": "Remove TestLab Socket.io server and events",
+      "session_id": "ses_291b374d4ffe0P6uAzI4cMub2S",
       "agent": "Sisyphus-Junior",
       "category": "quick",
-      "updated_at": "2026-04-04T20:21:26.832Z"
+      "updated_at": "2026-04-08T18:17:19.643Z"
     }
   }
 }

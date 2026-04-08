@@ -231,7 +231,7 @@ Wave FINAL (Review - After ALL tasks):
 ## TODOs
 
 
-- [ ] 1. Remove TestLab Socket.io server and events
+- [x] 1. Remove TestLab Socket.io server and events
 
   **What to do**:
   - Delete `/apps/scraper/scrapers/events/` directory (entire directory - all files are TestLab-specific)
@@ -288,7 +288,7 @@ Wave FINAL (Review - After ALL tasks):
   - Files: All deleted files + modified imports
 
 
-- [ ] 2. Create backward compatibility shim for legacy hook
+- [x] 2. Create backward compatibility shim for legacy hook
 
   **What to do**:
   - REPLACE `/apps/web/hooks/useRealtimeJobs.ts` with a shim that wraps new implementation
