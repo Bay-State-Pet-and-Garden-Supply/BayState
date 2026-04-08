@@ -68,6 +68,7 @@ class _ScrapeCostContext:
 class _BatchCohortState:
     key: str
     preferred_domain_counts: dict[str, int]
+    preferred_brand_counts: dict[str, int]
 
     def ranked_domains(self) -> list[str]:
         return [
@@ -82,6 +83,30 @@ class _BatchCohortState:
         if not domain:
             return
         self.preferred_domain_counts[domain] = self.preferred_domain_counts.get(domain, 0) + 1
+
+    def ranked_brands(self) -> list[str]:
+        return [
+            brand
+            for brand, _count in sorted(
+                self.preferred_brand_counts.items(),
+                key=lambda item: (-item[1], item[0].lower()),
+            )
+        ]
+
+    def remember_brand(self, brand: str) -> None:
+        normalized_brand = str(brand or "").strip()
+        if not normalized_brand:
+            return
+        self.preferred_brand_counts[normalized_brand] = self.preferred_brand_counts.get(normalized_brand, 0) + 1
+
+    def dominant_domain(self, minimum_count: int = 2) -> str | None:
+        ranked = self.ranked_domains()
+        if not ranked:
+            return None
+        top_domain = ranked[0]
+        if self.preferred_domain_counts.get(top_domain, 0) < minimum_count:
+            return None
+        return top_domain
 
 
 class AISearchScraper:
@@ -301,6 +326,7 @@ class AISearchScraper:
         brand: Optional[str],
         category: Optional[str],
         cost_context: _ScrapeCostContext | None = None,
+        preferred_domains: Optional[list[str]] = None,
     ) -> tuple[list[dict[str, Any]], Optional[str], Optional[str]]:
         """Search identifier-first, then expand into broader queries only when needed."""
         initial_query = self._query_builder.build_identifier_query(sku)
@@ -341,31 +367,69 @@ class AISearchScraper:
             if cost_context is not None:
                 cost_context.llm_cost_usd += float(consolidation_cost or 0.0)
 
+        search_brand = brand or self._infer_search_brand_hint(aggregated_results, working_name or product_name)
+
         prepared_results = self._prepare_candidate_pool(
             search_results=aggregated_results,
             sku=sku,
-            brand=brand,
+            brand=search_brand,
             product_name=working_name,
             category=category,
+            preferred_domains=preferred_domains,
         )
+        has_preferred_domain_match = self._has_preferred_domain_candidate(prepared_results, preferred_domains)
         if not self._should_expand_search(
             search_results=prepared_results,
             sku=sku,
-            brand=brand,
+            brand=search_brand,
             product_name=working_name,
             category=category,
-        ):
+        ) and (not preferred_domains or has_preferred_domain_match):
             logger.info("[AI Search] Primary search produced a strong candidate pool; skipping follow-up searches")
             return prepared_results, working_name, search_error
+
+        preferred_query_plan = (
+            self._query_builder.build_site_query_variants(
+                domains=preferred_domains,
+                sku=sku,
+                product_name=working_name,
+                brand=search_brand,
+                category=category,
+            )
+            if preferred_domains and not has_preferred_domain_match
+            else []
+        )
+
+        preferred_query_budget = 2
+        for query in preferred_query_plan[:preferred_query_budget]:
+            await run_query(query)
+            prepared_results = self._prepare_candidate_pool(
+                search_results=aggregated_results,
+                sku=sku,
+                brand=search_brand,
+                product_name=working_name,
+                category=category,
+                preferred_domains=preferred_domains,
+            )
+            has_preferred_domain_match = self._has_preferred_domain_candidate(prepared_results, preferred_domains)
+            if not self._should_expand_search(
+                search_results=prepared_results,
+                sku=sku,
+                brand=search_brand,
+                product_name=working_name,
+                category=category,
+            ) and (not preferred_domains or has_preferred_domain_match):
+                logger.info("[AI Search] Preferred-domain follow-up produced a strong candidate pool for SKU %s", sku)
+                return prepared_results, working_name, search_error
 
         query_plan = [
             *self._query_builder.build_query_variants(
                 sku=sku,
                 product_name=working_name,
-                brand=brand,
+                brand=search_brand,
                 category=category,
             ),
-            self._query_builder.build_search_query(sku, working_name, brand, category),
+            self._query_builder.build_search_query(sku, working_name, search_brand, category),
         ]
 
         pending_queries: list[str] = []
@@ -398,17 +462,19 @@ class AISearchScraper:
             prepared_results = self._prepare_candidate_pool(
                 search_results=aggregated_results,
                 sku=sku,
-                brand=brand,
+                brand=search_brand,
                 product_name=working_name,
                 category=category,
+                preferred_domains=preferred_domains,
             )
+            has_preferred_domain_match = self._has_preferred_domain_candidate(prepared_results, preferred_domains)
             if not self._should_expand_search(
                 search_results=prepared_results,
                 sku=sku,
-                brand=brand,
+                brand=search_brand,
                 product_name=working_name,
                 category=category,
-            ):
+            ) and (not preferred_domains or has_preferred_domain_match):
                 logger.info(
                     "[AI Search] Search expansion stopped after %s follow-up quer%s for SKU %s",
                     follow_up_queries_run,
@@ -420,9 +486,10 @@ class AISearchScraper:
         prepared_results = self._prepare_candidate_pool(
             search_results=aggregated_results,
             sku=sku,
-            brand=brand,
+            brand=search_brand,
             product_name=working_name,
             category=category,
+            preferred_domains=preferred_domains,
         )
         return prepared_results, working_name, search_error
 
@@ -515,7 +582,7 @@ class AISearchScraper:
         if not preferred_domains:
             return search_results
 
-        return self._prepare_candidate_pool(
+        prepared_results = self._prepare_candidate_pool(
             search_results=search_results,
             sku=sku,
             brand=brand,
@@ -523,6 +590,50 @@ class AISearchScraper:
             category=category,
             preferred_domains=preferred_domains,
         )
+        dominant_domain = cohort_state.dominant_domain() if cohort_state is not None else None
+        if not dominant_domain:
+            return prepared_results
+
+        dominant_results = [
+            result
+            for result in prepared_results
+            if self._scoring.domain_from_url(str(result.get("url") or "")) == dominant_domain
+        ]
+        return dominant_results or prepared_results
+
+    def _has_preferred_domain_candidate(self, search_results: list[dict[str, Any]], preferred_domains: Optional[list[str]]) -> bool:
+        if not search_results or not preferred_domains:
+            return False
+
+        for result in search_results:
+            domain = self._scoring.domain_from_url(str(result.get("url") or ""))
+            if domain and any(domain == preferred or domain.endswith(f".{preferred}") for preferred in preferred_domains):
+                return True
+
+        return False
+
+    def _infer_search_brand_hint(self, search_results: list[dict[str, Any]], product_name: Optional[str]) -> Optional[str]:
+        if not search_results or not product_name:
+            return None
+
+        brand_counts: dict[str, int] = {}
+        for result in search_results[:5]:
+            source_url = str(result.get("url") or "")
+            for candidate_text in (result.get("title"), result.get("description")):
+                brand_hint = self._matching.infer_brand_prefix(str(candidate_text or ""), product_name, source_url)
+                if not brand_hint:
+                    continue
+                brand_counts[brand_hint] = brand_counts.get(brand_hint, 0) + 1
+
+        if not brand_counts:
+            return None
+
+        inferred_brand = sorted(
+            brand_counts.items(),
+            key=lambda item: (-item[1], item[0].lower()),
+        )[0][0]
+        logger.info("[AI Search] Inferred search brand hint '%s' from search snippets", inferred_brand)
+        return inferred_brand
 
     def _should_expand_search(
         self,
@@ -535,6 +646,37 @@ class AISearchScraper:
         """Return True when we need more search coverage before extraction."""
         if not search_results:
             return True
+
+        expected_variant_tokens = self._matching.extract_variant_tokens(product_name)
+        if expected_variant_tokens:
+            top_variant_match = any(
+                (
+                    self._matching.has_variant_token_overlap(
+                        product_name,
+                        " ".join(
+                            [
+                                str(result.get("url") or ""),
+                                str(result.get("title") or ""),
+                                str(result.get("description") or ""),
+                            ]
+                        ),
+                    )
+                    and not self._matching.has_conflicting_variant_tokens(
+                        product_name,
+                        " ".join(
+                            [
+                                str(result.get("url") or ""),
+                                str(result.get("title") or ""),
+                                str(result.get("description") or ""),
+                            ]
+                        ),
+                    )
+                )
+                for result in search_results[:3]
+                if not self._scoring.is_low_quality_result(result)
+            )
+            if not top_variant_match:
+                return True
 
         strong_candidate_url = self._scoring.pick_strong_candidate_url(
             search_results=search_results,
@@ -590,12 +732,14 @@ class AISearchScraper:
                 cohort_state = _BatchCohortState(
                     key=cohort_key,
                     preferred_domain_counts={},
+                    preferred_brand_counts={},
                 )
                 ordered_batch = sorted(
                     cohort_batch,
                     key=lambda item: self._score_item_context(item[1]),
                     reverse=True,
                 )
+                item_by_index = {index: item for index, item in cohort_batch}
                 cohort_results: list[tuple[int, AISearchResult]] = []
 
                 for original_index, item in ordered_batch:
@@ -616,6 +760,40 @@ class AISearchScraper:
                     domain = self._scoring.domain_from_url(result.url or "")
                     if result.success and domain and not self._scoring.is_marketplace(domain):
                         cohort_state.remember_domain(domain)
+                    if result.success and result.brand:
+                        cohort_state.remember_brand(result.brand)
+
+                dominant_domain = cohort_state.dominant_domain()
+                if dominant_domain:
+                    locked_state = _BatchCohortState(
+                        key=cohort_key,
+                        preferred_domain_counts={dominant_domain: cohort_state.preferred_domain_counts.get(dominant_domain, 0)},
+                        preferred_brand_counts=dict(cohort_state.preferred_brand_counts),
+                    )
+                    normalized_results: list[tuple[int, AISearchResult]] = []
+                    for original_index, existing_result in cohort_results:
+                        existing_domain = self._scoring.domain_from_url(existing_result.url or "")
+                        should_retry = (not existing_result.success) or existing_domain != dominant_domain
+                        if not should_retry:
+                            normalized_results.append((original_index, existing_result))
+                            continue
+
+                        item = item_by_index.get(original_index, {})
+                        retry_result = await self.scrape_product(
+                            sku=str(item.get("sku", "")).strip(),
+                            product_name=item.get("product_name"),
+                            brand=item.get("brand"),
+                            category=item.get("category"),
+                            cohort_state=locked_state,
+                        )
+                        retry_domain = self._scoring.domain_from_url(retry_result.url or "")
+                        if retry_result.success and retry_domain == dominant_domain:
+                            normalized_results.append((original_index, retry_result))
+                            continue
+
+                        normalized_results.append((original_index, existing_result))
+
+                    cohort_results = normalized_results
 
                 return cohort_results
 
@@ -929,12 +1107,21 @@ class AISearchScraper:
         """
         cost_context = _ScrapeCostContext()
         try:
+            preferred_domains = cohort_state.ranked_domains() if cohort_state is not None else None
+            inferred_brand = None
+            if not brand and cohort_state is not None:
+                ranked_brands = cohort_state.ranked_brands()
+                if ranked_brands:
+                    inferred_brand = ranked_brands[0]
+            effective_brand = brand or inferred_brand
+
             search_results, product_name, search_error = await self._collect_search_candidates(
                 sku=sku,
                 product_name=product_name,
-                brand=brand,
+                brand=effective_brand,
                 category=category,
                 cost_context=cost_context,
+                preferred_domains=preferred_domains,
             )
 
             if not search_results:
@@ -950,25 +1137,25 @@ class AISearchScraper:
                 search_results=search_results,
                 sku=sku,
                 product_name=product_name,
-                brand=brand,
+                brand=effective_brand,
                 category=category,
                 cost_context=cost_context,
             )
             search_results = self._apply_cohort_preferences(
                 search_results=search_results,
                 sku=sku,
-                brand=brand,
+                brand=effective_brand,
                 product_name=product_name,
                 category=category,
                 cohort_state=cohort_state,
             )
 
-            if not brand:
+            if not effective_brand and not preferred_domains:
                 logger.info("[AI Search] Brand missing - initiating parallel candidate discovery")
                 top_candidates = search_results[:3]
                 candidate_urls = [str(r.get("url")) for r in top_candidates if r.get("url")]
 
-                parallel_results = await self._extract_candidates_parallel(candidate_urls, sku, product_name, brand)
+                parallel_results = await self._extract_candidates_parallel(candidate_urls, sku, product_name, effective_brand)
 
                 # Pick the best result from the parallel set
                 accepted_result = None
@@ -978,7 +1165,7 @@ class AISearchScraper:
                         extraction_result=res,
                         sku=sku,
                         product_name=product_name,
-                        brand=brand,
+                        brand=effective_brand,
                         source_url=res.get("url", ""),
                     )
                     if is_acceptable:
@@ -991,7 +1178,7 @@ class AISearchScraper:
                         accepted_result,
                         sku,
                         product_name,
-                        brand,
+                        effective_brand,
                         target_url,
                         cost_context=cost_context,
                     )
@@ -1002,19 +1189,19 @@ class AISearchScraper:
                 prioritized_url = await self._identify_best_source(
                     ordered_results[:5],
                     sku,
-                    brand,
+                    effective_brand,
                     product_name,
                     cost_context=cost_context,
-                    preferred_domains=cohort_state.ranked_domains() if cohort_state is not None else None,
+                    preferred_domains=preferred_domains,
                 )
             if not prioritized_url:
                 prioritized_url = self._heuristic_source_selection(
                     ordered_results,
                     sku,
-                    brand,
+                    effective_brand,
                     product_name,
                     category,
-                    preferred_domains=cohort_state.ranked_domains() if cohort_state is not None else None,
+                    preferred_domains=preferred_domains,
                 )
 
             if prioritized_url:
@@ -1042,7 +1229,7 @@ class AISearchScraper:
 
                 tried_urls.add(target_url)
                 self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
-                extraction_result = await self._extract_product_data(target_url, sku, product_name, brand)
+                extraction_result = await self._extract_product_data(target_url, sku, product_name, effective_brand)
                 fetch_ok = bool(extraction_result.get("success"))
                 fetch_details = str(extraction_result.get("error") or "ok") if not fetch_ok else "ok"
                 self._log_telemetry(sku, target_url, "fetch_attempt", fetch_ok, fetch_details)
@@ -1051,7 +1238,7 @@ class AISearchScraper:
                     extraction_result=extraction_result,
                     sku=sku,
                     product_name=product_name,
-                    brand=brand,
+                    brand=effective_brand,
                     source_url=target_url,
                 )
                 self._log_telemetry(sku, target_url, "validation", is_acceptable, rejection_reason if not is_acceptable else "ok")
@@ -1083,7 +1270,7 @@ class AISearchScraper:
                 accepted_result,
                 sku,
                 product_name,
-                brand,
+                effective_brand,
                 target_url,
                 cost_context=cost_context,
             )
@@ -1146,7 +1333,9 @@ class AISearchScraper:
         async def _run_extract(url: str) -> Optional[dict[str, Any]]:
             result = await self._extract_product_data(url, sku, product_name, brand)
             if result and result.get("success"):
-                return result
+                normalized_result = dict(result)
+                normalized_result.setdefault("url", url)
+                return normalized_result
             return None
 
         results = await asyncio.gather(*[_run_extract(url) for url in urls])

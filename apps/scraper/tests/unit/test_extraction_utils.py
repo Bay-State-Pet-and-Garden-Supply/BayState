@@ -119,3 +119,17 @@ def test_normalize_images_preserves_valid_shopify_cdn_file_url() -> None:
     assert images == [
         "https://bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744"
     ]
+
+
+def test_infer_brand_from_candidate_title_prefix() -> None:
+    utils = _build_utils()
+
+    inferred_brand = utils.infer_brand(
+        explicit_brand=None,
+        candidate_name="Four Paws Wee-Wee Cat Litter Box System Pads 11 in x 17 in 10 ct",
+        description="Retailer product page",
+        source_url="https://petswarehouse.com/products/four-paws-wee-wee-cat-litter-box-system-pads-11-in-x-17-in-10-ct",
+        expected_name="WEE WEE CAT PADS 11X 17 10CT",
+    )
+
+    assert inferred_brand == "Four Paws"

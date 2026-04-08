@@ -6,6 +6,8 @@ import re
 from typing import Any, Optional
 from urllib.parse import urljoin, urlparse
 
+from scrapers.ai_search.matching import MatchingUtils
+
 
 class ExtractionUtils:
     """Utilities for extracting product data from HTML."""
@@ -139,6 +141,7 @@ class ExtractionUtils:
     def __init__(self, scoring_module):
         """Initialize with scoring module for domain utilities."""
         self._scoring = scoring_module
+        self._matching = MatchingUtils()
 
     def clean_text(self, value: Any) -> str:
         """Normalize arbitrary text extracted from HTML/JSON-LD."""
@@ -463,6 +466,9 @@ class ExtractionUtils:
             return "Lake Valley Seed"
         if (" seed pack lv" in combined or " seed herb lv" in combined or " seed vegetable lv" in combined) and "lake valley" not in combined:
             return "Lake Valley Seed"
+        inferred_prefix_brand = self._matching.infer_brand_prefix(candidate_name or description, expected_name, source_url)
+        if inferred_prefix_brand:
+            return inferred_prefix_brand
         return None
 
     def infer_categories(

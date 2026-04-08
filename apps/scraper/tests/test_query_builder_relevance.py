@@ -44,3 +44,19 @@ def test_query_variants_sku_priority() -> None:
     assert variants[0] == "UPC 813347002015"
     assert "UPC 813347002015" in variants
     assert "Manna Pro Stud Muffins" in variants
+
+
+def test_site_query_variants_include_site_restricted_lookup_paths() -> None:
+    qb = QueryBuilder()
+
+    variants = qb.build_site_query_variants(
+        domains=["www.bradleycaldwell.com"],
+        sku="045663976903",
+        product_name="WEE WEE CAT PADS FRE SH 28X30 10CT",
+        brand="FOUR PAWS",
+        category="Cat Supplies",
+    )
+
+    assert variants[0] == "site:bradleycaldwell.com 045663976903"
+    assert "site:bradleycaldwell.com FOUR PAWS WEE WEE CAT PADS FRE SH 28X30 10CT" in variants
+    assert "site:bradleycaldwell.com WEE WEE CAT PADS FRE SH 28X30 10CT" in variants

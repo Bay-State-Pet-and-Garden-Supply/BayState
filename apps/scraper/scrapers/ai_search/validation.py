@@ -123,6 +123,7 @@ class ExtractionValidator:
         name_matches = self._matching.is_name_match(product_name, extracted_name)
         combined_variant_text = f"{extracted_name} {description} {size_metrics}".strip()
         variant_matches = self._matching.has_variant_token_overlap(product_name, combined_variant_text)
+        conflicting_variant_matches = self._matching.has_conflicting_variant_tokens(product_name, combined_variant_text)
         specific_token_overlap = self._matching.has_specific_token_overlap(product_name, combined_variant_text, brand)
         source_tier = self._scoring.classify_source_domain(source_domain, brand)
 
@@ -181,6 +182,9 @@ class ExtractionValidator:
         if product_name and not variant_matches and source_tier not in {"official", "major_retailer"}:
             return self._log_rejection(validation_context, "Product page missing expected variant tokens")
 
+        if product_name and conflicting_variant_matches:
+            return self._log_rejection(validation_context, "Product page contains conflicting variant tokens")
+
         if (
             product_name
             and brand
@@ -206,8 +210,13 @@ class ExtractionValidator:
             if not has_exact_identifier:
                 has_brand_evidence = brand_matches if brand else bool(extracted_brand) or source_tier == "official"
                 has_variant_evidence = (not product_name) or variant_matches or specific_token_overlap
+                minimum_signal_confidence = max(0.83, self.confidence_threshold)
+                if source_tier == "secondary_retailer":
+                    minimum_signal_confidence = max(0.78, self.confidence_threshold)
+                elif source_tier in {"official", "major_retailer"}:
+                    minimum_signal_confidence = max(0.75, self.confidence_threshold)
                 has_strong_signals = (
-                    confidence >= max(0.83, self.confidence_threshold)
+                    confidence >= minimum_signal_confidence
                     and has_brand_evidence
                     and has_variant_evidence
                     and source_tier != "marketplace"
