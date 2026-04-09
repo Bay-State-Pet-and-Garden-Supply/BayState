@@ -36,6 +36,7 @@ export type {
 // Batch Service
 export {
     submitBatch,
+    submitBatchByProductLine,
     getBatchStatus,
     retrieveResults,
     applyResults,

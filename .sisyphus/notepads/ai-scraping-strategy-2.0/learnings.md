@@ -27,3 +27,33 @@
 - 2026-04-08 Fidelity check: runtime cohort execution is split between two implementations — `scrapers.cohort.job_processor.CohortJobProcessor` does true shared-browser multi-product processing, but `runner.run_job` currently routes live cohort jobs through representative-SKU fanout that duplicates one result across sibling SKUs instead of invoking the batch processor.
 - 2026-04-09 QA: local admin navigation renders the new `Product Lines` entry and `/admin/product-lines` loads in-browser, but the page is currently operating against an empty/missing backend table state rather than verified cohort data.
 - 2026-04-09 QA: unauthenticated `curl http://localhost:3000/api/admin/{cohorts,product-lines}` requests redirect to `/login`, so route-group auth is active for these admin APIs even before handler logic runs.
+
+#HY|- 2026-04-08: Task 13: Enhanced ProductSource with sibling context for cohort-based consolidation.
+#KB|- Added `sibling_products` field to ProductSource type - flat array with sku, name, brand, category for quick access.
+#HW|- Added `CohortSiblingContext` interface and `lookupCohortSiblingContext()` function to query cohort tables (cohort_batches, cohort_members).
+#XN|- Added `fetchProductInfoForSiblingContext()` to get name/brand/category from products_ingestion for sibling products.
+#BP|- Updated consolidation submit route (`/api/admin/consolidation/submit`) to auto-populate sibling context from cohort tables.
+#QR|- Client-provided `productLineContext` still takes precedence over auto-populated data for backward compatibility.
+#ZT|- The auto-population flow: lookupCohortSiblingContext → fetchProductInfoForSiblingContext → build productLineContext and sibling_products.
+
+- 2026-04-08: Task 15: Updated prompt-builder with cohort context support
+- Added `buildCohortContextFromSiblings()` to build cohort context from flat sibling_products array
+- Added `buildMergedCohortContext()` that prefers productLineContext but falls back to sibling_products for backward compatibility
+- Added `buildSystemPromptWithCohort()` to include cohort context in system prompts with sibling product details
+- Updated `buildUserPromptPayload()` to use merged cohort context (supports both productLineContext and sibling_products)
+- Consistency rules are now available both in base system prompt and product-specific cohort context
+- All 21 prompt-builder tests pass (11 original + 10 new cohort context tests)
+- Backward compatible: prompts work without sibling context, existing productLineContext still supported
+- Exported ProductLinePromptContext interface for use by external modules and tests
+
+- 2026-04-09: Task 18: Updated batch job routing to group products by product line
+- Added `groupProductsByProductLine()` function that groups products by their `productLineContext.productLine` value
+- Products without product_line are grouped under `'__no_product_line__'` key for backward compatibility
+- Added `submitBatchByProductLine()` that detects multiple product lines and creates separate batches per line
+- If only one product line (or all products have no product line), falls back to original `submitBatch()` behavior
+- Returns aggregated result with `_batch_groups` array listing each batch created and `_error_count` for failures
+- Added `isSubmitBatchResponse()` type guard for proper TypeScript narrowing
+- Updated `SubmitBatchResponse` interface with optional `_batch_groups` and `_error_count` fields
+- Export added to consolidation/index.ts
+- Build verified: TypeScript compiles without errors
+- The existing `buildBatchRoutingKey()` already routes by product line (using first product's line), but this new function ensures products are actually split into separate batches when they have different product lines

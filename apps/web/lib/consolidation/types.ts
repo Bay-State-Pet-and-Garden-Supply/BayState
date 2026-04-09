@@ -173,6 +173,11 @@ export interface SubmitBatchResponse {
     provider: 'openai' | 'openai_compatible' | 'gemini';
     provider_batch_id: string;
     product_count: number;
+    _batch_groups?: Array<{
+        batch_id: string;
+        product_count: number;
+    }>;
+    _error_count?: number;
 }
 
 /**
