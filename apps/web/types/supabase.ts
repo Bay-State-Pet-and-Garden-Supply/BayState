@@ -1874,6 +1874,7 @@ export type Database = {
           is_test_run: boolean | null
           pipeline_status: Database["public"]["Enums"]["pipeline_status_five"]
           pipeline_status_new: Database["public"]["Enums"]["pipeline_status_new_enum"]
+          product_line: string | null
           retry_count: number | null
           selected_images: Json | null
           sku: string
@@ -1892,6 +1893,7 @@ export type Database = {
           is_test_run?: boolean | null
           pipeline_status?: Database["public"]["Enums"]["pipeline_status_five"]
           pipeline_status_new: Database["public"]["Enums"]["pipeline_status_new_enum"]
+          product_line?: string | null
           retry_count?: number | null
           selected_images?: Json | null
           sku: string
@@ -1910,6 +1912,7 @@ export type Database = {
           is_test_run?: boolean | null
           pipeline_status?: Database["public"]["Enums"]["pipeline_status_five"]
           pipeline_status_new?: Database["public"]["Enums"]["pipeline_status_new_enum"]
+          product_line?: string | null
           retry_count?: number | null
           selected_images?: Json | null
           sku?: string
@@ -2378,6 +2381,9 @@ export type Database = {
           timeout_at: string | null
           type: string
           updated_at: string | null
+          cohort_id: string | null
+          is_cohort_batch: boolean | null
+          cohort_status: string | null
         }
         Insert: {
           attempt_count?: number
@@ -2458,6 +2464,9 @@ export type Database = {
           timeout_at?: string | null
           type?: string
           updated_at?: string | null
+          cohort_id?: string | null
+          is_cohort_batch?: boolean | null
+          cohort_status?: string | null
         }
         Relationships: []
       }

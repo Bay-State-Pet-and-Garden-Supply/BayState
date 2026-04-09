@@ -15,3 +15,13 @@
 #T10|- Final Task 10 audit confirmed published/export derivation still works without persisted `published`: `loadPublishedShopSiteExport()` pulls storefront SKUs from `products`, then hydrates ingestion rows by SKU.
 #T10|- The migration `20260402103000_cleanup_pipeline_status.sql` is correctly authored to drop `pipeline_status_new`, remap legacy values, and restore canonical `products_ingestion_pipeline_status_check`, but live schema has not applied it yet.
 #T10|- Active pipeline runtime still contains legacy route/status strings (notably `ExportWorkspace.tsx` legacy `registered`/`enriched` filters plus compat mappings), so completion gating must treat Task 10 as audit-failed until cleanup lands.
+
+## 2026-04-08
+#T6|- Created migration `20260409000002_add_cohort_to_scrape_jobs.sql` to add cohort tracking columns:
+  - `cohort_id` (uuid FK to cohort_batches)
+  - `is_cohort_batch` (boolean)
+  - `cohort_status` (text with check constraint)
+  - Indexes for cohort queries
+#T6|- Updated TypeScript types in `types/supabase.ts` and `types/scraper.ts` with new cohort fields
+#T6|- Supabase MCP tools had issues with project ID - migration file created but needs manual application
+#T6|- TypeScript compilation passes for modified files; pre-existing test errors remain unrelated to changes

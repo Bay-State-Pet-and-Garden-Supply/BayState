@@ -1,149 +1,24 @@
 {
-  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/refined-realtime-logging.md",
-  "started_at": "2026-04-08T18:11:33.590Z",
+  "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/ai-scraping-strategy-2.0.md",
+  "started_at": "2026-04-08T23:55:08.252Z",
   "session_ids": [
-    "ses_2938edf87ffeuo3TXravaW2lWP"
+    "ses_290c0bb4affeLaL1p3LX4xBquF"
   ],
   "session_origins": {
-    "ses_2938edf87ffeuo3TXravaW2lWP": "direct"
+    "ses_290c0bb4affeLaL1p3LX4xBquF": "direct"
   },
-  "plan_name": "refined-realtime-logging",
+  "plan_name": "ai-scraping-strategy-2.0",
   "agent": "atlas",
+  "worktree_path": null,
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Remove TestLab Socket.io server and events",
-      "session_id": "ses_291b374d4ffe0P6uAzI4cMub2S",
+      "task_title": "Add product_line column to products_ingestion table",
+      "session_id": "ses_2907640f4ffeujBgcPp50IZDIP",
       "agent": "Sisyphus-Junior",
       "category": "quick",
-      "updated_at": "2026-04-08T18:17:19.643Z"
-    },
-    "todo:3": {
-      "task_key": "todo:3",
-      "task_label": "3",
-      "task_title": "Write tests for backward compatibility shim",
-      "session_id": "ses_291ae89d8ffefCBM4oIV0PtYSf",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-04-08T18:21:27.593Z"
-    },
-    "todo:4": {
-      "task_key": "todo:4",
-      "task_label": "4",
-      "task_title": "Create unified useRealtimeChannel hook (TDD: RED phase)",
-      "session_id": "ses_291a66de3ffexugloQ6B61WmSg",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-08T18:34:04.581Z"
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "Implement channel pooling and lifecycle management",
-      "session_id": "ses_2919f80cdffe9Qo3CU7v7ryXLe",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-08T18:41:39.629Z"
-    },
-    "todo:6": {
-      "task_key": "todo:6",
-      "task_label": "6",
-      "task_title": "Add connection state management and error handling",
-      "session_id": "ses_291989f76ffeSyR0wMmDEz3TEG",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-04-08T18:43:12.242Z"
-    },
-    "todo:7": {
-      "task_key": "todo:7",
-      "task_label": "7",
-      "task_title": "Write comprehensive unit tests for unified hook",
-      "session_id": "ses_291972ce0ffee3X4q6ITA3JoZr",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-04-08T18:50:14.038Z"
-    },
-    "todo:8": {
-      "task_key": "todo:8",
-      "task_label": "8",
-      "task_title": "Fix RealtimeManager reconnection (integrate _auto_reconnect)",
-      "session_id": "ses_2918d1bc7ffepyGMkAcdA8VM2H",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-08T19:07:11.394Z"
-    },
-    "todo:9": {
-      "task_key": "todo:9",
-      "task_label": "9",
-      "task_title": "Implement thread-safe shipping with backpressure",
-      "session_id": "ses_2917fe600ffeNw5ijgojX7pyd3",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-08T19:13:53.303Z"
-    },
-    "todo:11": {
-      "task_key": "todo:11",
-      "task_label": "11",
-      "task_title": "Write scraper integration tests",
-      "session_id": "ses_29177352fffe2whXHfRLZMVVtC",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-04-08T19:29:32.764Z"
-    },
-    "todo:12": {
-      "task_key": "todo:12",
-      "task_label": "12",
-      "task_title": "Refactor useJobBroadcasts to use unified channel",
-      "session_id": "ses_2916c8be3ffevYGxuOQ53gGzMS",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-08T19:40:07.320Z"
-    },
-    "todo:15": {
-      "task_key": "todo:15",
-      "task_label": "15",
-      "task_title": "Write unit tests for refactored hooks",
-      "session_id": "ses_2915e3941ffeB9VYpoiTOoA0HL",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-04-08T19:58:37.166Z"
-    },
-    "todo:16": {
-      "task_key": "todo:16",
-      "task_label": "16",
-      "task_title": "Write end-to-end integration tests",
-      "session_id": "ses_2915199a5ffe4OrlbQm48oBYzR",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-08T20:09:00.813Z"
-    },
-    "todo:17": {
-      "task_key": "todo:17",
-      "task_label": "17",
-      "task_title": "Memory leak detection tests (heap snapshots)",
-      "session_id": "ses_29148cf40ffeomxwbuK5Xcr4te",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-08T20:27:28.807Z"
-    },
-    "todo:19": {
-      "task_key": "todo:19",
-      "task_label": "19",
-      "task_title": "Final cleanup and documentation",
-      "session_id": "ses_29137d7daffefLP9ZbWzMdlS4Y",
-      "agent": "Sisyphus-Junior",
-      "category": "writing",
-      "updated_at": "2026-04-08T20:33:15.248Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "**Plan Compliance Audit** — `oracle`",
-      "session_id": "ses_290e5feecffe2TVB33gVKjgZ6H",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-08T22:06:05.846Z"
+      "updated_at": "2026-04-09T00:08:37.116Z"
     }
   }
 }

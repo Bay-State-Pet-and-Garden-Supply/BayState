@@ -38,7 +38,6 @@ export interface Product {
   availability?: string | null;
   minimum_quantity?: number | null;
   shopsite_pages?: string[] | null;
-  // Relations
   brand?: Brand;
   primary_category?: Category;
   variants?: ProductVariant[];
@@ -74,14 +73,13 @@ export interface PetType {
   icon: string | null;
 }
 
-// Structured attribute types that align with product classification
 export type PetLifeStage = 'puppy' | 'kitten' | 'juvenile' | 'adult' | 'senior';
 export type PetSizeClass = 'small' | 'medium' | 'large' | 'giant';
-export type PetSpecialNeed = 
-  | 'grain-free' 
-  | 'sensitive-stomach' 
-  | 'weight-management' 
-  | 'high-protein' 
+export type PetSpecialNeed =
+  | 'grain-free'
+  | 'sensitive-stomach'
+  | 'weight-management'
+  | 'high-protein'
   | 'limited-ingredient'
   | 'dental-care'
   | 'joint-support'
@@ -98,7 +96,6 @@ export interface Pet {
   birth_date: string | null;
   weight_lbs: number | null;
   dietary_notes: string | null;
-  // New structured attributes for filtering/recommendations
   life_stage: PetLifeStage | null;
   size_class: PetSizeClass | null;
   special_needs: PetSpecialNeed[];
@@ -110,7 +107,6 @@ export interface Pet {
   pet_type?: PetType;
 }
 
-// Constants for form dropdowns
 export const PET_LIFE_STAGES: { value: PetLifeStage; label: string; description: string }[] = [
   { value: 'puppy', label: 'Puppy', description: 'Dogs under 1 year' },
   { value: 'kitten', label: 'Kitten', description: 'Cats under 1 year' },
@@ -261,7 +257,6 @@ export interface ProductGroup {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  // Relations populated when fetching
   members?: ProductGroupMember[];
   brand?: Brand;
 }
@@ -277,7 +272,6 @@ export interface ProductGroupMember {
   display_label: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;
-  // Relation populated when fetching
   product?: Product;
 }
 
@@ -292,6 +286,29 @@ export interface ProductGroupWithMembers {
     product: Product;
   }>;
   defaultMember: ProductGroupMember | null;
+}
+
+// ============================================================================
+// Cohort Metadata (distributed scraping batches)
+// ============================================================================
+
+export interface CohortBatch {
+  id: string;
+  upc_prefix: string;
+  product_line: string | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  scraper_config: string | null;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface CohortMember {
+  cohort_id: string;
+  product_sku: string;
+  upc_prefix: string;
+  sort_order: number;
+  created_at: string;
 }
 
 // ============================================================================
@@ -362,7 +379,6 @@ export interface RelatedProduct {
 // Price History
 // ============================================================================
 
-
 export interface Page {
   id: string;
   slug: string;
@@ -425,5 +441,4 @@ export interface CheckoutUserData {
   phone: string;
 }
 
-// Tax rate constant
-export const TAX_RATE = 0.0625; // 6.25%
+export const TAX_RATE = 0.0625;
