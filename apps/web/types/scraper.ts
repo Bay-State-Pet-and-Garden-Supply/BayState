@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-// --- Enums ---
-
 export enum EventType {
   JOB_STARTED = 'JOB_STARTED',
   JOB_COMPLETED = 'JOB_COMPLETED',
@@ -36,8 +34,6 @@ export enum EventSeverity {
   ERROR = 'ERROR',
   CRITICAL = 'CRITICAL',
 }
-
-// --- Zod Schemas for ScraperConfig ---
 
 export const SelectorConfigSchema = z.object({
   id: z.string(),
@@ -93,8 +89,6 @@ export const NormalizationRuleSchema = z.object({
 
 export type NormalizationRule = z.infer<typeof NormalizationRuleSchema>;
 
-// AntiDetectionConfig is referenced in ScraperConfig but not detailed in the prompt's nested types.
-// Using a permissive schema to ensure ScraperConfig is valid.
 export const AntiDetectionConfigSchema = z.record(z.string(), z.any());
 
 export type AntiDetectionConfig = z.infer<typeof AntiDetectionConfigSchema>;
@@ -121,8 +115,6 @@ export const ScraperConfigSchema = z.object({
 
 export type ScraperConfig = z.infer<typeof ScraperConfigSchema>;
 
-// --- Interfaces ---
-
 export interface ScrapeJob {
   id: string;
   skus: string[];
@@ -144,6 +136,9 @@ export interface ScrapeJob {
     llm_free_count: number;
     llm_ratio: number | null;
   };
+  cohort_id?: string | null;
+  is_cohort_batch?: boolean;
+  cohort_status?: string | null;
 }
 
 export interface ScrapeJobChunk {
