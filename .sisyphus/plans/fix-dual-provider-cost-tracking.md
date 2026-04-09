@@ -48,11 +48,11 @@ Update cost tracking to properly handle dual AI providers (Gemini + OpenAI) with
 - Updated job table showing provider column
 
 ### Definition of Done
-- [ ] API returns costs split by provider (Gemini vs OpenAI)
-- [ ] Frontend displays both providers in separate cards
-- [ ] Job table shows provider column
-- [ ] Service costs show both providers without renaming
-- [ ] Total cost includes both providers
+- [x] API returns costs split by provider (Gemini vs OpenAI)
+- [x] Frontend displays both providers in separate cards
+- [x] Job table shows provider column
+- [x] Service costs show both providers without renaming
+- [x] Total cost includes both providers
 
 ### Must Have
 - Separate cost aggregation for Gemini and OpenAI
@@ -91,10 +91,10 @@ Update cost tracking to properly handle dual AI providers (Gemini + OpenAI) with
    ```
 
 **Acceptance Criteria**:
-- [ ] API returns separate cost data for Gemini and OpenAI
-- [ ] Response includes both individual and combined totals
-- [ ] Provider column included in recent jobs
-- [ ] No renaming of OpenAI service to Gemini
+- [x] API returns separate cost data for Gemini and OpenAI
+- [x] Response includes both individual and combined totals
+- [x] Provider column included in recent jobs
+- [x] No renaming of OpenAI service to Gemini
 
 #### Task 2: Update Frontend Types and Interfaces
 **File**: `apps/web/components/admin/costs/CostTrackingDashboard.tsx`
@@ -113,8 +113,8 @@ Update cost tracking to properly handle dual AI providers (Gemini + OpenAI) with
 3. Create `ProviderCostData` interface
 
 **Acceptance Criteria**:
-- [ ] TypeScript interfaces updated for dual providers
-- [ ] No type errors in component
+- [x] TypeScript interfaces updated for dual providers
+- [x] No type errors in component
 
 #### Task 3: Update Dashboard UI for Dual Providers
 **File**: `apps/web/components/admin/costs/CostTrackingDashboard.tsx`
@@ -137,10 +137,10 @@ Update cost tracking to properly handle dual AI providers (Gemini + OpenAI) with
 ```
 
 **Acceptance Criteria**:
-- [ ] Dashboard shows separate cards for Gemini and OpenAI
-- [ ] Job table includes provider column
-- [ ] Combined totals calculated correctly
-- [ ] Visual distinction between providers (colors/icons)
+- [x] Dashboard shows separate cards for Gemini and OpenAI
+- [x] Job table includes provider column
+- [x] Combined totals calculated correctly
+- [x] Visual distinction between providers (colors/icons)
 
 #### Task 4: Update Batch Job Columns
 **File**: `apps/web/components/admin/costs/CostTrackingDashboard.tsx`
@@ -160,9 +160,9 @@ Update cost tracking to properly handle dual AI providers (Gemini + OpenAI) with
    ```
 
 **Acceptance Criteria**:
-- [ ] Provider column visible in job table
-- [ ] Badges show correct provider names
-- [ ] Color coding for each provider
+- [x] Provider column visible in job table
+- [x] Badges show correct provider names
+- [x] Color coding for each provider
 
 #### Task 5: Update Service Costs Display
 **File**: `apps/web/components/admin/costs/CostTrackingDashboard.tsx`
@@ -173,9 +173,9 @@ Update cost tracking to properly handle dual AI providers (Gemini + OpenAI) with
 3. Update category grouping to handle both
 
 **Acceptance Criteria**:
-- [ ] Both OpenAI and Gemini appear as separate services
-- [ ] No renaming/confusion between providers
-- [ ] Both visible in AI category
+- [x] Both OpenAI and Gemini appear as separate services
+- [x] No renaming/confusion between providers
+- [x] Both visible in AI category
 
 #### Task 6: Test End-to-End
 **Steps**:
@@ -185,10 +185,10 @@ Update cost tracking to properly handle dual AI providers (Gemini + OpenAI) with
 4. Verify totals add up
 
 **Acceptance Criteria**:
-- [ ] API returns correct provider split
-- [ ] Dashboard shows both providers
-- [ ] Costs aggregated correctly
-- [ ] No console errors
+- [x] API returns correct provider split
+- [x] Dashboard shows both providers
+- [x] Costs aggregated correctly
+- [x] No console errors
 
 ---
 
