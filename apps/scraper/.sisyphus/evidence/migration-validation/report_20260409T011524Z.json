@@ -1,0 +1,234 @@
+{
+  "accuracy": {
+    "evaluated_products": 9,
+    "exact_accuracy": 0.111111,
+    "exact_matches": 1,
+    "missing_predictions": 8,
+    "prefix_accuracy": 0.111111,
+    "prefix_matches": 1
+  },
+  "configuration": {
+    "max_cohort_size": 100,
+    "max_samples": 20,
+    "min_cohort_size": 1,
+    "page_size": 500,
+    "prefix_length": 8,
+    "sample_size": null,
+    "seed": 42,
+    "write_batch_size": 100
+  },
+  "dataset": {
+    "analyzed_products": 9,
+    "evaluation_coverage": 1.0,
+    "labeled_products": 9,
+    "loaded_products": 9,
+    "unlabeled_products": 0
+  },
+  "edge_cases": {
+    "fragmented_expected_lines": {
+      "count": 0,
+      "samples": []
+    },
+    "invalid_upc_products": {
+      "count": 8,
+      "samples": [
+        {
+          "brand": "Blue Buffalo",
+          "category": "Pet Food > Dog Food > Dry Food",
+          "expected_product_line": "07270511",
+          "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 5lb",
+          "sku": "072705115305"
+        },
+        {
+          "brand": "Blue Buffalo",
+          "category": "Pet Food > Dog Food > Dry Food",
+          "expected_product_line": "07270511",
+          "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 10lb",
+          "sku": "072705115312"
+        },
+        {
+          "brand": "Blue Buffalo",
+          "category": "Pet Food > Dog Food > Dry Food",
+          "expected_product_line": "07270511",
+          "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 15lb",
+          "sku": "072705115329"
+        },
+        {
+          "brand": "Blue Buffalo",
+          "category": "Pet Food > Dog Food > Dry Food",
+          "expected_product_line": "07270511",
+          "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 30lb",
+          "sku": "072705115336"
+        },
+        {
+          "brand": "Solid Gold",
+          "category": "Pet Food > Cat Food > Dry Food",
+          "expected_product_line": "08675867",
+          "product_name": "Solid Gold Holistick Natural Cat Food 10lb",
+          "sku": "086758670548"
+        },
+        {
+          "brand": "Solid Gold",
+          "category": "Pet Food > Cat Food > Dry Food",
+          "expected_product_line": "08675867",
+          "product_name": "Solid Gold Winged Tiger Cat Food 6lb",
+          "sku": "086758670556"
+        },
+        {
+          "brand": "Greenies",
+          "category": "Pet Treats > Dog Treats > Dental",
+          "expected_product_line": "01234567",
+          "product_name": "Greenies Dental Treats Medium 12ct",
+          "sku": "012345678999"
+        },
+        {
+          "brand": "Test Brand",
+          "category": "Diagnostics",
+          "expected_product_line": "ABC123",
+          "product_name": "Broken UPC Example",
+          "sku": "ABC123"
+        }
+      ]
+    },
+    "mixed_expected_line_cohorts": {
+      "count": 0,
+      "samples": []
+    },
+    "singleton_cohorts": {
+      "count": 1,
+      "samples": [
+        {
+          "cohort_key": "01234567",
+          "product_name": "Greenies Dental Treats Large 12ct",
+          "sku": "012345678998"
+        }
+      ]
+    },
+    "split_cohorts": 0,
+    "warning_samples": [
+      "Invalid UPC skipped (072705115305): UPC check digit is invalid",
+      "Invalid UPC skipped (072705115312): UPC check digit is invalid",
+      "Invalid UPC skipped (072705115329): UPC check digit is invalid",
+      "Invalid UPC skipped (072705115336): UPC check digit is invalid",
+      "Invalid UPC skipped (086758670548): UPC check digit is invalid",
+      "Invalid UPC skipped (086758670556): UPC check digit is invalid",
+      "Invalid UPC skipped (012345678999): UPC check digit is invalid",
+      "UPC contains non-numeric characters: ABC123"
+    ],
+    "warnings_count": 8
+  },
+  "generated_at": "2026-04-09T01:15:24.429687+00:00",
+  "migration_statistics": {
+    "cohorts_detected": 1,
+    "products_analyzed": 9,
+    "products_skipped": 8,
+    "valid_products": 1,
+    "warnings": [
+      "Invalid UPC skipped (072705115305): UPC check digit is invalid",
+      "Invalid UPC skipped (072705115312): UPC check digit is invalid",
+      "Invalid UPC skipped (072705115329): UPC check digit is invalid",
+      "Invalid UPC skipped (072705115336): UPC check digit is invalid",
+      "Invalid UPC skipped (086758670548): UPC check digit is invalid",
+      "Invalid UPC skipped (086758670556): UPC check digit is invalid",
+      "Invalid UPC skipped (012345678999): UPC check digit is invalid",
+      "UPC contains non-numeric characters: ABC123"
+    ]
+  },
+  "mismatch_summary": {
+    "count": 8,
+    "samples": [
+      {
+        "brand": "Blue Buffalo",
+        "category": "Pet Food > Dog Food > Dry Food",
+        "cohort_size": 0,
+        "expected_product_line": "07270511",
+        "predicted_product_line": null,
+        "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 5lb",
+        "reason": "missing_prediction",
+        "sku": "072705115305"
+      },
+      {
+        "brand": "Blue Buffalo",
+        "category": "Pet Food > Dog Food > Dry Food",
+        "cohort_size": 0,
+        "expected_product_line": "07270511",
+        "predicted_product_line": null,
+        "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 10lb",
+        "reason": "missing_prediction",
+        "sku": "072705115312"
+      },
+      {
+        "brand": "Blue Buffalo",
+        "category": "Pet Food > Dog Food > Dry Food",
+        "cohort_size": 0,
+        "expected_product_line": "07270511",
+        "predicted_product_line": null,
+        "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 15lb",
+        "reason": "missing_prediction",
+        "sku": "072705115329"
+      },
+      {
+        "brand": "Blue Buffalo",
+        "category": "Pet Food > Dog Food > Dry Food",
+        "cohort_size": 0,
+        "expected_product_line": "07270511",
+        "predicted_product_line": null,
+        "product_name": "Blue Buffalo Life Protection Formula Adult Dog Food 30lb",
+        "reason": "missing_prediction",
+        "sku": "072705115336"
+      },
+      {
+        "brand": "Solid Gold",
+        "category": "Pet Food > Cat Food > Dry Food",
+        "cohort_size": 0,
+        "expected_product_line": "08675867",
+        "predicted_product_line": null,
+        "product_name": "Solid Gold Holistick Natural Cat Food 10lb",
+        "reason": "missing_prediction",
+        "sku": "086758670548"
+      },
+      {
+        "brand": "Solid Gold",
+        "category": "Pet Food > Cat Food > Dry Food",
+        "cohort_size": 0,
+        "expected_product_line": "08675867",
+        "predicted_product_line": null,
+        "product_name": "Solid Gold Winged Tiger Cat Food 6lb",
+        "reason": "missing_prediction",
+        "sku": "086758670556"
+      },
+      {
+        "brand": "Greenies",
+        "category": "Pet Treats > Dog Treats > Dental",
+        "cohort_size": 0,
+        "expected_product_line": "01234567",
+        "predicted_product_line": null,
+        "product_name": "Greenies Dental Treats Medium 12ct",
+        "reason": "missing_prediction",
+        "sku": "012345678999"
+      },
+      {
+        "brand": "Test Brand",
+        "category": "Diagnostics",
+        "cohort_size": 0,
+        "expected_product_line": "ABC123",
+        "predicted_product_line": null,
+        "product_name": "Broken UPC Example",
+        "reason": "missing_prediction",
+        "sku": "ABC123"
+      }
+    ],
+    "top_pairs": []
+  },
+  "source": {
+    "input_file": "/tmp/validate_migration_fixture.json",
+    "mode": "input-file"
+  },
+  "timing_seconds": {
+    "evaluation": 1.8e-05,
+    "group_and_candidate_build": 7.3e-05,
+    "load": 0.000132,
+    "products_per_second": 40223.461,
+    "total": 0.000224
+  }
+}
