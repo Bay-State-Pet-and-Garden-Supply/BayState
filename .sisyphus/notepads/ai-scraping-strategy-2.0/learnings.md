@@ -4,3 +4,18 @@
 - Task 5: Added scrapers.cohort.grouping with configurable prefix grouping, invalid UPC filtering, size-based cohort splitting, and summary statistics.
 - Validation note: current UPC utility treats 072705115815 as valid and 072705115812 as invalid, so cohort tests should use generated/check-digit-verified GTIN fixtures.
 - Performance note: grouping 10,000 products with skip_invalid_upcs disabled completes under 1 second in targeted pytest verification.
+- 2026-04-08: `WorkflowExecutor` now supports an externally managed `browser_context()` session so cohort runs can reuse a single Playwright login/session across multiple `execute_workflow` calls.
+- 2026-04-08: Cohort metadata should be passed with `cohort_context=...`; the executor flattens those keys for step templating and also preserves a nested `cohort_context` dict for action access via `self.ctx.context`.
+- 2026-04-08: `CohortJobProcessor` reuses a single initialized workflow executor across batch members, groups valid cohort products together, and falls back to per-product processing for ungrouped/invalid SKUs so cohort mode stays backward compatible.
+- 2026-04-08: `runner.run_job` now gates cohort routing behind `USE_COHORT_PROCESSING` and `is_cohort_batch`, falls back to sequential mode when cohort products or representative SKUs are missing, and expands representative results back across all cohort member SKUs for backward-compatible `data` payloads.
+- 2026-04-08: `apps/scraper/scripts/migrate_to_cohorts.py` mirrors existing scraper script conventions (sys.path bootstrap + optional Supabase client), uses `group_products_into_cohorts` with UPC-prefix detection for historical backfill, skips invalid SKUs without aborting, and supports offline dry-run validation through `--input-file` plus JSON reporting.
+- 2026-04-08: `scrapers.cohort.aggregation.CohortAggregator` aggregates `CohortJobResult.results` without mutating member payloads, resolves brand/category through configurable dotted paths, and emits warning-only inconsistency reports plus cohort-level field summaries/consistency scoring.
+
+- 2026-04-09: Updated daemon.py and api_client.py for cohort claiming support.
+- Added ClaimedCohort dataclass with fields: cohort_id, cohort_index, products, scrapers, scraper_config.
+- Added claim_cohort() and submit_cohort_results() methods to ScraperAPIClient.
+- Daemon now tries cohort claiming first (USE_COHORT_PROCESSING env var), falls back to chunk claiming.
+- Refactored chunk processing into process_chunk() async function for reuse.
+- Added process_cohort() async function to handle cohort batch processing.
+- Cohort results submitted via /api/scraper/v1/cohort-callback endpoint.
+- All 33 API client unit tests pass with cohort implementation.

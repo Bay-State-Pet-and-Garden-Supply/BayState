@@ -92,6 +92,24 @@ class ClaimedChunk:
     lease_expires_at: str | None = None
 
 
+@dataclass
+class ClaimedCohort:
+    """Cohort batch claimed from the coordinator."""
+
+    cohort_id: str
+    cohort_index: int
+    products: list[dict[str, Any]]  # List of products in the cohort
+    scrapers: list[str]
+    scraper_config: dict[str, Any] | None = None
+    test_mode: bool = False
+    max_workers: int = 3
+    job_type: str = "cohort"
+    job_config: dict[str, Any] | None = None
+    ai_credentials: dict[str, Any] | None = None
+    feature_flags: dict[str, Any] | None = None
+    lease_token: str | None = None
+    lease_expires_at: str | None = None
+
 class AuthenticationError(Exception):
     """Raised when authentication fails."""
 
@@ -577,8 +595,104 @@ class ScraperAPIClient:
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to submit chunk results: {e.response.status_code} - {e.response.text}")
             return False
+    def claim_cohort(self, runner_name: str | None = None) -> ClaimedCohort | None:
+        """
+        Claim a cohort batch for processing.
+        
+        Returns cohort data with keys: cohort_id, cohort_index, products, scrapers.
+        Returns None if no cohorts are available.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return None
+
+        payload_dict: dict[str, Any] = {
+            "runner_name": runner_name or self.runner_name,
+        }
+
+        payload = json.dumps(payload_dict)
+
+        try:
+            data = self._make_request("POST", "/api/scraper/v1/claim-cohort", payload=payload)
+
+            cohort = data.get("cohort")
+            if not cohort:
+                logger.info("No pending cohorts available")
+                return None
+
+            logger.info(f"Claimed cohort {cohort.get('cohort_index')} with {len(cohort.get('products', []))} products")
+            return ClaimedCohort(
+                cohort_id=cohort.get("cohort_id", ""),
+                cohort_index=cohort.get("cohort_index", 0),
+                products=cohort.get("products", []),
+                scrapers=cohort.get("scrapers", []),
+                scraper_config=cohort.get("scraper_config"),
+                test_mode=cohort.get("test_mode", False),
+                max_workers=cohort.get("max_workers", 3),
+                job_type=cohort.get("job_type", "cohort"),
+                job_config=cohort.get("job_config"),
+                ai_credentials=cohort.get("ai_credentials"),
+                feature_flags=cohort.get("feature_flags"),
+                lease_token=cohort.get("lease_token"),
+                lease_expires_at=cohort.get("lease_expires_at"),
+            )
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return None
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404 or e.response.status_code == 204:
+                # 404/204 means no cohorts available - not an error
+                logger.debug("No pending cohorts available")
+                return None
+            logger.error(f"Failed to claim cohort: {e.response.status_code} - {e.response.text}")
+            return None
         except Exception as e:
-            logger.error(f"Error submitting chunk results: {e}")
+            logger.error(f"Error claiming cohort: {e}")
+            return None
+
+    def submit_cohort_results(
+        self,
+        cohort_id: str,
+        status: str,
+        results: dict[str, Any] | None = None,
+        error_message: str | None = None,
+    ) -> bool:
+        """Submit results for a completed cohort."""
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return False
+
+        payload_dict: dict[str, Any] = {
+            "cohort_id": cohort_id,
+            "status": status,
+            "runner_name": self.runner_name,
+        }
+
+        if results:
+            payload_dict["results"] = results
+        if error_message:
+            payload_dict["error_message"] = error_message
+
+        payload = json.dumps(payload_dict)
+
+        try:
+            self._make_request("POST", "/api/scraper/v1/cohort-callback", payload=payload)
+            logger.info(f"Submitted results for cohort {cohort_id}: status={status}")
+            return True
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return False
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to submit cohort results: {e.response.status_code} - {e.response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Error submitting cohort results: {e}")
             return False
 
     def submit_chunk_progress(

@@ -2,10 +2,18 @@
   "active_plan": "/Users/nickborrello/Desktop/Projects/BayState/.sisyphus/plans/ai-scraping-strategy-2.0.md",
   "started_at": "2026-04-08T23:55:08.252Z",
   "session_ids": [
-    "ses_290c0bb4affeLaL1p3LX4xBquF"
+    "ses_290c0bb4affeLaL1p3LX4xBquF",
+    "ses_2906bd66bffe7lmJWxaWZiEWiE",
+    "ses_2906b635effe0Dv1y77NVZ4yhx",
+    "ses_2906af39effeP6mdM6kCXRnwV6",
+    "ses_29069b6faffeyIQpyK8Rd2vfS7"
   ],
   "session_origins": {
-    "ses_290c0bb4affeLaL1p3LX4xBquF": "direct"
+    "ses_290c0bb4affeLaL1p3LX4xBquF": "direct",
+    "ses_2906bd66bffe7lmJWxaWZiEWiE": "appended",
+    "ses_2906b635effe0Dv1y77NVZ4yhx": "appended",
+    "ses_2906af39effeP6mdM6kCXRnwV6": "appended",
+    "ses_29069b6faffeyIQpyK8Rd2vfS7": "appended"
   },
   "plan_name": "ai-scraping-strategy-2.0",
   "agent": "atlas",
@@ -19,6 +27,15 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "updated_at": "2026-04-09T00:08:37.116Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Create cohort-aware job processor",
+      "session_id": "ses_29066e211ffeFk56TGE4sselCe",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-09T00:26:41.132Z"
     }
   }
 }

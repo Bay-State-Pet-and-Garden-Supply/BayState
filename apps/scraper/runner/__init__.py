@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 import os
+from dataclasses import replace
 from datetime import datetime, timezone
+from collections.abc import Mapping
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from core.api_client import JobConfig
@@ -11,6 +14,7 @@ from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
 from scrapers.config.feature_flags import GeminiFeatureFlags
 from scrapers.ai_search import AISearchScraper
+from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
 from scrapers.parser import ScraperConfigParser
 from scrapers.result_collector import ResultCollector
@@ -19,6 +23,9 @@ from validation.result_quality import sanitize_product_payload
 from typing import cast
 
 logger = logging.getLogger(__name__)
+
+USE_COHORT_PROCESSING = os.getenv("USE_COHORT_PROCESSING", "true").lower() == "true"
+CohortProduct = Mapping[str, object]
 
 
 class ConfigurationError(Exception):
@@ -281,7 +288,197 @@ def _build_telemetry_from_events(events: list[ScraperEvent]) -> Dict[str, Any]:
     }
 
 
+def _job_requests_cohort_processing(job_config: JobConfig) -> bool:
+    job_payload = job_config.job_config if isinstance(job_config.job_config, dict) else {}
+
+    if isinstance(getattr(job_config, "is_cohort_batch", None), bool):
+        return bool(getattr(job_config, "is_cohort_batch"))
+
+    raw_flag = job_payload.get("is_cohort_batch")
+    if isinstance(raw_flag, bool):
+        return raw_flag
+    if isinstance(raw_flag, str):
+        return raw_flag.strip().lower() in {"1", "true", "yes", "on"}
+
+    return job_config.job_type in {"cohort", "cohort_batch"}
+
+
+def _get_cohort_products(job_config: JobConfig) -> list[CohortProduct]:
+    raw_products = getattr(job_config, "products", None)
+    if not isinstance(raw_products, list):
+        job_payload = job_config.job_config if isinstance(job_config.job_config, dict) else {}
+        raw_products = job_payload.get("products")
+
+    if not isinstance(raw_products, list):
+        return []
+
+    return [product for product in raw_products if isinstance(product, dict)]
+
+
+def _build_cohort_processor(job_config: JobConfig) -> CohortProcessor:
+    job_payload = job_config.job_config if isinstance(job_config.job_config, dict) else {}
+    prefix_length = job_payload.get("cohort_prefix_length", job_payload.get("prefix_length", 8))
+    if not isinstance(prefix_length, int):
+        try:
+            prefix_length = int(prefix_length)
+        except (TypeError, ValueError):
+            prefix_length = 8
+
+    return CohortProcessor(
+        grouping_strategy=str(job_payload.get("cohort_grouping_strategy", job_payload.get("grouping_strategy", "upc_prefix")) or "upc_prefix"),
+        prefix_length=prefix_length,
+        upc_field=str(job_payload.get("cohort_upc_field", job_payload.get("upc_field", "sku")) or "sku"),
+        brand_field=str(job_payload.get("cohort_brand_field", job_payload.get("brand_field", "brand")) or "brand"),
+        name_field=str(job_payload.get("cohort_name_field", job_payload.get("name_field", "product_name")) or "product_name"),
+    )
+
+
+def _get_product_sku(product: CohortProduct) -> str | None:
+    for key in ("sku", "SKU", "upc", "UPC", "item_number", "itemNumber"):
+        value = product.get(key)
+        if value is None:
+            continue
+        sku = str(value).strip()
+        if sku:
+            return sku
+    return None
+
+
+def _select_cohort_representatives(
+    cohort_processor: CohortProcessor,
+    products: list[CohortProduct],
+) -> tuple[dict[str, list[CohortProduct]], dict[str, CohortProduct], list[str]]:
+    grouped_products = cohort_processor.group_products(products)
+    representatives: dict[str, CohortProduct] = {}
+    representative_skus: list[str] = []
+
+    for cohort_key, cohort_products in grouped_products.items():
+        representative = next((product for product in cohort_products if _get_product_sku(product)), cohort_products[0] if cohort_products else None)
+        representative_sku = _get_product_sku(representative) if representative else None
+        if representative is None or representative_sku is None:
+            continue
+
+        representatives[cohort_key] = representative
+        if representative_sku not in representative_skus:
+            representative_skus.append(representative_sku)
+
+    valid_grouped_products = {cohort_key: grouped_products[cohort_key] for cohort_key in representatives}
+    return valid_grouped_products, representatives, representative_skus
+
+
+def _expand_cohort_results(
+    sequential_results: Dict[str, Any],
+    cohort_processor: CohortProcessor,
+    grouped_products: dict[str, list[CohortProduct]],
+    representatives: dict[str, CohortProduct],
+) -> Dict[str, Any]:
+    expanded_results = copy.deepcopy(sequential_results)
+    expanded_data = expanded_results.setdefault("data", {})
+    cohort_results: dict[str, Any] = {}
+
+    for cohort_key, cohort_products in grouped_products.items():
+        representative = representatives[cohort_key]
+        representative_sku = _get_product_sku(representative)
+        representative_data = expanded_data.get(representative_sku, {}) if representative_sku else {}
+        if not isinstance(representative_data, dict):
+            representative_data = {}
+        cohort_status = "completed" if representative_data else "missing"
+
+        cohort_results[cohort_key] = {
+            "status": cohort_status,
+            "representative_sku": representative_sku,
+            "product_count": len(cohort_products),
+            "metadata": cohort_processor.get_cohort_metadata(cohort_key, cohort_products),
+            "products": cohort_products,
+            "result": representative_data,
+        }
+
+        for product in cohort_products:
+            product_sku = _get_product_sku(product)
+            if product_sku is None or product_sku in expanded_data:
+                continue
+            expanded_data[product_sku] = copy.deepcopy(representative_data)
+
+    expanded_results["cohort_processing"] = True
+    expanded_results["cohorts_processed"] = len(cohort_results)
+    expanded_results["cohort_results"] = cohort_results
+    return expanded_results
+
+
 def run_job(
+    job_config: JobConfig,
+    runner_name: Optional[str] = None,
+    log_buffer: Optional[List[Dict[str, Any]]] = None,
+    progress_callback: Optional[Callable[[str, str, dict[str, Any]], bool]] = None,
+    api_client: Optional[Any] = None,
+    job_logging: Optional[Any] = None,
+) -> Dict[str, Any]:
+    if USE_COHORT_PROCESSING and _job_requests_cohort_processing(job_config):
+        return _run_cohort_job(
+            job_config,
+            runner_name=runner_name,
+            log_buffer=log_buffer,
+            progress_callback=progress_callback,
+            api_client=api_client,
+            job_logging=job_logging,
+        )
+
+    return _run_sequential_job(
+        job_config,
+        runner_name=runner_name,
+        log_buffer=log_buffer,
+        progress_callback=progress_callback,
+        api_client=api_client,
+        job_logging=job_logging,
+    )
+
+
+def _run_cohort_job(
+    job_config: JobConfig,
+    runner_name: Optional[str] = None,
+    log_buffer: Optional[List[Dict[str, Any]]] = None,
+    progress_callback: Optional[Callable[[str, str, dict[str, Any]], bool]] = None,
+    api_client: Optional[Any] = None,
+    job_logging: Optional[Any] = None,
+) -> Dict[str, Any]:
+    products = _get_cohort_products(job_config)
+    if not products:
+        logger.warning("Cohort processing requested without products; falling back to sequential mode", extra={"job_id": job_config.job_id})
+        return _run_sequential_job(
+            job_config,
+            runner_name=runner_name,
+            log_buffer=log_buffer,
+            progress_callback=progress_callback,
+            api_client=api_client,
+            job_logging=job_logging,
+        )
+
+    cohort_processor = _build_cohort_processor(job_config)
+    grouped_products, representatives, representative_skus = _select_cohort_representatives(cohort_processor, products)
+    if not representative_skus:
+        logger.warning("Cohort processing could not determine representative SKUs; falling back to sequential mode", extra={"job_id": job_config.job_id})
+        return _run_sequential_job(
+            job_config,
+            runner_name=runner_name,
+            log_buffer=log_buffer,
+            progress_callback=progress_callback,
+            api_client=api_client,
+            job_logging=job_logging,
+        )
+
+    cohort_job_config = replace(job_config, skus=representative_skus)
+    sequential_results = _run_sequential_job(
+        cohort_job_config,
+        runner_name=runner_name,
+        log_buffer=log_buffer,
+        progress_callback=progress_callback,
+        api_client=api_client,
+        job_logging=job_logging,
+    )
+    return _expand_cohort_results(sequential_results, cohort_processor, grouped_products, representatives)
+
+
+def _run_sequential_job(
     job_config: JobConfig,
     runner_name: Optional[str] = None,
     log_buffer: Optional[List[Dict[str, Any]]] = None,
@@ -427,7 +624,7 @@ def run_job(
                 message=f"Loaded scraper config: {cfg_name}",
                 details={
                     "credential_refs": credential_refs,
-                    "workflow_count": len(config_dict["workflows"]),
+                    "workflow_count": len(config_dict["workflows"]) if isinstance(config_dict["workflows"], list) else 0,
                     "use_stealth": config_dict["use_stealth"],
                 },
                 scraper_name=cfg_name,
@@ -687,8 +884,7 @@ def run_job(
                             "features": extracted_data.get("Features"),
                             "ingredients": extracted_data.get("Ingredients"),
                             "dimensions": extracted_data.get("Dimensions"),
-                            "specifications": extracted_data.get("Specifications")
-                            or extracted_data.get("Technical Specs"),
+                            "specifications": extracted_data.get("Specifications") or extracted_data.get("Technical Specs"),
                             "case_pack": extracted_data.get("Case Pack"),
                             "ratings": extracted_data.get("Rating"),
                             "reviews_count": extracted_data.get("Reviews"),
@@ -885,11 +1081,7 @@ def _run_ai_search_job(
     feature_flags = GeminiFeatureFlags.from_payload(job_config.feature_flags)
     llm_provider = "gemini"
 
-    llm_model = str(
-        search_cfg.get("llm_model")
-        or runtime_credentials.get("llm_model")
-        or "gemini-2.5-flash"
-    )
+    llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "gemini-2.5-flash")
     if not llm_model.strip():
         llm_model = "gemini-2.5-flash"
     elif llm_model.startswith("gpt-"):
