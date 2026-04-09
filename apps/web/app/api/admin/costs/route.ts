@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 const GEMINI_COST_PROVIDER_LABEL = 'Google Gemini API';
+const OPENAI_COST_PROVIDER_LABEL = 'OpenAI API';
 
 interface ServiceCostRecord {
   id: string;
@@ -14,23 +15,57 @@ interface ServiceCostRecord {
   is_active: boolean;
 }
 
-function normalizeServiceCostForDisplay(service: ServiceCostRecord): ServiceCostRecord {
-  if (service.service !== 'openai') {
-    return service;
-  }
+interface BatchJobRecord {
+  id: string;
+  status: string;
+  provider: string;
+  estimated_cost: string | number | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  created_at: string;
+  completed_at: string | null;
+  description: string | null;
+}
 
-  const normalizedNotes = service.notes
-    ? service.notes
-        .replace(/openai/gi, GEMINI_COST_PROVIDER_LABEL)
-        .replace(/gpt models/gi, 'Gemini models')
-    : 'Gemini models for product consolidation and AI scraping (usage-based)';
+interface BatchSummary {
+  totalCost: number;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
 
-  return {
-    ...service,
-    service: 'google',
-    display_name: GEMINI_COST_PROVIDER_LABEL,
-    notes: normalizedNotes,
-  };
+function isGeminiProvider(provider: string | null | undefined): boolean {
+  return provider === 'gemini';
+}
+
+function summarizeBatchJobs(jobs: BatchJobRecord[]): BatchSummary {
+  return jobs.reduce<BatchSummary>(
+    (acc, job) => {
+      acc.totalCost += parseFloat(String(job.estimated_cost ?? 0));
+      acc.totalJobs += 1;
+      acc.promptTokens += job.prompt_tokens ?? 0;
+      acc.completionTokens += job.completion_tokens ?? 0;
+      acc.totalTokens += job.total_tokens ?? 0;
+
+      if (job.status === 'completed') acc.completedJobs += 1;
+      if (job.status === 'failed') acc.failedJobs += 1;
+
+      return acc;
+    },
+    {
+      totalCost: 0,
+      totalJobs: 0,
+      completedJobs: 0,
+      failedJobs: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+    }
+  );
 }
 
 export async function GET(request: Request) {
@@ -54,11 +89,11 @@ export async function GET(request: Request) {
 
     if (servicesError) throw servicesError;
 
-    // Fetch Google Gemini batch consolidation costs from batch_jobs
+    // Fetch AI batch consolidation costs from batch_jobs
     const { data: batchJobs, error: batchError } = await supabase
       .from('batch_jobs')
       .select(
-        'id, status, estimated_cost, prompt_tokens, completion_tokens, total_tokens, created_at, completed_at, description'
+        'id, status, provider, estimated_cost, prompt_tokens, completion_tokens, total_tokens, created_at, completed_at, description'
       )
       .gte('created_at', `${startDate}T00:00:00Z`)
       .lte('created_at', `${endDate}T23:59:59Z`)
@@ -66,63 +101,57 @@ export async function GET(request: Request) {
 
     if (batchError) throw batchError;
 
-    const normalizedServices = (services ?? []).map((service) =>
-      normalizeServiceCostForDisplay(service as ServiceCostRecord)
-    );
-
-    // Aggregate batch job costs
-    const batchSummary = (batchJobs ?? []).reduce(
-      (acc, job) => {
-        acc.totalCost += parseFloat(String(job.estimated_cost ?? 0));
-        acc.totalJobs += 1;
-        acc.promptTokens += job.prompt_tokens ?? 0;
-        acc.completionTokens += job.completion_tokens ?? 0;
-        acc.totalTokens += job.total_tokens ?? 0;
-        if (job.status === 'completed') acc.completedJobs += 1;
-        if (job.status === 'failed') acc.failedJobs += 1;
-        return acc;
-      },
-      {
-        totalCost: 0,
-        totalJobs: 0,
-        completedJobs: 0,
-        failedJobs: 0,
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-      }
-    );
+    const activeServices = (services ?? []) as ServiceCostRecord[];
+    const allBatchJobs = (batchJobs ?? []) as BatchJobRecord[];
+    const geminiJobs = allBatchJobs.filter((job) => isGeminiProvider(job.provider));
+    const openaiJobs = allBatchJobs.filter((job) => !isGeminiProvider(job.provider));
+    const geminiSummary = summarizeBatchJobs(geminiJobs);
+    const openaiSummary = summarizeBatchJobs(openaiJobs);
+    const combinedSummary = summarizeBatchJobs(allBatchJobs);
 
     // Calculate fixed monthly total
-    const fixedMonthlyTotal = normalizedServices.reduce(
+    const fixedMonthlyTotal = activeServices.reduce(
       (sum, svc) => sum + parseFloat(String(svc.monthly_cost ?? 0)),
       0
     );
 
     // Group services by category
-    const servicesByCategory = normalizedServices.reduce(
+    const servicesByCategory = activeServices.reduce(
       (acc, svc) => {
         const cat = svc.category as string;
         if (!acc[cat]) acc[cat] = [];
         acc[cat].push(svc);
         return acc;
       },
-      {} as Record<string, typeof services>
+      {} as Record<string, ServiceCostRecord[]>
     );
+
+    const ai = {
+      gemini: {
+        ...geminiSummary,
+        providerLabel: GEMINI_COST_PROVIDER_LABEL,
+      },
+      openai: {
+        ...openaiSummary,
+        providerLabel: OPENAI_COST_PROVIDER_LABEL,
+      },
+      combined: {
+        totalCost: combinedSummary.totalCost,
+        totalJobs: combinedSummary.totalJobs,
+        promptTokens: combinedSummary.promptTokens,
+        completionTokens: combinedSummary.completionTokens,
+        totalTokens: combinedSummary.totalTokens,
+      },
+      recentJobs: allBatchJobs.slice(0, 10),
+    };
 
     return NextResponse.json({
       dateRange: { start: startDate, end: endDate, days },
       fixedMonthlyTotal,
-      services: normalizedServices,
+      services: activeServices,
       servicesByCategory,
-      ai: {
-        consolidation: {
-          ...batchSummary,
-          providerLabel: GEMINI_COST_PROVIDER_LABEL,
-        },
-        recentJobs: (batchJobs ?? []).slice(0, 10),
-      },
-      estimatedMonthlyTotal: fixedMonthlyTotal + batchSummary.totalCost,
+      ai,
+      estimatedMonthlyTotal: fixedMonthlyTotal + combinedSummary.totalCost,
     });
   } catch (error) {
     console.error('Cost Tracking API Error:', error);
