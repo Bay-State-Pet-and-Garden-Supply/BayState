@@ -1,0 +1,333 @@
+{
+  "_description": "Test fixtures for product consolidation testing. Products grouped by SKU prefix (first 6 digits) to simulate UPC prefix matching.",
+  "product_groups": [
+    {
+      "group_id": "bentley-seeds",
+      "group_name": "Bentley Seed Products",
+      "sku_prefix": "051588",
+      "products": [
+        {
+          "sku": "051588179015",
+          "name": "BENTLEY SEED CABBAGE COPENHAGEN EARLY",
+          "upc": "025195001818",
+          "brand": "Bentley Seed",
+          "category": "Garden > Vegetables > Cabbage",
+          "price": "2.49"
+        },
+        {
+          "sku": "051588179022",
+          "name": "BENTLEY SEED CARROT NANTES 500",
+          "upc": "025195001825",
+          "brand": "Bentley Seed",
+          "category": "Garden > Vegetables > Carrots",
+          "price": "2.29"
+        },
+        {
+          "sku": "051588179039",
+          "name": "BENTLEY SEED LETTUCE ROMAINE",
+          "upc": "025195001832",
+          "brand": "Bentley Seed",
+          "category": "Garden > Vegetables > Lettuce",
+          "price": "2.19"
+        },
+        {
+          "sku": "051588179046",
+          "name": "BENTLEY SEED SPINACH BLOOMSDALE",
+          "upc": "025195001849",
+          "brand": "Bentley Seed",
+          "category": "Garden > Vegetables > Spinach",
+          "price": "2.39"
+        }
+      ]
+    },
+    {
+      "group_id": "acme-pet-food",
+      "group_name": "Acme Pet Food - Dog",
+      "sku_prefix": "071247",
+      "products": [
+        {
+          "sku": "071247100123",
+          "name": "ACME PET ADULT DOG FOOD CHICKEN & RICE",
+          "upc": "071247100123",
+          "brand": "Acme Pet",
+          "category": "Dog > Food > Dry",
+          "price": "42.99"
+        },
+        {
+          "sku": "071247100130",
+          "name": "ACME PET PUPPY FOOD CHICKEN & RICE",
+          "upc": "071247100130",
+          "brand": "Acme Pet",
+          "category": "Dog > Food > Dry",
+          "price": "38.99"
+        },
+        {
+          "sku": "071247100147",
+          "name": "ACME PET SENIOR DOG FOOD SALMON",
+          "upc": "071247100147",
+          "brand": "Acme Pet",
+          "category": "Dog > Food > Dry",
+          "price": "44.99"
+        },
+        {
+          "sku": "071247100154",
+          "name": "ACME PET WEIGHT MANAGEMENT CHICKEN",
+          "upc": "071247100154",
+          "brand": "Acme Pet",
+          "category": "Dog > Food > Dry",
+          "price": "40.99"
+        },
+        {
+          "sku": "071247100161",
+          "name": "ACME PET GRAIN FREE BEEF",
+          "upc": "071247100161",
+          "brand": "Acme Pet",
+          "category": "Dog > Food > Dry",
+          "price": "46.99"
+        }
+      ]
+    },
+    {
+      "group_id": "cherrybrook-treats",
+      "group_name": "Cherrybrook Dog Treats",
+      "sku_prefix": "090939",
+      "products": [
+        {
+          "sku": "090939441015",
+          "name": "CHERRYBROOK DOG TREATS PEANUT BUTTER",
+          "upc": "090939441015",
+          "brand": "Cherrybrook",
+          "category": "Dog > Treats > Baked",
+          "price": "8.99"
+        },
+        {
+          "sku": "090939441022",
+          "name": "CHERRYBROOK DOG TREATS CHEESE",
+          "upc": "090939441022",
+          "brand": "Cherrybrook",
+          "category": "Dog > Treats > Baked",
+          "price": "8.99"
+        },
+        {
+          "sku": "090939441039",
+          "name": "CHERRYBROOK TRAINING TREATS BACON",
+          "upc": "090939441039",
+          "brand": "Cherrybrook",
+          "category": "Dog > Treats > Training",
+          "price": "6.49"
+        },
+        {
+          "sku": "090939441046",
+          "name": "CHERRYBROOK SENIOR TREATS TURKEY",
+          "upc": "090939441046",
+          "brand": "Cherrybrook",
+          "category": "Dog > Treats > Soft",
+          "price": "9.49"
+        }
+      ]
+    },
+    {
+      "group_id": "outdoor-edge-tools",
+      "group_name": "Outdoor Edge Tools",
+      "sku_prefix": "087554",
+      "products": [
+        {
+          "sku": "087554112004",
+          "name": "OUTDOOR EDGE FIELD DRESSING KNIFE",
+          "upc": "087554112004",
+          "brand": "Outdoor Edge",
+          "category": "Hunting > Knives > Fixed Blade",
+          "price": "34.99"
+        },
+        {
+          "sku": "087554112011",
+          "name": "OUTDOOR EDGE SKINNING KNIFE",
+          "upc": "087554112011",
+          "brand": "Outdoor Edge",
+          "category": "Hunting > Knives > Fixed Blade",
+          "price": "29.99"
+        },
+        {
+          "sku": "087554112028",
+          "name": "OUTDOOR EDGE FOLDING HUNTER",
+          "upc": "087554112028",
+          "brand": "Outdoor Edge",
+          "category": "Hunting > Knives > Folding",
+          "price": "24.99"
+        }
+      ]
+    },
+    {
+      "group_id": "zone-pet-supplies",
+      "group_name": "Zone Pet Supplies",
+      "sku_prefix": "184003",
+      "products": [
+        {
+          "sku": "184003100018",
+          "name": "ZONE PET TOY BALL LATEX LARGE",
+          "upc": "184003100018",
+          "brand": "Zone Pet",
+          "category": "Dog > Toys > Balls",
+          "price": "7.99"
+        },
+        {
+          "sku": "184003100025",
+          "name": "ZONE PET TOY ROPE TUG MEDIUM",
+          "upc": "184003100025",
+          "brand": "Zone Pet",
+          "category": "Dog > Toys > Rope",
+          "price": "6.99"
+        },
+        {
+          "sku": "184003100032",
+          "name": "ZONE PET BED ORTHOPEDIC LARGE",
+          "upc": "184003100032",
+          "brand": "Zone Pet",
+          "category": "Dog > Beds > Orthopedic",
+          "price": "89.99"
+        },
+        {
+          "sku": "184003100049",
+          "name": "ZONE PET BOWL STAINLESS STEEL",
+          "upc": "184003100049",
+          "brand": "Zone Pet",
+          "category": "Dog > Feeding > Bowls",
+          "price": "12.99"
+        },
+        {
+          "sku": "184003100056",
+          "name": "ZONE PET COLLAR ADJUSTABLE RED",
+          "upc": "184003100056",
+          "brand": "Zone Pet",
+          "category": "Dog > Collars > Nylon",
+          "price": "14.99"
+        },
+        {
+          "sku": "184003100063",
+          "name": "ZONE PET LEASH RETRACTABLE 16FT",
+          "upc": "184003100063",
+          "brand": "Zone Pet",
+          "category": "Dog > Leashes > Retractable",
+          "price": "24.99"
+        }
+      ]
+    },
+    {
+      "group_id": "farm-table-cat",
+      "group_name": "Farm Table Cat Food",
+      "sku_prefix": "202759",
+      "products": [
+        {
+          "sku": "202759100012",
+          "name": "FARM TABLE CAT CHICKEN PATE",
+          "upc": "202759100012",
+          "brand": "Farm Table",
+          "category": "Cat > Food > Wet",
+          "price": "1.29"
+        },
+        {
+          "sku": "202759100029",
+          "name": "FARM TABLE CAT SALMON PATE",
+          "upc": "202759100029",
+          "brand": "Farm Table",
+          "category": "Cat > Food > Wet",
+          "price": "1.29"
+        },
+        {
+          "sku": "202759100036",
+          "name": "FARM TABLE CAT TUNA FLAKES",
+          "upc": "202759100036",
+          "brand": "Farm Table",
+          "category": "Cat > Food > Wet",
+          "price": "1.39"
+        },
+        {
+          "sku": "202759100043",
+          "name": "FARM TABLE CAT INDOOR FORMULA",
+          "upc": "202759100043",
+          "brand": "Farm Table",
+          "category": "Cat > Food > Dry",
+          "price": "32.99"
+        }
+      ]
+    },
+    {
+      "group_id": "good-4-nothing-bird",
+      "group_name": "Good 4 Nothing Bird Seed",
+      "sku_prefix": "653436",
+      "products": [
+        {
+          "sku": "653436100018",
+          "name": "GOOD 4 NOTHING BIRD SEED WILDBIRD MIX",
+          "upc": "653436100018",
+          "brand": "Good 4 Nothing",
+          "category": "Bird > Seed > Wild Bird",
+          "price": "12.99"
+        },
+        {
+          "sku": "653436100025",
+          "name": "GOOD 4 NOTHING PARROT MIX",
+          "upc": "653436100025",
+          "brand": "Good 4 Nothing",
+          "category": "Bird > Seed > Parrot",
+          "price": "16.99"
+        },
+        {
+          "sku": "653436100032",
+          "name": "GOOD 4 NOTHING FINCH MIX",
+          "upc": "653436100032",
+          "brand": "Good 4 Nothing",
+          "category": "Bird > Seed > Finch",
+          "price": "9.99"
+        },
+        {
+          "sku": "653436100049",
+          "name": "GOOD 4 NOTHING SUNFLOWER SEED",
+          "upc": "653436100049",
+          "brand": "Good 4 Nothing",
+          "category": "Bird > Seed > Sunflower",
+          "price": "14.99"
+        },
+        {
+          "sku": "653436100056",
+          "name": "GOOD 4 NOTHING NO MESS BLEND",
+          "upc": "653436100056",
+          "brand": "Good 4 Nothing",
+          "category": "Bird > Seed > No Mess",
+          "price": "15.99"
+        }
+      ]
+    },
+    {
+      "group_id": "ironwood-pet-beds",
+      "group_name": "Ironwood Pet Beds",
+      "sku_prefix": "810071",
+      "products": [
+        {
+          "sku": "810071100014",
+          "name": "IRONWOOD PET BED DONUT MEDIUM GREY",
+          "upc": "810071100014",
+          "brand": "Ironwood Pet",
+          "category": "Dog > Beds > Cushion",
+          "price": "54.99"
+        },
+        {
+          "sku": "810071100021",
+          "name": "IRONWOOD PET BED DONUT LARGE BROWN",
+          "upc": "810071100021",
+          "brand": "Ironwood Pet",
+          "category": "Dog > Beds > Cushion",
+          "price": "64.99"
+        },
+        {
+          "sku": "810071100038",
+          "name": "IRONWOOD PET BED ORTHOPEDIC XL",
+          "upc": "810071100038",
+          "brand": "Ironwood Pet",
+          "category": "Dog > Beds > Orthopedic",
+          "price": "129.99"
+        }
+      ]
+    }
+  ]
+}
