@@ -57,3 +57,19 @@
 - Export added to consolidation/index.ts
 - Build verified: TypeScript compiles without errors
 - The existing `buildBatchRoutingKey()` already routes by product line (using first product's line), but this new function ensures products are actually split into separate batches when they have different product lines
+
+- 2026-04-09: Real CLI verification with GEMINI_API_KEY:
+  - All CLI modules import successfully with python3
+  - `python3 -m cli.main cohort visualize` works with sample data
+  - `python3 -m cli.main benchmark extraction` help shows all options
+  - UPC validation correctly identifies invalid check digits in sample fixtures
+  - Cohort grouping logic works: groups products by 8-digit UPC prefix
+  - CLI entry point functional but `bsr` command not installed (needs `pip install -e .`)
+
+- 2026-04-09: REAL TEST with live Supabase data:
+  - Connected to production Supabase and queried 100 real products from products_ingestion
+  - Cohort grouping created 15 cohorts from 100 products (avg 6.7 products/cohort)
+  - Largest cohort: 05158817 with 47 products
+  - CLI `cohort visualize` works with live data: found 78 total cohorts, 48 in target prefix
+  - 5 invalid SKUs detected (non-numeric like "HATPAOSFDGGR")
+  - Cohort detection working correctly with 8-digit SKU prefixes
