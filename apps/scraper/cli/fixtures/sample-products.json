@@ -1,0 +1,77 @@
+{
+  "description": "Sample product fixtures for local CLI testing",
+  "products": [
+    {
+      "sku": "072705115305",
+      "upc": "012345678905",
+      "name": "Blue Buffalo Life Protection Formula Adult Dog Food 5lb",
+      "brand": "Blue Buffalo",
+      "category": "Pet Food > Dog Food > Dry Food",
+      "price": 24.99,
+      "cohort": "blue-buffalo-dog"
+    },
+    {
+      "sku": "072705115312",
+      "upc": "012345678912",
+      "name": "Blue Buffalo Life Protection Formula Adult Dog Food 10lb",
+      "brand": "Blue Buffalo",
+      "category": "Pet Food > Dog Food > Dry Food",
+      "price": 39.99,
+      "cohort": "blue-buffalo-dog"
+    },
+    {
+      "sku": "072705115329",
+      "upc": "012345678929",
+      "name": "Blue Buffalo Life Protection Formula Adult Dog Food 15lb",
+      "brand": "Blue Buffalo",
+      "category": "Pet Food > Dog Food > Dry Food",
+      "price": 54.99,
+      "cohort": "blue-buffalo-dog"
+    },
+    {
+      "sku": "072705115336",
+      "upc": "012345678936",
+      "name": "Blue Buffalo Life Protection Formula Adult Dog Food 30lb",
+      "brand": "Blue Buffalo",
+      "category": "Pet Food > Dog Food > Dry Food",
+      "price": 79.99,
+      "cohort": "blue-buffalo-dog"
+    },
+    {
+      "sku": "086758670548",
+      "upc": "998877665548",
+      "name": "Solid Gold Holistick Natural Cat Food 10lb",
+      "brand": "Solid Gold",
+      "category": "Pet Food > Cat Food > Dry Food",
+      "price": 29.99,
+      "cohort": "solid-gold-cat"
+    },
+    {
+      "sku": "086758670556",
+      "upc": "023456789017",
+      "name": "Solid Gold Winged Tiger Cat Food 6lb",
+      "brand": "Solid Gold",
+      "category": "Pet Food > Cat Food > Dry Food",
+      "price": 19.99,
+      "cohort": "solid-gold-cat"
+    },
+    {
+      "sku": "012345678998",
+      "upc": "123456789015",
+      "name": "Greenies Dental Treats Large 12ct",
+      "brand": "Greenies",
+      "category": "Pet Treats > Dog Treats > Dental",
+      "price": 8.99,
+      "cohort": "greenies-dental"
+    },
+    {
+      "sku": "012345678999",
+      "upc": "123456789022",
+      "name": "Greenies Dental Treats Medium 12ct",
+      "brand": "Greenies",
+      "category": "Pet Treats > Dog Treats > Dental",
+      "price": 7.49,
+      "cohort": "greenies-dental"
+    }
+  ]
+}

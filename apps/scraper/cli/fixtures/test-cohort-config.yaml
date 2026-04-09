@@ -1,0 +1,59 @@
+---
+# Test cohort configuration for local CLI testing
+name: "test-cohort-local"
+scraper_type: "crawl4ai"
+
+# Test metadata
+test:
+  mode: "local"
+  fixture_file: "sample-products.json"
+
+crawl4ai_config:
+  extraction_mode: "llm-free"
+  anti_detection:
+    enabled: true
+    simulate_user: false
+
+# Base URL for testing (would normally be replaced by actual vendor config)
+base_url: "https://example-pet-supply.myshopify.com"
+
+# Cohorts for testing
+cohorts:
+  blue-buffalo-dog:
+    description: "Blue Buffalo dog food product line"
+    product_count: 4
+    sample_skus:
+      - "072705115305"
+      - "072705115312"
+      - "072705115329"
+      - "072705115336"
+
+  solid-gold-cat:
+    description: "Solid Gold cat food product line"
+    product_count: 2
+    sample_skus:
+      - "086758670548"
+      - "086758670556"
+
+  greenies-dental:
+    description: "Greenies dental treats"
+    product_count: 2
+    sample_skus:
+      - "012345678998"
+      - "012345678999"
+
+selectors:
+  product_name: "[data-product-title]"
+  price: "[data-price]"
+  upc: "[data-upc]"
+
+actions:
+  - type: navigate
+    params:
+      url: "{base_url}/products/{sku}"
+  - type: extract
+    params:
+      fields:
+        - product_name
+        - price
+        - upc
