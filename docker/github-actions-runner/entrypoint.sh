@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-: "${RUNNER_URL:?Environment variable RUNNER_URL must be set (e.g., https://github.com/actions/runner/releases/download/v<ver>/actions-runner-linux-x64-<ver>.tar.gz)}"
 : "${RUNNER_TOKEN:?Environment variable RUNNER_TOKEN must be set (GitHub runner registration token)}"
 : "${RUNNER_ORG:-}"
 : "${RUNNER_REPO:-}"

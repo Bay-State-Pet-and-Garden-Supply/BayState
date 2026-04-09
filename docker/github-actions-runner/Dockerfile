@@ -17,6 +17,7 @@ RUN apt-get update && \
       libunwind8 \
       tzdata \
       procps \
+      docker.io \
     && rm -rf /var/lib/apt/lists/*
 
 ENV RUNNER_VERSION=2.333.0
@@ -41,8 +42,16 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
     rm runner.tar.gz && \
     chown -R runner:runner /runner
 
+# Set ownership to runner user
+RUN chown -R runner:runner /runner
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# Ensure the runner user can access the docker socket (mounted from host)
+# This usually requires adding to the docker group (gid 999 on Ubuntu)
+# But we can also chmod 666 the socket on the host or use sudo.
+# For simplicity, we'll let the user handle group mapping.
 
 USER runner
 
