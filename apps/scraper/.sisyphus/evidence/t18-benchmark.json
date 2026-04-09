@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-07T22:58:41.909934+00:00",
+  "generated_at": "2026-04-09T23:16:34.126800+00:00",
   "metrics": {
     "memory": {
       "current_mb": 0.009,
@@ -7,30 +7,30 @@
     },
     "throughput": {
       "sample_size": 50,
-      "skus_per_minute": 179299.834,
+      "skus_per_minute": 112674.998,
       "workers": 5
     },
     "timing": {
       "aggregate": {
-        "max_ms": 2.97,
-        "mean_ms": 0.996,
-        "min_ms": 0.135,
-        "p95_ms": 2.089,
-        "p99_ms": 2.751
+        "max_ms": 3.757,
+        "mean_ms": 1.57,
+        "min_ms": 0.221,
+        "p95_ms": 3.336,
+        "p99_ms": 3.625
       },
       "concurrent": {
-        "max_ms": 2.97,
-        "mean_ms": 1.398,
-        "min_ms": 0.281,
-        "p95_ms": 2.28,
-        "p99_ms": 2.825
+        "max_ms": 3.757,
+        "mean_ms": 2.22,
+        "min_ms": 0.377,
+        "p95_ms": 3.474,
+        "p99_ms": 3.67
       },
       "single_sku": {
-        "max_ms": 0.406,
-        "mean_ms": 0.191,
-        "min_ms": 0.135,
-        "p95_ms": 0.305,
-        "p99_ms": 0.384
+        "max_ms": 0.494,
+        "mean_ms": 0.27,
+        "min_ms": 0.221,
+        "p95_ms": 0.326,
+        "p99_ms": 0.454
       }
     }
   },
@@ -49,23 +49,23 @@
       "total_ms": 60.0
     },
     "total_sku": {
-      "avg_ms": 6.017,
+      "avg_ms": 7.651,
       "count": 1,
-      "max_ms": 6.017,
-      "min_ms": 6.017,
+      "max_ms": 7.651,
+      "min_ms": 7.651,
       "operation_type": "total_sku",
-      "p50_ms": 6.017,
-      "p95_ms": 6.017,
-      "p99_ms": 6.017,
+      "p50_ms": 7.651,
+      "p95_ms": 7.651,
+      "p99_ms": 7.651,
       "std_dev_ms": 0.0,
       "success_rate": 1.0,
-      "total_ms": 6.017
+      "total_ms": 7.651
     }
   },
   "raw": {
-    "concurrent_mean_ms": 1.398,
+    "concurrent_mean_ms": 2.22,
     "concurrent_run_count": 50,
-    "single_mean_ms": 0.191,
+    "single_mean_ms": 0.27,
     "single_run_count": 25
   },
   "task": "T18 Performance Benchmarking"

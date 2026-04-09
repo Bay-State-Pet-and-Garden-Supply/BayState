@@ -49,8 +49,9 @@ class SearchScorer:
 
     TRUSTED_RETAILERS = MAJOR_RETAILERS | SECONDARY_RETAILERS
 
-    # Blocked domains (social media, aggregators, etc.)
+    # Blocked domains (social media, aggregators, barcode-lookup, SEO-spam)
     BLOCKED_DOMAINS = {
+        # Social media
         "reddit.com",
         "pinterest.com",
         "youtube.com",
@@ -59,6 +60,7 @@ class SearchScorer:
         "tiktok.com",
         "medium.com",
         "quora.com",
+        # Barcode / UPC lookup databases
         "upcitemdb.com",
         "barcodelookup.com",
         "upcdatabase.org",
@@ -66,6 +68,24 @@ class SearchScorer:
         "barcode-list.com",
         "digit-eyes.com",
         "upcindex.com",
+        "go-upc.com",
+        "upcscavenger.com",
+        "eandata.com",
+        "upccodesearch.com",
+        "upc-search.org",
+        "barcodesinc.com",
+        # Price comparison / aggregators
+        "pricerunner.com",
+        "pricegrabber.com",
+        "shopzilla.com",
+        "shopping.google.com",
+        "nextag.com",
+        "bizrate.com",
+        # Coupon / cashback SEO
+        "retailmenot.com",
+        "coupons.com",
+        "slickdeals.net",
+        # Google infrastructure
         "vertexaisearch.cloud.google.com",
     }
 
@@ -97,6 +117,15 @@ class SearchScorer:
         r"\bbarcode search\b",
         r"\bgtin search\b",
         r"\bproduct lookup\b",
+        # Store-locator / "where to buy" pages
+        r"\bwhere to buy\b",
+        r"\bfind a store\b",
+        r"\bstore locator\b",
+        r"\bfind a retailer\b",
+        r"\bfind a dealer\b",
+        # Roundup / listicle patterns
+        r"\b\d+ best\b",
+        r"\bpicks for \d{4}\b",
     ]
     GROUNDED_EXPLANATION_MARKERS = (
         "the search for ",
@@ -123,6 +152,13 @@ class SearchScorer:
         "/collections?",
         "/product-line/",
         "/product-lines/",
+        "/product-range/",
+        "/our-products/",
+        "/all-products/",
+        "/store-locator",
+        "/where-to-buy",
+        "/find-a-store",
+        "/find-a-retailer",
     ]
 
     # Title/snippet phrases that suggest a multi-product listing page
@@ -209,21 +245,36 @@ class SearchScorer:
 
         Brand sites often use URLs like:
           brand.com/products/cat-litter/go-natural-pea-husk
+          brand.com/our-products/flea-tick
+          brand.com/brands/product-family
         These are marketing pages for a product line, listing variants
         and linking to retailers, not a single purchasable PDP.
         """
         try:
             parsed = urlparse(url)
+            domain = self.domain_from_url(url)
+
+            # Trusted retailers use these URL patterns legitimately
+            if self.is_trusted_retailer(domain):
+                return False
+
             path = parsed.path.rstrip("/").lower()
             segments = [s for s in path.split("/") if s]
+            if not segments:
+                return False
 
             # Pattern: /products/{category}/{line-name} (3+ segments, first is 'products')
             if len(segments) >= 3 and segments[0] == "products":
-                # If domain is a trusted retailer, this pattern is normal
-                # (e.g. amazon.com/products/...) — skip
-                domain = self.domain_from_url(url)
-                if not self.is_trusted_retailer(domain):
-                    return True
+                return True
+
+            # Pattern: /our-products/{category} or /product-range/{family}
+            product_range_roots = {"our-products", "product-range", "product-lines", "product-line"}
+            if len(segments) >= 2 and segments[0] in product_range_roots:
+                return True
+
+            # Pattern: /brands/{brand-name}/{product-family}
+            if len(segments) >= 3 and segments[0] == "brands":
+                return True
         except Exception:
             pass
         return False

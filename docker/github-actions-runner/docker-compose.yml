@@ -11,6 +11,6 @@ services:
       RUNNER_NAME: "${RUNNER_NAME:-${HOSTNAME}}"
       RUNNER_LABELS: "self-hosted,docker"
     volumes:
-      - ./_work:/runner/_work
+      - ~/actions-runner-work:/runner/_work
       # Optional (only needed if you want the runner to spawn sibling containers):
       - /var/run/docker.sock:/var/run/docker.sock

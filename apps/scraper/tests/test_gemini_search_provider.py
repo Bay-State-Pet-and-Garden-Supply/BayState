@@ -11,7 +11,11 @@ pytestmark = pytest.mark.asyncio
 
 def _build_grounded_response(*, url: str, title: str) -> SimpleNamespace:
     chunk = SimpleNamespace(web=SimpleNamespace(uri=url, title=title))
-    metadata = SimpleNamespace(grounding_chunks=[chunk], web_search_queries=["4057"])
+    metadata = SimpleNamespace(
+        grounding_chunks=[chunk],
+        web_search_queries=["4057"],
+        grounding_supports=[],
+    )
     candidate = SimpleNamespace(grounding_metadata=metadata)
     return SimpleNamespace(candidates=[candidate], text="Grounded product summary")
 
@@ -45,7 +49,7 @@ async def test_gemini_search_resolves_google_grounding_redirects(monkeypatch: py
         {
             "url": resolved_url,
             "title": "lakevalleyseed.com",
-            "description": "Grounded product summary",
+            "description": "lakevalleyseed.com",
             "extra_snippets": ["4057"],
             "provider": "gemini",
             "result_type": "grounded",
