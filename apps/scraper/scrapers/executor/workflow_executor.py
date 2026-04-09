@@ -11,9 +11,11 @@ This module has been refactored to use extracted modules for better separation o
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 import logging
-import os
 import inspect
+import os
 import threading
 import time
 from typing import Any, cast
@@ -42,7 +44,6 @@ from scrapers.exceptions import (
 from scrapers.models.config import ScraperConfig, SelectorConfig, WorkflowStep
 
 # Extracted modules
-from scrapers.executor.browser_manager import BrowserManager
 from scrapers.executor.selector_resolver import SelectorResolver
 from scrapers.executor.debug_capture import DebugArtifactCapture
 from scrapers.executor.normalization import NormalizationEngine
@@ -190,6 +191,10 @@ class WorkflowExecutor:
 
     async def initialize(self) -> None:
         """Initialize the browser and all extracted modules asynchronously."""
+        self._bind_browser(await self._create_browser())
+
+    async def _create_browser(self) -> Any:
+        """Create and return a configured Playwright browser instance."""
         try:
             import uuid
 
@@ -214,7 +219,7 @@ class WorkflowExecutor:
             from utils.scraping.playwright_browser import create_playwright_browser
 
             logger.info(f"Initializing Playwright browser for scraper: {self.config.name}")
-            self.browser = await create_playwright_browser(
+            browser = await create_playwright_browser(
                 site_name=self.config.name,
                 headless=self.headless,
                 profile_suffix=profile_suffix,
@@ -224,6 +229,7 @@ class WorkflowExecutor:
             )
 
             logger.info(f"Browser initialized for scraper: {self.config.name}")
+            return browser
 
         except Exception as e:
             logger.error(f"Failed to initialize browser: {e}")
@@ -231,6 +237,15 @@ class WorkflowExecutor:
                 f"Failed to initialize browser: {e}",
                 context=ErrorContext(site_name=self.config.name),
             )
+
+    def _bind_browser(self, browser: Any) -> None:
+        """Bind a browser instance to the executor runtime."""
+        self.browser = browser
+
+        try:
+            setattr(self.browser, "context_data", self.context_data)
+        except Exception:
+            logger.debug("Failed to attach context_data to browser", exc_info=True)
 
         # Initialize anti-detection manager if configured
         if self.config.anti_detection:
@@ -240,9 +255,82 @@ class WorkflowExecutor:
             except Exception as e:
                 logger.warning(f"Failed to initialize anti-detection manager: {e}")
                 self.anti_detection_manager = None
+        else:
+            self.anti_detection_manager = None
 
         # Initialize extracted modules
         self._init_extracted_modules()
+
+    def _capture_runtime_state(self) -> dict[str, Any]:
+        """Capture browser-bound runtime state for temporary context swapping."""
+        return {
+            "browser": self.browser,
+            "anti_detection_manager": self.anti_detection_manager,
+            "selector_resolver": self.selector_resolver,
+            "debug_capture": self.debug_capture,
+            "normalization_engine": self.normalization_engine,
+            "step_executor": self.step_executor,
+        }
+
+    def _restore_runtime_state(self, runtime_state: dict[str, Any]) -> None:
+        """Restore browser-bound runtime state after temporary context swapping."""
+        self.browser = runtime_state["browser"]
+        self.anti_detection_manager = runtime_state["anti_detection_manager"]
+        self.selector_resolver = runtime_state["selector_resolver"]
+        self.debug_capture = runtime_state["debug_capture"]
+        self.normalization_engine = runtime_state["normalization_engine"]
+        self.step_executor = runtime_state["step_executor"]
+
+    def _clear_runtime_state(self) -> None:
+        """Clear browser-bound runtime state after browser shutdown."""
+        self.browser = None
+        self.anti_detection_manager = None
+        self.selector_resolver = None
+        self.debug_capture = None
+        self.normalization_engine = None
+        self.step_executor = None
+
+    async def _close_browser(self, browser: Any) -> None:
+        """Close a browser instance, supporting async and sync quit methods."""
+        quit_method = getattr(browser, "quit", None)
+        if not callable(quit_method):
+            return
+
+        quit_result = quit_method()
+        if inspect.isawaitable(quit_result):
+            await quit_result
+
+    def _build_execution_context(
+        self,
+        context: dict[str, Any] | None = None,
+        cohort_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Build execution context for workflow steps and action handlers."""
+        execution_context: dict[str, Any] = {}
+
+        if cohort_context:
+            execution_context.update(cohort_context)
+
+        if context:
+            execution_context.update(context)
+
+        if cohort_context:
+            execution_context["cohort_context"] = cohort_context.copy()
+
+        execution_context["base_url"] = self.config.base_url
+        execution_context["name"] = self.config.name
+        execution_context["display_name"] = self.config.display_name
+        return execution_context
+
+    @asynccontextmanager
+    async def browser_context(self) -> AsyncGenerator[Any, None]:
+        """Create a shared browser session for cohort processing."""
+        shared_browser = await self._create_browser()
+
+        try:
+            yield shared_browser
+        finally:
+            await self._close_browser(shared_browser)
 
     def _init_extracted_modules(self) -> None:
         """Initialize all extracted module instances."""
@@ -341,11 +429,26 @@ class WorkflowExecutor:
             logger.warning(f"Cannot resolve credential_refs: no API client and no env credentials")
         return resolved
 
-    async def execute_workflow(self, context: dict[str, Any] | None = None, quit_browser: bool = True) -> dict[str, Any]:
+    async def execute_workflow(
+        self,
+        context: dict[str, Any] | None = None,
+        quit_browser: bool = True,
+        browser_context: Any | None = None,
+        cohort_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Execute the complete workflow defined in the configuration."""
+        runtime_state = self._capture_runtime_state()
+        using_shared_browser = browser_context is not None
+
         try:
             total_steps = len(self.config.workflows)
             logger.info(f"Starting workflow execution for: {self.config.name} ({total_steps} steps)")
+
+            if using_shared_browser:
+                logger.info("Using shared browser context for scraper: %s", self.config.name)
+                self._bind_browser(browser_context)
+            elif self.browser is None or self.step_executor is None:
+                await self.initialize()
 
             self.results = {}
             self.workflow_stopped = False
@@ -361,15 +464,9 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError("Workflow cancelled", context=ErrorContext(site_name=self.config.name))
 
             if context:
-                self.context = context.copy()
                 self.results.update(context)
-            else:
-                self.context = {}
 
-            # Add config variables to context for template substitution
-            self.context["base_url"] = self.config.base_url
-            self.context["name"] = self.config.name
-            self.context["display_name"] = self.config.display_name
+            self.context = self._build_execution_context(context=context, cohort_context=cohort_context)
 
             for i, step in enumerate(self.config.workflows, 1):
                 self.current_step_index = i
@@ -403,8 +500,11 @@ class WorkflowExecutor:
                 raise
             raise WorkflowExecutionError(f"Workflow execution failed: {e}", context=ErrorContext(site_name=self.config.name))
         finally:
-            if quit_browser and self.browser:
-                self.browser.quit()
+            if using_shared_browser:
+                self._restore_runtime_state(runtime_state)
+            elif quit_browser and self.browser:
+                await self._close_browser(self.browser)
+                self._clear_runtime_state()
 
     async def execute_steps(self, steps: list[Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute specific workflow steps."""

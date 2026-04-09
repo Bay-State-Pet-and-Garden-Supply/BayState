@@ -257,7 +257,7 @@ Max Concurrent: 8 (Wave 2)
 
 ### Wave 2: Runner Enhancement
 
-- [ ] 7. Create cohort-aware job processor
+- [x] 7. Create cohort-aware job processor
 
   **What to do**:
   - Create new job processor that handles cohorts
@@ -269,7 +269,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(runner): create cohort-aware job processor`
 
-- [ ] 8. Modify runner/__init__.py for batch processing
+- [x] 8. Modify runner/__init__.py for batch processing
 
   **What to do**:
   - Refactor 1166-line runner/__init__.py
@@ -281,7 +281,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(runner): add cohort batch processing to runner`
 
-- [ ] 9. Update WorkflowExecutor for cohort context
+- [x] 9. Update WorkflowExecutor for cohort context
 
   **What to do**:
   - Pass cohort context through workflow steps
@@ -293,7 +293,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(runner): update WorkflowExecutor for cohort context`
 
-- [ ] 10. Implement cohort result aggregation
+- [x] 10. Implement cohort result aggregation
 
   **What to do**:
   - Aggregate results from all cohort members
@@ -305,7 +305,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(runner): implement cohort result aggregation`
 
-- [ ] 11. Update daemon.py for cohort claiming
+- [x] 11. Update daemon.py for cohort claiming
 
   **What to do**:
   - Modify chunk claiming to support cohort batches
@@ -317,7 +317,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(runner): update daemon for cohort claiming`
 
-- [ ] 12. Create migration script for existing data
+- [x] 12. Create migration script for existing data
 
   **What to do**:
   - Script to detect product lines in existing products
