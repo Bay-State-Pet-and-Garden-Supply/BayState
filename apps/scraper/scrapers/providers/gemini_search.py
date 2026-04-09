@@ -60,9 +60,26 @@ class GeminiSearchClient(BaseSearchProvider):
         resolved_redirects = await self._resolve_grounding_redirects(raw_urls)
         saw_grounding_redirect = any(is_grounding_redirect_url(url) for url in raw_urls)
 
+        # Build per-chunk support text from grounding_support segments so each
+        # result gets a unique description instead of sharing `response.text`.
+        grounding_supports = getattr(grounding_metadata, "grounding_supports", None) or []
+        chunk_support_text: dict[int, str] = {}
+        for support in grounding_supports:
+            segment_text = str(getattr(getattr(support, "segment", None), "text", "") or "").strip()
+            if not segment_text:
+                continue
+            for idx in getattr(support, "grounding_chunk_indices", None) or []:
+                if isinstance(idx, int):
+                    existing = chunk_support_text.get(idx, "")
+                    if segment_text not in existing:
+                        chunk_support_text[idx] = f"{existing} {segment_text}".strip() if existing else segment_text
+
+        # Shared response text used only as a last-resort fallback
+        response_text = str(getattr(response, "text", "") or "").strip()
+
         deduped: list[dict[str, Any]] = []
         seen_urls: set[str] = set()
-        for chunk in grounding_chunks:
+        for chunk_idx, chunk in enumerate(grounding_chunks):
             web = getattr(chunk, "web", None)
             raw_uri = _canonicalize_url(str(getattr(web, "uri", "") or ""))
             uri = resolved_redirects.get(raw_uri, raw_uri)
@@ -75,11 +92,16 @@ class GeminiSearchClient(BaseSearchProvider):
             if not uri or uri in seen_urls:
                 continue
             seen_urls.add(uri)
+
+            # Per-chunk description: support snippet > chunk title > shared response
+            chunk_title = str(getattr(web, "title", "") or "").strip()
+            per_chunk_desc = chunk_support_text.get(chunk_idx, "") or chunk_title or response_text
+
             deduped.append(
                 {
                     "url": uri,
-                    "title": str(getattr(web, "title", "") or ""),
-                    "description": str(getattr(response, "text", "") or "").strip(),
+                    "title": chunk_title,
+                    "description": per_chunk_desc,
                     "extra_snippets": search_queries,
                     "provider": "gemini",
                     "result_type": "grounded",

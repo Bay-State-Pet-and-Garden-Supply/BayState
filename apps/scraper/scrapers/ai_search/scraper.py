@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import os
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Optional, cast
@@ -210,6 +210,12 @@ class AISearchScraper:
             },
         }
 
+        # Cohort state cache: persists domain/brand preferences across batch calls
+        # within the same AISearchScraper instance lifetime. Bounded to prevent
+        # unbounded growth during marathon scraping sessions.
+        self._cohort_cache: OrderedDict[str, _BatchCohortState] = OrderedDict()
+        self._cohort_cache_max = 128
+
         # Initialize submodules
         self._scoring = SearchScorer()
         self._matching = MatchingUtils()
@@ -267,6 +273,58 @@ class AISearchScraper:
             scoring=self._scoring,
             matching=self._matching,
         )
+
+    def _get_cached_cohort_state(self, cohort_key: str) -> _BatchCohortState:
+        """Retrieve or create cohort state, merging cached preferences."""
+        cached = self._cohort_cache.get(cohort_key)
+        if cached is not None:
+            # Move to end for LRU behavior
+            self._cohort_cache.move_to_end(cohort_key)
+            logger.info(
+                "[AI Search] Loaded cached cohort state for '%s' (domains=%d, brands=%d)",
+                cohort_key,
+                len(cached.preferred_domain_counts),
+                len(cached.preferred_brand_counts),
+            )
+            return _BatchCohortState(
+                key=cohort_key,
+                preferred_domain_counts=dict(cached.preferred_domain_counts),
+                preferred_brand_counts=dict(cached.preferred_brand_counts),
+            )
+        return _BatchCohortState(
+            key=cohort_key,
+            preferred_domain_counts={},
+            preferred_brand_counts={},
+        )
+
+    def _save_cohort_state(self, cohort_state: _BatchCohortState) -> None:
+        """Persist cohort state to cache for future batch runs."""
+        key = cohort_state.key
+        self._cohort_cache[key] = cohort_state
+        self._cohort_cache.move_to_end(key)
+        # Evict oldest entries if cache exceeds max size
+        while len(self._cohort_cache) > self._cohort_cache_max:
+            self._cohort_cache.popitem(last=False)
+
+    def _is_blocked_url(self, url: str) -> bool:
+        """Check if URL should be skipped before launching an extraction.
+
+        This is a lightweight pre-check that avoids expensive browser
+        launches for obviously non-PDP URLs.
+        """
+        domain = self._scoring.domain_from_url(url)
+        if not domain:
+            return True
+
+        # Check against blocked domains
+        if self._scoring._domain_matches_candidates(domain, self._scoring.BLOCKED_DOMAINS):
+            return True
+
+        # Check for category-like URL patterns
+        if self._scoring.is_category_like_url(url):
+            return True
+
+        return False
 
     def _log_telemetry(self, sku: str, url: str, stage: str, success: bool, details: str = "", selection_method: Optional[str] = None) -> None:
         """Log structured telemetry for a URL attempt."""
@@ -729,11 +787,7 @@ class AISearchScraper:
             cohort_batch: list[tuple[int, dict[str, Any]]],
         ) -> list[tuple[int, AISearchResult]]:
             async with semaphore:
-                cohort_state = _BatchCohortState(
-                    key=cohort_key,
-                    preferred_domain_counts={},
-                    preferred_brand_counts={},
-                )
+                cohort_state = self._get_cached_cohort_state(cohort_key)
                 ordered_batch = sorted(
                     cohort_batch,
                     key=lambda item: self._score_item_context(item[1]),
@@ -794,6 +848,9 @@ class AISearchScraper:
                         normalized_results.append((original_index, existing_result))
 
                     cohort_results = normalized_results
+
+                # Persist cohort state for future batch runs
+                self._save_cohort_state(cohort_state)
 
                 return cohort_results
 
@@ -1227,6 +1284,14 @@ class AISearchScraper:
                     self._log_telemetry(sku, target_url, "source_selected", False, last_rejection_reason)
                     continue
 
+                # Pre-extraction URL validation: skip blocked domains and
+                # category-like URLs without launching a browser.
+                if self._is_blocked_url(target_url):
+                    last_rejection_reason = "URL blocked by pre-extraction validation (domain or category pattern)"
+                    self._log_telemetry(sku, target_url, "pre_extraction_block", False, last_rejection_reason)
+                    logger.info("[AI Search] Pre-extraction block: %s", target_url)
+                    continue
+
                 tried_urls.add(target_url)
                 self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
                 extraction_result = await self._extract_product_data(target_url, sku, product_name, effective_brand)
@@ -1249,6 +1314,46 @@ class AISearchScraper:
                 last_rejection_reason = rejection_reason
 
             if not accepted_result:
+                # Change 5: Parallel candidate discovery fallback.
+                # If the primary extraction loop exhausted its attempts, try
+                # parallel extraction of remaining untried candidates as a
+                # last resort before returning failure.
+                fallback_urls = [
+                    str(r.get("url") or "").strip()
+                    for r in ordered_results
+                    if str(r.get("url") or "").strip()
+                    and str(r.get("url") or "").strip() not in tried_urls
+                    and not self._is_blocked_url(str(r.get("url") or "").strip())
+                    and not self._scoring.is_low_quality_result(r)
+                ][:3]
+
+                if fallback_urls:
+                    logger.info(
+                        "[AI Search] Primary extraction failed — attempting parallel fallback with %d untried URLs",
+                        len(fallback_urls),
+                    )
+                    parallel_results = await self._extract_candidates_parallel(
+                        fallback_urls, sku, product_name, effective_brand
+                    )
+                    for res in parallel_results:
+                        is_acceptable, _ = self._validator.validate_extraction_match(
+                            extraction_result=res,
+                            sku=sku,
+                            product_name=product_name,
+                            brand=effective_brand,
+                            source_url=res.get("url", ""),
+                        )
+                        if is_acceptable:
+                            self._log_telemetry_summary(sku)
+                            return self._build_discovery_result(
+                                res,
+                                sku,
+                                product_name,
+                                effective_brand,
+                                res.get("url"),
+                                cost_context=cost_context,
+                            )
+
                 if extraction_result and extraction_result.get("error"):
                     error_msg = extraction_result.get("error")
                 elif last_rejection_reason:

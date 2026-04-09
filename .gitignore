@@ -75,3 +75,4 @@ __pycache__/
 .env*.local
 dogfood-output/
 
+docker/github-actions-runner/_work/
