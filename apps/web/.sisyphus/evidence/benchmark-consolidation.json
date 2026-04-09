@@ -1,0 +1,158 @@
+{
+  "metadata": {
+    "generatedAt": "2026-04-09T01:22:12.505Z",
+    "batchSizes": [
+      12,
+      48,
+      96
+    ],
+    "rounds": 4,
+    "outputPath": "/Users/nickborrello/Desktop/Projects/BayState/apps/web/.sisyphus/evidence/benchmark-consolidation.json",
+    "mode": "synthetic-safe-benchmark"
+  },
+  "comparisons": [
+    {
+      "batchSize": 12,
+      "legacy": {
+        "batchSize": 12,
+        "rounds": 4,
+        "avgDurationMs": 1.757,
+        "p95DurationMs": 1.44,
+        "avgPerItemMs": 0.147,
+        "throughputItemsPerSecond": 6829.824,
+        "avgPeakHeapMb": 0.5969,
+        "avgHeapDeltaMb": 0,
+        "avgIssueCount": 12,
+        "avgIssuesPerSku": 1,
+        "precision": 0.5,
+        "recall": 0.6667,
+        "f1": 0.5714,
+        "truePositives": 6,
+        "falsePositives": 6,
+        "falseNegatives": 3
+      },
+      "optimized": {
+        "batchSize": 12,
+        "rounds": 4,
+        "avgDurationMs": 1.009,
+        "p95DurationMs": 0.651,
+        "avgPerItemMs": 0.084,
+        "throughputItemsPerSecond": 11898.86,
+        "avgPeakHeapMb": 0.5969,
+        "avgHeapDeltaMb": 0,
+        "avgIssueCount": 9,
+        "avgIssuesPerSku": 0.75,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "truePositives": 9,
+        "falsePositives": 0,
+        "falseNegatives": 0
+      },
+      "comparison": {
+        "speedupFactor": 1.741,
+        "memoryReductionPct": 0,
+        "consistencyF1GainPctPoints": 42.86,
+        "precisionGainPctPoints": 50,
+        "recallGainPctPoints": 33.33
+      }
+    },
+    {
+      "batchSize": 48,
+      "legacy": {
+        "batchSize": 48,
+        "rounds": 4,
+        "avgDurationMs": 3.848,
+        "p95DurationMs": 4.438,
+        "avgPerItemMs": 0.08,
+        "throughputItemsPerSecond": 12474.012,
+        "avgPeakHeapMb": 3.4639,
+        "avgHeapDeltaMb": 0.9557,
+        "avgIssueCount": 48,
+        "avgIssuesPerSku": 1,
+        "precision": 0.5,
+        "recall": 0.6667,
+        "f1": 0.5714,
+        "truePositives": 24,
+        "falsePositives": 24,
+        "falseNegatives": 12
+      },
+      "optimized": {
+        "batchSize": 48,
+        "rounds": 4,
+        "avgDurationMs": 1.416,
+        "p95DurationMs": 1.53,
+        "avgPerItemMs": 0.03,
+        "throughputItemsPerSecond": 33904.291,
+        "avgPeakHeapMb": 3.4639,
+        "avgHeapDeltaMb": 0,
+        "avgIssueCount": 36,
+        "avgIssuesPerSku": 0.75,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "truePositives": 36,
+        "falsePositives": 0,
+        "falseNegatives": 0
+      },
+      "comparison": {
+        "speedupFactor": 2.718,
+        "memoryReductionPct": 0,
+        "consistencyF1GainPctPoints": 42.86,
+        "precisionGainPctPoints": 50,
+        "recallGainPctPoints": 33.33
+      }
+    },
+    {
+      "batchSize": 96,
+      "legacy": {
+        "batchSize": 96,
+        "rounds": 4,
+        "avgDurationMs": 5.974,
+        "p95DurationMs": 6.271,
+        "avgPerItemMs": 0.062,
+        "throughputItemsPerSecond": 16068.963,
+        "avgPeakHeapMb": 18.052,
+        "avgHeapDeltaMb": 4.6347,
+        "avgIssueCount": 96,
+        "avgIssuesPerSku": 1,
+        "precision": 0.5,
+        "recall": 0.6667,
+        "f1": 0.5714,
+        "truePositives": 48,
+        "falsePositives": 48,
+        "falseNegatives": 24
+      },
+      "optimized": {
+        "batchSize": 96,
+        "rounds": 4,
+        "avgDurationMs": 1.999,
+        "p95DurationMs": 2.101,
+        "avgPerItemMs": 0.021,
+        "throughputItemsPerSecond": 48024.012,
+        "avgPeakHeapMb": 18.052,
+        "avgHeapDeltaMb": 0,
+        "avgIssueCount": 72,
+        "avgIssuesPerSku": 0.75,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "truePositives": 72,
+        "falsePositives": 0,
+        "falseNegatives": 0
+      },
+      "comparison": {
+        "speedupFactor": 2.988,
+        "memoryReductionPct": 0,
+        "consistencyF1GainPctPoints": 42.86,
+        "precisionGainPctPoints": 50,
+        "recallGainPctPoints": 33.33
+      }
+    }
+  ],
+  "overallSummary": {
+    "averageSpeedupFactor": 2.482,
+    "averageMemoryReductionPct": 0,
+    "averageConsistencyF1GainPctPoints": 42.86
+  }
+}

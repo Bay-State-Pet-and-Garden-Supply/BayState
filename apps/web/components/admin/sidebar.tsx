@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Package,
   DollarSign,
+  GitBranch,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -57,6 +58,11 @@ const navSections: NavSection[] = [
         href: "/admin/products",
         label: "Products",
         icon: Package,
+      },
+      {
+        href: "/admin/product-lines",
+        label: "Product Lines",
+        icon: GitBranch,
       },
     ],
   },
@@ -257,8 +263,8 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
         )}
       >
         <TooltipProvider delayDuration={0}>
-          {visibleSections.map((section, idx) => (
-            <div key={idx} className="space-y-1.5">
+          {visibleSections.map((section) => (
+            <div key={section.title ?? section.items[0]?.href ?? "section"} className="space-y-1.5">
               {section.title && !collapsed && (
                 <h2 className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white/40 truncate">
                   {section.title}

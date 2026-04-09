@@ -14,16 +14,22 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
   const offset = (page - 1) * limit;
+  const status = searchParams.get('status');
+
+  let query = supabase
+    .from('cohort_batches')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false });
+
+  if (status && status !== 'all') {
+    query = query.eq('status', status);
+  }
 
   const {
     data: cohorts,
     error,
     count,
-  } = await supabase
-    .from('cohort_batches')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+  } = await query.range(offset, offset + limit - 1);
 
   if (error) {
     console.error('[Cohorts API] Error fetching cohorts:', error);

@@ -1,0 +1,1 @@
+- 2026-04-08: `validate_migration.py` requires Supabase credentials (`SUPABASE_URL` plus a supported key) for live `products_ingestion` validation; fixture-based dry-runs remain available when credentials are absent.

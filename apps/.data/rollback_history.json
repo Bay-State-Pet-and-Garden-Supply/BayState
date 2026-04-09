@@ -1,0 +1,9 @@
+[
+  {
+    "timestamp": "2026-04-08T21:15:01.046230",
+    "migration": "20260131000000_test_lab_extensions",
+    "environment": "development",
+    "success": true,
+    "details": {}
+  }
+]
