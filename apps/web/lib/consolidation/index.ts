@@ -22,6 +22,17 @@ export type {
     Category,
 } from './types';
 
+export type {
+    ConsistencyIssue,
+    ConsistencyReport,
+    ConsistencyRule,
+    ConsistencyRuleType,
+    TwoPhaseConsolidationConfig,
+    TwoPhaseConsolidationProductResult,
+    TwoPhaseConsolidationResult,
+    TwoPhaseSelection,
+} from './two-phase-service';
+
 // Batch Service
 export {
     submitBatch,
@@ -66,3 +77,10 @@ export {
     syncParallelRunComparison,
     syncPendingParallelRuns,
 } from './parallel-runs';
+
+// Two-phase consolidation
+export {
+    buildDefaultConsistencyRules,
+    createTwoPhaseConsolidationService,
+    TwoPhaseConsolidationService,
+} from './two-phase-service';

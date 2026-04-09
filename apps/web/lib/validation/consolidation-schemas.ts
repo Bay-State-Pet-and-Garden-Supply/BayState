@@ -77,6 +77,20 @@ export const BatchJobSchema = z.object({
 export const ProductSourceSchema = z.object({
     sku: z.string().min(1, 'SKU is required'),
     sources: z.record(z.string(), z.unknown()),
+    productLineContext: z
+        .object({
+            productLine: z.string(),
+            siblings: z.array(
+                z.object({
+                    sku: z.string(),
+                    name: z.string(),
+                    sources: z.record(z.string(), z.unknown()),
+                })
+            ),
+            expectedBrand: z.string().optional(),
+            expectedCategory: z.string().optional(),
+        })
+        .optional(),
 });
 
 export const ConsolidationResultSchema = z.object({

@@ -100,10 +100,23 @@ export interface BatchJob {
 
 /**
  * Product data to be consolidated.
+ * Includes optional sibling context for batch processing to ensure consistency
+ * across related products from the same product line.
  */
 export interface ProductSource {
     sku: string;
     sources: Record<string, unknown>;
+    /** Optional context about sibling products from the same product line. */
+    productLineContext?: {
+        productLine: string;
+        siblings: Array<{
+            sku: string;
+            name: string;
+            sources: Record<string, unknown>;
+        }>;
+        expectedBrand?: string;
+        expectedCategory?: string;
+    };
 }
 
 /**

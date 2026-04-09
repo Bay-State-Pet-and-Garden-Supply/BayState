@@ -13,7 +13,7 @@ import {
     getOpenAIClient,
     type ConsolidationRuntimeConfig,
 } from './openai-client';
-import { buildPromptContext, getCategories } from './prompt-builder';
+import { buildPromptContext, buildUserPrompt, getCategories } from './prompt-builder';
 import {
     buildOpenAIResponseFormat,
     buildResponseSchema,
@@ -315,6 +315,14 @@ function normalizeBatchProvider(value: unknown): BatchProviderKey {
 }
 
 function buildBatchRoutingKey(products: ProductSource[], metadata: BatchMetadata): string {
+    // NEW: Route by product line if available for improved consistency
+    const firstProduct = products[0];
+    const productLine = firstProduct?.productLineContext?.productLine;
+    if (productLine && typeof productLine === 'string' && productLine.trim().length > 0) {
+        return `product-line:${productLine.trim()}`;
+    }
+
+    // Fallback to existing behavior: explicit metadata keys
     const explicitKey =
         typeof metadata.scrape_job_id === 'string' && metadata.scrape_job_id.trim().length > 0
             ? metadata.scrape_job_id.trim()
@@ -326,6 +334,7 @@ function buildBatchRoutingKey(products: ProductSource[], metadata: BatchMetadata
         return explicitKey;
     }
 
+    // Final fallback: SKUs sorted
     return products
         .map((product) => product.sku.trim())
         .filter((sku) => sku.length > 0)
@@ -787,10 +796,7 @@ export function createBatchContent(
         });
 
         const sourceEvidence = buildPromptSourceEvidence(filteredSources);
-        const userPrompt = `Consolidate this product into a canonical record using the provided source trust metadata and only source-supported values: ${JSON.stringify({
-            sku: product.sku,
-            sources: sourceEvidence,
-        })}`;
+        const userPrompt = buildUserPrompt(product, sourceEvidence);
 
         const request = provider === 'gemini'
             ? {
