@@ -22,7 +22,7 @@ env:
 jobs:
   changes:
     name: Detect scraper changes
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       scraper: ${{ steps.filter.outputs.scraper }}
     steps:
@@ -41,7 +41,7 @@ jobs:
 
   build-and-push-docker:
     name: Build & Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: needs.changes.outputs.scraper == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_build)
     permissions:
