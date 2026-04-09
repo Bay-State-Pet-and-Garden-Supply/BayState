@@ -117,7 +117,7 @@ export function RunnerMetadataEditor({ runner }: RunnerMetadataEditorProps) {
             </p>
           </div>
         ) : (
-          <pre className="bg-slate-50 p-4 rounded-lg overflow-auto max-h-[400px] text-sm">
+          <pre className="bg-muted p-4 rounded-lg overflow-auto max-h-[400px] text-sm border">
             <code>{JSON.stringify(runner.metadata || {}, null, 2)}</code>
           </pre>
         )}
