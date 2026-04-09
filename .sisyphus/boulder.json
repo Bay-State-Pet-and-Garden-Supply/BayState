@@ -27,7 +27,8 @@
     "ses_29038fd0cffewQ7Al6tdSLmIba",
     "ses_29038ba27ffesCtRBARRoBz9BC",
     "ses_2903805fbffeG0cw9038AnaOcT",
-    "ses_29037bfe8ffeBQPs2pp6AJmbep"
+    "ses_29037bfe8ffeBQPs2pp6AJmbep",
+    "ses_28d238a7effeP80gdZfJ7KpYKJ"
   ],
   "session_origins": {
     "ses_290c0bb4affeLaL1p3LX4xBquF": "direct",
@@ -55,7 +56,8 @@
     "ses_29038fd0cffewQ7Al6tdSLmIba": "appended",
     "ses_29038ba27ffesCtRBARRoBz9BC": "appended",
     "ses_2903805fbffeG0cw9038AnaOcT": "appended",
-    "ses_29037bfe8ffeBQPs2pp6AJmbep": "appended"
+    "ses_29037bfe8ffeBQPs2pp6AJmbep": "appended",
+    "ses_28d238a7effeP80gdZfJ7KpYKJ": "appended"
   },
   "plan_name": "ai-scraping-strategy-2.0",
   "agent": "atlas",
