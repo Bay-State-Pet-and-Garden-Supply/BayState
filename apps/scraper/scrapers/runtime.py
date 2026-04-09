@@ -588,7 +588,8 @@ def run_scraping(
                 try:
                     # We can't await here, so we rely on GC or loop cleanup
                     pass
-                except:
+except:
+except Exception:
                     pass
             # We continue to the barrier to not block other workers
 
