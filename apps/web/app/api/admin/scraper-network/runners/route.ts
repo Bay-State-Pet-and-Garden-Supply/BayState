@@ -9,6 +9,7 @@ interface RunnerData {
   status: 'online' | 'offline' | 'busy' | 'idle' | 'polling' | 'paused';
   current_job_id: string | null;
   enabled: boolean;
+  metadata: Record<string, unknown> | null;
 }
 
 export async function GET() {
@@ -16,7 +17,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data: runnersData, error } = await supabase
       .from('scraper_runners')
-      .select('name,last_seen_at,status,current_job_id,enabled')
+      .select('name,last_seen_at,status,current_job_id,enabled,metadata')
       .order('last_seen_at', { ascending: false });
 
     if (error) {
@@ -31,6 +32,15 @@ export async function GET() {
         : Number.POSITIVE_INFINITY;
       const status = minutesSinceSeen > 5 || runner.status === 'offline' ? 'offline' : 'online';
 
+      // Extract version info from metadata
+      const metadata = runner.metadata || {};
+      const version =
+        (metadata.build_sha as string) ||
+        (metadata.build_id as string) ||
+        (metadata.version as string) ||
+        null;
+      const buildCheckReason = (metadata.build_check_reason as string) || 'unconfigured';
+
       return {
         id: runner.name,
         name: runner.name,
@@ -41,6 +51,8 @@ export async function GET() {
         last_seen: runner.last_seen_at ?? new Date(0).toISOString(),
         active_jobs: runner.current_job_id ? 1 : 0,
         enabled: runner.enabled,
+        version,
+        build_check_reason: buildCheckReason,
       };
     });
 

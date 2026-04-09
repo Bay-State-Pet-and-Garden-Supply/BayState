@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -35,6 +35,9 @@ export interface RunnerDetail {
   active_jobs: number;
   region: string | null;
   version: string | null;
+  build_check_reason: string | null;
+  latest_build_sha?: string | null;
+  latest_build_id?: string | null;
   metadata: Record<string, unknown> | null;
 }
 
@@ -171,12 +174,35 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
         </Card>
 
         {/* Version Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Version</CardTitle>
+        <Card className={runner.build_check_reason === 'outdated' || runner.build_check_reason === 'missing' ? 'border-destructive/50 bg-destructive/5' : ''}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center justify-between">
+              Version
+              {runner.build_check_reason === 'current' ? (
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              ) : runner.build_check_reason === 'outdated' || runner.build_check_reason === 'missing' ? (
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              ) : null}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">{runner.version ?? 'Unknown'}</p>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-mono truncate">{runner.version ?? 'Unknown'}</p>
+              {runner.build_check_reason === 'outdated' && (
+                <>
+                  <p className="text-[10px] text-destructive font-medium uppercase mt-1">Update Required</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Latest: <span className="font-mono">{runner.latest_build_sha || runner.latest_build_id || 'Unknown'}</span>
+                  </p>
+                </>
+              )}
+              {runner.build_check_reason === 'missing' && (
+                <p className="text-[10px] text-destructive font-medium uppercase mt-1">Missing Version Info</p>
+              )}
+              {runner.build_check_reason === 'current' && (
+                <p className="text-[10px] text-success font-medium uppercase mt-1">Up to date</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

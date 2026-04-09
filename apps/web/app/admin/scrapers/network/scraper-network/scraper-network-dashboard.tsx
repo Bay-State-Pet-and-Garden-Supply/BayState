@@ -36,6 +36,7 @@ import {
   Copy,
   Key,
   ShieldAlert,
+  AlertTriangle,
 } from "lucide-react";
 import { SetupGuide } from "@/components/admin/scraper-network/setup-guide";
 
@@ -368,6 +369,12 @@ export function ScraperNetworkDashboard() {
                         {runner.enabled === false && (
                           <Badge variant="outline" className="text-[10px] h-4 px-1 uppercase tracking-wider border-orange-200 text-orange-700 bg-orange-50/50">
                             Disabled
+                          </Badge>
+                        )}
+                        {(runner.build_check_reason === 'outdated' || runner.build_check_reason === 'missing') && (
+                          <Badge variant="destructive" className="text-[10px] h-4 px-1 uppercase tracking-wider gap-1">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            Update Required
                           </Badge>
                         )}
                       </div>

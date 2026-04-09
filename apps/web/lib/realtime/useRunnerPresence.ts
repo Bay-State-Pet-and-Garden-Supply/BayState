@@ -68,6 +68,8 @@ interface ApiRunnerData {
   last_seen?: string;
   active_jobs?: number;
   enabled: boolean;
+  version?: string | null;
+  build_check_reason?: string | null;
 }
 
 function isRunnerStatus(value: unknown): value is RunnerPresence["status"] {
@@ -206,6 +208,8 @@ export function useRunnerPresence(
           active_jobs: runner.active_jobs ?? (runner.busy ? 1 : 0),
           last_seen: runner.last_seen ?? new Date(0).toISOString(),
           enabled: runner.enabled,
+          version: runner.version,
+          build_check_reason: runner.build_check_reason,
           metadata: {
             os: runner.os,
             labels: runner.labels,

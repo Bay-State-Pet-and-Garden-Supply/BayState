@@ -25,6 +25,10 @@ export interface RunnerPresence {
   enabled?: boolean;
   /** Optional metadata for runner configuration or capabilities */
   metadata?: Record<string, unknown>;
+  /** Optional runner version identifier */
+  version?: string | null;
+  /** Optional build compatibility status */
+  build_check_reason?: string | null;
 }
 
 /**
@@ -38,6 +42,8 @@ export const runnerPresenceSchema = z.object({
   last_seen: z.string(),
   enabled: z.boolean().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
+  version: z.string().nullable().optional(),
+  build_check_reason: z.string().nullable().optional(),
 });
 
 /**

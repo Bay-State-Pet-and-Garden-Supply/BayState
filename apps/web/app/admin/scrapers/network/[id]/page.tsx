@@ -48,6 +48,9 @@ async function getRunner(id: string): Promise<RunnerDetail | null> {
     (metadata.build_id as string) ||
     (metadata.version as string) ||
     null;
+  const build_check_reason = (metadata.build_check_reason as string) || 'unconfigured';
+  const latest_build_sha = (metadata.latest_build_sha as string) || null;
+  const latest_build_id = (metadata.latest_build_id as string) || null;
 
   return {
     id: runner.name, // Use name as id since it's the primary key
@@ -58,6 +61,9 @@ async function getRunner(id: string): Promise<RunnerDetail | null> {
     active_jobs: runner.current_job_id ? 1 : 0, // Infer from current_job_id
     region,
     version,
+    build_check_reason,
+    latest_build_sha,
+    latest_build_id,
     metadata,
   };
 }
