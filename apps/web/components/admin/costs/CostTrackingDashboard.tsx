@@ -39,6 +39,7 @@ interface ServiceCost {
 interface BatchJob {
   id: string;
   status: string;
+  provider: string;
   estimated_cost: number;
   prompt_tokens: number;
   completion_tokens: number;
@@ -48,23 +49,35 @@ interface BatchJob {
   description: string | null;
 }
 
+interface ProviderCostData {
+  totalCost: number;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  providerLabel: string;
+}
+
+interface AiCombinedSummary {
+  totalCost: number;
+  totalJobs: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 interface CostData {
   dateRange: { start: string; end: string; days: number };
   fixedMonthlyTotal: number;
   services: ServiceCost[];
   servicesByCategory: Record<string, ServiceCost[]>;
   ai: {
-    consolidation: {
-      totalCost: number;
-      totalJobs: number;
-      completedJobs: number;
-      failedJobs: number;
-      promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    providerLabel: string;
-  };
-  recentJobs: BatchJob[];
+    gemini: ProviderCostData;
+    openai: ProviderCostData;
+    combined: AiCombinedSummary;
+    recentJobs: BatchJob[];
   };
   estimatedMonthlyTotal: number;
 }
@@ -138,6 +151,29 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function getProviderLabel(provider: string): string {
+  if (provider === 'gemini') return 'Gemini';
+  if (provider === 'openai_compatible') return 'OpenAI Compatible';
+  return 'OpenAI';
+}
+
+function ProviderBadge({ provider }: { provider: string }) {
+  const variants: Record<string, string> = {
+    gemini: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+    openai: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    openai_compatible: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
+  };
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn('text-[10px] font-medium', variants[provider] ?? variants.openai)}
+    >
+      {getProviderLabel(provider)}
+    </Badge>
+  );
+}
+
 const batchJobColumns: Column<BatchJob>[] = [
   {
     key: 'created_at',
@@ -158,6 +194,12 @@ const batchJobColumns: Column<BatchJob>[] = [
         {row.description ?? '—'}
       </span>
     ),
+  },
+  {
+    key: 'provider',
+    header: 'Provider',
+    sortable: true,
+    render: (_, row) => <ProviderBadge provider={row.provider} />,
   },
   {
     key: 'status',
@@ -328,12 +370,11 @@ export function CostTrackingDashboard() {
   }
 
   const categories = Object.entries(data.servicesByCategory);
-  const providerLabel = data.ai.consolidation.providerLabel || 'Google Gemini API';
-  const providerSummaryLabel = providerLabel === 'Google Gemini API' ? 'Google API' : providerLabel;
+  const aiProviderLabels = `${data.ai.gemini.providerLabel} and ${data.ai.openai.providerLabel}`;
 
   return (
     <div className="space-y-6">
-      <PageHeader providerLabel={providerLabel} />
+      <PageHeader providerLabels={aiProviderLabels} />
 
       {/* Period Selector */}
       <div className="flex items-center gap-2">
@@ -354,7 +395,7 @@ export function CostTrackingDashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard
           title="Estimated Monthly"
           value={formatCurrency(data.estimatedMonthlyTotal)}
@@ -372,18 +413,26 @@ export function CostTrackingDashboard() {
           bgAccent="bg-blue-500/10"
         />
         <SummaryCard
-          title={`${providerSummaryLabel} Costs (${days}d)`}
-          value={formatCurrency(data.ai.consolidation.totalCost)}
-          icon={Brain}
-          description={`${data.ai.consolidation.totalJobs} batch jobs`}
+          title={`Gemini Costs (${days}d)`}
+          value={formatCurrency(data.ai.gemini.totalCost)}
+          icon={Sparkles}
+          description={`${data.ai.gemini.totalJobs} batch jobs · ${data.ai.gemini.completedJobs} completed`}
           accent="text-purple-400"
           bgAccent="bg-purple-500/10"
         />
         <SummaryCard
-          title="Tokens Used"
-          value={formatTokens(data.ai.consolidation.totalTokens)}
+          title={`OpenAI Costs (${days}d)`}
+          value={formatCurrency(data.ai.openai.totalCost)}
+          icon={Brain}
+          description={`${data.ai.openai.totalJobs} batch jobs · ${data.ai.openai.completedJobs} completed`}
+          accent="text-blue-400"
+          bgAccent="bg-blue-500/10"
+        />
+        <SummaryCard
+          title={`Combined AI Costs (${days}d)`}
+          value={formatCurrency(data.ai.combined.totalCost)}
           icon={Zap}
-          description={`${formatTokens(data.ai.consolidation.promptTokens)} in · ${formatTokens(data.ai.consolidation.completionTokens)} out`}
+          description={`${data.ai.combined.totalJobs} jobs · ${formatTokens(data.ai.combined.promptTokens)} in · ${formatTokens(data.ai.combined.completionTokens)} out`}
           accent="text-amber-400"
           bgAccent="bg-amber-500/10"
         />
@@ -455,7 +504,7 @@ export function CostTrackingDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Brain className="h-4 w-4 text-purple-400" />
-              Recent {providerLabel} Consolidation Jobs
+              Recent Gemini + OpenAI Batch Jobs
               <Badge variant="outline" className="ml-auto text-[10px]">
                 Last {days} days
               </Badge>
@@ -466,7 +515,7 @@ export function CostTrackingDashboard() {
                 data={data.ai.recentJobs}
                 columns={batchJobColumns}
                 pageSize={10}
-                emptyMessage={`No recent ${providerLabel} consolidation jobs.`}
+                emptyMessage="No recent Gemini or OpenAI batch jobs."
               />
             </CardContent>
           </Card>
@@ -474,14 +523,18 @@ export function CostTrackingDashboard() {
 
       {/* Footer Note */}
       <p className="text-xs text-muted-foreground text-center pb-4">
-        Fixed costs are manually entered estimates. AI costs are tracked automatically from {providerLabel} batch jobs.
-        {' '}Click any cost value to update it.
+        Fixed costs are manually entered estimates. Gemini and OpenAI costs are tracked automatically from {aiProviderLabels}
+        {' '}batch jobs. Click any fixed cost value to update it.
       </p>
     </div>
   );
 }
 
-function PageHeader({ providerLabel = 'Google Gemini API' }: { providerLabel?: string }) {
+function PageHeader({
+  providerLabels = 'Google Gemini API and OpenAI API',
+}: {
+  providerLabels?: string;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
@@ -489,7 +542,7 @@ function PageHeader({ providerLabel = 'Google Gemini API' }: { providerLabel?: s
         Cost Tracking
       </h1>
       <p className="text-muted-foreground text-sm">
-        Monitor and manage monthly costs across all services and {providerLabel} usage.
+        Monitor and manage monthly costs across fixed services plus separate {providerLabels} usage.
       </p>
     </div>
   );
@@ -527,12 +580,15 @@ function SummaryCard({
 }
 
 function CostTrackingSkeleton() {
+  const summarySkeletonKeys = ['estimated', 'fixed', 'gemini', 'openai', 'combined'];
+  const categorySkeletonKeys = ['infrastructure', 'ai', 'payment', 'communication'];
+
   return (
     <div className="space-y-6">
       <PageHeader />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="py-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {summarySkeletonKeys.map((key) => (
+          <Card key={key} className="py-4">
             <CardContent className="flex flex-col gap-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-8 w-20" />
@@ -542,8 +598,8 @@ function CostTrackingSkeleton() {
         ))}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
+        {categorySkeletonKeys.map((key) => (
+          <Card key={key}>
             <CardHeader className="pb-3">
               <Skeleton className="h-4 w-32" />
             </CardHeader>
