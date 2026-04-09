@@ -6,10 +6,191 @@
  */
 
 import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
+import { normalizeProductSources, type CanonicalProductSourceRecord } from '@/lib/product-sources';
+import type { ProductSource } from '@/lib/consolidation/types';
 import {
     getLeafTaxonomyNodes,
     type TaxonomyCategoryRecord,
 } from '@/lib/taxonomy';
+
+const USER_PROMPT_PREFIX =
+    'Consolidate this product into a canonical record using the provided source trust metadata and only source-supported values: ';
+const MAX_SIBLING_PRODUCTS = 5;
+const TRUSTED_SOURCE_FRAGMENTS = [
+    'shopsite_input',
+    'bradley',
+    'central-pet',
+    'central_pet',
+    'orgill',
+    'doitbest',
+    'do_it_best',
+    'manufacturer',
+    'catalog',
+    'distributor',
+];
+const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
+const CONSISTENCY_RULES = [
+    'Keep the same BRAND across sibling products unless higher-trust evidence for this SKU clearly conflicts.',
+    'Prefer the same deepest CATEGORY taxonomy pattern used by siblings when the purchase intent matches.',
+    'Keep naming and description style aligned across the product line while preserving real variant differences.',
+];
+
+type SiblingProduct = NonNullable<ProductSource['productLineContext']>['siblings'][number];
+
+interface SiblingProductPromptSummary {
+    sku: string;
+    name: string;
+    brand?: string;
+    category?: string;
+}
+
+interface ProductLinePromptContext {
+    product_line: string;
+    sibling_products: SiblingProductPromptSummary[];
+    consistency_rules: string[];
+    expected_brand?: string;
+    expected_category?: string;
+    consistency_examples?: string[];
+}
+
+export interface ConsolidationPromptPayload {
+    sku: string;
+    sources: Array<{
+        source: string;
+        trust: string;
+        fields: Record<string, unknown>;
+    }>;
+    product_line_context?: ProductLinePromptContext;
+}
+
+function trimString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim().length > 0
+        ? value.trim()
+        : undefined;
+}
+
+function getSourcePromptRank(sourceName: string): number {
+    const normalized = sourceName.toLowerCase();
+
+    if (normalized === 'shopsite_input') {
+        return 0;
+    }
+
+    if (TRUSTED_SOURCE_FRAGMENTS.some((fragment) => normalized.includes(fragment))) {
+        return 1;
+    }
+
+    if (MARKETPLACE_SOURCE_FRAGMENTS.some((fragment) => normalized.includes(fragment))) {
+        return 3;
+    }
+
+    return 2;
+}
+
+function getPreferredPromptSources(rawSources: Record<string, unknown>): CanonicalProductSourceRecord[] {
+    return Object.entries(normalizeProductSources(rawSources))
+        .sort(([left], [right]) => getSourcePromptRank(left) - getSourcePromptRank(right))
+        .map(([, source]) => source);
+}
+
+function getSourceBrand(source: CanonicalProductSourceRecord): string | undefined {
+    const brand = trimString(source.brand);
+    return brand ? brand.replace(/^brand\s*:\s*/i, '').trim() : undefined;
+}
+
+function getSourceCategory(source: CanonicalProductSourceRecord): string | undefined {
+    const category = trimString(source.category);
+    if (category) {
+        return category;
+    }
+
+    if (Array.isArray(source.categories)) {
+        return source.categories.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim();
+    }
+
+    return undefined;
+}
+
+function getSiblingBrand(rawSources: Record<string, unknown>): string | undefined {
+    for (const source of getPreferredPromptSources(rawSources)) {
+        const brand = getSourceBrand(source);
+        if (brand) {
+            return brand;
+        }
+    }
+
+    return undefined;
+}
+
+function getSiblingCategory(rawSources: Record<string, unknown>): string | undefined {
+    for (const source of getPreferredPromptSources(rawSources)) {
+        const category = getSourceCategory(source);
+        if (category) {
+            return category;
+        }
+    }
+
+    return undefined;
+}
+
+function buildSiblingProductSummary(sibling: SiblingProduct): SiblingProductPromptSummary {
+    return {
+        sku: sibling.sku,
+        name: trimString(sibling.name) || sibling.sku,
+        ...(getSiblingBrand(sibling.sources) ? { brand: getSiblingBrand(sibling.sources) } : {}),
+        ...(getSiblingCategory(sibling.sources) ? { category: getSiblingCategory(sibling.sources) } : {}),
+    };
+}
+
+export function buildProductLinePromptContext(product: ProductSource): ProductLinePromptContext | undefined {
+    const context = product.productLineContext;
+    if (!context) {
+        return undefined;
+    }
+
+    const siblingProducts = context.siblings
+        .slice(0, MAX_SIBLING_PRODUCTS)
+        .map((sibling) => buildSiblingProductSummary(sibling));
+    const expectedBrand = trimString(context.expectedBrand);
+    const expectedCategory = trimString(context.expectedCategory);
+    const consistencyExamples = siblingProducts
+        .map((sibling) => sibling.name)
+        .filter((name) => name.trim().length > 0)
+        .slice(0, 3);
+
+    if (siblingProducts.length === 0 && !expectedBrand && !expectedCategory) {
+        return undefined;
+    }
+
+    return {
+        product_line: trimString(context.productLine) || product.sku,
+        sibling_products: siblingProducts,
+        consistency_rules: [...CONSISTENCY_RULES],
+        ...(expectedBrand ? { expected_brand: expectedBrand } : {}),
+        ...(expectedCategory ? { expected_category: expectedCategory } : {}),
+        ...(consistencyExamples.length >= 2 ? { consistency_examples: consistencyExamples } : {}),
+    };
+}
+
+export function buildUserPromptPayload(
+    product: ProductSource,
+    sourceEvidence: ConsolidationPromptPayload['sources']
+): ConsolidationPromptPayload {
+    const productLineContext = buildProductLinePromptContext(product);
+
+    return {
+        sku: product.sku,
+        sources: sourceEvidence,
+        ...(productLineContext ? { product_line_context: productLineContext } : {}),
+    };
+}
+
+export function buildUserPrompt(
+    product: ProductSource,
+    sourceEvidence: ConsolidationPromptPayload['sources']
+): string {
+    return `${USER_PROMPT_PREFIX}${JSON.stringify(buildUserPromptPayload(product, sourceEvidence))}`;
+}
 
 /**
  * Fetch categories from the database.
@@ -61,6 +242,14 @@ Source trust rules:
 - When sources conflict on brand, category, or product_on_pages, prefer the highest-trust source with direct evidence.
 - Never let a marketplace seller label, alias, or "Brand: ..." prefix override higher-trust brand evidence.
 - If a source named "shopsite_input" includes product_on_pages, treat those as the current ShopSite assignments and preserve them unless higher-trust source evidence clearly supports a change.
+
+Cohort consistency rules (apply only when sibling product context is provided):
+- Use sibling product context as consistency guidance, never as permission to invent unsupported details.
+- Keep brand consistent across the product line unless higher-trust evidence for this SKU clearly supports a different brand.
+- Reuse the same deepest valid leaf taxonomy pattern used by sibling products when the purchase intent matches.
+- Keep naming, differentiators, and description style aligned across sibling products while preserving real variant differences.
+- Consistent line example: "Acme Puppy Recipe Dog Food 4 lb.", "Acme Puppy Recipe Dog Food 15 lb.", and "Acme Puppy Recipe Dog Food 30 lb." should share brand, taxonomy pattern, and naming structure while only the supported size changes.
+- Consistent line example: "Acme Chicken Recipe Cat Treats 3 oz." and "Acme Salmon Recipe Cat Treats 3 oz." should share brand, taxonomy pattern, and format while flavor changes only when source-supported.
 
 Product-name rules:
 - Exclude brand from the product name; put it only in brand.
