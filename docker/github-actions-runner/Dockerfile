@@ -19,8 +19,7 @@ RUN apt-get update && \
       procps \
     && rm -rf /var/lib/apt/lists/*
 
-ENV RUNNER_VERSION=2.332.0
-ENV RUNNER_URL=https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
+ENV RUNNER_VERSION=2.333.0
 
 WORKDIR /runner
 
@@ -28,10 +27,19 @@ WORKDIR /runner
 RUN useradd --create-home --shell /bin/bash runner \
  && chown -R runner:runner /runner
 
-RUN curl -fsSL "$RUNNER_URL" -o runner.tar.gz \
- && tar xzf runner.tar.gz --strip-components=0 \
- && rm runner.tar.gz \
- && chown -R runner:runner /runner
+# Use build args for architecture detection
+ARG TARGETARCH
+
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      RUNNER_ARCH="arm64"; \
+    else \
+      RUNNER_ARCH="x64"; \
+    fi && \
+    RUNNER_URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz" && \
+    curl -fsSL "$RUNNER_URL" -o runner.tar.gz && \
+    tar xzf runner.tar.gz --strip-components=0 && \
+    rm runner.tar.gz && \
+    chown -R runner:runner /runner
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
