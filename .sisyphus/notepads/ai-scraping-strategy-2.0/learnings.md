@@ -19,3 +19,5 @@
 - Added process_cohort() async function to handle cohort batch processing.
 - Cohort results submitted via /api/scraper/v1/cohort-callback endpoint.
 - All 33 API client unit tests pass with cohort implementation.
+- 2026-04-08: `bsr cohort visualize` now registers from `cli/commands/cohort.py`, can load product rows from `--input-file` or `products_ingestion`, filters cohorts by `--upc-prefix`, renders table/json output, and exports a structured JSON visualization payload with cohort size plus brand/category distributions.
+- 2026-04-08: `bsr batch test` now registers from `cli/commands/batch.py`, resolves local YAML configs by scraper name or `--config`, builds batch cohorts from `test_skus`, prints per-product execution progress/results, and always writes a JSON report (custom `--output` or `.artifacts/batch-tests/` fallback) for offline analysis.
