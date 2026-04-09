@@ -83,10 +83,46 @@
       "task_key": "todo:13",
       "task_label": "13",
       "task_title": "Enhanced ProductSource with sibling context",
-      "session_id": "ses_29023321cffe9VmCfkB4tLppbY",
+      "session_id": "ses_28ff26a2bffe9QVj1QJbFPcrcv",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-09T02:30:44.261Z"
+    },
+    "todo:14": {
+      "task_key": "todo:14",
+      "task_label": "14",
+      "task_title": "Implement two-phase consolidation service",
+      "session_id": "ses_28fe8c939ffeUHFR4eOVCdd7Bo",
       "agent": "Sisyphus-Junior",
       "category": "deep",
-      "updated_at": "2026-04-09T01:35:39.416Z"
+      "updated_at": "2026-04-09T03:04:23.356Z"
+    },
+    "todo:15": {
+      "task_key": "todo:15",
+      "task_label": "15",
+      "task_title": "Update prompt builder with cohort context",
+      "session_id": "ses_28fca39a8ffeCwlEDsl6fnD1J7",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-09T03:19:39.881Z"
+    },
+    "todo:18": {
+      "task_key": "todo:18",
+      "task_label": "18",
+      "task_title": "Update batch job routing by product line",
+      "session_id": "ses_28fbd0012ffe4njCzWyUX9tYgi",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-09T03:38:48.727Z"
+    },
+    "todo:20": {
+      "task_key": "todo:20",
+      "task_label": "20",
+      "task_title": "Implement bsr batch test command",
+      "session_id": "ses_28fa83774ffeaSpIy5x1aYox9c",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-09T03:51:07.492Z"
     }
   }
 }

@@ -886,6 +886,12 @@ function isRuntimeErrorResponse(
     return 'success' in value;
 }
 
+function isSubmitBatchResponse(
+    value: SubmitBatchResponse | BatchErrorResponse
+): value is SubmitBatchResponse {
+    return value.success === true;
+}
+
 async function submitBatchToProvider(
     runtime: ConsolidationRuntimeConfig,
     content: string,
@@ -985,6 +991,82 @@ async function persistBatchJobRecord(payload: {
 // =============================================================================
 // Batch Submission
 // =============================================================================
+
+function groupProductsByProductLine(products: ProductSource[]): Map<string, ProductSource[]> {
+    const groups = new Map<string, ProductSource[]>();
+
+    for (const product of products) {
+        const productLine = product.productLineContext?.productLine;
+        const key = productLine && typeof productLine === 'string' && productLine.trim().length > 0
+            ? productLine.trim()
+            : '__no_product_line__';
+
+        const existing = groups.get(key);
+        if (existing) {
+            existing.push(product);
+        } else {
+            groups.set(key, [product]);
+        }
+    }
+
+    return groups;
+}
+
+export async function submitBatchByProductLine(
+    products: ProductSource[],
+    metadata: BatchMetadata = {}
+): Promise<SubmitBatchResponse | BatchErrorResponse> {
+    if (products.length === 0) {
+        return { success: false, error: 'No products to consolidate' };
+    }
+
+    const groups = groupProductsByProductLine(products);
+
+    if (groups.size === 1) {
+        return submitBatch(products, metadata);
+    }
+
+    const results: SubmitBatchResponse[] = [];
+    const errors: string[] = [];
+
+    for (const [productLine, lineProducts] of groups) {
+        const lineMetadata: BatchMetadata = {
+            ...metadata,
+            product_line: productLine === '__no_product_line__' ? undefined : productLine,
+            description: metadata.description
+                ? `${metadata.description} [${productLine === '__no_product_line__' ? 'no product line' : productLine}]`
+                : `Consolidation batch for ${lineProducts.length} products${productLine === '__no_product_line__' ? '' : ` (${productLine})`}`,
+        };
+
+        const result = await submitBatch(lineProducts, lineMetadata);
+        if (isSubmitBatchResponse(result)) {
+            results.push(result);
+        } else {
+            errors.push(`${productLine}: ${result.error}`);
+        }
+    }
+
+    if (errors.length > 0 && results.length === 0) {
+        return { success: false, error: `All batch submissions failed: ${errors.join('; ')}` };
+    }
+
+    const primaryResult = results[0];
+    const totalProducts = results.reduce((sum, r) => sum + r.product_count, 0);
+
+    return {
+        success: true,
+        batch_id: primaryResult.batch_id,
+        provider: primaryResult.provider,
+        provider_batch_id: primaryResult.provider_batch_id,
+        product_count: totalProducts,
+        _batch_groups: results.map((r) => ({
+            batch_id: r.batch_id,
+            product_count: r.product_count,
+        })),
+        _error_count: errors.length,
+    };
+}
+
 
 /**
  * Submit a batch job to the configured provider and track it in Supabase.

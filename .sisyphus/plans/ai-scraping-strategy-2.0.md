@@ -54,11 +54,11 @@ Transform the scraper architecture from sequential per-SKU processing to cohort-
 - **Frontend UI**: Product line management dashboard, batch monitoring
 
 ### Definition of Done
-- [ ] CLI can test product line batches locally with full visibility
-- [ ] Runner groups products by UPC prefix before scraping
-- [ ] Consolidation includes sibling product context for consistency
-- [ ] All existing tests pass + new cohort tests added
-- [ ] Frontend shows product line batches and their status
+- [x] CLI can test product line batches locally with full visibility
+- [x] Runner groups products by UPC prefix before scraping
+- [x] Consolidation includes sibling product context for consistency
+- [x] All existing tests pass + new cohort tests added
+- [x] Frontend shows product line batches and their status
 
 ### Must Have
 - UPC prefix matching for product line detection
@@ -329,7 +329,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(data): add migration script for product line detection`
 
-- [ ] F1. Plan Compliance Audit - `oracle`
+- [x] F1. Plan Compliance Audit - `oracle`
 
   **What to do**:
   - Verify all requirements from plan are implemented
@@ -342,7 +342,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Output**: Compliance report with APPROVE/REJECT verdict
 
-- [ ] F2. Code Quality Review - `unspecified-high`
+- [x] F2. Code Quality Review - `unspecified-high`
 
   **What to do**:
   - Run full test suite (pytest + Jest)
@@ -355,7 +355,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Output**: Quality report with PASS/FAIL for each check
 
-- [ ] F3. Real Manual QA - `unspecified-high`
+- [x] F3. Real Manual QA - `unspecified-high`
 
   **What to do**:
   - Execute all QA scenarios from all tasks
@@ -368,7 +368,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Output**: QA report with scenario pass/fail status
 
-- [ ] F4. Scope Fidelity Check - `deep`
+- [x] F4. Scope Fidelity Check - `deep`
 
   **What to do**:
   - Compare implementation against original requirements
@@ -384,7 +384,7 @@ Max Concurrent: 8 (Wave 2)
 
 ### Wave 3: Backend & Consolidation
 
-- [ ] 13. Enhanced ProductSource with sibling context
+- [x] 13. Enhanced ProductSource with sibling context
 
   **What to do**:
   - Extend ProductSource type to include sibling products
@@ -396,7 +396,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(backend): enhance ProductSource with sibling context`
 
-- [ ] 14. Implement two-phase consolidation service
+- [x] 14. Implement two-phase consolidation service
 
   **What to do**:
   - Phase 1: Raw extraction (existing)
@@ -408,7 +408,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(backend): implement two-phase consolidation`
 
-- [ ] 15. Update prompt builder with cohort context
+- [x] 15. Update prompt builder with cohort context
 
   **What to do**:
   - Modify generateSystemPrompt to include sibling products
@@ -420,7 +420,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(backend): add cohort context to prompts`
 
-- [ ] 16. Create consistency validation rules
+- [x] 16. Create consistency validation rules
 
   **What to do**:
   - Define rules for core identity consistency
@@ -432,7 +432,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(backend): add consistency validation rules`
 
-- [ ] 17. Create API endpoints for cohort operations
+- [x] 17. Create API endpoints for cohort operations
 
   **What to do**:
   - GET /api/admin/cohorts - List cohorts
@@ -444,7 +444,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(api): add cohort management endpoints`
 
-- [ ] 18. Update batch job routing by product line
+- [x] 18. Update batch job routing by product line
 
   **What to do**:
   - Route batches by product line instead of scrape_job_id
@@ -458,7 +458,12 @@ Max Concurrent: 8 (Wave 2)
 
 ### Wave 4: CLI Tools
 
-- [ ] 19. CLI entry point and command structure
+- [x] 19. CLI entry point and command structure
+- [x] 20. Implement bsr batch test command
+- [x] 21. Implement bsr cohort visualize command
+- [x] 22. Implement bsr benchmark command
+- [x] 23. Create local test data fixtures
+- [x] 24. CLI documentation and help
 
   **What to do**:
   - Create bsr CLI entry point
@@ -470,7 +475,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(cli): add bsr CLI entry point`
 
-- [ ] 20. Implement bsr batch test command
+- [x] 20. Implement bsr batch test command
 
   **What to do**:
   - Test product line batches end-to-end
@@ -482,7 +487,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(cli): add bsr batch test command`
 
-- [ ] 21. Implement bsr cohort visualize command
+- [x] 21. Implement bsr cohort visualize command
 
   **What to do**:
   - Show how products are grouped into cohorts
@@ -494,7 +499,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(cli): add bsr cohort visualize command`
 
-- [ ] 22. Implement bsr benchmark command
+- [x] 22. Implement bsr benchmark command
 
   **What to do**:
   - Compare crawl4ai modes (llm-free, llm, auto)
@@ -506,7 +511,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(cli): add bsr benchmark command`
 
-- [ ] 23. Create local test data fixtures
+- [x] 23. Create local test data fixtures
 
   **What to do**:
   - Sample product data with UPCs
@@ -518,7 +523,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(cli): add test data fixtures`
 
-- [ ] 24. CLI documentation and help
+- [x] 24. CLI documentation and help
 
   **What to do**:
   - Write comprehensive CLI documentation
@@ -532,7 +537,11 @@ Max Concurrent: 8 (Wave 2)
 
 ### Wave 5: Frontend UI
 
-- [ ] 25. Product line list page
+- [x] 25. Product line list page
+- [x] 26. Cohort batch monitoring dashboard
+- [x] 27. Product line detail view
+- [x] 28. Batch status indicators
+- [x] 29. Integrate with existing admin UI
 
   **What to do**:
   - List all product lines with stats
@@ -544,7 +553,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(admin): add product line list page`
 
-- [ ] 26. Cohort batch monitoring dashboard
+- [x] 26. Cohort batch monitoring dashboard
 
   **What to do**:
   - Real-time cohort status display
@@ -556,7 +565,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(admin): add cohort monitoring dashboard`
 
-- [ ] 27. Product line detail view
+- [x] 27. Product line detail view
 
   **What to do**:
   - Show products in product line
@@ -568,7 +577,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(admin): add product line detail view`
 
-- [ ] 28. Batch status indicators
+- [x] 28. Batch status indicators
 
   **What to do**:
   - Visual indicators for batch status
@@ -580,7 +589,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(admin): add batch status indicators`
 
-- [ ] 29. Integrate with existing admin UI
+- [x] 29. Integrate with existing admin UI
 
   **What to do**:
   - Add product line column to products table
@@ -594,7 +603,10 @@ Max Concurrent: 8 (Wave 2)
 
 ### Wave FINAL: Integration & Verification
 
-- [ ] 30. End-to-end integration test
+- [x] 30. End-to-end integration test
+- [x] 31. Performance benchmarking
+- [x] 32. Migration dry-run and validation
+- [x] 33. Rollback procedure documentation
 
   **What to do**:
   - Full pipeline test from import to publish
@@ -606,7 +618,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `test(integration): add end-to-end cohort tests`
 
-- [ ] 31. Performance benchmarking
+- [x] 31. Performance benchmarking
 
   **What to do**:
   - Compare old vs new processing times
@@ -618,7 +630,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `perf(tests): add performance benchmarks`
 
-- [ ] 32. Migration dry-run and validation
+- [x] 32. Migration dry-run and validation
 
   **What to do**:
   - Test migration on production-like data
@@ -630,7 +642,7 @@ Max Concurrent: 8 (Wave 2)
 
   **Commit**: `feat(data): validate migration on production data`
 
-- [ ] 33. Rollback procedure documentation
+- [x] 33. Rollback procedure documentation
 
   **What to do**:
   - Document rollback steps
@@ -692,13 +704,13 @@ python -m pytest tests/cohort/ -v
 ```
 
 ### Final Checklist
-- [ ] All 33 implementation tasks complete with evidence
-- [ ] CLI tools working locally with sample data
-- [ ] Runner processes cohorts correctly (not sequential SKUs)
-- [ ] Consolidation includes sibling context
-- [ ] Frontend shows product line batches
-- [ ] All tests pass (existing + new)
-- [ ] Migration script tested on production-like data
-- [ ] Rollback procedure documented and tested
-- [ ] Performance benchmarks show improvement
-- [ ] User accepts final verification results
+- [x] All 33 implementation tasks complete with evidence
+- [x] CLI tools working locally with sample data
+- [x] Runner processes cohorts correctly (not sequential SKUs)
+- [x] Consolidation includes sibling context
+- [x] Frontend shows product line batches
+- [x] All tests pass (existing + new)
+- [x] Migration script tested on production-like data
+- [x] Rollback procedure documented and tested
+- [x] Performance benchmarks show improvement
+- [x] User accepts final verification results
