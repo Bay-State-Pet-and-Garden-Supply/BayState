@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Search, Filter, Eye, Play } from 'lucide-react';
+import { Search, Filter, Eye, Play, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,8 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { DataTable, type Column } from '@/components/admin/data-table';
-import { ProductLineModal, type ProductLine } from './ProductLineModal';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import type { ProductLine } from './ProductLineModal';
 
 interface AdminProductLinesClientProps {
 	initialProductLines: ProductLine[];
@@ -24,9 +25,7 @@ export function AdminProductLinesClient({
 	initialProductLines,
 	totalCount,
 }: AdminProductLinesClientProps) {
-	const [productLines, setProductLines] = useState<ProductLine[]>(initialProductLines);
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [selectedProductLine, setSelectedProductLine] = useState<ProductLine | null>(null);
+	const [productLines] = useState<ProductLine[]>(initialProductLines);
 	const [search, setSearch] = useState('');
 	const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -109,48 +108,6 @@ export function AdminProductLinesClient({
 		},
 	];
 
-	const handleAddNew = () => {
-		setSelectedProductLine(null);
-		setIsModalOpen(true);
-	};
-
-	const handleEdit = (productLine: ProductLine) => {
-		setSelectedProductLine(productLine);
-		setIsModalOpen(true);
-	};
-
-	const handleSave = async (data: {
-		name: string;
-		upc_prefix: string;
-		description?: string;
-		status: 'active' | 'inactive';
-	}) => {
-		const url = selectedProductLine
-			? `/api/admin/product-lines/${selectedProductLine.id}`
-			: '/api/admin/product-lines';
-		const method = selectedProductLine ? 'PUT' : 'POST';
-
-		const response = await fetch(url, {
-			method,
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(data),
-		});
-
-		if (!response.ok) {
-			throw new Error('Failed to save product line');
-		}
-
-		const savedProductLine = await response.json();
-
-		if (selectedProductLine) {
-			setProductLines((prev) =>
-				prev.map((pl) => (pl.id === savedProductLine.id ? savedProductLine : pl))
-			);
-		} else {
-			setProductLines((prev) => [...prev, savedProductLine]);
-		}
-	};
-
 	const handleView = (productLine: ProductLine) => {
 		window.location.href = `/admin/product-lines/${productLine.id}`;
 	};
@@ -161,17 +118,20 @@ export function AdminProductLinesClient({
 
 	return (
 		<div className="space-y-6">
+			<Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+				<Info className="h-4 w-4 text-blue-600" />
+				<AlertDescription className="text-blue-800 dark:text-blue-200">
+					Product lines are automatically detected from UPC prefixes. Manual creation is not required.
+				</AlertDescription>
+			</Alert>
+
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl font-bold tracking-tight">Product Lines</h1>
 					<p className="text-muted-foreground">
-						Manage product lines for cohort-based processing
+						Monitor product lines for cohort-based processing
 					</p>
 				</div>
-				<Button onClick={handleAddNew}>
-					<Plus className="mr-2 h-4 w-4" />
-					Add Product Line
-				</Button>
 			</div>
 
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -224,18 +184,8 @@ export function AdminProductLinesClient({
 						>
 							<Play className="h-4 w-4" />
 						</Button>
-						<Button variant="ghost" size="sm" onClick={() => handleEdit(row)}>
-							Edit
-						</Button>
 					</div>
 				)}
-			/>
-
-			<ProductLineModal
-				open={isModalOpen}
-				onOpenChange={setIsModalOpen}
-				productLine={selectedProductLine}
-				onSave={handleSave}
 			/>
 		</div>
 	);

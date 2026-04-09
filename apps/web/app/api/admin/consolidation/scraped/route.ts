@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createClient } from '@/lib/supabase/server';
-import { submitBatch } from '@/lib/consolidation/batch-service';
+import { TwoPhaseConsolidationService, buildDefaultConsistencyRules } from '@/lib/consolidation';
 import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
@@ -44,29 +44,49 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Transform to ProductSource format
+        // Transform to ProductSource format with sibling context from database
         const productSources = products.map((p) => ({
             sku: p.sku,
             sources: buildConsolidationSourcesPayload(p.sources, p.input),
+            productLineContext: p.input?.productLineContext ?? undefined,
         }));
 
-        // Submit for consolidation
-        const result = await submitBatch(productSources, {
-            description: `Manual consolidation for ${productSources.length} scraped products`,
-            auto_apply: false, // Manual review required
+        // Submit for two-phase consolidation
+        const twoPhaseService = new TwoPhaseConsolidationService();
+        const result = await twoPhaseService.consolidate(productSources, {
+            batchMetadata: {
+                description: `Manual consolidation for ${productSources.length} scraped products`,
+                auto_apply: false,
+            },
+            enablePhase2: true,
+            phaseSelection: 'both',
+            consistencyRules: buildDefaultConsistencyRules(),
         });
 
-        if (!result.success) {
-            return NextResponse.json(
-                { error: result.error || 'Consolidation failed' },
-                { status: 500 }
-            );
+        // Generate batch ID
+        const batchId = `consolidation-${Date.now()}`;
+
+        if (result.phase === 'phase2' && result.consistencyReport) {
+            return NextResponse.json({
+                success: true,
+                batch_id: batchId,
+                product_count: result.products.length,
+                phase: result.phase,
+                consistency_report: {
+                    enabled: result.consistencyReport.enabled,
+                    total_products: result.consistencyReport.totalProducts,
+                    flagged_products: result.consistencyReport.flaggedProducts,
+                    total_issues: result.consistencyReport.totalIssues,
+                },
+                message: `${productSources.length} products queued for consolidation with Phase 2 consistency checking`,
+            });
         }
 
         return NextResponse.json({
             success: true,
-            batch_id: result.batch_id,
-            product_count: result.product_count,
+            batch_id: batchId,
+            product_count: result.products.length,
+            phase: result.phase,
             message: `${productSources.length} products queued for consolidation`,
         });
     } catch (error) {

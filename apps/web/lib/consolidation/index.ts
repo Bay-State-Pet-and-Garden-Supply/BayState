@@ -84,3 +84,10 @@ export {
     createTwoPhaseConsolidationService,
     TwoPhaseConsolidationService,
 } from './two-phase-service';
+// Consistency Rules
+export {
+    createConsistencyRules,
+    validateConsistency,
+    type ConsistencyRulesConfig,
+    type Violation,
+} from './consistency-rules';

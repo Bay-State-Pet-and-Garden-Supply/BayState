@@ -91,16 +91,7 @@ describe('AdminProductLinesClient', () => {
 		expect(inactiveBadges).toHaveLength(1);
 	});
 
-	it('has Add Product Line button', () => {
-		render(
-			<AdminProductLinesClient
-				initialProductLines={mockProductLines}
-				totalCount={3}
-			/>
-		);
 
-		expect(screen.getByText('Add Product Line')).toBeInTheDocument();
-	});
 
 	it('has search input', () => {
 		render(
