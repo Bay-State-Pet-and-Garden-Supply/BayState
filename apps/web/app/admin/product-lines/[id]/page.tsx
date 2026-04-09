@@ -4,9 +4,10 @@ import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, RefreshCw, Edit, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react'
-import { validateConsistency, createConsistencyRules } from '@/lib/consolidation/consistency-rules'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ArrowLeft, AlertCircle, CheckCircle2, AlertTriangle, Info } from 'lucide-react'
 import type { ProductSource } from '@/lib/consolidation/types'
+import { createConsistencyRules, validateConsistency, type Violation } from '@/lib/consolidation'
 
 interface ProductLineDetailPageProps {
   params: Promise<{ id: string }>
@@ -33,13 +34,7 @@ interface ProductIngestion {
   updated_at: string
 }
 
-interface ConsistencyViolation {
-  rule: string
-  severity: string
-  message: string
-  products: string[]
-  field?: string
-}
+
 
 export default async function ProductLineDetailPage({ params }: ProductLineDetailPageProps) {
   const { id } = await params
@@ -93,10 +88,17 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
     if (!acc[severity]) acc[severity] = []
     acc[severity].push(violation)
     return acc
-  }, {} as Record<string, ConsistencyViolation[]>)
+  }, {} as Record<string, Violation[]>)
 
   return (
-    <div className="container mx-auto py-8">
+		<div className="container mx-auto py-8">
+			<Alert className="mb-6 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+				<Info className="h-4 w-4 text-blue-600" />
+				<AlertDescription className="text-blue-800 dark:text-blue-200">
+					Product lines are automatically detected from UPC prefixes. This is a read-only view.
+				</AlertDescription>
+			</Alert>
+
       <Button variant="ghost" asChild className="mb-6">
         <Link href="/admin/product-lines">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -188,21 +190,10 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
                         ))}
                       </div>
                     )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-4 pt-2">
-                <Button>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Reprocess All
-                </Button>
-                <Button variant="outline">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Product Line
-                </Button>
-              </div>
-            </CardContent>
+					</div>
+				</div>
+				)}
+			</CardContent>
           </Card>
         </div>
 

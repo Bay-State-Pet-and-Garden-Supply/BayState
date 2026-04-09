@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
 	title: 'Product Lines | Bay State Pet Admin',
-	description: 'Manage product lines for cohort-based processing.',
+	description: 'Monitor product lines for cohort-based processing.',
 };
 
 export default async function AdminProductLinesPage() {

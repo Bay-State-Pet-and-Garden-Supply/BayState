@@ -1,0 +1,118 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to main content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=e5]:
+      - generic [ref=e6]:
+        - img "Bay State app icon" [ref=e8]
+        - button "Expand" [ref=e9] [cursor=pointer]:
+          - img [ref=e10]
+      - navigation [ref=e12]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /admin
+          - img [ref=e16]
+        - generic [ref=e21]:
+          - link "Products" [ref=e22] [cursor=pointer]:
+            - /url: /admin/products
+            - img [ref=e23]
+          - link "Product Lines" [ref=e27] [cursor=pointer]:
+            - /url: /admin/product-lines
+            - img [ref=e28]
+        - link "Pipeline" [ref=e35] [cursor=pointer]:
+          - /url: /admin/pipeline
+          - img [ref=e36]
+        - generic [ref=e43]:
+          - link "Scrapers" [ref=e44] [cursor=pointer]:
+            - /url: /admin/scrapers/list
+            - img [ref=e45]
+          - link "Runs" [ref=e47] [cursor=pointer]:
+            - /url: /admin/scrapers/runs
+            - img [ref=e48]
+          - link "Network" [ref=e53] [cursor=pointer]:
+            - /url: /admin/scrapers/network
+            - img [ref=e54]
+        - generic [ref=e61]:
+          - link "Costs" [ref=e62] [cursor=pointer]:
+            - /url: /admin/costs
+            - img [ref=e63]
+          - link "Settings" [ref=e65] [cursor=pointer]:
+            - /url: /admin/settings
+            - img [ref=e66]
+      - generic [ref=e69]:
+        - img [ref=e73]
+        - link [ref=e79] [cursor=pointer]:
+          - /url: /
+          - img [ref=e80]
+    - main [ref=e83]:
+      - generic [ref=e260]:
+        - generic [ref=e261]:
+          - generic [ref=e262]:
+            - heading "Product Lines" [level=1] [ref=e263]
+            - paragraph [ref=e264]: Manage product lines for cohort-based processing
+          - button "Add Product Line" [ref=e265]:
+            - img
+            - text: Add Product Line
+        - generic [ref=e266]:
+          - generic [ref=e267]:
+            - img [ref=e268]
+            - textbox "Search by name or UPC prefix..." [ref=e271]
+          - generic [ref=e272]:
+            - img [ref=e273]
+            - combobox [ref=e275]:
+              - generic: All Status
+              - img
+        - generic [ref=e276]:
+          - generic [ref=e277]:
+            - generic [ref=e278]:
+              - img [ref=e279]
+              - textbox "Search product lines..." [ref=e282]
+            - generic [ref=e283]:
+              - generic [ref=e284]: Show
+              - combobox [ref=e285]:
+                - option "10" [selected]
+                - option "20"
+                - option "50"
+                - option "100"
+              - generic [ref=e286]: entries
+          - table [ref=e289]:
+            - rowgroup [ref=e290]:
+              - row "Product Line UPC Prefix Products Status Last Updated Actions" [ref=e291]:
+                - columnheader "Product Line" [ref=e292]:
+                  - button "Product Line" [ref=e293]:
+                    - generic [ref=e294]: Product Line
+                    - img
+                - columnheader "UPC Prefix" [ref=e295]:
+                  - button "UPC Prefix" [ref=e296]:
+                    - generic [ref=e297]: UPC Prefix
+                    - img
+                - columnheader "Products" [ref=e298]:
+                  - button "Products" [ref=e299]:
+                    - generic [ref=e300]: Products
+                    - img
+                - columnheader "Status" [ref=e301]:
+                  - button "Status" [ref=e302]:
+                    - generic [ref=e303]: Status
+                    - img
+                - columnheader "Last Updated" [ref=e304]:
+                  - button "Last Updated" [ref=e305]:
+                    - generic [ref=e306]: Last Updated
+                    - img
+                - columnheader "Actions" [ref=e307]
+            - rowgroup [ref=e308]:
+              - row "No results found." [ref=e309]:
+                - cell "No results found." [ref=e310]:
+                  - paragraph [ref=e311]: No results found.
+          - generic [ref=e312]:
+            - paragraph [ref=e313]: Showing 0 to 0 of 0 entries
+            - generic [ref=e314]:
+              - button "First" [disabled]
+              - button [disabled]:
+                - img
+              - generic [ref=e315]: Page 1 of 1
+              - button [disabled]:
+                - img
+              - button "Last" [disabled]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e321] [cursor=pointer]:
+    - img [ref=e322]
+  - alert [ref=e325]
