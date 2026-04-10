@@ -91,6 +91,12 @@ jobs:
             RUNNER_BUILD_ID=${{ github.run_id }}-${{ github.run_attempt }}
             RUNNER_BUILD_SHA=${{ github.sha }}
 
+      - name: Setup Node.js
+        if: contains(steps.meta.outputs.tags, ':latest')
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Publish latest runner release metadata
         if: contains(steps.meta.outputs.tags, ':latest')
         env:
