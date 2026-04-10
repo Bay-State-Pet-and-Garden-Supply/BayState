@@ -44,7 +44,9 @@ export function PipelineToolbar({
   onUploadShopSite,
   onDownloadZip,
 }: PipelineToolbarProps) {
+  const isScrapedStage = currentStage === "scraped";
   const isPublishedStage = currentStage === "published";
+  const isImportedStage = currentStage === "imported";
 
   // State to track individual inputs
   const [localSearch, setLocalSearch] = useState(search);
