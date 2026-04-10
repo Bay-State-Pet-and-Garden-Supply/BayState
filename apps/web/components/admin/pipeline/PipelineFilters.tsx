@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Filter, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ export interface PipelineFiltersState {
     startDate?: Date;
     endDate?: Date;
     source?: string;
+    cohort_id?: string;
     minConfidence?: number;
     maxConfidence?: number;
 }
@@ -55,6 +56,7 @@ export function PipelineFilters({ filters, onFilterChange, className }: Pipeline
         filters.startDate,
         filters.endDate,
         filters.source,
+        filters.cohort_id,
         filters.minConfidence !== undefined || filters.maxConfidence !== undefined
     ].filter(Boolean).length;
 
@@ -153,6 +155,18 @@ export function PipelineFilters({ filters, onFilterChange, className }: Pipeline
                             placeholder="e.g. scraper-1"
                             value={localFilters.source || ''}
                             onChange={(e) => setLocalFilters(prev => ({ ...prev, source: e.target.value || undefined }))}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="cohort">Cohort ID</Label>
+                        <Input
+                            id="cohort"
+                            type="search"
+                            autoComplete="off"
+                            placeholder="e.g. upc-prefix-123"
+                            value={localFilters.cohort_id || ''}
+                            onChange={(e) => setLocalFilters(prev => ({ ...prev, cohort_id: e.target.value || undefined }))}
                         />
                     </div>
 

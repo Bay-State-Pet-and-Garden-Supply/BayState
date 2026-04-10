@@ -89,6 +89,7 @@ export async function getProductsByStatus(
         source?: string;
         minConfidence?: number;
         maxConfidence?: number;
+        cohort_id?: string;
     }
 ): Promise<{ products: PipelineProduct[]; count: number }> {
     const supabase = await createClient();
@@ -99,6 +100,10 @@ export async function getProductsByStatus(
         .order('updated_at', { ascending: false });
 
     query = query.eq('pipeline_status', status);
+
+    if (options?.cohort_id) {
+        query = query.eq('cohort_id', options.cohort_id);
+    }
 
     if (options?.search) {
         query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
@@ -159,6 +164,7 @@ export async function getSkusByStatus(
         source?: string;
         minConfidence?: number;
         maxConfidence?: number;
+        cohort_id?: string;
     }
 ): Promise<{ skus: string[]; count: number }> {
     const supabase = await createClient();
@@ -169,6 +175,10 @@ export async function getSkusByStatus(
         .order('updated_at', { ascending: false });
 
     query = query.eq('pipeline_status', status);
+
+    if (options?.cohort_id) {
+        query = query.eq('cohort_id', options.cohort_id);
+    }
 
     if (options?.search) {
         query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
