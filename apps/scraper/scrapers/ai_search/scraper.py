@@ -891,6 +891,9 @@ class AISearchScraper:
         products: list[dict[str, Any]],
     ) -> list[AISearchResult]:
         """Scrape multiple products using batched search."""
+        # Check if SKU-first search is enabled
+        use_sku_first = os.getenv("AI_SEARCH_SKU_FIRST", "false").lower() == "true"
+
         # Create ProductInput objects
         product_inputs = [
             ProductInput(
@@ -900,18 +903,61 @@ class AISearchScraper:
             )
             for p in products
         ]
-        
-        # Use batch orchestrator
-        orchestrator = BatchSearchOrchestrator(
-            search_client=self._search_client,
-            extractor=self._crawl4ai_extractor,
-            scorer=self._scoring,
-        )
-        
-        # Run batch search and extraction
-        batch_result = await orchestrator.search_cohort(product_inputs)
-        
-        return batch_result.to_search_results()
+
+        if use_sku_first:
+            # Use SKU-first strategy with NameConsolidator
+            name_consolidator = NameConsolidator(
+                api_key=self.llm_api_key,
+                model=self.llm_model,
+                provider=self.llm_provider,
+                base_url=self.llm_base_url,
+            )
+            orchestrator = BatchSearchOrchestrator(
+                search_client=self._search_client,
+                extractor=self._crawl4ai_extractor,
+                scorer=self._scoring,
+                name_consolidator=name_consolidator,
+            )
+            sku_first_results = await orchestrator.search_sku_first(product_inputs)
+            # Convert dict[str, list[SearchResult]] to list[AISearchResult]
+            from urllib.parse import urlparse
+            output: list[AISearchResult] = []
+            for sku, search_results in sku_first_results.items():
+                if search_results:
+                    top = search_results[0]
+                    url = top.url
+                    domain = urlparse(url).netloc if url else ""
+                    output.append(
+                        AISearchResult(
+                            success=False,
+                            sku=sku,
+                            url=url,
+                            source_website=domain,
+                            confidence=0.5,  # Default confidence for SKU-first
+                            error="Extraction not implemented in SKU-first mode",
+                        )
+                    )
+                else:
+                    output.append(
+                        AISearchResult(
+                            success=False,
+                            sku=sku,
+                            error="No results found",
+                        )
+                    )
+            return output
+        else:
+            # Use existing cohort search
+            orchestrator = BatchSearchOrchestrator(
+                search_client=self._search_client,
+                extractor=self._crawl4ai_extractor,
+                scorer=self._scoring,
+            )
+
+            # Run batch search and extraction
+            batch_result = await orchestrator.search_cohort(product_inputs)
+
+            return batch_result.to_search_results()
     async def _identify_best_source(
         self,
         search_results: list[dict[str, Any]],
