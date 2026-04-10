@@ -229,37 +229,7 @@ class AISearchScraper:
             matching=self._matching,
         )
 
-    def _get_cached_cohort_state(self, cohort_key: str) -> _BatchCohortState:
-        """Retrieve or create cohort state, merging cached preferences."""
-        cached = self._cohort_cache.get(cohort_key)
-        if cached is not None:
-            # Move to end for LRU behavior
-            self._cohort_cache.move_to_end(cohort_key)
-            logger.info(
-                "[AI Search] Loaded cached cohort state for '%s' (domains=%d, brands=%d)",
-                cohort_key,
-                len(cached.preferred_domain_counts),
-                len(cached.preferred_brand_counts),
-            )
-            return _BatchCohortState(
-                key=cohort_key,
-                preferred_domain_counts=dict(cached.preferred_domain_counts),
-                preferred_brand_counts=dict(cached.preferred_brand_counts),
-            )
-        return _BatchCohortState(
-            key=cohort_key,
-            preferred_domain_counts={},
-            preferred_brand_counts={},
-        )
 
-    def _save_cohort_state(self, cohort_state: _BatchCohortState) -> None:
-        """Persist cohort state to cache for future batch runs."""
-        key = cohort_state.key
-        self._cohort_cache[key] = cohort_state
-        self._cohort_cache.move_to_end(key)
-        # Evict oldest entries if cache exceeds max size
-        while len(self._cohort_cache) > self._cohort_cache_max:
-            self._cohort_cache.popitem(last=False)
 
     def _is_blocked_url(self, url: str) -> bool:
         """Check if URL should be skipped before launching an extraction.
@@ -597,37 +567,6 @@ class AISearchScraper:
 
         return score
 
-    def _apply_cohort_preferences(
-        self,
-        search_results: list[dict[str, Any]],
-        sku: str,
-        brand: Optional[str],
-        product_name: Optional[str],
-        category: Optional[str],
-        cohort_state: _BatchCohortState | None,
-    ) -> list[dict[str, Any]]:
-        preferred_domains = cohort_state.ranked_domains() if cohort_state is not None else []
-        if not preferred_domains:
-            return search_results
-
-        prepared_results = self._prepare_candidate_pool(
-            search_results=search_results,
-            sku=sku,
-            brand=brand,
-            product_name=product_name,
-            category=category,
-            preferred_domains=preferred_domains,
-        )
-        dominant_domain = cohort_state.dominant_domain() if cohort_state is not None else None
-        if not dominant_domain:
-            return prepared_results
-
-        dominant_results = [
-            result
-            for result in prepared_results
-            if self._scoring.domain_from_url(str(result.get("url") or "")) == dominant_domain
-        ]
-        return dominant_results or prepared_results
 
     def _has_preferred_domain_candidate(self, search_results: list[dict[str, Any]], preferred_domains: Optional[list[str]]) -> bool:
         if not search_results or not preferred_domains:
@@ -1137,14 +1076,6 @@ class AISearchScraper:
                 brand=effective_brand,
                 category=category,
                 cost_context=cost_context,
-            )
-            search_results = self._apply_cohort_preferences(
-                search_results=search_results,
-                sku=sku,
-                brand=effective_brand,
-                product_name=product_name,
-                category=category,
-                cohort_state=cohort_state,
             )
 
             if not effective_brand and not preferred_domains:
