@@ -8,6 +8,13 @@ from urllib.parse import urlparse
 
 from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.query_builder import QueryBuilder
+from scrapers.ai_search.cohort_state import _BatchCohortState
+from scrapers.ai_search.query_builder import QueryBuilder
+from .validation import ExtractionValidator
+from scrapers.ai_search.query_builder import QueryBuilder
+from scrapers.ai_search.query_builder import QueryBuilder
+from .validation import ExtractionValidator
+from scrapers.ai_search.query_builder import QueryBuilder
 
 
 @dataclass
@@ -103,23 +110,29 @@ class BatchSearchResult:
         return output
 
 
+
 class BatchSearchOrchestrator:
     """Orchestrates cohort-wide search and URL selection."""
-
     def __init__(
         self,
         search_client: Any,
         extractor: Any,
         scorer: Any,
         name_consolidator: Any = None,
+        cohort_state: _BatchCohortState | None = None,
     ):
         self._search_client = search_client
         self._extractor = extractor
         self._scorer = scorer
         self._name_consolidator = name_consolidator
+        self._validator = ExtractionValidator()
+        self._product_context: dict[str, ProductInput] = {}
+        self._cohort_state = cohort_state
 
     async def search_cohort(self, products: list[ProductInput]) -> BatchSearchResult:
         """Search all SKUs in a cohort."""
+        self._product_context = {product.sku: product for product in products}
+
         # Step 1: Search all SKUs in parallel
         search_results = await self.search_all_skus(products, max_concurrent=5)
 
@@ -131,7 +144,14 @@ class BatchSearchOrchestrator:
         for product in products:
             sku = product.sku
             if sku in search_results:
-                ranked = self.rank_urls_for_sku(sku, search_results[sku], domain_frequency)
+                ranked = self.rank_urls_for_sku(
+                    sku,
+                    search_results[sku],
+                    domain_frequency,
+                    brand=product.brand,
+                    product_name=product.name,
+                    category=None,
+                )
                 ranked_results[sku] = ranked
 
         # Step 4: Batch extraction from top URLs
@@ -209,9 +229,7 @@ class BatchSearchOrchestrator:
         consolidated_names = await self._consolidate_names(sku_results, max_concurrent)
 
         # Phase 3: Manufacturer searches with consolidated names (parallel)
-        manufacturer_results = await self._search_with_names(
-            products, consolidated_names, max_concurrent
-        )
+        manufacturer_results = await self._search_with_names(products, consolidated_names, max_concurrent)
 
         # Phase 4: Merge and deduplicate
         merged = self._merge_search_results(sku_results, manufacturer_results)
@@ -270,13 +288,12 @@ class BatchSearchOrchestrator:
         semaphore = asyncio.Semaphore(max_concurrent)
 
         async def consolidate_one(
-            sku: str, product_name: str, results: list[SearchResult],
+            sku: str,
+            product_name: str,
+            results: list[SearchResult],
         ) -> tuple[str, tuple[str, list[dict[str, Any]]]]:
             async with semaphore:
-                snippets = [
-                    {"title": r.title or "", "description": r.description or ""}
-                    for r in results
-                ]
+                snippets = [{"title": r.title or "", "description": r.description or ""} for r in results]
                 try:
                     consolidated_name, _ = await self._name_consolidator.consolidate_name(
                         sku=sku,
@@ -288,10 +305,7 @@ class BatchSearchOrchestrator:
 
                 return sku, (consolidated_name, snippets)
 
-        tasks = [
-            consolidate_one(sku, "", results)
-            for sku, results in sku_results.items()
-        ]
+        tasks = [consolidate_one(sku, "", results) for sku, results in sku_results.items()]
 
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -419,6 +433,75 @@ class BatchSearchOrchestrator:
         sku: str,
         search_results: list[SearchResult],
         domain_frequency: dict[str, DomainFrequency],
+        brand: Optional[str] = None,
+        product_name: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> list[RankedResult]:
+        """Rank URLs considering cohort-wide signals."""
+        ranked = []
+
+        # Get cohort-preferred domains for ranking influence
+        cohort_domains = []
+        if self._cohort_state:
+            cohort_domains = self._cohort_state.ranked_domains()
+            dominant_domain = self._cohort_state.dominant_domain(minimum_count=2)
+        else:
+            dominant_domain = None
+
+        for result in search_results:
+            domain = self._extract_domain(result.url)
+
+            result_dict = {
+                "url": result.url,
+                "title": result.title or "",
+                "description": result.description or "",
+            }
+            base_score = self._scorer.score_search_result(
+                result=result_dict,
+                sku=sku,
+                brand=brand,
+                product_name=product_name,
+                category=category,
+            )
+
+            freq = domain_frequency.get(domain)
+            if freq and freq.sku_count > 3:
+                base_score += 5.0
+            elif freq and freq.sku_count > 1:
+                base_score += 2.0
+
+            # Apply cohort domain preferences
+            if self._cohort_state:
+                # Boost score for domains that have been successful for cohort members
+                if domain in cohort_domains:
+                    # Higher boost for more frequently successful domains
+                    domain_rank = cohort_domains.index(domain)
+                    cohort_boost = max(0.5, 3.0 - domain_rank * 0.5)  # 3.0 for top, decreasing
+                    base_score += cohort_boost
+
+                # Extra boost for dominant domain (if established)
+                if dominant_domain and domain == dominant_domain:
+                    base_score += 2.0
+
+            from scrapers.ai_search.scoring import get_domain_success_rate
+
+            success_rate = get_domain_success_rate(domain)
+            if success_rate > 0.8:
+                base_score += 3.0
+            elif success_rate < 0.3:
+                base_score -= 3.0
+
+            ranked.append(RankedResult(result=result, score=base_score))
+
+        ranked.sort(key=lambda x: x.score, reverse=True)
+        return ranked
+        self,
+        sku: str,
+        search_results: list[SearchResult],
+        domain_frequency: dict[str, DomainFrequency],
+        brand: Optional[str] = None,
+        product_name: Optional[str] = None,
+        category: Optional[str] = None,
     ) -> list[RankedResult]:
         """Rank URLs considering cohort-wide signals."""
         ranked = []
@@ -434,9 +517,9 @@ class BatchSearchOrchestrator:
             base_score = self._scorer.score_search_result(
                 result=result_dict,
                 sku=sku,
-                brand=None,
-                product_name=None,
-                category=None,
+                brand=brand,
+                product_name=product_name,
+                category=category,
             )
 
             freq = domain_frequency.get(domain)
@@ -458,6 +541,20 @@ class BatchSearchOrchestrator:
         ranked.sort(key=lambda x: x.score, reverse=True)
         return ranked
 
+    def _is_blocked_url(self, url: str) -> bool:
+        """Check if URL should be skipped before extraction."""
+        domain = self._scorer.domain_from_url(url)
+        if not domain:
+            return True
+
+        if self._scorer._domain_matches_candidates(domain, self._scorer.BLOCKED_DOMAINS):
+            return True
+
+        if self._scorer.is_category_like_url(url):
+            return True
+
+        return False
+
     async def extract_batch(
         self,
         selections: dict[str, list[RankedResult]],
@@ -468,19 +565,42 @@ class BatchSearchOrchestrator:
 
         async def extract_sku(sku: str, urls: list[RankedResult]) -> tuple[str, Any]:
             async with semaphore:
+                product = self._product_context.get(sku)
+                product_name = product.name if product else None
+                brand = product.brand if product else None
+                last_error = "All URLs failed"
+
                 for ranked in urls:
+                    source_url = ranked.result.url
+                    if self._is_blocked_url(source_url):
+                        continue
+
                     try:
                         result = await self._extractor.extract(
-                            ranked.result.url,
+                            source_url,
                             sku,
                             ranked.result.title,
                             None,
                         )
-                        if result.get("success"):
+                        result.setdefault("url", source_url)
+
+                        if not result.get("success"):
+                            last_error = str(result.get("error") or last_error)
+                            continue
+
+                        is_acceptable, rejection_reason = self._validator.validate_extraction_match(
+                            extraction_result=result,
+                            sku=sku,
+                            product_name=product_name,
+                            brand=brand,
+                            source_url=source_url,
+                        )
+                        if is_acceptable:
                             return sku, result
+                        last_error = rejection_reason
                     except Exception:
                         continue
-            return sku, {"success": False, "error": "All URLs failed"}
+            return sku, {"success": False, "error": last_error}
 
         tasks = [extract_sku(sku, urls) for sku, urls in selections.items()]
         results = await asyncio.gather(*tasks, return_exceptions=True)
