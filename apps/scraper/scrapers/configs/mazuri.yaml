@@ -102,73 +102,61 @@ workflows:
     name: null
     params:
       if_flag: no_results_found
-  - action: extract_single
-    name: extract_product_url
-    params:
-      field: product_url
-      selector_id: search_result_link
-  - action: conditional
+  - action: click
     name: open_product_page
     params:
-      condition_type: field_exists
-      field: product_url
-      then:
-        - action: navigate
-          name: null
-          params:
-            url: "{{product_url}}"
-            wait_until: commit
-        - action: wait_for
-          name: null
-          params:
-            timeout: 10
-            selector:
-              - main h1
-              - .product-single
-              - "[data-section-type='product']"
-        - action: wait
-          name: null
-          params:
-            seconds: 2
-        - action: extract
-          name: null
-          params:
-            fields:
-              - Name
-              - Brand
-              - Weight
-              - Image URLs
-              - Ingredients
-              - Size Options
-              - Description
-              - UPC
-        - action: process_images
-          name: null
-          params:
-            field: Image URLs
-            quality_patterns:
-              - regex: "_small"
-                replacement: "_large"
-              - regex: "_compact"
-                replacement: "_grande"
-              - regex: "_\\d+x\\d+"
-                replacement: "_1024x1024"
-            filters:
-              - type: exclude_text
-                text: no-image
-              - type: exclude_text
-                text: placeholder
-              - type: require_text
-                text: cdn.shopify
-            deduplicate: true
-        - action: transform_value
-          name: null
-          params:
-            field: Brand
-            transformations:
-              - type: replace
-                pattern: ^.*$
-                replacement: Mazuri
+      selector: search_result_link
+  - action: wait_for
+    name: null
+    params:
+      timeout: 10
+      selector:
+        - main h1
+        - .product-single
+        - "[data-section-type='product']"
+  - action: wait
+    name: null
+    params:
+      seconds: 2
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - Weight
+        - Image URLs
+        - Ingredients
+        - Size Options
+        - Description
+        - UPC
+  - action: process_images
+    name: null
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "_small"
+          replacement: "_large"
+        - regex: "_compact"
+          replacement: "_grande"
+        - regex: "_\\d+x\\d+"
+          replacement: "_1024x1024"
+      filters:
+        - type: exclude_text
+          text: no-image
+        - type: exclude_text
+          text: placeholder
+        - type: require_text
+          text: cdn.shopify
+      deduplicate: true
+  - action: transform_value
+    name: null
+    params:
+      field: Brand
+      transformations:
+        - type: replace
+          pattern: ^.*$
+          replacement: Mazuri
 ai_config: null
 anti_detection:
   enable_rate_limiting: false

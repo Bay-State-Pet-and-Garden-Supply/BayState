@@ -13,7 +13,8 @@ from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
 
 
-def _install_validation_shim() -> None:
+def _install_validation_shim() -> ModuleType | None:
+    original_module = sys.modules.get("scrapers.ai_search.validation")
     validation_module = ModuleType("scrapers.ai_search.validation")
 
     @final
@@ -99,13 +100,19 @@ def _install_validation_shim() -> None:
 
     setattr(validation_module, "ExtractionValidator", ExtractionValidator)
     sys.modules["scrapers.ai_search.validation"] = validation_module
+    return original_module
 
 
-_install_validation_shim()
+_ORIGINAL_VALIDATION_MODULE = _install_validation_shim()
 
 from scrapers.ai_search import AISearchScraper
 from scrapers.ai_search.models import AISearchResult
 from scrapers.ai_search.two_step_refiner import RefinementResult
+
+if _ORIGINAL_VALIDATION_MODULE is not None:
+    sys.modules["scrapers.ai_search.validation"] = _ORIGINAL_VALIDATION_MODULE
+else:
+    sys.modules.pop("scrapers.ai_search.validation", None)
 
 
 pytestmark = pytest.mark.asyncio

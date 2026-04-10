@@ -19,7 +19,6 @@ import json
 import logging
 import threading
 import time
-from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path

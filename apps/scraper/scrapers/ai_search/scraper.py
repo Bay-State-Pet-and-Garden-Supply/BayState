@@ -16,9 +16,9 @@ from scrapers.ai_search.scoring import SearchScorer, record_domain_attempt
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.llm_runtime import resolve_llm_runtime
+from scrapers.ai_search.batch_search import BatchSearchOrchestrator, ProductInput
 from scrapers.ai_search.search import SearchClient, normalize_search_provider
 from scrapers.ai_search.query_builder import QueryBuilder
-from scrapers.ai_search.batch_search import BatchSearchOrchestrator, ProductInput
 from scrapers.ai_search.cohort_state import _BatchCohortState
 from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.source_selector import LLMSourceSelector
@@ -64,6 +64,22 @@ class _ScrapeCostContext:
 
     def total_cost_usd(self, tracker_cost_usd: float = 0.0) -> float:
         return float(tracker_cost_usd or 0.0) + float(self.search_cost_usd or 0.0) + float(self.llm_cost_usd or 0.0) + float(self.refinement_cost_usd or 0.0)
+
+
+class _BatchExtractorAdapter:
+    """Adapt the scraper's extraction pipeline to the batch orchestrator interface."""
+
+    def __init__(self, scraper: "AISearchScraper") -> None:
+        self._scraper = scraper
+
+    async def extract(
+        self,
+        url: str,
+        sku: str,
+        product_name: str | None,
+        brand: str | None,
+    ) -> dict[str, Any]:
+        return await self._scraper._extract_product_data(url, sku, product_name, brand)
 
 
 class AISearchScraper:
@@ -260,7 +276,7 @@ class AISearchScraper:
 
         # Quick check
         has_data = await self._scoring.has_structured_data(url)
-        if not has_data:
+        if has_data is False:
             logger.info("[AI Search] Skipping %s - no structured data detected", url)
             return True
 
@@ -673,62 +689,219 @@ class AISearchScraper:
 
         return True
 
+    def _get_cached_cohort_state(self, cohort_key: str) -> _BatchCohortState:
+        """Retrieve or create cohort state, merging cached preferences."""
+        cached = self._cohort_cache.get(cohort_key)
+        if cached is not None:
+            self._cohort_cache.move_to_end(cohort_key)
+            logger.info(
+                "[AI Search] Loaded cached cohort state for '%s' (domains=%d, brands=%d)",
+                cohort_key,
+                len(cached.preferred_domain_counts),
+                len(cached.preferred_brand_counts),
+            )
+            return _BatchCohortState(
+                key=cohort_key,
+                preferred_domain_counts=dict(cached.preferred_domain_counts),
+                preferred_brand_counts=dict(cached.preferred_brand_counts),
+            )
+
+        return _BatchCohortState(
+            key=cohort_key,
+            preferred_domain_counts={},
+            preferred_brand_counts={},
+        )
+
+    def _save_cohort_state(self, cohort_state: _BatchCohortState) -> None:
+        """Persist cohort state to cache for future batch runs."""
+        key = cohort_state.key
+        self._cohort_cache[key] = cohort_state
+        self._cohort_cache.move_to_end(key)
+
+        while len(self._cohort_cache) > self._cohort_cache_max:
+            self._cohort_cache.popitem(last=False)
+
+    def _should_use_orchestrated_batch_path(self) -> bool:
+        """Route the base production batch path through the shared orchestrator.
+
+        Test subclasses often override single-product hooks to isolate behavior.
+        Keep those on the legacy path so the focused regression tests stay hermetic.
+        """
+        return self.__class__ is AISearchScraper and not bool(getattr(self, "sku_first_mode", False))
+
+    async def _run_orchestrated_cohort_batch(
+        self,
+        cohort_batch: list[tuple[int, dict[str, Any]]],
+        cohort_state: _BatchCohortState,
+        max_concurrency: int,
+    ) -> list[tuple[int, AISearchResult]]:
+        orchestrator = BatchSearchOrchestrator(
+            search_client=self._search_client,
+            extractor=_BatchExtractorAdapter(self),
+            scorer=self._scoring,
+            name_consolidator=self._name_consolidator,
+            cohort_state=cohort_state,
+            validator=self._validator,
+        )
+
+        valid_batch: list[tuple[int, dict[str, Any]]] = []
+        product_inputs: list[ProductInput] = []
+        cohort_results: list[tuple[int, AISearchResult]] = []
+
+        for original_index, product in cohort_batch:
+            sku = str(product.get("sku", "")).strip()
+            if not sku:
+                cohort_results.append((original_index, AISearchResult(success=False, sku="", error="Missing sku")))
+                continue
+
+            valid_batch.append((original_index, product))
+            product_inputs.append(
+                ProductInput(
+                    sku=sku,
+                    name=str(product.get("product_name") or ""),
+                    brand=str(product.get("brand") or "").strip() or None,
+                )
+            )
+
+        if not product_inputs:
+            return cohort_results
+
+        batch_result = await orchestrator.search_cohort(
+            product_inputs,
+            max_search_concurrent=max(1, max_concurrency),
+            max_extract_concurrent=max(1, max_concurrency),
+        )
+        extracted_results = batch_result.to_search_results()
+
+        for (original_index, _), result in zip(valid_batch, extracted_results):
+            cohort_results.append((original_index, result))
+            domain = self._scoring.domain_from_url(result.url or "")
+            if result.success and domain and not self._scoring.is_marketplace(domain):
+                cohort_state.remember_domain(domain)
+            if result.success and result.brand:
+                cohort_state.remember_brand(result.brand)
+
+        return cohort_results
+
     async def scrape_products_batch(
         self,
         products: list[dict[str, Any]],
+        max_concurrency: int = 4,
     ) -> list[AISearchResult]:
-        """Scrape multiple products using batched search."""
-        # Check if SKU-first search is enabled
-        use_sku_first = os.getenv("AI_SEARCH_SKU_FIRST", "true").lower() == "true"
+        """Scrape multiple products in batch while carrying cohort context."""
+        if not products:
+            return []
 
-        # Create ProductInput objects
-        product_inputs = [
-            ProductInput(
-                sku=p.get("sku", ""),
-                name=p.get("product_name", ""),
-                brand=p.get("brand"),
-            )
-            for p in products
-        ]
+        semaphore = asyncio.Semaphore(max(1, max_concurrency))
+        indexed_products = list(enumerate(products))
+        cohort_items: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
 
-        if use_sku_first:
-            # Use SKU-first strategy with NameConsolidator
-            name_consolidator = NameConsolidator(
-                api_key=self.llm_api_key,
-                model=self.llm_model,
-                provider=self.llm_provider,
-                base_url=self.llm_base_url,
-            )
-            orchestrator = BatchSearchOrchestrator(
-                search_client=self._search_client,
-                extractor=self._crawl4ai_extractor,
-                scorer=self._scoring,
-                name_consolidator=name_consolidator,
-            )
-            sku_first_results = await orchestrator.search_sku_first(product_inputs)
-            output: list[AISearchResult] = []
-            for product in product_inputs:
-                output.append(
-                    await self._extract_sku_first_batch_result(
-                        sku=product.sku,
-                        product_name=product.name or None,
-                        brand=product.brand,
-                        search_results=sku_first_results.get(product.sku, []),
-                    )
+        for index, product in indexed_products:
+            cohort_items[self._build_cohort_key(product)].append((index, product))
+
+        async def _run_cohort(
+            cohort_key: str,
+            cohort_batch: list[tuple[int, dict[str, Any]]],
+        ) -> list[tuple[int, AISearchResult]]:
+            async with semaphore:
+                cohort_state = self._get_cached_cohort_state(cohort_key)
+                ordered_batch = sorted(
+                    cohort_batch,
+                    key=lambda item: self._score_item_context(item[1]),
+                    reverse=True,
                 )
-            return output
-        else:
-            # Use existing cohort search
-            orchestrator = BatchSearchOrchestrator(
-                search_client=self._search_client,
-                extractor=self._crawl4ai_extractor,
-                scorer=self._scoring,
-            )
+                item_by_index = {index: item for index, item in cohort_batch}
+                cohort_results: list[tuple[int, AISearchResult]] = []
 
-            # Run batch search and extraction
-            batch_result = await orchestrator.search_cohort(product_inputs)
+                if self._should_use_orchestrated_batch_path():
+                    cohort_results = await self._run_orchestrated_cohort_batch(
+                        ordered_batch,
+                        cohort_state,
+                        max_concurrency,
+                    )
+                    self._save_cohort_state(cohort_state)
+                    return cohort_results
 
-            return batch_result.to_search_results()
+                for original_index, product in ordered_batch:
+                    sku = str(product.get("sku", "")).strip()
+                    if not sku:
+                        cohort_results.append((original_index, AISearchResult(success=False, sku="", error="Missing sku")))
+                        continue
+
+                    result = await self.scrape_product(
+                        sku=sku,
+                        product_name=product.get("product_name"),
+                        brand=product.get("brand"),
+                        category=product.get("category"),
+                        cohort_state=cohort_state,
+                    )
+                    cohort_results.append((original_index, result))
+
+                    domain = self._scoring.domain_from_url(result.url or "")
+                    if result.success and domain and not self._scoring.is_marketplace(domain):
+                        cohort_state.remember_domain(domain)
+                    if result.success and result.brand:
+                        cohort_state.remember_brand(result.brand)
+
+                dominant_domain = cohort_state.dominant_domain()
+                if dominant_domain:
+                    locked_state = _BatchCohortState(
+                        key=cohort_key,
+                        preferred_domain_counts={
+                            dominant_domain: cohort_state.preferred_domain_counts.get(dominant_domain, 0),
+                        },
+                        preferred_brand_counts=dict(cohort_state.preferred_brand_counts),
+                    )
+                    normalized_results: list[tuple[int, AISearchResult]] = []
+
+                    for original_index, existing_result in cohort_results:
+                        existing_domain = self._scoring.domain_from_url(existing_result.url or "")
+                        product = item_by_index.get(original_index, {})
+                        product_sku = str(product.get("sku", "")).strip()
+                        if not product_sku:
+                            normalized_results.append((original_index, existing_result))
+                            continue
+
+                        should_retry = (not existing_result.success) or existing_domain != dominant_domain
+                        if not should_retry:
+                            normalized_results.append((original_index, existing_result))
+                            continue
+
+                        retry_result = await self.scrape_product(
+                            sku=product_sku,
+                            product_name=product.get("product_name"),
+                            brand=product.get("brand"),
+                            category=product.get("category"),
+                            cohort_state=locked_state,
+                        )
+                        retry_domain = self._scoring.domain_from_url(retry_result.url or "")
+                        if retry_result.success and retry_domain == dominant_domain:
+                            normalized_results.append((original_index, retry_result))
+                            continue
+
+                        normalized_results.append((original_index, existing_result))
+
+                    cohort_results = normalized_results
+
+                self._save_cohort_state(cohort_state)
+                return cohort_results
+
+        gathered_results = await asyncio.gather(
+            *[
+                _run_cohort(cohort_key, cohort_batch)
+                for cohort_key, cohort_batch in cohort_items.items()
+            ]
+        )
+
+        ordered_results: list[AISearchResult | None] = [None] * len(products)
+        for cohort_result_set in gathered_results:
+            for index, result in cohort_result_set:
+                ordered_results[index] = result
+
+        return [
+            result if result is not None else AISearchResult(success=False, sku="", error="Missing batch result")
+            for result in ordered_results
+        ]
 
     async def _extract_sku_first_batch_result(
         self,
@@ -1173,8 +1346,8 @@ class AISearchScraper:
                 parallel_results = await self._extract_candidates_parallel(candidate_urls, sku, product_name, effective_brand)
 
                 # Pick the best result from the parallel set
-                accepted_result = None
-                target_url = None
+                parallel_accepted_result: dict[str, Any] | None = None
+                parallel_target_url: str | None = None
                 for res in parallel_results:
                     is_acceptable, _ = self._validator.validate_extraction_match(
                         extraction_result=res,
@@ -1184,17 +1357,17 @@ class AISearchScraper:
                         source_url=res.get("url", ""),
                     )
                     if is_acceptable:
-                        accepted_result = res
-                        target_url = res.get("url")
+                        parallel_accepted_result = res
+                        parallel_target_url = str(res.get("url") or "") or None
                         break
 
-                if accepted_result:
+                if parallel_accepted_result:
                     return self._build_discovery_result(
-                        accepted_result,
+                        parallel_accepted_result,
                         sku,
                         product_name,
                         effective_brand,
-                        target_url,
+                        parallel_target_url,
                         cost_context=cost_context,
                     )
 
@@ -1322,7 +1495,7 @@ class AISearchScraper:
                             )
 
                 if extraction_result and extraction_result.get("error"):
-                    error_msg = extraction_result.get("error")
+                    error_msg = str(extraction_result.get("error") or "Extraction failed")
                 elif last_rejection_reason:
                     error_msg = last_rejection_reason
                 else:

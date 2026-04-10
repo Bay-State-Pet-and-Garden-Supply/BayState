@@ -35,6 +35,7 @@ class NameConsolidator:
             base_url=base_url,
             api_key=api_key,
         )
+        self.client = getattr(self.provider, "_client", None) if self.provider is not None else None
         self._cost_tracker = AICostTracker()
 
     async def consolidate_name(

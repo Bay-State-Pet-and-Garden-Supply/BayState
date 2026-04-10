@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import pytest
 from typing import Any
 
 from scrapers.ai_search.batch_search import (

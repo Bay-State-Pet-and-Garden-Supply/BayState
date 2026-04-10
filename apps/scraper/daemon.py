@@ -160,7 +160,6 @@ if TYPE_CHECKING:
     # Provide typed references; prefer infra but allow core for compatibility.
     from core.api_client import ScraperAPIClient  # type: ignore
     from core.realtime_manager import RealtimeManager  # type: ignore
-    from utils.logging_handlers import JobLoggingSession  # type: ignore
 
 
 # Configuration

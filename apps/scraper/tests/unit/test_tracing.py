@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
 import shutil
 import sys
 import time
-import zipfile
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

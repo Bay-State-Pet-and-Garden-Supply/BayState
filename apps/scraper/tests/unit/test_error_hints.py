@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import pytest
 
 from scrapers.exceptions import (
     AccessDeniedError,
     ElementNotFoundError,
-    NetworkError,
-    RateLimitError,
     TimeoutError,
     classify_exception,
 )

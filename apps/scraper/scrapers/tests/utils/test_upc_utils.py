@@ -2,7 +2,6 @@
 Unit tests for upc_utils module.
 """
 
-import pytest
 from scrapers.utils.upc_utils import (
     normalize_upc,
     validate_upc,

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from core.timeout_config import TIER_IMPORTANT, TIER_OPTIONAL, TimeoutConfig
 from scrapers.executor.selector_resolver import SelectorResolver
 
 

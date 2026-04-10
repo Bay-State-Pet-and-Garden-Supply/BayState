@@ -7,9 +7,7 @@ storage and performance impact.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import shutil
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path

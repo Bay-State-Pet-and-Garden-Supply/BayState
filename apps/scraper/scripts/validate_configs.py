@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 import traceback
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Tuple, Union
 
 import yaml
 

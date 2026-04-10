@@ -536,15 +536,21 @@ class SearchScorer:
         high_signal = [result for result in ranked if not self.is_low_quality_result(result)]
         return high_signal or ranked
 
-    async def has_structured_data(self, url: str) -> bool:
-        """Quick check if URL has JSON-LD or schema.org markup."""
+    async def has_structured_data(self, url: str) -> bool | None:
+        """Quick check if URL has JSON-LD or schema.org markup.
+
+        Returns True when structured data is detected, False when the page is
+        reachable and clearly lacks it, and None when the pre-check is
+        inconclusive (for example, a transient network failure or non-200
+        response).
+        """
         try:
             # Use httpx for async HTTP
             async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
                 # Try HEAD first
                 head_response = await client.head(url)
                 if head_response.status_code != 200:
-                    return False
+                    return None
 
                 # Fetch first 8KB
                 response = await client.get(url, headers={
@@ -552,7 +558,7 @@ class SearchScorer:
                 })
 
                 if response.status_code not in (200, 206):
-                    return False
+                    return None
 
                 html = response.text.lower()
 
@@ -564,4 +570,4 @@ class SearchScorer:
                 return has_jsonld or has_schema or has_og
 
         except Exception:
-            return False
+            return None

@@ -693,13 +693,14 @@ class JobLogTransport:
                 self.realtime_manager.broadcast_job_log_entry(entry.to_broadcast_payload()),
                 self._loop,
             )
-            future.add_done_callback(
-                lambda done: self._handle_realtime_future(
-                    done,
-                    operation="broadcast job log",
-                    payload=entry.to_broadcast_payload(),
+            if future is not None:
+                future.add_done_callback(
+                    lambda done: self._handle_realtime_future(
+                        done,
+                        operation="broadcast job log",
+                        payload=entry.to_broadcast_payload(),
+                    )
                 )
-            )
             return future
         except RuntimeError as exc:
             self._last_realtime_error = exc
@@ -760,13 +761,14 @@ class JobLogTransport:
                 self.realtime_manager.broadcast_job_progress_update(payload),
                 self._loop,
             )
-            future.add_done_callback(
-                lambda done: self._handle_realtime_future(
-                    done,
-                    operation="broadcast job progress",
-                    payload=payload,
+            if future is not None:
+                future.add_done_callback(
+                    lambda done: self._handle_realtime_future(
+                        done,
+                        operation="broadcast job progress",
+                        payload=payload,
+                    )
                 )
-            )
         except RuntimeError as exc:
             self._last_realtime_error = exc
             logger.error(

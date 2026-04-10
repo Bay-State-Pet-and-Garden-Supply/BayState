@@ -276,7 +276,7 @@ class BenchmarkRunner:
     async def _measure_crawl4ai_extraction(self, url: str, profile_memory: bool = False) -> tuple[float, float]:
         """Measure crawl4ai extraction time and memory."""
         try:
-            from crawl4ai_engine import Crawl4AIEngine, EngineConfig, CrawlConfig
+            from crawl4ai_engine import Crawl4AIEngine, EngineConfig
 
             timer = Timer()
             memory = MemoryProfiler()

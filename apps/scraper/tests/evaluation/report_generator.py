@@ -793,6 +793,8 @@ def _build_regression_markdown(payload: dict[str, Any], json_path: Path) -> str:
             f"| {field_name} | {_format_percent(field_metrics['baseline_accuracy'])} | {_format_percent(field_metrics['challenger_accuracy'])} | {_format_delta(field_metrics['delta'])} | {field_metrics['status']} |"
         )
 
+    p_value_display = "n/a" if significance["p_value"] is None else f"{significance['p_value']:.6f}"
+
     lines.extend(
         [
             "",
@@ -802,7 +804,7 @@ def _build_regression_markdown(payload: dict[str, Any], json_path: Path) -> str:
             "|-------|-------|",
             f"| Significant | {'yes' if significance['is_significant'] else 'no'} |",
             f"| Confidence Level | {significance['confidence_level_percent']:.1f}% |",
-            f"| P-Value | {'n/a' if significance['p_value'] is None else f'{significance["p_value"]:.6f}'} |",
+            f"| P-Value | {p_value_display} |",
             f"| Wins / Losses / Ties | {significance['wins']} / {significance['losses']} / {significance['ties']} |",
             "",
             "## Recommendation",
