@@ -15,6 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 export interface PipelineFiltersState {
     startDate?: Date;
@@ -28,10 +35,11 @@ export interface PipelineFiltersState {
 interface PipelineFiltersProps {
     filters: PipelineFiltersState;
     onFilterChange: (filters: PipelineFiltersState) => void;
+    availableSources?: string[];
     className?: string;
 }
 
-export function PipelineFilters({ filters, onFilterChange, className }: PipelineFiltersProps) {
+export function PipelineFilters({ filters, onFilterChange, availableSources = [], className }: PipelineFiltersProps) {
     const [localFilters, setLocalFilters] = useState<PipelineFiltersState>(filters);
     const [isOpen, setIsOpen] = useState(false);
 
@@ -148,14 +156,25 @@ export function PipelineFilters({ filters, onFilterChange, className }: Pipeline
 
                     <div className="space-y-2">
                         <Label htmlFor="source">Source</Label>
-                        <Input
-                            id="source"
-                            type="search"
-                            autoComplete="off"
-                            placeholder="e.g. scraper-1"
-                            value={localFilters.source || ''}
-                            onChange={(e) => setLocalFilters(prev => ({ ...prev, source: e.target.value || undefined }))}
-                        />
+                        <Select 
+                            value={localFilters.source || "all"} 
+                            onValueChange={(value) => setLocalFilters(prev => ({ 
+                                ...prev, 
+                                source: value === "all" ? undefined : value 
+                            }))}
+                        >
+                            <SelectTrigger id="source">
+                                <SelectValue placeholder="All Sources" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Sources</SelectItem>
+                                {availableSources.map((source) => (
+                                    <SelectItem key={source} value={source}>
+                                        {source}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="space-y-2">

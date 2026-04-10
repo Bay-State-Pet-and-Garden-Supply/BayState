@@ -86,6 +86,7 @@ interface PipelineClientProps {
   initialProducts: PipelineProduct[];
   initialTotal: number;
   initialStage?: PipelineStage;
+  initialSources?: string[];
 }
 
 export function PipelineClient({
@@ -93,6 +94,7 @@ export function PipelineClient({
   initialProducts,
   initialTotal,
   initialStage = "imported",
+  initialSources = [],
 }: PipelineClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -107,6 +109,7 @@ export function PipelineClient({
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
+  const [sources, setSources] = useState<string[]>(initialSources);
   const [totalCount, setTotalCount] = useState(initialTotal);
   const [isLoading, setIsLoading] = useState(false);
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
@@ -120,19 +123,6 @@ export function PipelineClient({
   const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
   const [productLineFilter, setProductLineFilter] = useState(searchParams.get("product_line") || "");
   const publishedSkuCacheRef = useRef<string[] | null>(null);
-
-  const availableSourceFilters = useMemo(() => {
-      const all = new Set<string>();
-      products.forEach((product) => {
-        const productSources = product.sources ?? {};
-        Object.keys(productSources)
-          .filter((key) => !key.startsWith("_"))
-          .forEach((key) => {
-            all.add(key);
-          });
-      });
-      return Array.from(all).sort();
-  }, [products]);
 
   const filteredProducts = useMemo(() => {
     if (currentStage === "published") {
@@ -175,12 +165,12 @@ export function PipelineClient({
   useEffect(() => {
     if (
       sourceFilter &&
-      availableSourceFilters.length > 0 &&
-      !availableSourceFilters.includes(sourceFilter)
+      sources.length > 0 &&
+      !sources.includes(sourceFilter)
     ) {
       setSourceFilter("");
     }
-  }, [availableSourceFilters, sourceFilter]);
+  }, [sources, sourceFilter]);
 
   // Fetch products for a specific stage
   const fetchProducts = useCallback(
@@ -209,6 +199,9 @@ export function PipelineClient({
         const data = await res.json();
         setProducts(data.products || []);
         setTotalCount(data.count || 0);
+        if (data.availableSources) {
+          setSources(data.availableSources);
+        }
       } catch {
         toast.error("Failed to fetch products");
       } finally {
@@ -327,12 +320,13 @@ export function PipelineClient({
     setProducts(initialProducts);
     setCounts(initialCounts);
     setTotalCount(initialTotal);
+    setSources(initialSources);
     setSelectedSkus(new Set());
     setIsLoading(false);
     
     // Update tracking ref on sync so we don't re-fetch immediately if initialProducts is already filtered
     lastFetchedSearch.current = searchParams.get("search") || "";
-  }, [initialProducts, initialCounts, initialTotal, searchParams]);
+  }, [initialProducts, initialCounts, initialTotal, initialSources, searchParams]);
 
   // Fetch products when search changes
   useEffect(() => {
@@ -939,9 +933,7 @@ export function PipelineClient({
             if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
             if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
           }}
-          sourceFilter={sourceFilter}
-          onSourceFilterChange={setSourceFilter}
-          availableSourceFilters={availableSourceFilters}
+          availableSources={sources}
           selectedCount={selectedSkus.size}
           actionState={
             currentStage === "published" ? publishedActionState : null

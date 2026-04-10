@@ -20,10 +20,7 @@ interface PipelineToolbarProps {
   // Advanced filters
   filters: PipelineFiltersState;
   onFilterChange: (filters: PipelineFiltersState) => void;
-  // Source filtering (deprecated in favor of filters.source, but kept for compatibility)
-  sourceFilter?: string;
-  onSourceFilterChange?: (value: string) => void;
-  availableSourceFilters?: string[];
+  availableSources?: string[];
   selectedCount: number;
   actionState?: "upload" | "zip" | null;
   onUploadShopSite?: () => void;
@@ -41,17 +38,13 @@ export function PipelineToolbar({
   onIntegraImport,
   filters,
   onFilterChange,
-  sourceFilter = "",
-  onSourceFilterChange,
-  availableSourceFilters = [],
+  availableSources = [],
   selectedCount,
   actionState = null,
   onUploadShopSite,
   onDownloadZip,
 }: PipelineToolbarProps) {
-  const isScrapedStage = currentStage === "scraped";
   const isPublishedStage = currentStage === "published";
-  const isImportedStage = currentStage === "imported";
 
   // State to track individual inputs
   const [localSearch, setLocalSearch] = useState(search);
@@ -108,11 +101,12 @@ export function PipelineToolbar({
 
         <div className="h-4 w-[1px] bg-border mx-1" />
 
-        {/* Search and Source Filter */}
+        {/* Search and Advanced Filters */}
         <div className="flex flex-1 items-center gap-2 min-w-[300px]">
           <PipelineFilters 
             filters={filters} 
             onFilterChange={onFilterChange} 
+            availableSources={availableSources}
             className="h-9"
           />
 
@@ -134,21 +128,6 @@ export function PipelineToolbar({
               </button>
             )}
           </div>
-
-          {isScrapedStage && onSourceFilterChange && !filters.source && (
-            <select
-              value={sourceFilter}
-              onChange={(e) => onSourceFilterChange(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-forest-green/50 focus-visible:border-brand-forest-green"
-            >
-              <option value="">All Sources</option>
-              {availableSourceFilters.map((source) => (
-                <option key={source} value={source}>
-                  {source}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
       </div>
 

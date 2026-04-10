@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bulkUpdateStatus, getProductsByStatus, getSkusByStatus } from '@/lib/pipeline';
+import { bulkUpdateStatus, getProductsByStatus, getSkusByStatus, getAvailableSources } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus, type PersistedPipelineStatus } from '@/lib/pipeline/types';
 
@@ -52,19 +52,22 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        const { products, count } = await getProductsByStatus(status, {
-            limit,
-            offset,
-            search: search || undefined,
-            startDate,
-            endDate,
-            source,
-            product_line,
-            minConfidence,
-            maxConfidence,
-        });
+        const [{ products, count }, availableSources] = await Promise.all([
+            getProductsByStatus(status, {
+                limit,
+                offset,
+                search: search || undefined,
+                startDate,
+                endDate,
+                source,
+                product_line,
+                minConfidence,
+                maxConfidence,
+            }),
+            getAvailableSources(status),
+        ]);
 
-        return NextResponse.json({ products, count });
+        return NextResponse.json({ products, count, availableSources });
     } catch (error) {
         console.error('Pipeline GET error:', error);
         return NextResponse.json(

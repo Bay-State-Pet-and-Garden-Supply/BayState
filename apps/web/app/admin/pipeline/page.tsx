@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
-import { getProductsByStatus, getStatusCounts } from '@/lib/pipeline';
+import { getProductsByStatus, getStatusCounts, getAvailableSources } from '@/lib/pipeline';
 import { getStageDataStatus, isPipelineStage } from '@/lib/pipeline/types';
 import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
 
@@ -35,16 +35,18 @@ export default async function PipelinePage({ searchParams }: PageProps) {
     let initialCounts: StatusCount[] = [];
     let initialProducts: PipelineProduct[] = [];
     let initialTotal = 0;
+    let initialSources: string[] = [];
 
     try {
         let counts: StatusCount[] = [];
         let products: PipelineProduct[] = [];
         let totalCount = 0;
+        let sources: string[] = [];
 
         const initialDataStatus = getStageDataStatus(initialStage);
 
         if (initialDataStatus) {
-            const [pResult, countsResult] = await Promise.all([
+            const [pResult, countsResult, sourcesResult] = await Promise.all([
                 getProductsByStatus(initialDataStatus, { 
                     limit: 500,
                     search,
@@ -52,10 +54,12 @@ export default async function PipelinePage({ searchParams }: PageProps) {
                     product_line
                 }),
                 getStatusCounts(),
+                getAvailableSources(initialDataStatus),
             ]);
             products = pResult.products;
             totalCount = pResult.count;
             counts = countsResult;
+            sources = sourcesResult;
         } else {
             counts = await getStatusCounts();
         }
@@ -63,6 +67,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
         initialCounts = counts;
         initialProducts = products;
         initialTotal = totalCount;
+        initialSources = sources;
     } catch (error) {
         console.error('Error loading pipeline page:', error);
     }
@@ -73,6 +78,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
             initialCounts={initialCounts}
             initialTotal={initialTotal}
             initialStage={initialStage}
+            initialSources={initialSources}
         />
     );
 }
