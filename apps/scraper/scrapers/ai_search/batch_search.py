@@ -9,12 +9,6 @@ from urllib.parse import urlparse
 from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.cohort_state import _BatchCohortState
-from scrapers.ai_search.query_builder import QueryBuilder
-from .validation import ExtractionValidator
-from scrapers.ai_search.query_builder import QueryBuilder
-from scrapers.ai_search.query_builder import QueryBuilder
-from .validation import ExtractionValidator
-from scrapers.ai_search.query_builder import QueryBuilder
 
 
 @dataclass
@@ -110,9 +104,9 @@ class BatchSearchResult:
         return output
 
 
-
 class BatchSearchOrchestrator:
     """Orchestrates cohort-wide search and URL selection."""
+
     def __init__(
         self,
         search_client: Any,
@@ -125,14 +119,10 @@ class BatchSearchOrchestrator:
         self._extractor = extractor
         self._scorer = scorer
         self._name_consolidator = name_consolidator
-        self._validator = ExtractionValidator()
-        self._product_context: dict[str, ProductInput] = {}
         self._cohort_state = cohort_state
 
     async def search_cohort(self, products: list[ProductInput]) -> BatchSearchResult:
         """Search all SKUs in a cohort."""
-        self._product_context = {product.sku: product for product in products}
-
         # Step 1: Search all SKUs in parallel
         search_results = await self.search_all_skus(products, max_concurrent=5)
 
@@ -215,7 +205,7 @@ class BatchSearchOrchestrator:
         products: list[ProductInput],
         max_concurrent: int = 5,
     ) -> dict[str, list[SearchResult]]:
-        """Proactive SKU-first search strategy with three-phase refinement.",
+        """Proactive SKU-first search strategy with three-phase refinement.
 
         Phase 1: Search by SKU only (identifier query)
         Phase 2: Consolidate names using NameConsolidator
@@ -433,20 +423,12 @@ class BatchSearchOrchestrator:
         sku: str,
         search_results: list[SearchResult],
         domain_frequency: dict[str, DomainFrequency],
-        brand: Optional[str] = None,
-        product_name: Optional[str] = None,
-        category: Optional[str] = None,
+        brand: str | None = None,
+        product_name: str | None = None,
+        category: str | None = None,
     ) -> list[RankedResult]:
         """Rank URLs considering cohort-wide signals."""
         ranked = []
-
-        # Get cohort-preferred domains for ranking influence
-        cohort_domains = []
-        if self._cohort_state:
-            cohort_domains = self._cohort_state.ranked_domains()
-            dominant_domain = self._cohort_state.dominant_domain(minimum_count=2)
-        else:
-            dominant_domain = None
 
         for result in search_results:
             domain = self._extract_domain(result.url)
@@ -470,17 +452,18 @@ class BatchSearchOrchestrator:
             elif freq and freq.sku_count > 1:
                 base_score += 2.0
 
-            # Apply cohort domain preferences
+            # Boost score for domains preferred by cohort
             if self._cohort_state:
-                # Boost score for domains that have been successful for cohort members
-                if domain in cohort_domains:
-                    # Higher boost for more frequently successful domains
-                    domain_rank = cohort_domains.index(domain)
-                    cohort_boost = max(0.5, 3.0 - domain_rank * 0.5)  # 3.0 for top, decreasing
-                    base_score += cohort_boost
+                ranked_domains = self._cohort_state.ranked_domains()
+                if domain in ranked_domains:
+                    # Higher boost for more preferred domains
+                    domain_rank = ranked_domains.index(domain)
+                    base_score += max(3.0 - domain_rank * 0.5, 0.5)
 
-                # Extra boost for dominant domain (if established)
-                if dominant_domain and domain == dominant_domain:
+            # Boost for dominant domain
+            if self._cohort_state:
+                dominant = self._cohort_state.dominant_domain(minimum_count=2)
+                if dominant and domain == dominant:
                     base_score += 2.0
 
             from scrapers.ai_search.scoring import get_domain_success_rate
@@ -495,65 +478,6 @@ class BatchSearchOrchestrator:
 
         ranked.sort(key=lambda x: x.score, reverse=True)
         return ranked
-        self,
-        sku: str,
-        search_results: list[SearchResult],
-        domain_frequency: dict[str, DomainFrequency],
-        brand: Optional[str] = None,
-        product_name: Optional[str] = None,
-        category: Optional[str] = None,
-    ) -> list[RankedResult]:
-        """Rank URLs considering cohort-wide signals."""
-        ranked = []
-
-        for result in search_results:
-            domain = self._extract_domain(result.url)
-
-            result_dict = {
-                "url": result.url,
-                "title": result.title or "",
-                "description": result.description or "",
-            }
-            base_score = self._scorer.score_search_result(
-                result=result_dict,
-                sku=sku,
-                brand=brand,
-                product_name=product_name,
-                category=category,
-            )
-
-            freq = domain_frequency.get(domain)
-            if freq and freq.sku_count > 3:
-                base_score += 5.0
-            elif freq and freq.sku_count > 1:
-                base_score += 2.0
-
-            from scrapers.ai_search.scoring import get_domain_success_rate
-
-            success_rate = get_domain_success_rate(domain)
-            if success_rate > 0.8:
-                base_score += 3.0
-            elif success_rate < 0.3:
-                base_score -= 3.0
-
-            ranked.append(RankedResult(result=result, score=base_score))
-
-        ranked.sort(key=lambda x: x.score, reverse=True)
-        return ranked
-
-    def _is_blocked_url(self, url: str) -> bool:
-        """Check if URL should be skipped before extraction."""
-        domain = self._scorer.domain_from_url(url)
-        if not domain:
-            return True
-
-        if self._scorer._domain_matches_candidates(domain, self._scorer.BLOCKED_DOMAINS):
-            return True
-
-        if self._scorer.is_category_like_url(url):
-            return True
-
-        return False
 
     async def extract_batch(
         self,
@@ -565,42 +489,23 @@ class BatchSearchOrchestrator:
 
         async def extract_sku(sku: str, urls: list[RankedResult]) -> tuple[str, Any]:
             async with semaphore:
-                product = self._product_context.get(sku)
-                product_name = product.name if product else None
-                brand = product.brand if product else None
-                last_error = "All URLs failed"
-
                 for ranked in urls:
-                    source_url = ranked.result.url
-                    if self._is_blocked_url(source_url):
-                        continue
-
                     try:
                         result = await self._extractor.extract(
-                            source_url,
+                            ranked.result.url,
                             sku,
                             ranked.result.title,
                             None,
                         )
-                        result.setdefault("url", source_url)
-
-                        if not result.get("success"):
-                            last_error = str(result.get("error") or last_error)
-                            continue
-
-                        is_acceptable, rejection_reason = self._validator.validate_extraction_match(
-                            extraction_result=result,
-                            sku=sku,
-                            product_name=product_name,
-                            brand=brand,
-                            source_url=source_url,
-                        )
-                        if is_acceptable:
+                        if result.get("success"):
+                            # Track successful domain in cohort state
+                            if self._cohort_state:
+                                domain = self._extract_domain(ranked.result.url)
+                                self._cohort_state.remember_domain(domain)
                             return sku, result
-                        last_error = rejection_reason
                     except Exception:
                         continue
-            return sku, {"success": False, "error": last_error}
+            return sku, {"success": False, "error": "All URLs failed"}
 
         tasks = [extract_sku(sku, urls) for sku, urls in selections.items()]
         results = await asyncio.gather(*tasks, return_exceptions=True)
