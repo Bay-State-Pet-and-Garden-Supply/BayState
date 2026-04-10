@@ -20,6 +20,10 @@ from scrapers.ai_search.search import SearchClient, normalize_search_provider
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.batch_search import BatchSearchOrchestrator, ProductInput
 from scrapers.ai_search.cohort_state import _BatchCohortState
+from scrapers.ai_search.name_consolidator import NameConsolidator
+from scrapers.ai_search.source_selector import LLMSourceSelector
+from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
+from scrapers.ai_search.validation import ExtractionValidator
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +64,6 @@ class _ScrapeCostContext:
 
     def total_cost_usd(self, tracker_cost_usd: float = 0.0) -> float:
         return float(tracker_cost_usd or 0.0) + float(self.search_cost_usd or 0.0) + float(self.llm_cost_usd or 0.0) + float(self.refinement_cost_usd or 0.0)
-
-
 
 
 class AISearchScraper:
@@ -229,8 +231,6 @@ class AISearchScraper:
             matching=self._matching,
         )
 
-
-
     def _is_blocked_url(self, url: str) -> bool:
         """Check if URL should be skipped before launching an extraction.
 
@@ -253,17 +253,17 @@ class AISearchScraper:
 
     async def _should_skip_url(self, url: str) -> bool:
         """Determine if URL should be skipped based on pre-check."""
-        
+
         # Skip if explicitly disabled
         if os.getenv("AI_SEARCH_PRECHECK_STRUCTURED_DATA", "true").lower() != "true":
             return False
-        
+
         # Quick check
         has_data = await self._scoring.has_structured_data(url)
         if not has_data:
             logger.info("[AI Search] Skipping %s - no structured data detected", url)
             return True
-        
+
         return False
 
     def _log_telemetry(self, sku: str, url: str, stage: str, success: bool, details: str = "", selection_method: Optional[str] = None) -> None:
@@ -538,11 +538,7 @@ class AISearchScraper:
         name_tokens = [
             token
             for token in self._matching.tokenize_keywords(product_name)
-            if (
-                token not in brand_tokens
-                and token not in cohort_variant_hints
-                and not any(character.isdigit() for character in token)
-            )
+            if (token not in brand_tokens and token not in cohort_variant_hints and not any(character.isdigit() for character in token))
         ]
         family_tokens = name_tokens[:4]
         if family_tokens:
@@ -566,7 +562,6 @@ class AISearchScraper:
             score += 2
 
         return score
-
 
     def _has_preferred_domain_candidate(self, search_results: list[dict[str, Any]], preferred_domains: Optional[list[str]]) -> bool:
         if not search_results or not preferred_domains:
@@ -711,32 +706,16 @@ class AISearchScraper:
                 name_consolidator=name_consolidator,
             )
             sku_first_results = await orchestrator.search_sku_first(product_inputs)
-            # Convert dict[str, list[SearchResult]] to list[AISearchResult]
-            from urllib.parse import urlparse
             output: list[AISearchResult] = []
-            for sku, search_results in sku_first_results.items():
-                if search_results:
-                    top = search_results[0]
-                    url = top.url
-                    domain = urlparse(url).netloc if url else ""
-                    output.append(
-                        AISearchResult(
-                            success=False,
-                            sku=sku,
-                            url=url,
-                            source_website=domain,
-                            confidence=0.5,  # Default confidence for SKU-first
-                            error="Extraction not implemented in SKU-first mode",
-                        )
+            for product in product_inputs:
+                output.append(
+                    await self._extract_sku_first_batch_result(
+                        sku=product.sku,
+                        product_name=product.name or None,
+                        brand=product.brand,
+                        search_results=sku_first_results.get(product.sku, []),
                     )
-                else:
-                    output.append(
-                        AISearchResult(
-                            success=False,
-                            sku=sku,
-                            error="No results found",
-                        )
-                    )
+                )
             return output
         else:
             # Use existing cohort search
@@ -750,6 +729,114 @@ class AISearchScraper:
             batch_result = await orchestrator.search_cohort(product_inputs)
 
             return batch_result.to_search_results()
+
+    async def _extract_sku_first_batch_result(
+        self,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        search_results: list[Any],
+    ) -> AISearchResult:
+        if not search_results:
+            return AISearchResult(
+                success=False,
+                sku=sku,
+                error="No results found",
+            )
+
+        candidate_pool = [
+            {
+                "url": str(getattr(result, "url", "") or "").strip(),
+                "title": str(getattr(result, "title", "") or "").strip(),
+                "description": str(getattr(result, "description", "") or "").strip(),
+            }
+            for result in search_results
+            if str(getattr(result, "url", "") or "").strip()
+        ]
+        if not candidate_pool:
+            return AISearchResult(
+                success=False,
+                sku=sku,
+                error="No valid URLs found in SKU-first search results",
+            )
+
+        ordered_results = self._scoring.prepare_search_results(
+            search_results=candidate_pool,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=None,
+            prefer_manufacturer=self.prefer_manufacturer,
+        )
+        if not ordered_results:
+            ordered_results = candidate_pool
+
+        prioritized_url = self._heuristic_source_selection(
+            search_results=ordered_results,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+        )
+        if prioritized_url:
+            ordered_results = sorted(
+                ordered_results,
+                key=lambda result: 0 if str(result.get("url") or "") == prioritized_url else 1,
+            )
+
+        accepted_result: Optional[dict[str, Any]] = None
+        last_error = "Extraction failed"
+        tried_urls: set[str] = set()
+
+        for candidate in ordered_results[:3]:
+            target_url = str(candidate.get("url") or "").strip()
+            if not target_url or target_url in tried_urls:
+                continue
+            tried_urls.add(target_url)
+
+            if self._scoring.is_low_quality_result(candidate):
+                last_error = "Selected source appears to be a non-product/review/aggregator page"
+                continue
+
+            if self._is_blocked_url(target_url):
+                last_error = "URL blocked by pre-extraction validation (domain or category pattern)"
+                continue
+
+            if await self._should_skip_url(target_url):
+                last_error = "No structured data detected"
+                continue
+
+            extraction_result = await self._extract_product_data(target_url, sku, product_name, brand)
+            normalized_result = dict(extraction_result)
+            normalized_result.setdefault("url", target_url)
+
+            is_acceptable, rejection_reason = self._validator.validate_extraction_match(
+                extraction_result=normalized_result,
+                sku=sku,
+                product_name=product_name,
+                brand=brand,
+                source_url=target_url,
+            )
+            if is_acceptable:
+                accepted_result = normalized_result
+                break
+
+            last_error = rejection_reason or str(normalized_result.get("error") or last_error)
+
+        if accepted_result:
+            return self._build_discovery_result(
+                accepted_result,
+                sku,
+                product_name,
+                brand,
+                accepted_result.get("url"),
+            )
+
+        return AISearchResult(
+            success=False,
+            sku=sku,
+            error=last_error,
+        )
+
     async def _identify_best_source(
         self,
         search_results: list[dict[str, Any]],
@@ -1214,9 +1301,7 @@ class AISearchScraper:
                         "[AI Search] Primary extraction failed — attempting parallel fallback with %d untried URLs",
                         len(fallback_urls),
                     )
-                    parallel_results = await self._extract_candidates_parallel(
-                        fallback_urls, sku, product_name, effective_brand
-                    )
+                    parallel_results = await self._extract_candidates_parallel(fallback_urls, sku, product_name, effective_brand)
                     for res in parallel_results:
                         is_acceptable, _ = self._validator.validate_extraction_match(
                             extraction_result=res,
