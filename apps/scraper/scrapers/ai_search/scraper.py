@@ -12,7 +12,7 @@ from typing import Any, Optional, cast
 from scrapers.ai_cost_tracker import AICostTracker
 from scrapers.ai_metrics import record_ai_extraction
 from scrapers.ai_search.models import AISearchResult
-from scrapers.ai_search.scoring import SearchScorer
+from scrapers.ai_search.scoring import SearchScorer, record_domain_attempt
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.llm_runtime import resolve_llm_runtime
@@ -22,6 +22,7 @@ from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
 from scrapers.ai_search.validation import ExtractionValidator
 from scrapers.ai_search.source_selector import LLMSourceSelector
 from scrapers.ai_search.name_consolidator import NameConsolidator
+from scrapers.ai_search.batch_search import BatchSearchOrchestrator, ProductInput
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +325,21 @@ class AISearchScraper:
         if self._scoring.is_category_like_url(url):
             return True
 
+        return False
+
+    async def _should_skip_url(self, url: str) -> bool:
+        """Determine if URL should be skipped based on pre-check."""
+        
+        # Skip if explicitly disabled
+        if os.getenv("AI_SEARCH_PRECHECK_STRUCTURED_DATA", "true").lower() != "true":
+            return False
+        
+        # Quick check
+        has_data = await self._scoring.has_structured_data(url)
+        if not has_data:
+            logger.info("[AI Search] Skipping %s - no structured data detected", url)
+            return True
+        
         return False
 
     def _log_telemetry(self, sku: str, url: str, stage: str, success: bool, details: str = "", selection_method: Optional[str] = None) -> None:
@@ -870,7 +886,32 @@ class AISearchScraper:
             result if result is not None else AISearchResult(success=False, sku="", error="Missing batch result")
             for result in ordered_results
         ]
-
+    async def scrape_products_batch(
+        self,
+        products: list[dict[str, Any]],
+    ) -> list[AISearchResult]:
+        """Scrape multiple products using batched search."""
+        # Create ProductInput objects
+        product_inputs = [
+            ProductInput(
+                sku=p.get("sku", ""),
+                name=p.get("product_name", ""),
+                brand=p.get("brand"),
+            )
+            for p in products
+        ]
+        
+        # Use batch orchestrator
+        orchestrator = BatchSearchOrchestrator(
+            search_client=self._search_client,
+            extractor=self._crawl4ai_extractor,
+            scorer=self._scoring,
+        )
+        
+        # Run batch search and extraction
+        batch_result = await orchestrator.search_cohort(product_inputs)
+        
+        return batch_result.to_search_results()
     async def _identify_best_source(
         self,
         search_results: list[dict[str, Any]],
@@ -1292,6 +1333,13 @@ class AISearchScraper:
                     logger.info("[AI Search] Pre-extraction block: %s", target_url)
                     continue
 
+                # Optional: Structured data pre-check before browser launch
+                if await self._should_skip_url(target_url):
+                    last_rejection_reason = "No structured data detected"
+                    self._log_telemetry(sku, target_url, "pre_extraction_block", False, last_rejection_reason)
+                    logger.info("[AI Search] Pre-check skip: %s", target_url)
+                    continue
+
                 tried_urls.add(target_url)
                 self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
                 extraction_result = await self._extract_product_data(target_url, sku, product_name, effective_brand)
@@ -1312,6 +1360,10 @@ class AISearchScraper:
                     break
 
                 last_rejection_reason = rejection_reason
+                # Record domain failure for history tracking
+                if target_url:
+                    domain = self._scoring.domain_from_url(target_url)
+                    record_domain_attempt(domain, False)
 
             if not accepted_result:
                 # Change 5: Parallel candidate discovery fallback.
@@ -1412,6 +1464,11 @@ class AISearchScraper:
             duration_seconds=0.0,
             anti_bot_detected=bool(result.get("anti_bot_detected", False)),
         )
+
+        # Record domain success for history tracking
+        if url:
+            domain = self._scoring.domain_from_url(url)
+            record_domain_attempt(domain, True)
 
         return AISearchResult(
             success=True,

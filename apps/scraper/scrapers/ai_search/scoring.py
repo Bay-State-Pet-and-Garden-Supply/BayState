@@ -1,8 +1,47 @@
 """Search result scoring and filtering logic."""
 
 import re
+import httpx
+from dataclasses import dataclass
+from datetime import datetime
+from threading import Lock
 from typing import Any, Optional
 from urllib.parse import urlparse
+
+
+# Domain success history tracking
+@dataclass
+class _DomainStats:
+    attempts: int = 0
+    successes: int = 0
+    last_updated: Optional[str] = None
+
+
+_DOMAIN_HISTORY: dict[str, _DomainStats] = {}
+_DOMAIN_HISTORY_LOCK = Lock()
+
+
+def get_domain_success_rate(domain: str) -> float:
+    """Get success rate for a domain."""
+    if domain not in _DOMAIN_HISTORY:
+        return 0.5  # Neutral for unknown domains
+    stats = _DOMAIN_HISTORY[domain]
+    if stats.attempts < 3:
+        return 0.5  # Insufficient data
+    return stats.successes / stats.attempts
+
+
+def record_domain_attempt(domain: str, success: bool) -> None:
+    """Record a scraping attempt for a domain."""
+    with _DOMAIN_HISTORY_LOCK:
+        if domain not in _DOMAIN_HISTORY:
+            _DOMAIN_HISTORY[domain] = _DomainStats()
+        stats = _DOMAIN_HISTORY[domain]
+        stats.attempts += 1
+        if success:
+            stats.successes += 1
+        stats.last_updated = datetime.utcnow().isoformat()
+
 
 from scrapers.ai_search.matching import MatchingUtils
 
@@ -385,6 +424,14 @@ class SearchScorer:
         elif source_tier == "marketplace":
             score -= 3.5
 
+        # Domain success history bonus/penalty
+        if domain:
+            success_rate = get_domain_success_rate(domain)
+            if success_rate > 0.8:
+                score += 3.0
+            elif success_rate < 0.3:
+                score -= 3.0
+
         if preferred_domains and domain:
             for index, preferred_domain in enumerate(preferred_domains):
                 if not preferred_domain:
@@ -488,3 +535,33 @@ class SearchScorer:
 
         high_signal = [result for result in ranked if not self.is_low_quality_result(result)]
         return high_signal or ranked
+
+    async def has_structured_data(self, url: str) -> bool:
+        """Quick check if URL has JSON-LD or schema.org markup."""
+        try:
+            # Use httpx for async HTTP
+            async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+                # Try HEAD first
+                head_response = await client.head(url)
+                if head_response.status_code != 200:
+                    return False
+
+                # Fetch first 8KB
+                response = await client.get(url, headers={
+                    "Range": "bytes=0-8191"
+                })
+
+                if response.status_code not in (200, 206):
+                    return False
+
+                html = response.text.lower()
+
+                # Check for structured data indicators
+                has_jsonld = 'application/ld+json' in html
+                has_schema = 'schema.org' in html
+                has_og = 'og:title' in html and 'og:description' in html
+
+                return has_jsonld or has_schema or has_og
+
+        except Exception:
+            return False
