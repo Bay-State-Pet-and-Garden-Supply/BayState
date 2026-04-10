@@ -24,28 +24,20 @@ def test_query_builder_identifier_queries_use_raw_sku_only() -> None:
     query = qb.build_identifier_query(sku="ABC-123")
     assert query == "ABC-123"
 
-def test_query_builder_intent_keywords() -> None:
+def test_query_builder_search_query_prefers_product_name() -> None:
     qb = QueryBuilder()
     query = qb.build_search_query(sku="813347002015", product_name="Stud Muffins", brand="Manna Pro")
-    
-    assert "Manna Pro" in query
-    assert "Stud Muffins" in query
-    assert "UPC 813347002015" in query
-    assert "product" in query
-    assert "details" in query
-    assert "-review" in query
-    assert "-comparison" in query
 
-def test_query_variants_sku_priority() -> None:
+    assert query == "Stud Muffins"
+
+def test_query_variants_return_name_follow_up_only() -> None:
     qb = QueryBuilder()
     variants = qb.build_query_variants(sku="813347002015", product_name="Stud Muffins", brand="Manna Pro", category=None)
-    
-    assert variants[0] == "UPC 813347002015"
-    assert "UPC 813347002015" in variants
-    assert "Manna Pro Stud Muffins" in variants
+
+    assert variants == ["Stud Muffins"]
 
 
-def test_site_query_variants_include_site_restricted_lookup_paths() -> None:
+def test_site_query_variants_use_only_site_plus_sku_or_name() -> None:
     qb = QueryBuilder()
 
     variants = qb.build_site_query_variants(
@@ -56,6 +48,7 @@ def test_site_query_variants_include_site_restricted_lookup_paths() -> None:
         category="Cat Supplies",
     )
 
-    assert variants[0] == "site:bradleycaldwell.com 045663976903"
-    assert "site:bradleycaldwell.com FOUR PAWS WEE WEE CAT PADS FRE SH 28X30 10CT" in variants
-    assert "site:bradleycaldwell.com WEE WEE CAT PADS FRE SH 28X30 10CT" in variants
+    assert variants == [
+        "site:bradleycaldwell.com 045663976903",
+        "site:bradleycaldwell.com WEE WEE CAT PADS FRE SH 28X30 10CT",
+    ]

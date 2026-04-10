@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any, Optional
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from scrapers.ai_search import AISearchScraper
 from scrapers.ai_search.models import AISearchResult
 
 
-def test_build_search_query_includes_category_when_present() -> None:
+def test_build_search_query_prefers_cleaned_product_name() -> None:
     scraper = AISearchScraper()
 
     query = scraper._query_builder.build_search_query(
@@ -18,15 +18,10 @@ def test_build_search_query_includes_category_when_present() -> None:
         category="Dog Toys",
     )
 
-    assert "Acme Pets" in query
-    assert "Squeaky Ball" in query
-    assert "Dog Toys" in query
-    assert "12345" in query
-    assert "product" in query
-    assert "details" in query
+    assert query == "Squeaky Ball"
 
 
-def test_collect_search_candidates_uses_contextual_primary_query_for_ambiguous_numeric_sku() -> None:
+def test_collect_search_candidates_uses_identifier_query_for_ambiguous_numeric_sku() -> None:
     queries: list[str] = []
 
     class SearchClientStub:
@@ -47,11 +42,7 @@ def test_collect_search_candidates_uses_contextual_primary_query_for_ambiguous_n
         )
     )
 
-    assert queries
-    assert queries[0] != "4057"
-    assert "Lake Valley Seed" in queries[0]
-    assert "Organic Eggplant Black Beauty Heirloom" in queries[0]
-    assert "Vegetable Seeds" in queries[0]
+    assert queries == ["4057"]
 
 
 def test_validate_extraction_match_rejects_low_confidence() -> None:
@@ -258,22 +249,31 @@ def test_scraper_passes_runtime_api_key_to_search_client(monkeypatch) -> None:
     assert captured["api_key"] == "gemini-runtime-key"
 
 
-def test_scrape_product_aggregates_candidates_across_query_variants() -> None:
+def test_scrape_product_uses_consolidated_name_follow_up_search() -> None:
     class VariantSearchClient:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
         async def search(self, query: str) -> tuple[list[dict[str, str]], str | None]:
-            if "details" in query:
+            self.calls.append(query)
+            if query == "12345":
                 return (
                     [
                         {
                             "url": "https://chewy.com/pdp/12345",
                             "title": "Acme Squeaky Ball 12345",
                             "description": "Trusted retailer listing with price and add to cart",
-                        }
+                        },
+                        {
+                            "url": "https://anotherstore.com/acme-ball",
+                            "title": "Acme Ball",
+                            "description": "Another retailer listing",
+                        },
                     ],
                     None,
                 )
 
-            if query == "Squeaky Ball 12345":
+            if query == "Acme Squeaky Ball":
                 return (
                     [
                         {
@@ -323,6 +323,7 @@ def test_scrape_product_aggregates_candidates_across_query_variants() -> None:
             }
 
     scraper = VariantScraper(confidence_threshold=0.7)
+    scraper._name_consolidator.consolidate_name = AsyncMock(return_value=("Acme Squeaky Ball", 0.0))
 
     result = asyncio.run(
         scraper.scrape_product(
@@ -335,6 +336,7 @@ def test_scrape_product_aggregates_candidates_across_query_variants() -> None:
 
     assert result.success is True
     assert result.url == "https://acmepets.com/products/12345-squeaky-ball"
+    assert scraper._search_client.calls == ["12345", "Acme Squeaky Ball"]
 
 
 def test_scrape_products_batch_prefers_previously_accepted_cohort_domain() -> None:

@@ -342,12 +342,10 @@ class AISearchScraper:
         cost_context: _ScrapeCostContext | None = None,
         preferred_domains: Optional[list[str]] = None,
     ) -> tuple[list[dict[str, Any]], Optional[str], Optional[str]]:
-        """Search identifier-first, then expand into broader queries only when needed."""
+        """Search by SKU first, then search again with the consolidated product name."""
         initial_query = self._query_builder.build_identifier_query(sku)
-        if initial_query and self._query_builder.is_ambiguous_identifier(sku) and any([product_name, brand, category]):
-            initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
         if not initial_query:
-            initial_query = self._query_builder.build_search_query(sku, product_name, brand, category)
+            return [], product_name, "Missing SKU"
         logger.info(f"[AI Search] Primary search: {initial_query}")
 
         seen_queries: set[str] = set()
@@ -371,7 +369,7 @@ class AISearchScraper:
         await run_query(initial_query)
 
         working_name = product_name
-        if self.use_ai_source_selection and aggregated_results and product_name:
+        if aggregated_results and product_name:
             logger.info(f"[AI Search] Consolidating product name for '{product_name}'")
             working_name, consolidation_cost = await self._name_consolidator.consolidate_name(
                 sku=sku,
@@ -381,121 +379,13 @@ class AISearchScraper:
             if cost_context is not None:
                 cost_context.llm_cost_usd += float(consolidation_cost or 0.0)
 
+        if aggregated_results and working_name and self.max_follow_up_queries > 0:
+            follow_up_query = self._query_builder.build_name_query(working_name)
+            if follow_up_query and follow_up_query not in seen_queries:
+                logger.info(f"[AI Search] Follow-up search: {follow_up_query}")
+                await run_query(follow_up_query)
+
         search_brand = brand or self._infer_search_brand_hint(aggregated_results, working_name or product_name)
-
-        prepared_results = self._prepare_candidate_pool(
-            search_results=aggregated_results,
-            sku=sku,
-            brand=search_brand,
-            product_name=working_name,
-            category=category,
-            preferred_domains=preferred_domains,
-        )
-        has_preferred_domain_match = self._has_preferred_domain_candidate(prepared_results, preferred_domains)
-        if not self._should_expand_search(
-            search_results=prepared_results,
-            sku=sku,
-            brand=search_brand,
-            product_name=working_name,
-            category=category,
-        ) and (not preferred_domains or has_preferred_domain_match):
-            logger.info("[AI Search] Primary search produced a strong candidate pool; skipping follow-up searches")
-            return prepared_results, working_name, search_error
-
-        preferred_query_plan = (
-            self._query_builder.build_site_query_variants(
-                domains=preferred_domains,
-                sku=sku,
-                product_name=working_name,
-                brand=search_brand,
-                category=category,
-            )
-            if preferred_domains and not has_preferred_domain_match
-            else []
-        )
-
-        preferred_query_budget = 2
-        for query in preferred_query_plan[:preferred_query_budget]:
-            await run_query(query)
-            prepared_results = self._prepare_candidate_pool(
-                search_results=aggregated_results,
-                sku=sku,
-                brand=search_brand,
-                product_name=working_name,
-                category=category,
-                preferred_domains=preferred_domains,
-            )
-            has_preferred_domain_match = self._has_preferred_domain_candidate(prepared_results, preferred_domains)
-            if not self._should_expand_search(
-                search_results=prepared_results,
-                sku=sku,
-                brand=search_brand,
-                product_name=working_name,
-                category=category,
-            ) and (not preferred_domains or has_preferred_domain_match):
-                logger.info("[AI Search] Preferred-domain follow-up produced a strong candidate pool for SKU %s", sku)
-                return prepared_results, working_name, search_error
-
-        query_plan = [
-            *self._query_builder.build_query_variants(
-                sku=sku,
-                product_name=working_name,
-                brand=search_brand,
-                category=category,
-            ),
-            self._query_builder.build_search_query(sku, working_name, search_brand, category),
-        ]
-
-        pending_queries: list[str] = []
-        for query in query_plan:
-            if not query or query in seen_queries:
-                continue
-            seen_queries.add(query)
-            pending_queries.append(query)
-
-        follow_up_queries_run = 0
-        for query in pending_queries:
-            if follow_up_queries_run >= self.max_follow_up_queries:
-                logger.info(
-                    "[AI Search] Reached follow-up search budget (%s) for SKU %s",
-                    self.max_follow_up_queries,
-                    sku,
-                )
-                break
-
-            raw_results, raw_error, query_cost = await self._search_with_cost(query)
-            follow_up_queries_run += 1
-            if cost_context is not None:
-                cost_context.search_cost_usd += float(query_cost or 0.0)
-            if raw_results:
-                aggregated_results.extend(raw_results)
-                search_error = None
-            elif raw_error:
-                search_error = raw_error
-
-            prepared_results = self._prepare_candidate_pool(
-                search_results=aggregated_results,
-                sku=sku,
-                brand=search_brand,
-                product_name=working_name,
-                category=category,
-                preferred_domains=preferred_domains,
-            )
-            has_preferred_domain_match = self._has_preferred_domain_candidate(prepared_results, preferred_domains)
-            if not self._should_expand_search(
-                search_results=prepared_results,
-                sku=sku,
-                brand=search_brand,
-                product_name=working_name,
-                category=category,
-            ) and (not preferred_domains or has_preferred_domain_match):
-                logger.info(
-                    "[AI Search] Search expansion stopped after %s follow-up quer%s for SKU %s",
-                    follow_up_queries_run,
-                    "y" if follow_up_queries_run == 1 else "ies",
-                    sku,
-                )
-                break
 
         prepared_results = self._prepare_candidate_pool(
             search_results=aggregated_results,

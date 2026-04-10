@@ -90,6 +90,7 @@ export async function getProductsByStatus(
         minConfidence?: number;
         maxConfidence?: number;
         product_line?: string;
+        cohort_id?: string;
     }
 ): Promise<{ products: PipelineProduct[]; count: number }> {
     const supabase = await createClient();
@@ -103,6 +104,10 @@ export async function getProductsByStatus(
 
     if (options?.product_line) {
         query = query.eq('product_line', options.product_line);
+    }
+
+    if (options?.cohort_id) {
+        query = query.eq('cohort_id', options.cohort_id);
     }
 
     if (options?.search) {
@@ -165,6 +170,7 @@ export async function getSkusByStatus(
         minConfidence?: number;
         maxConfidence?: number;
         product_line?: string;
+        cohort_id?: string;
     }
 ): Promise<{ skus: string[]; count: number }> {
     const supabase = await createClient();
@@ -178,6 +184,10 @@ export async function getSkusByStatus(
 
     if (options?.product_line) {
         query = query.eq('product_line', options.product_line);
+    }
+
+    if (options?.cohort_id) {
+        query = query.eq('cohort_id', options.cohort_id);
     }
 
     if (options?.search) {
