@@ -6,7 +6,6 @@ import asyncio
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
-import os
 from pathlib import Path
 import time
 from typing import cast
@@ -23,7 +22,8 @@ from scrapers.cohort.job_processor import BrowserProtocol, CohortJobProcessor, C
 from scrapers.cohort.processor import ProductRecord
 from scrapers.executor.workflow_executor import WorkflowExecutor
 from scrapers.models.config import ScraperConfig
-from scrapers.parser.yaml_parser import ScraperConfigParser
+
+from .common import load_scraper_config, normalize_sku_list, project_root, resolve_config_path, slugify, write_json
 
 
 class VerboseWorkflowExecutor:
@@ -69,64 +69,6 @@ class VerboseWorkflowExecutor:
         click.secho(f"    OK in {duration:.2f}s ({field_count} fields)", fg="green")
         return result
 
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _slugify(value: str) -> str:
-    sanitized = [character.lower() if character.isalnum() else "-" for character in value.strip()]
-    collapsed = "".join(sanitized).strip("-")
-    while "--" in collapsed:
-        collapsed = collapsed.replace("--", "-")
-    return collapsed or "batch-test"
-
-
-def _resolve_config_path(scraper: str, config: str | None) -> Path:
-    if config:
-        candidate = Path(config).expanduser()
-        if not candidate.exists():
-            raise click.ClickException(f"Config file not found: {candidate}")
-        return candidate.resolve()
-
-    config_dir = _project_root() / "scrapers" / "configs"
-    candidates = [
-        config_dir / f"{scraper}.yaml",
-        config_dir / f"{scraper.replace('_', '-')}.yaml",
-        config_dir / f"{scraper.replace('-', '_')}.yaml",
-    ]
-
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate.resolve()
-
-    raise click.ClickException(f"Could not find a local config for scraper '{scraper}'. Pass --config or add scrapers/configs/{scraper}.yaml")
-
-
-def _load_scraper_config(config_path: Path) -> ScraperConfig:
-    os.environ["USE_YAML_CONFIGS"] = "true"
-    parser = ScraperConfigParser()
-
-    try:
-        return parser.load_from_file(config_path)
-    except Exception as exc:
-        raise click.ClickException(f"Failed to load scraper config from {config_path}: {exc}") from exc
-
-
-def _normalize_test_skus(config: ScraperConfig) -> list[str]:
-    seen: set[str] = set()
-    normalized: list[str] = []
-
-    for raw_sku in config.test_skus or []:
-        sku = str(raw_sku).strip()
-        if not sku or sku in seen:
-            continue
-        seen.add(sku)
-        normalized.append(sku)
-
-    return normalized
-
-
 def _select_products(
     *,
     config: ScraperConfig,
@@ -134,7 +76,7 @@ def _select_products(
     upc_prefix: str | None,
     limit: int,
 ) -> tuple[list[ProductRecord], int]:
-    selected_skus = _normalize_test_skus(config)
+    selected_skus = normalize_sku_list(config.test_skus)
     available_count = len(selected_skus)
 
     if not selected_skus:
@@ -194,15 +136,14 @@ def _build_summary(results: dict[str, CohortJobResult]) -> dict[str, int]:
 
 
 def _default_output_path(scraper: str, product_line: str | None, upc_prefix: str | None) -> Path:
-    output_dir = _project_root() / ".artifacts" / "batch-tests"
+    output_dir = project_root() / ".artifacts" / "batch-tests"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     label = product_line or upc_prefix or "test-skus"
-    return output_dir / f"{_slugify(scraper)}_{_slugify(label)}_{timestamp}.json"
+    return output_dir / f"{slugify(scraper)}_{slugify(label)}_{timestamp}.json"
 
 
 def _write_report(output_path: Path, report: object) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    _ = output_path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    write_json(output_path, report)
 
 
 def _print_grouping_details(grouping_result: CohortGroupingResult) -> None:
@@ -283,8 +224,8 @@ def test_batch_command(
 ) -> None:
     """Test a product batch end-to-end with full local output."""
 
-    resolved_config_path = _resolve_config_path(scraper, str(config) if config else None)
-    scraper_config = _load_scraper_config(resolved_config_path)
+    resolved_config_path = resolve_config_path(scraper, str(config) if config else None)
+    scraper_config = load_scraper_config(resolved_config_path)
 
     if product_line and not upc_prefix:
         click.secho(

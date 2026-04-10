@@ -18,7 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from core.failure_classifier import *
+from core.failure_classifier import FailureContext, FailureType
 
 logger = logging.getLogger(__name__)
 
@@ -498,7 +498,7 @@ class AdaptiveRetryStrategy:
                     ctx = record_data["failure_context"]
                     if isinstance(ctx.get("failure_type"), str):
                         ctx["failure_type"] = FailureType(ctx["failure_type"])
-                    record_data["failure_context"] = FailureContext(**ctx)
+                    record_data["failure_context"] = AdaptiveFailureContext(**ctx)
 
                 record = FailureRecord(**record_data)
                 self.failure_history.append(record)

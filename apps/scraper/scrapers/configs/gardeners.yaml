@@ -34,17 +34,28 @@ selectors:
     multiple: false
     required: true
   - name: Image URLs
-    selector: "main .lightbox-image img.image__img"
+    selector: "main .product__media img"
     fallback_selectors:
-      - ".product-thumbnails__item-image img.image__img"
+      - "img[src*='/cdn/shop/files/']"
+      - "meta[property='og:image']"
     attribute: src
     multiple: true
     required: true
+  - name: search_result_link
+    selector: "a.snize-view-link[href*='/products/']"
+    attribute: href
+    multiple: false
+    required: false
 workflows:
   - action: navigate
     name: search_page
     params:
       url: "https://www.gardeners.com/pages/search-results-page?q={sku}"
+      wait_until: commit
+  - action: wait
+    name: wait_for_search_hydration
+    params:
+      seconds: 5
   - action: wait_for
     name: wait_for_search_results
     params:
@@ -52,16 +63,30 @@ workflows:
       selector:
         - "a.snize-view-link[href*='/products/']"
         - "body"
-  - action: conditional
-    name: open_first_product_match
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
     params:
-      condition_type: element_exists
-      selector: "a.snize-view-link[href*='/products/']"
+      if_flag: no_results_found
+  - action: extract_single
+    name: extract_product_url
+    params:
+      field: product_url
+      selector_id: search_result_link
+  - action: conditional
+    name: open_product_page
+    params:
+      condition_type: field_exists
+      field: product_url
       then:
-        - action: click
-          name: click_first_product_match
+        - action: navigate
+          name: product_page
           params:
-            selector: "a.snize-view-link[href*='/products/']"
+            url: "{{product_url}}"
+            wait_until: commit
+            wait_after: 2
         - action: wait_for
           name: wait_for_product_details
           params:

@@ -1,0 +1,3323 @@
+{
+  "generated_at": "2026-04-10T02:57:09.452980+00:00",
+  "summary": {
+    "scrapers_audited": 12,
+    "healthy": 3,
+    "degraded": 6,
+    "critical": 3,
+    "average_score": 79.6
+  },
+  "scrapers": [
+    {
+      "scraper": "amazon",
+      "display_name": "Amazon",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/amazon.yaml",
+      "status": "Degraded",
+      "score": 95.8,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "035585499741",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 29.93,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.amazon.com/s?k=035585499741",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "description",
+            "dimensions",
+            "features",
+            "images",
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "035585499741",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.amazon.com/s?k=035585499741",
+            "no_results_found": false,
+            "search_result_validated": true,
+            "title": "KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)",
+            "brand": "KONG",
+            "images": [
+              "https://m.media-amazon.com/images/I/81r5dmcHZoL._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/41oWRLnDPRL._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/41fdDMb5LbL._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/41KsDrzrr2L._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/31v6YG74z2L._AC_SL1500_.jpg"
+            ],
+            "weight": null,
+            "description": "2-toys-in-1 for fetching and snuggling fun\nSeparating toys satisfies natural instincts\nSqueakers and crackle prolong play\nSoft toys ideal for indoor play\nHook-and-loop grippers on Pals help grab",
+            "features": [
+              "2-toys-in-1 for fetching and snuggling fun",
+              "Separating toys satisfies natural instincts",
+              "Squeakers and crackle prolong play",
+              "Soft toys ideal for indoor play",
+              "Hook-and-loop grippers on Pals help grab"
+            ],
+            "dimensions": "6\"L x 4\"W x 9\"H",
+            "ingredients": null
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 31.3,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.amazon.com/s?k=xyzabc123notexist456",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "no_results_reason",
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "xyzabc123notexist456",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.amazon.com/s?k=xyzabc123notexist456",
+            "no_results_found": true,
+            "no_results_reason": "empty_search_fallback"
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "A1",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 39.89,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.amazon.com/s?k=A1",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "description",
+            "features",
+            "images",
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "A1",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.amazon.com/s?k=A1",
+            "no_results_found": false,
+            "search_result_validated": true,
+            "title": "Salsa de carne A-1 - Botellas de 2/15oz",
+            "brand": "Marca: Kraft Foods",
+            "images": [
+              "https://m.media-amazon.com/images/I/41ovi1M-j3L._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/51g6DJ7WhYL._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/51j9l0nXpmL._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/515n6qntzXL._AC_SL1500_.jpg",
+              "https://m.media-amazon.com/images/I/419QEStE0ML._AC_SL1500_.jpg"
+            ],
+            "weight": null,
+            "description": "Sobre este art\u00edculo                  Incluye dos botellas de 15 onzas de salsa de carne A1     De Kraft Foods     Perfecto para tu barbacoa de verano, filetes, hamburguesas, pescado y otras carnes     \n                Mostrar m\u00e1s",
+            "features": [
+              "Incluye dos botellas de 15 onzas de salsa de carne A1",
+              "De Kraft Foods",
+              "Perfecto para tu barbacoa de verano, filetes, hamburguesas, pescado y otras carnes"
+            ],
+            "dimensions": null,
+            "ingredients": null
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "dimensions",
+          "display_names": [
+            "Dimensions"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 50.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [
+            "A1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "features",
+          "display_names": [
+            "Features"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Images"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "ingredients",
+          "display_names": [
+            "Ingredients"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "035585499741",
+            "A1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "weight",
+          "display_names": [
+            "Weight"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "035585499741",
+            "A1"
+          ],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": 16.7,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [
+        "Ingredients",
+        "Weight"
+      ],
+      "findings": [
+        {
+          "severity": "Degraded",
+          "category": "Optional Field Coverage",
+          "summary": "Optional fields always missing: Ingredients, Weight.",
+          "action": "Review optional selector quality for this vendor and confirm whether the fields are still obtainable."
+        }
+      ]
+    },
+    {
+      "scraper": "bradley",
+      "display_name": "Bradley Caldwell",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/bradley.yaml",
+      "status": "Degraded",
+      "score": 98.9,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "001135",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 10.91,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.bradleycaldwell.com/search?term=001135",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "bci_item_number",
+            "brand",
+            "case_pack",
+            "images",
+            "ingredients",
+            "manufacturer",
+            "sku",
+            "title",
+            "unit_of_measure",
+            "upc",
+            "weight"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "001135",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.bradleycaldwell.com/search?term=001135",
+            "no_results_found": false,
+            "search_result_validated": true,
+            "title": "E-Z HANG SCALE",
+            "brand": "KERBL",
+            "weight": "Weight: 3.1 lb",
+            "images": [
+              "https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/454/790/001135__63792.1763006226.jpg?compression=lossy",
+              "https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/454/791/001135_2__86085.1763006227.jpg?compression=lossy"
+            ],
+            "bci_item_number": "001135",
+            "manufacturer": "099917",
+            "upc": "018653299524",
+            "case_pack": "6",
+            "unit_of_measure": "EA",
+            "dimensions": null,
+            "ingredients": "Ingredients: nickel-plated hooks",
+            "description": null
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 3.91,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.bradleycaldwell.com/search?term=xyzabc123notexist456",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "xyzabc123notexist456",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.bradleycaldwell.com/search?term=xyzabc123notexist456",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "1",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 4.79,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.bradleycaldwell.com/search?term=1",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [
+            "Brand",
+            "Image URLs",
+            "Name"
+          ],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "1",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.bradleycaldwell.com/search?term=1",
+            "no_results_found": true,
+            "search_result_validated": false
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "bci_item_number",
+          "display_names": [
+            "BCI Item Number"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "case_pack",
+          "display_names": [
+            "Case Pack"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "001135"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "dimensions",
+          "display_names": [
+            "Dimensions"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "001135"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "ingredients",
+          "display_names": [
+            "Ingredients"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "manufacturer",
+          "display_names": [
+            "Manufacturer #"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "unit_of_measure",
+          "display_names": [
+            "Unit of Measure"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "upc",
+          "display_names": [
+            "UPC"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "weight",
+          "display_names": [
+            "Weight"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": 77.8,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [
+        "Description",
+        "Dimensions"
+      ],
+      "findings": [
+        {
+          "severity": "Degraded",
+          "category": "Optional Field Coverage",
+          "summary": "Optional fields always missing: Description, Dimensions.",
+          "action": "Review optional selector quality for this vendor and confirm whether the fields are still obtainable."
+        }
+      ]
+    },
+    {
+      "scraper": "central-pet",
+      "display_name": "Central Pet",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/central-pet.yaml",
+      "status": "Degraded",
+      "score": 95.8,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "38777520",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 33.64,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.centralpet.com/Product/200013170-KONG-Air-Dog-Squeaker-Tennis-Ball-Dog-Toy?option=PDCM38777520&criteria=38777520",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "description",
+            "images",
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "38777520",
+            "audit_tier": "positive",
+            "http_status": 200,
+            "current_url": "https://www.centralpet.com/Product/200013170-KONG-Air-Dog-Squeaker-Tennis-Ball-Dog-Toy?option=PDCM38777520&criteria=38777520",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.centralpet.com/Product/200013170-KONG-Air-Dog-Squeaker-Tennis-Ball-Dog-Toy?option=PDCM38777520&criteria=38777520",
+            "no_results_found": false,
+            "title": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
+            "brand": "KONG",
+            "weight": null,
+            "images": [
+              "https://centralgarden.azureedge.net/image/upload/s--bA5bPium--/w_1500/nd6unfnfugl4nd8sh2i2.jpg"
+            ],
+            "product": null,
+            "upc": null,
+            "mfg_part": null,
+            "description": "Special nonabrasive tennis ball fabric will not wear down a dog's teeth. All squeaker units are recessed in rubber and covered with tennis ball fabric for safety. Give them a squeak.",
+            "features": [],
+            "dimensions": null
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 7.69,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.centralpet.com/Search?criteria=xyzabc123notexist456",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "xyzabc123notexist456",
+            "audit_tier": "negative",
+            "http_status": 200,
+            "current_url": "https://www.centralpet.com/Search?criteria=xyzabc123notexist456",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.centralpet.com/Search?criteria=xyzabc123notexist456",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "1",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 9.06,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.centralpet.com/Search?criteria=1",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [
+            "Brand",
+            "Image URLs",
+            "Name"
+          ],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "no_results_reason",
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "1",
+            "audit_tier": "edge",
+            "http_status": 200,
+            "current_url": "https://www.centralpet.com/Search?criteria=1",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.centralpet.com/Search?criteria=1",
+            "no_results_found": true,
+            "no_results_reason": "empty_search_fallback"
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "dimensions",
+          "display_names": [
+            "Dimensions"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "38777520"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "features",
+          "display_names": [
+            "Features"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "38777520"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "mfg_part",
+          "display_names": [
+            "Mfg Part #"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "38777520"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 1,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "upc",
+          "display_names": [
+            "UPC"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "38777520"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "weight",
+          "display_names": [
+            "Weight"
+          ],
+          "required": false,
+          "evaluated_cases": 1,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "38777520"
+          ],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": 16.7,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [
+        "Dimensions",
+        "Features",
+        "Mfg Part #",
+        "UPC",
+        "Weight"
+      ],
+      "findings": [
+        {
+          "severity": "Degraded",
+          "category": "Optional Field Coverage",
+          "summary": "Optional fields always missing: Dimensions, Features, Mfg Part #, UPC, Weight.",
+          "action": "Review optional selector quality for this vendor and confirm whether the fields are still obtainable."
+        }
+      ]
+    },
+    {
+      "scraper": "coastal",
+      "display_name": "Coastal Pet",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/coastal.yaml",
+      "status": "Degraded",
+      "score": 97.1,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 1,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 1,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "HSCP2",
+          "passed": true,
+          "severity": "warning",
+          "expectation": "required fields extracted",
+          "duration_seconds": 28.32,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": "boundary_warning",
+          "failure_type": null,
+          "current_url": "https://www.coastalpet.com/products/search/?q=HSCP2&currentPage=1",
+          "error_message": null,
+          "suggestion": "Review optional field quality for this vendor.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "images",
+            "item_number",
+            "product_url",
+            "size",
+            "sku",
+            "title",
+            "upc"
+          ],
+          "warnings": [
+            "Discarded suspicious item_number value"
+          ],
+          "raw_results": {
+            "sku": "HSCP2",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.coastalpet.com/products/search/?q=HSCP2&currentPage=1",
+            "no_results_found": false,
+            "product_url": "https://www.coastalpet.com/products/detail?id=HSCP2",
+            "title": "Herm. Sprenger ULTRA-PLUS Dog Training Collar with Center Plate & Assembly Chain with 2 Rings",
+            "brand": "Herm. Sprenger",
+            "size": "FINE: 2.25 MM X 12\" NECK SIZE",
+            "images": [
+              "https://www.coastalpet.com/remote.axd/images.salsify.com/image/upload/s--t1wFSl48--/610ea00828d0faa2e40da1f629ec54a8e4dd3ced.webp?format=webp&quality=80",
+              "https://www.coastalpet.com/remote.axd/images.salsify.com/image/upload/s--U8gddFao--/0b6653cca0ad6ce40c989f8ca9203f02aa901099.jpg?format=webp&quality=80",
+              "https://www.coastalpet.com/remote.axd/images.salsify.com/image/upload/s--NCC9TB9u--/462eed13727b684ae5d122e630d514aa77b036de.webp?format=webp&quality=80"
+            ],
+            "upc": "076484007965",
+            "item_number": "000541 G2212",
+            "description": null,
+            "features": [],
+            "weight": null,
+            "dimensions": null
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 8.71,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.coastalpet.com/products/search/?q=xyzabc123notexist456&currentPage=1",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "xyzabc123notexist456",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.coastalpet.com/products/search/?q=xyzabc123notexist456&currentPage=1",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "A",
+          "passed": true,
+          "severity": "warning",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 31.27,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": "boundary_warning",
+          "failure_type": null,
+          "current_url": "https://www.coastalpet.com/products/search/?q=A&currentPage=1",
+          "error_message": null,
+          "suggestion": "Review boundary-state handling for this vendor.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "images",
+            "item_number",
+            "product_url",
+            "size",
+            "sku",
+            "title",
+            "upc"
+          ],
+          "warnings": [
+            "Discarded suspicious item_number value"
+          ],
+          "raw_results": {
+            "sku": "A",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.coastalpet.com/products/search/?q=A&currentPage=1",
+            "no_results_found": false,
+            "product_url": "https://www.coastalpet.com/products/detail?id=PICL1",
+            "title": "Pets in the Classroom Styles Dog Leash",
+            "brand": "Coastal",
+            "size": "X-SMALL - 3/8\" X 6'",
+            "images": [
+              "https://www.coastalpet.com/remote.axd/images.salsify.com/image/upload/s--fey-tTZI--/b793bff9c39caf630d9547981a43893e6265a8da.jpg?format=webp&quality=80"
+            ],
+            "upc": "076484533747",
+            "item_number": "00366C HFC06",
+            "description": null,
+            "features": [],
+            "weight": null,
+            "dimensions": null
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "HSCP2",
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "dimensions",
+          "display_names": [
+            "Dimensions"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "HSCP2",
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "features",
+          "display_names": [
+            "Features"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "HSCP2",
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "item_number",
+          "display_names": [
+            "Item Number"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "size",
+          "display_names": [
+            "Size"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "upc",
+          "display_names": [
+            "UPC"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "weight",
+          "display_names": [
+            "Weight"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "HSCP2",
+            "A"
+          ],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": 42.9,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [
+        "Description",
+        "Dimensions",
+        "Features",
+        "Weight"
+      ],
+      "findings": [
+        {
+          "severity": "Degraded",
+          "category": "Boundary Warning",
+          "summary": "Positive Validation warning for HSCP2: Discarded suspicious item_number value",
+          "action": "Review optional field quality for this vendor."
+        },
+        {
+          "severity": "Degraded",
+          "category": "Boundary Warning",
+          "summary": "Boundary Testing warning for A: Discarded suspicious item_number value",
+          "action": "Review boundary-state handling for this vendor."
+        },
+        {
+          "severity": "Degraded",
+          "category": "Optional Field Coverage",
+          "summary": "Optional fields always missing: Description, Dimensions, Features, Weight.",
+          "action": "Review optional selector quality for this vendor and confirm whether the fields are still obtainable."
+        }
+      ]
+    },
+    {
+      "scraper": "countrymax",
+      "display_name": "CountryMax",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/countrymax.yaml",
+      "status": "Healthy",
+      "score": 100.0,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "073564",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 5.03,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.countrymax.com/search.php?search_query=073564&section=product",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "description",
+            "images",
+            "sku",
+            "title",
+            "upc"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "073564",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.countrymax.com/search.php?search_query=073564&section=product",
+            "no_results_found": false,
+            "title": "Good 'n' Fun Triple Flavor Twists, 6 Pack",
+            "brand": "SPECTRUM BRAND, INC.",
+            "description": "Three flavors. One very happy dog.\n\nThese crave-worthy twists are made with real premium chicken, hearty beef hide, and savory bully for a chew that keeps tails wagging and jaws busy. The twisted shape helps support cleaner teeth by reducing tartar buildup and scraping away plaque while your dog enjoys every bite. High in protein and big on flavor, they are the kind of treat that disappears fast.\n\nPerfect for rewarding good behavior or just because your dog gave you that look.",
+            "upc": "091093949840",
+            "images": [
+              "https://cdn11.bigcommerce.com/s-vmvni2zq0j/images/stencil/1280x1280/products/66459/97651/073564__16384.1770816544.jpg?c=2"
+            ]
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "zzznotreal9999",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 4.28,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.countrymax.com/search.php?search_query=zzznotreal9999&section=content",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "zzznotreal9999",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.countrymax.com/search.php?search_query=zzznotreal9999&section=content",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "1",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 13.24,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.countrymax.com/search.php?search_query=1&section=product",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "description",
+            "images",
+            "sku",
+            "title",
+            "upc"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "172247",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.countrymax.com/search.php?search_query=1&section=product",
+            "no_results_found": false,
+            "title": "Tomcat All Weather Bait Chunx 1",
+            "brand": "MOTOMCO LTD.",
+            "description": "Tomcat is tougher than a barnyard cat for controlling rats and mice, Manufactured with human food-grade ingredients and enhancers for a bait so palatable that rats and mice cannot resist.",
+            "upc": "048745324463",
+            "images": [
+              "https://cdn11.bigcommerce.com/s-vmvni2zq0j/images/stencil/1280x1280/products/35767/39841/172247__83787.1500584413.jpg?c=2"
+            ]
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "upc",
+          "display_names": [
+            "UPC"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": 100.0,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [],
+      "findings": []
+    },
+    {
+      "scraper": "gardeners",
+      "display_name": "Gardener's Supply",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/gardeners.yaml",
+      "status": "Healthy",
+      "score": 100.0,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "12338",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 8.48,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.gardeners.com/pages/search-results-page?q=12338",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "description",
+            "images",
+            "product_url",
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "12338",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.gardeners.com/pages/search-results-page?q=12338",
+            "no_results_found": false,
+            "product_url": "https://www.gardeners.com/products/titan-a-frame-trellis",
+            "title": "Titan\u2122 A-Frame Trellis",
+            "brand": "Gardener's Supply",
+            "description": "The Ultimate A-Frame Squash and Cucumber Trellis\nRugged steel tubing is coated with polyethylene to seal out moisture and fend off rust\nClip connectors create a rigid and sturdy framing system\nLarge net openings for easy harvesting\nEasy to assemble and easy to disassemble for compact storage\n\nRaising squash, cucumbers and other fruiting vines up off the ground produces a healthier, cleaner and more bountiful crop \u2014 not to mention the suspended fruit don't develop a flattened side due to ground contact. But don't try this tactic unless you have a super-strong support to hold your crop, like this Titan A-Frame Trellis. Its polyethylene-coated steel framework and durable nylon netting can support up to 26 lbs. of jumbo-sized squash, cukes and more. Plus there are no delicate ties to weaken, since the A-frame incorporates ingenious clips that make the system even more rigid. Better yet, it sets up in minutes and the strong nylon netting lasts for years.",
+            "images": [
+              "https://www.gardeners.com/cdn/shop/files/8595755_TitanAFrame_art-tif.png?v=1758559552&width=320",
+              "https://www.gardeners.com/cdn/shop/files/8595755_2.jpg?v=1758835377&width=320",
+              "https://www.gardeners.com/cdn/shop/files/8595755_7.jpg?v=1758836025&width=320",
+              "https://www.gardeners.com/cdn/shop/files/8595755_5.jpg?v=1758835392&width=320"
+            ]
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "zzznotreal9999",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 5.53,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.gardeners.com/pages/search-results-page?q=zzznotreal9999",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "zzznotreal9999",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.gardeners.com/pages/search-results-page?q=zzznotreal9999",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "1",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 5.71,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.gardeners.com/pages/search-results-page?q=1",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "1",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.gardeners.com/pages/search-results-page?q=1",
+            "no_results_found": false,
+            "product_url": null
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": null,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [],
+      "findings": []
+    },
+    {
+      "scraper": "mazuri",
+      "display_name": "Mazuri",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/mazuri.yaml",
+      "status": "Healthy",
+      "score": 100.0,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "5E5L",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 7.56,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://mazuri.com/pages/search-results-page?q=5E5L",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "5E5L",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://mazuri.com/pages/search-results-page?q=5E5L",
+            "no_results_found": false,
+            "product_url": null
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 7.67,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://mazuri.com/pages/search-results-page?q=xyzabc123notexist456",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "xyzabc123notexist456",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://mazuri.com/pages/search-results-page?q=xyzabc123notexist456",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "1",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 7.62,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://mazuri.com/pages/search-results-page?q=1",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "1",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://mazuri.com/pages/search-results-page?q=1",
+            "no_results_found": false,
+            "product_url": null
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": null,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [],
+      "findings": []
+    },
+    {
+      "scraper": "orgill",
+      "display_name": "Orgill",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/orgill.yaml",
+      "status": "Critical",
+      "score": 5.0,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1
+        },
+        "negative": {
+          "total": 1,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1
+        },
+        "edge": {
+          "total": 1,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "037193347322",
+          "passed": false,
+          "severity": "critical",
+          "expectation": "required fields extracted",
+          "duration_seconds": 19.07,
+          "workflow_success": false,
+          "no_results_found": false,
+          "failure_family": "navigation_failure",
+          "failure_type": "network_error",
+          "current_url": "https://www.orgill.com/Default.aspx",
+          "error_message": "Element wait timed out after 10s: ['#cphMainContent_ctl00_lblDescription', '#cphMainContent_ctl00_lblErrorMessage', '#cphMainContent_ctl00_lblSearchSubHeader', \"//span[contains(text(), 'Found 0 results')]\", '.no-results'] | hint=Increase timeout multiplier and retry",
+          "suggestion": "Inspect navigation flow, target availability, and timeout settings for this scraper.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [],
+          "warnings": [],
+          "raw_results": {}
+        },
+        {
+          "tier": "negative",
+          "sku": "zzzzqqqq9999xxxx",
+          "passed": false,
+          "severity": "critical",
+          "expectation": "no results detected",
+          "duration_seconds": 18.79,
+          "workflow_success": false,
+          "no_results_found": false,
+          "failure_family": "navigation_failure",
+          "failure_type": "network_error",
+          "current_url": "https://www.orgill.com/Default.aspx",
+          "error_message": "Element wait timed out after 10s: ['#cphMainContent_ctl00_lblDescription', '#cphMainContent_ctl00_lblErrorMessage', '#cphMainContent_ctl00_lblSearchSubHeader', \"//span[contains(text(), 'Found 0 results')]\", '.no-results'] | hint=Increase timeout multiplier and retry",
+          "suggestion": "Inspect navigation flow, target availability, and timeout settings for this scraper.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [],
+          "warnings": [],
+          "raw_results": {}
+        },
+        {
+          "tier": "edge",
+          "sku": "123",
+          "passed": false,
+          "severity": "critical",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 18.89,
+          "workflow_success": false,
+          "no_results_found": false,
+          "failure_family": "navigation_failure",
+          "failure_type": "network_error",
+          "current_url": "https://www.orgill.com/Default.aspx",
+          "error_message": "Element wait timed out after 10s: ['#cphMainContent_ctl00_lblDescription', '#cphMainContent_ctl00_lblErrorMessage', '#cphMainContent_ctl00_lblSearchSubHeader', \"//span[contains(text(), 'Found 0 results')]\", '.no-results'] | hint=Increase timeout multiplier and retry",
+          "suggestion": "Inspect navigation flow, target availability, and timeout settings for this scraper.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [],
+          "warnings": [],
+          "raw_results": {}
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "category",
+          "display_names": [
+            "Category"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "dimensions",
+          "display_names": [
+            "Dimensions"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "features",
+          "display_names": [
+            "Features"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "model_number",
+          "display_names": [
+            "model_number"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "upc",
+          "display_names": [
+            "UPC"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "weight",
+          "display_names": [
+            "Weight"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 0.0,
+      "optional_coverage_pct": null,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [],
+      "findings": [
+        {
+          "severity": "Critical",
+          "category": "Navigation Failure",
+          "summary": "Positive Validation failed for 037193347322: Element wait timed out after 10s: ['#cphMainContent_ctl00_lblDescription', '#cphMainContent_ctl00_lblErrorMessage', '#cphMainContent_ctl00_lblSearchSubHeader', \"//span[contains(text(), 'Found 0 results')]\", '.no-results'] | hint=Increase timeout multiplier and retry",
+          "action": "Inspect navigation flow, target availability, and timeout settings for this scraper."
+        },
+        {
+          "severity": "Critical",
+          "category": "Navigation Failure",
+          "summary": "Negative Validation failed for zzzzqqqq9999xxxx: Element wait timed out after 10s: ['#cphMainContent_ctl00_lblDescription', '#cphMainContent_ctl00_lblErrorMessage', '#cphMainContent_ctl00_lblSearchSubHeader', \"//span[contains(text(), 'Found 0 results')]\", '.no-results'] | hint=Increase timeout multiplier and retry",
+          "action": "Inspect navigation flow, target availability, and timeout settings for this scraper."
+        },
+        {
+          "severity": "Critical",
+          "category": "Navigation Failure",
+          "summary": "Boundary Testing failed for 123: Element wait timed out after 10s: ['#cphMainContent_ctl00_lblDescription', '#cphMainContent_ctl00_lblErrorMessage', '#cphMainContent_ctl00_lblSearchSubHeader', \"//span[contains(text(), 'Found 0 results')]\", '.no-results'] | hint=Increase timeout multiplier and retry",
+          "action": "Inspect navigation flow, target availability, and timeout settings for this scraper."
+        }
+      ]
+    },
+    {
+      "scraper": "petedge",
+      "display_name": "PetEdge",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/petedge.yaml",
+      "status": "Degraded",
+      "score": 92.5,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 1,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "DT361 99",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 23.3,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.petedge.com/search/?q=DT361%2099",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "brand",
+            "description",
+            "images",
+            "sku",
+            "title",
+            "upc"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "DT361 99",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.petedge.com/search/?q=DT361%2099",
+            "no_results_found": false,
+            "title": "Aria Stars & Stripes Bow Canister 100Pk",
+            "brand": "Aria",
+            "description": "Sleek grosgrain ribbon and sparkling star accents give these Aria\u00ae Stars and Stripes Dog Bows a pretty and patriotic style that really pops!\n\nRubber band backings for secure attachment\nCanister contains 100 bows\nMaterial: Poly ribbon, rubber band packing, plastic star\nSize: Each measures 1\u00be\"",
+            "upc": "721343361992",
+            "images": [
+              "https://www.petedge.com/media/catalog/product/d/t/dt361_99_001_1.jpg?quality=80&fit=bounds&height=600&width=600&canvas=600:600",
+              "https://www.petedge.com/media/catalog/product/d/t/dt361_99_003.jpg?quality=80&fit=bounds&height=600&width=600&canvas=600:600",
+              "https://www.petedge.com/media/catalog/product/d/t/dt361_99_002_1.jpg?quality=80&fit=bounds&height=600&width=600&canvas=600:600",
+              "https://www.petedge.com/media/catalog/product/d/t/dt361_99_001_1.jpg?quality=80&fit=bounds&height=88&width=88&canvas=88:88",
+              "https://www.petedge.com/media/catalog/product/d/t/dt361_99_002_1.jpg?quality=80&fit=bounds&height=88&width=88&canvas=88:88",
+              "https://www.petedge.com/media/catalog/product/d/t/dt361_99_003.jpg?quality=80&fit=bounds&height=88&width=88&canvas=88:88"
+            ]
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "zzznotreal9999",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 22.64,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://www.petedge.com/search/?q=zzznotreal9999",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "zzznotreal9999",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.petedge.com/search/?q=zzznotreal9999",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "A",
+          "passed": true,
+          "severity": "warning",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 22.5,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": "boundary_warning",
+          "failure_type": null,
+          "current_url": "https://www.petedge.com/search/?q=A",
+          "error_message": null,
+          "suggestion": "Review boundary-state handling for this vendor.",
+          "required_fields_missing": [
+            "Image URLs",
+            "Name"
+          ],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [
+            "Boundary case completed without crashing but omitted required product fields."
+          ],
+          "raw_results": {
+            "sku": "A",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://www.petedge.com/search/?q=A",
+            "no_results_found": false
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 50.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 50.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 50.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 50.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "upc",
+          "display_names": [
+            "UPC"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 1,
+          "valid_type_count": 1,
+          "presence_pct": 50.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [
+            "A"
+          ],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 66.7,
+      "optional_coverage_pct": 50.0,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [],
+      "findings": [
+        {
+          "severity": "Degraded",
+          "category": "Boundary Warning",
+          "summary": "Boundary Testing warning for A: Boundary case completed without crashing but omitted required product fields.",
+          "action": "Review boundary-state handling for this vendor."
+        }
+      ]
+    },
+    {
+      "scraper": "petfoodex",
+      "display_name": "Pet Food Experts",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/petfoodex.yaml",
+      "status": "Critical",
+      "score": 70.0,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "33011808",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 46.12,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://orders.petfoodexperts.com/SignIn?returnUrl=%2fSearch%3fquery%3d33011808",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "33011808",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://orders.petfoodexperts.com/SignIn?returnUrl=%2fSearch%3fquery%3d33011808",
+            "no_results_found": false,
+            "title": "Sign In",
+            "attributes": null,
+            "product_meta": null,
+            "uo_m": null,
+            "images": [],
+            "description": null,
+            "weight": null,
+            "features": [],
+            "ingredients": null
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": false,
+          "severity": "critical",
+          "expectation": "no results detected",
+          "duration_seconds": 45.37,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": "validation_failure",
+          "failure_type": "no_results",
+          "current_url": "https://orders.petfoodexperts.com/SignIn?returnUrl=%2fSearch%3fquery%3dxyzabc123notexist456",
+          "error_message": "Fake SKU did not trigger no-results detection.",
+          "suggestion": "Update ValidationConfig selectors/text patterns or confirm the fake SKU is still invalid.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "xyzabc123notexist456",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://orders.petfoodexperts.com/SignIn?returnUrl=%2fSearch%3fquery%3dxyzabc123notexist456",
+            "no_results_found": false,
+            "title": "Sign In",
+            "attributes": null,
+            "product_meta": null,
+            "uo_m": null,
+            "images": [],
+            "description": null,
+            "weight": null,
+            "features": [],
+            "ingredients": null
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "1",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 44.73,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://orders.petfoodexperts.com/SignIn?returnUrl=%2fSearch%3fquery%3d1",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "1",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://orders.petfoodexperts.com/SignIn?returnUrl=%2fSearch%3fquery%3d1",
+            "no_results_found": false,
+            "title": "Sign In",
+            "attributes": null,
+            "product_meta": null,
+            "uo_m": null,
+            "images": [],
+            "description": null,
+            "weight": null,
+            "features": [],
+            "ingredients": null
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "attributes",
+          "display_names": [
+            "Attributes"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "features",
+          "display_names": [
+            "Features"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "ingredients",
+          "display_names": [
+            "Ingredients"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "product_meta",
+          "display_names": [
+            "Product Meta"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "uo_m",
+          "display_names": [
+            "UoM"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "weight",
+          "display_names": [
+            "Weight"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "33011808",
+            "1"
+          ],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": 0.0,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [
+        "Attributes",
+        "Description",
+        "Features",
+        "Image URLs",
+        "Ingredients",
+        "Product Meta",
+        "UoM",
+        "Weight"
+      ],
+      "findings": [
+        {
+          "severity": "Critical",
+          "category": "Validation Failure",
+          "summary": "Negative Validation failed for xyzabc123notexist456: Fake SKU did not trigger no-results detection.",
+          "action": "Update ValidationConfig selectors/text patterns or confirm the fake SKU is still invalid."
+        },
+        {
+          "severity": "Critical",
+          "category": "Optional Field Coverage",
+          "summary": "Optional fields always missing: Attributes, Description, Features, Image URLs, Ingredients, Product Meta, UoM, Weight.",
+          "action": "Review optional selector quality for this vendor and confirm whether the fields are still obtainable."
+        }
+      ]
+    },
+    {
+      "scraper": "petswarehouse",
+      "display_name": "Pets Warehouse",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/petswarehouse.yaml",
+      "status": "Degraded",
+      "score": 95.0,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "negative": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        },
+        "edge": {
+          "total": 1,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "042055302456",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "required fields extracted",
+          "duration_seconds": 26.71,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://petswarehouse.com/search?q=042055302456&options%5Bprefix%5D=last",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "images",
+            "product_url",
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "042055302456",
+            "audit_tier": "positive",
+            "validated_http_status": 200,
+            "validated_http_url": "https://petswarehouse.com/search?q=042055302456&options%5Bprefix%5D=last",
+            "no_results_found": false,
+            "product_url": "https://petswarehouse.com/products/hikari-frozen-jumbo-bloodworms-3-5-oz?_pos=1&_sid=f7c6c0246&_ss=r",
+            "title": "Hikari Jumbo Bloodworm Frozen Fish Food 3.5 oz SD-5",
+            "brand": null,
+            "description": null,
+            "item_number": null,
+            "images": [
+              "https://petswarehouse.com/cdn/shop/files/hikari-jumbo-bloodworm-frozen-fish-food-3-5-oz-sd-5-aquarium-547.jpg?v=1712708460&width=1946",
+              "https://petswarehouse.com/cdn/shop/files/hikari-jumbo-bloodworm-frozen-fish-food-3-5-oz-sd-5-aquarium-212.jpg?v=1712708457&width=1946"
+            ]
+          }
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "no results detected",
+          "duration_seconds": 9.31,
+          "workflow_success": true,
+          "no_results_found": true,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://petswarehouse.com/search?q=xyzabc123notexist456&options%5Bprefix%5D=last",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "sku"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "xyzabc123notexist456",
+            "audit_tier": "negative",
+            "validated_http_status": 200,
+            "validated_http_url": "https://petswarehouse.com/search?q=xyzabc123notexist456&options%5Bprefix%5D=last",
+            "no_results_found": true
+          }
+        },
+        {
+          "tier": "edge",
+          "sku": "A",
+          "passed": true,
+          "severity": "pass",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 23.85,
+          "workflow_success": true,
+          "no_results_found": false,
+          "failure_family": null,
+          "failure_type": null,
+          "current_url": "https://petswarehouse.com/search?q=A%3Bsd&options%5Bprefix%5D=last",
+          "error_message": null,
+          "suggestion": null,
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [
+            "images",
+            "product_url",
+            "sku",
+            "title"
+          ],
+          "warnings": [],
+          "raw_results": {
+            "sku": "A",
+            "audit_tier": "edge",
+            "validated_http_status": 200,
+            "validated_http_url": "https://petswarehouse.com/search?q=A%3Bsd&options%5Bprefix%5D=last",
+            "no_results_found": false,
+            "product_url": "https://petswarehouse.com/products/hikari-bio-pure-frozen-clam-on-a-half-shell-flat-pack-4oz-sd-5-l-b?_pos=1&_sid=d6d5f9694&_ss=r",
+            "title": "Hikari Clam On a Half Shell Frozen Fish Food 4 oz SD-5",
+            "brand": null,
+            "description": null,
+            "item_number": null,
+            "images": [
+              "https://petswarehouse.com/cdn/shop/files/hikari-clam-on-a-half-shell-frozen-fish-food-4-oz-sd-5-aquarium-603.jpg?v=1712708446&width=1946",
+              "https://petswarehouse.com/cdn/shop/files/hikari-clam-on-a-half-shell-frozen-fish-food-4-oz-sd-5-aquarium-687.jpg?v=1712708442&width=1946"
+            ]
+          }
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "042055302456",
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "042055302456",
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "item_number",
+          "display_names": [
+            "Item Number"
+          ],
+          "required": false,
+          "evaluated_cases": 2,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": 0.0,
+          "valid_type_pct": null,
+          "consistently_missing": true,
+          "missing_skus": [
+            "042055302456",
+            "A"
+          ],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 2,
+          "present_count": 2,
+          "valid_type_count": 2,
+          "presence_pct": 100.0,
+          "valid_type_pct": 100.0,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 100.0,
+      "optional_coverage_pct": 0.0,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [
+        "Brand",
+        "Description",
+        "Item Number"
+      ],
+      "findings": [
+        {
+          "severity": "Degraded",
+          "category": "Optional Field Coverage",
+          "summary": "Optional fields always missing: Brand, Description, Item Number.",
+          "action": "Review optional selector quality for this vendor and confirm whether the fields are still obtainable."
+        }
+      ]
+    },
+    {
+      "scraper": "phillips",
+      "display_name": "Phillips Pet",
+      "config_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/configs/phillips.yaml",
+      "status": "Critical",
+      "score": 5.0,
+      "tier_summary": {
+        "positive": {
+          "total": 1,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1
+        },
+        "negative": {
+          "total": 1,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1
+        },
+        "edge": {
+          "total": 1,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1
+        }
+      },
+      "cases": [
+        {
+          "tier": "positive",
+          "sku": "072705115310",
+          "passed": false,
+          "severity": "critical",
+          "expectation": "required fields extracted",
+          "duration_seconds": 15.7,
+          "workflow_success": false,
+          "no_results_found": false,
+          "failure_family": "navigation_failure",
+          "failure_type": "network_error",
+          "current_url": "https://shop.phillipspet.com/ccrz__CCSiteLogin?startURL=%2Fccrz__ProductList%3FcartID%3D%26cclcl%3Den_US%26operation%3DquickSearch%26portalUser%3D%26searchText%3D072705115310%26store%3DDefaultStore",
+          "error_message": "Element wait timed out after 10s: ['#plp-desktop-row .cc_product_name', '.plp-empty-state-message-container h3'] | hint=Increase timeout multiplier and retry",
+          "suggestion": "Inspect navigation flow, target availability, and timeout settings for this scraper.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [],
+          "warnings": [],
+          "raw_results": {}
+        },
+        {
+          "tier": "negative",
+          "sku": "xyzabc123notexist456",
+          "passed": false,
+          "severity": "critical",
+          "expectation": "no results detected",
+          "duration_seconds": 14.74,
+          "workflow_success": false,
+          "no_results_found": false,
+          "failure_family": "navigation_failure",
+          "failure_type": "network_error",
+          "current_url": "https://shop.phillipspet.com/ccrz__CCSiteLogin?startURL=%2Fccrz__ProductList%3FcartID%3D%26cclcl%3Den_US%26operation%3DquickSearch%26portalUser%3D%26searchText%3Dxyzabc123notexist456%26store%3DDefaultStore",
+          "error_message": "Element wait timed out after 10s: ['#plp-desktop-row .cc_product_name', '.plp-empty-state-message-container h3'] | hint=Increase timeout multiplier and retry",
+          "suggestion": "Inspect navigation flow, target availability, and timeout settings for this scraper.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [],
+          "warnings": [],
+          "raw_results": {}
+        },
+        {
+          "tier": "edge",
+          "sku": "123",
+          "passed": false,
+          "severity": "critical",
+          "expectation": "boundary handled gracefully",
+          "duration_seconds": 16.0,
+          "workflow_success": false,
+          "no_results_found": false,
+          "failure_family": "navigation_failure",
+          "failure_type": "network_error",
+          "current_url": "https://shop.phillipspet.com/ccrz__CCSiteLogin?startURL=%2Fccrz__ProductList%3FcartID%3D%26cclcl%3Den_US%26operation%3DquickSearch%26portalUser%3D%26searchText%3D123%26store%3DDefaultStore",
+          "error_message": "Element wait timed out after 10s: ['#plp-desktop-row .cc_product_name', '.plp-empty-state-message-container h3'] | hint=Increase timeout multiplier and retry",
+          "suggestion": "Inspect navigation flow, target availability, and timeout settings for this scraper.",
+          "required_fields_missing": [],
+          "invalid_required_fields": [],
+          "invalid_optional_fields": [],
+          "extracted_fields": [],
+          "warnings": [],
+          "raw_results": {}
+        }
+      ],
+      "field_audit": [
+        {
+          "field_name": "brand",
+          "display_names": [
+            "Brand"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "description",
+          "display_names": [
+            "Description"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "features",
+          "display_names": [
+            "Features"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "images",
+          "display_names": [
+            "Image URLs"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "item_number",
+          "display_names": [
+            "ItemNumber"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "sku",
+          "display_names": [
+            "SKU"
+          ],
+          "required": true,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "title",
+          "display_names": [
+            "Name"
+          ],
+          "required": true,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "upc",
+          "display_names": [
+            "UPC"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        },
+        {
+          "field_name": "weight",
+          "display_names": [
+            "Weight"
+          ],
+          "required": false,
+          "evaluated_cases": 0,
+          "present_count": 0,
+          "valid_type_count": 0,
+          "presence_pct": null,
+          "valid_type_pct": null,
+          "consistently_missing": false,
+          "missing_skus": [],
+          "invalid_type_skus": []
+        }
+      ],
+      "required_coverage_pct": 0.0,
+      "optional_coverage_pct": null,
+      "missing_tiers": [],
+      "consistently_missing_optional_fields": [],
+      "findings": [
+        {
+          "severity": "Critical",
+          "category": "Navigation Failure",
+          "summary": "Positive Validation failed for 072705115310: Element wait timed out after 10s: ['#plp-desktop-row .cc_product_name', '.plp-empty-state-message-container h3'] | hint=Increase timeout multiplier and retry",
+          "action": "Inspect navigation flow, target availability, and timeout settings for this scraper."
+        },
+        {
+          "severity": "Critical",
+          "category": "Navigation Failure",
+          "summary": "Negative Validation failed for xyzabc123notexist456: Element wait timed out after 10s: ['#plp-desktop-row .cc_product_name', '.plp-empty-state-message-container h3'] | hint=Increase timeout multiplier and retry",
+          "action": "Inspect navigation flow, target availability, and timeout settings for this scraper."
+        },
+        {
+          "severity": "Critical",
+          "category": "Navigation Failure",
+          "summary": "Boundary Testing failed for 123: Element wait timed out after 10s: ['#plp-desktop-row .cc_product_name', '.plp-empty-state-message-container h3'] | hint=Increase timeout multiplier and retry",
+          "action": "Inspect navigation flow, target availability, and timeout settings for this scraper."
+        }
+      ]
+    }
+  ]
+}

@@ -57,46 +57,47 @@ workflows:
       selector:
         - "a[href*='?searchid='][href*='search_query=']"
         - "body"
-  - action: conditional
-    name: open_first_product_match
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
     params:
-      condition_type: element_exists
+      if_flag: no_results_found
+  - action: click
+    name: click_first_product_match
+    params:
       selector: "a[href*='?searchid='][href*='search_query=']"
-      then:
-        - action: click
-          name: click_first_product_match
-          params:
-            selector: "a[href*='?searchid='][href*='search_query=']"
-        - action: wait_for
-          name: wait_for_product_details
-          params:
-            timeout: 15
-            selector:
-              - "h1.productView-title"
-              - "[data-product-sku]"
-        - action: extract
-          name: extract_fields
-          params:
-            fields:
-              - Name
-              - Brand
-              - Description
-              - SKU
-              - UPC
-              - Image URLs
-        - action: process_images
-          name: clean_images
-          params:
-            field: Image URLs
-            quality_patterns:
-              - regex: "/stencil/\\d+x\\d+/"
-                replacement: "/stencil/1280x1280/"
-            filters:
-              - type: require_text
-                text: cdn11.bigcommerce.com
-              - type: exclude_text
-                text: ProductDefault
-            deduplicate: true
+  - action: wait_for
+    name: wait_for_product_details
+    params:
+      timeout: 15
+      selector:
+        - "h1.productView-title"
+        - "[data-product-sku]"
+  - action: extract
+    name: extract_fields
+    params:
+      fields:
+        - Name
+        - Brand
+        - Description
+        - SKU
+        - UPC
+        - Image URLs
+  - action: process_images
+    name: clean_images
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "/stencil/\\d+x\\d+/"
+          replacement: "/stencil/1280x1280/"
+      filters:
+        - type: require_text
+          text: cdn11.bigcommerce.com
+        - type: exclude_text
+          text: ProductDefault
+      deduplicate: true
 ai_config: null
 anti_detection:
   enable_rate_limiting: false

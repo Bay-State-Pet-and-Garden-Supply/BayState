@@ -68,7 +68,14 @@ workflows:
         - "#noResultsTitle"
   - action: check_no_results
     name: null
-    params: {}
+    params:
+      fallback_empty_search_selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
+      search_page_indicators:
+        - "s?k="
+        - "amazon.com :"
+      pdp_selectors:
+        - "#productTitle"
+        - "#title"
   - action: conditional_skip
     name: null
     params:

@@ -1,16 +1,39 @@
 from __future__ import annotations
 import asyncio
+import inspect
 
 import logging
 from typing import Any
 
-from core.failure_classifier import *
 from scrapers.actions.base import BaseAction
 from scrapers.actions.registry import ActionRegistry
-from scrapers.exceptions import WorkflowExecutionError
+from scrapers.exceptions import AccessDeniedError, CaptchaError, RateLimitError, WorkflowExecutionError
 from scrapers.utils.locators import convert_to_playwright_locator
 
 logger = logging.getLogger(__name__)
+
+CAPTCHA_TEXT_PATTERNS = (
+    "captcha",
+    "enter the characters you see below",
+    "type the characters you see in this image",
+    "verify you are a human",
+    "not a robot",
+)
+RATE_LIMIT_TEXT_PATTERNS = (
+    "too many requests",
+    "rate limit",
+    "temporarily blocked",
+    "unusual traffic",
+    "please wait before trying again",
+)
+ACCESS_DENIED_TEXT_PATTERNS = (
+    "access denied",
+    "blocked",
+    "forbidden",
+    "automated access",
+    "robot check",
+    "request could not be satisfied",
+)
 
 
 @ActionRegistry.register("validate_http_status")
@@ -78,7 +101,8 @@ class CheckNoResultsAction(BaseAction):
             config_no_results = []
             config_text_patterns = []
 
-        await self._execute_playwright(config_no_results, config_text_patterns)
+        await self._detect_blocking_or_captcha()
+        await self._execute_playwright(config_no_results, config_text_patterns, params)
 
     def _emit_no_results_event(self) -> None:
         """Helper to emit sku.no_results event if possible."""
@@ -111,7 +135,125 @@ class CheckNoResultsAction(BaseAction):
 
         return False
 
-    async def _execute_playwright(self, config_no_results: list[str], config_text_patterns: list[str]) -> None:
+    async def _get_http_status(self) -> int | None:
+        """Read the current HTTP status when the browser exposes it."""
+        check_http_status = getattr(self.ctx.browser, "check_http_status", None)
+        if not callable(check_http_status):
+            return None
+
+        try:
+            status = check_http_status()
+            if inspect.isawaitable(status):
+                status = await status
+        except Exception as exc:
+            logger.debug(f"Unable to read HTTP status during validation: {exc}")
+            return None
+
+        if isinstance(status, dict):
+            status = status.get("status")
+
+        return status if isinstance(status, int) else None
+
+    async def _detect_blocking_or_captcha(self) -> None:
+        """Fail fast on anti-bot, CAPTCHA, and rate-limit pages before no-results checks."""
+        page = self.ctx.browser.page
+        status_code = await self._get_http_status()
+        if status_code is not None:
+            self.ctx.results["validated_http_status"] = status_code
+            self.ctx.results["validated_http_url"] = page.url
+
+        title = ""
+        visible_text = ""
+        try:
+            title = (await page.title()).lower()
+        except Exception as exc:
+            logger.debug(f"Unable to read page title during validation: {exc}")
+
+        try:
+            visible_text = (await page.inner_text("body")).lower()
+        except Exception as exc:
+            logger.debug(f"Unable to read page body during validation: {exc}")
+
+        combined_text = f"{title}\n{visible_text}"
+
+        if any(pattern in combined_text for pattern in CAPTCHA_TEXT_PATTERNS):
+            self.ctx.results["captcha_detected"] = True
+            raise CaptchaError("CAPTCHA page detected during validation")
+
+        if status_code == 429 or any(pattern in combined_text for pattern in RATE_LIMIT_TEXT_PATTERNS):
+            self.ctx.results["rate_limited"] = True
+            raise RateLimitError("Rate limiting detected during validation")
+
+        if status_code in {401, 403} or any(pattern in combined_text for pattern in ACCESS_DENIED_TEXT_PATTERNS):
+            self.ctx.results["anti_bot_blocked"] = True
+            raise AccessDeniedError("Blocking page detected during validation")
+
+        if status_code == 503 and "something went wrong" in combined_text:
+            try:
+                page_html = (await page.content()).lower()
+            except Exception as exc:
+                logger.debug(f"Unable to read page HTML during validation: {exc}")
+                page_html = ""
+
+            if "automated access to amazon data" in page_html:
+                self.ctx.results["anti_bot_blocked"] = True
+                raise AccessDeniedError("Amazon automated-access block detected during validation")
+
+    async def _count_selector_matches(self, page: Any, selector: str) -> int:
+        """Return the number of nodes matched by a selector, defaulting to zero on lookup errors."""
+        try:
+            locator = convert_to_playwright_locator(page, selector)
+            return await locator.count()
+        except Exception as exc:
+            logger.debug(f"Error counting selector {selector}: {exc}")
+            return 0
+
+    async def _apply_empty_search_fallback(self, params: dict[str, Any]) -> bool:
+        """
+        Mark no-results when a known search page contains zero valid product cards.
+
+        Some vendors now render empty search shells without a dedicated no-results banner.
+        This fallback is opt-in per workflow so we only use it on sites where zero valid
+        search cards is a reliable signal.
+        """
+        fallback_selector = params.get("fallback_empty_search_selector")
+        if not fallback_selector:
+            return False
+
+        page = self.ctx.browser.page
+        current_url = page.url.lower()
+
+        try:
+            page_title = (await page.title()).lower()
+        except Exception as exc:
+            logger.debug(f"Unable to read page title for empty-search fallback: {exc}")
+            page_title = ""
+
+        search_page_indicators = [indicator.lower() for indicator in params.get("search_page_indicators", [])]
+        if search_page_indicators and not any(indicator in current_url or indicator in page_title for indicator in search_page_indicators):
+            return False
+
+        for pdp_selector in params.get("pdp_selectors", []):
+            if await self._count_selector_matches(page, pdp_selector) > 0:
+                return False
+
+        result_count = await self._count_selector_matches(page, fallback_selector)
+        if result_count > 0:
+            return False
+
+        logger.info(f"Empty-search fallback candidate detected for {fallback_selector}, verifying persistence...")
+        await asyncio.sleep(2)
+
+        if await self._count_selector_matches(page, fallback_selector) == 0:
+            logger.info(f"No results confirmed via empty-search fallback: {fallback_selector}")
+            self.ctx.results["no_results_found"] = True
+            self.ctx.results["no_results_reason"] = "empty_search_fallback"
+            self._emit_no_results_event()
+            return True
+
+        return False
+
+    async def _execute_playwright(self, config_no_results: list[str], config_text_patterns: list[str], params: dict[str, Any]) -> None:
         """Execute no-results check using Playwright."""
         import time
 
@@ -202,6 +344,9 @@ class CheckNoResultsAction(BaseAction):
                             logger.info(f"DEBUG: Pattern '{pattern}' NOT found in page content")
                 except Exception as e:
                     logger.debug(f"Error checking text patterns: {e}")
+
+            if await self._apply_empty_search_fallback(params):
+                return
 
             self.ctx.results["no_results_found"] = False
 

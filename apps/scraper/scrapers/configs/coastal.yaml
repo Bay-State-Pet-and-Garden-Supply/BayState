@@ -91,6 +91,7 @@ workflows:
     name: search_page
     params:
       url: https://www.coastalpet.com/products/search/?q={sku}
+      wait_until: commit
   - action: conditional_click
     name: null
     params:
@@ -99,7 +100,7 @@ workflows:
   - action: wait
     name: wait_for_page_load
     params:
-      seconds: 3
+      seconds: 5
   - action: check_no_results
     name: null
     params: {}
@@ -123,6 +124,7 @@ workflows:
     name: product_page
     params:
       url: "{{product_url}}"
+      wait_until: commit
       wait_after: 2
   - action: wait_for
     name: null
