@@ -1,3 +1,0 @@
-- Task 4 stayed in pure RED phase: `useRealtimeChannel` was added as a typed skeleton that throws `useRealtimeChannel is not implemented yet.` so the new unit tests fail immediately and visibly.
-- The new hook interface uses `unknown` for `onMessage` payload typing instead of `any` to stay aligned with the workspace strict TypeScript / no-`any` convention.
-- `useRealtimeChannel` was extended rather than bypassed: pooled channel entries now dispatch presence-sync callbacks, and the hook exposes `getChannel()` so presence-oriented hooks can call `track()` without instantiating a second Supabase channel.
