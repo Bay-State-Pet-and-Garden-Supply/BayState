@@ -530,6 +530,102 @@ class TestCrawl4AIExtractorOptimization:
             assert result == {"success": False, "error": "fallback"}
 
     @pytest.mark.asyncio
+    async def test_extract_falls_back_on_error_tagged_llm_payload(self, extractor):
+        """LiteLLM/Crawl4AI error payloads should not be normalized into fake product data."""
+        url = "https://example.com/p/123"
+        sku = "SKU123"
+
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.crawl.side_effect = [
+            {
+                "success": True,
+                "html": "",
+                "fit_markdown": "",
+                "raw_markdown": "",
+                "markdown": "",
+            },
+            {
+                "success": True,
+                "html": "<html>fallback</html>",
+                "markdown": "fallback markdown",
+                "extracted_content": [
+                    {
+                        "index": 0,
+                        "error": True,
+                        "tags": ["error"],
+                        "content": "litellm.APIConnectionError: provider mismatch",
+                        "product_name": "",
+                        "images": [],
+                    }
+                ],
+            },
+        ]
+
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
+            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
+            patch("crawl4ai.LLMConfig", create=True),
+            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+        ):
+            mock_engine.__aenter__.return_value = mock_engine
+            extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "fallback"})
+
+            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+
+            extractor._extract_with_fallback.assert_awaited_once_with(
+                url,
+                sku,
+                "Test Product",
+                "Test Brand",
+                "<html>fallback</html>",
+                "fallback markdown",
+            )
+            assert result == {"success": False, "error": "fallback"}
+
+    @pytest.mark.asyncio
+    async def test_extract_uses_fallback_for_soft_404_first_pass(self, extractor):
+        """Soft-404 pages should skip second-pass extraction and go straight to fallback recovery."""
+        url = "https://example.com/missing-product"
+        sku = "SKU123"
+        not_found_html = """
+        <html>
+          <head>
+            <title>Page not found - Example</title>
+            <meta property="og:title" content="Page not found - Example" />
+          </head>
+        </html>
+        """
+        markdown = "WHOOPS! 404 It looks like you are lost!"
+
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": not_found_html,
+            "fit_markdown": markdown,
+            "raw_markdown": markdown,
+            "markdown": markdown,
+        }
+
+        with patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine):
+            mock_engine.__aenter__.return_value = mock_engine
+            extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "Fallback extraction landed on a not-found page"})
+
+            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+
+            extractor._extract_with_fallback.assert_awaited_once_with(
+                url,
+                sku,
+                "Test Product",
+                "Test Brand",
+                not_found_html,
+                markdown,
+            )
+            mock_engine.crawl.assert_awaited_once()
+            assert result == {"success": False, "error": "Fallback extraction landed on a not-found page"}
+
+    @pytest.mark.asyncio
     async def test_extract_falls_back_on_invalid_extracted_content_type(self, extractor):
         """Test that unsupported extracted_content payloads trigger fallback parsing."""
         url = "https://example.com/p/123"

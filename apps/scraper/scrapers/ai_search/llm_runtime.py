@@ -32,9 +32,12 @@ def _normalize_base_url(value: str | None) -> str | None:
 
 
 def normalize_llm_provider(value: str | None) -> LLMProvider:
-    if value == "openai_compatible":
+    normalized = (_normalize_optional_string(value) or "").lower()
+    if normalized == "openai":
+        return "openai"
+    if normalized == "openai_compatible":
         return "openai_compatible"
-    if value == "gemini":
+    if normalized == "gemini":
         return "gemini"
     return "gemini"
 

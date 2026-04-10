@@ -2,8 +2,10 @@
 
 import json
 import logging
+import re
 import time
 from typing import Any, Optional
+from urllib.parse import quote, urljoin, urlparse
 
 from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.google_redirects import (
@@ -70,6 +72,17 @@ class Crawl4AIExtractor:
         "not available",
         "not provided",
     }
+    _TITLE_PATTERN = re.compile(r"<title[^>]*>(.*?)</title>", flags=re.IGNORECASE | re.DOTALL)
+    _OG_TITLE_PATTERN = re.compile(
+        r"<meta[^>]+property=[\"']og:title[\"'][^>]+content=[\"']([^\"']+)[\"']",
+        flags=re.IGNORECASE,
+    )
+    _NOT_FOUND_MARKERS = (
+        "page not found",
+        "whoops! 404",
+        "404 it looks like you are lost",
+        "product not found",
+    )
 
     def __init__(
         self,
@@ -165,6 +178,56 @@ class Crawl4AIExtractor:
         if not error_text:
             return False
         return "timeout" in error_text or "networkidle" in error_text or "failed on navigating acs-goto" in error_text
+
+    @classmethod
+    def _looks_like_not_found_page(cls, html: str, markdown: str) -> bool:
+        """Detect branded 404/soft-404 pages before extraction heuristics run."""
+        snippets: list[str] = []
+        if isinstance(html, str) and html:
+            title_match = cls._TITLE_PATTERN.search(html)
+            if title_match:
+                snippets.append(title_match.group(1))
+            og_title_match = cls._OG_TITLE_PATTERN.search(html)
+            if og_title_match:
+                snippets.append(og_title_match.group(1))
+            snippets.append(html[:1500])
+        if isinstance(markdown, str) and markdown:
+            snippets.append(markdown[:1500])
+
+        normalized = " ".join(snippets).lower()
+        if not normalized:
+            return False
+        if any(marker in normalized for marker in cls._NOT_FOUND_MARKERS):
+            return True
+        return "404" in normalized and ("not found" in normalized or "you are lost" in normalized)
+
+    @staticmethod
+    def _is_llm_error_payload(payload: Any) -> bool:
+        """Reject Crawl4AI/LiteLLM error payloads before normalizing them as products."""
+        if not isinstance(payload, dict):
+            return False
+
+        error_value = payload.get("error")
+        if error_value is True:
+            return True
+        if isinstance(error_value, str) and error_value.strip():
+            return True
+
+        tags = payload.get("tags")
+        if isinstance(tags, list) and any(str(tag).lower() == "error" for tag in tags):
+            return True
+
+        content_text = str(payload.get("content") or "").lower()
+        has_candidate_fields = any(
+            str(payload.get(field) or "").strip()
+            for field in ("product_name", "description", "size_metrics")
+        ) or bool(payload.get("images")) or bool(payload.get("categories"))
+        if not has_candidate_fields and any(
+            marker in content_text for marker in ("traceback", "exception", "authentication", "api", "failed", "error")
+        ):
+            return True
+
+        return False
 
     @classmethod
     def _is_placeholder_text(cls, value: Any) -> bool:
@@ -334,6 +397,10 @@ class Crawl4AIExtractor:
                     )
 
                     if html or markdown:
+                        if self._looks_like_not_found_page(html, markdown):
+                            logger.info("[AI Search] Crawl4AI fetched a not-found page, routing to fallback recovery")
+                            return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+
                         crawl4ai_content = html or markdown
                         parse_start = time.perf_counter()
                         jsonld_result = self._extraction.extract_product_from_html_jsonld(
@@ -490,6 +557,16 @@ class Crawl4AIExtractor:
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
 
                         if data and isinstance(data, list):
+                            if self._is_llm_error_payload(data[0]):
+                                error_payload = data[0]
+                                llm_error = str(error_payload.get("content") or error_payload.get("error") or "LLM extraction error").strip()
+                                self._log_telemetry(url, sku, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, llm_error)
+                                logger.warning("[AI Search] Crawl4AI returned an error payload, using fallback extractor")
+                                return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+
+                            if not isinstance(data[0], dict):
+                                raise TypeError(f"Unsupported extracted_content item type: {type(data[0]).__name__}")
+
                             product_data = self._normalize_llm_product_data(
                                 data[0],
                                 url=url,
@@ -571,6 +648,11 @@ class Crawl4AIExtractor:
 class FallbackExtractor:
     """Fallback extraction using HTTP and JSON-LD."""
 
+    _PRODUCT_PATH_MARKERS = ("/product/", "/products/", "/shop/")
+    _LINK_PATTERN = re.compile(r"<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>", flags=re.IGNORECASE | re.DOTALL)
+    _TAG_PATTERN = re.compile(r"<[^>]+>")
+    _IMAGE_PATH_PATTERN = re.compile(r"\.(?:png|jpe?g|webp|gif|svg)(?:\?.*)?$", flags=re.IGNORECASE)
+
     def __init__(self, scoring: SearchScorer, matching: MatchingUtils):
         self._scoring = scoring
         self._matching = matching
@@ -604,6 +686,167 @@ class FallbackExtractor:
 
         logger.info(f"[AI Search] Extraction telemetry: {json.dumps(telemetry)}")
 
+    @staticmethod
+    def _http_headers() -> dict[str, str]:
+        return {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+
+    def _build_search_queries(
+        self,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+    ) -> list[str]:
+        queries: list[str] = []
+
+        def _append(value: Optional[str]) -> None:
+            text = self._extraction.clean_text(value)
+            if text and text not in queries:
+                queries.append(text)
+
+        _append(sku)
+        _append(product_name)
+        if product_name and brand:
+            brand_prefix = re.compile(rf"^\s*{re.escape(self._extraction.clean_text(brand))}[\s:,\-]*", flags=re.IGNORECASE)
+            stripped_name = brand_prefix.sub("", self._extraction.clean_text(product_name)).strip()
+            _append(stripped_name)
+
+        return queries
+
+    def _has_strong_search_name_match(
+        self,
+        product_name: Optional[str],
+        brand: Optional[str],
+        candidate_label: str,
+    ) -> bool:
+        if not product_name:
+            return False
+
+        expected_tokens = self._matching.tokenize_keywords(product_name)
+        actual_tokens = self._matching.tokenize_keywords(candidate_label)
+        brand_tokens = self._matching.tokenize_keywords(brand)
+        specific_expected = expected_tokens.difference(brand_tokens)
+        if not specific_expected:
+            return self._matching.is_name_match(product_name, candidate_label)
+
+        overlap = specific_expected.intersection(actual_tokens)
+        overlap_ratio = len(overlap) / max(1, len(specific_expected))
+        return overlap_ratio >= 0.6
+
+    def _collect_search_candidate_urls(
+        self,
+        *,
+        source_url: str,
+        search_url: str,
+        search_html: str,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+    ) -> list[str]:
+        normalized_search = search_html.lower()
+        if '"resultscount":0' in normalized_search or '"resultscount": 0' in normalized_search or "no results found" in normalized_search:
+            return []
+
+        source_host = urlparse(source_url).netloc.lower()
+        candidates: list[tuple[float, str]] = []
+        seen_urls: set[str] = set()
+
+        for href, inner_html in self._LINK_PATTERN.findall(search_html):
+            absolute_url = urljoin(search_url, href).split("#", 1)[0]
+            parsed = urlparse(absolute_url)
+            if parsed.scheme not in {"http", "https"}:
+                continue
+            if parsed.netloc.lower() != source_host:
+                continue
+            if absolute_url == source_url:
+                continue
+            if parsed.query and not parsed.path:
+                continue
+            if self._IMAGE_PATH_PATTERN.search(parsed.path):
+                continue
+            if not any(marker in parsed.path.lower() for marker in self._PRODUCT_PATH_MARKERS):
+                continue
+
+            label = self._extraction.normalize_product_title(self._TAG_PATTERN.sub(" ", inner_html))
+            if not label:
+                label = self._extraction.normalize_product_title(parsed.path.rstrip("/").split("/")[-1].replace("-", " "))
+
+            score = 0.0
+            has_exact_identifier = bool(sku) and sku.lower() in f"{label} {absolute_url}".lower()
+            name_matches = self._has_strong_search_name_match(product_name, brand, label)
+            if has_exact_identifier:
+                score += 6.0
+            if name_matches:
+                score += 5.0
+            if brand and self._matching.is_brand_match(brand, label or brand, absolute_url):
+                score += 2.0
+
+            if not has_exact_identifier and not name_matches:
+                continue
+            if score <= 0.0 or absolute_url in seen_urls:
+                continue
+
+            seen_urls.add(absolute_url)
+            candidates.append((score, absolute_url))
+
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        return [candidate_url for _, candidate_url in candidates[:5]]
+
+    async def _recover_from_site_search(
+        self,
+        *,
+        source_url: str,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        client: Any | None = None,
+    ) -> Optional[dict[str, Any]]:
+        import httpx
+
+        queries = self._build_search_queries(sku, product_name, brand)
+        if not queries:
+            return None
+
+        parsed_source = urlparse(source_url)
+        if not parsed_source.scheme or not parsed_source.netloc:
+            return None
+
+        base_url = f"{parsed_source.scheme}://{parsed_source.netloc}"
+
+        async def _run_with_client(search_client: Any) -> Optional[dict[str, Any]]:
+            for query in queries:
+                for search_path in ("/?s={query}&post_type=product", "/?s={query}"):
+                    search_url = f"{base_url}{search_path.format(query=quote(query))}"
+                    response = await search_client.get(search_url, headers=self._http_headers())
+                    search_html = response.text or ""
+                    for candidate_url in self._collect_search_candidate_urls(
+                        source_url=source_url,
+                        search_url=str(response.url),
+                        search_html=search_html,
+                        sku=sku,
+                        product_name=product_name,
+                        brand=brand,
+                    ):
+                        logger.info(f"[AI Search] Attempting stale-URL recovery via site search: {source_url} -> {candidate_url}")
+                        recovered = await self.extract(
+                            candidate_url,
+                            sku,
+                            product_name,
+                            brand,
+                            recovery_attempted=True,
+                        )
+                        if recovered.get("success"):
+                            return recovered
+            return None
+
+        if client is not None:
+            return await _run_with_client(client)
+
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as search_client:
+            return await _run_with_client(search_client)
+
     async def extract(
         self,
         url: str,
@@ -611,6 +854,7 @@ class FallbackExtractor:
         product_name: Optional[str],
         brand: Optional[str],
         html: Optional[str] = None,
+        recovery_attempted: bool = False,
     ) -> dict[str, Any]:
         """Extract product data using provided HTML or an HTTP fetch fallback.
 
@@ -629,6 +873,7 @@ class FallbackExtractor:
         try:
             response_url = url
             html_text = html or ""
+            http_status: int | None = None
 
             if html_text:
                 logger.info("[AI Search] Using pre-fetched HTML for extraction")
@@ -636,19 +881,45 @@ class FallbackExtractor:
                 logger.info("[AI Search] Fetching HTML via HTTP")
                 import httpx
 
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                }
                 async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                    response = await client.get(url, headers=headers)
-                    response.raise_for_status()
+                    response = await client.get(url, headers=self._http_headers())
                     html_text = response.text
                     response_url = str(response.url)
+                    http_status = response.status_code
+
+                    if Crawl4AIExtractor._looks_like_not_found_page(html_text, html_text):
+                        recovered = None
+                        if not recovery_attempted:
+                            recovered = await self._recover_from_site_search(
+                                source_url=response_url,
+                                sku=sku,
+                                product_name=product_name,
+                                brand=brand,
+                                client=client,
+                            )
+                        if recovered is not None:
+                            return recovered
 
             # Record fetch time
             fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
             parse_start = time.perf_counter()
+
+            if Crawl4AIExtractor._looks_like_not_found_page(html_text, html_text):
+                recovered = None
+                if not recovery_attempted:
+                    recovered = await self._recover_from_site_search(
+                        source_url=response_url,
+                        sku=sku,
+                        product_name=product_name,
+                        brand=brand,
+                    )
+                if recovered is not None:
+                    return recovered
+                self._log_telemetry(response_url, sku, "fallback", False, fetch_time_ms, 0, "not found page")
+                return {
+                    "success": False,
+                    "error": "Fallback extraction landed on a not-found page",
+                }
 
             jsonld_result = self._extraction.extract_product_from_html_jsonld(
                 html_text=html_text,
@@ -714,6 +985,12 @@ class FallbackExtractor:
                 }
 
             if not candidate_name or not images:
+                if http_status is not None and http_status >= 400:
+                    self._log_telemetry(response_url, sku, "fallback", False, fetch_time_ms, parse_time_ms, f"http {http_status}")
+                    return {
+                        "success": False,
+                        "error": f"Fallback extraction received HTTP {http_status} with no usable product data",
+                    }
                 self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "no structured data")
                 return {
                     "success": False,
