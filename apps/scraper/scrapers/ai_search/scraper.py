@@ -18,11 +18,8 @@ from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.llm_runtime import resolve_llm_runtime
 from scrapers.ai_search.search import SearchClient, normalize_search_provider
 from scrapers.ai_search.query_builder import QueryBuilder
-from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
-from scrapers.ai_search.validation import ExtractionValidator
-from scrapers.ai_search.source_selector import LLMSourceSelector
-from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.batch_search import BatchSearchOrchestrator, ProductInput
+from scrapers.ai_search.cohort_state import _BatchCohortState
 
 logger = logging.getLogger(__name__)
 
@@ -65,49 +62,6 @@ class _ScrapeCostContext:
         return float(tracker_cost_usd or 0.0) + float(self.search_cost_usd or 0.0) + float(self.llm_cost_usd or 0.0) + float(self.refinement_cost_usd or 0.0)
 
 
-@dataclass
-class _BatchCohortState:
-    key: str
-    preferred_domain_counts: dict[str, int]
-    preferred_brand_counts: dict[str, int]
-
-    def ranked_domains(self) -> list[str]:
-        return [
-            domain
-            for domain, _count in sorted(
-                self.preferred_domain_counts.items(),
-                key=lambda item: (-item[1], item[0]),
-            )
-        ]
-
-    def remember_domain(self, domain: str) -> None:
-        if not domain:
-            return
-        self.preferred_domain_counts[domain] = self.preferred_domain_counts.get(domain, 0) + 1
-
-    def ranked_brands(self) -> list[str]:
-        return [
-            brand
-            for brand, _count in sorted(
-                self.preferred_brand_counts.items(),
-                key=lambda item: (-item[1], item[0].lower()),
-            )
-        ]
-
-    def remember_brand(self, brand: str) -> None:
-        normalized_brand = str(brand or "").strip()
-        if not normalized_brand:
-            return
-        self.preferred_brand_counts[normalized_brand] = self.preferred_brand_counts.get(normalized_brand, 0) + 1
-
-    def dominant_domain(self, minimum_count: int = 2) -> str | None:
-        ranked = self.ranked_domains()
-        if not ranked:
-            return None
-        top_domain = ranked[0]
-        if self.preferred_domain_counts.get(top_domain, 0) < minimum_count:
-            return None
-        return top_domain
 
 
 class AISearchScraper:
