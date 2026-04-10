@@ -3,40 +3,40 @@
 /.next/
 /dist/
 .turbo/
+
+# AI Agent Workspaces & State
+.agents/
+.agent/
 .gemini/
+.sisyphus/
 .opencode/
+.playwright-mcp/
+.claude/
+.anthropic/
+.openai/
 .zencoder/
+.archive/
+.legacy/
+.data/
+
+# AI Agent Output Files
+task.md
+implementation_plan.md
+walkthrough.md
+
 .env*
 .DS_Store
 logs/
 tmp/
 .vscode/
 *.log
-.agents/
-.agent/
-.claude/
-# Sisyphus work tracking - keep plans and notepads, ignore evidence and boulder state
-.sisyphus/evidence/*
-!.sisyphus/evidence/.gitkeep
-!.sisyphus/evidence/README.md
-.sisyphus/boulder.json
-.sisyphus/archive/
-.sisyphus/drafts/
 docs/external/
 
 # Workspace / stray files
 test-coastal.js
-# ignore everything in .opencode except `opencode.json`
-.opencode/*
-!.opencode/opencode.json
 data/
 apps/scraper/.browser_storage_states/
 nul
-
-# Sisyphus QA Evidence - Ignore all evidence files except markers
-.sisyphus/evidence/*
-!.sisyphus/evidence/.gitkeep
-!.sisyphus/evidence/README.md
 pyrightconfig.json
 .vercel
 
