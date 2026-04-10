@@ -1,7 +1,9 @@
 "use client";
 
-import { Search, Plus, Database, CheckSquare, Archive, Loader2, Upload } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Plus, Database, CheckSquare, Archive, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
 import type { PipelineStage } from "@/lib/pipeline/types";
 
 interface PipelineToolbarProps {
@@ -15,7 +17,10 @@ interface PipelineToolbarProps {
   onManualAdd?: () => void;
   /** Opens the Integra import dialog */
   onIntegraImport?: () => void;
-  // Source filtering
+  // Advanced filters
+  filters: PipelineFiltersState;
+  onFilterChange: (filters: PipelineFiltersState) => void;
+  // Source filtering (deprecated in favor of filters.source, but kept for compatibility)
   sourceFilter?: string;
   onSourceFilterChange?: (value: string) => void;
   availableSourceFilters?: string[];
@@ -34,6 +39,8 @@ export function PipelineToolbar({
   onSelectAll,
   onManualAdd,
   onIntegraImport,
+  filters,
+  onFilterChange,
   sourceFilter = "",
   onSourceFilterChange,
   availableSourceFilters = [],
@@ -42,118 +49,157 @@ export function PipelineToolbar({
   onUploadShopSite,
   onDownloadZip,
 }: PipelineToolbarProps) {
-  const isImported = currentStage === "imported";
   const isScrapedStage = currentStage === "scraped";
-  const isFinalizing = currentStage === "finalizing";
-  const isPublished = currentStage === "published";
+  const isPublishedStage = currentStage === "published";
+  const isImportedStage = currentStage === "imported";
+
+  // State to track individual inputs
+  const [localSearch, setLocalSearch] = useState(search);
+
+  // Keep local search in sync with prop
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== search) {
+        onSearchChange(localSearch);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [localSearch, onSearchChange, search]);
 
   return (
-    <div
-      className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted px-4 py-3 shadow-sm"
-      role="toolbar"
-      aria-label="Pipeline toolbar"
-    >
-      {/* Select All (when none selected) */}
-      {selectedCount === 0 && !isFinalizing && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onSelectAll}
-          disabled={isLoading || totalCount === 0}
-          className="h-9 border-border text-muted-foreground hover:bg-muted"
-        >
-          <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
-          Select All ({totalCount})
-        </Button>
-      )}
-
-      {/* Search and Source Filter */}
-      <div className="flex flex-1 items-center gap-2 min-w-[300px]">
-        {isScrapedStage && onSourceFilterChange && (
-          <select
-            id="source-filter"
-            value={sourceFilter}
-            onChange={(e) => onSourceFilterChange(e.target.value)}
-            className="h-9 rounded-md border border-input bg-card px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    <div className="flex flex-wrap items-center justify-between gap-4 py-4 border-b border-border">
+      <div className="flex flex-1 items-center gap-4">
+        {/* Selection State */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onSelectAll}
+            className="h-8 px-2 text-muted-foreground hover:text-foreground"
           >
-            <option value="">All Sources</option>
-            {availableSourceFilters.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        )}
+            {selectedCount > 0 ? (
+              <span className="flex items-center text-brand-forest-green font-medium">
+                <CheckSquare className="mr-1.5 h-4 w-4" />
+                {selectedCount} Selected
+              </span>
+            ) : (
+              <span className="flex items-center">
+                <CheckSquare className="mr-1.5 h-4 w-4" />
+                Select All ({totalCount})
+              </span>
+            )}
+          </Button>
+          {selectedCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSelectAll()} // actually onSelectAll(false) if we support it
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </Button>
+          )}
+        </div>
 
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by SKU or name..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-md border border-input bg-card pl-9 pr-3 py-1.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        <div className="h-4 w-[1px] bg-border mx-1" />
+
+        {/* Search and Source Filter */}
+        <div className="flex flex-1 items-center gap-2 min-w-[300px]">
+          <PipelineFilters 
+            filters={filters} 
+            onFilterChange={onFilterChange} 
+            className="h-9"
           />
+
+          <div className="relative flex-1 group">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
+            <input
+              type="text"
+              placeholder="Search SKUs or names..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-forest-green/50 focus-visible:border-brand-forest-green disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            {localSearch && (
+              <button
+                onClick={() => setLocalSearch("")}
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {isScrapedStage && onSourceFilterChange && !filters.source && (
+            <select
+              value={sourceFilter}
+              onChange={(e) => onSourceFilterChange(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-forest-green/50 focus-visible:border-brand-forest-green"
+            >
+              <option value="">All Sources</option>
+              {availableSourceFilters.map((source) => (
+                <option key={source} value={source}>
+                  {source}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
-      {/* Static Actions (Import/Add) */}
       <div className="flex items-center gap-2">
-        {isPublished && selectedCount === 0 && onUploadShopSite && onDownloadZip && (
+        {isPublishedStage && (
           <>
             <Button
               variant="outline"
               size="sm"
               onClick={onUploadShopSite}
-              disabled={isLoading || totalCount === 0 || actionState !== null}
-              className="h-9 border-primary/20 text-primary hover:bg-primary/5 hover:text-primary"
+              disabled={isLoading || actionState === "upload"}
+              className="h-9 border-brand-forest-green/20 text-brand-forest-green hover:bg-brand-forest-green/5"
             >
               {actionState === "upload" ? (
-                <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                  Uploading…
-                </>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Upload className="mr-1.5 h-4 w-4" />
-                  Upload to ShopSite
-                </>
+                <Upload className="mr-1.5 h-4 w-4" />
               )}
+              Upload to ShopSite
             </Button>
             <Button
+              variant="outline"
               size="sm"
               onClick={onDownloadZip}
-              disabled={isLoading || totalCount === 0 || actionState !== null}
-              className="h-9 bg-primary text-white hover:bg-primary/90"
+              disabled={isLoading || actionState === "zip"}
+              className="h-9 border-brand-burgundy/20 text-brand-burgundy hover:bg-brand-burgundy/5"
             >
               {actionState === "zip" ? (
-                <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                  Downloading ZIP…
-                </>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Archive className="mr-1.5 h-4 w-4" />
-                  Download Image ZIP
-                </>
+                <Archive className="mr-1.5 h-4 w-4" />
               )}
+              Images ZIP
             </Button>
           </>
         )}
 
-        {isImported && onIntegraImport && (
+        {isImportedStage && (
           <Button
             variant="outline"
             size="sm"
             onClick={onIntegraImport}
-            className="h-9 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+            disabled={isLoading}
+            className="h-9 border-border text-muted-foreground hover:bg-muted"
           >
             <Database className="mr-1.5 h-4 w-4" />
-            Import from Integra
+            Import CSV
           </Button>
         )}
 
-        {isImported && onManualAdd && (
+        {onManualAdd && (
           <Button
             variant="outline"
             size="sm"

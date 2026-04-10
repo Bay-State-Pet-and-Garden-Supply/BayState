@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Brain } from "lucide-react";
+import { Activity, Brain, ChevronRight, Layers } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
@@ -13,6 +13,14 @@ import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import type { PipelineFiltersState } from "./PipelineFilters";
 import dynamic from "next/dynamic";
 import type {
   PipelineProduct,
@@ -109,8 +117,9 @@ export function PipelineClient({
     "upload" | "zip" | null
   >(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
+  const [cohortFilter, setCohortFilter] = useState(searchParams.get("cohort_id") || "");
   const publishedSkuCacheRef = useRef<string[] | null>(null);
 
   const availableSourceFilters = useMemo(() => {
@@ -139,6 +148,29 @@ export function PipelineClient({
         .includes(sourceFilter);
     });
   }, [products, search, sourceFilter, currentStage]);
+
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, PipelineProduct[]> = {};
+    const cohortIds: string[] = [];
+
+    filteredProducts.forEach((product) => {
+      const cohortId = product.cohort_id || "ungrouped";
+      if (!groups[cohortId]) {
+        groups[cohortId] = [];
+        cohortIds.push(cohortId);
+      }
+      groups[cohortId].push(product);
+    });
+
+    // Sort cohort IDs: ungrouped first, then alphabetical
+    cohortIds.sort((a, b) => {
+      if (a === "ungrouped") return -1;
+      if (b === "ungrouped") return 1;
+      return a.localeCompare(b);
+    });
+
+    return { groups, cohortIds };
+  }, [filteredProducts]);
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
@@ -170,6 +202,8 @@ export function PipelineClient({
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
+        if (sourceFilter && stage === "scraped") params.set("source", sourceFilter);
+        if (cohortFilter) params.set("cohort_id", cohortFilter);
 
         const res = await fetch(`/api/admin/pipeline?${params}`, { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to fetch products");
@@ -182,7 +216,7 @@ export function PipelineClient({
         if (!silent) setIsLoading(false);
       }
     },
-    [],
+    [sourceFilter, cohortFilter],
   );
 
   // Fetch counts for all stages
@@ -287,6 +321,7 @@ export function PipelineClient({
   }, [currentStage, search, fetchProducts, fetchCounts, fetchPublishedProducts]);
 
   const isFirstMount = useRef(true);
+  const lastFetchedSearch = useRef(searchParams.get("search") || "");
 
   // Sync state with props from Server Component
   useEffect(() => {
@@ -295,12 +330,20 @@ export function PipelineClient({
     setTotalCount(initialTotal);
     setSelectedSkus(new Set());
     setIsLoading(false);
-  }, [initialProducts, initialCounts, initialTotal]);
+    
+    // Update tracking ref on sync so we don't re-fetch immediately if initialProducts is already filtered
+    lastFetchedSearch.current = searchParams.get("search") || "";
+  }, [initialProducts, initialCounts, initialTotal, searchParams]);
 
   // Fetch products when search changes
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
+      return;
+    }
+
+    // Skip if search matches what we already have from props or last fetch
+    if (search === lastFetchedSearch.current) {
       return;
     }
 
@@ -321,11 +364,10 @@ export function PipelineClient({
         return;
       }
 
-      // Only fetch if there is a search filter. 
-      // Base stage data comes from server props!
-      if (search) {
-        await fetchProducts(currentStage, search);
-        if (isMounted) setSelectedSkus(new Set());
+      await fetchProducts(currentStage, search);
+      if (isMounted) {
+          setSelectedSkus(new Set());
+          lastFetchedSearch.current = search;
       }
     };
 
@@ -354,18 +396,51 @@ export function PipelineClient({
     void fetchPublishedProducts();
   }, [currentStage, fetchPublishedProducts]);
 
-  // Sync search and source filters with URL (if they exist in URL on load)
+  // Sync state from URL (e.g. on navigation or back button)
   useEffect(() => {
     const searchParam = searchParams.get("search") || "";
+    const sourceParam = searchParams.get("source") || "";
+    const cohortParam = searchParams.get("cohort_id") || "";
+
     if (searchParam !== search) {
       setSearch(searchParam);
     }
-    
-    const sourceParam = searchParams.get("source") || "";
     if (sourceParam !== sourceFilter) {
       setSourceFilter(sourceParam);
     }
-  }, [searchParams, search, sourceFilter]);
+    if (cohortParam !== cohortFilter) {
+      setCohortFilter(cohortParam);
+    }
+    // We only depend on searchParams to detect external changes (like back button)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Update URL when filters change (debounced)
+  useEffect(() => {
+    if (isFirstMount.current) return;
+    
+    const timer = setTimeout(() => {
+      const currentParams = new URLSearchParams(searchParams.toString());
+      const hasSearchChanged = (currentParams.get("search") || "") !== search;
+      const hasSourceChanged = (currentParams.get("source") || "") !== sourceFilter;
+      const hasCohortChanged = (currentParams.get("cohort_id") || "") !== cohortFilter;
+
+      if (!hasSearchChanged && !hasSourceChanged && !hasCohortChanged) return;
+
+      if (search) currentParams.set("search", search);
+      else currentParams.delete("search");
+
+      if (sourceFilter) currentParams.set("source", sourceFilter);
+      else currentParams.delete("source");
+
+      if (cohortFilter) currentParams.set("cohort_id", cohortFilter);
+      else currentParams.delete("cohort_id");
+
+      router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [search, sourceFilter, cohortFilter, pathname, router, searchParams]);
 
   // Handle stage tab change
   const handleStageChange = useCallback((stage: PipelineStage) => {
@@ -857,6 +932,14 @@ export function PipelineClient({
           onSelectAll={handleSelectAll}
           onManualAdd={() => setIsManualAddOpen(true)}
           onIntegraImport={() => setIsIntegraImportOpen(true)}
+          filters={{
+            source: sourceFilter,
+            cohort_id: cohortFilter,
+          }}
+          onFilterChange={(newFilters) => {
+            if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
+            if (newFilters.cohort_id !== undefined) setCohortFilter(newFilters.cohort_id || "");
+          }}
           sourceFilter={sourceFilter}
           onSourceFilterChange={setSourceFilter}
           availableSourceFilters={availableSourceFilters}
@@ -936,14 +1019,66 @@ export function PipelineClient({
             onRefresh={refreshAll}
           />
         ) : (
-          <ProductTable
-            products={filteredProducts}
-            selectedSkus={selectedSkus}
-            onSelectSku={handleSelectSku}
-            onSelectAll={handleSelectAllVisible}
-            onDeselectAll={handleClearSelection}
-            currentStage={currentStage}
-          />
+          <div className="space-y-4">
+            {groupedProducts.cohortIds.length <= 1 ? (
+              <ProductTable
+                products={filteredProducts}
+                selectedSkus={selectedSkus}
+                onSelectSku={handleSelectSku}
+                onSelectAll={handleSelectAllVisible}
+                onDeselectAll={handleClearSelection}
+                currentStage={currentStage}
+              />
+            ) : (
+              <Accordion type="multiple" defaultValue={groupedProducts.cohortIds} className="space-y-4">
+                {groupedProducts.cohortIds.map((cohortId) => {
+                  const groupProducts = groupedProducts.groups[cohortId] || [];
+                  return (
+                    <AccordionItem 
+                      key={cohortId} 
+                      value={cohortId}
+                      className="rounded-xl border border-border bg-card shadow-sm overflow-hidden"
+                    >
+                      <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                        <div className="flex items-center gap-3">
+                          <ChevronRight className="h-4 w-4 transition-transform duration-200 text-muted-foreground" />
+                          <div className="flex items-center gap-2">
+                            <Layers className="h-4 w-4 text-brand-forest-green" />
+                            <span className="font-semibold text-foreground">
+                              {cohortId === "ungrouped" ? "Ungrouped Products" : `Cohort: ${cohortId}`}
+                            </span>
+                            <Badge variant="secondary" className="ml-2 bg-muted text-muted-foreground font-normal">
+                              {groupProducts.length} items
+                            </Badge>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-0 border-t border-border">
+                        <ProductTable
+                          products={groupProducts}
+                          selectedSkus={selectedSkus}
+                          onSelectSku={(sku, selected, index, isShift) => 
+                            handleSelectSku(sku, selected, index, isShift, groupProducts)
+                          }
+                          onSelectAll={() => {
+                            const groupSkus = new Set(selectedSkus);
+                            groupProducts.forEach(p => groupSkus.add(p.sku));
+                            setSelectedSkus(groupSkus);
+                          }}
+                          onDeselectAll={() => {
+                            const groupSkus = new Set(selectedSkus);
+                            groupProducts.forEach(p => groupSkus.delete(p.sku));
+                            setSelectedSkus(groupSkus);
+                          }}
+                          currentStage={currentStage}
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            )}
+          </div>
         )}
       </div>
 

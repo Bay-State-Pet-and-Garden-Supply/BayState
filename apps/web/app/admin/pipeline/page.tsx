@@ -24,6 +24,10 @@ export default async function PipelinePage({ searchParams }: PageProps) {
         ? rawStageParam
         : undefined;
 
+    const search = typeof params.search === 'string' ? params.search : undefined;
+    const source = typeof params.source === 'string' ? params.source : undefined;
+    const cohort_id = typeof params.cohort_id === 'string' ? params.cohort_id : undefined;
+
     const initialStage: PipelineStage = stageParam && isPipelineStage(stageParam)
         ? stageParam
         : 'imported';
@@ -41,7 +45,12 @@ export default async function PipelinePage({ searchParams }: PageProps) {
 
         if (initialDataStatus) {
             const [pResult, countsResult] = await Promise.all([
-                getProductsByStatus(initialDataStatus, { limit: 500 }),
+                getProductsByStatus(initialDataStatus, { 
+                    limit: 500,
+                    search,
+                    source,
+                    cohort_id
+                }),
                 getStatusCounts(),
             ]);
             products = pResult.products;
