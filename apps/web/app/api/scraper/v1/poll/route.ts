@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
         };
 
         if (!versionCheck.isCompatible) {
-            await updateRunnerMetadata({});
+            await updateRunnerMetadata({ enabled: false, status: 'offline' });
             return createRunnerBuildMismatchResponse(versionCheck, {
                 'X-Enforced-Runner-Name': runnerName,
             });
