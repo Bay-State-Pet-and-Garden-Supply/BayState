@@ -121,6 +121,29 @@ def build_extraction_instruction(sku: str, brand: Optional[str], product_name: O
 
     return prompt_template.format(sku=sku, brand=brand_str, product_name=product_name_str)
 
+
+def compute_meta_confidence(
+    *,
+    matching_utils,
+    candidate_name: str,
+    resolved_brand: Optional[str],
+    source_url: str,
+    product_name: Optional[str],
+    brand: Optional[str],
+    has_structured_data: bool,
+) -> float:
+    """Score meta-tag extraction confidence using the same signals as fallback parsing."""
+    confidence = 0.65
+    if has_structured_data:
+        confidence += 0.15
+    if product_name and matching_utils.is_name_match(product_name, candidate_name):
+        confidence += 0.1
+    brand_candidate = resolved_brand or candidate_name
+    if brand and matching_utils.is_brand_match(brand, brand_candidate, source_url):
+        confidence += 0.1
+    return min(confidence, 0.85)
+
+
 def extract_product_from_meta_tags(
     extraction_utils,
     matching_utils,
@@ -173,6 +196,17 @@ def extract_product_from_meta_tags(
     if not images:
         return None
 
+    has_structured_data = bool(og_title or twitter_title or og_description or twitter_description or image_url)
+    confidence = compute_meta_confidence(
+        matching_utils=matching_utils,
+        candidate_name=candidate_name,
+        resolved_brand=resolved_brand,
+        source_url=source_url,
+        product_name=product_name,
+        brand=brand,
+        has_structured_data=has_structured_data,
+    )
+
     categories = extraction_utils.infer_categories(
         html_text=html_text,
         source_url=source_url,
@@ -189,6 +223,6 @@ def extract_product_from_meta_tags(
         "size_metrics": extraction_utils.extract_size_metrics(size_source),
         "images": images,
         "categories": categories or ["Product"],
-        "confidence": 0.8,
+        "confidence": confidence,
         "url": source_url,
     }

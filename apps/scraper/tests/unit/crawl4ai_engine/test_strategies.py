@@ -3,6 +3,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor, FallbackExtractor
+from scrapers.ai_search.matching import MatchingUtils
+from scrapers.ai_search.scoring import SearchScorer
 
 
 class TestCSSExtractionStrategy:
@@ -351,7 +353,10 @@ class TestExtractorFallbackBehavior:
         ):
             result = await extractor.extract("https://example.com/product", "SKU123", "Meta Product", "Meta Brand")
 
-        assert result == {"success": True, "product_name": "Meta Product", "confidence": 0.72}
+        assert result["success"] is True
+        assert result["product_name"] == "Meta Product"
+        assert result["confidence"] == 0.72
+        assert result["images"] == []
         mock_engine.crawl.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -559,6 +564,127 @@ class TestExtractorFallbackBehavior:
         assert result == {
             "success": False,
             "error": "Fallback extraction found no structured product data",
+        }
+
+    @pytest.mark.asyncio
+    async def test_fallback_extractor_recovers_exact_product_from_site_search_after_not_found(self):
+        """Not-found pages should retry against exact same-domain search matches before failing."""
+        fallback_extractor = FallbackExtractor(scoring=SearchScorer(), matching=MatchingUtils())
+
+        not_found_html = """
+        <html>
+          <head>
+            <title>Page not found - Lake Valley Seed</title>
+            <meta property="og:title" content="Page not found - Lake Valley Seed" />
+          </head>
+          <body>WHOOPS! 404</body>
+        </html>
+        """
+        search_html = """
+        <html>
+          <body>
+            <a href="https://lakevalleyseed.com/product/item-232-pepper-hot-fresno-chili/"></a>
+          </body>
+        </html>
+        """
+        recovered_html = """
+        <html>
+          <head>
+            <title>Pepper Hot Fresno Chili - Item #232</title>
+            <meta property="og:title" content="Pepper Hot Fresno Chili - Item #232" />
+            <meta property="og:description" content="Smoky-sweet pepper variety." />
+            <meta property="og:image" content="https://lakevalleyseed.com/wp-content/uploads/2021/08/232-pepper-fresnochili.jpg" />
+          </head>
+        </html>
+        """
+
+        def make_response(*, url: str, text: str, status_code: int):
+            response = MagicMock()
+            response.url = url
+            response.text = text
+            response.status_code = status_code
+            return response
+
+        async def fake_get(url, headers=None):
+            if "item-232-pepper-hot-fresno-chili" in url:
+                return make_response(url=url, text=recovered_html, status_code=200)
+            if "post_type=product" in url:
+                return make_response(url=url, text=search_html, status_code=200)
+            return make_response(url=url, text=not_found_html, status_code=404)
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = fake_get
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            result = await fallback_extractor.extract(
+                "https://lakevalleyseed.com/shop/vegetables/pepper-hot-fresno-chili",
+                "051178002327",
+                "Lake Valley Seed Pepper Hot Fresno Chili",
+                "Lake Valley Seed",
+            )
+
+        assert result["success"] is True
+        assert result["url"] == "https://lakevalleyseed.com/product/item-232-pepper-hot-fresno-chili/"
+        assert result["product_name"] == "Pepper Hot Fresno Chili - Item #232"
+
+    @pytest.mark.asyncio
+    async def test_fallback_extractor_does_not_recover_wrong_product_from_site_search(self):
+        """Recovery should reject loosely related search hits when the expected PDP is unavailable."""
+        fallback_extractor = FallbackExtractor(scoring=SearchScorer(), matching=MatchingUtils())
+
+        not_found_html = """
+        <html>
+          <head>
+            <title>Page not found - FirstMate Pet Foods</title>
+            <meta property="og:title" content="Page not found - FirstMate Pet Foods" />
+          </head>
+          <body>Page not found</body>
+        </html>
+        """
+        search_html = """
+        <html>
+          <head>
+            <script>
+              window.mcPixel = window.mcPixel || {};
+              window.mcPixel.data = {"search":{"query":"072318120039","resultsCount":0}};
+            </script>
+          </head>
+          <body>
+            <a href="https://firstmate.com/product/skoki-ranch-dog-food/">
+              SKOKI Ranch Dog Food
+            </a>
+          </body>
+        </html>
+        """
+
+        def make_response(*, url: str, text: str, status_code: int):
+            response = MagicMock()
+            response.url = url
+            response.text = text
+            response.status_code = status_code
+            return response
+
+        async def fake_get(url, headers=None):
+            if "post_type=product" in url or "?s=" in url:
+                return make_response(url=url, text=search_html, status_code=200)
+            return make_response(url=url, text=not_found_html, status_code=404)
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = fake_get
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            result = await fallback_extractor.extract(
+                "https://firstmate.com/products/lid-salmon-formula-whipped-pate-canned-dog-food",
+                "072318120039",
+                "Firstmate Dog Food LID Salmon",
+                "Firstmate",
+            )
+
+        assert result == {
+            "success": False,
+            "error": "Fallback extraction landed on a not-found page",
         }
 
 
