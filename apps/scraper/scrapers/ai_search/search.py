@@ -58,51 +58,6 @@ def canonicalize_result_url(url: str) -> str:
     )
 
 
-def _flatten_text_fragments(value: Any) -> list[str]:
-    """Flatten nested response text fragments into plain strings."""
-    if value is None:
-        return []
-    if isinstance(value, str):
-        cleaned = value.strip()
-        return [cleaned] if cleaned else []
-    if isinstance(value, (int, float)):
-        return [str(value)]
-    if isinstance(value, list):
-        flattened: list[str] = []
-        for item in value:
-            flattened.extend(_flatten_text_fragments(item))
-        return flattened
-    if isinstance(value, dict):
-        flattened = []
-        for item in value.values():
-            flattened.extend(_flatten_text_fragments(item))
-        return flattened
-    return []
-
-
-def _dedupe_fragments(values: list[str]) -> list[str]:
-    seen: set[str] = set()
-    deduped: list[str] = []
-
-    for value in values:
-        normalized = " ".join(value.split())
-        if not normalized:
-            continue
-        key = normalized.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(normalized)
-
-    return deduped
-
-
-def _format_description(primary: str, extras: list[str]) -> str:
-    if primary.strip():
-        return primary.strip()
-    if extras:
-        return " | ".join(extras[:3])
-    return ""
 
 
 def _dedupe_results(results: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
