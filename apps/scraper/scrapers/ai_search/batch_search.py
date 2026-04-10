@@ -125,21 +125,28 @@ class BatchSearchOrchestrator:
         scorer: Any,
         name_consolidator: NameConsolidator | None = None,
         cohort_state: _BatchCohortState | None = None,
+        validator: ExtractionValidator | None = None,
     ):
         self._search_client = search_client
         self._extractor = extractor
         self._scorer = scorer
         self._name_consolidator = name_consolidator
-        self._validator = ExtractionValidator()
+        self._validator = validator or ExtractionValidator()
         self._product_context: dict[str, ProductInput] = {}
         self._cohort_state = cohort_state
 
-    async def search_cohort(self, products: list[ProductInput]) -> BatchSearchResult:
+    async def search_cohort(
+        self,
+        products: list[ProductInput],
+        *,
+        max_search_concurrent: int = 5,
+        max_extract_concurrent: int = 3,
+    ) -> BatchSearchResult:
         """Search all SKUs in a cohort."""
         self._product_context = {product.sku: product for product in products}
 
         # Step 1: Search all SKUs in parallel
-        search_results = await self.search_all_skus(products, max_concurrent=5)
+        search_results = await self.search_all_skus(products, max_concurrent=max_search_concurrent)
 
         # Step 2: Analyze domain frequency
         domain_frequency = self.analyze_domain_frequency(search_results)
@@ -161,7 +168,7 @@ class BatchSearchOrchestrator:
 
         # Step 4: Batch extraction from top URLs
         selections = {sku: ranked[:3] for sku, ranked in ranked_results.items()}
-        extractions = await self.extract_batch(selections, max_concurrent=3)
+        extractions = await self.extract_batch(selections, max_concurrent=max_extract_concurrent)
 
         # Step 5: Build final results
         final_ranked: dict[str, list[RankedResult]] = {}

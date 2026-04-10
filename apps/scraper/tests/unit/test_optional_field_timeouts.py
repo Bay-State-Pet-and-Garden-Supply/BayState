@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from scrapers.actions.handlers.extract import (
-    DEFAULT_OPTIONAL_FIELD_TIMEOUT_MS,
     ExtractAction,
     ExtractMultipleAction,
 )

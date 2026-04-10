@@ -1217,7 +1217,7 @@ def _run_ai_search_job(
             extraction_strategy=extraction_strategy,
             prefer_manufacturer=prefer_manufacturer,
         )
-        return await scraper.scrape_products_batch(items)
+        return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
 
     try:
         batch_results = asyncio.run(_run())

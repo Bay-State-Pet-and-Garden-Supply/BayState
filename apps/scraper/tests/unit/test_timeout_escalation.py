@@ -6,7 +6,7 @@ import pytest
 
 from core.adaptive_retry_strategy import AdaptiveRetryConfig, AdaptiveRetryStrategy, FailureType, RetryStrategy
 from core.retry_executor import RetryExecutor
-from scrapers.exceptions import ErrorContext, TimeoutError
+from scrapers.exceptions import ErrorContext
 from scrapers.executor.selector_resolver import SelectorResolver
 
 

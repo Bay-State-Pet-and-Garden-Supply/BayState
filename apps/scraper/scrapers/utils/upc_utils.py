@@ -5,7 +5,6 @@ Provides functions for validating, normalizing, and extracting prefixes from UPC
 following GS1 GTIN standards (GTIN-8, GTIN-12, GTIN-13, GTIN-14).
 """
 
-import re
 from typing import Optional, Tuple
 
 UPC_LENGTHS = [8, 12, 13, 14]  # GTIN standards

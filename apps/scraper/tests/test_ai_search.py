@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any, Optional
+from unittest.mock import patch
 
 from scrapers.ai_search import AISearchScraper
 from scrapers.ai_search.models import AISearchResult
@@ -382,6 +383,10 @@ def test_scrape_products_batch_prefers_previously_accepted_cohort_domain() -> No
             super().__init__(**kwargs)
             self._search_client = CohortSearchClient()
 
+        async def _should_skip_url(self, url: str) -> bool:
+            _ = url
+            return False
+
         async def _extract_product_data(
             self,
             url: str,
@@ -435,6 +440,10 @@ def test_scrape_products_batch_carries_forward_inferred_brand_and_domain_hints()
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.collect_calls: list[dict[str, Any]] = []
+
+        async def _should_skip_url(self, url: str) -> bool:
+            _ = url
+            return False
 
         async def _collect_search_candidates(
             self,
@@ -558,6 +567,78 @@ def test_scrape_products_batch_normalizes_failed_items_to_dominant_domain() -> N
     assert scraper._attempts["SKU-1"] == 2
 
 
+def test_scrape_products_batch_uses_batch_search_orchestrator_for_base_scraper() -> None:
+    observed: dict[str, Any] = {}
+
+    class FakeBatchSearchResult:
+        def __init__(self, results: list[AISearchResult]) -> None:
+            self._results = results
+
+        def to_search_results(self) -> list[AISearchResult]:
+            return list(self._results)
+
+    class FakeOrchestrator:
+        def __init__(self, **kwargs: Any) -> None:
+            observed["kwargs"] = kwargs
+
+        async def search_cohort(
+            self,
+            products: list[Any],
+            *,
+            max_search_concurrent: int = 5,
+            max_extract_concurrent: int = 3,
+        ) -> FakeBatchSearchResult:
+            observed["products"] = products
+            observed["max_search_concurrent"] = max_search_concurrent
+            observed["max_extract_concurrent"] = max_extract_concurrent
+            return FakeBatchSearchResult(
+                [
+                    AISearchResult(
+                        success=True,
+                        sku=product.sku,
+                        product_name=product.name,
+                        brand=product.brand,
+                        url=f"https://petswarehouse.com/products/{product.sku.lower()}",
+                        source_website="petswarehouse.com",
+                        confidence=0.9,
+                        images=["https://petswarehouse.com/image.jpg"],
+                    )
+                    for product in products
+                ]
+            )
+
+    with patch("scrapers.ai_search.scraper.BatchSearchOrchestrator", FakeOrchestrator):
+        scraper = AISearchScraper(confidence_threshold=0.7)
+        results = asyncio.run(
+            scraper.scrape_products_batch(
+                [
+                    {
+                        "sku": "SKU-1",
+                        "product_name": "Acme Pads Small 10 Count",
+                        "brand": "Acme",
+                        "category": "Cat Supplies",
+                    },
+                    {
+                        "sku": "SKU-2",
+                        "product_name": "Acme Pads Large 20 Count",
+                        "brand": "Acme",
+                        "category": "Cat Supplies",
+                    },
+                ],
+                max_concurrency=2,
+            )
+        )
+
+    assert observed["kwargs"]["validator"] is scraper._validator
+    assert observed["max_search_concurrent"] == 2
+    assert observed["max_extract_concurrent"] == 2
+    assert [product.sku for product in observed["products"]] == ["SKU-1", "SKU-2"]
+    assert [result.url for result in results] == [
+        "https://petswarehouse.com/products/sku-1",
+        "https://petswarehouse.com/products/sku-2",
+    ]
+
+
 def test_scrape_product_rejects_unrelated_result() -> None:
     class StubCrawl4AIExtractor:
         async def extract(
@@ -596,6 +677,10 @@ def test_scrape_product_rejects_unrelated_result() -> None:
             self._crawl4ai_extractor = StubCrawl4AIExtractor()
             self._fallback_extractor = StubCrawl4AIExtractor()
             self._search_client = StubSearchClient()
+
+        async def _should_skip_url(self, url: str) -> bool:
+            _ = url
+            return False
 
         async def _identify_best_source(
             self,

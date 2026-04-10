@@ -3,6 +3,7 @@
 import asyncio as _asyncio
 import random as _random
 import time as _time
+from types import SimpleNamespace
 from typing import Any, Optional
 import logging
 import re
@@ -283,15 +284,36 @@ class Crawl4AIEngine:
 
     async def __aenter__(self) -> "Crawl4AIEngine":
         """Enter async context manager."""
-        self._crawler = AsyncWebCrawler(config=self._browser_config)
-        await self._crawler.__aenter__()
+        await self.initialize()
         return self
 
     async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[BaseException], exc_tb: Any) -> None:
         """Exit async context manager."""
-        if self._crawler:
-            await self._crawler.__aexit__(exc_type, exc_val, exc_tb)
-            self._crawler = None
+        await self.cleanup()
+
+    def _create_crawler(self) -> AsyncWebCrawler:
+        """Build the AsyncWebCrawler instance for the current browser config."""
+        return AsyncWebCrawler(config=self._browser_config)
+
+    async def initialize(self) -> None:
+        """Initialize the underlying crawler.
+
+        Older benchmark helpers call this method directly instead of using the
+        async context manager, so keep the explicit lifecycle API available.
+        """
+        if self._crawler is not None:
+            return
+
+        self._crawler = self._create_crawler()
+        await self._crawler.__aenter__()
+
+    async def cleanup(self) -> None:
+        """Dispose of the underlying crawler if it was initialized."""
+        if self._crawler is None:
+            return
+
+        await self._crawler.__aexit__(None, None, None)
+        self._crawler = None
 
     async def crawl(self, url: str) -> dict[str, Any]:
         """Crawl a single URL.
@@ -448,4 +470,14 @@ class Crawl4AIEngine:
             return collected_results
 
         return [_record_and_build(item) for item in results]
+
+    async def crawl_multiple(self, urls: list[str]) -> list[Any]:
+        """Compatibility wrapper for legacy benchmark callers.
+
+        The historical API returned attribute-style result objects; the newer
+        engine uses normalized dictionaries internally. Adapt the modern output
+        back into a simple attribute-bearing shape for callers that still use
+        ``getattr(result, "success", ...)``.
+        """
+        return [SimpleNamespace(**result) for result in await self.crawl_many(urls)]
 

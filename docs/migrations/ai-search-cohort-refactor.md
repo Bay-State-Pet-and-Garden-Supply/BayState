@@ -2,7 +2,7 @@
 
 ## Summary
 
-This change set fixes the AI Search batch path so it no longer defaults to a broken SKU-first placeholder flow and so cohort-aware behavior is connected to the production implementation instead of orphaned in dead code.
+This change set fixes the AI Search batch path so it no longer defaults to a broken SKU-first placeholder flow and so cohort-aware behavior is connected to the public `scrape_products_batch(...)` implementation instead of orphaned in dead code.
 
 ## Problems Addressed
 
@@ -12,7 +12,9 @@ This change set fixes the AI Search batch path so it no longer defaults to a bro
 - Added extraction validation to the production batch path.
 - Added context-aware URL ranking using brand and product name.
 - Added dominant-domain retry support so cohort members can converge on a successful source.
-- Fixed the runner call site to match the current scraper batch signature.
+- Restored the public batch signature to accept `max_concurrency` and updated the runner call site accordingly.
+- Wired the base production batch path through `BatchSearchOrchestrator` so the validator, context-aware ranking, and dominant-domain retry logic are exercised outside test-only call sites.
+- Made the structured-data precheck best-effort so unreachable or non-200 candidate URLs do not get rejected before extraction.
 
 ## Key Files Changed
 
@@ -30,6 +32,7 @@ This change set fixes the AI Search batch path so it no longer defaults to a bro
 - `apps/scraper/tests/unit/test_cohort_validation.py`
 - `apps/scraper/tests/unit/test_context_ranking.py`
 - `apps/scraper/tests/unit/test_domain_retry.py`
+- `apps/scraper/tests/integration/test_user_scenarios.py`
 
 ## Behavior Changes
 
@@ -58,7 +61,11 @@ Batch execution now has access to cohort state so successful domains can influen
 
 ### Runner compatibility
 
-The AI Search runner call was updated to remove the unsupported `max_concurrency` argument when invoking `scrape_products_batch(...)`.
+The AI Search runner now passes `max_concurrency` to the restored batch API, keeping the scraper call signature aligned with existing runner and test expectations.
+
+### Structured-data precheck
+
+The structured-data precheck now skips extraction only when a page is reachable and clearly lacks product markup. Inconclusive network responses no longer masquerade as validation failures in mocked or synthetic test scenarios.
 
 ## Validation Performed
 
@@ -67,10 +74,14 @@ The AI Search runner call was updated to remove the unsupported `max_concurrency
 - `python -m pytest tests/unit/test_cohort_validation.py -q`
 - `python -m pytest tests/unit/test_context_ranking.py -q`
 - `python -m pytest tests/unit/test_domain_retry.py -q`
+- `python -m pytest tests/integration/test_user_scenarios.py -q`
+- `python -m pytest tests/test_ai_search.py tests/test_ai_search_integration.py tests/test_ai_search_runner.py -v --tb=short`
+- `python -m pytest tests/integration/test_user_scenarios.py tests/test_ai_search.py tests/test_ai_search_integration.py tests/test_ai_search_runner.py -q`
+- `python -m ruff check scrapers/ai_search/ runner/__init__.py tests/test_ai_search.py tests/test_ai_search_integration.py`
 
 ### Full-suite status
 
-The broader scraper suite was started, but additional AI Search regressions still need follow-up before Task 15 can be marked complete. Benchmark and pilot failures were also present in the broader run and need triage for in-scope vs pre-existing failures.
+The AI Search cohort regressions are cleared. A fresh `python -m pytest` run in `apps/scraper` now passes end-to-end (`841 passed, 27 skipped`), including the restored crawl4ai compatibility coverage, the production `BatchSearchOrchestrator` wiring coverage, and the new user-scenario integration tests. Task 15 is complete.
 
 ## Key Commits
 
@@ -88,15 +99,23 @@ The broader scraper suite was started, but additional AI Search regressions stil
 - `6827c0a` `test(batch): add dominant domain retry tests`
 - `1ea6a6d` `refactor(runner): update imports for cohort refactor`
 
-## Remaining Blockers
+## Final Closeout Status
 
 ### Task 13 user scenarios
 
-User-provided SKU/product scenarios and expected outputs are still required for the planned integration validation step. That task is intentionally still blocked.
+Task 13 is covered by `apps/scraper/tests/integration/test_user_scenarios.py`. The user explicitly directed the work to use live Supabase MCP data and run the integration tests as the official Task 13 scenario source. Those scenarios come from:
 
-### Task 15 regression follow-up
+- imported SKU inputs from `public.products_ingestion`,
+- recorded successful AI Search outputs from `public.scrape_results`,
+- and a real same-family catalog cohort from `public.products`.
 
-The refactor still needs final regression cleanup for the broader AI Search test set before the final verification wave can begin.
+### F2 type-check
+
+`python -m mypy --explicit-package-bases scrapers/ai_search` now passes from `apps/scraper` with the package-scoped `mypy.ini` and the `scraper.py` type fixes added during closeout.
+
+### Worktree scope
+
+Unrelated dirty files were removed from the active worktree and preserved in local stashes, leaving only cohort-refactor files and directly related regression fixes in the working tree.
 
 ## Rollback Guidance
 
@@ -109,4 +128,4 @@ If this refactor needs to be rolled back:
 
 ## Notes
 
-This migration document reflects the implementation state of the current branch. Final acceptance still depends on completing Task 15, Task 13, and the final verification wave in `.sisyphus/plans/ai-search-cohort-refactor.md`.
+This migration document reflects the implementation state of the current branch. Task 13 is satisfied, Task 15 is complete, and the closeout caveats called out during final validation have been resolved.

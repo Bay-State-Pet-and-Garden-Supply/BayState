@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from typing import Any
 
 from scrapers.ai_search.batch_search import (
     BatchSearchOrchestrator,
     DomainFrequency,
-    ProductInput,
-    RankedResult,
     SearchResult,
 )
 from scrapers.ai_search.cohort_state import _BatchCohortState

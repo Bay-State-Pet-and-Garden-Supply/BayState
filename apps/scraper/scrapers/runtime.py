@@ -19,7 +19,7 @@ import time
 from datetime import datetime
 from queue import Empty, Queue
 from threading import Barrier, BrokenBarrierError, Lock
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +28,10 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from core.events import *
-from core.api_client import *
-from core.settings_manager import *
+from core.events import EventEmitter, create_emitter
+from core.settings_manager import settings
 from core.config import use_yaml_configs
 from utils.logger import setup_logging
-
-if TYPE_CHECKING:
-    pass  # EventEmitter is already imported above
 
 
 def run_scraping(
@@ -588,7 +584,7 @@ def run_scraping(
                 try:
                     # We can't await here, so we rely on GC or loop cleanup
                     pass
-except Exception:
+                except Exception:
                     pass
             # We continue to the barrier to not block other workers
 

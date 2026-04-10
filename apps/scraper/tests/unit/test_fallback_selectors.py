@@ -4,9 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from core.timeout_config import TIER_FALLBACK, TIER_IMPORTANT, TimeoutConfig
 from scrapers.executor.selector_resolver import SelectorResolver
-from scrapers.models.config import SelectorConfig
 
 
 @pytest.fixture

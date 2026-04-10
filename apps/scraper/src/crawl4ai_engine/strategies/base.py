@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from importlib import import_module
+from importlib import import_module as _stdlib_import_module
 import json
-from abc import abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import Protocol, cast
 
 SelectorConfig = Mapping[str, object]
 SelectorInput = SelectorConfig | Sequence[SelectorConfig]
+import_module = _stdlib_import_module
 
 
 class AsyncCrawlerProtocol(Protocol):
@@ -33,9 +33,13 @@ class BaseExtractionStrategy:
 
     def __init__(self, schema: dict[str, object]):
         self.schema: dict[str, object] = schema
-        extraction_module = import_module("crawl4ai.extraction_strategy")
+        extraction_module = self._load_extraction_module()
         strategy_cls = cast(StrategyFactory, getattr(extraction_module, self._STRATEGY_CLASS_NAME))
         self._strategy: object = strategy_cls(schema)
+
+    @classmethod
+    def _load_extraction_module(cls) -> object:
+        return import_module("crawl4ai.extraction_strategy")
 
     @classmethod
     def from_yaml_selectors(
