@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import {
+    buildRunnerBuildMetadata,
+    createRunnerBuildMismatchResponse,
+    getRunnerBuildCheck,
+    loadExpectedRunnerRelease,
+} from '@/lib/scraper-runner-version';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
@@ -39,6 +45,35 @@ export async function POST(request: NextRequest) {
         const runnerName = runner.runnerName;
         const supabase = getSupabaseAdmin();
         const nowIso = new Date().toISOString();
+
+        const expectedRelease = await loadExpectedRunnerRelease(supabase, request.headers);
+        const versionCheck = getRunnerBuildCheck(request.headers, expectedRelease);
+
+        const { data: runnerRows } = await supabase
+            .from('scraper_runners')
+            .select('metadata')
+            .eq('name', runnerName);
+
+        const existingMetadata = runnerRows?.[0]?.metadata;
+        const versionMetadata = buildRunnerBuildMetadata(
+            existingMetadata,
+            versionCheck,
+            nowIso
+        );
+
+        if (!versionCheck.isCompatible) {
+            await supabase.from('scraper_runners').update({ 
+                enabled: false, 
+                status: 'offline',
+                metadata: versionMetadata,
+                last_seen_at: nowIso,
+            }).eq('name', runnerName);
+            
+            return createRunnerBuildMismatchResponse(versionCheck, {
+                'X-Enforced-Runner-Name': runnerName,
+            });
+        }
+
         let leaseExpiresAt: string | null = null;
 
         if (body.current_job_id) {

@@ -195,14 +195,19 @@ export function buildRunnerBuildMetadata(
     const priorMetadata =
         existingMetadata && typeof existingMetadata === 'object' ? existingMetadata : {};
 
+    // If the runner is running the expected release, we can use the expected release's digest (which matches the GitHub Packages view)
+    const displayVersion = check.expectedRelease && check.runnerBuildId && check.runnerBuildId === check.expectedRelease.buildId 
+        ? (check.expectedRelease.digest?.replace(/^sha256:/, '') || check.expectedRelease.buildSha || check.runnerBuildId)
+        : (check.runnerBuildSha ?? check.runnerBuildId ?? priorMetadata.version ?? null);
+
     return {
         ...priorMetadata,
-        version: check.runnerBuildSha ?? check.runnerBuildId ?? priorMetadata.version ?? null,
+        version: displayVersion,
         build_id: check.runnerBuildId,
         build_sha: check.runnerBuildSha,
         release_channel: check.releaseChannel,
         latest_build_id: check.expectedRelease?.buildId ?? null,
-        latest_build_sha: check.expectedRelease?.buildSha ?? null,
+        latest_build_sha: check.expectedRelease?.digest?.replace(/^sha256:/, '') ?? check.expectedRelease?.buildSha ?? null,
         build_compatible: check.isCompatible,
         build_check_reason: check.status,
         build_last_checked_at: checkedAt,
