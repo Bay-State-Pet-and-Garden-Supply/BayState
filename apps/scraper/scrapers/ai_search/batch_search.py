@@ -114,6 +114,10 @@ class BatchSearchResult:
 class BatchSearchOrchestrator:
     """Orchestrates cohort-wide search and URL selection."""
 
+    _MAX_DOMINANT_RETRIES: int = 2
+    _MAX_SITE_SEARCH_QUERIES: int = 3
+    _MAX_SITE_SEARCH_RESULTS: int = 5
+
     def __init__(
         self,
         search_client: Any,
@@ -434,6 +438,154 @@ class BatchSearchOrchestrator:
         except Exception:
             return ""
 
+    @staticmethod
+    def _normalize_domain(value: str) -> str:
+        """Normalize a bare domain or URL into a comparable domain string."""
+        normalized = str(value or "").strip().lower().strip("/")
+        if normalized.startswith("http://"):
+            normalized = normalized[len("http://") :]
+        elif normalized.startswith("https://"):
+            normalized = normalized[len("https://") :]
+        if normalized.startswith("www."):
+            normalized = normalized[4:]
+        return normalized.split("/", 1)[0].strip()
+
+    def _remember_successful_domain(self, url: str) -> None:
+        """Record a successful extraction domain for cohort ranking."""
+        if not self._cohort_state:
+            return
+        domain = self._extract_domain(url)
+        self._cohort_state.remember_domain(domain)
+
+    async def _extract_and_validate(
+        self,
+        sku: str,
+        candidate: SearchResult,
+        product_name: str | None,
+        brand: str | None,
+    ) -> tuple[dict[str, Any] | None, str]:
+        """Extract and validate a single candidate URL."""
+        source_url = candidate.url
+
+        try:
+            result = await self._extractor.extract(
+                source_url,
+                sku,
+                candidate.title,
+                None,
+            )
+        except Exception as exc:
+            error_message = str(exc).strip()
+            return None, error_message or "Extraction failed"
+
+        result.setdefault("url", source_url)
+
+        if not result.get("success"):
+            return None, str(result.get("error") or "Extraction failed")
+
+        is_acceptable, rejection_reason = self._validator.validate_extraction_match(
+            extraction_result=result,
+            sku=sku,
+            product_name=product_name,
+            brand=brand,
+            source_url=source_url,
+        )
+        if not is_acceptable:
+            return None, rejection_reason
+
+        self._remember_successful_domain(str(result.get("url") or source_url))
+        return result, ""
+
+    async def _extract_ranked_results(
+        self,
+        sku: str,
+        ranked_results: list[RankedResult],
+        product_name: str | None,
+        brand: str | None,
+        attempted_urls: set[str],
+    ) -> tuple[dict[str, Any] | None, str]:
+        """Try extracting a ranked list until one result validates."""
+        last_error = "All URLs failed"
+
+        for ranked in ranked_results:
+            source_url = ranked.result.url
+            if not source_url or source_url in attempted_urls:
+                continue
+            if self._is_blocked_url(source_url):
+                continue
+
+            attempted_urls.add(source_url)
+            result, error = await self._extract_and_validate(
+                sku=sku,
+                candidate=ranked.result,
+                product_name=product_name,
+                brand=brand,
+            )
+            if result:
+                return result, ""
+            if error:
+                last_error = error
+
+        return None, last_error
+
+    async def _search_site_specific(
+        self,
+        domain: str,
+        product: ProductInput | None,
+    ) -> list[RankedResult]:
+        """Run a targeted site search for the dominant cohort domain."""
+        if not product:
+            return []
+
+        normalized_domain = self._normalize_domain(domain)
+        if not normalized_domain:
+            return []
+
+        query_builder = QueryBuilder()
+        queries = query_builder.build_site_query_variants(
+            domains=[normalized_domain],
+            sku=product.sku,
+            product_name=product.name,
+            brand=product.brand,
+            category=None,
+        )
+        if not queries:
+            return []
+
+        site_results: dict[str, SearchResult] = {}
+        for query in queries[: self._MAX_SITE_SEARCH_QUERIES]:
+            try:
+                raw_results, error = await self._search_client.search(query)
+            except Exception:
+                continue
+
+            if error:
+                continue
+
+            for raw_result in raw_results:
+                candidate = SearchResult(
+                    url=raw_result.get("url", ""),
+                    title=raw_result.get("title"),
+                    description=raw_result.get("description"),
+                )
+                if not candidate.url:
+                    continue
+                if self._extract_domain(candidate.url) != normalized_domain:
+                    continue
+                _ = site_results.setdefault(candidate.url, candidate)
+
+            if len(site_results) >= self._MAX_SITE_SEARCH_RESULTS:
+                break
+
+        return self.rank_urls_for_sku(
+            sku=product.sku,
+            search_results=list(site_results.values()),
+            domain_frequency={},
+            brand=product.brand,
+            product_name=product.name,
+            category=None,
+        )
+
     def rank_urls_for_sku(
         self,
         sku: str,
@@ -523,40 +675,53 @@ class BatchSearchOrchestrator:
                 product_name = product.name if product else None
                 brand = product.brand if product else None
                 last_error = "All URLs failed"
+                attempted_urls: set[str] = set()
+                retried_dominant_domains: set[str] = set()
+                dominant_retry_attempts = 0
 
                 for ranked in urls:
                     source_url = ranked.result.url
+                    if not source_url or source_url in attempted_urls:
+                        continue
                     if self._is_blocked_url(source_url):
                         continue
 
-                    try:
-                        result = await self._extractor.extract(
-                            source_url,
-                            sku,
-                            ranked.result.title,
-                            None,
-                        )
-                        result.setdefault("url", source_url)
+                    attempted_urls.add(source_url)
 
-                        if not result.get("success"):
-                            last_error = str(result.get("error") or last_error)
-                            continue
+                    result, error = await self._extract_and_validate(
+                        sku=sku,
+                        candidate=ranked.result,
+                        product_name=product_name,
+                        brand=brand,
+                    )
+                    if result:
+                        return sku, result
+                    if error:
+                        last_error = error
 
-                        is_acceptable, rejection_reason = self._validator.validate_extraction_match(
-                            extraction_result=result,
-                            sku=sku,
-                            product_name=product_name,
-                            brand=brand,
-                            source_url=source_url,
-                        )
-                        if is_acceptable:
-                            if self._cohort_state:
-                                domain = self._extract_domain(source_url)
-                                self._cohort_state.remember_domain(domain)
-                            return sku, result
-                        last_error = rejection_reason
-                    except Exception:
+                    dominant_domain = None
+                    if self._cohort_state and dominant_retry_attempts < self._MAX_DOMINANT_RETRIES:
+                        dominant_domain = self._cohort_state.dominant_domain(minimum_count=3)
+
+                    if not dominant_domain or dominant_domain in retried_dominant_domains:
                         continue
+
+                    retried_dominant_domains.add(dominant_domain)
+                    dominant_retry_attempts += 1
+
+                    site_specific_results = await self._search_site_specific(dominant_domain, product)
+                    retry_result, retry_error = await self._extract_ranked_results(
+                        sku=sku,
+                        ranked_results=site_specific_results,
+                        product_name=product_name,
+                        brand=brand,
+                        attempted_urls=attempted_urls,
+                    )
+                    if retry_result:
+                        return sku, retry_result
+                    if retry_error:
+                        last_error = retry_error
+
             return sku, {"success": False, "error": last_error}
 
         tasks = [extract_sku(sku, urls) for sku, urls in selections.items()]
