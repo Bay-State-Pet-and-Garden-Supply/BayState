@@ -892,7 +892,7 @@ class AISearchScraper:
     ) -> list[AISearchResult]:
         """Scrape multiple products using batched search."""
         # Check if SKU-first search is enabled
-        use_sku_first = os.getenv("AI_SEARCH_SKU_FIRST", "false").lower() == "true"
+        use_sku_first = os.getenv("AI_SEARCH_SKU_FIRST", "true").lower() == "true"
 
         # Create ProductInput objects
         product_inputs = [
