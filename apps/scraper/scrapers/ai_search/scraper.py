@@ -760,6 +760,7 @@ class AISearchScraper:
                     sku=sku,
                     name=str(product.get("product_name") or ""),
                     brand=str(product.get("brand") or "").strip() or None,
+                    category=str(product.get("category") or "").strip() or None,
                 )
             )
 

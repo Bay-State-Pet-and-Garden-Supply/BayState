@@ -25,6 +25,7 @@ class ProductInput:
     sku: str
     name: str
     brand: str | None = None
+    category: str | None = None
 
 
 @dataclass
@@ -145,8 +146,12 @@ class BatchSearchOrchestrator:
         """Search all SKUs in a cohort."""
         self._product_context = {product.sku: product for product in products}
 
-        # Step 1: Search all SKUs in parallel
-        search_results = await self.search_all_skus(products, max_concurrent=max_search_concurrent)
+        # Step 1: Search all SKUs in parallel. Missing-brand cohorts need the
+        # richer SKU-first flow so we can recover canonical names before ranking.
+        if self._should_use_sku_first(products):
+            search_results = await self.search_sku_first(products, max_concurrent=max_search_concurrent)
+        else:
+            search_results = await self.search_all_skus(products, max_concurrent=max_search_concurrent)
 
         # Step 2: Analyze domain frequency
         domain_frequency = self.analyze_domain_frequency(search_results)
@@ -162,7 +167,7 @@ class BatchSearchOrchestrator:
                     domain_frequency,
                     brand=product.brand,
                     product_name=product.name,
-                    category=None,
+                    category=product.category,
                 )
                 ranked_results[sku] = ranked
 
@@ -197,7 +202,7 @@ class BatchSearchOrchestrator:
                     sku=product.sku,
                     product_name=product.name,
                     brand=product.brand,
-                    category=None,
+                    category=product.category,
                 )
                 raw_results, error = await self._search_client.search(query)
                 if error:
@@ -239,7 +244,7 @@ class BatchSearchOrchestrator:
         sku_results = await self._search_by_sku_only(products, max_concurrent)
 
         # Phase 2: Name consolidation (parallel)
-        consolidated_names = await self._consolidate_names(sku_results, max_concurrent)
+        consolidated_names = await self._consolidate_names(products, sku_results, max_concurrent)
 
         # Phase 3: Manufacturer searches with consolidated names (parallel)
         manufacturer_results = await self._search_with_names(products, consolidated_names, max_concurrent)
@@ -291,6 +296,7 @@ class BatchSearchOrchestrator:
 
     async def _consolidate_names(
         self,
+        products: list[ProductInput],
         sku_results: dict[str, list[SearchResult]],
         max_concurrent: int,
     ) -> dict[str, tuple[str, list[dict[str, Any]]]]:
@@ -301,6 +307,7 @@ class BatchSearchOrchestrator:
 
         name_consolidator = self._name_consolidator
         semaphore = asyncio.Semaphore(max_concurrent)
+        product_map = {product.sku: product for product in products}
 
         async def consolidate_one(
             sku: str,
@@ -320,7 +327,14 @@ class BatchSearchOrchestrator:
 
                 return sku, (consolidated_name, snippets)
 
-        tasks = [consolidate_one(sku, "", results) for sku, results in sku_results.items()]
+        tasks = [
+            consolidate_one(
+                sku,
+                (product_map.get(sku).name if product_map.get(sku) is not None else ""),
+                results,
+            )
+            for sku, results in sku_results.items()
+        ]
 
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -359,7 +373,7 @@ class BatchSearchOrchestrator:
                     sku=product.sku,
                     product_name=consolidated_name,
                     brand=product.brand,
-                    category=None,
+                    category=product.category,
                 )
 
                 raw_results, error = await self._search_client.search(query)
@@ -464,6 +478,13 @@ class BatchSearchOrchestrator:
         domain = self._extract_domain(url)
         self._cohort_state.remember_domain(domain)
 
+    def _should_use_sku_first(self, products: list[ProductInput]) -> bool:
+        """Use SKU-first discovery when product context is too thin for direct ranking."""
+        if self._name_consolidator is None:
+            return False
+
+        return any(not str(product.brand or "").strip() for product in products)
+
     async def _extract_and_validate(
         self,
         sku: str,
@@ -478,8 +499,8 @@ class BatchSearchOrchestrator:
             result = await self._extractor.extract(
                 source_url,
                 sku,
-                candidate.title,
-                None,
+                product_name,
+                brand,
             )
         except Exception as exc:
             error_message = str(exc).strip()
@@ -590,7 +611,7 @@ class BatchSearchOrchestrator:
             domain_frequency={},
             brand=product.brand,
             product_name=product.name,
-            category=None,
+            category=product.category,
         )
 
     def rank_urls_for_sku(
@@ -619,6 +640,7 @@ class BatchSearchOrchestrator:
                 brand=brand,
                 product_name=product_name,
                 category=category,
+                prefer_manufacturer=True,
             )
 
             freq = domain_frequency.get(domain)
@@ -640,14 +662,6 @@ class BatchSearchOrchestrator:
                 dominant = self._cohort_state.dominant_domain(minimum_count=2)
                 if dominant and domain == dominant:
                     base_score += 2.0
-
-            from scrapers.ai_search.scoring import get_domain_success_rate
-
-            success_rate = get_domain_success_rate(domain)
-            if success_rate > 0.8:
-                base_score += 3.0
-            elif success_rate < 0.3:
-                base_score -= 3.0
 
             ranked.append(RankedResult(result=result, score=base_score))
 

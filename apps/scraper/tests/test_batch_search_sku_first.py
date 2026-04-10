@@ -10,6 +10,7 @@ from scrapers.ai_search.batch_search import (
     ProductInput,
     SearchResult,
 )
+from scrapers.ai_search.scoring import SearchScorer
 
 
 class MockSearchClient:
@@ -101,6 +102,110 @@ def test_search_sku_first_executes_three_phases() -> None:
     assert "12345" in search_client.search_calls  # Phase 1: SKU search
     assert any("Brand Product ABC" in call for call in search_client.search_calls)  # Phase 3: Name search
     assert len(consolidator.consolidate_calls) == 1  # Phase 2: Consolidation
+    assert consolidator.consolidate_calls == [("12345", "Prod ABC")]
+
+
+def test_search_cohort_uses_sku_first_to_find_official_bentley_result_when_brand_missing() -> None:
+    official_url = "https://bentleyseeds.com/products/jubilee-tomato-seed"
+
+    class BentleySearchClient:
+        def __init__(self) -> None:
+            self.search_calls: list[str] = []
+
+        async def search(self, query: str) -> tuple[list[dict[str, str]], str | None]:
+            self.search_calls.append(query)
+            if query == "051588178896":
+                return (
+                    [
+                        {
+                            "url": "https://www.edenbrothers.com/products/tomato_seeds_jubilee",
+                            "title": "Bentley Seed Tomato Jubilee 1943",
+                            "description": "Retailer listing for Bentley Seed Tomato Jubilee 1943",
+                        }
+                    ],
+                    None,
+                )
+
+            if "Bentley Seeds Tomato Jubilee 1943" in query:
+                return (
+                    [
+                        {
+                            "url": official_url,
+                            "title": "Tomato, Jubilee Seed Packets - Bentley Seeds",
+                            "description": "Heirloom jubilee tomatoes (1943) are delicious, bright, and cheery.",
+                        },
+                        {
+                            "url": "https://www.edenbrothers.com/products/tomato_seeds_jubilee",
+                            "title": "Tomato Seeds - Golden Jubilee",
+                            "description": "The Jubilee tomato is a long-time favorite from the 1940s.",
+                        },
+                    ],
+                    None,
+                )
+
+            return [], None
+
+    class BentleyConsolidator:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str]] = []
+
+        async def consolidate_name(
+            self,
+            sku: str,
+            abbreviated_name: str,
+            search_snippets: list[dict[str, Any]],
+        ) -> tuple[str, float]:
+            self.calls.append((sku, abbreviated_name))
+            assert search_snippets
+            return "Bentley Seeds Tomato Jubilee 1943", 0.001
+
+    class BentleyExtractor:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str | None, str | None]] = []
+
+        async def extract(
+            self,
+            url: str,
+            sku: str,
+            product_name: str | None,
+            brand: str | None,
+        ) -> dict[str, Any]:
+            del sku
+            self.calls.append((url, product_name, brand))
+            if url != official_url:
+                return {"success": False, "error": "Retailer page should not win"}
+
+            return {
+                "success": True,
+                "product_name": "Tomato, Jubilee Seed Packets",
+                "brand": "Bentley Seed",
+                "description": "Heirloom jubilee tomatoes (1943) are delicious, bright, and cheery.",
+                "images": ["https://bentleyseeds.com/cdn/shop/files/HTG-001_front.jpg?v=1747664740"],
+                "confidence": 0.98,
+            }
+
+    search_client = BentleySearchClient()
+    consolidator = BentleyConsolidator()
+    extractor = BentleyExtractor()
+    orchestrator = BatchSearchOrchestrator(
+        search_client=search_client,
+        extractor=extractor,
+        scorer=SearchScorer(),
+        name_consolidator=consolidator,
+    )
+
+    result = asyncio.run(
+        orchestrator.search_cohort(
+            [ProductInput(sku="051588178896", name="BENTLEY SEED TOMATO JUBILEE", brand=None)],
+        )
+    )
+
+    assert result.extractions["051588178896"]["url"] == official_url
+    assert result.results["051588178896"][0].result.url == official_url
+    assert search_client.search_calls[0] == "051588178896"
+    assert any("Bentley Seeds Tomato Jubilee 1943" in call for call in search_client.search_calls[1:])
+    assert consolidator.calls == [("051588178896", "BENTLEY SEED TOMATO JUBILEE")]
+    assert extractor.calls[0] == (official_url, "BENTLEY SEED TOMATO JUBILEE", None)
 
 
 def test_merge_search_results_deduplicates_by_url() -> None:
@@ -217,3 +322,22 @@ def test_search_by_sku_only_uses_identifier_query() -> None:
     assert any("051178002327" in call for call in search_client.search_calls)
     # Should NOT include product name in query
     assert not any("Test Product" in call for call in search_client.search_calls)
+
+
+def test_search_all_skus_includes_category_context_in_query() -> None:
+    search_client = MockSearchClient({})
+
+    orchestrator = BatchSearchOrchestrator(
+        search_client=search_client,
+        extractor=MockExtractor(),
+        scorer=MockScorer(),
+    )
+
+    asyncio.run(
+        orchestrator.search_all_skus(
+            [ProductInput(sku="051588178896", name="BENTLEY SEED TOMATO JUBILEE", category="Vegetable Seeds")],
+            max_concurrent=5,
+        )
+    )
+
+    assert any("Vegetable Seeds" in call for call in search_client.search_calls)

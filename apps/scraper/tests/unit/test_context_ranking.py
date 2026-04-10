@@ -10,6 +10,7 @@ from scrapers.ai_search.batch_search import (
     SearchResult,
 )
 from scrapers.ai_search.cohort_state import _BatchCohortState
+from scrapers.ai_search.scoring import SearchScorer
 
 
 class MockScorer:
@@ -488,3 +489,45 @@ class TestContextAwareRanking:
         # Verify scores are in descending order
         scores = [r.score for r in ranked]
         assert scores == sorted(scores, reverse=True)
+
+    def test_rank_urls_for_sku_does_not_double_apply_domain_history(self, monkeypatch) -> None:
+        monkeypatch.setattr("scrapers.ai_search.scoring.get_domain_success_rate", lambda _domain: 0.9)
+
+        scorer = SearchScorer()
+        orchestrator = BatchSearchOrchestrator(
+            search_client=None,
+            extractor=MockExtractor(),
+            scorer=scorer,
+        )
+
+        search_results = [
+            make_search_result(
+                url="https://example.com/product/12345",
+                title="Example Product",
+                description="Exact product detail page",
+            )
+        ]
+
+        ranked = orchestrator.rank_urls_for_sku(
+            sku="12345",
+            search_results=search_results,
+            domain_frequency={},
+            brand=None,
+            product_name="Example Product",
+            category=None,
+        )
+
+        direct_score = scorer.score_search_result(
+            {
+                "url": "https://example.com/product/12345",
+                "title": "Example Product",
+                "description": "Exact product detail page",
+            },
+            "12345",
+            None,
+            "Example Product",
+            None,
+            prefer_manufacturer=True,
+        )
+
+        assert ranked[0].score == direct_score
