@@ -130,6 +130,25 @@ async def test_should_broadcast_logs_to_supabase_realtime(realtime_manager: Real
 
 
 @pytest.mark.asyncio
+async def test_connect_should_enable_transport_reconnect(realtime_manager: RealtimeManager) -> None:
+    fake_client = MagicMock()
+    fake_client.connect = AsyncMock()
+
+    with patch("realtime._async.client.AsyncRealtimeClient", return_value=fake_client) as client_cls:
+        connected = await realtime_manager.connect()
+
+    assert connected is True
+    client_cls.assert_called_once_with(
+        "wss://test.supabase.co/realtime/v1",
+        "test-key",
+        auto_reconnect=True,
+    )
+    fake_client.connect.assert_awaited_once()
+    assert realtime_manager.client is fake_client
+    assert realtime_manager.is_connected is True
+
+
+@pytest.mark.asyncio
 async def test_should_reconnect_after_connection_drop(realtime_manager: RealtimeManager) -> None:
     fake_client = FakeSupabaseClient()
     realtime_manager.client = fake_client

@@ -170,9 +170,10 @@ class RealtimeManager:
             self.client = _AsyncRealtimeClient(
                 self.supabase_url,
                 self.service_key,
-                auto_reconnect=False,
+                auto_reconnect=True,
             )
 
+            await self.client.connect()
             self._connected = True
 
             if should_restore_channels:
