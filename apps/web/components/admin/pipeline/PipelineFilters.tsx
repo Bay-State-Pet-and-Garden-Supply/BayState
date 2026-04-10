@@ -20,7 +20,7 @@ export interface PipelineFiltersState {
     startDate?: Date;
     endDate?: Date;
     source?: string;
-    cohort_id?: string;
+    product_line?: string;
     minConfidence?: number;
     maxConfidence?: number;
 }
@@ -56,7 +56,7 @@ export function PipelineFilters({ filters, onFilterChange, className }: Pipeline
         filters.startDate,
         filters.endDate,
         filters.source,
-        filters.cohort_id,
+        filters.product_line,
         filters.minConfidence !== undefined || filters.maxConfidence !== undefined
     ].filter(Boolean).length;
 
@@ -159,14 +159,14 @@ export function PipelineFilters({ filters, onFilterChange, className }: Pipeline
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="cohort">Cohort ID</Label>
+                        <Label htmlFor="product_line">Cohort ID</Label>
                         <Input
-                            id="cohort"
+                            id="product_line"
                             type="search"
                             autoComplete="off"
                             placeholder="e.g. upc-prefix-123"
-                            value={localFilters.cohort_id || ''}
-                            onChange={(e) => setLocalFilters(prev => ({ ...prev, cohort_id: e.target.value || undefined }))}
+                            value={localFilters.product_line || ''}
+                            onChange={(e) => setLocalFilters(prev => ({ ...prev, product_line: e.target.value || undefined }))}
                         />
                     </div>
 

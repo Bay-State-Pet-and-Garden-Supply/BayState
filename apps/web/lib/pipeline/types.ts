@@ -172,8 +172,8 @@ export interface PipelineProduct {
   error_message?: string;
   /** Number of retry attempts */
   retry_count?: number;
-  /** Cohort ID for batch processing */
-  cohort_id?: string | null;
+  /** Product line / Cohort identifier for batch processing */
+  product_line?: string | null;
   /** Record creation timestamp */
   created_at: string;
   /** Last update timestamp */

@@ -337,7 +337,7 @@ class CohortMigration:
                 "cohort_key": candidate.cohort_key,
                 "member_count": inserted_members,
                 "product_line_updates": updated_products,
-                "created": created,
+                "is_created": created,
             },
         )
 

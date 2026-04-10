@@ -26,7 +26,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
 
     const search = typeof params.search === 'string' ? params.search : undefined;
     const source = typeof params.source === 'string' ? params.source : undefined;
-    const cohort_id = typeof params.cohort_id === 'string' ? params.cohort_id : undefined;
+    const product_line = typeof params.product_line === 'string' ? params.product_line : undefined;
 
     const initialStage: PipelineStage = stageParam && isPipelineStage(stageParam)
         ? stageParam
@@ -49,7 +49,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
                     limit: 500,
                     search,
                     source,
-                    cohort_id
+                    product_line
                 }),
                 getStatusCounts(),
             ]);
