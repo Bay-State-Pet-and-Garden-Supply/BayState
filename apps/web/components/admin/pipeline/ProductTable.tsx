@@ -347,20 +347,30 @@ export function ProductTable({
 
   return (
     <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-card shadow-sm" ref={containerRef}>
-      <Table>
+      <Table className="table-fixed">
         <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className="bg-muted/30">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                </TableHead>
-              ))}
+              {headerGroup.headers.map((header) => {
+                // Define fixed widths for columns to ensure alignment across multiple tables
+                let widthClass = "";
+                if (header.id === "select") widthClass = "w-[40px]";
+                else if (header.id === "sku") widthClass = "w-[120px]";
+                else if (header.id === "price") widthClass = "w-[100px]";
+                else if (header.id === "sources" || header.id === "confidence_score") widthClass = "w-[120px]";
+                else if (header.id === "updated_at") widthClass = "w-[150px]";
+
+                return (
+                  <TableHead key={header.id} className={cn("bg-muted/30", widthClass)}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           ))}
         </TableHeader>

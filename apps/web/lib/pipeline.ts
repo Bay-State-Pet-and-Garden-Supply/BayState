@@ -218,6 +218,38 @@ export async function getSkusByStatus(
 }
 
 /**
+ * Fetches all unique source keys from the sources JSONB column for a given status.
+ */
+export async function getAvailableSources(status: PersistedPipelineStatus): Promise<string[]> {
+    const supabase = await createClient();
+
+    // Use a raw SQL query via rpc if available, or fetch and process
+    // For simplicity and since we don't have a specific RPC, we'll use a trick with select
+    // filtering for products that actually have sources.
+    const { data, error } = await supabase
+        .from('products_ingestion')
+        .select('sources')
+        .eq('pipeline_status', status)
+        .not('sources', 'is', null);
+
+    if (error) {
+        console.error('Error fetching available sources:', error);
+        return [];
+    }
+
+    const allSources = new Set<string>();
+    (data || []).forEach((row: { sources: any }) => {
+        if (row.sources && typeof row.sources === 'object') {
+            Object.keys(row.sources)
+                .filter(key => !key.startsWith('_'))
+                .forEach(key => allSources.add(key));
+        }
+    });
+
+    return Array.from(allSources).sort();
+}
+
+/**
  * Fetches count of products for each pipeline status using a single aggregated query.
  * This eliminates the N+1 pattern of making separate queries for each status.
  */
