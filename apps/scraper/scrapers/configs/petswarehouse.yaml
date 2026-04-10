@@ -6,9 +6,8 @@ scraper_type: static
 use_stealth: false
 selectors:
   - name: search_result_link
-    selector: "main article a[href*='/products/'] >> nth=0"
+    selector: "main a[href*='/products/'] >> nth=0"
     fallback_selectors:
-      - "main .card-wrapper a[href*='/products/'] >> nth=0"
       - "a[href*='/products/'] >> nth=0"
     attribute: href
     multiple: false
@@ -56,6 +55,8 @@ workflows:
     name: search_page
     params:
       url: "https://petswarehouse.com/search?q={sku}%3Bsd&options%5Bprefix%5D=last"
+      wait_until: commit
+      wait_after: 3
   - action: conditional_click
     name: accept_cookies_if_present
     params:
@@ -66,9 +67,9 @@ workflows:
     params:
       timeout: 15
       selector:
-        - "main article a[href*='/products/']"
-        - "h1:has-text('0 results found for')"
+        - "main a[href*='/products/']"
         - "main :has-text('No results found for')"
+        - "main :has-text('Check the spelling or use a different word or phrase')"
   - action: check_no_results
     name: detect_no_results
     params: {}
@@ -83,14 +84,16 @@ workflows:
           name: search_page_fallback
           params:
             url: "https://petswarehouse.com/search?q={sku}&options%5Bprefix%5D=last"
+            wait_until: commit
+            wait_after: 3
         - action: wait_for
           name: wait_for_search_or_no_results_fallback
           params:
             timeout: 15
             selector:
-              - "main article a[href*='/products/']"
-              - "h1:has-text('0 results found for')"
+              - "main a[href*='/products/']"
               - "main :has-text('No results found for')"
+              - "main :has-text('Check the spelling or use a different word or phrase')"
         - action: check_no_results
           name: detect_no_results_fallback
           params: {}
@@ -107,6 +110,8 @@ workflows:
     name: product_page
     params:
       url: "{{product_url}}"
+      wait_until: commit
+      wait_after: 2
   - action: wait_for
     name: wait_for_product_details
     params:
@@ -148,7 +153,7 @@ workflows:
           replacement: ""
       filters:
         - type: require_text
-          text: cdn.shopify.com
+          text: /cdn/shop/
         - type: exclude_text
           text: logo
         - type: exclude_text

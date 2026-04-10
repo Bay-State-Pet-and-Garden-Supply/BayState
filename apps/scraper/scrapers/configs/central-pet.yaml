@@ -80,13 +80,21 @@ workflows:
       timeout: 30
       selector:
         - "#tst_productDetail_erpDescription"
+        - ".product-list"
         - "span.no-results-found"
         - ".no-results"
         - "//h1[contains(text(), 'RESULTS FOUND FOR')]"
         - "//div[contains(text(), \"We're sorry, your search returned no results.\")]"
   - action: check_no_results
     name: null
-    params: {}
+    params:
+      fallback_empty_search_selector: "#tst_productDetail_erpDescription, [data-product-detail]"
+      search_page_indicators:
+        - "/search?criteria="
+        - "search results"
+      pdp_selectors:
+        - "#tst_productDetail_erpDescription"
+        - "[data-product-detail]"
   - action: conditional_skip
     name: Skip if no results
     params:

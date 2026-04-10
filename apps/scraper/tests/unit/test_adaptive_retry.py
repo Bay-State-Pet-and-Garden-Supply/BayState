@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -59,3 +61,36 @@ class TestAdaptiveRetryStrategy:
                 strategy2 = AdaptiveRetryStrategy(history_file=None)
                 config = strategy2.get_adaptive_config(FailureType.NETWORK_ERROR, "test_site")
                 assert config.max_retries == 1
+
+    def test_load_history_rehydrates_persisted_failure_records(self, tmp_path: Path) -> None:
+        history_path = tmp_path / "retry-history.json"
+        _ = history_path.write_text(
+            json.dumps(
+                {
+                    "failure_history": [
+                        {
+                            "timestamp": 123.0,
+                            "failure_context": {
+                                "site_name": "amazon",
+                                "action": "click",
+                                "retry_count": 2,
+                                "context": {"selector": ".price"},
+                                "failure_type": "element_missing",
+                            },
+                            "success_after_retry": False,
+                            "final_success": False,
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        strategy = AdaptiveRetryStrategy(history_file=str(history_path))
+
+        assert len(strategy.failure_history) == 1
+        record = strategy.failure_history[0]
+        assert record.site_name == "amazon"
+        assert record.action == "click"
+        assert record.retry_count == 2
+        assert record.failure_type == FailureType.ELEMENT_MISSING
