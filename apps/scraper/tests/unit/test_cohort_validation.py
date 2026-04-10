@@ -37,16 +37,16 @@ class MockExtractor:
 
     def __init__(self, results_map: dict[str, dict[str, Any]] | None = None):
         self.results_map = results_map or {}
-        self.extract_calls: list[tuple[str, str, str | None]] = []
+        self.extract_calls: list[tuple[str, str, str | None, str | None]] = []
 
     async def extract(
         self,
         url: str,
         sku: str,
-        title: str | None,
+        product_name: str | None,
         brand: str | None,
     ) -> dict[str, Any]:
-        self.extract_calls.append((url, sku, title))
+        self.extract_calls.append((url, sku, product_name, brand))
         if url in self.results_map:
             result = self.results_map[url].copy()
             result["url"] = url
@@ -466,6 +466,60 @@ class TestBatchSearchOrchestratorValidation:
         assert result is not None
         assert result["success"] is True
         assert error == ""
+        assert extractor.extract_calls == [
+            (
+                "https://www.chewy.com/product/12345",
+                "12345",
+                "Advantage Cat Food",
+                "Advantage",
+            )
+        ]
+
+    def test_extract_and_validate_passes_expected_product_context_to_extractor(self) -> None:
+        """Test that extraction uses the requested product context, not candidate text."""
+        extract_results = {
+            "https://www.example.com/product/12345": {
+                "success": True,
+                "product_name": "Expected Product Deluxe",
+                "brand": "ExpectedBrand",
+                "description": "Expected Product Deluxe for SKU 12345",
+                "images": [VALID_IMAGE_URL],
+                "confidence": 0.9,
+            }
+        }
+
+        extractor = MockExtractor(results_map=extract_results)
+        orchestrator = BatchSearchOrchestrator(
+            search_client=MockSearchClient(),
+            extractor=extractor,
+            scorer=MockScorer(),
+        )
+
+        candidate = SearchResult(
+            url="https://www.example.com/product/12345",
+            title="Candidate Title That Should Not Override Context",
+            description="Candidate description",
+        )
+
+        result, error = asyncio.run(
+            orchestrator._extract_and_validate(
+                sku="12345",
+                candidate=candidate,
+                product_name="Expected Product Deluxe",
+                brand="ExpectedBrand",
+            )
+        )
+
+        assert result is not None
+        assert error == ""
+        assert extractor.extract_calls == [
+            (
+                "https://www.example.com/product/12345",
+                "12345",
+                "Expected Product Deluxe",
+                "ExpectedBrand",
+            )
+        ]
 
     def test_extraction_validation_rejects_mismatch(self) -> None:
         """Test that validation rejects brand mismatch during extraction."""
