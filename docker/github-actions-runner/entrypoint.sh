@@ -25,7 +25,8 @@ if [ ! -f "/runner/.runner" ]; then
   echo "Configuring runner..."
   CONFIG_URL=$(build_url "${RUNNER_REPO:-$RUNNER_ORG}")
 
-  ./config.sh --unattended \
+  # Drop privileges to run config.sh as the 'runner' user, setting HOME correctly
+  sudo -H -u runner ./config.sh --unattended \
     --url "$CONFIG_URL" \
     --token "$RUNNER_TOKEN" \
     --name "${RUNNER_NAME:-$(hostname)}" \
@@ -36,5 +37,10 @@ if [ ! -f "/runner/.runner" ]; then
   echo "Runner configured"
 fi
 
-# Start the runner
-exec ./run.sh
+# Fix docker socket permissions if it exists
+if [ -S /var/run/docker.sock ]; then
+  chmod 666 /var/run/docker.sock
+fi
+
+# Start the runner as the non-root 'runner' user, setting HOME correctly
+exec sudo -H -u runner ./run.sh

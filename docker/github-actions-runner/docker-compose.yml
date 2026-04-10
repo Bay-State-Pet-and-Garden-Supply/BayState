@@ -10,6 +10,7 @@ services:
       RUNNER_TOKEN: "${RUNNER_TOKEN}"
       RUNNER_NAME: "${RUNNER_NAME:-${HOSTNAME}}"
       RUNNER_LABELS: "self-hosted,docker"
+      DISABLE_RUNNER_UPDATE: "true"
     volumes:
       - ~/actions-runner-work:/runner/_work
       # Optional (only needed if you want the runner to spawn sibling containers):

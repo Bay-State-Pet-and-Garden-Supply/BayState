@@ -18,15 +18,19 @@ RUN apt-get update && \
       tzdata \
       procps \
       docker.io \
+      sudo \
     && rm -rf /var/lib/apt/lists/*
 
-ENV RUNNER_VERSION=2.333.0
+ENV RUNNER_VERSION=2.333.1
 
 WORKDIR /runner
 
 # Create a non-root user for the runner (config.sh refuses to run as root)
-RUN useradd --create-home --shell /bin/bash runner \
- && chown -R runner:runner /runner
+# Match UID and GID to the host (501 on macOS) to avoid volume permission issues
+RUN groupadd --gid 501 runner \
+ && useradd --create-home --shell /bin/bash --uid 501 --gid 501 runner \
+ && chown -R runner:runner /runner \
+ && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Use build args for architecture detection
 ARG TARGETARCH
@@ -48,11 +52,7 @@ RUN chown -R runner:runner /runner
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Ensure the runner user can access the docker socket (mounted from host)
-# This usually requires adding to the docker group (gid 999 on Ubuntu)
-# But we can also chmod 666 the socket on the host or use sudo.
-# For simplicity, we'll let the user handle group mapping.
-
-USER runner
+# The container will run as root to allow the entrypoint to fix docker socket permissions.
+# Privileges will be dropped to the 'runner' user inside the entrypoint.sh script.
 
 ENTRYPOINT ["/entrypoint.sh"]
