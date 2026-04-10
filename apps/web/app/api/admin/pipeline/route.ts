@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate') || undefined;
     const source = searchParams.get('source') || undefined;
     const product_line = searchParams.get('product_line') || undefined;
+    const cohort_id = searchParams.get('cohort_id') || undefined;
     const minConfidence = searchParams.get('minConfidence') ? parseFloat(searchParams.get('minConfidence')!) : undefined;
     const maxConfidence = searchParams.get('maxConfidence') ? parseFloat(searchParams.get('maxConfidence')!) : undefined;
 
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
                 endDate,
                 source,
                 product_line,
+                cohort_id,
                 minConfidence,
                 maxConfidence,
             });
@@ -61,6 +63,7 @@ export async function GET(request: NextRequest) {
                 endDate,
                 source,
                 product_line,
+                cohort_id,
                 minConfidence,
                 maxConfidence,
             }),

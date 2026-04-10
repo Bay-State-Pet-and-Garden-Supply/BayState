@@ -134,6 +134,7 @@ class BatchSearchOrchestrator:
         self._name_consolidator = name_consolidator
         self._validator = validator or ExtractionValidator()
         self._product_context: dict[str, ProductInput] = {}
+        self._consolidated_names: dict[str, str] = {}
         self._cohort_state = cohort_state
 
     async def search_cohort(
@@ -145,13 +146,10 @@ class BatchSearchOrchestrator:
     ) -> BatchSearchResult:
         """Search all SKUs in a cohort."""
         self._product_context = {product.sku: product for product in products}
+        self._consolidated_names = {}
 
-        # Step 1: Search all SKUs in parallel. Missing-brand cohorts need the
-        # richer SKU-first flow so we can recover canonical names before ranking.
-        if self._should_use_sku_first(products):
-            search_results = await self.search_sku_first(products, max_concurrent=max_search_concurrent)
-        else:
-            search_results = await self.search_all_skus(products, max_concurrent=max_search_concurrent)
+        # Step 1: Search all SKUs using the shared two-step SKU-first flow.
+        search_results = await self.search_sku_first(products, max_concurrent=max_search_concurrent)
 
         # Step 2: Analyze domain frequency
         domain_frequency = self.analyze_domain_frequency(search_results)
@@ -166,7 +164,7 @@ class BatchSearchOrchestrator:
                     search_results[sku],
                     domain_frequency,
                     brand=product.brand,
-                    product_name=product.name,
+                    product_name=self._consolidated_names.get(product.sku) or product.name,
                     category=product.category,
                 )
                 ranked_results[sku] = ranked
@@ -197,13 +195,9 @@ class BatchSearchOrchestrator:
 
         async def search_one(product: ProductInput) -> tuple[str, list[SearchResult]]:
             async with semaphore:
-                # Build search query using QueryBuilder with available data
-                query = query_builder.build_search_query(
-                    sku=product.sku,
-                    product_name=product.name,
-                    brand=product.brand,
-                    category=product.category,
-                )
+                query = query_builder.build_identifier_query(product.sku)
+                if not query:
+                    return product.sku, []
                 raw_results, error = await self._search_client.search(query)
                 if error:
                     return product.sku, []
@@ -233,26 +227,16 @@ class BatchSearchOrchestrator:
         products: list[ProductInput],
         max_concurrent: int = 5,
     ) -> dict[str, list[SearchResult]]:
-        """Proactive SKU-first search strategy with three-phase refinement.
-
-        Phase 1: Search by SKU only (identifier query)
-        Phase 2: Consolidate names using NameConsolidator
-        Phase 3: Search with consolidated names
-        Phase 4: Merge and deduplicate results
-        """
-        # Phase 1: SKU-only searches (parallel)
+        """Run the cohort-wide two-step SKU-first discovery flow."""
         sku_results = await self._search_by_sku_only(products, max_concurrent)
-
-        # Phase 2: Name consolidation (parallel)
         consolidated_names = await self._consolidate_names(products, sku_results, max_concurrent)
-
-        # Phase 3: Manufacturer searches with consolidated names (parallel)
-        manufacturer_results = await self._search_with_names(products, consolidated_names, max_concurrent)
-
-        # Phase 4: Merge and deduplicate
-        merged = self._merge_search_results(sku_results, manufacturer_results)
-
-        return merged
+        self._consolidated_names = {
+            sku: consolidated_name
+            for sku, (consolidated_name, _) in consolidated_names.items()
+            if str(consolidated_name or "").strip()
+        }
+        name_results = await self._search_with_names(products, consolidated_names, max_concurrent)
+        return self._merge_search_results(sku_results, name_results)
 
     async def _search_by_sku_only(
         self,
@@ -369,12 +353,9 @@ class BatchSearchOrchestrator:
                 if not consolidated_name:
                     consolidated_name = product.name
 
-                query = query_builder.build_search_query(
-                    sku=product.sku,
-                    product_name=consolidated_name,
-                    brand=product.brand,
-                    category=product.category,
-                )
+                query = query_builder.build_name_query(consolidated_name)
+                if not query:
+                    return sku, []
 
                 raw_results, error = await self._search_client.search(query)
                 if error:
@@ -570,10 +551,11 @@ class BatchSearchOrchestrator:
             return []
 
         query_builder = QueryBuilder()
+        search_name = self._consolidated_names.get(product.sku) or product.name
         queries = query_builder.build_site_query_variants(
             domains=[normalized_domain],
             sku=product.sku,
-            product_name=product.name,
+            product_name=search_name,
             brand=product.brand,
             category=None,
         )
@@ -610,7 +592,7 @@ class BatchSearchOrchestrator:
             search_results=list(site_results.values()),
             domain_frequency={},
             brand=product.brand,
-            product_name=product.name,
+            product_name=search_name,
             category=product.category,
         )
 

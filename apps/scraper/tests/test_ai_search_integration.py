@@ -484,7 +484,7 @@ async def test_ai_search_scrape_product_uses_two_step_refined_results_when_impro
 
     assert result.success is True
     assert result.url == refined_url
-    assert result.cost_usd == pytest.approx(0.03)
+    assert result.cost_usd == pytest.approx(0.04)
     assert extracted_urls == [refined_url]
     refine_call = refiner.refine.await_args
     assert refine_call is not None

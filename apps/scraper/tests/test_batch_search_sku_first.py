@@ -61,9 +61,8 @@ class MockScorer:
         return 5.0
 
 
-def test_search_sku_first_executes_three_phases() -> None:
-    """Test that search_sku_first executes all three phases."""
-    # Setup
+def test_search_sku_first_executes_sku_then_consolidated_name_phases() -> None:
+    """Test that search_sku_first performs both SKU and consolidated-name searches."""
     sku_results = {
         "12345": [{"url": "https://distributor.com/product", "title": "Product ABC"}],
     }
@@ -98,10 +97,7 @@ def test_search_sku_first_executes_three_phases() -> None:
 
     # Verify
     assert "12345" in results
-    assert len(search_client.search_calls) == 2  # Phase 1 + Phase 3
-    assert "12345" in search_client.search_calls  # Phase 1: SKU search
-    assert any("Brand Product ABC" in call for call in search_client.search_calls)  # Phase 3: Name search
-    assert len(consolidator.consolidate_calls) == 1  # Phase 2: Consolidation
+    assert search_client.search_calls == ["12345", "Brand Product ABC"]
     assert consolidator.consolidate_calls == [("12345", "Prod ABC")]
 
 
@@ -121,12 +117,12 @@ def test_search_cohort_uses_sku_first_to_find_official_bentley_result_when_brand
                             "url": "https://www.edenbrothers.com/products/tomato_seeds_jubilee",
                             "title": "Bentley Seed Tomato Jubilee 1943",
                             "description": "Retailer listing for Bentley Seed Tomato Jubilee 1943",
-                        }
+                        },
                     ],
                     None,
                 )
 
-            if "Bentley Seeds Tomato Jubilee 1943" in query:
+            if query == "Bentley Seeds Tomato Jubilee 1943":
                 return (
                     [
                         {
@@ -202,10 +198,9 @@ def test_search_cohort_uses_sku_first_to_find_official_bentley_result_when_brand
 
     assert result.extractions["051588178896"]["url"] == official_url
     assert result.results["051588178896"][0].result.url == official_url
-    assert search_client.search_calls[0] == "051588178896"
-    assert any("Bentley Seeds Tomato Jubilee 1943" in call for call in search_client.search_calls[1:])
+    assert search_client.search_calls == ["051588178896", "Bentley Seeds Tomato Jubilee 1943"]
     assert consolidator.calls == [("051588178896", "BENTLEY SEED TOMATO JUBILEE")]
-    assert extractor.calls[0] == (official_url, "BENTLEY SEED TOMATO JUBILEE", None)
+    assert any(call == (official_url, "BENTLEY SEED TOMATO JUBILEE", None) for call in extractor.calls)
 
 
 def test_merge_search_results_deduplicates_by_url() -> None:
@@ -324,7 +319,7 @@ def test_search_by_sku_only_uses_identifier_query() -> None:
     assert not any("Test Product" in call for call in search_client.search_calls)
 
 
-def test_search_all_skus_includes_category_context_in_query() -> None:
+def test_search_all_skus_uses_identifier_only_query() -> None:
     search_client = MockSearchClient({})
 
     orchestrator = BatchSearchOrchestrator(
@@ -340,4 +335,4 @@ def test_search_all_skus_includes_category_context_in_query() -> None:
         )
     )
 
-    assert any("Vegetable Seeds" in call for call in search_client.search_calls)
+    assert search_client.search_calls == ["051588178896"]

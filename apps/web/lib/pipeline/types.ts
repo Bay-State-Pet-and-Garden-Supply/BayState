@@ -174,6 +174,8 @@ export interface PipelineProduct {
   retry_count?: number;
   /** Product line / Cohort identifier for batch processing */
   product_line?: string | null;
+  /** ID of the cohort batch this product belongs to */
+  cohort_id?: string | null;
   /** Record creation timestamp */
   created_at: string;
   /** Last update timestamp */

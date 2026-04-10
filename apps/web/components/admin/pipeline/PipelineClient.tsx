@@ -122,6 +122,7 @@ export function PipelineClient({
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
   const [productLineFilter, setProductLineFilter] = useState(searchParams.get("product_line") || "");
+  const [cohortIdFilter, setCohortIdFilter] = useState(searchParams.get("cohort_id") || "");
   const publishedSkuCacheRef = useRef<string[] | null>(null);
 
   const filteredProducts = useMemo(() => {
@@ -140,25 +141,25 @@ export function PipelineClient({
 
   const groupedProducts = useMemo(() => {
     const groups: Record<string, PipelineProduct[]> = {};
-    const productLineIds: string[] = [];
+    const cohortIds: string[] = [];
 
     filteredProducts.forEach((product) => {
-      const productLine = product.product_line || "ungrouped";
-      if (!groups[productLine]) {
-        groups[productLine] = [];
-        productLineIds.push(productLine);
+      const cohortId = product.cohort_id || "ungrouped";
+      if (!groups[cohortId]) {
+        groups[cohortId] = [];
+        cohortIds.push(cohortId);
       }
-      groups[productLine].push(product);
+      groups[cohortId].push(product);
     });
 
     // Sort IDs: ungrouped first, then alphabetical
-    productLineIds.sort((a, b) => {
+    cohortIds.sort((a, b) => {
       if (a === "ungrouped") return -1;
       if (b === "ungrouped") return 1;
       return a.localeCompare(b);
     });
 
-    return { groups, productLineIds };
+    return { groups, cohortIds };
   }, [filteredProducts]);
 
   // Reset source filter if the selected source is no longer available in the product set
@@ -193,6 +194,7 @@ export function PipelineClient({
         if (searchTerm) params.set("search", searchTerm);
         if (sourceFilter && stage === "scraped") params.set("source", sourceFilter);
         if (productLineFilter) params.set("product_line", productLineFilter);
+        if (cohortIdFilter) params.set("cohort_id", cohortIdFilter);
 
         const res = await fetch(`/api/admin/pipeline?${params}`, { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to fetch products");
@@ -208,7 +210,7 @@ export function PipelineClient({
         if (!silent) setIsLoading(false);
       }
     },
-    [sourceFilter, productLineFilter],
+    [sourceFilter, productLineFilter, cohortIdFilter],
   );
 
   // Fetch counts for all stages
@@ -394,15 +396,15 @@ export function PipelineClient({
     const searchParam = searchParams.get("search") || "";
     const sourceParam = searchParams.get("source") || "";
     const productLineParam = searchParams.get("product_line") || "";
+    const cohortIdParam = searchParams.get("cohort_id") || "";
 
-    if (searchParam !== search) {
-      setSearch(searchParam);
-    }
-    if (sourceParam !== sourceFilter) {
-      setSourceFilter(sourceParam);
-    }
+    if (searchParam !== search) setSearch(searchParam);
+    if (sourceParam !== sourceFilter) setSourceFilter(sourceParam);
     if (productLineParam !== productLineFilter) {
       setProductLineFilter(productLineParam);
+    }
+    if (cohortIdParam !== cohortIdFilter) {
+      setCohortIdFilter(cohortIdParam);
     }
     // We only depend on searchParams to detect external changes (like back button)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -417,8 +419,9 @@ export function PipelineClient({
       const hasSearchChanged = (currentParams.get("search") || "") !== search;
       const hasSourceChanged = (currentParams.get("source") || "") !== sourceFilter;
       const hasProductLineChanged = (currentParams.get("product_line") || "") !== productLineFilter;
+      const hasCohortIdChanged = (currentParams.get("cohort_id") || "") !== cohortIdFilter;
 
-      if (!hasSearchChanged && !hasSourceChanged && !hasProductLineChanged) return;
+      if (!hasSearchChanged && !hasSourceChanged && !hasProductLineChanged && !hasCohortIdChanged) return;
 
       if (search) currentParams.set("search", search);
       else currentParams.delete("search");
@@ -429,11 +432,14 @@ export function PipelineClient({
       if (productLineFilter) currentParams.set("product_line", productLineFilter);
       else currentParams.delete("product_line");
 
+      if (cohortIdFilter) currentParams.set("cohort_id", cohortIdFilter);
+      else currentParams.delete("cohort_id");
+
       router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false });
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [search, sourceFilter, productLineFilter, pathname, router, searchParams]);
+  }, [search, sourceFilter, productLineFilter, cohortIdFilter, pathname, router, searchParams]);
 
   // Handle stage tab change
   const handleStageChange = useCallback((stage: PipelineStage) => {
@@ -928,10 +934,12 @@ export function PipelineClient({
           filters={{
             source: sourceFilter,
             product_line: productLineFilter,
+            cohort_id: cohortIdFilter,
           }}
           onFilterChange={(newFilters) => {
             if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
             if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
+            if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
           }}
           availableSources={sources}
           selectedCount={selectedSkus.size}
@@ -1011,7 +1019,7 @@ export function PipelineClient({
           />
         ) : (
           <div className="space-y-4">
-            {groupedProducts.productLineIds.length <= 1 ? (
+            {groupedProducts.cohortIds.length <= 1 ? (
               <ProductTable
                 products={filteredProducts}
                 selectedSkus={selectedSkus}
@@ -1021,13 +1029,13 @@ export function PipelineClient({
                 currentStage={currentStage}
               />
             ) : (
-              <Accordion type="multiple" defaultValue={groupedProducts.productLineIds} className="space-y-4">
-                {groupedProducts.productLineIds.map((productLine) => {
-                  const groupProducts = groupedProducts.groups[productLine] || [];
+              <Accordion type="multiple" defaultValue={groupedProducts.cohortIds} className="space-y-4">
+                {groupedProducts.cohortIds.map((cohortId) => {
+                  const groupProducts = groupedProducts.groups[cohortId] || [];
                   return (
                     <AccordionItem 
-                      key={productLine} 
-                      value={productLine}
+                      key={cohortId} 
+                      value={cohortId}
                       className="rounded-xl border border-border bg-card shadow-sm overflow-hidden"
                     >
                       <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
@@ -1036,7 +1044,7 @@ export function PipelineClient({
                           <div className="flex items-center gap-2">
                             <Layers className="h-4 w-4 text-brand-forest-green" />
                             <span className="font-semibold text-foreground">
-                              {productLine === "ungrouped" ? "Ungrouped Products" : `Cohort: ${productLine}`}
+                              {cohortId === "ungrouped" ? "Ungrouped Products" : `Cohort ID: ${cohortId}`}
                             </span>
                             <Badge variant="secondary" className="ml-2 bg-muted text-muted-foreground font-normal">
                               {groupProducts.length} items
