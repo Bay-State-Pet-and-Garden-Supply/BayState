@@ -150,7 +150,7 @@ class ConfigFetchError(Exception):
         super().__init__(message)
 
 
-def _normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
+def normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
     """Normalize selectors payload from coordinator into list format."""
     if isinstance(raw_selectors, list):
         return raw_selectors
@@ -230,11 +230,6 @@ class ScraperAPIClient:
         self.timeout = timeout
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("SCRAPER_API_MAX_RETRIES", str(DEFAULT_MAX_RETRIES)))
         self._credential_cache: dict[str, dict[str, Any]] = {}
-
-        if not self.api_url:
-            logger.warning("SCRAPER_API_URL not configured")
-        if not self.api_key:
-            logger.warning("SCRAPER_API_KEY not configured")
 
         if not self.api_url:
             logger.warning("SCRAPER_API_URL not configured")
@@ -407,7 +402,7 @@ class ScraperAPIClient:
                     disabled=s.get("disabled", False),
                     base_url=s.get("base_url"),
                     search_url_template=s.get("search_url_template"),
-                    selectors=_normalize_selectors_payload(s.get("selectors")),
+                    selectors=normalize_selectors_payload(s.get("selectors")),
                     options=s.get("options"),
                     test_skus=s.get("test_skus"),
                     retries=s.get("retries", 3),
@@ -790,7 +785,7 @@ class ScraperAPIClient:
                     disabled=s.get("disabled", False),
                     base_url=s.get("base_url"),
                     search_url_template=s.get("search_url_template"),
-                    selectors=_normalize_selectors_payload(s.get("selectors")),
+                    selectors=normalize_selectors_payload(s.get("selectors")),
                     options=s.get("options"),
                     test_skus=s.get("test_skus"),
                     retries=s.get("retries", 3),
@@ -907,9 +902,6 @@ class ScraperAPIClient:
             # Specific HTTP and authentication exceptions from _make_request
             logger.exception(f"Failed to send logs for job {job_id}")
             raise
-
-    def send_logs(self, job_id: str, logs: list[dict[str, Any]]) -> bool:
-        return self.post_logs(job_id, logs)
 
     def post_progress(self, payload: dict[str, Any]) -> bool:
         """Persist the latest durable progress snapshot for a job."""

@@ -65,27 +65,6 @@ export function isPipelineStage(value: string): value is PipelineStage {
 }
 
 /**
- * Derives the active admin workflow tab from persisted status and active work.
- */
-export function statusToTab(
-  status: PersistedPipelineStatus,
-  hasActiveScrapeJob: boolean,
-  hasActiveConsolidation: boolean,
-): PipelineStage {
-  switch (status) {
-    case "imported":
-      return "imported";
-    case "scraped":
-      return hasActiveScrapeJob ? "scraping" : "scraped";
-    case "finalized":
-      return hasActiveConsolidation ? "consolidating" : "finalizing";
-    case "failed":
-    default:
-      return "imported";
-  }
-}
-
-/**
  * Returns the persisted status needed to hydrate a route stage, if any.
  */
 export function getStageDataStatus(
@@ -100,32 +79,6 @@ export function getStageDataStatus(
       return "finalized";
     default:
       return null;
-  }
-}
-
-/**
- * Returns the query characteristics for a given workflow tab.
- */
-export function tabToQueryFilter(tab: PipelineStage): {
-  status?: PersistedPipelineStatus;
-  scrapeJobActive?: boolean;
-  consolidationActive?: boolean;
-} {
-  switch (tab) {
-    case "imported":
-      return { status: "imported", scrapeJobActive: false };
-    case "scraping":
-      return { status: "scraped", scrapeJobActive: true };
-    case "scraped":
-      return { status: "scraped", scrapeJobActive: false };
-    case "consolidating":
-      return { status: "finalized", consolidationActive: true };
-    case "finalizing":
-      return { status: "finalized", consolidationActive: false };
-    case "published":
-      return { status: "finalized" };
-    default:
-      return {};
   }
 }
 

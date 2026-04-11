@@ -7,7 +7,10 @@ import logging
 import os
 import sys
 
-from core.api_client import *
+from core.api_client import ConnectionError
+from core.api_client import JobConfig
+from core.api_client import ScraperAPIClient
+from core.api_client import ScraperConfig
 from utils.structured_logging import setup_structured_logging
 
 from runner.chunk_mode import run_chunk_worker_mode
@@ -84,8 +87,6 @@ def run_local_mode(args: argparse.Namespace) -> None:
 
     logger.info(f"[Local] SKUs to scrape: {skus}")
 
-    headless = not args.no_headless
-
     # Build a minimal JobConfig for the runner
     job_id = f"local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     scraper_cfg = ScraperConfig(
@@ -121,26 +122,6 @@ def run_local_mode(args: argparse.Namespace) -> None:
         runner_name="local-cli",
     )
 
-    # Inject credentials from API/Supabase/env if available
-    credentials_loaded = False
-    for ref in scraper_cfg.credential_refs or []:
-        logger.info(f"[Local] Fetching credentials for '{ref}'...")
-        creds = credential_client.get_credentials(ref)
-        if creds:
-            if scraper_cfg.options is None:
-                scraper_cfg.options = {}
-            scraper_cfg.options["_credentials"] = creds
-            logger.info(f"[Local] Successfully loaded credentials for '{ref}' (type: {creds.get('type', 'basic')})")
-            credentials_loaded = True
-            break
-        else:
-            logger.warning(f"[Local] No credentials found for '{ref}'")
-
-    if scraper_cfg.credential_refs and not credentials_loaded:
-        logger.error(f"[Local] Failed to load any credentials. Checked refs: {scraper_cfg.credential_refs}")
-        logger.error("[Local] Ensure SCRAPER_API_URL and SCRAPER_API_KEY are set in your .env file")
-        logger.error("[Local] Or set {REF}_USERNAME and {REF}_PASSWORD environment variables")
-
     job_config = JobConfig(
         job_id=job_id,
         skus=skus,
@@ -149,7 +130,9 @@ def run_local_mode(args: argparse.Namespace) -> None:
         max_workers=1,
     )
 
-    from runner import run_job
+    from runner import run_job, settings
+
+    settings.browser_settings["headless"] = not args.no_headless
 
     logger.info(f"[Local] Starting local scrape job: {job_id}")
     try:

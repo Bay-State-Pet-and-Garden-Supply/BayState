@@ -115,15 +115,26 @@ export async function getScraperRecommendations(
     console.error('[Recommendations] Failed to fetch scraper configs:', scraperError);
   }
 
+  // human-readable scraper name
   const allScrapers = (scraperRows || []).map((row: { slug: string; name: string | null }) => ({
     slug: row.slug,
     name: row.name || row.slug,
   }));
 
+  interface AffinityRow {
+    scraper_slug: string;
+    hit_rate: number;
+    total_attempts: number;
+    successful_extractions: number;
+    avg_fields_extracted?: number;
+    avg_images_found?: number;
+    [key: string]: unknown;
+  }
+
   // Build affinity lookup
-  const affinityBySlug = new Map<string, any>();
+  const affinityBySlug = new Map<string, AffinityRow>();
   (affinityRows || []).forEach((row) => {
-    affinityBySlug.set(row.scraper_slug, row);
+    affinityBySlug.set(row.scraper_slug, row as unknown as AffinityRow);
   });
 
   // Build recommendations for each scraper
