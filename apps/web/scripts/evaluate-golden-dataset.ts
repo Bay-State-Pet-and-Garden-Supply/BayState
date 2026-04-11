@@ -8,7 +8,7 @@ import {
   type ConsolidationResult,
   type ParallelRunComparison,
 } from '@/lib/consolidation';
-import { buildPromptContext, getCategories } from '@/lib/consolidation/prompt-builder';
+import { buildPromptContext } from '@/lib/consolidation/prompt-builder';
 import {
   getConsolidationConfig,
 } from '@/lib/consolidation/openai-client';
@@ -271,11 +271,7 @@ async function main(): Promise<void> {
     throw new Error('No dataset records found to evaluate');
   }
 
-  const [{ systemPrompt, shopsitePages = [] }, categoryList] = await Promise.all([
-    buildPromptContext(),
-    getCategories(),
-  ]);
-  const categories = categoryList.map((category) => category.name);
+  const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
   const responseSchema = buildResponseSchema(categories, shopsitePages);
 
   const providerResultsEntries = await Promise.all(

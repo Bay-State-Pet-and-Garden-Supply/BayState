@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Brain, ChevronRight, Layers, Tag, Plus, Database, Upload, Archive, Loader2 } from "lucide-react";
+import { Activity, Brain, ChevronRight, Layers, Tag, Plus, Database, Upload, Archive, Loader2, Search, X } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import dynamic from "next/dynamic";
 import type {
   PipelineProduct,

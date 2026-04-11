@@ -26,7 +26,7 @@ type PromptPayload = {
 };
 
 const USER_PROMPT_PREFIX =
-    'Consolidate this product into a canonical record using the provided source trust metadata and only source-supported values: ';
+    'Consolidate this product into a ShopSite export-ready record using the provided source trust metadata and only source-supported values: ';
 
 function extractUserPayload(content: string): PromptPayload {
     expect(content.startsWith(USER_PROMPT_PREFIX)).toBe(true);
@@ -264,6 +264,77 @@ describe('consolidation batch service', () => {
             'bradley:trusted',
             'amazon:marketplace',
         ]);
+    });
+
+    it('createBatchContent keeps only the highest-value prompt sources', () => {
+        const content = createBatchContent(
+            [
+                {
+                    sku: 'SKU-SOURCE-CAP',
+                    sources: {
+                        shopsite_input: { brand: 'Acme', product_on_pages: ['Dog Toys'] },
+                        manufacturer: { brand: 'Acme', title: 'Acme Tug Toy 2 ct.' },
+                        distributor_a: { brand: 'Acme', description: 'Heavy duty rope toy.' },
+                        distributor_b: { brand: 'Acme', category: 'Dog Toys' },
+                        amazon: { brand: 'Brand: Acme', title: 'Marketplace title' },
+                    },
+                },
+            ],
+            'system prompt'
+        );
+
+        const firstLine = content.split('\n')[0];
+        const parsed = JSON.parse(firstLine) as {
+            body: {
+                messages: Array<{ role: string; content: string }>;
+            };
+        };
+        const userContent = parsed.body.messages.find((message) => message.role === 'user')?.content || '';
+        const payload = extractUserPayload(userContent);
+
+        expect(payload.sources.map((source) => source.source)).toEqual([
+            'shopsite_input',
+            'manufacturer',
+            'distributor_a',
+            'distributor_b',
+        ]);
+        expect(payload.sources).toHaveLength(4);
+    });
+
+    it('createBatchContent trims oversized text fields and skips noisy fallback objects', () => {
+        const content = createBatchContent(
+            [
+                {
+                    sku: 'SKU-TRIM',
+                    sources: {
+                        distributor_a: {
+                            title: 'Acme Deluxe Bird Seed 10 lb.',
+                            description: 'A'.repeat(500),
+                            metadata_blob: {
+                                irrelevant: 'A'.repeat(200),
+                                extra: 'B'.repeat(200),
+                            },
+                        },
+                    },
+                },
+            ],
+            'system prompt'
+        );
+
+        const firstLine = content.split('\n')[0];
+        const parsed = JSON.parse(firstLine) as {
+            body: {
+                messages: Array<{ role: string; content: string }>;
+            };
+        };
+        const userContent = parsed.body.messages.find((message) => message.role === 'user')?.content || '';
+        const payload = extractUserPayload(userContent);
+        const source = payload.sources.find((entry) => entry.source === 'distributor_a');
+
+        expect(typeof source?.fields.description).toBe('string');
+        expect((source?.fields.description as string).length).toBeLessThan(380);
+        expect(source?.fields.description).toMatch(/…$/);
+        expect(source?.fields).not.toHaveProperty('metadata_blob');
     });
 
     it('applyConsolidationResults merges existing consolidated data and resolves brand ids', async () => {

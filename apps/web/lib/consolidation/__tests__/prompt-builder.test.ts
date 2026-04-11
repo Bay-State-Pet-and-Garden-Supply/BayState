@@ -78,22 +78,22 @@ describe('brand exclusion in prompt-builder', () => {
         it('includes source trust and keyword guidance', () => {
             const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
 
+            expect(prompt).toMatch(/shopsite export-ready/i);
             expect(prompt).toMatch(/highest trust.*shopsite_input/i);
             expect(prompt).toMatch(/marketplace/i);
             expect(prompt).toMatch(/search_keywords/i);
-            expect(prompt).toContain('Allowed category values:');
-            expect(prompt).toContain('Dog > Food > Dry Food');
+            expect(prompt).toMatch(/response schema already constrains/i);
             expect(prompt).toMatch(/deepest valid leaf taxonomy breadcrumb/i);
             expect(prompt).toMatch(/ortho home defense/i);
+            expect(prompt).not.toContain('Allowed category values:');
         });
 
         it('adds optional cohort consistency guidance and examples', () => {
             const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
 
-            expect(prompt).toMatch(/cohort consistency rules/i);
             expect(prompt).toMatch(/sibling product context/i);
-            expect(prompt).toMatch(/consistent line example/i);
-            expect(prompt).toMatch(/taxonomy pattern/i);
+            expect(prompt).toMatch(/related skus/i);
+            expect(prompt).toMatch(/without inventing details/i);
         });
 
         it('builds compact sibling product context when available', () => {
@@ -201,7 +201,7 @@ describe('brand exclusion in prompt-builder', () => {
                     ],
                 })
             );
-            expect(payload.product_line_context?.sibling_products).toHaveLength(5);
+            expect(payload.product_line_context?.sibling_products).toHaveLength(3);
             expect(payload.product_line_context?.sibling_products[0]).toEqual({
                 sku: 'SIB-1',
                 name: 'Acme Puppy Recipe Dog Food 4 lb.',
