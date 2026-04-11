@@ -26,6 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { CohortBrandBadge } from "./CohortBrandBadge";
 
 interface BrandInfo {
   id: string;
@@ -121,91 +122,7 @@ function StatusBadge({ status }: { status: CohortBatch["status"] }) {
   );
 }
 
-function BrandBadge({
-  cohort,
-  onAssign,
-}: {
-  cohort: CohortBatch;
-  onAssign: (cohortId: string, brandName: string) => void;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState("");
 
-  const brandName = cohort.brand_name || cohort.brands?.name || null;
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-1">
-        <Input
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          placeholder="Brand name..."
-          className="h-6 w-32 text-xs px-2"
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && editValue.trim()) {
-              onAssign(cohort.id, editValue.trim());
-              setIsEditing(false);
-            }
-            if (e.key === "Escape") {
-              setIsEditing(false);
-            }
-          }}
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0"
-          onClick={() => {
-            if (editValue.trim()) {
-              onAssign(cohort.id, editValue.trim());
-            }
-            setIsEditing(false);
-          }}
-        >
-          <Check className="h-3 w-3 text-green-600" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0"
-          onClick={() => setIsEditing(false)}
-        >
-          <X className="h-3 w-3 text-muted-foreground" />
-        </Button>
-      </div>
-    );
-  }
-
-  if (brandName) {
-    return (
-      <button
-        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-brand-forest-green/10 text-brand-forest-green hover:bg-brand-forest-green/20 transition-colors cursor-pointer border-0"
-        onClick={() => {
-          setEditValue(brandName);
-          setIsEditing(true);
-        }}
-      >
-        <Tag className="h-3 w-3" />
-        {brandName}
-        <Edit2 className="h-2.5 w-2.5 opacity-60" />
-      </button>
-    );
-  }
-
-  return (
-    <button
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-brand-forest-green hover:text-brand-forest-green transition-colors cursor-pointer bg-transparent"
-      onClick={() => {
-        setEditValue("");
-        setIsEditing(true);
-      }}
-    >
-      <Tag className="h-3 w-3" />
-      Assign Brand
-    </button>
-  );
-}
 
 function StatCard({
   title,
