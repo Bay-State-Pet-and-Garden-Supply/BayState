@@ -81,10 +81,6 @@ function normalizeFieldValue(field: ComparableField, value: unknown): string | n
         return normalizeNumeric(value);
     }
 
-    if (field === 'category') {
-        return normalizeDelimitedSet(value, 'pipe');
-    }
-
     if (field === 'product_on_pages') {
         return normalizeDelimitedSet(value, 'pipe');
     }
@@ -97,7 +93,7 @@ function normalizeFieldValue(field: ComparableField, value: unknown): string | n
 }
 
 function isFieldPresent(value: unknown, field: typeof COMPLETENESS_FIELDS[number]): boolean {
-    if (field === 'category' || field === 'product_on_pages') {
+    if (field === 'product_on_pages') {
         return normalizeDelimitedSet(value, 'pipe').length > 0;
     }
 

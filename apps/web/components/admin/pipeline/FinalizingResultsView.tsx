@@ -58,11 +58,6 @@ interface Brand {
   name: string;
 }
 
-interface Category {
-  id: string;
-  name: string;
-}
-
 export function FinalizingResultsView({
   products,
   onRefresh,
@@ -89,12 +84,6 @@ export function FinalizingResultsView({
   const [creatingBrand, setCreatingBrand] = useState(false);
   const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
 
-  // Category state
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categorySearch, setCategorySearch] = useState("");
-  const [creatingCategory, setCreatingCategory] = useState(false);
-  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
-
   // Store Pages (Product Pages) state
   const [pageSearch, setPageSearch] = useState("");
   const [pagePopoverOpen, setPagePopoverOpen] = useState(false);
@@ -115,12 +104,6 @@ export function FinalizingResultsView({
     const search = brandSearch.toLowerCase();
     return brands.filter((b) => b.name.toLowerCase().includes(search));
   }, [brands, brandSearch]);
-
-  const filteredCategories = useMemo(() => {
-    if (!categorySearch.trim()) return categories;
-    const search = categorySearch.toLowerCase();
-    return categories.filter((c) => c.name.toLowerCase().includes(search));
-  }, [categories, categorySearch]);
 
   const filteredPages = useMemo(() => {
     if (!pageSearch.trim()) return SHOPSITE_PAGES;
@@ -157,42 +140,12 @@ export function FinalizingResultsView({
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!categorySearch.trim()) return;
-    setCreatingCategory(true);
-    try {
-      const res = await fetch("/api/admin/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: categorySearch.trim() }),
-      });
-      if (res.ok) {
-        const { category } = await res.json();
-        setCategories((prev) =>
-          [...prev, category].sort((a, b) => a.name.localeCompare(b.name)),
-        );
-        handleInputChange("category", [...formData.category, category.name]);
-        setCategorySearch("");
-        setCategoryPopoverOpen(false);
-        toast.success(`Category "${category.name}" created`);
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Failed to create category");
-      }
-    } catch {
-      toast.error("An error occurred while creating category");
-    } finally {
-      setCreatingCategory(false);
-    }
-  };
-
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     price: "",
     weight: "",
     brandId: "none",
-    category: [] as string[],
     stockStatus: "in_stock",
     productOnPages: [] as string[],
     isSpecialOrder: false,
@@ -279,23 +232,15 @@ export function FinalizingResultsView({
     };
   }, [selectedSku]);
 
-  // Fetch brands and categories
+  // Fetch brands
   useEffect(() => {
     async function fetchData() {
       try {
-        const [brandsRes, categoriesRes] = await Promise.all([
-          fetch("/api/admin/brands"),
-          fetch("/api/admin/categories"),
-        ]);
+        const brandsRes = await fetch("/api/admin/brands");
 
         if (brandsRes.ok) {
           const data = await brandsRes.json();
           setBrands(data.brands || []);
-        }
-
-        if (categoriesRes.ok) {
-          const data = await categoriesRes.json();
-          setCategories(data.categories || []);
         }
       } catch (err) {
         console.error("Failed to fetch reference data:", err);
@@ -330,15 +275,6 @@ export function FinalizingResultsView({
         price: String(consolidated.price ?? input.price ?? ""),
         weight: ((cons as Record<string, unknown>).weight as string) || "",
         brandId: consolidated.brand_id || "none",
-        category: Array.isArray((cons as Record<string, unknown>).category)
-          ? ((cons as Record<string, unknown>).category as string[])
-          : typeof (cons as Record<string, unknown>).category === "string" &&
-               (cons as Record<string, unknown>).category
-            ? ((cons as Record<string, unknown>).category as string)
-                .split("|")
-                .map((c) => c.trim())
-                .filter(Boolean)
-            : [],
         stockStatus:
           ((consolidated as Record<string, unknown>).stock_status as string) ||
           "in_stock",
@@ -443,7 +379,6 @@ export function FinalizingResultsView({
         stock_status: formData.stockStatus,
         is_special_order: formData.isSpecialOrder,
         weight: formData.weight.trim() || null,
-        category: formData.category,
         product_on_pages: formData.productOnPages,
         images: formData.selectedImages,
       };

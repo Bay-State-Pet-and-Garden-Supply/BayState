@@ -83,6 +83,7 @@ interface SourceDetails extends Record<string, unknown> {
   price?: number | string;
   images?: string[];
   categories?: string[];
+  availability?: string;
 }
 
 const EMPTY_SOURCES: Record<string, unknown> = {};

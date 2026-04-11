@@ -56,7 +56,6 @@ export function PipelineProductDetail({
   const [price, setPrice] = useState('');
   const [weight, setWeight] = useState('');
   const [brandId, setBrandId] = useState('none');
-  const [category, setCategory] = useState<string[]>([]);
   const [productOnPages, setProductOnPages] = useState<string[]>([]);
 
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('imported');
@@ -98,11 +97,6 @@ export function PipelineProductDetail({
         setPrice(String(consolidated.price ?? input.price ?? ''));
         setWeight(consolidated.weight || input.weight || '');
         setBrandId(consolidated.brand_id || 'none');
-        const catData = consolidated.category || input.category || '';
-        setCategory(Array.isArray(catData) 
-          ? catData 
-          : catData.split('|').map((c: string) => c.trim()).filter(Boolean)
-        );
         
         // Handle pages (product_on_pages is the internal field name)
         let pages: string[] = [];
@@ -200,7 +194,6 @@ export function PipelineProductDetail({
         price: parseFloat(price) || 0,
         brand_id: brandId === 'none' ? null : brandId,
         weight: weight.trim(),
-        category: category,
         product_on_pages: productOnPages,
         images: selectedImages
           .map((img) => img.trim())
