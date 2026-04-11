@@ -50,6 +50,10 @@ npm test             # Jest
 ## Development Conventions
 
 ### When Working in BayStateApp
+- **Avoid "AI Slop":** Never use "default" or "SaaS-y" UI patterns (e.g., soft rounding, muted colors, and standard Shadcn/UI cards) in customer-facing areas.
+- **Robust Utilitarian Theme:** Adhere to the storefront's "Modern Farm Utilitarian" brand:
+    - **Typography:** `font-display`, `font-black`, `uppercase`, `tracking-tighter`.
+    - **Styling:** Heavy borders (`border-4 border-zinc-900`), blocky shadows (`shadow-[8px_8px_0px_rgba(0,0,0,1)]`), and high-contrast brand colors.
 - Default to Server Components; use `'use client'` only when needed
 - Use path alias `@/*` for imports
 - Test files in `__tests__/` mirroring source structure

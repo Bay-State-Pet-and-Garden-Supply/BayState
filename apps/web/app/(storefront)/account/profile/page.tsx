@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/auth/roles'
 import { redirect } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileForm } from '@/components/account/profile-form'
 import { CreateProfileCard } from '@/components/account/create-profile-card'
+import { User } from 'lucide-react'
 
 export default async function ProfilePage() {
     const supabase = await createClient()
@@ -13,13 +13,12 @@ export default async function ProfilePage() {
     const profile = await getProfile(user.id)
 
     // If profile doesn't exist (legacy user), show the create profile card
-    // This moves the side-effect (INSERT) to a user-triggered action
     if (!profile) {
         return (
-            <div className="space-y-6">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Profile</h2>
-                    <p className="text-muted-foreground">Manage your personal information.</p>
+            <div className="space-y-12">
+                <div className="border-b-8 border-zinc-900 pb-4">
+                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
+                    <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
                 </div>
 
                 <CreateProfileCard 
@@ -31,21 +30,25 @@ export default async function ProfilePage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Profile</h2>
-                <p className="text-muted-foreground">Manage your personal information.</p>
+        <div className="space-y-12">
+            <div className="border-b-8 border-zinc-900 pb-4">
+                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
+                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Personal Information</CardTitle>
-                    <CardDescription>Update your name and contact details.</CardDescription>
-                </CardHeader>
-                <CardContent>
+            <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(59,130,246,1)]">
+                <div className="bg-blue-600 p-4 border-b-4 border-zinc-900 text-white flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <h2 className="text-2xl font-black uppercase tracking-tight font-display">Personal Information</h2>
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-100">Update your name and contact details.</p>
+                    </div>
+                    <User className="h-6 w-6" />
+                </div>
+                <div className="p-8">
                     <ProfileForm profile={profile} />
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         </div>
     )
 }
+

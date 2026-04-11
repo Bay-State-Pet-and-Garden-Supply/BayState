@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class SerperSearchClient(BaseSearchProvider):
     _MAX_BATCH_SIZE = 100
+    _MAX_RETRIES = 3
 
     def __init__(self, max_results: int = 15, api_key: str | None = None, timeout_seconds: float = 15.0) -> None:
         self.max_results = max(1, max_results)
@@ -63,25 +65,64 @@ class SerperSearchClient(BaseSearchProvider):
 
         return results
 
+    @staticmethod
+    def _format_request_error(exc: Exception) -> str:
+        text = " ".join(str(exc).split())
+        return text or exc.__class__.__name__
+
+    async def _post_with_retry(
+        self,
+        client: httpx.AsyncClient,
+        payload: dict[str, Any] | list[dict[str, Any]],
+        *,
+        context: str,
+    ) -> tuple[Any | None, str | None]:
+        for attempt in range(1, self._MAX_RETRIES + 1):
+            try:
+                response = await client.post("https://google.serper.dev/search", headers=self._build_headers(), json=payload)
+                response.raise_for_status()
+                return response.json(), None
+            except httpx.HTTPStatusError as exc:
+                status_code = exc.response.status_code if exc.response is not None else "unknown"
+                logger.error("[AI Search] Serper %s failed with status %s", context, status_code)
+                return None, f"Serper search failed with status {status_code}"
+            except httpx.RequestError as exc:
+                error_text = self._format_request_error(exc)
+                if attempt < self._MAX_RETRIES:
+                    logger.warning(
+                        "[AI Search] Serper %s failed on attempt %s/%s: %s; retrying",
+                        context,
+                        attempt,
+                        self._MAX_RETRIES,
+                        error_text,
+                    )
+                    await asyncio.sleep(0.5 * attempt)
+                    continue
+
+                logger.warning(
+                    "[AI Search] Serper %s failed after %s attempts: %s",
+                    context,
+                    attempt,
+                    error_text,
+                )
+                return None, error_text
+            except Exception as exc:
+                error_text = self._format_request_error(exc)
+                logger.error("[AI Search] Serper %s failed: %s", context, error_text)
+                return None, error_text
+
+        return None, "Serper search failed"
+
     async def search(self, query: str) -> tuple[list[dict[str, Any]], str | None]:
         if not self.api_key:
             return [], "SERPER_API_KEY not set"
 
-        headers = self._build_headers()
         payload = self._build_payload(query)
 
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-                response = await client.post("https://google.serper.dev/search", headers=headers, json=payload)
-                response.raise_for_status()
-                data = response.json()
-        except httpx.HTTPStatusError as exc:
-            status_code = exc.response.status_code if exc.response is not None else "unknown"
-            logger.error("[AI Search] Serper search failed with status %s for query %r", status_code, query)
-            return [], f"Serper search failed with status {status_code}"
-        except Exception as exc:
-            logger.error("[AI Search] Serper search failed: %s", exc)
-            return [], str(exc)
+        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            data, error = await self._post_with_retry(client, payload, context=f"search for query {query!r}")
+        if error:
+            return [], error
 
         return self._extract_results(data), None
 
@@ -95,25 +136,15 @@ class SerperSearchClient(BaseSearchProvider):
             return [(results, error)]
 
         outputs: list[tuple[list[dict[str, Any]], str | None]] = []
-        headers = self._build_headers()
 
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             for start in range(0, len(queries), self._MAX_BATCH_SIZE):
                 batch_queries = queries[start : start + self._MAX_BATCH_SIZE]
                 payload = [self._build_payload(query) for query in batch_queries]
 
-                try:
-                    response = await client.post("https://google.serper.dev/search", headers=headers, json=payload)
-                    response.raise_for_status()
-                    data = response.json()
-                except httpx.HTTPStatusError as exc:
-                    status_code = exc.response.status_code if exc.response is not None else "unknown"
-                    logger.error("[AI Search] Serper batch search failed with status %s for %s queries", status_code, len(batch_queries))
-                    outputs.extend([([], f"Serper search failed with status {status_code}")] * len(batch_queries))
-                    continue
-                except Exception as exc:
-                    logger.error("[AI Search] Serper batch search failed: %s", exc)
-                    outputs.extend([([], str(exc))] * len(batch_queries))
+                data, error = await self._post_with_retry(client, payload, context=f"batch search for {len(batch_queries)} queries")
+                if error:
+                    outputs.extend([([], error)] * len(batch_queries))
                     continue
 
                 batch_data = data if isinstance(data, list) else [data]

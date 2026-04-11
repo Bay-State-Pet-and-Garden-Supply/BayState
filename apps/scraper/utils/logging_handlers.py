@@ -491,23 +491,11 @@ class JobLogTransport:
             self._last_realtime_error = None
         except RealtimeError as exc:
             self._last_realtime_error = exc
-            logger.error(
-                f"Failed to {operation} for job {self.job_id}",
-                extra={
-                    "job_id": self.job_id,
-                    "runner_id": self.runner_id,
-                    "runner_name": self.runner_name,
-                    "phase": "job_logging",
-                    "operation": operation,
-                    "error": str(exc),
-                    "error_type": type(exc).__name__,
-                    "will_retry": False,
-                    "_job_logging_internal": True,
-                    "details": {
-                        "payload_keys": sorted(payload.keys()),
-                        "realtime_error": str(exc),
-                    },
-                },
+            logger.debug(
+                "Realtime %s skipped for job %s: %s",
+                operation,
+                self.job_id,
+                exc,
             )
         except Exception as exc:  # noqa: BLE001 - preserve future executor failures in structured logs
             self._last_realtime_error = exc

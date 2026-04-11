@@ -1,5 +1,6 @@
 """crawl4ai-based product extraction."""
 
+from importlib import metadata as importlib_metadata
 import json
 import logging
 import re
@@ -30,10 +31,8 @@ logger = logging.getLogger(__name__)
 
 # Log Crawl4AI version at module load for diagnostics
 try:
-    import crawl4ai
-
-    logger.info(f"[AI Search] Crawl4AI version: {getattr(crawl4ai, '__version__', 'unknown')}")
-except ImportError:
+    logger.info("[AI Search] Crawl4AI version: %s", importlib_metadata.version("crawl4ai"))
+except importlib_metadata.PackageNotFoundError:
     logger.warning("[AI Search] Crawl4AI not installed")
 
 
@@ -167,7 +166,7 @@ class Crawl4AIExtractor:
             "fallback_triggered": fallback_triggered,
         }
         if error:
-            telemetry["error"] = error
+            telemetry["error"] = self._summarize_error(error)
 
         logger.info(f"[AI Search] Extraction telemetry: {json.dumps(telemetry)}")
 
@@ -178,6 +177,15 @@ class Crawl4AIExtractor:
         if not error_text:
             return False
         return "timeout" in error_text or "networkidle" in error_text or "failed on navigating acs-goto" in error_text
+
+    @staticmethod
+    def _summarize_error(error: Any, *, max_length: int = 240) -> str:
+        text = " ".join(str(error or "").split())
+        if not text:
+            return "unknown error"
+        if len(text) <= max_length:
+            return text
+        return f"{text[: max_length - 3]}..."
 
     @classmethod
     def _looks_like_not_found_page(cls, html: str, markdown: str) -> bool:
@@ -559,7 +567,7 @@ class Crawl4AIExtractor:
                         if data and isinstance(data, list):
                             if self._is_llm_error_payload(data[0]):
                                 error_payload = data[0]
-                                llm_error = str(error_payload.get("content") or error_payload.get("error") or "LLM extraction error").strip()
+                                llm_error = self._summarize_error(error_payload.get("content") or error_payload.get("error") or "LLM extraction error")
                                 self._log_telemetry(url, sku, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, llm_error)
                                 logger.warning("[AI Search] Crawl4AI returned an error payload, using fallback extractor")
                                 return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
@@ -610,16 +618,24 @@ class Crawl4AIExtractor:
                         return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
                 # Log failed extraction
-                self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, result.get("error") or "No content")
+                self._log_telemetry(
+                    url,
+                    sku,
+                    method,
+                    False,
+                    fetch_time_ms,
+                    0,
+                    llm_time_ms,
+                    self._summarize_error(result.get("error") or "No content"),
+                )
                 return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
         except Exception as e:
-            error_message = str(e)
+            error_message = self._summarize_error(e)
             fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
 
-            # Log actual exception message for debugging before masking
-            logger.warning(f"[AI Search] Crawl4AI exception: {error_message}")
-            
+            logger.warning("[AI Search] Crawl4AI exception: %s", error_message)
+             
             # Check for NoneType/empty content errors
             is_none_error = ("expected string or bytes-like object" in error_message and "NoneType" in error_message)
             is_type_error = "can only concatenate str" in error_message or "unsupported operand type" in error_message
@@ -637,11 +653,16 @@ class Crawl4AIExtractor:
                     "error": "Crawl4AI returned invalid content type",
                 }
 
-            logger.error(f"[AI Search] Extraction failed: {e}")
-            self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, str(e))
+            safe_html = html if isinstance(html, str) else ""
+            safe_markdown = markdown if isinstance(markdown, str) else ""
+            if safe_html or safe_markdown:
+                self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, error_message)
+                return await self._extract_with_fallback(url, sku, product_name, brand, safe_html, safe_markdown)
+
+            self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, error_message)
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_message,
             }
 
 

@@ -29,6 +29,18 @@ CHANNEL_RUNNER_LOGS = "runner-logs"
 
 BROADCAST_CIRCUIT_BREAKER_THRESHOLD = 5
 BROADCAST_CIRCUIT_BREAKER_TIMEOUT_SECONDS = 60.0
+TRANSIENT_REALTIME_ERROR_MARKERS = (
+    "1006",
+    "broadcast channel is not connected",
+    "channel error",
+    "connection closed",
+    "join push timeout",
+    "not connected",
+    "set of coroutines/futures is empty",
+    "timed out",
+    "timeout",
+    "websocket",
+)
 
 
 class RealtimeError(Exception):
@@ -170,7 +182,7 @@ class RealtimeManager:
             self.client = _AsyncRealtimeClient(
                 self.supabase_url,
                 self.service_key,
-                auto_reconnect=True,
+                auto_reconnect=False,
             )
 
             await self.client.connect()
@@ -183,7 +195,7 @@ class RealtimeManager:
             return True
 
         except Exception as e:
-            logger.error(f"[{self.runner_name}] Failed to connect to Supabase Realtime: {e}")
+            logger.error(f"[{self.runner_name}] Failed to connect to Supabase Realtime: {self._summarize_realtime_error(e)}")
             self._connected = False
             return False
 
@@ -262,9 +274,9 @@ class RealtimeManager:
             if str(status) == "SUBSCRIBED":
                 logger.info(f"[{self.runner_name}] Subscribed to scrape_jobs INSERT events")
             elif str(status) == "CHANNEL_ERROR":
-                logger.error(f"[{self.runner_name}] Error subscribing to jobs: {err}")
+                logger.warning(f"[{self.runner_name}] Error subscribing to jobs: {self._summarize_realtime_error(err)}")
             elif str(status) == "TIMED_OUT":
-                logger.error(f"[{self.runner_name}] Subscription timed out")
+                logger.warning(f"[{self.runner_name}] Job subscription timed out")
 
         await channel.subscribe(_on_subscribe)
 
@@ -328,7 +340,9 @@ class RealtimeManager:
                 if str(status) == "SUBSCRIBED":
                     logger.info(f"[{self.runner_name}] Presence channel subscribed")
                 elif str(status) == "CHANNEL_ERROR":
-                    logger.error(f"[{self.runner_name}] Error subscribing to presence: {err}")
+                    logger.warning(f"[{self.runner_name}] Error subscribing to presence: {self._summarize_realtime_error(err)}")
+                elif str(status) == "TIMED_OUT":
+                    logger.warning(f"[{self.runner_name}] Presence subscription timed out")
 
             await self._presence_channel.subscribe(_on_subscribe)
 
@@ -349,7 +363,7 @@ class RealtimeManager:
             return True
 
         except Exception as e:
-            logger.error(f"[{self.runner_name}] Failed to enable presence: {e}")
+            logger.error(f"[{self.runner_name}] Failed to enable presence: {self._summarize_realtime_error(e)}")
             return False
 
     async def _presence_heartbeat_loop(self) -> None:
@@ -370,7 +384,15 @@ class RealtimeManager:
                         )
                         logger.debug(f"[{self.runner_name}] Presence heartbeat sent")
                     except Exception as e:
-                        logger.warning(f"[{self.runner_name}] Failed to send presence heartbeat: {e}")
+                        if self._is_transient_realtime_error(e):
+                            self._handle_disconnect(
+                                CHANNEL_RUNNER_PRESENCE,
+                                {
+                                    "error": self._summarize_realtime_error(e),
+                                },
+                            )
+                            return
+                        logger.warning(f"[{self.runner_name}] Failed to send presence heartbeat: {self._summarize_realtime_error(e)}")
 
         except asyncio.CancelledError:
             logger.info(f"[{self.runner_name}] Presence heartbeat loop cancelled")
@@ -413,14 +435,16 @@ class RealtimeManager:
                 if str(status) == "SUBSCRIBED":
                     logger.info(f"[{self.runner_name}] Broadcast channel enabled")
                 elif str(status) == "CHANNEL_ERROR":
-                    logger.error(f"[{self.runner_name}] Error subscribing to broadcast: {err}")
+                    logger.warning(f"[{self.runner_name}] Error subscribing to broadcast: {self._summarize_realtime_error(err)}")
+                elif str(status) == "TIMED_OUT":
+                    logger.warning(f"[{self.runner_name}] Broadcast subscription timed out")
 
             await self._broadcast_channel.subscribe(_on_subscribe)
 
             return True
 
         except Exception as e:
-            logger.error(f"[{self.runner_name}] Failed to enable broadcast: {e}")
+            logger.error(f"[{self.runner_name}] Failed to enable broadcast: {self._summarize_realtime_error(e)}")
             return False
 
     async def broadcast_job_progress(
@@ -609,6 +633,19 @@ class RealtimeManager:
             self._broadcast_circuit_opened_at = time.monotonic()
             self._broadcast_circuit_open_until = self._broadcast_circuit_opened_at + BROADCAST_CIRCUIT_BREAKER_TIMEOUT_SECONDS
 
+    @staticmethod
+    def _summarize_realtime_error(error: Exception | str | None) -> str:
+        text = " ".join(str(error or "").split())
+        if not text:
+            return "unknown realtime error"
+        if len(text) <= 240:
+            return text
+        return f"{text[:237]}..."
+
+    def _is_transient_realtime_error(self, error: Exception | str | None) -> bool:
+        message = self._summarize_realtime_error(error).lower()
+        return any(marker in message for marker in TRANSIENT_REALTIME_ERROR_MARKERS)
+
     def _broadcast_log_extra(self, event: str, payload: dict[str, Any], error: Exception | None = None) -> dict[str, Any]:
         retry_after_seconds = self._broadcast_retry_after_seconds()
         return {
@@ -642,10 +679,6 @@ class RealtimeManager:
                 f"Realtime broadcast circuit is open for {self.runner_name}; retry after {self._broadcast_retry_after_seconds():.1f}s"
             )
             self._last_broadcast_error = error
-            logger.error(
-                f"[{self.runner_name}] Skipping realtime broadcast because circuit breaker is open",
-                extra=self._broadcast_log_extra(event, payload, error),
-            )
             raise error
 
         try:
@@ -653,10 +686,19 @@ class RealtimeManager:
         except Exception as exc:
             error = RealtimeError(f"Failed to broadcast {event}: {exc}")
             self._record_broadcast_failure(error)
-            logger.error(
-                f"[{self.runner_name}] Failed to broadcast realtime event",
-                extra=self._broadcast_log_extra(event, payload, error),
-            )
+            if self._is_transient_realtime_error(exc):
+                self._handle_disconnect(
+                    CHANNEL_JOB_BROADCAST,
+                    {
+                        "event": event,
+                        "error": self._summarize_realtime_error(exc),
+                    },
+                )
+            else:
+                logger.warning(
+                    f"[{self.runner_name}] Failed to broadcast realtime event",
+                    extra=self._broadcast_log_extra(event, payload, error),
+                )
             raise error from exc
 
         self._record_broadcast_success()
@@ -708,8 +750,13 @@ class RealtimeManager:
         self._broadcast_channel = None
         self._presence_channel = None
 
+        try:
+            current_task = asyncio.current_task()
+        except RuntimeError:
+            current_task = None
         if self._presence_task and not self._presence_task.done():
-            _ = self._presence_task.cancel()
+            if self._presence_task is not current_task:
+                _ = self._presence_task.cancel()
         self._presence_task = None
 
         self.logger.warning(
@@ -767,7 +814,7 @@ class RealtimeManager:
     def start_reconnection_loop(self) -> None:
         """Start the background auto-reconnection loop."""
         if self._reconnect_task and not self._reconnect_task.done():
-            logger.warning(f"[{self.runner_name}] Reconnection loop already running")
+            logger.debug(f"[{self.runner_name}] Reconnection loop already running")
             return
 
         self._reconnect_task = asyncio.create_task(self._auto_reconnect())

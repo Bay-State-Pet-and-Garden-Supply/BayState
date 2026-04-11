@@ -182,7 +182,7 @@ export function StorefrontHeader({
                 />
               </div>
               <div className="flex flex-col group-hover:underline underline-offset-4">
-                <span className="text-3xl font-black leading-none tracking-tighter text-white uppercase italic">
+                <span className="text-3xl font-black leading-none tracking-tighter text-white uppercase font-display">
                   Bay State
                 </span>
                 <span className="hidden sm:text-[11px] font-black sm:inline leading-none text-accent uppercase tracking-[0.15em] mt-0.5">
@@ -235,7 +235,7 @@ export function StorefrontHeader({
 
                   return (
                     <NavigationMenuItem key={parent.id}>
-                      <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-widest text-xs h-12 rounded-none hover:bg-white/10 data-[state=open]:bg-white/10 transition-colors">
+                      <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-widest text-xs h-12 rounded-none hover:bg-white/10 data-[state=open]:bg-white/10 transition-colors font-display">
                         {displayName}
                       </NavigationMenuTrigger>
                       <NavigationMenuContent>
@@ -244,11 +244,11 @@ export function StorefrontHeader({
                             <div key={idx} className="flex flex-col gap-2.5 min-w-[200px]">
                                 {/* Show header only on first column, mock others to align grid */}
                                 {idx === 0 ? (
-                                <h4 className="font-black text-xl mb-3 border-b-4 border-primary/20 pb-2 text-zinc-900 tracking-tighter uppercase italic">
+                                <h4 className="font-black text-xl mb-3 border-b-4 border-primary/20 pb-2 text-zinc-900 tracking-tighter uppercase font-display">
                                   {displayName}
                                 </h4>
                               ) : (
-                                <h4 className="font-black text-xl mb-3 border-b-4 border-transparent pb-2 text-transparent select-none uppercase italic">
+                                <h4 className="font-black text-xl mb-3 border-b-4 border-transparent pb-2 text-transparent select-none uppercase">
                                   -
                                 </h4>
                               )}
@@ -280,7 +280,7 @@ export function StorefrontHeader({
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <div className="w-[650px] p-8 text-zinc-900 bg-white border-2 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,0.1)] rounded-none">
-                      <h4 className="font-black text-xl mb-5 border-b-4 border-primary/20 pb-2 text-zinc-900 tracking-tighter uppercase italic">
+                      <h4 className="font-black text-xl mb-5 border-b-4 border-primary/20 pb-2 text-zinc-900 tracking-tighter uppercase font-display">
                         Top Brands
                       </h4>
                       <div className="grid grid-cols-3 gap-x-8 gap-y-3">
@@ -343,7 +343,7 @@ export function StorefrontHeader({
               className="object-contain"
             />
           </div>
-          <span className="font-black text-white uppercase italic tracking-tighter">
+          <span className="font-black text-white uppercase tracking-tighter">
             Bay State
           </span>
         </Link>

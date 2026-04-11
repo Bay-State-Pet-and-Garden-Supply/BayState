@@ -54,7 +54,7 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
 
             {/* Content Box - Rugged Utilitarian Style */}
             <div className="absolute bottom-6 left-6 right-6 sm:right-auto p-6 sm:p-10 bg-primary text-white max-w-xl border-l-[12px] border-accent shadow-[12px_12px_0px_rgba(0,0,0,0.25)] z-10">
-                <h2 className="text-3xl sm:text-5xl font-black uppercase italic mb-3 leading-tight tracking-tighter">
+                <h2 className="text-3xl sm:text-5xl font-black uppercase mb-3 leading-tight tracking-tighter">
                     {currentSlide.title}
                 </h2>
                 {currentSlide.subtitle && (

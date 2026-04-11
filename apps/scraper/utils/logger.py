@@ -70,10 +70,11 @@ def _get_log_format() -> str:
 
 
 class NoHttpFilter(logging.Filter):
-    """Filter to suppress httpx/httpcore noise from API client logging."""
+    """Filter to suppress low-level transport noise from dependency loggers."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        return not (record.name.startswith("httpx") or record.name.startswith("httpcore") or record.name.startswith("urllib3"))
+        suppressed_prefixes = ("httpx", "httpcore", "urllib3", "realtime._async", "websocket", "websockets")
+        return not any(record.name.startswith(prefix) for prefix in suppressed_prefixes)
 
 
 def setup_logging(

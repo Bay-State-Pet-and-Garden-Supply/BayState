@@ -22,11 +22,11 @@ export default async function PetsPage() {
     ])
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">My Pets</h2>
-                <p className="text-muted-foreground">
-                    Tell us about your pets to get personalized product recommendations and care tips.
+        <div className="space-y-12">
+            <div className="border-b-8 border-zinc-900 pb-4">
+                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">My Pets</h1>
+                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">
+                    Tell us about your pets for personalized recommendations and care tips.
                 </p>
             </div>
 
@@ -34,3 +34,4 @@ export default async function PetsPage() {
         </div>
     )
 }
+
