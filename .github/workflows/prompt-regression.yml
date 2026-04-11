@@ -19,7 +19,7 @@ env:
 jobs:
   prompt-regression:
     name: Prompt Regression Tests
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux]
     defaults:
       run:
         shell: bash

@@ -15,7 +15,7 @@ env:
 jobs:
   weekly-validation:
     name: Weekly Validation
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux]
     timeout-minutes: 30
     defaults:
       run:
