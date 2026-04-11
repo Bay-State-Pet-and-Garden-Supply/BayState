@@ -64,6 +64,19 @@ export function normalizeBrandName(value: string | null | undefined): string | n
     return normalized.length > 0 ? normalized : null;
 }
 
+/**
+ * Strips common company suffixes and non-alphanumeric characters 
+ * to create a canonical key for brand matching.
+ */
+export function canonicalizeBrandName(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/\b(co\.?|inc\.?|llc\.?|corp\.?|corporation|company|seeds?|pet products?|products?)\b/gi, '')
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+}
+
 export function normalizeCategoryName(value: string | null | undefined): string | null {
     if (!value) {
         return null;

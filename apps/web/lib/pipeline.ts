@@ -85,7 +85,7 @@ export async function getProductsByStatus(
 
     let query = supabase
         .from('products_ingestion')
-        .select('*', { count: 'exact' })
+        .select('*, cohort_batches(name, brand_name)', { count: 'exact' })
         .order('updated_at', { ascending: false });
 
     query = query.eq('pipeline_status', status);
@@ -140,7 +140,21 @@ export async function getProductsByStatus(
         return { products: [], count: 0 };
     }
 
-    const products = ((data as PipelineProduct[]) || []).map(withMergedImageCandidates);
+    interface PipelineRow extends PipelineProduct {
+        cohort_batches?: { 
+            name: string | null;
+            brand_name: string | null;
+        };
+    }
+
+    const products = ((data as PipelineRow[]) || []).map((row) => {
+        const product = withMergedImageCandidates(row);
+        if (row.cohort_batches) {
+            product.cohort_name = row.cohort_batches.name;
+            product.cohort_brand_name = row.cohort_batches.brand_name;
+        }
+        return product;
+    });
     return { products, count: count || 0 };
 }
 

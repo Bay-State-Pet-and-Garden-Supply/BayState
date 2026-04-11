@@ -47,8 +47,10 @@ interface FinalizingResultsViewProps {
   groupedProducts?: {
     groups: Record<string, PipelineProduct[]>;
     cohortIds: string[];
+    names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
+  onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
 }
 
 interface Brand {
@@ -68,6 +70,7 @@ export function FinalizingResultsView({
   onSearchChange,
   groupedProducts,
   cohortBrands = {},
+  onEditCohort,
 }: FinalizingResultsViewProps) {
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
@@ -693,6 +696,7 @@ export function FinalizingResultsView({
         onSearchChange={onSearchChange}
         groupedProducts={groupedProducts}
         cohortBrands={cohortBrands}
+        onEditCohort={onEditCohort}
       />
 
       {/* Right Column: Editing Form */}

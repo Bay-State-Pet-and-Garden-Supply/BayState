@@ -49,17 +49,18 @@ interface SharedLogChannelEntry {
 
 const sharedLogChannels = new Map<string, SharedLogChannelEntry>();
 
-function ensureSharedLogChannel(channelName: string, jobId?: string): SharedLogChannelEntry {
-    const channel = createClient().channel(channelName);
-    const existingEntry = sharedLogChannels.get(channelName);
+function ensureSharedLogChannel(baseChannelName: string, jobId?: string): SharedLogChannelEntry {
+    const pgChannelName = `${baseChannelName}-pg`;
+    const existingEntry = sharedLogChannels.get(pgChannelName);
 
-    if (existingEntry && existingEntry.channel === channel) {
+    if (existingEntry) {
         return existingEntry;
     }
 
+    const channel = createClient().channel(pgChannelName);
     const entry: SharedLogChannelEntry = {
         channel,
-        listeners: existingEntry?.listeners ?? new Set(),
+        listeners: new Set(),
     };
 
     channel.on(
@@ -75,9 +76,13 @@ function ensureSharedLogChannel(channelName: string, jobId?: string): SharedLogC
                 listener(payload as LogInsertPayload);
             }
         }
-    );
+    ).subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+            console.error(`[Log Subscription] Postgres Changes channel error: ${pgChannelName}`);
+        }
+    });
 
-    sharedLogChannels.set(channelName, entry);
+    sharedLogChannels.set(pgChannelName, entry);
     return entry;
 }
 
@@ -92,6 +97,7 @@ export function useLogSubscription(
     } = options;
 
     const channelName = useMemo(() => `runner-logs:${jobId ?? 'all'}`, [jobId]);
+    const pgChannelName = useMemo(() => `${channelName}-pg`, [channelName]);
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const activeRef = useRef(autoConnect);
     const onLogRef = useRef(onLog);
@@ -138,12 +144,12 @@ export function useLogSubscription(
         return () => {
             sharedChannel.listeners.delete(handlePersistedLog);
 
-            if (sharedChannel.listeners.size === 0 && sharedLogChannels.get(channelName) === sharedChannel) {
+            if (sharedChannel.listeners.size === 0 && sharedLogChannels.get(pgChannelName) === sharedChannel) {
                 createClient().removeChannel(sharedChannel.channel);
-                sharedLogChannels.delete(channelName);
+                sharedLogChannels.delete(pgChannelName);
             }
         };
-    }, [channelName, jobId, handlePersistedLog]);
+    }, [channelName, pgChannelName, jobId, handlePersistedLog]);
 
     const {
         connectionState,

@@ -25,7 +25,7 @@ import {
 import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
 import { calculateAICost } from '@/lib/ai-scraping/pricing';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
-import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
+import { buildFacetSlug, canonicalizeBrandName, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
 import { parseTaxonomyValues } from '@/lib/taxonomy';
 import type {
@@ -1537,9 +1537,15 @@ export async function applyConsolidationResults(
 
     const brandIdByName = new Map<string, string>();
     const brandIdBySlug = new Map<string, string>();
+    const brandIdByCanonical = new Map<string, string>();
     for (const brand of brands || []) {
         if (typeof brand.name === 'string' && typeof brand.id === 'string') {
             brandIdByName.set(normalizeLookupKey(brand.name), brand.id);
+            const canonicalKey = canonicalizeBrandName(brand.name);
+            if (canonicalKey && !brandIdByCanonical.has(canonicalKey)) {
+                brandIdByCanonical.set(canonicalKey, brand.id);
+            }
+
             const brandSlug =
                 typeof brand.slug === 'string' && brand.slug.length > 0
                     ? brand.slug
@@ -1559,7 +1565,11 @@ export async function applyConsolidationResults(
         }
 
         const lookupKey = normalizeLookupKey(normalizedBrand);
-        const existingBrandId = brandIdByName.get(lookupKey);
+        const canonicalKey = canonicalizeBrandName(normalizedBrand);
+
+        const existingBrandId =
+            brandIdByName.get(lookupKey) || (canonicalKey ? brandIdByCanonical.get(canonicalKey) : undefined);
+
         if (existingBrandId) {
             return {
                 brandId: existingBrandId,

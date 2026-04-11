@@ -8,12 +8,19 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
+interface CohortMember {
+  product_sku: string;
+  upc_prefix: string;
+  sort_order: number;
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   const auth = await requireAdminAuth();
   if (!auth.authorized) return auth.response;
 
   const { id } = await context.params;
   const supabase = await createClient();
+  const includeMembers = request.nextUrl.searchParams.get('include_members') === 'true';
 
   // Fetch cohort with brand join
   const { data: cohort, error } = await supabase
@@ -36,27 +43,33 @@ export async function GET(request: NextRequest, context: RouteContext) {
     );
   }
 
-  // Fetch member products
-  const { data: members } = await supabase
-    .from('cohort_members')
-    .select('product_sku, upc_prefix, sort_order')
-    .eq('cohort_id', id)
-    .order('sort_order');
-
-  // Fetch pipeline status for each member
-  const memberSkus = (members || []).map((m: { product_sku: string }) => m.product_sku);
+  // Fetch member products only if requested
+  let members: CohortMember[] = [];
   let memberProducts: Array<{ sku: string; pipeline_status: string; input: unknown }> = [];
-  if (memberSkus.length > 0) {
-    const { data: products } = await supabase
-      .from('products_ingestion')
-      .select('sku, pipeline_status, input')
-      .in('sku', memberSkus);
-    memberProducts = (products || []) as typeof memberProducts;
+
+  if (includeMembers) {
+    const { data: memberData } = await supabase
+      .from('cohort_members')
+      .select('product_sku, upc_prefix, sort_order')
+      .eq('cohort_id', id)
+      .order('sort_order');
+    
+    members = (memberData as CohortMember[]) || [];
+
+    // Fetch pipeline status for each member
+    const memberSkus = members.map((m) => m.product_sku);
+    if (memberSkus.length > 0) {
+      const { data: products } = await supabase
+        .from('products_ingestion')
+        .select('sku, pipeline_status, input')
+        .in('sku', memberSkus);
+      memberProducts = (products || []) as typeof memberProducts;
+    }
   }
 
   return NextResponse.json({
     cohort,
-    members: members || [],
+    members,
     member_products: memberProducts,
   });
 }
@@ -82,6 +95,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   if ('product_line' in body) {
     updatePayload.product_line = typeof body.product_line === 'string' ? body.product_line.trim() || null : null;
+  }
+
+  if ('name' in body) {
+    updatePayload.name = typeof body.name === 'string' ? body.name.trim() || null : null;
   }
 
   if (Object.keys(updatePayload).length === 0) {
