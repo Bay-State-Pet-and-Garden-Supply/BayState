@@ -37,9 +37,9 @@ def validate_config() -> ValidationReport:
 
     Checks:
     - OPENAI_API_KEY: exists, not empty, starts with "sk-"
-    - AI_SEARCH_PROVIDER: optional, one of auto/serpapi/gemini
-    - SERPAPI_API_KEY: required only when provider is serpapi
-    - BRAVE_API_KEY: deprecated and ignored
+    - AI_SEARCH_PROVIDER: optional, one of auto/serper/gemini
+    - SERPER_API_KEY: required only when provider resolves to serper
+    - SERPAPI_API_KEY and BRAVE_API_KEY: deprecated and ignored
     - SCRAPER_API_URL: exists, valid URL format
     - SCRAPER_API_KEY: exists, not empty
 
@@ -64,24 +64,33 @@ def validate_config() -> ValidationReport:
 
     # Validate search provider credentials
     provider = str(os.environ.get("AI_SEARCH_PROVIDER") or "auto").strip().lower() or "auto"
-    if provider not in {"auto", "serpapi", "gemini"}:
-        errors.append("AI_SEARCH_PROVIDER must be one of: auto, serpapi, gemini")
+    if provider not in {"auto", "serper", "gemini", "serpapi", "brave"}:
+        errors.append("AI_SEARCH_PROVIDER must be one of: auto, serper, gemini")
         provider = "auto"
 
+    effective_provider = "serper" if provider in {"serpapi", "brave"} else provider
+    if provider == "serpapi":
+        warnings.append("AI_SEARCH_PROVIDER=serpapi is deprecated and mapped to serper")
+    elif provider == "brave":
+        warnings.append("AI_SEARCH_PROVIDER=brave is deprecated and mapped to serper")
+
+    serper_key = os.environ.get("SERPER_API_KEY")
     serpapi_key = os.environ.get("SERPAPI_API_KEY")
     brave_key = os.environ.get("BRAVE_API_KEY")
+    serper_present = bool(serper_key and serper_key.strip())
     serpapi_present = bool(serpapi_key and serpapi_key.strip())
     brave_present = bool(brave_key and brave_key.strip())
 
-    if serpapi_present and len(str(serpapi_key).strip()) < 20:
-        warnings.append("SERPAPI_API_KEY may be truncated or invalid")
+    if serper_present and len(str(serper_key).strip()) < 20:
+        warnings.append("SERPER_API_KEY may be truncated or invalid")
 
     if brave_present:
         warnings.append("BRAVE_API_KEY is deprecated and ignored")
+    if serpapi_present:
+        warnings.append("SERPAPI_API_KEY is deprecated and ignored")
 
-    if provider == "serpapi":
-        if not serpapi_present:
-            errors.append("SERPAPI_API_KEY is not set")
+    if effective_provider == "serper" and not serper_present:
+        errors.append("SERPER_API_KEY is not set")
 
     # Validate SCRAPER_API_URL
     scraper_url = os.environ.get("SCRAPER_API_URL")

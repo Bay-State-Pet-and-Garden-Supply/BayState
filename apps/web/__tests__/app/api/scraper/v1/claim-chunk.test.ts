@@ -176,7 +176,7 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
         });
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
             gemini_api_key: 'gemini-test-key',
-            serpapi_api_key: 'serpapi-test-key',
+            serper_api_key: 'serper-test-key',
         });
         mockSupabase.rpc.mockResolvedValue({
             data: [{
@@ -207,7 +207,7 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             scrapers: ['bradley'],
             ai_credentials: {
                 gemini_api_key: 'gemini-test-key',
-                serpapi_api_key: 'serpapi-test-key',
+                serper_api_key: 'serper-test-key',
             },
             feature_flags: {
                 GEMINI_AI_SEARCH_ENABLED: false,

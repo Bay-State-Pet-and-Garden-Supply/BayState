@@ -1086,13 +1086,13 @@ def _run_ai_search_job(
         llm_model = "gemini-2.5-flash"
     elif llm_model.startswith("gpt-"):
         llm_model = "gemini-2.5-flash"
-    search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto")
-    if search_provider == "brave":
-        search_provider = "gemini"
-    elif search_provider not in {"auto", "serpapi", "gemini"}:
+    search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
+    if search_provider in {"brave", "serpapi"}:
+        search_provider = "serper"
+    elif search_provider not in {"auto", "serper", "gemini"}:
         search_provider = "auto"
     if search_provider == "auto":
-        search_provider = "gemini"
+        search_provider = "serper"
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
     extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
     raw_prefer_manufacturer = search_cfg.get("prefer_manufacturer")
@@ -1106,18 +1106,20 @@ def _run_ai_search_job(
     if llm_api_key is None and runtime_provider == "gemini":
         llm_api_key = runtime_llm_api_key
 
-    previous_serpapi = os.environ.get("SERPAPI_API_KEY")
-    runtime_serpapi = _get_optional_string(runtime_credentials, "serpapi_api_key")
+    previous_serper = os.environ.get("SERPER_API_KEY")
+    runtime_serper = _get_optional_string(runtime_credentials, "serper_api_key")
+    if runtime_serper is None:
+        runtime_serper = _get_optional_string(runtime_credentials, "serpapi_api_key")
 
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
     if llm_api_key:
         logger.debug(f"Resolved {llm_provider} LLM API key for AI Search: {llm_api_key[:4]}...")
-    if runtime_serpapi:
-        logger.debug(f"Setting SERPAPI_API_KEY from job payload: {runtime_serpapi[:4]}...")
+    if runtime_serper:
+        logger.debug(f"Setting SERPER_API_KEY from job payload: {runtime_serper[:4]}...")
 
-    if runtime_serpapi:
-        os.environ["SERPAPI_API_KEY"] = runtime_serpapi
+    if runtime_serper:
+        os.environ["SERPER_API_KEY"] = runtime_serper
 
     item_context_by_sku: Dict[str, Dict[str, Any]] = {}
 
@@ -1208,6 +1210,7 @@ def _run_ai_search_job(
             llm_model=llm_model,
             llm_base_url=llm_base_url,
             llm_api_key=llm_api_key,
+            search_api_key=runtime_serper,
             crawl4ai_llm_provider=crawl4ai_llm_provider,
             crawl4ai_llm_model=crawl4ai_llm_model,
             crawl4ai_llm_base_url=crawl4ai_llm_base_url,
@@ -1222,11 +1225,11 @@ def _run_ai_search_job(
     try:
         batch_results = asyncio.run(_run())
     finally:
-        if runtime_serpapi:
-            if previous_serpapi is None:
-                os.environ.pop("SERPAPI_API_KEY", None)
+        if runtime_serper:
+            if previous_serper is None:
+                os.environ.pop("SERPER_API_KEY", None)
             else:
-                os.environ["SERPAPI_API_KEY"] = previous_serpapi
+                os.environ["SERPER_API_KEY"] = previous_serper
 
     for search_result in batch_results:
         sku = search_result.sku

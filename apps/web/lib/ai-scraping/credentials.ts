@@ -37,6 +37,7 @@ export interface AIScrapingRuntimeCredentials {
   openai_api_key?: string;
   openai_compatible_api_key?: string;
   gemini_api_key?: string;
+  serper_api_key?: string;
   serpapi_api_key?: string;
 }
 
@@ -752,7 +753,7 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
 }
 
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const [defaults, gemini, serpapi] = await Promise.all([
+  const [defaults, gemini, legacySearchKey] = await Promise.all([
     getAIScrapingDefaults(),
     getAIScrapingProviderSecret('gemini'),
     getAIScrapingProviderSecret('serpapi'),
@@ -772,8 +773,9 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
   if (resolvedGemini) {
     credentials.gemini_api_key = resolvedGemini;
   }
-  if (serpapi) {
-    credentials.serpapi_api_key = serpapi;
+  if (legacySearchKey) {
+    credentials.serper_api_key = legacySearchKey;
+    credentials.serpapi_api_key = legacySearchKey;
   }
 
   return credentials;

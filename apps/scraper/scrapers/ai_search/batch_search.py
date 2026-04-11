@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from scrapers.ai_search.cohort_state import _BatchCohortState
 from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.query_builder import QueryBuilder
+from scrapers.ai_search.search import SearchClient
 
 from .validation import ExtractionValidator
 
@@ -137,6 +138,61 @@ class BatchSearchOrchestrator:
         self._consolidated_names: dict[str, str] = {}
         self._cohort_state = cohort_state
 
+    @staticmethod
+    def _to_search_results(raw_results: list[dict[str, Any]]) -> list[SearchResult]:
+        return [
+            SearchResult(
+                url=result.get("url", ""),
+                title=result.get("title"),
+                description=result.get("description"),
+            )
+            for result in raw_results
+        ]
+
+    async def _run_query_batch(
+        self,
+        query_pairs: list[tuple[str, str]],
+        *,
+        max_concurrent: int,
+    ) -> dict[str, list[SearchResult]]:
+        output: dict[str, list[SearchResult]] = {key: [] for key, _ in query_pairs}
+        pending = [(key, query) for key, query in query_pairs if query]
+        if not pending:
+            return output
+
+        if isinstance(self._search_client, SearchClient):
+            batch_results = await self._search_client.search_many(
+                [query for _, query in pending],
+                max_concurrent=max_concurrent,
+            )
+            for (key, _), (raw_results, error) in zip(pending, batch_results):
+                output[key] = [] if error else self._to_search_results(raw_results)
+            return output
+
+        search_many = getattr(self._search_client, "search_many", None)
+        if callable(search_many):
+            batch_results = await search_many([query for _, query in pending])
+            for (key, _), (raw_results, error) in zip(pending, batch_results):
+                output[key] = [] if error else self._to_search_results(raw_results)
+            return output
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def search_one(key: str, query: str) -> tuple[str, list[SearchResult]]:
+            async with semaphore:
+                raw_results, error = await self._search_client.search(query)
+                if error:
+                    return key, []
+                return key, self._to_search_results(raw_results)
+
+        results = await asyncio.gather(*(search_one(key, query) for key, query in pending), return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                continue
+            key, search_results = result
+            output[key] = search_results
+        return output
+
     async def search_cohort(
         self,
         products: list[ProductInput],
@@ -190,37 +246,9 @@ class BatchSearchOrchestrator:
         max_concurrent: int = 5,
     ) -> dict[str, list[SearchResult]]:
         """Search all SKUs in parallel with concurrency limit."""
-        semaphore = asyncio.Semaphore(max_concurrent)
         query_builder = QueryBuilder()
-
-        async def search_one(product: ProductInput) -> tuple[str, list[SearchResult]]:
-            async with semaphore:
-                query = query_builder.build_identifier_query(product.sku)
-                if not query:
-                    return product.sku, []
-                raw_results, error = await self._search_client.search(query)
-                if error:
-                    return product.sku, []
-                results = [
-                    SearchResult(
-                        url=r.get("url", ""),
-                        title=r.get("title"),
-                        description=r.get("description"),
-                    )
-                    for r in raw_results
-                ]
-                return product.sku, results
-
-        tasks = [search_one(p) for p in products]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        output: dict[str, list[SearchResult]] = {}
-        for result in results:
-            if isinstance(result, BaseException):
-                continue
-            sku, res = result
-            output[sku] = res
-        return output
+        query_pairs = [(product.sku, query_builder.build_identifier_query(product.sku)) for product in products]
+        return await self._run_query_batch(query_pairs, max_concurrent=max_concurrent)
 
     async def search_sku_first(
         self,
@@ -244,39 +272,9 @@ class BatchSearchOrchestrator:
         max_concurrent: int,
     ) -> dict[str, list[SearchResult]]:
         """Phase 1: Search by SKU only using identifier queries."""
-        semaphore = asyncio.Semaphore(max_concurrent)
         query_builder = QueryBuilder()
-
-        async def search_one(product: ProductInput) -> tuple[str, list[SearchResult]]:
-            async with semaphore:
-                query = query_builder.build_identifier_query(product.sku)
-                if not query:
-                    return product.sku, []
-
-                raw_results, error = await self._search_client.search(query)
-                if error:
-                    return product.sku, []
-
-                results = [
-                    SearchResult(
-                        url=r.get("url", ""),
-                        title=r.get("title"),
-                        description=r.get("description"),
-                    )
-                    for r in raw_results
-                ]
-                return product.sku, results
-
-        tasks = [search_one(p) for p in products]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        output: dict[str, list[SearchResult]] = {}
-        for result in results:
-            if isinstance(result, BaseException):
-                continue
-            sku, res = result
-            output[sku] = res
-        return output
+        query_pairs = [(product.sku, query_builder.build_identifier_query(product.sku)) for product in products]
+        return await self._run_query_batch(query_pairs, max_concurrent=max_concurrent)
 
     async def _consolidate_names(
         self,
@@ -337,50 +335,24 @@ class BatchSearchOrchestrator:
         max_concurrent: int,
     ) -> dict[str, list[SearchResult]]:
         """Phase 3: Search using consolidated names."""
-        semaphore = asyncio.Semaphore(max_concurrent)
         query_builder = QueryBuilder()
 
         # Build product lookup
         product_map = {p.sku: p for p in products}
-
-        async def search_one(sku: str) -> tuple[str, list[SearchResult]]:
-            async with semaphore:
-                product = product_map.get(sku)
-                if not product:
-                    return sku, []
-
-                consolidated_name, _ = consolidated_names.get(sku, (product.name, []))
-                if not consolidated_name:
-                    consolidated_name = product.name
-
-                query = query_builder.build_name_query(consolidated_name)
-                if not query:
-                    return sku, []
-
-                raw_results, error = await self._search_client.search(query)
-                if error:
-                    return sku, []
-
-                results = [
-                    SearchResult(
-                        url=r.get("url", ""),
-                        title=r.get("title"),
-                        description=r.get("description"),
-                    )
-                    for r in raw_results
-                ]
-                return sku, results
-
-        tasks = [search_one(sku) for sku in consolidated_names.keys()]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        output: dict[str, list[SearchResult]] = {}
-        for result in results:
-            if isinstance(result, BaseException):
+        query_pairs: list[tuple[str, str]] = []
+        for sku in consolidated_names.keys():
+            product = product_map.get(sku)
+            if not product:
+                query_pairs.append((sku, ""))
                 continue
-            sku, res = result
-            output[sku] = res
-        return output
+
+            consolidated_name, _ = consolidated_names.get(sku, (product.name, []))
+            if not consolidated_name:
+                consolidated_name = product.name
+
+            query_pairs.append((sku, query_builder.build_name_query(consolidated_name)))
+
+        return await self._run_query_batch(query_pairs, max_concurrent=max_concurrent)
 
     def _merge_search_results(
         self,
@@ -679,8 +651,6 @@ class BatchSearchOrchestrator:
                 brand = product.brand if product else None
                 last_error = "All URLs failed"
                 attempted_urls: set[str] = set()
-                retried_dominant_domains: set[str] = set()
-                dominant_retry_attempts = 0
 
                 for ranked in urls:
                     source_url = ranked.result.url
@@ -701,29 +671,6 @@ class BatchSearchOrchestrator:
                         return sku, result
                     if error:
                         last_error = error
-
-                    dominant_domain = None
-                    if self._cohort_state and dominant_retry_attempts < self._MAX_DOMINANT_RETRIES:
-                        dominant_domain = self._cohort_state.dominant_domain(minimum_count=3)
-
-                    if not dominant_domain or dominant_domain in retried_dominant_domains:
-                        continue
-
-                    retried_dominant_domains.add(dominant_domain)
-                    dominant_retry_attempts += 1
-
-                    site_specific_results = await self._search_site_specific(dominant_domain, product)
-                    retry_result, retry_error = await self._extract_ranked_results(
-                        sku=sku,
-                        ranked_results=site_specific_results,
-                        product_name=product_name,
-                        brand=brand,
-                        attempted_urls=attempted_urls,
-                    )
-                    if retry_result:
-                        return sku, retry_result
-                    if retry_error:
-                        last_error = retry_error
 
             return sku, {"success": False, "error": last_error}
 

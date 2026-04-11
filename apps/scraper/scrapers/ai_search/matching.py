@@ -30,6 +30,8 @@ class MatchingUtils:
     BRAND_PREFIX_EXCLUDED_TOKENS = {
         "new",
         "best",
+        "heirloom",
+        "official",
         "premium",
         "organic",
         "product",

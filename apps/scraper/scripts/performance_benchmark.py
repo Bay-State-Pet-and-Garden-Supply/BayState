@@ -139,8 +139,8 @@ class PerformanceBenchmark:
         logger.info(f"Results saved to {output_path}")
 
 async def main():
-    if not os.environ.get("OPENAI_API_KEY") or (not os.environ.get("SERPAPI_API_KEY") and not os.environ.get("BRAVE_API_KEY")):
-        logger.error("Missing API keys (OPENAI_API_KEY and SERPAPI_API_KEY or BRAVE_API_KEY). Cannot run real benchmark.")
+    if not os.environ.get("OPENAI_API_KEY") or not os.environ.get("SERPER_API_KEY"):
+        logger.error("Missing API keys (OPENAI_API_KEY and SERPER_API_KEY). Cannot run real benchmark.")
         # Optional: fall back to a mock mode or just exit
         sys.exit(1)
 

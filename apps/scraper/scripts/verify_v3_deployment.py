@@ -14,17 +14,13 @@ def check_env_vars():
     """Check API keys are set"""
     print("🔑 Checking Environment Variables...")
 
-    serpapi_key = os.getenv("SERPAPI_API_KEY")
-    brave_key = os.getenv("BRAVE_API_KEY")
+    serper_key = os.getenv("SERPER_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
-    if not serpapi_key and not brave_key:
-        print("  ❌ Neither SERPAPI_API_KEY nor BRAVE_API_KEY is set")
+    if not serper_key:
+        print("  ❌ SERPER_API_KEY is not set")
         return False
-    if serpapi_key:
-        print(f"  ✅ SERPAPI_API_KEY set ({len(serpapi_key)} chars)")
-    if brave_key:
-        print(f"  ✅ BRAVE_API_KEY set ({len(brave_key)} chars)")
+    print(f"  ✅ SERPER_API_KEY set ({len(serper_key)} chars)")
 
     if not openai_key:
         print("  ❌ OPENAI_API_KEY not set")
@@ -183,7 +179,7 @@ def main():
         print("⚠️  Some checks failed. Please fix issues before deploying v3.")
         print()
         print("Common fixes:")
-        print("  - Set API keys: export SERPAPI_API_KEY=... && export OPENAI_API_KEY=...")
+        print("  - Set API keys: export SERPER_API_KEY=... && export OPENAI_API_KEY=...")
         print("  - Install dependencies: pip install -r requirements.txt")
         print("  - Pull latest code: git pull origin master")
         return 1

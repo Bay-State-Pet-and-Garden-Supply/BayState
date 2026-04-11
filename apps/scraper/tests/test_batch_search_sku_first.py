@@ -28,6 +28,9 @@ class MockSearchClient:
         # Default: return empty
         return [], None
 
+    async def search_many(self, queries: list[str]) -> list[tuple[list[dict], str | None]]:
+        return [await self.search(query) for query in queries]
+
 
 class MockNameConsolidator:
     """Mock name consolidator for testing."""
@@ -201,6 +204,64 @@ def test_search_cohort_uses_sku_first_to_find_official_bentley_result_when_brand
     assert search_client.search_calls == ["051588178896", "Bentley Seeds Tomato Jubilee 1943"]
     assert consolidator.calls == [("051588178896", "BENTLEY SEED TOMATO JUBILEE")]
     assert any(call == (official_url, "BENTLEY SEED TOMATO JUBILEE", None) for call in extractor.calls)
+
+
+def test_search_sku_first_batches_each_phase_when_search_client_supports_it() -> None:
+    class BatchAwareSearchClient:
+        def __init__(self) -> None:
+            self.batch_calls: list[list[str]] = []
+
+        async def search(self, query: str) -> tuple[list[dict[str, str]], str | None]:
+            raise AssertionError(f"Unexpected single-query search for {query}")
+
+        async def search_many(self, queries: list[str]) -> list[tuple[list[dict[str, str]], str | None]]:
+            self.batch_calls.append(list(queries))
+            responses: list[tuple[list[dict[str, str]], str | None]] = []
+            for query in queries:
+                if query in {"12345", "67890"}:
+                    responses.append(
+                        (
+                            [{"url": f"https://retailer.example/{query}", "title": f"Seed {query}", "description": query}],
+                            None,
+                        )
+                    )
+                else:
+                    responses.append(
+                        (
+                            [{"url": f"https://official.example/{query.replace(' ', '-').lower()}", "title": query, "description": query}],
+                            None,
+                        )
+                    )
+            return responses
+
+    search_client = BatchAwareSearchClient()
+    consolidator = MockNameConsolidator(
+        {
+            "12345": "Bentley Seed Tomato Jubilee 1943",
+            "67890": "Bentley Seed Endive Broadleaf Batavia",
+        }
+    )
+    orchestrator = BatchSearchOrchestrator(
+        search_client=search_client,
+        extractor=MockExtractor(),
+        scorer=MockScorer(),
+        name_consolidator=consolidator,
+    )
+
+    results = asyncio.run(
+        orchestrator.search_sku_first(
+            [
+                ProductInput(sku="12345", name="Prod A"),
+                ProductInput(sku="67890", name="Prod B"),
+            ]
+        )
+    )
+
+    assert sorted(results.keys()) == ["12345", "67890"]
+    assert search_client.batch_calls == [
+        ["12345", "67890"],
+        ["Bentley Seed Tomato Jubilee 1943", "Bentley Seed Endive Broadleaf Batavia"],
+    ]
 
 
 def test_merge_search_results_deduplicates_by_url() -> None:

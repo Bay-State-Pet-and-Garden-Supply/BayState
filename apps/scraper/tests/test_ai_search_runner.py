@@ -7,13 +7,13 @@ from runner import _run_ai_search_job, settings
 from scrapers.ai_search.models import AISearchResult
 
 
-def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatch) -> None:
+def test_run_ai_search_job_wires_serper_credentials_and_restores_env(monkeypatch) -> None:
     init_args: dict[str, object] = {}
 
     class StubAISearchScraper:
         def __init__(self, **kwargs):
             init_args.update(kwargs)
-            assert os.environ["SERPAPI_API_KEY"] == "serpapi-runtime-key-1234567890"
+            assert os.environ["SERPER_API_KEY"] == "serper-runtime-key-1234567890"
 
         async def scrape_products_batch(self, items, max_concurrency):
             assert items == [
@@ -43,7 +43,7 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
     monkeypatch.setattr("runner.AISearchScraper", StubAISearchScraper)
     monkeypatch.setitem(settings.browser_settings, "headless", True)
     monkeypatch.delenv("BRAVE_API_KEY", raising=False)
-    monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
+    monkeypatch.delenv("SERPER_API_KEY", raising=False)
 
     results = {
         "data": {},
@@ -62,11 +62,11 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
                 "brand": "Acme",
                 "category": "Dog Toys",
                 "max_concurrency": 2,
-                "search_provider": "serpapi",
+                "search_provider": "serper",
             },
             ai_credentials={
                 "gemini_api_key": "gemini-runtime-key-1234567890",
-                "serpapi_api_key": "serpapi-runtime-key-1234567890",
+                "serper_api_key": "serper-runtime-key-1234567890",
             },
         ),
         skus=["SKU-1"],
@@ -74,22 +74,24 @@ def test_run_ai_search_job_wires_serpapi_credentials_and_restores_env(monkeypatc
         log_buffer=[],
     )
 
-    assert init_args["search_provider"] == "serpapi"
+    assert init_args["search_provider"] == "serper"
     assert init_args["llm_provider"] == "gemini"
     assert init_args["llm_model"] == "gemini-2.5-flash"
     assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
+    assert init_args["search_api_key"] == "serper-runtime-key-1234567890"
     assert init_args["prefer_manufacturer"] is True
     assert updated["data"]["SKU-1"]["ai_search"]["title"] == "Acme Squeaky Ball"
-    assert "SERPAPI_API_KEY" not in os.environ
+    assert "SERPER_API_KEY" not in os.environ
 
 
-def test_run_ai_search_job_forces_gemini_for_legacy_provider_payloads_and_brave_search(monkeypatch) -> None:
+def test_run_ai_search_job_maps_legacy_provider_payloads_to_serper(monkeypatch) -> None:
     init_args: dict[str, object] = {}
 
     class StubAISearchScraper:
         def __init__(self, **kwargs):
             init_args.update(kwargs)
             assert "BRAVE_API_KEY" not in os.environ
+            assert "SERPER_API_KEY" not in os.environ
 
         async def scrape_products_batch(self, items, max_concurrency):
             assert max_concurrency == 1
@@ -110,7 +112,7 @@ def test_run_ai_search_job_forces_gemini_for_legacy_provider_payloads_and_brave_
 
     monkeypatch.setattr("runner.AISearchScraper", StubAISearchScraper)
     monkeypatch.setitem(settings.browser_settings, "headless", True)
-    monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
+    monkeypatch.delenv("SERPER_API_KEY", raising=False)
     monkeypatch.delenv("BRAVE_API_KEY", raising=False)
 
     updated = _run_ai_search_job(
@@ -140,7 +142,7 @@ def test_run_ai_search_job_forces_gemini_for_legacy_provider_payloads_and_brave_
     assert init_args["llm_model"] == "gemini-2.5-flash"
     assert init_args["llm_base_url"] is None
     assert init_args["llm_api_key"] == "gemini-runtime-key-2222222222"
-    assert init_args["search_provider"] == "gemini"
+    assert init_args["search_provider"] == "serper"
     assert updated["data"]["SKU-2"]["ai_search"]["title"] == "Local Model Product"
     assert "BRAVE_API_KEY" not in os.environ
 
@@ -199,5 +201,5 @@ def test_run_ai_search_job_uses_gemini_without_feature_flag_fallback(monkeypatch
     assert init_args["llm_provider"] == "gemini"
     assert init_args["llm_model"] == "gemini-2.5-flash"
     assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
-    assert init_args["search_provider"] == "gemini"
+    assert init_args["search_provider"] == "serper"
     assert updated["data"]["SKU-3"]["ai_search"]["title"] == "Gemini Product"
