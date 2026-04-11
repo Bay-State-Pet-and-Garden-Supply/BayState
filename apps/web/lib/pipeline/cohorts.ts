@@ -79,7 +79,7 @@ export async function assignCohortsToProducts(skus?: string[]): Promise<{
     for (const [prefix, groupSkus] of prefixGroups.entries()) {
         try {
             // Find or create cohort_batch
-            let { data: cohort, error: cohortError } = await supabase
+            const { data: cohort, error: cohortError } = await supabase
                 .from('cohort_batches')
                 .select('id')
                 .eq('upc_prefix', prefix)

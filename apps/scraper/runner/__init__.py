@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from collections.abc import Mapping
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from core.api_client import JobConfig
+from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
 from scrapers.config.feature_flags import GeminiFeatureFlags
@@ -137,30 +137,6 @@ def _build_data_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "availability": payload.get("availability"),
         "image_count": image_count,
     }
-
-
-def _normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
-    """Normalize API selectors payload into list format expected by ScraperConfig."""
-    if isinstance(raw_selectors, list):
-        return raw_selectors
-
-    # API can return an empty object for "no selectors" in some paths.
-    if raw_selectors is None or raw_selectors == {}:
-        return []
-
-    # Backward-compat for legacy dict format: {"Field": {"selector": "..."}}
-    if isinstance(raw_selectors, dict):
-        normalized: list[dict[str, Any]] = []
-        for field_name, field_config in raw_selectors.items():
-            if not isinstance(field_config, dict):
-                continue
-            item = dict(field_config)
-            if "name" not in item and isinstance(field_name, str):
-                item["name"] = field_name
-            normalized.append(item)
-        return normalized
-
-    return []
 
 
 def _build_telemetry_from_events(events: list[ScraperEvent]) -> Dict[str, Any]:
@@ -600,7 +576,7 @@ def _run_sequential_job(
                 "name": scraper_cfg.name,
                 "base_url": scraper_cfg.base_url,
                 "search_url_template": scraper_cfg.search_url_template,
-                "selectors": _normalize_selectors_payload(scraper_cfg.selectors),
+                "selectors": normalize_selectors_payload(scraper_cfg.selectors),
                 "workflows": options.get("workflows", []),
                 "timeout": options.get("timeout", getattr(scraper_cfg, "timeout", 30)),
                 "use_stealth": options.get("use_stealth", True),
@@ -1079,13 +1055,14 @@ def _run_ai_search_job(
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
     runtime_credentials: Dict[str, Any] = job_config.ai_credentials or {}
     feature_flags = GeminiFeatureFlags.from_payload(job_config.feature_flags)
-    llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "openai").strip().lower()
-    if llm_provider not in {"openai", "openai_compatible"}:
-        llm_provider = "openai"
+    requested_llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "gemini").strip().lower()
+    llm_provider = "gemini"
 
-    llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "gpt-4o-mini")
-    if not llm_model.strip():
-        llm_model = "gpt-4o-mini"
+    requested_llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "").strip()
+    if requested_llm_provider == "gemini" and requested_llm_model:
+        llm_model = requested_llm_model
+    else:
+        llm_model = "gemini-2.5-flash"
     search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
     if search_provider in {"brave", "serpapi"}:
         search_provider = "serper"
@@ -1098,16 +1075,14 @@ def _run_ai_search_job(
     raw_prefer_manufacturer = search_cfg.get("prefer_manufacturer")
     prefer_manufacturer = True if raw_prefer_manufacturer is None else bool(raw_prefer_manufacturer)
 
-    llm_base_url = _get_optional_string(runtime_credentials, "llm_base_url")
-    if llm_provider != "openai_compatible":
-        llm_base_url = None
-
     runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
     runtime_llm_api_key = _get_optional_string(runtime_credentials, "llm_api_key")
-    llm_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
-    if llm_provider == "openai_compatible":
-        llm_api_key = _get_optional_string(runtime_credentials, "openai_compatible_api_key")
+    llm_base_url = None
+
+    llm_api_key = _get_optional_string(runtime_credentials, "gemini_api_key")
     if llm_api_key is None and runtime_provider == llm_provider:
+        llm_api_key = runtime_llm_api_key
+    if llm_api_key is None:
         llm_api_key = runtime_llm_api_key
 
     previous_serper = os.environ.get("SERPER_API_KEY")
@@ -1356,34 +1331,9 @@ def _run_ai_search_job(
     results["total_cost"] = total_cost
     results["ai_search_errors"] = list(error_counts.values())
     return results
-
-
-# Execution engine imports
-from runner.execution import (
-    ExecutionResult,
-    WorkerConfig,
-    create_work_stealing_queues,
-    execute_with_thread_pool,
-    load_skus_from_excel,
-    load_skus_with_metadata,
-    process_sku_with_batch_restart,
-    run_worker_thread,
-    should_restart_browser,
-)
-
 __all__ = [
     "ConfigurationError",
     "create_emitter",
     "create_log_entry",
     "run_job",
-    # Execution engine exports
-    "ExecutionResult",
-    "WorkerConfig",
-    "create_work_stealing_queues",
-    "execute_with_thread_pool",
-    "load_skus_from_excel",
-    "load_skus_with_metadata",
-    "process_sku_with_batch_restart",
-    "run_worker_thread",
-    "should_restart_browser",
 ]

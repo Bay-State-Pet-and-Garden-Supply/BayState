@@ -122,6 +122,13 @@ export function ProductTable({
   onSelectAll,
   onDeselectAll,
   onSelectAllTotal,
+  currentStage,
+  search,
+  onSearchChange,
+  filters,
+  onFilterChange,
+  availableSources,
+  totalCount,
 }: ProductTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "sku", desc: false }]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);

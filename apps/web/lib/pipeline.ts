@@ -7,23 +7,12 @@ import {
     type SelectedImage,
     type StatusCount,
 } from '@/lib/pipeline/types';
-import {
-    STATUS_TRANSITIONS as CORE_STATUS_TRANSITIONS,
-    validateTransition,
-} from '@/lib/pipeline/core';
+import { validateTransition } from '@/lib/pipeline/core';
 import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
     status => `'${status}'`
 ).join(', ');
-
-/**
- * Canonical persisted status transition rules.
- */
-export const STATUS_TRANSITIONS: Record<
-    PersistedPipelineStatus,
-    PersistedPipelineStatus[]
-> = CORE_STATUS_TRANSITIONS;
 
 function getInvalidTargetStatusError(targetStatus: string): string {
     return `Invalid status transition to '${targetStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}`;
@@ -41,7 +30,6 @@ export function validateStatusTransition(
 ): boolean {
     return validateTransition(from, to);
 }
-
 
 function toImageUrlArray(value: unknown): string[] {
     if (!Array.isArray(value)) {
@@ -248,7 +236,7 @@ export async function getAvailableSources(status: PersistedPipelineStatus): Prom
     }
 
     const allSources = new Set<string>();
-    (data || []).forEach((row: { sources: any }) => {
+    (data || []).forEach((row: { sources: Record<string, unknown> | null }) => {
         if (row.sources && typeof row.sources === 'object') {
             Object.keys(row.sources)
                 .filter(key => !key.startsWith('_'))
@@ -292,31 +280,6 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         status,
         count: countMap[status] || 0,
     }));
-}
-
-/**
- * Updates the status of a single product.
- */
-export async function updateProductStatus(
-    sku: string,
-    newStatus: PersistedPipelineStatus
-): Promise<{ success: boolean; error?: string }> {
-    const supabase = await createClient();
-
-    const { error } = await supabase
-        .from('products_ingestion')
-        .update({
-            pipeline_status: newStatus,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('sku', sku);
-
-    if (error) {
-        console.error('Error updating product status:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true };
 }
 
 /**
@@ -430,191 +393,6 @@ export async function bulkUpdateStatus(
 
         if (auditError) {
             console.error('Warning: Failed to log status update to audit_log:', auditError);
-        }
-    } catch (err) {
-        console.error('Error logging to audit_log:', err);
-    }
-
-    return { success: true, updatedCount: count || skus.length };
-}
-
-/**
- * Bulk action to move multiple products to 'scraped' status.
- * Validates all transitions before executing (all-or-nothing).
- * Only products in 'imported' status can move to 'scraped'.
- */
-export async function moveToScraped(
-    skus: string[],
-    userId?: string
-): Promise<{
-    success: boolean;
-    error?: string;
-    updatedCount: number;
-    invalidSkus?: string[];
-}> {
-    const supabase = await createClient();
-    const targetStatus: PersistedPipelineStatus = 'scraped';
-
-    // Fetch current statuses for all SKUs
-    const { data: currentProducts, error: fetchError } = await supabase
-        .from('products_ingestion')
-        .select('sku, pipeline_status')
-        .in('sku', skus);
-
-    if (fetchError) {
-        console.error('Error fetching current product statuses:', fetchError);
-        return { success: false, error: fetchError.message, updatedCount: 0 };
-    }
-
-    // Validate all transitions before updating any (all-or-nothing)
-    const invalidSkus: string[] = [];
-    (currentProducts || []).forEach((product: { sku: string; pipeline_status: string }) => {
-        if (!isPersistedStatus(product.pipeline_status)
-            || !validateStatusTransition(product.pipeline_status, targetStatus)) {
-            invalidSkus.push(product.sku);
-        }
-    });
-
-    // If ANY invalid, return error with list of invalid SKUs (all-or-nothing)
-    if (invalidSkus.length > 0) {
-        return {
-            success: false,
-            error: `Cannot move to 'scraped': products must be in 'imported' status. Invalid SKU(s): ${invalidSkus.join(', ')}`,
-            updatedCount: 0,
-            invalidSkus,
-        };
-    }
-
-    // All valid - update all SKUs to 'scraped'
-    const { error: updateError, count } = await supabase
-        .from('products_ingestion')
-        .update({
-            pipeline_status: targetStatus,
-            updated_at: new Date().toISOString(),
-        })
-        .in('sku', skus);
-
-    if (updateError) {
-        console.error('Error moving products to scraped:', updateError);
-        return { success: false, error: updateError.message, updatedCount: 0 };
-    }
-
-    // Log to audit_log
-    try {
-        const auditPayload = {
-            job_type: 'bulk_action',
-            job_id: crypto.randomUUID(),
-            from_state: 'imported',
-            to_state: targetStatus,
-            actor_id: userId || null,
-            actor_type: userId ? 'user' : 'system',
-            metadata: {
-                action: 'moveToScraped',
-                updated_skus: skus,
-                updated_count: count || skus.length,
-                timestamp: new Date().toISOString(),
-            },
-        };
-
-        const { error: auditError } = await supabase
-            .from('pipeline_audit_log')
-            .insert([auditPayload]);
-
-        if (auditError) {
-            console.error('Warning: Failed to log moveToScraped to audit_log:', auditError);
-        }
-    } catch (err) {
-        console.error('Error logging to audit_log:', err);
-    }
-
-    return { success: true, updatedCount: count || skus.length };
-}
-
-
-/**
- * Bulk action to move multiple products to 'finalized' status.
- * Validates all transitions before executing (all-or-nothing).
- * Only products in 'scraped' status can move to 'finalized'.
- */
-export async function moveToFinalized(
-    skus: string[],
-    userId?: string
-): Promise<{
-    success: boolean;
-    error?: string;
-    updatedCount: number;
-    invalidSkus?: string[];
-}> {
-    const supabase = await createClient();
-    const targetStatus: PersistedPipelineStatus = 'finalized';
-
-    // Fetch current statuses for all SKUs
-    const { data: currentProducts, error: fetchError } = await supabase
-        .from('products_ingestion')
-        .select('sku, pipeline_status')
-        .in('sku', skus);
-
-    if (fetchError) {
-        console.error('Error fetching current product statuses:', fetchError);
-        return { success: false, error: fetchError.message, updatedCount: 0 };
-    }
-
-    // Validate all transitions before updating any (all-or-nothing)
-    const invalidSkus: string[] = [];
-    (currentProducts || []).forEach((product: { sku: string; pipeline_status: string }) => {
-        if (!isPersistedStatus(product.pipeline_status)
-            || !validateStatusTransition(product.pipeline_status, targetStatus)) {
-            invalidSkus.push(product.sku);
-        }
-    });
-
-    // If ANY invalid, return error with list of invalid SKUs (all-or-nothing)
-    if (invalidSkus.length > 0) {
-        return {
-            success: false,
-            error: `Cannot move to 'finalized': products must be in 'scraped' status. Invalid SKU(s): ${invalidSkus.join(', ')}`,
-            updatedCount: 0,
-            invalidSkus,
-        };
-    }
-
-    // All valid - update all SKUs to 'finalized'
-    const { error: updateError, count } = await supabase
-        .from('products_ingestion')
-        .update({
-            pipeline_status: targetStatus,
-            updated_at: new Date().toISOString(),
-        })
-        .in('sku', skus);
-
-    if (updateError) {
-        console.error('Error moving products to finalized:', updateError);
-        return { success: false, error: updateError.message, updatedCount: 0 };
-    }
-
-    // Log to audit_log
-    try {
-        const auditPayload = {
-            job_type: 'bulk_action',
-            job_id: crypto.randomUUID(),
-            from_state: 'scraped',
-            to_state: targetStatus,
-            actor_id: userId || null,
-            actor_type: userId ? 'user' : 'system',
-            metadata: {
-                action: 'moveToFinalized',
-                updated_skus: skus,
-                updated_count: count || skus.length,
-                timestamp: new Date().toISOString(),
-            },
-        };
-
-        const { error: auditError } = await supabase
-            .from('pipeline_audit_log')
-            .insert([auditPayload]);
-
-        if (auditError) {
-            console.error('Warning: Failed to log moveToFinalized to audit_log:', auditError);
         }
     } catch (err) {
         console.error('Error logging to audit_log:', err);

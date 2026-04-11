@@ -1,36 +1,65 @@
-import { statusToTab, tabToQueryFilter } from './types';
+import {
+  getStageDataStatus,
+  isDerivedTab,
+  isPersistedStatus,
+  isPipelineStage,
+} from './types';
 
-describe('statusToTab', () => {
-  it('keeps imported products in imported even if scrape jobs are active elsewhere', () => {
-    expect(statusToTab('imported', true, false)).toBe('imported');
+describe('isPersistedStatus', () => {
+  it('accepts canonical persisted statuses', () => {
+    expect(isPersistedStatus('imported')).toBe(true);
+    expect(isPersistedStatus('scraped')).toBe(true);
+    expect(isPersistedStatus('finalized')).toBe(true);
+    expect(isPersistedStatus('failed')).toBe(true);
   });
 
-  it('moves scraped products with active scrape jobs into scraping', () => {
-    expect(statusToTab('scraped', true, false)).toBe('scraping');
-  });
-
-  it('keeps scraped products without active scrape jobs in scraped', () => {
-    expect(statusToTab('scraped', false, false)).toBe('scraped');
-  });
-
-  it('maps finalized products based on active consolidation state', () => {
-    expect(statusToTab('finalized', false, true)).toBe('consolidating');
-    expect(statusToTab('finalized', false, false)).toBe('finalizing');
+  it('rejects derived tabs and unknown values', () => {
+    expect(isPersistedStatus('scraping')).toBe(false);
+    expect(isPersistedStatus('published')).toBe(false);
+    expect(isPersistedStatus('unknown')).toBe(false);
   });
 });
 
-describe('tabToQueryFilter', () => {
-  it('uses scraped products plus active scrape jobs for the scraping tab', () => {
-    expect(tabToQueryFilter('scraping')).toEqual({
-      status: 'scraped',
-      scrapeJobActive: true,
-    });
+describe('isDerivedTab', () => {
+  it('accepts derived pipeline tabs only', () => {
+    expect(isDerivedTab('scraping')).toBe(true);
+    expect(isDerivedTab('consolidating')).toBe(true);
+    expect(isDerivedTab('finalizing')).toBe(true);
+    expect(isDerivedTab('published')).toBe(true);
   });
 
-  it('uses scraped products without active scrape jobs for the scraped tab', () => {
-    expect(tabToQueryFilter('scraped')).toEqual({
-      status: 'scraped',
-      scrapeJobActive: false,
-    });
+  it('rejects persisted statuses', () => {
+    expect(isDerivedTab('imported')).toBe(false);
+    expect(isDerivedTab('scraped')).toBe(false);
+  });
+});
+
+describe('isPipelineStage', () => {
+  it('accepts every public pipeline stage', () => {
+    expect(isPipelineStage('imported')).toBe(true);
+    expect(isPipelineStage('scraping')).toBe(true);
+    expect(isPipelineStage('scraped')).toBe(true);
+    expect(isPipelineStage('consolidating')).toBe(true);
+    expect(isPipelineStage('finalizing')).toBe(true);
+    expect(isPipelineStage('published')).toBe(true);
+  });
+
+  it('rejects unknown values', () => {
+    expect(isPipelineStage('failed')).toBe(false);
+    expect(isPipelineStage('unknown')).toBe(false);
+  });
+});
+
+describe('getStageDataStatus', () => {
+  it('maps stages with persisted backing data', () => {
+    expect(getStageDataStatus('imported')).toBe('imported');
+    expect(getStageDataStatus('scraped')).toBe('scraped');
+    expect(getStageDataStatus('finalizing')).toBe('finalized');
+  });
+
+  it('returns null for live or derived-only stages', () => {
+    expect(getStageDataStatus('scraping')).toBeNull();
+    expect(getStageDataStatus('consolidating')).toBeNull();
+    expect(getStageDataStatus('published')).toBeNull();
   });
 });
