@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 
 export interface ProductSaveActionsProps {
   productName: string;
+  originalName: string;
   productPrice: string;
   selectedSku: string | null;
   isDirty: boolean;
@@ -20,6 +21,7 @@ export interface ProductSaveActionsProps {
 
 export function ProductSaveActions({
   productName,
+  originalName,
   productPrice,
   selectedSku,
   isDirty,
@@ -37,7 +39,7 @@ export function ProductSaveActions({
         <Package className="h-5 w-5 text-muted-foreground" />
         <div>
           <h2 className="text-lg font-bold tracking-tight line-clamp-1">
-            {productName || "Untitled Product"}
+            {originalName || productName || "Untitled Product"}
           </h2>
           <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
             <span className="bg-muted px-1 rounded">{selectedSku}</span>

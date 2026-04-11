@@ -602,16 +602,6 @@ export function FinalizingResultsView({
     if (!selectedProduct) return [];
 
     const sourceOptions: ImageSourceOption[] = [];
-    let savedCandidatesOption: ImageSourceOption | null = null;
-
-    const pipelineCandidates = toStringArray(selectedProduct.image_candidates);
-    if (pipelineCandidates.length > 0) {
-      savedCandidatesOption = {
-        id: "saved",
-        label: "Saved Candidates",
-        candidates: pipelineCandidates,
-      };
-    }
 
     const normalizedSources = normalizeProductSources(
       selectedProduct.sources || {},
@@ -633,7 +623,6 @@ export function FinalizingResultsView({
     sourceOptions.sort((a, b) => a.label.localeCompare(b.label));
 
     return [
-      ...(savedCandidatesOption ? [savedCandidatesOption] : []),
       ...sourceOptions,
       {
         id: "custom",
@@ -706,6 +695,7 @@ export function FinalizingResultsView({
             {/* Header */}
             <ProductSaveActions
               productName={formData.name}
+              originalName={selectedProduct.input?.name || ""}
               productPrice={formData.price}
               selectedSku={selectedSku}
               isDirty={isDirty}

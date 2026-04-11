@@ -1,9 +1,30 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  useTransition,
+} from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Brain, ChevronRight, Layers, Tag, Plus, Database, Upload, Archive, Loader2, Search, X, Edit2 } from "lucide-react";
+import {
+  Activity,
+  Brain,
+  ChevronRight,
+  Layers,
+  Tag,
+  Plus,
+  Database,
+  Upload,
+  Archive,
+  Loader2,
+  Search,
+  X,
+  Edit2,
+} from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
@@ -31,14 +52,29 @@ import type {
 } from "@/lib/pipeline/types";
 import { getStageDataStatus, isPipelineStage } from "@/lib/pipeline/types";
 
-const ScraperSelectDialog = dynamic(() => import("./ScraperSelectDialog").then(mod => mod.ScraperSelectDialog), { ssr: false });
-const ManualAddProductDialog = dynamic(() => import("./ManualAddProductDialog").then(mod => mod.ManualAddProductDialog), { ssr: false });
-const IntegraImportDialog = dynamic(() => import("./IntegraImportDialog").then(mod => mod.IntegraImportDialog), { ssr: false });
-const CohortEditDialog = dynamic(() => import("./CohortEditDialog").then(mod => mod.CohortEditDialog), { ssr: false });
+const ScraperSelectDialog = dynamic(
+  () => import("./ScraperSelectDialog").then((mod) => mod.ScraperSelectDialog),
+  { ssr: false },
+);
+const ManualAddProductDialog = dynamic(
+  () =>
+    import("./ManualAddProductDialog").then(
+      (mod) => mod.ManualAddProductDialog,
+    ),
+  { ssr: false },
+);
+const IntegraImportDialog = dynamic(
+  () => import("./IntegraImportDialog").then((mod) => mod.IntegraImportDialog),
+  { ssr: false },
+);
+const CohortEditDialog = dynamic(
+  () => import("./CohortEditDialog").then((mod) => mod.CohortEditDialog),
+  { ssr: false },
+);
 
 const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
-  'scraping',
-  'consolidating',
+  "scraping",
+  "consolidating",
 ]);
 
 const SKU_TAG_PATTERN = /<SKU>([^<]+)<\/SKU>/g;
@@ -56,7 +92,10 @@ function parsePublishedSkus(xml: string): string[] {
   return Array.from(skus);
 }
 
-function productMatchesSearch(product: PipelineProduct, searchTerm: string): boolean {
+function productMatchesSearch(
+  product: PipelineProduct,
+  searchTerm: string,
+): boolean {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   if (!normalizedSearch) {
     return true;
@@ -68,12 +107,17 @@ function productMatchesSearch(product: PipelineProduct, searchTerm: string): boo
     product.consolidated?.name,
   ];
 
-  return candidates.some((value) =>
-    typeof value === "string" && value.toLowerCase().includes(normalizedSearch),
+  return candidates.some(
+    (value) =>
+      typeof value === "string" &&
+      value.toLowerCase().includes(normalizedSearch),
   );
 }
 
-function mergePublishedCount(nextCounts: StatusCount[], publishedCount: number): StatusCount[] {
+function mergePublishedCount(
+  nextCounts: StatusCount[],
+  publishedCount: number,
+): StatusCount[] {
   return [
     ...nextCounts.filter((count) => count.status !== "published"),
     { status: "published", count: publishedCount },
@@ -106,9 +150,7 @@ export function PipelineClient({
 
   const stageFromUrl = searchParams.get("stage");
   const currentStage: PipelineStage =
-    stageFromUrl && isPipelineStage(stageFromUrl)
-      ? stageFromUrl
-      : initialStage;
+    stageFromUrl && isPipelineStage(stageFromUrl) ? stageFromUrl : initialStage;
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
@@ -122,16 +164,36 @@ export function PipelineClient({
     "upload" | "zip" | null
   >(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [editingCohort, setEditingCohort] = useState<{ id: string; name: string | null; brandName: string | null } | null>(null);
+  const [editingCohort, setEditingCohort] = useState<{
+    id: string;
+    name: string | null;
+    brandName: string | null;
+  } | null>(null);
   const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
-  const [productLineFilter, setProductLineFilter] = useState(searchParams.get("product_line") || "");
-  const [cohortIdFilter, setCohortIdFilter] = useState(searchParams.get("cohort_id") || "");
+  const [sourceFilter, setSourceFilter] = useState(
+    searchParams.get("source") || "",
+  );
+  const [productLineFilter, setProductLineFilter] = useState(
+    searchParams.get("product_line") || "",
+  );
+  const [cohortIdFilter, setCohortIdFilter] = useState(
+    searchParams.get("cohort_id") || "",
+  );
   const publishedSkuCacheRef = useRef<string[] | null>(null);
+
+  const canEditCohorts = currentStage === "imported";
+
+  useEffect(() => {
+    if (!canEditCohorts) {
+      setEditingCohort(null);
+    }
+  }, [canEditCohorts]);
 
   const filteredProducts = useMemo(() => {
     if (currentStage === "published") {
-      return products.filter((product) => productMatchesSearch(product, search));
+      return products.filter((product) =>
+        productMatchesSearch(product, search),
+      );
     }
 
     if (!sourceFilter || currentStage !== "scraped") return products;
@@ -156,8 +218,12 @@ export function PipelineClient({
         cohortIds.push(cohortId);
       }
       groups[cohortId].push(product);
-      
-      if (cohortId !== "ungrouped" && product.cohort_brand_name && !brands[cohortId]) {
+
+      if (
+        cohortId !== "ungrouped" &&
+        product.cohort_brand_name &&
+        !brands[cohortId]
+      ) {
         brands[cohortId] = product.cohort_brand_name;
       }
 
@@ -178,11 +244,7 @@ export function PipelineClient({
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
-    if (
-      sourceFilter &&
-      sources.length > 0 &&
-      !sources.includes(sourceFilter)
-    ) {
+    if (sourceFilter && sources.length > 0 && !sources.includes(sourceFilter)) {
       setSourceFilter("");
     }
   }, [sources, sourceFilter]);
@@ -206,11 +268,14 @@ export function PipelineClient({
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
-        if (sourceFilter && stage === "scraped") params.set("source", sourceFilter);
+        if (sourceFilter && stage === "scraped")
+          params.set("source", sourceFilter);
         if (productLineFilter) params.set("product_line", productLineFilter);
         if (cohortIdFilter) params.set("cohort_id", cohortIdFilter);
 
-        const res = await fetch(`/api/admin/pipeline?${params}`, { cache: "no-store" });
+        const res = await fetch(`/api/admin/pipeline?${params}`, {
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
         setProducts(data.products || []);
@@ -230,11 +295,15 @@ export function PipelineClient({
   // Fetch counts for all stages
   const fetchCounts = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/pipeline/counts", { cache: "no-store" });
+      const res = await fetch("/api/admin/pipeline/counts", {
+        cache: "no-store",
+      });
       if (res.ok) {
         const data = await res.json();
         setCounts((previousCounts) => {
-          const publishedCount = previousCounts.find((count) => count.status === "published")?.count;
+          const publishedCount = previousCounts.find(
+            (count) => count.status === "published",
+          )?.count;
           const nextCounts = data.counts || [];
 
           return typeof publishedCount === "number"
@@ -252,7 +321,9 @@ export function PipelineClient({
       return publishedSkuCacheRef.current;
     }
 
-    const response = await fetch("/api/admin/pipeline/export-xml", { cache: "no-store" });
+    const response = await fetch("/api/admin/pipeline/export-xml", {
+      cache: "no-store",
+    });
     if (response.status === 404) {
       publishedSkuCacheRef.current = [];
       return [];
@@ -287,9 +358,12 @@ export function PipelineClient({
 
         const productResponses = await Promise.all(
           publishedSkus.map(async (sku) => {
-            const response = await fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
-              cache: "no-store",
-            });
+            const response = await fetch(
+              `/api/admin/pipeline/${encodeURIComponent(sku)}`,
+              {
+                cache: "no-store",
+              },
+            );
 
             if (!response.ok) {
               return null;
@@ -306,7 +380,9 @@ export function PipelineClient({
 
         setProducts(nextProducts);
         setTotalCount(nextProducts.length);
-        setCounts((previousCounts) => mergePublishedCount(previousCounts, nextProducts.length));
+        setCounts((previousCounts) =>
+          mergePublishedCount(previousCounts, nextProducts.length),
+        );
       } catch {
         toast.error("Failed to fetch published products");
       } finally {
@@ -319,14 +395,23 @@ export function PipelineClient({
   );
 
   // Refresh everything
-  const refreshAll = useCallback(async (silent = false) => {
-    if (currentStage === "published") {
-      await Promise.all([fetchPublishedProducts(silent, true), fetchCounts()]);
-      return;
-    }
+  const refreshAll = useCallback(
+    async (silent = false) => {
+      if (currentStage === "published") {
+        await Promise.all([
+          fetchPublishedProducts(silent, true),
+          fetchCounts(),
+        ]);
+        return;
+      }
 
-    await Promise.all([fetchProducts(currentStage, search, silent), fetchCounts()]);
-  }, [currentStage, search, fetchProducts, fetchCounts, fetchPublishedProducts]);
+      await Promise.all([
+        fetchProducts(currentStage, search, silent),
+        fetchCounts(),
+      ]);
+    },
+    [currentStage, search, fetchProducts, fetchCounts, fetchPublishedProducts],
+  );
 
   const isFirstMount = useRef(true);
   const lastFetchedSearch = useRef(searchParams.get("search") || "");
@@ -339,10 +424,16 @@ export function PipelineClient({
     setSources(initialSources);
     setSelectedSkus(new Set());
     setIsLoading(false);
-    
+
     // Update tracking ref on sync so we don't re-fetch immediately if initialProducts is already filtered
     lastFetchedSearch.current = searchParams.get("search") || "";
-  }, [initialProducts, initialCounts, initialTotal, initialSources, searchParams]);
+  }, [
+    initialProducts,
+    initialCounts,
+    initialTotal,
+    initialSources,
+    searchParams,
+  ]);
 
   // Fetch products when search changes
   useEffect(() => {
@@ -375,8 +466,8 @@ export function PipelineClient({
 
       await fetchProducts(currentStage, search);
       if (isMounted) {
-          setSelectedSkus(new Set());
-          lastFetchedSearch.current = search;
+        setSelectedSkus(new Set());
+        lastFetchedSearch.current = search;
       }
     };
 
@@ -417,15 +508,24 @@ export function PipelineClient({
   // Update URL when filters change (debounced)
   useEffect(() => {
     if (isFirstMount.current) return;
-    
+
     const timer = setTimeout(() => {
       const currentParams = new URLSearchParams(searchParams.toString());
       const hasSearchChanged = (currentParams.get("search") || "") !== search;
-      const hasSourceChanged = (currentParams.get("source") || "") !== sourceFilter;
-      const hasProductLineChanged = (currentParams.get("product_line") || "") !== productLineFilter;
-      const hasCohortIdChanged = (currentParams.get("cohort_id") || "") !== cohortIdFilter;
+      const hasSourceChanged =
+        (currentParams.get("source") || "") !== sourceFilter;
+      const hasProductLineChanged =
+        (currentParams.get("product_line") || "") !== productLineFilter;
+      const hasCohortIdChanged =
+        (currentParams.get("cohort_id") || "") !== cohortIdFilter;
 
-      if (!hasSearchChanged && !hasSourceChanged && !hasProductLineChanged && !hasCohortIdChanged) return;
+      if (
+        !hasSearchChanged &&
+        !hasSourceChanged &&
+        !hasProductLineChanged &&
+        !hasCohortIdChanged
+      )
+        return;
 
       if (search) currentParams.set("search", search);
       else currentParams.delete("search");
@@ -433,35 +533,49 @@ export function PipelineClient({
       if (sourceFilter) currentParams.set("source", sourceFilter);
       else currentParams.delete("source");
 
-      if (productLineFilter) currentParams.set("product_line", productLineFilter);
+      if (productLineFilter)
+        currentParams.set("product_line", productLineFilter);
       else currentParams.delete("product_line");
 
       if (cohortIdFilter) currentParams.set("cohort_id", cohortIdFilter);
       else currentParams.delete("cohort_id");
 
-      router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false });
+      router.replace(`${pathname}?${currentParams.toString()}`, {
+        scroll: false,
+      });
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [search, sourceFilter, productLineFilter, cohortIdFilter, pathname, router, searchParams]);
+  }, [
+    search,
+    sourceFilter,
+    productLineFilter,
+    cohortIdFilter,
+    pathname,
+    router,
+    searchParams,
+  ]);
 
   // Handle stage tab change
-  const handleStageChange = useCallback((stage: PipelineStage) => {
-    // Clear local filters before navigating
-    // This allows the server to fetch clean data for the new stage
-    setSearch("");
-    setSourceFilter("");
-    setLastSelectedSku(null);
+  const handleStageChange = useCallback(
+    (stage: PipelineStage) => {
+      // Clear local filters before navigating
+      // This allows the server to fetch clean data for the new stage
+      setSearch("");
+      setSourceFilter("");
+      setLastSelectedSku(null);
 
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("stage", stage);
-    params.delete("search"); // clear search on stage change
-    params.delete("source"); // clear source on stage change
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("stage", stage);
+      params.delete("search"); // clear search on stage change
+      params.delete("source"); // clear source on stage change
 
-    startNavigation(() => {
-      router.replace(`${pathname}?${params.toString()}`);
-    });
-  }, [pathname, router, searchParams]);
+      startNavigation(() => {
+        router.replace(`${pathname}?${params.toString()}`);
+      });
+    },
+    [pathname, router, searchParams],
+  );
 
   const [lastSelectedSku, setLastSelectedSku] = useState<string | null>(null);
 
@@ -480,11 +594,15 @@ export function PipelineClient({
         const next = new Set(prev);
 
         if (isShiftClick && index !== undefined && lastSelectedSku !== null) {
-          const lastIndex = sourceProducts.findIndex((p) => p.sku === lastSelectedSku);
+          const lastIndex = sourceProducts.findIndex(
+            (p) => p.sku === lastSelectedSku,
+          );
 
           if (lastIndex !== -1) {
             const [start, end] = [lastIndex, index].sort((a, b) => a - b);
-            const rangeSkus = sourceProducts.slice(start, end + 1).map((p) => p.sku);
+            const rangeSkus = sourceProducts
+              .slice(start, end + 1)
+              .map((p) => p.sku);
 
             if (selected) {
               rangeSkus.forEach((skuItem) => {
@@ -661,7 +779,9 @@ export function PipelineClient({
 
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(payload.error || "Failed to upload products to ShopSite");
+          throw new Error(
+            payload.error || "Failed to upload products to ShopSite",
+          );
         }
 
         const marker =
@@ -669,7 +789,9 @@ export function PipelineClient({
             ? payload.marker
             : null;
         const uploadedCount =
-          typeof payload.uploadedCount === "number" ? payload.uploadedCount : uploadCount;
+          typeof payload.uploadedCount === "number"
+            ? payload.uploadedCount
+            : uploadCount;
 
         toast.success("Uploaded to ShopSite", {
           description: `${uploadedCount} published product${uploadedCount === 1 ? "" : "s"}${marker ? ` tagged ${marker}` : ""}`,
@@ -712,7 +834,8 @@ export function PipelineClient({
 
         const blob = await response.blob();
         const contentDisposition = response.headers.get("Content-Disposition");
-        const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
+        const filenameMatch =
+          contentDisposition?.match(/filename="?([^"]+)"?/i);
         const filename = filenameMatch?.[1] ?? "shopsite-images.zip";
 
         const url = window.URL.createObjectURL(blob);
@@ -729,7 +852,9 @@ export function PipelineClient({
         });
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Failed to download image ZIP",
+          error instanceof Error
+            ? error.message
+            : "Failed to download image ZIP",
         );
       } finally {
         setPublishedActionState(null);
@@ -955,9 +1080,12 @@ export function PipelineClient({
                   cohort_id: cohortIdFilter,
                 }}
                 onFilterChange={(newFilters) => {
-                  if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
-                  if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
-                  if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+                  if (newFilters.source !== undefined)
+                    setSourceFilter(newFilters.source || "");
+                  if (newFilters.product_line !== undefined)
+                    setProductLineFilter(newFilters.product_line || "");
+                  if (newFilters.cohort_id !== undefined)
+                    setCohortIdFilter(newFilters.cohort_id || "");
                 }}
                 availableSources={sources}
                 className="h-8"
@@ -1074,16 +1202,16 @@ export function PipelineClient({
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
             onSelectAll={(skus) => {
-              setSelectedSkus(prev => {
+              setSelectedSkus((prev) => {
                 const next = new Set(prev);
-                skus.forEach(sku => next.add(sku));
+                skus.forEach((sku) => next.add(sku));
                 return next;
               });
             }}
             onDeselectAll={(skus) => {
-              setSelectedSkus(prev => {
+              setSelectedSkus((prev) => {
                 const next = new Set(prev);
-                skus.forEach(sku => next.delete(sku));
+                skus.forEach((sku) => next.delete(sku));
                 return next;
               });
             }}
@@ -1096,16 +1224,23 @@ export function PipelineClient({
               cohort_id: cohortIdFilter,
             }}
             onFilterChange={(newFilters) => {
-              if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
-              if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
-              if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+              if (newFilters.source !== undefined)
+                setSourceFilter(newFilters.source || "");
+              if (newFilters.product_line !== undefined)
+                setProductLineFilter(newFilters.product_line || "");
+              if (newFilters.cohort_id !== undefined)
+                setCohortIdFilter(newFilters.cohort_id || "");
             }}
             availableSources={sources}
             groupedProducts={groupedProducts}
             cohortBrands={groupedProducts.brands}
-            onEditCohort={(id, name, brandName) => {
-              setEditingCohort({ id, name, brandName });
-            }}
+            onEditCohort={
+              canEditCohorts
+                ? (id, name, brandName) => {
+                    setEditingCohort({ id, name, brandName });
+                  }
+                : undefined
+            }
           />
         ) : currentStage === "finalizing" || currentStage === "published" ? (
           <FinalizingResultsView
@@ -1115,9 +1250,13 @@ export function PipelineClient({
             onSearchChange={(value) => setSearch(value)}
             groupedProducts={groupedProducts}
             cohortBrands={groupedProducts.brands}
-            onEditCohort={(id, name, brandName) => {
-              setEditingCohort({ id, name, brandName });
-            }}
+            onEditCohort={
+              canEditCohorts
+                ? (id, name, brandName) => {
+                    setEditingCohort({ id, name, brandName });
+                  }
+                : undefined
+            }
           />
         ) : (
           <div className="space-y-4">
@@ -1137,9 +1276,12 @@ export function PipelineClient({
                   cohort_id: cohortIdFilter,
                 }}
                 onFilterChange={(newFilters) => {
-                  if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
-                  if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
-                  if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+                  if (newFilters.source !== undefined)
+                    setSourceFilter(newFilters.source || "");
+                  if (newFilters.product_line !== undefined)
+                    setProductLineFilter(newFilters.product_line || "");
+                  if (newFilters.cohort_id !== undefined)
+                    setCohortIdFilter(newFilters.cohort_id || "");
                 }}
                 availableSources={sources}
                 totalCount={totalCount}
@@ -1150,8 +1292,8 @@ export function PipelineClient({
                 {groupedProducts.cohortIds.map((cohortId) => {
                   const groupProducts = groupedProducts.groups[cohortId] || [];
                   return (
-                    <AccordionItem 
-                      key={cohortId} 
+                    <AccordionItem
+                      key={cohortId}
                       value={cohortId}
                       className="rounded-lg border border-border bg-card shadow-sm overflow-hidden border-l-4 border-l-brand-forest-green/40"
                     >
@@ -1161,37 +1303,47 @@ export function PipelineClient({
                           <div className="flex items-center gap-2">
                             <Layers className="h-3.5 w-3.5 text-brand-forest-green/70" />
                             <span className="font-bold text-sm uppercase tracking-tight text-foreground/90">
-                              {cohortId === "ungrouped" 
-                                ? "Ungrouped Products" 
-                                : groupedProducts.names[cohortId] || `Cohort: ${cohortId}`
-                              }
+                              {cohortId === "ungrouped"
+                                ? "Ungrouped Products"
+                                : groupedProducts.names[cohortId] ||
+                                  `Cohort: ${cohortId}`}
                             </span>
                             {groupedProducts.brands[cohortId] && (
-                              <Badge variant="outline" className="ml-1 text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green">
+                              <Badge
+                                variant="outline"
+                                className="ml-1 text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green"
+                              >
                                 <Tag className="h-3 w-3" />
                                 {groupedProducts.brands[cohortId]}
                               </Badge>
                             )}
-                            <Badge variant="secondary" className="ml-2 bg-muted text-muted-foreground font-normal">
+                            <Badge
+                              variant="secondary"
+                              className="ml-2 bg-muted text-muted-foreground font-normal"
+                            >
                               {groupProducts.length} items
                             </Badge>
-                            {cohortId !== "ungrouped" && (currentStage === "imported" || currentStage === "failed") && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="ml-2 h-6 w-6 p-0 text-muted-foreground hover:text-brand-forest-green"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCohort({
-                                    id: cohortId,
-                                    name: groupedProducts.names[cohortId] || null,
-                                    brandName: groupedProducts.brands[cohortId] || null,
-                                  });
-                                }}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                            )}
+                            {cohortId !== "ungrouped" &&
+                              currentStage === "imported" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-2 h-6 w-6 p-0 text-muted-foreground hover:text-brand-forest-green"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingCohort({
+                                      id: cohortId,
+                                      name:
+                                        groupedProducts.names[cohortId] || null,
+                                      brandName:
+                                        groupedProducts.brands[cohortId] ||
+                                        null,
+                                    });
+                                  }}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                              )}
                           </div>
                         </div>
                       </AccordionTrigger>
@@ -1199,17 +1351,25 @@ export function PipelineClient({
                         <ProductTable
                           products={groupProducts}
                           selectedSkus={selectedSkus}
-                          onSelectSku={(sku, selected, index, isShift) => 
-                            handleSelectSku(sku, selected, index, isShift, groupProducts)
+                          onSelectSku={(sku, selected, index, isShift) =>
+                            handleSelectSku(
+                              sku,
+                              selected,
+                              index,
+                              isShift,
+                              groupProducts,
+                            )
                           }
                           onSelectAll={() => {
                             const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach(p => groupSkus.add(p.sku));
+                            groupProducts.forEach((p) => groupSkus.add(p.sku));
                             setSelectedSkus(groupSkus);
                           }}
                           onDeselectAll={() => {
                             const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach(p => groupSkus.delete(p.sku));
+                            groupProducts.forEach((p) =>
+                              groupSkus.delete(p.sku),
+                            );
                             setSelectedSkus(groupSkus);
                           }}
                           currentStage={currentStage}
@@ -1221,15 +1381,20 @@ export function PipelineClient({
                             cohort_id: cohortIdFilter,
                           }}
                           onFilterChange={(newFilters) => {
-                            if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
-                            if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
-                            if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+                            if (newFilters.source !== undefined)
+                              setSourceFilter(newFilters.source || "");
+                            if (newFilters.product_line !== undefined)
+                              setProductLineFilter(
+                                newFilters.product_line || "",
+                              );
+                            if (newFilters.cohort_id !== undefined)
+                              setCohortIdFilter(newFilters.cohort_id || "");
                           }}
                           availableSources={sources}
                           totalCount={groupProducts.length}
                           onSelectAllTotal={() => {
                             const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach(p => groupSkus.add(p.sku));
+                            groupProducts.forEach((p) => groupSkus.add(p.sku));
                             setSelectedSkus(groupSkus);
                           }}
                         />
