@@ -11,8 +11,6 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
-  Layers,
-  Tag,
   Edit2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -114,7 +112,7 @@ export function ScrapedResultsView({
   const [localSearch, setLocalSearch] = useState(search || "");
 
   useEffect(() => {
-    if (search !== undefined) setLocalSearch(search);
+    if (search !== undefined) setLocalSearch(search); // eslint-disable-line react-hooks/set-state-in-effect
   }, [search]);
 
   const handleCommitSearch = useCallback(() => {
@@ -167,12 +165,6 @@ export function ScrapedResultsView({
 
     return sourceKeys[0] ?? "";
   }, [preferredSource, sourceKeys]);
-
-  // Reset image index and description expansion when product or source changes
-  useEffect(() => {
-    setCurrentImageIndex(0);
-    setIsDescriptionExpanded(false);
-  }, [selectedSku, activeSource]);
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
@@ -633,7 +625,7 @@ export function ScrapedResultsView({
                 </div>
               </div>
 
-              {sourceKeys.length > 0 && (
+              {sourceKeys.length > 0 ? (
                 <div className="px-4 pb-2 flex items-center justify-between gap-4">
                   <Tabs
                     value={activeSource}
@@ -662,11 +654,23 @@ export function ScrapedResultsView({
                     Delete {activeSource}
                   </Button>
                 </div>
+              ) : (
+                <div className="px-4 pb-3">
+                  <div className="flex items-center gap-2 text-amber-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100/50">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-xs font-medium">
+                      No results for this SKU yet.
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
 
             {/* Product Result Display */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div
+              key={`${selectedSku}-${activeSource}`}
+              className="flex-1 overflow-y-auto p-6"
+            >
               {currentSourceData ? (
                 <div className="max-w-4xl mx-auto space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
