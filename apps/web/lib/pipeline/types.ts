@@ -21,6 +21,7 @@ export const PIPELINE_TABS = [
   "scraped",
   "consolidating",
   "finalizing",
+  "failed",
   "published",
 ] as const;
 
@@ -77,6 +78,8 @@ export function getStageDataStatus(
       return "scraped";
     case "finalizing":
       return "finalized";
+    case "failed":
+      return "failed";
     default:
       return null;
   }

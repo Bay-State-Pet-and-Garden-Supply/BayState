@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from scrapers.ai_search.llm_runtime import LOCAL_OPENAI_COMPATIBLE_API_KEY, resolve_llm_runtime
 from scrapers.providers.base import BaseLLMProvider
-from scrapers.providers.gemini import GeminiProvider
 from scrapers.providers.openai import OpenAIProvider
 
 
@@ -19,11 +18,6 @@ def create_llm_provider(
         base_url=base_url,
         api_key=api_key,
     )
-
-    if runtime.provider == "gemini":
-        if not runtime.api_key:
-            return None
-        return GeminiProvider(model=runtime.model, api_key=runtime.api_key)
 
     if runtime.provider == "openai":
         if not runtime.api_key:

@@ -41,16 +41,8 @@ export function pickNumber(value: unknown, fallback: number): number {
 }
 
 export function normalizeDiscoveryLLMProvider(_provider?: unknown, _fallback?: unknown): LLMProvider {
-  const provider = typeof _provider === 'string' ? _provider.trim().toLowerCase() : '';
-  if (provider === 'openai_compatible') {
-    return 'openai_compatible';
-  }
-
-  const fallback = typeof _fallback === 'string' ? _fallback.trim().toLowerCase() : '';
-  if (fallback === 'openai_compatible') {
-    return 'openai_compatible';
-  }
-
+  void _provider;
+  void _fallback;
   return 'openai';
 }
 

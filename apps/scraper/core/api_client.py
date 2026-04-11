@@ -70,7 +70,6 @@ class JobConfig:
     job_type: str = "standard"
     job_config: dict[str, Any] | None = None
     ai_credentials: dict[str, Any] | None = None
-    feature_flags: dict[str, Any] | None = None
     lease_token: str | None = None
     lease_expires_at: str | None = None
 
@@ -87,7 +86,6 @@ class ClaimedChunk:
     job_type: str = "standard"
     job_config: dict[str, Any] | None = None
     ai_credentials: dict[str, Any] | None = None
-    feature_flags: dict[str, Any] | None = None
     lease_token: str | None = None
     lease_expires_at: str | None = None
 
@@ -106,7 +104,6 @@ class ClaimedCohort:
     job_type: str = "cohort"
     job_config: dict[str, Any] | None = None
     ai_credentials: dict[str, Any] | None = None
-    feature_flags: dict[str, Any] | None = None
     lease_token: str | None = None
     lease_expires_at: str | None = None
 
@@ -422,7 +419,6 @@ class ScraperAPIClient:
                 job_type=data.get("job_type", "standard"),
                 job_config=data.get("job_config"),
                 ai_credentials=data.get("ai_credentials"),
-                feature_flags=data.get("feature_flags"),
                 lease_token=data.get("lease_token"),
                 lease_expires_at=data.get("lease_expires_at"),
             )
@@ -535,7 +531,6 @@ class ScraperAPIClient:
                 job_type=chunk.get("job_type", "standard"),
                 job_config=chunk.get("job_config"),
                 ai_credentials=chunk.get("ai_credentials"),
-                feature_flags=chunk.get("feature_flags"),
                 lease_token=chunk.get("lease_token"),
                 lease_expires_at=chunk.get("lease_expires_at"),
             )
@@ -627,7 +622,6 @@ class ScraperAPIClient:
                 job_type=cohort.get("job_type", "cohort"),
                 job_config=cohort.get("job_config"),
                 ai_credentials=cohort.get("ai_credentials"),
-                feature_flags=cohort.get("feature_flags"),
                 lease_token=cohort.get("lease_token"),
                 lease_expires_at=cohort.get("lease_expires_at"),
             )

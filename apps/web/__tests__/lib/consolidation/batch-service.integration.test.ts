@@ -6,7 +6,7 @@ import {
     submitBatch,
 } from '@/lib/consolidation/batch-service';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { buildPromptContext, getCategories } from '@/lib/consolidation/prompt-builder';
+import { buildPromptContext, buildUserPrompt, getCategories } from '@/lib/consolidation/prompt-builder';
 import { getConsolidationConfig, getOpenAIClient } from '@/lib/consolidation/openai-client';
 
 jest.mock('@/lib/supabase/server', () => ({
@@ -16,6 +16,7 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/consolidation/prompt-builder', () => ({
     buildPromptContext: jest.fn(),
+    buildUserPrompt: jest.fn(),
     getCategories: jest.fn(),
 }));
 
@@ -58,11 +59,11 @@ describe('consolidation batch integration behavior', () => {
             configured_llm_provider: 'openai',
             llm_api_key: 'test-openai-key',
             llm_base_url: null,
-            gemini_api_key: null,
             llm_supports_batch_api: true,
             routing_key: null,
         });
         (getCategories as jest.Mock).mockResolvedValue([{ id: 'cat-1', name: 'Dog', slug: 'dog' }]);
+        (buildUserPrompt as jest.Mock).mockReturnValue('user prompt');
     });
 
     it('submitBatch persists OpenAI batch id and string metadata', async () => {

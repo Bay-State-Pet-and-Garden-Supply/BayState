@@ -19,7 +19,7 @@ describe('STATUS_TRANSITIONS', () => {
   it('matches the canonical persisted transition graph', () => {
     expect(STATUS_TRANSITIONS).toEqual({
       imported: ['scraped'],
-      scraped: ['finalized'],
+      scraped: ['finalized', 'imported'],
       finalized: ['scraped'],
       failed: ['imported'],
     });
@@ -34,6 +34,7 @@ describe('validateTransition', () => {
   it('allows canonical forward, retry, and rework transitions', () => {
     expect(validateTransition('imported', 'scraped')).toBe(true);
     expect(validateTransition('scraped', 'finalized')).toBe(true);
+    expect(validateTransition('scraped', 'imported')).toBe(true);
     expect(validateTransition('finalized', 'scraped')).toBe(true);
     expect(validateTransition('failed', 'imported')).toBe(true);
   });
@@ -42,7 +43,6 @@ describe('validateTransition', () => {
     const invalidTransitions: Array<[PersistedPipelineStatus, PersistedPipelineStatus]> = [
       ['imported', 'finalized'],
       ['imported', 'failed'],
-      ['scraped', 'imported'],
       ['scraped', 'failed'],
       ['finalized', 'imported'],
       ['finalized', 'failed'],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   Column,
   ColumnDef,
@@ -141,15 +141,18 @@ export function ProductTable({
     if (search !== undefined) setLocalSearch(search);
   }, [search]);
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== search && onSearchChange) {
-        onSearchChange(localSearch);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [localSearch, onSearchChange, search]);
+  const handleCommitSearch = useCallback(() => {
+    if (onSearchChange) {
+      onSearchChange(localSearch);
+    }
+  }, [localSearch, onSearchChange]);
+
+  const handleClearSearch = useCallback(() => {
+    setLocalSearch("");
+    if (onSearchChange) {
+      onSearchChange("");
+    }
+  }, [onSearchChange]);
 
   const showSources = currentStage === "scraped";
   const showConfidence = currentStage === "finalizing";
@@ -402,7 +405,7 @@ export function ProductTable({
                 else if (header.id === "updated_at") widthClass = "w-[150px]";
 
                 return (
-                  <TableHead key={header.id} className={cn("bg-muted/30 h-10 py-0", widthClass)}>
+                  <TableHead key={header.id} className={cn("bg-muted/30 h-8 py-0", widthClass)}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -415,59 +418,32 @@ export function ProductTable({
             </TableRow>
           ))}
           
-          {/* Filter Row */}
-          <TableRow className="hover:bg-transparent border-b">
-            <TableCell className="bg-muted/5 py-2 px-4" colSpan={columns.length}>
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1 group max-w-md">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
-                  <Input
-                    placeholder="Search SKUs or names..."
-                    value={localSearch}
-                    onChange={(e) => setLocalSearch(e.target.value)}
-                    className="h-9 pl-9 pr-8 bg-background border-muted-foreground/20 focus-visible:ring-brand-forest-green/30"
-                  />
-                  {localSearch && (
-                    <button
-                      onClick={() => setLocalSearch("")}
-                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+          {/* Selection info row */}
+          {selectedSkus.size > 0 && (
+            <TableRow className="hover:bg-transparent border-b">
+              <TableCell className="bg-muted/5 py-1 px-3" colSpan={columns.length}>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1" />
+
+                  {totalCount !== undefined && totalCount > selectedSkus.size && (
+                     <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={onSelectAllTotal}
+                      className="h-7 text-[10px] text-brand-forest-green hover:bg-brand-forest-green/10 gap-1"
+                     >
+                       <CheckSquare className="h-3 w-3" />
+                       Select all {totalCount} products in stage
+                     </Button>
                   )}
-                </div>
 
-                {filters && onFilterChange && (
-                  <PipelineFilters
-                    filters={filters}
-                    onFilterChange={onFilterChange}
-                    availableSources={availableSources}
-                    className="h-9"
-                  />
-                )}
-
-                <div className="flex-1" />
-
-                {selectedSkus.size > 0 && totalCount !== undefined && totalCount > selectedSkus.size && (
-                   <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={onSelectAllTotal}
-                    className="h-8 text-xs text-brand-forest-green hover:bg-brand-forest-green/10 gap-1.5"
-                   >
-                     <CheckSquare className="h-3.5 w-3.5" />
-                     Select all {totalCount} products in stage
-                   </Button>
-                )}
-
-                {selectedSkus.size > 0 && (
-                  <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-brand-forest-green/10 text-brand-forest-green text-[11px] font-bold uppercase tracking-wider">
+                  <div className="flex items-center gap-2 px-1.5 py-0.5 rounded bg-brand-forest-green/10 text-brand-forest-green text-[9px] font-bold uppercase tracking-wider">
                     {selectedSkus.size} Selected
                   </div>
-                )}
-              </div>
-            </TableCell>
-          </TableRow>
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length ? (

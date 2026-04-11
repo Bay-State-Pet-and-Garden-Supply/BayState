@@ -13,7 +13,7 @@ export const STATUS_TRANSITIONS: Record<
   PersistedPipelineStatus[]
 > = {
   imported: ['scraped'],
-  scraped: ['finalized'],
+  scraped: ['finalized', 'imported'],
   finalized: ['scraped'],
   failed: ['imported'],
 } as const;

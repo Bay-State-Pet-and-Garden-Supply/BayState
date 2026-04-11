@@ -279,11 +279,14 @@ class ExtractionUtils:
         segment.
         """
         value = str(raw or "").strip()
-        if not value or value.startswith(("/", "//", "./", "../")):
+        if not value or value.startswith(("//", "./", "../")):
             return False
 
         raw_path = urlparse(value).path.lower()
-        raw_leading = raw_path.split("/", 1)[0] if "/" in raw_path else ""
+        # Strip leading slashes so split() gets the actual first segment
+        stripped_path = raw_path.lstrip("/")
+        raw_leading = stripped_path.split("/", 1)[0] if "/" in stripped_path else stripped_path
+
         if not raw_leading:
             return False
 

@@ -76,15 +76,15 @@ export function PipelineFilters({ filters, onFilterChange, availableSources = []
                 <Button
                     variant="outline"
                     className={cn(
-                        "gap-2 border-dashed",
+                        activeFilterCount > 0 ? "gap-1.5" : "",
+                        "border-dashed",
                         activeFilterCount > 0 && "bg-blue-50 border-blue-200 text-blue-700",
                         className
                     )}
                 >
                     <Filter className="h-4 w-4" />
-                    Filters
                     {activeFilterCount > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200">
+                        <Badge variant="secondary" className="h-5 px-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200">
                             {activeFilterCount}
                         </Badge>
                     )}

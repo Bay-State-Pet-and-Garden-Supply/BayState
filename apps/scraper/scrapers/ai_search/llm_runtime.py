@@ -1,4 +1,4 @@
-"""Helpers for provider-aware LLM runtime configuration."""
+"""Helpers for OpenAI-first LLM runtime configuration."""
 
 from __future__ import annotations
 
@@ -8,9 +8,8 @@ from typing import Literal
 
 from openai import AsyncOpenAI
 
-LLMProvider = Literal["openai", "openai_compatible", "gemini"]
+LLMProvider = Literal["openai", "openai_compatible"]
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
-DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
 DEFAULT_OPENAI_COMPATIBLE_MODEL = "google/gemma-3-12b-it"
 LOCAL_OPENAI_COMPATIBLE_API_KEY = "baystate-local"
 
@@ -49,8 +48,6 @@ class LLMRuntimeConfig:
 
     @property
     def crawl4ai_provider(self) -> str:
-        if self.provider == "gemini":
-            return f"gemini/{self.model}"
         return f"openai/{self.model}"
 
 

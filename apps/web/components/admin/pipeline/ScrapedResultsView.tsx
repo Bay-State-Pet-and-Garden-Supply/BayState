@@ -9,7 +9,9 @@ import {
   AlertCircle,
   Search,
   X,
-  Filter,
+  ChevronRight,
+  Layers,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -20,6 +22,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { PipelineFilters } from "./PipelineFilters";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
@@ -31,6 +39,8 @@ interface ScrapedResultsViewProps {
     isShiftClick?: boolean,
     visibleProducts?: PipelineProduct[],
   ) => void;
+  onSelectAll?: (skus: string[]) => void;
+  onDeselectAll?: (skus: string[]) => void;
   onRefresh: (silent?: boolean) => void;
   // Filter props
   search?: string;
@@ -42,6 +52,12 @@ interface ScrapedResultsViewProps {
   };
   onFilterChange?: (filters: any) => void;
   availableSources?: string[];
+  // Cohort grouping props
+  groupedProducts?: {
+    groups: Record<string, PipelineProduct[]>;
+    cohortIds: string[];
+  };
+  cohortBrands?: Record<string, string>;
 }
 
 interface SourceDetails extends Record<string, unknown> {
@@ -75,12 +91,16 @@ export function ScrapedResultsView({
   products,
   selectedSkus,
   onSelectSku,
+  onSelectAll,
+  onDeselectAll,
   onRefresh,
   search,
   onSearchChange,
   filters,
   onFilterChange,
   availableSources = [],
+  groupedProducts,
+  cohortBrands = {},
 }: ScrapedResultsViewProps) {
   const [localSearch, setLocalSearch] = useState(search || "");
 
@@ -88,14 +108,18 @@ export function ScrapedResultsView({
     if (search !== undefined) setLocalSearch(search);
   }, [search]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== search && onSearchChange) {
-        onSearchChange(localSearch);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [localSearch, onSearchChange, search]);
+  const handleCommitSearch = useCallback(() => {
+    if (onSearchChange) {
+      onSearchChange(localSearch);
+    }
+  }, [localSearch, onSearchChange]);
+
+  const handleClearSearch = useCallback(() => {
+    setLocalSearch("");
+    if (onSearchChange) {
+      onSearchChange("");
+    }
+  }, [onSearchChange]);
 
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
@@ -323,8 +347,107 @@ export function ScrapedResultsView({
     [selectedProduct?.sku],
   );
 
+  const renderProductItem = (product: PipelineProduct, index: number, visibleProducts: PipelineProduct[]) => {
+    const name = product.consolidated?.name || product.input?.name || "Unknown";
+    const price = product.consolidated?.price ?? product.input?.price;
+    const sourceCount = Object.keys(product.sources || {}).filter(
+      (key) => !key.startsWith("_"),
+    ).length;
+    const isSelected = selectedSku === product.sku;
+    const isChecked = selectedSkus.has(product.sku);
+
+    return (
+      <div
+        key={product.sku}
+        data-sku={product.sku}
+        className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
+          isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]" : ""
+        }`}
+        onClick={() => setPreferredSku(product.sku)}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className="pt-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectSku(
+                product.sku,
+                !isChecked,
+                index,
+                e.shiftKey,
+                visibleProducts,
+              );
+            }}
+          >
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={() => {
+                // Handle keyboard selection
+                if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
+                  onSelectSku(
+                    product.sku,
+                    !isChecked,
+                    index,
+                    false,
+                    visibleProducts,
+                  )
+                }
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectSku(
+                  product.sku,
+                  !isChecked,
+                  index,
+                  e.shiftKey,
+                  visibleProducts,
+                );
+              }}
+              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start gap-2">
+              <div className="font-mono text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-tight">
+                {product.sku}
+              </div>
+              {price !== undefined && (
+                <div className="text-sm font-bold text-primary">
+                  ${price.toFixed(2)}
+                </div>
+              )}
+            </div>
+            <div
+              className={`text-sm font-medium line-clamp-2 mt-0.5 ${isSelected ? "text-primary" : ""}`}
+            >
+              {name}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {Object.keys(product.sources || {})
+                .filter((key) => !key.startsWith("_"))
+                .map((key) => (
+                  <Badge
+                    key={key}
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none"
+                  >
+                    {key}
+                  </Badge>
+                ))}
+              {sourceCount === 0 && (
+                <span className="text-[10px] text-muted-foreground">
+                  —
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
         <div className="p-3 border-b bg-card flex items-center gap-2">
@@ -335,11 +458,16 @@ export function ScrapedResultsView({
               placeholder="Search SKUs or names..."
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleCommitSearch();
+                }
+              }}
               className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-8 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-forest-green/50 focus-visible:border-brand-forest-green disabled:cursor-not-allowed disabled:opacity-50"
             />
             {localSearch && (
               <button
-                onClick={() => setLocalSearch("")}
+                onClick={handleClearSearch}
                 className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
@@ -356,113 +484,76 @@ export function ScrapedResultsView({
           )}
         </div>
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
-          <div className="divide-y">
-            {sortedProducts.map((product, index) => {
-              const name =
-                product.consolidated?.name || product.input?.name || "Unknown";
-              const price = product.consolidated?.price ?? product.input?.price;
-              const sourceCount = Object.keys(product.sources || {}).filter(
-                (key) => !key.startsWith("_"),
-              ).length;
-              const isSelected = selectedSku === product.sku;
-              const isChecked = selectedSkus.has(product.sku);
+          {groupedProducts && groupedProducts.cohortIds.length > 1 ? (
+            <Accordion type="multiple" defaultValue={groupedProducts.cohortIds} className="divide-y divide-border/50">
+              {groupedProducts.cohortIds.map((cohortId) => {
+                const groupProducts = groupedProducts.groups[cohortId] || [];
+                if (groupProducts.length === 0) return null;
+                
+                const allSelected = groupProducts.every(p => selectedSkus.has(p.sku));
+                const someSelected = groupProducts.some(p => selectedSkus.has(p.sku)) && !allSelected;
 
-              return (
-                <div
-                  key={product.sku}
-                  data-sku={product.sku}
-                  className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
-                    isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]" : ""
-                  }`}
-                  onClick={() => setPreferredSku(product.sku)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="pt-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectSku(
-                          product.sku,
-                          !isChecked,
-                          index,
-                          e.shiftKey,
-                          sortedProducts,
-                        );
-                      }}
-                    >
-                      <Checkbox
-                        checked={isChecked}
-                        onCheckedChange={() => {
-                          // Handle keyboard selection
-                          if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
-                            onSelectSku(
-                              product.sku,
-                              !isChecked,
-                              index,
-                              false,
-                              sortedProducts,
-                            )
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectSku(
-                            product.sku,
-                            !isChecked,
-                            index,
-                            e.shiftKey,
-                            sortedProducts,
-                          );
-                        }}
-                        className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="font-mono text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-tight">
-                          {product.sku}
-                        </div>
-                        {price !== undefined && (
-                          <div className="text-sm font-bold text-primary">
-                            ${price.toFixed(2)}
-                          </div>
-                        )}
+                return (
+                  <AccordionItem 
+                    key={cohortId} 
+                    value={cohortId}
+                    className="border-b border-border/80 border-l-4 border-l-brand-forest-green/30"
+                  >
+                    <div className="flex items-center hover:bg-muted/40 bg-muted/20">
+                      <div className="pl-3 py-1.5 flex items-center">
+                        <Checkbox
+                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                          onCheckedChange={(checked) => {
+                            const cohortSkus = groupProducts.map(p => p.sku);
+                            if (checked) {
+                              onSelectAll?.(cohortSkus);
+                            } else {
+                              onDeselectAll?.(cohortSkus);
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="data-[state=checked]:bg-brand-forest-green data-[state=checked]:border-brand-forest-green"
+                        />
                       </div>
-                      <div
-                        className={`text-sm font-medium line-clamp-2 mt-0.5 ${isSelected ? "text-primary" : ""}`}
-                      >
-                        {name}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        {Object.keys(product.sources || {})
-                          .filter((key) => !key.startsWith("_"))
-                          .map((key) => (
-                            <Badge
-                              key={key}
-                              variant="secondary"
-                              className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none"
-                            >
-                              {key}
+                      <AccordionTrigger className="flex-1 px-3 py-1.5 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                        <div className="flex items-center gap-2">
+                          <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 text-muted-foreground" />
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <span className="font-bold text-[9px] uppercase tracking-wider text-foreground/70 truncate">
+                              {cohortId === "ungrouped" ? "Ungrouped" : `Cohort: ${cohortId}`}
+                            </span>
+                            {cohortBrands[cohortId] && (
+                              <Badge variant="outline" className="h-4 text-[9px] px-1 font-bold border-brand-forest-green/30 text-brand-forest-green bg-brand-forest-green/5">
+                                {cohortBrands[cohortId]}
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-muted text-muted-foreground font-normal">
+                              {groupProducts.length}
                             </Badge>
-                          ))}
-                        {sourceCount === 0 && (
-                          <span className="text-[10px] text-muted-foreground">
-                            —
-                          </span>
-                        )}
-                      </div>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
                     </div>
-                  </div>
+                    <AccordionContent className="pb-0">
+                      <div className="divide-y divide-border/30 bg-muted/5">
+                        {groupProducts.map((product, index) => renderProductItem(product, index, groupProducts))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          ) : (
+            <div className="divide-y">
+              {sortedProducts.map((product, index) => renderProductItem(product, index, sortedProducts))}
+              {sortedProducts.length === 0 && (
+                <div className="p-12 text-center text-muted-foreground text-sm">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  No products found matching your search.
                 </div>
-              );
-            })}
-            {sortedProducts.length === 0 && (
-              <div className="p-12 text-center text-muted-foreground text-sm">
-                <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                No products found matching your search.
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
