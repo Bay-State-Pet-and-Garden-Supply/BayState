@@ -99,6 +99,8 @@ export interface ScrapeOptions {
     };
     /** Maximum cost in USD for AI Search jobs (default: 5.00, max: 10.00) */
     maxAISearchCostUsd?: number;
+    /** Brand name from cohort assignment — injected into context items that lack a brand */
+    cohortBrand?: string;
 }
 
 export interface ScrapeResult {
@@ -308,6 +310,17 @@ export async function scrapeProducts(
     const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {
         preferCatalogContext: isAISearch,
     });
+
+    // Inject cohort brand into context items that lack one
+    const cohortBrand = toOptionalString(options?.cohortBrand);
+    if (cohortBrand) {
+        scrapeContextItems.forEach((item) => {
+            if (!item.brand) {
+                item.brand = cohortBrand;
+            }
+        });
+    }
+
     const standardSkuContext = isAISearch ? undefined : buildStandardSkuContext(scrapeContextItems);
 
     const maxAISearchCostUsd = isAISearch ? (options?.maxAISearchCostUsd ?? 5.00) : undefined;

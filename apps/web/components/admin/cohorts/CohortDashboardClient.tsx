@@ -14,13 +14,25 @@ import {
   XCircle,
   RefreshCw,
   Filter,
+  Tag,
+  Sparkles,
+  Edit2,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { BRAND_COLORS } from "@/lib/design-tokens";
+
+interface BrandInfo {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+}
 
 interface CohortBatch {
   id: string;
@@ -28,6 +40,9 @@ interface CohortBatch {
   product_line: string | null;
   status: "pending" | "processing" | "completed" | "failed";
   scraper_config: string | null;
+  brand_id: string | null;
+  brand_name: string | null;
+  brands: BrandInfo | null;
   created_at: string;
   updated_at: string;
   metadata: Record<string, unknown>;
@@ -103,6 +118,92 @@ function StatusBadge({ status }: { status: CohortBatch["status"] }) {
       <Icon className={`h-3 w-3 ${status === "processing" ? "animate-spin" : ""}`} />
       {config.label}
     </span>
+  );
+}
+
+function BrandBadge({
+  cohort,
+  onAssign,
+}: {
+  cohort: CohortBatch;
+  onAssign: (cohortId: string, brandName: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+
+  const brandName = cohort.brand_name || cohort.brands?.name || null;
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          placeholder="Brand name..."
+          className="h-6 w-32 text-xs px-2"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && editValue.trim()) {
+              onAssign(cohort.id, editValue.trim());
+              setIsEditing(false);
+            }
+            if (e.key === "Escape") {
+              setIsEditing(false);
+            }
+          }}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={() => {
+            if (editValue.trim()) {
+              onAssign(cohort.id, editValue.trim());
+            }
+            setIsEditing(false);
+          }}
+        >
+          <Check className="h-3 w-3 text-green-600" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={() => setIsEditing(false)}
+        >
+          <X className="h-3 w-3 text-muted-foreground" />
+        </Button>
+      </div>
+    );
+  }
+
+  if (brandName) {
+    return (
+      <button
+        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-brand-forest-green/10 text-brand-forest-green hover:bg-brand-forest-green/20 transition-colors cursor-pointer border-0"
+        onClick={() => {
+          setEditValue(brandName);
+          setIsEditing(true);
+        }}
+      >
+        <Tag className="h-3 w-3" />
+        {brandName}
+        <Edit2 className="h-2.5 w-2.5 opacity-60" />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-brand-forest-green hover:text-brand-forest-green transition-colors cursor-pointer bg-transparent"
+      onClick={() => {
+        setEditValue("");
+        setIsEditing(true);
+      }}
+    >
+      <Tag className="h-3 w-3" />
+      Assign Brand
+    </button>
   );
 }
 
@@ -205,6 +306,29 @@ export function CohortDashboardClient() {
     setLoading(true);
   };
 
+  const handleAssignBrand = async (cohortId: string, brandName: string) => {
+    try {
+      const response = await fetch(`/api/admin/cohorts/${cohortId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand_name: brandName }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to assign brand");
+      }
+
+      toast.success(`Brand "${brandName}" assigned`, {
+        description: "Scraper recommendations will now be available.",
+      });
+
+      await fetchCohorts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to assign brand");
+    }
+  };
+
   if (loading && cohorts.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -244,7 +368,8 @@ export function CohortDashboardClient() {
             Cohort Batch Monitoring
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Real-time monitoring of product line scraping cohorts
+            Real-time monitoring of product line scraping cohorts. Assign brands to
+            enable automatic scraper recommendations.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -342,6 +467,7 @@ export function CohortDashboardClient() {
                 metadataError === null || metadataError === undefined
                   ? null
                   : String(metadataError);
+              const hasBrand = !!(cohort.brand_name || cohort.brands?.name);
 
               return (
                 <Card
@@ -356,6 +482,7 @@ export function CohortDashboardClient() {
                             {cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
                           </h3>
                           <StatusBadge status={cohort.status} />
+                          <BrandBadge cohort={cohort} onAssign={handleAssignBrand} />
                         </div>
 
                         <div className="space-y-1 text-sm text-muted-foreground">
@@ -377,6 +504,15 @@ export function CohortDashboardClient() {
                             <div className="mt-2">
                               <Badge variant="outline" className="text-xs">
                                 Config: {cohort.scraper_config}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {hasBrand && (
+                            <div className="mt-1">
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <Sparkles className="h-3 w-3" />
+                                Recommendations available
                               </Badge>
                             </div>
                           )}
