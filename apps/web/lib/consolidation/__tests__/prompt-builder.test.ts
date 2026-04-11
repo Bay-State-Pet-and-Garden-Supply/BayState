@@ -75,22 +75,6 @@ describe('brand exclusion in prompt-builder', () => {
             expect(prompt).toContain('Motorsport Container Red 5 Gal.');
         });
 
-        it('distinguishes planting seeds from feed-oriented seed products', () => {
-            const prompt = generateSystemPrompt([
-                'Lawn & Garden > Flower & Vegetable Seeds',
-                'Farm Animal > Chicken > Feed',
-                'Wild Bird > Seed & Food > Seed Blends',
-            ]);
-
-            expect(prompt).toMatch(/treat planting seeds as lawn & garden items/i);
-            expect(prompt).toMatch(/trusted source evidence explicitly describes feeding intent/i);
-            expect(prompt).toMatch(/when "seed" appears in the product name, default to the lawn & garden hierarchy/i);
-            expect(prompt).toMatch(/Jack O Lantern.*do not change a planting seed product into seasonal utility, decor, or service taxonomy/i);
-            expect(prompt).toContain('Lawn & Garden > Flower & Vegetable Seeds');
-            expect(prompt).toContain('Farm Animal > Chicken > Feed');
-            expect(prompt).toContain('Wild Bird > Seed & Food > Seed Blends');
-        });
-
         it('routes planting seed products to seeds and seed starting pages', () => {
             const prompt = generateSystemPrompt(['Lawn & Garden > Flower & Vegetable Seeds']);
 
@@ -108,8 +92,6 @@ describe('brand exclusion in prompt-builder', () => {
             expect(prompt).toMatch(/marketplace/i);
             expect(prompt).toMatch(/search_keywords/i);
             expect(prompt).toMatch(/response schema already constrains/i);
-            expect(prompt).toMatch(/deepest valid leaf taxonomy breadcrumb/i);
-            expect(prompt).toMatch(/ortho home defense/i);
             expect(prompt).not.toContain('Allowed category values:');
         });
 
@@ -178,17 +160,7 @@ describe('brand exclusion in prompt-builder', () => {
                             },
                             {
                                 sku: 'SIB-5',
-                                name: 'Acme Puppy Recipe Dog Food 50 lb.',
-                                sources: {
-                                    manufacturer: {
-                                        brand: 'Acme',
-                                        category: 'Dog > Food > Dry Food',
-                                    },
-                                },
-                            },
-                            {
-                                sku: 'SIB-6',
-                                name: 'Acme Puppy Recipe Dog Food 60 lb.',
+                                name: 'Acme Puppy Recipe Dog Food 30 lb.',
                                 sources: {
                                     manufacturer: {
                                         brand: 'Acme',
@@ -214,10 +186,8 @@ describe('brand exclusion in prompt-builder', () => {
                 expect.objectContaining({
                     product_line: 'Acme Puppy Recipe',
                     expected_brand: 'Acme',
-                    expected_category: 'Dog > Food > Dry Food',
                     consistency_rules: expect.arrayContaining([
                         expect.stringMatching(/same brand/i),
-                        expect.stringMatching(/category taxonomy/i),
                     ]),
                     consistency_examples: [
                         'Acme Puppy Recipe Dog Food 4 lb.',
@@ -231,7 +201,6 @@ describe('brand exclusion in prompt-builder', () => {
                 sku: 'SIB-1',
                 name: 'Acme Puppy Recipe Dog Food 4 lb.',
                 brand: 'Acme',
-                category: 'Dog > Food > Dry Food',
             });
         });
 

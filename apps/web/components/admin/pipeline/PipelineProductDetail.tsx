@@ -369,35 +369,6 @@ export function PipelineProductDetail({
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category" className="text-sm font-medium">Category</Label>
-                  <div className="flex flex-wrap gap-2 p-2 rounded-md border bg-muted/30 min-h-[40px]">
-                    {category.map(cat => (
-                      <Badge key={cat} variant="secondary" className="gap-1">
-                        {cat}
-                        <X 
-                          className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                          onClick={() => setCategory(prev => prev.filter(c => c !== cat))}
-                        />
-                      </Badge>
-                    ))}
-                    <Input
-                      className="flex-1 min-w-[120px] h-6 border-none bg-transparent focus-visible:ring-0 p-0 text-sm"
-                      placeholder="Add category..."
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const val = e.currentTarget.value.trim();
-                          if (val && !category.includes(val)) {
-                            setCategory(prev => [...prev, val]);
-                            e.currentTarget.value = '';
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-4 rounded-xl border bg-card p-5">

@@ -115,7 +115,6 @@ export interface ProductSource {
             sources: Record<string, unknown>;
         }>;
         expectedBrand?: string;
-        expectedCategory?: string;
     };
 }
 

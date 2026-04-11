@@ -212,20 +212,12 @@ export function buildResponseSchema(
                 },
                 description: 'Store pages this product should appear on, using exact page names from the provided list',
             },
-            category: {
-                type: 'array',
-                items: {
-                    type: 'string',
-                    enum: categories,
-                },
-                description: 'List of applicable leaf-category breadcrumbs using exact values from the provided taxonomy list',
-            },
             confidence_score: {
                 type: 'number',
                 description: 'Confidence score between 0.0 and 1.0',
             },
         },
-        required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'category', 'confidence_score'],
+        required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'confidence_score'],
         additionalProperties: false,
     };
 }
@@ -252,11 +244,11 @@ export function validateConsolidationTaxonomy(
 ): Record<string, unknown> {
     const validated = { ...result };
 
-    if ('category' in validated) {
+    if ('category' in validated && validated.category) {
         if (Array.isArray(validated.category)) {
             const uniqueValues = new Set<string>();
-            const normalizedValues = validated.category
-                .map((value) => validateCategory(value, validCategories))
+            const normalizedValues = (validated.category as unknown[])
+                .map((value) => typeof value === 'string' ? validateCategory(value, validCategories) : '')
                 .filter((value) => {
                     if (!value) return false;
                     if (uniqueValues.has(value)) return false;
@@ -264,15 +256,9 @@ export function validateConsolidationTaxonomy(
                     return true;
                 });
             validated.category = normalizedValues.join('|');
-        } else {
-            validated.category = validateCategory(validated.category as string, validCategories);
+        } else if (typeof validated.category === 'string') {
+            validated.category = validateCategory(validated.category, validCategories);
         }
-    }
-
-    const categoryValue = typeof validated.category === 'string' ? validated.category : '';
-
-    if (!categoryValue.trim()) {
-        throw new Error('Invalid consolidation taxonomy: category is required');
     }
 
     return validated;

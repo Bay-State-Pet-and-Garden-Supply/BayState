@@ -88,7 +88,6 @@ export const ProductSourceSchema = z.object({
                 })
             ),
             expectedBrand: z.string().optional(),
-            expectedCategory: z.string().optional(),
         })
         .optional(),
 });

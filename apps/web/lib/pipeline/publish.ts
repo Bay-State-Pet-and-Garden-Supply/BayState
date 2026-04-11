@@ -137,14 +137,17 @@ export async function publishToStorefront(sku: string) {
                 console.error(`[Publish] Error updating product ${sku}:`, updateError);
                 return { success: false, error: 'Failed to update product in storefront' };
             }
+// Sync categories (DISABLED: Hierarchical categories do not align with ShopSite export categories)
+/*
+try {
+    const categoryValue = consolidated.category || input.category;
+    await syncProductCategoryLinks(supabase, existingProduct.id, categoryValue);
+} catch (categoryError) {
+    console.error(`[Publish] Error syncing categories for ${sku}:`, categoryError);
+    return { success: false, error: 'Failed to sync product categories in storefront' };
+}
+*/
 
-            try {
-                const categoryValue = consolidated.category || input.category;
-                await syncProductCategoryLinks(supabase, existingProduct.id, categoryValue);
-            } catch (categoryError) {
-                console.error(`[Publish] Error syncing categories for ${sku}:`, categoryError);
-                return { success: false, error: 'Failed to sync product categories in storefront' };
-            }
 
             return { success: true, action: 'updated', productId: existingProduct.id };
         } else {
@@ -158,16 +161,6 @@ export async function publishToStorefront(sku: string) {
             if (insertError) {
                 console.error(`[Publish] Error inserting product ${sku}:`, insertError);
                 return { success: false, error: 'Failed to create product in storefront' };
-            }
-
-            try {
-                if (insertedProduct?.id) {
-                    const categoryValue = consolidated.category || input.category;
-                    await syncProductCategoryLinks(supabase, insertedProduct.id, categoryValue);
-                }
-            } catch (categoryError) {
-                console.error(`[Publish] Error syncing categories for ${sku}:`, categoryError);
-                return { success: false, error: 'Failed to sync product categories in storefront' };
             }
 
             return { success: true, action: 'created', productId: insertedProduct?.id };
