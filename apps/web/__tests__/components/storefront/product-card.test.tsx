@@ -15,7 +15,6 @@ const mockProduct: Product = {
   is_special_order: false,
   weight: null,
   search_keywords: null,
-  category: null,
   created_at: '2024-01-01',
   quantity: 10,
   low_stock_threshold: 5,

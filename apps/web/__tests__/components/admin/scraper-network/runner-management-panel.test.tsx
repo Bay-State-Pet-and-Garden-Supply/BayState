@@ -42,6 +42,7 @@ describe('RunnerManagementPanel', () => {
     active_jobs: 0,
     region: 'us-east-1',
     version: '1.0.0',
+    build_check_reason: null,
     metadata: { region: 'us-east-1' },
   };
 
