@@ -108,6 +108,36 @@ def test_normalize_images_drops_page_relative_files_artifact() -> None:
     assert images == []
 
 
+def test_normalize_images_drops_page_relative_products_artifact() -> None:
+    """LLMs sometimes hallucinate paths like `products/<name>.jpg` which,
+    resolved against `/products/<slug>`, produce `/products/products/<name>.jpg`."""
+    utils = _build_utils()
+
+    images = utils.normalize_images(
+        [
+            "products/BentleySeed_AllSortsSunflowers.jpg",
+            "products/AllSortsSunflower_WithFlowers_2021.jpg",
+        ],
+        "https://bentleyseeds.com/products/all-sorts-mix-sunflower-seed",
+    )
+
+    assert images == []
+
+
+def test_normalize_images_preserves_absolute_products_url() -> None:
+    """Absolute URLs with /products/ path should NOT be flagged."""
+    utils = _build_utils()
+
+    images = utils.normalize_images(
+        ["https://cdn.shopify.com/s/files/1/0023/BentleySeed_AllSorts.jpg"],
+        "https://bentleyseeds.com/products/all-sorts-mix-sunflower-seed",
+    )
+
+    assert images == [
+        "https://cdn.shopify.com/s/files/1/0023/BentleySeed_AllSorts.jpg"
+    ]
+
+
 def test_normalize_images_preserves_valid_shopify_cdn_file_url() -> None:
     utils = _build_utils()
 

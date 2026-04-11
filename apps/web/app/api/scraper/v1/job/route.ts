@@ -15,7 +15,6 @@ import {
     pickNumber,
     sanitizeDiscoveryConfig,
 } from '@/lib/ai-scraping/discovery-config';
-import { getGeminiFeatureFlags, type GeminiFeatureFlags } from '@/lib/config/gemini-feature-flags';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
@@ -49,7 +48,6 @@ interface JobConfigResponse {
     job_type: string;
     job_config?: Record<string, unknown>;
     ai_credentials?: AIScrapingRuntimeCredentials;
-    feature_flags?: GeminiFeatureFlags;
     lease_token?: string;
     lease_expires_at?: string;
 }
@@ -214,10 +212,9 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const [aiDefaults, aiCredentials, featureFlags] = await Promise.all([
+        const [aiDefaults, aiCredentials] = await Promise.all([
             getAIScrapingDefaults(),
             getAIScrapingRuntimeCredentials(),
-            getGeminiFeatureFlags(),
         ]);
 
         const response: JobConfigResponse = {
@@ -229,7 +226,6 @@ export async function GET(request: NextRequest) {
             job_type: normalizedJobType,
             job_config: (job.config || undefined) as Record<string, unknown> | undefined,
             ai_credentials: aiCredentials || undefined,
-            feature_flags: featureFlags,
             lease_token: job.lease_token || undefined,
             lease_expires_at: job.lease_expires_at || undefined,
         };

@@ -28,6 +28,7 @@ export interface PipelineFiltersState {
     endDate?: Date;
     source?: string;
     product_line?: string;
+    cohort_id?: string;
     minConfidence?: number;
     maxConfidence?: number;
 }
@@ -65,6 +66,7 @@ export function PipelineFilters({ filters, onFilterChange, availableSources = []
         filters.endDate,
         filters.source,
         filters.product_line,
+        filters.cohort_id,
         filters.minConfidence !== undefined || filters.maxConfidence !== undefined
     ].filter(Boolean).length;
 
@@ -74,15 +76,15 @@ export function PipelineFilters({ filters, onFilterChange, availableSources = []
                 <Button
                     variant="outline"
                     className={cn(
-                        "gap-2 border-dashed",
+                        activeFilterCount > 0 ? "gap-1.5" : "",
+                        "border-dashed",
                         activeFilterCount > 0 && "bg-blue-50 border-blue-200 text-blue-700",
                         className
                     )}
                 >
                     <Filter className="h-4 w-4" />
-                    Filters
                     {activeFilterCount > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200">
+                        <Badge variant="secondary" className="h-5 px-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200">
                             {activeFilterCount}
                         </Badge>
                     )}
@@ -178,7 +180,7 @@ export function PipelineFilters({ filters, onFilterChange, availableSources = []
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="product_line">Cohort ID</Label>
+                        <Label htmlFor="product_line">Product Line</Label>
                         <Input
                             id="product_line"
                             type="search"
@@ -186,6 +188,18 @@ export function PipelineFilters({ filters, onFilterChange, availableSources = []
                             placeholder="e.g. upc-prefix-123"
                             value={localFilters.product_line || ''}
                             onChange={(e) => setLocalFilters(prev => ({ ...prev, product_line: e.target.value || undefined }))}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="cohort_id">Cohort ID</Label>
+                        <Input
+                            id="cohort_id"
+                            type="search"
+                            autoComplete="off"
+                            placeholder="e.g. bsr-cohort-123"
+                            value={localFilters.cohort_id || ''}
+                            onChange={(e) => setLocalFilters(prev => ({ ...prev, cohort_id: e.target.value || undefined }))}
                         />
                     </div>
 

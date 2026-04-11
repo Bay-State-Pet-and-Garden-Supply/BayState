@@ -72,7 +72,7 @@ def search_client_fixture(
 @pytest.fixture
 def query_builder_fixture() -> MagicMock:
     builder = MagicMock(spec=QueryBuilder)
-    builder.build_search_query.return_value = "Acme Deluxe Squeaky Ball 12345 product details"
+    builder.build_name_query.return_value = "Acme Deluxe Squeaky Ball"
     return builder
 
 
@@ -152,9 +152,9 @@ async def test_second_search_triggers_when_low_confidence(
     result = await refiner.refine(make_initial_result(confidence=0.6), first_pass_results, 0.6)
 
     assert result.two_step_triggered is True
-    assert provider.calls == [query_builder_fixture.build_search_query.return_value]
+    assert provider.calls == [query_builder_fixture.build_name_query.return_value]
     name_consolidator_fixture.consolidate_name.assert_awaited_once()
-    query_builder_fixture.build_search_query.assert_called_once()
+    query_builder_fixture.build_name_query.assert_called_once()
 
 
 async def test_circuit_breaker_skips_when_high_confidence(
@@ -184,7 +184,7 @@ async def test_circuit_breaker_skips_when_high_confidence(
     assert result.second_pass_confidence is None
     assert provider.calls == []
     name_consolidator_fixture.consolidate_name.assert_not_awaited()
-    query_builder_fixture.build_search_query.assert_not_called()
+    query_builder_fixture.build_name_query.assert_not_called()
 
 
 async def test_name_extraction_success(
@@ -209,9 +209,8 @@ async def test_name_extraction_success(
     assert get_call_arg(name_call, 0, "sku") == "12345"
     assert get_call_arg(name_call, 1, "abbreviated_name") == "ACME SQKY BALL"
     assert get_call_arg(name_call, 2, "search_snippets") == first_pass_results
-    build_call = query_builder_fixture.build_search_query.call_args
-    assert get_call_arg(build_call, 0, "sku") == "12345"
-    assert get_call_arg(build_call, 1, "product_name") == "Acme Deluxe Squeaky Ball"
+    build_call = query_builder_fixture.build_name_query.call_args
+    assert get_call_arg(build_call, 0, "product_name") == "Acme Deluxe Squeaky Ball"
     assert result.product_name_extracted == "Acme Deluxe Squeaky Ball"
     assert result.cost_usd == pytest.approx(0.03 + SERPAPI_COST_USD)
 
@@ -241,7 +240,7 @@ async def test_name_extraction_failure_fallback(
     assert result.second_pass_confidence is None
     assert result.cost_usd == pytest.approx(0.0)
     assert provider.calls == []
-    query_builder_fixture.build_search_query.assert_not_called()
+    query_builder_fixture.build_name_query.assert_not_called()
 
 
 async def test_ab_validation_prefers_second_when_better(
@@ -316,7 +315,7 @@ async def test_budget_enforcement_respects_max_queries(
     assert result.second_pass_results is None
     assert provider.calls == []
     name_consolidator_fixture.consolidate_name.assert_not_awaited()
-    query_builder_fixture.build_search_query.assert_not_called()
+    query_builder_fixture.build_name_query.assert_not_called()
 
 
 async def test_telemetry_records_both_passes(

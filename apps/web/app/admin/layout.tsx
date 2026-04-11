@@ -41,8 +41,8 @@ export default async function AdminLayout({
       <MobileSidebarDrawer>
         <AdminSidebar userRole={role as 'admin' | 'staff'} />
       </MobileSidebarDrawer>
-      <main id="main-content" className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden p-4 md:p-8">
-        <div className="max-w-[1600px] mx-auto">
+      <main id="main-content" className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden p-2 md:p-4">
+        <div className="max-w-[1600px] mx-auto h-full">
           {children}
         </div>
       </main>

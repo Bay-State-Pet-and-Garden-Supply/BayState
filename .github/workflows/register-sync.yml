@@ -43,7 +43,7 @@ jobs:
   sync:
     name: Sync register inventory
     environment: register-sync
-    runs-on: [self-hosted, windows, register-sync]
+    runs-on: [self-hosted, Windows, X64, register-sync]
     timeout-minutes: 30
     defaults:
       run:

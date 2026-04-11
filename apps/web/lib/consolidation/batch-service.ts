@@ -13,7 +13,7 @@ import {
     getOpenAIClient,
     type ConsolidationRuntimeConfig,
 } from './openai-client';
-import { buildPromptContext, buildUserPrompt, getCategories } from './prompt-builder';
+import { buildPromptContext, buildUserPrompt } from './prompt-builder';
 import {
     buildOpenAIResponseFormat,
     buildResponseSchema,
@@ -27,7 +27,6 @@ import { calculateAICost } from '@/lib/ai-scraping/pricing';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import { buildFacetSlug, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
-import { GeminiBatchProvider } from '@/lib/providers/gemini-batch';
 import { parseTaxonomyValues } from '@/lib/taxonomy';
 import type {
     BatchJob,
@@ -51,7 +50,6 @@ import type {
 const RELEVANT_FIELDS = [
     'title',
     'brand',
-    'price',
     'weight',
     'size',
     'attributes',
@@ -78,7 +76,6 @@ const RELEVANT_FIELDS = [
     'unit_of_measure',
     'size_options',
     'confidence',
-    'source_website',
 ];
 
 function hasRelevantKeyName(key: string): boolean {
@@ -91,11 +88,9 @@ function hasRelevantKeyName(key: string): boolean {
         'attribute',
         'description',
         'category',
-        'type',
         'flavor',
         'colour',
         'color',
-        'price',
         'unit',
         'quantity',
         'material',
@@ -113,8 +108,6 @@ function hasRelevantKeyName(key: string): boolean {
         'breed',
         'feature',
         'page',
-        'value',
-        'data',
         'upc',
         'item_number',
         'manufacturer_part',
@@ -161,6 +154,10 @@ const EXCLUDED_FROM_CONSOLIDATED_MERGE = new Set([
     'is_taxable',
     'taxable',
 ]);
+const MAX_PROMPT_SOURCES = 4;
+const MAX_PROMPT_FALLBACK_FIELDS = 4;
+const MAX_PROMPT_ARRAY_ITEMS = 8;
+const MAX_PROMPT_NESTED_KEYS = 8;
 
 function pruneExcludedConsolidatedFields(value: Record<string, unknown>): Record<string, unknown> {
     return Object.fromEntries(
@@ -175,41 +172,85 @@ function isEmptyValue(value: unknown): boolean {
     return false;
 }
 
-function truncateSpecifications(value: string, maxLength = 500): string {
-    if (value.length <= maxLength) return value;
-    return value.slice(0, maxLength).replace(/\s+\S*$/, '…');
+function getPromptTextLimit(fieldName: string): number {
+    switch (fieldName.toLowerCase()) {
+        case 'title':
+        case 'name':
+            return 180;
+        case 'brand':
+            return 80;
+        case 'description':
+            return 360;
+        case 'long_description':
+            return 520;
+        case 'specifications':
+            return 360;
+        case 'dimensions':
+            return 140;
+        default:
+            return 120;
+    }
 }
 
-function sanitizeNestedComposite(value: unknown): unknown {
+function truncatePromptText(value: string, maxLength: number): string {
+    const trimmed = value.trim();
+    if (trimmed.length <= maxLength) {
+        return trimmed;
+    }
+
+    const truncated = trimmed.slice(0, maxLength).replace(/\s+\S*$/, '').trimEnd();
+    return `${truncated || trimmed.slice(0, maxLength).trimEnd()}…`;
+}
+
+function sanitizePrimitivePromptValue(fieldName: string, value: unknown): unknown {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed.length === 0 || trimmed.startsWith('http')) {
+            return undefined;
+        }
+
+        return truncatePromptText(trimmed, getPromptTextLimit(fieldName));
+    }
+
+    return isEmptyValue(value) ? undefined : value;
+}
+
+function sanitizeNestedComposite(
+    value: unknown,
+    fieldName: string = '',
+    depth: number = 0
+): unknown {
+    if (depth > 3) {
+        return undefined;
+    }
+
     if (Array.isArray(value)) {
         const sanitizedItems = value
-            .map((entry) => sanitizeNestedComposite(entry))
-            .filter((entry) => !isEmptyValue(entry));
+            .map((entry) => sanitizeNestedComposite(entry, fieldName, depth + 1))
+            .filter((entry) => !isEmptyValue(entry))
+            .slice(0, MAX_PROMPT_ARRAY_ITEMS);
         return sanitizedItems.length > 0 ? sanitizedItems : undefined;
     }
 
     if (!value || typeof value !== 'object') {
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (trimmed.length === 0 || trimmed.startsWith('http')) {
-                return undefined;
-            }
-            return trimmed;
-        }
-
-        return isEmptyValue(value) ? undefined : value;
+        return sanitizePrimitivePromptValue(fieldName, value);
     }
 
     const sanitizedObject: Record<string, unknown> = {};
-    Object.entries(value as Record<string, unknown>).forEach(([key, nestedValue]) => {
-        if (isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) {
-            return;
+    Object.entries(value as Record<string, unknown>).some(([key, nestedValue]) => {
+        if (Object.keys(sanitizedObject).length >= MAX_PROMPT_NESTED_KEYS) {
+            return true;
         }
 
-        const sanitizedValue = sanitizeNestedComposite(nestedValue);
+        if (isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) {
+            return false;
+        }
+
+        const sanitizedValue = sanitizeNestedComposite(nestedValue, key, depth + 1);
         if (!isEmptyValue(sanitizedValue)) {
             sanitizedObject[key] = sanitizedValue;
         }
+        return false;
     });
 
     return Object.keys(sanitizedObject).length > 0 ? sanitizedObject : undefined;
@@ -222,63 +263,44 @@ function filterSourceData(sourceData: Record<string, unknown>): Record<string, u
         if (EXCLUDED_FROM_LLM.has(field)) return;
         if (!(field in sourceData) || isEmptyValue(sourceData[field])) return;
 
-        let value = sourceData[field];
-        if (field === 'specifications' && typeof value === 'string') {
-            value = truncateSpecifications(value);
-        }
-
+        const value = sourceData[field];
         const sanitizedValue =
-            value && typeof value === 'object' ? sanitizeNestedComposite(value) : value;
+            value && typeof value === 'object'
+                ? sanitizeNestedComposite(value, field)
+                : sanitizePrimitivePromptValue(field, value);
         if (!isEmptyValue(sanitizedValue)) {
             filteredData[field] = sanitizedValue;
         }
     });
 
+    let fallbackFieldsAdded = 0;
     Object.entries(sourceData).forEach(([key, value]) => {
-        if (key in filteredData || isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) return;
-        if (isEmptyValue(value)) return;
-
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (trimmed.length > 1 && !trimmed.startsWith('http')) {
-                filteredData[key] = trimmed;
-            }
+        if (
+            fallbackFieldsAdded >= MAX_PROMPT_FALLBACK_FIELDS
+            || key in filteredData
+            || isExcludedKeyName(key)
+            || EXCLUDED_FROM_LLM.has(key)
+            || !hasRelevantKeyName(key)
+        ) {
             return;
         }
 
-        if (typeof value === 'number' || typeof value === 'boolean') {
-            if (hasRelevantKeyName(key)) {
-                filteredData[key] = value;
+        if (isEmptyValue(value)) return;
+
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            const sanitizedValue = sanitizePrimitivePromptValue(key, value);
+            if (!isEmptyValue(sanitizedValue)) {
+                filteredData[key] = sanitizedValue;
+                fallbackFieldsAdded += 1;
             }
             return;
         }
 
         if (Array.isArray(value)) {
-            const primitiveValues = value.filter(
-                (entry) => typeof entry === 'string' || typeof entry === 'number' || typeof entry === 'boolean'
-            );
-            if (primitiveValues.length > 0 && hasRelevantKeyName(key)) {
-                filteredData[key] = primitiveValues.slice(0, 20);
-            }
-            return;
-        }
-
-        if (typeof value === 'object' && value !== null) {
-            const sanitizedValue = sanitizeNestedComposite(value);
-            if (isEmptyValue(sanitizedValue)) {
-                return;
-            }
-
-            try {
-                const json = JSON.stringify(sanitizedValue);
-                if (json.length > 2 && json.length < 1000 && hasRelevantKeyName(key)) {
-                    filteredData[key] = sanitizedValue;
-                }
-            } catch (serializationError: unknown) {
-                const fallback = Object.prototype.toString.call(serializationError);
-                if (fallback && hasRelevantKeyName(key)) {
-                    filteredData[key] = fallback;
-                }
+            const sanitizedValue = sanitizeNestedComposite(value, key);
+            if (Array.isArray(sanitizedValue) && sanitizedValue.length > 0) {
+                filteredData[key] = sanitizedValue;
+                fallbackFieldsAdded += 1;
             }
         }
     });
@@ -307,10 +329,7 @@ interface BatchRowLookup {
 type BatchProviderKey = ConsolidationRuntimeConfig['llm_provider'];
 
 function normalizeBatchProvider(value: unknown): BatchProviderKey {
-    if (value === 'openai_compatible' || value === 'gemini') {
-        return value;
-    }
-
+    void value;
     return 'openai';
 }
 
@@ -474,21 +493,6 @@ function toInteger(value: unknown): number {
     return 0;
 }
 
-function toUnixTimestamp(value: unknown): number | null | undefined {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-        return value;
-    }
-
-    if (typeof value === 'string') {
-        const parsed = Date.parse(value);
-        if (Number.isFinite(parsed)) {
-            return Math.trunc(parsed / 1000);
-        }
-    }
-
-    return undefined;
-}
-
 function parseStructuredConsolidationText(
     sku: string,
     content: string,
@@ -611,6 +615,27 @@ function getSourceTrustRank(trust: SourceTrustLevel): number {
     }
 }
 
+function getPromptEvidenceSortRank(sourceName: string, trust: SourceTrustLevel): number {
+    if (trust === 'canonical') {
+        return 0;
+    }
+
+    if (sourceName.toLowerCase().includes('manufacturer')) {
+        return 1;
+    }
+
+    switch (trust) {
+        case 'trusted':
+            return 2;
+        case 'standard':
+            return 3;
+        case 'marketplace':
+            return 4;
+        default:
+            return 5;
+    }
+}
+
 function cleanBrandLabel(rawBrandName: unknown): string | undefined {
     if (typeof rawBrandName !== 'string') {
         return undefined;
@@ -621,7 +646,7 @@ function cleanBrandLabel(rawBrandName: unknown): string | undefined {
 }
 
 function buildPromptSourceEvidence(filteredSources: Record<string, unknown>): PromptSourceEvidence[] {
-    return Object.entries(filteredSources)
+    const sourceEvidence = Object.entries(filteredSources)
         .filter(([, data]) => data && typeof data === 'object' && !Array.isArray(data))
         .map(([source, data]) => ({
             source,
@@ -629,13 +654,22 @@ function buildPromptSourceEvidence(filteredSources: Record<string, unknown>): Pr
             fields: data as Record<string, unknown>,
         }))
         .sort((left, right) => {
-            const trustComparison = getSourceTrustRank(left.trust) - getSourceTrustRank(right.trust);
+            const trustComparison =
+                getPromptEvidenceSortRank(left.source, left.trust)
+                - getPromptEvidenceSortRank(right.source, right.trust);
             if (trustComparison !== 0) {
                 return trustComparison;
             }
 
+            const fieldComparison = Object.keys(right.fields).length - Object.keys(left.fields).length;
+            if (fieldComparison !== 0) {
+                return fieldComparison;
+            }
+
             return left.source.localeCompare(right.source);
         });
+
+    return sourceEvidence.slice(0, MAX_PROMPT_SOURCES);
 }
 
 function collectAnimalSignalsFromValue(
@@ -703,7 +737,18 @@ function summarizeAnimalSignals(signals: Iterable<AnimalSignal>): string {
 function getPreferredTrustedBrand(
     sources: Record<string, unknown>
 ): { brand: string; source: string } | null {
-    const evidence = buildPromptSourceEvidence(normalizeProductSources(sources));
+    const evidence = Object.entries(normalizeProductSources(sources))
+        .filter(([, data]) => data && typeof data === 'object' && !Array.isArray(data))
+        .map(([source, data]) => ({
+            source,
+            trust: getSourceTrustLevel(source),
+            fields: data as Record<string, unknown>,
+        }))
+        .sort(
+            (left, right) =>
+                getPromptEvidenceSortRank(left.source, left.trust)
+                - getPromptEvidenceSortRank(right.source, right.trust)
+        );
 
     for (const source of evidence) {
         if (source.trust === 'marketplace') {
@@ -775,7 +820,6 @@ export function createBatchContent(
     const model = config?.model || CONSOLIDATION_CONFIG.model;
     const maxTokens = config?.maxTokens || CONSOLIDATION_CONFIG.maxTokens;
     const temperature = config?.temperature || CONSOLIDATION_CONFIG.temperature;
-    const provider = config?.provider || 'openai';
     const openAIResponseFormat = responseSchema ? buildOpenAIResponseFormat(responseSchema) : undefined;
 
     for (const product of products) {
@@ -798,54 +842,21 @@ export function createBatchContent(
         const sourceEvidence = buildPromptSourceEvidence(filteredSources);
         const userPrompt = buildUserPrompt(product, sourceEvidence);
 
-        const request = provider === 'gemini'
-            ? {
-                key: product.sku,
-                request: {
-                    contents: [
-                        {
-                            role: 'user',
-                            parts: [
-                                {
-                                    text: userPrompt,
-                                },
-                            ],
-                        },
-                    ],
-                    system_instruction: {
-                        parts: [
-                            {
-                                text: systemPrompt,
-                            },
-                        ],
-                    },
-                    generation_config: {
-                        max_output_tokens: maxTokens,
-                        temperature: temperature,
-                        ...(responseSchema
-                            ? {
-                                response_mime_type: 'application/json',
-                                response_json_schema: responseSchema,
-                            }
-                            : {}),
-                    },
-                },
-            }
-            : {
-                custom_id: product.sku,
-                method: 'POST',
-                url: '/v1/chat/completions',
-                body: {
-                    model: model,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt },
-                    ],
-                    max_tokens: maxTokens,
-                    temperature: temperature,
-                    ...(openAIResponseFormat ? { response_format: openAIResponseFormat } : {}),
-                },
-            };
+        const request = {
+            custom_id: product.sku,
+            method: 'POST',
+            url: '/v1/chat/completions',
+            body: {
+                model: model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt },
+                ],
+                max_tokens: maxTokens,
+                temperature: temperature,
+                ...(openAIResponseFormat ? { response_format: openAIResponseFormat } : {}),
+            },
+        };
 
         lines.push(JSON.stringify(request));
     }
@@ -862,10 +873,6 @@ async function getConfiguredBatchRuntime(
 ): Promise<ConsolidationRuntimeConfig | BatchErrorResponse> {
     const config = await getConsolidationConfig(options);
 
-    if (config.llm_provider === 'openai_compatible' && !config.llm_base_url) {
-        return { success: false, error: 'LLM provider not configured' };
-    }
-
     if (requireBatchApi && !config.llm_supports_batch_api) {
         return {
             success: false,
@@ -873,7 +880,7 @@ async function getConfiguredBatchRuntime(
         };
     }
 
-    if (!config.llm_api_key && config.llm_provider !== 'openai_compatible') {
+    if (!config.llm_api_key) {
         return { success: false, error: 'LLM provider not configured' };
     }
 
@@ -904,27 +911,6 @@ async function submitBatchToProvider(
     outputFileId: string | null;
     errorFileId: string | null;
 }> {
-    if (runtime.llm_provider === 'gemini') {
-        if (!runtime.llm_api_key) {
-            throw new Error('Gemini API key not configured');
-        }
-
-        const geminiProvider = new GeminiBatchProvider(runtime.llm_api_key);
-        const submittedBatch = await geminiProvider.submitBatch({
-            model: runtime.model,
-            displayName,
-            content,
-        });
-
-        return {
-            providerBatchId: submittedBatch.id,
-            providerStatus: submittedBatch.status,
-            inputFileId: submittedBatch.inputFileId ?? null,
-            outputFileId: submittedBatch.outputFileId ?? null,
-            errorFileId: submittedBatch.errorFileId ?? null,
-        };
-    }
-
     const client = await getOpenAIClient({ forceProvider: runtime.llm_provider });
     if (!client) {
         throw new Error('LLM provider not configured');
@@ -972,7 +958,7 @@ async function persistBatchJobRecord(payload: {
         provider_input_file_id: payload.inputFileId,
         provider_output_file_id: payload.outputFileId,
         provider_error_file_id: payload.errorFileId,
-        openai_batch_id: payload.provider === 'gemini' ? null : payload.providerBatchId,
+        openai_batch_id: payload.providerBatchId,
         status: payload.providerStatus,
         description: payload.description,
         auto_apply: payload.autoApply,
@@ -1089,12 +1075,10 @@ export async function submitBatch(
 
 
         // Build prompt context with taxonomy
-        const { systemPrompt, shopsitePages = [] } = await buildPromptContext();
-        const categoryList = await getCategories();
-        const categoryNames = categoryList.map((category) => category.breadcrumb ?? category.name);
+        const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
 
         // Build JSON schema with enum constraints
-        const responseSchema = buildResponseSchema(categoryNames, shopsitePages);
+        const responseSchema = buildResponseSchema(categories, shopsitePages);
 
         // Create JSONL content
         const content = createBatchContent(products, systemPrompt, responseSchema, {
@@ -1181,170 +1165,86 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
             return runtime;
         }
 
-        let status: BatchStatus;
-        let updateData: Record<string, unknown>;
-        let upsertPayload: Record<string, unknown> | null = null;
-        let upsertOnConflict: string | undefined;
-
-        if (resolved.provider === 'gemini') {
-            if (!runtime.llm_api_key) {
-                return { success: false, error: 'Gemini API key not configured' };
-            }
-
-            const batchProvider = new GeminiBatchProvider(runtime.llm_api_key);
-            const batch = await batchProvider.getBatchStatus(resolved.providerBatchId);
-            const batchMetadata = lookup.row?.metadata || {};
-            const totalRequests = batch.totalRequests || lookup.row?.total_requests || 0;
-            const completedRequests = batch.completedRequests || lookup.row?.completed_requests || 0;
-            const failedRequests = batch.failedRequests || lookup.row?.failed_requests || 0;
-            const progressPercent =
-                totalRequests > 0
-                    ? ((completedRequests + failedRequests) / totalRequests) * 100
-                    : ['completed', 'failed', 'cancelled', 'expired'].includes(batch.status)
-                        ? 100
-                        : 0;
-            const rawBatch = batch.raw as {
-                createTime?: string;
-                endTime?: string;
-            };
-
-            status = {
-                id: batch.id,
-                provider: 'gemini',
-                provider_batch_id: batch.id,
-                status: batch.status as BatchStatus['status'],
-                is_complete: batch.status === 'completed',
-                is_failed: ['failed', 'expired', 'cancelled'].includes(batch.status),
-                is_processing: ['validating', 'in_progress', 'finalizing', 'pending'].includes(batch.status),
-                total_requests: totalRequests,
-                completed_requests: completedRequests,
-                failed_requests: failedRequests,
-                progress_percent: progressPercent,
-                prompt_tokens: batch.promptTokens,
-                completion_tokens: batch.completionTokens,
-                total_tokens: batch.totalTokens,
-                created_at: toUnixTimestamp(rawBatch.createTime),
-                completed_at: toUnixTimestamp(rawBatch.endTime),
-                metadata: batchMetadata as BatchMetadata,
-            };
-
-            updateData = {
-                provider: 'gemini',
-                provider_batch_id: batch.id,
-                status: batch.status,
-                total_requests: totalRequests,
-                completed_requests: completedRequests,
-                failed_requests: failedRequests,
-                prompt_tokens: batch.promptTokens ?? 0,
-                completion_tokens: batch.completionTokens ?? 0,
-                total_tokens: batch.totalTokens ?? 0,
-                estimated_cost: calculateAICost(
-                    batch.model || (typeof batchMetadata.llm_model === 'string' ? batchMetadata.llm_model : runtime.model),
-                    batch.promptTokens ?? 0,
-                    batch.completionTokens ?? 0,
-                    true
-                ),
-                provider_input_file_id: batch.inputFileId,
-                provider_output_file_id: batch.outputFileId,
-                provider_error_file_id: batch.errorFileId,
-                input_file_id: batch.inputFileId,
-                output_file_id: batch.outputFileId,
-                error_file_id: batch.errorFileId,
-            };
-
-            const completedAt = toUnixTimestamp(rawBatch.endTime);
-            if (completedAt) {
-                updateData.completed_at = new Date(completedAt * 1000).toISOString();
-            }
-
-            upsertPayload = {
-                ...updateData,
-                provider: 'gemini',
-                provider_batch_id: batch.id,
-            };
-            upsertOnConflict = 'provider,provider_batch_id';
-        } else {
-            const client = await getOpenAIClient({ forceProvider: resolved.provider });
-            if (!client) {
-                return { success: false, error: 'LLM provider not configured' };
-            }
-
-            const batch = await client.batches.retrieve(resolved.providerBatchId);
-            const requestCounts = batch.request_counts || { total: 0, completed: 0, failed: 0 };
-
-            status = {
-                id: batch.id,
-                provider: resolved.provider,
-                provider_batch_id: batch.id,
-                status: batch.status as BatchStatus['status'],
-                is_complete: batch.status === 'completed',
-                is_failed: ['failed', 'expired', 'cancelled'].includes(batch.status),
-                is_processing: ['validating', 'in_progress', 'finalizing'].includes(batch.status),
-                total_requests: requestCounts.total || 0,
-                completed_requests: requestCounts.completed || 0,
-                failed_requests: requestCounts.failed || 0,
-                progress_percent:
-                    requestCounts.total > 0
-                        ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
-                        : 0,
-                prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens,
-                completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens,
-                total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens,
-                created_at: batch.created_at,
-                completed_at: batch.completed_at,
-                metadata: (batch.metadata || {}) as BatchMetadata,
-            };
-
-            const promptTokens = (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0;
-            const completionTokens = (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0;
-            const totalTokens = (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0;
-            const batchMetadata =
-                batch.metadata && typeof batch.metadata === 'object'
-                    ? (batch.metadata as Record<string, unknown>)
-                    : {};
-            const costModel =
-                typeof batch.model === 'string' && batch.model.trim().length > 0
-                    ? batch.model.trim()
-                    : typeof batchMetadata.llm_model === 'string' && batchMetadata.llm_model.trim().length > 0
-                        ? batchMetadata.llm_model.trim()
-                        : CONSOLIDATION_CONFIG.model;
-
-            const estimatedCost = calculateAICost(
-                costModel,
-                promptTokens,
-                completionTokens,
-                true
-            );
-
-            updateData = {
-                provider: resolved.provider,
-                provider_batch_id: batch.id,
-                provider_input_file_id: batch.input_file_id ?? null,
-                provider_output_file_id: batch.output_file_id ?? null,
-                provider_error_file_id: batch.error_file_id ?? null,
-                status: batch.status,
-                total_requests: requestCounts.total || 0,
-                completed_requests: requestCounts.completed || 0,
-                failed_requests: requestCounts.failed || 0,
-                prompt_tokens: promptTokens,
-                completion_tokens: completionTokens,
-                total_tokens: totalTokens,
-                estimated_cost: estimatedCost,
-                output_file_id: batch.output_file_id ?? null,
-                error_file_id: batch.error_file_id ?? null,
-            };
-
-            if (batch.completed_at) {
-                updateData.completed_at = new Date(batch.completed_at * 1000).toISOString();
-            }
-
-            upsertPayload = {
-                ...updateData,
-                openai_batch_id: batch.id,
-                input_file_id: batch.input_file_id ?? null,
-            };
-            upsertOnConflict = 'openai_batch_id';
+        const client = await getOpenAIClient({ forceProvider: resolved.provider });
+        if (!client) {
+            return { success: false, error: 'LLM provider not configured' };
         }
+
+        const batch = await client.batches.retrieve(resolved.providerBatchId);
+        const requestCounts = batch.request_counts || { total: 0, completed: 0, failed: 0 };
+
+        const status: BatchStatus = {
+            id: batch.id,
+            provider: resolved.provider,
+            provider_batch_id: batch.id,
+            status: batch.status as BatchStatus['status'],
+            is_complete: batch.status === 'completed',
+            is_failed: ['failed', 'expired', 'cancelled'].includes(batch.status),
+            is_processing: ['validating', 'in_progress', 'finalizing'].includes(batch.status),
+            total_requests: requestCounts.total || 0,
+            completed_requests: requestCounts.completed || 0,
+            failed_requests: requestCounts.failed || 0,
+            progress_percent:
+                requestCounts.total > 0
+                    ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
+                    : 0,
+            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens,
+            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens,
+            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens,
+            created_at: batch.created_at,
+            completed_at: batch.completed_at,
+            metadata: (batch.metadata || {}) as BatchMetadata,
+        };
+
+        const promptTokens = (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0;
+        const completionTokens = (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0;
+        const totalTokens = (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0;
+        const batchMetadata =
+            batch.metadata && typeof batch.metadata === 'object'
+                ? (batch.metadata as Record<string, unknown>)
+                : {};
+        const costModel =
+            typeof batch.model === 'string' && batch.model.trim().length > 0
+                ? batch.model.trim()
+                : typeof batchMetadata.llm_model === 'string' && batchMetadata.llm_model.trim().length > 0
+                    ? batchMetadata.llm_model.trim()
+                    : CONSOLIDATION_CONFIG.model;
+
+        const estimatedCost = calculateAICost(
+            costModel,
+            promptTokens,
+            completionTokens,
+            true
+        );
+
+        const updateData: Record<string, unknown> = {
+            provider: resolved.provider,
+            provider_batch_id: batch.id,
+            provider_input_file_id: batch.input_file_id ?? null,
+            provider_output_file_id: batch.output_file_id ?? null,
+            provider_error_file_id: batch.error_file_id ?? null,
+            status: batch.status,
+            total_requests: requestCounts.total || 0,
+            completed_requests: requestCounts.completed || 0,
+            failed_requests: requestCounts.failed || 0,
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            total_tokens: totalTokens,
+            estimated_cost: estimatedCost,
+            output_file_id: batch.output_file_id ?? null,
+            error_file_id: batch.error_file_id ?? null,
+        };
+
+        if (batch.completed_at) {
+            updateData.completed_at = new Date(batch.completed_at * 1000).toISOString();
+        }
+
+        const upsertPayload: Record<string, unknown> = {
+            ...updateData,
+            openai_batch_id: batch.id,
+            input_file_id: batch.input_file_id ?? null,
+        };
+        const upsertOnConflict = 'openai_batch_id';
 
         // Sync status to Supabase.
         const { createAdminClient } = await import('@/lib/supabase/server');
@@ -1389,9 +1289,7 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
 export async function retrieveResults(batchId: string): Promise<ConsolidationResult[] | BatchErrorResponse> {
     try {
         // Fetch taxonomy for validation
-        const { shopsitePages = [] } = await buildPromptContext();
-        const categoryList = await getCategories();
-        const categories = categoryList.map((category) => category.breadcrumb ?? category.name);
+        const { shopsitePages = [], categories = [] } = await buildPromptContext();
         const resolved = await resolveProviderBatchId(batchId);
         const runtime = await getConfiguredBatchRuntime(false, {
             forceProvider: resolved.provider,
@@ -1402,134 +1300,89 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
 
         const results: ConsolidationResult[] = [];
 
-        if (resolved.provider === 'gemini') {
-            if (!runtime.llm_api_key) {
-                return { success: false, error: 'Gemini API key not configured' };
-            }
+        const client = await getOpenAIClient({ forceProvider: resolved.provider });
+        if (!client) {
+            return { success: false, error: 'LLM provider not configured' };
+        }
 
-            const batchProvider = new GeminiBatchProvider(runtime.llm_api_key);
-            const batch = await batchProvider.getBatchStatus(resolved.providerBatchId);
+        const batch = await client.batches.retrieve(resolved.providerBatchId);
 
-            if (!['completed', 'failed', 'cancelled', 'expired'].includes(batch.status)) {
-                return { success: false, error: `Batch not complete. Status: ${batch.status}` };
-            }
+        if (!['completed', 'failed', 'cancelled'].includes(batch.status)) {
+            return { success: false, error: `Batch not complete. Status: ${batch.status}` };
+        }
 
-            const providerResults = await batchProvider.retrieveResults(resolved.providerBatchId);
+        // Process Output File (Successes)
+        if (batch.output_file_id) {
+            try {
+                const fileContent = await client.files.content(batch.output_file_id);
+                const text = await fileContent.text();
 
-            for (const record of providerResults) {
-                const sku = record.key || 'unknown';
-                try {
-                    if (record.error) {
-                        results.push({ sku, error: record.error });
-                        continue;
-                    }
+                for (const line of text.trim().split('\n')) {
+                    if (!line) continue;
+                    let sku = 'unknown';
+                    try {
+                        const result = JSON.parse(line);
+                        sku = result.custom_id || 'unknown';
 
-                    if (!record.text) {
-                        results.push({ sku, error: 'No content in Gemini batch response' });
-                        continue;
-                    }
+                        if (result.error) {
+                            results.push({ sku, error: result.error.message || 'Unknown error' });
+                            continue;
+                        }
 
-                    results.push(
-                        parseStructuredConsolidationText(
-                            sku,
-                            record.text,
-                            shopsitePages,
-                            categories
-                        )
-                    );
-                } catch (e) {
-                    results.push({
-                        sku,
-                        error: e instanceof Error ? e.message : 'Failed to parse structured output',
-                    });
-                    console.warn('[Consolidation] Failed to parse Gemini result line:', e);
-                }
-            }
-        } else {
-            const client = await getOpenAIClient({ forceProvider: resolved.provider });
-            if (!client) {
-                return { success: false, error: 'LLM provider not configured' };
-            }
+                        const response = result.response || {};
+                        if (response.status_code !== 200) {
+                            results.push({ sku, error: `API error: ${response.status_code}` });
+                            continue;
+                        }
 
-            const batch = await client.batches.retrieve(resolved.providerBatchId);
+                        const body = response.body || {};
+                        const choices = body.choices || [];
+                        if (choices.length === 0) {
+                            results.push({ sku, error: 'No choices in response' });
+                            continue;
+                        }
 
-            if (!['completed', 'failed', 'cancelled'].includes(batch.status)) {
-                return { success: false, error: `Batch not complete. Status: ${batch.status}` };
-            }
-
-            // Process Output File (Successes)
-            if (batch.output_file_id) {
-                try {
-                    const fileContent = await client.files.content(batch.output_file_id);
-                    const text = await fileContent.text();
-
-                    for (const line of text.trim().split('\n')) {
-                        if (!line) continue;
-                        let sku = 'unknown';
-                        try {
-                            const result = JSON.parse(line);
-                            sku = result.custom_id || 'unknown';
-
-                            if (result.error) {
-                                results.push({ sku, error: result.error.message || 'Unknown error' });
-                                continue;
-                            }
-
-                            const response = result.response || {};
-                            if (response.status_code !== 200) {
-                                results.push({ sku, error: `API error: ${response.status_code}` });
-                                continue;
-                            }
-
-                            const body = response.body || {};
-                            const choices = body.choices || [];
-                            if (choices.length === 0) {
-                                results.push({ sku, error: 'No choices in response' });
-                                continue;
-                            }
-
-                            const content = choices[0]?.message?.content || '';
-                            results.push(
-                                parseStructuredConsolidationText(
-                                    sku,
-                                    content,
-                                    shopsitePages,
-                                    categories
-                                )
-                            );
-                        } catch (e) {
-                            results.push({
+                        const content = choices[0]?.message?.content || '';
+                        results.push(
+                            parseStructuredConsolidationText(
                                 sku,
-                                error: e instanceof Error ? e.message : 'Failed to parse structured output',
-                            });
-                            console.warn('[Consolidation] Failed to parse result line:', e);
-                        }
+                                content,
+                                shopsitePages,
+                                categories
+                            )
+                        );
+                    } catch (e) {
+                        results.push({
+                            sku,
+                            error: e instanceof Error ? e.message : 'Failed to parse structured output',
+                        });
+                        console.warn('[Consolidation] Failed to parse result line:', e);
                     }
-                } catch (e) {
-                    console.warn('[Consolidation] Failed to process output file:', e);
                 }
+            } catch (e) {
+                console.warn('[Consolidation] Failed to process output file:', e);
             }
+        }
 
-            // Process Error File (Failures)
-            if (batch.error_file_id) {
-                try {
-                    const fileContent = await client.files.content(batch.error_file_id);
-                    const text = await fileContent.text();
+        // Process Error File (Failures)
+        if (batch.error_file_id) {
+            try {
+                const fileContent = await client.files.content(batch.error_file_id);
+                const text = await fileContent.text();
 
-                    for (const line of text.trim().split('\n')) {
-                        if (!line) continue;
-                        try {
-                            const errorRecord = JSON.parse(line);
-                            const sku = errorRecord.custom_id || 'unknown';
-                            const errMsg = errorRecord.error?.message || JSON.stringify(errorRecord);
-                            results.push({ sku, error: `Batch Error: ${errMsg}` });
-                        } catch (e) {
-                            console.warn('[Consolidation] Failed to parse error line:', e);
-                        }
+                for (const line of text.trim().split('\n')) {
+                    if (!line) continue;
+                    try {
+                        const errorRecord = JSON.parse(line);
+                        const sku = errorRecord.custom_id || 'unknown';
+                        const errMsg = errorRecord.error?.message || JSON.stringify(errorRecord);
+                        results.push({ sku, error: `Batch Error: ${errMsg}` });
+                    } catch (e) {
+                        console.warn('[Consolidation] Failed to parse error line:', e);
                     }
-                } catch (e) {
-                    console.warn('[Consolidation] Failed to process error file:', e);
                 }
+            } catch (e) {
+                console.warn('[Consolidation] Failed to process error file:', e);
             }
         }
 
@@ -2300,19 +2153,11 @@ export async function cancelBatch(batchId: string): Promise<{ status: string } |
             return runtime;
         }
 
-        if (resolved.provider === 'gemini') {
-            if (!runtime.llm_api_key) {
-                return { success: false, error: 'Gemini API key not configured' };
-            }
-            const batchProvider = new GeminiBatchProvider(runtime.llm_api_key);
-            await batchProvider.cancelBatch(resolved.providerBatchId);
-        } else {
-            const client = await getOpenAIClient({ forceProvider: resolved.provider });
-            if (!client) {
-                return { success: false, error: 'LLM provider not configured' };
-            }
-            await client.batches.cancel(resolved.providerBatchId);
+        const client = await getOpenAIClient({ forceProvider: resolved.provider });
+        if (!client) {
+            return { success: false, error: 'LLM provider not configured' };
         }
+        await client.batches.cancel(resolved.providerBatchId);
 
         const supabase = await createClient();
         const { row } = await findBatchJobRow(batchId);

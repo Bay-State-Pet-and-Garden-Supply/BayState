@@ -8,12 +8,13 @@ describe("register source resolution", () => {
     expect(
       resolveRegisterSyncSource(undefined, {
         REGISTER_ODBC_CONNECTION_STRING: "Driver={Transoft};Server=10.9.8.1;",
+        NODE_ENV: 'test',
       }),
     ).toBe("odbc");
   });
 
   it("falls back to workbook when no ODBC configuration exists", () => {
-    expect(resolveRegisterSyncSource(undefined, {})).toBe("workbook");
+    expect(resolveRegisterSyncSource(undefined, { NODE_ENV: 'test' })).toBe("workbook");
     expect(hasRegisterOdbcConfiguration({})).toBe(false);
   });
 
@@ -21,13 +22,13 @@ describe("register source resolution", () => {
     expect(
       resolveRegisterSyncSource(
         "workbook",
-        { REGISTER_ODBC_DSN: "integra.udd" },
+        { REGISTER_ODBC_DSN: "integra.udd", NODE_ENV: 'test' },
       ),
     ).toBe("workbook");
   });
 
   it("rejects unsupported source values", () => {
-    expect(() => resolveRegisterSyncSource("excel-refresh")).toThrow(
+    expect(() => resolveRegisterSyncSource("excel-refresh" as any, { NODE_ENV: 'test' })).toThrow(
       "Unsupported register sync source",
     );
   });

@@ -14,13 +14,26 @@ import {
   XCircle,
   RefreshCw,
   Filter,
+  Tag,
+  Sparkles,
+  Edit2,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { BRAND_COLORS } from "@/lib/design-tokens";
+import { CohortBrandBadge } from "./CohortBrandBadge";
+
+interface BrandInfo {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+}
 
 interface CohortBatch {
   id: string;
@@ -28,6 +41,9 @@ interface CohortBatch {
   product_line: string | null;
   status: "pending" | "processing" | "completed" | "failed";
   scraper_config: string | null;
+  brand_id: string | null;
+  brand_name: string | null;
+  brands: BrandInfo | null;
   created_at: string;
   updated_at: string;
   metadata: Record<string, unknown>;
@@ -105,6 +121,8 @@ function StatusBadge({ status }: { status: CohortBatch["status"] }) {
     </span>
   );
 }
+
+
 
 function StatCard({
   title,
@@ -205,6 +223,29 @@ export function CohortDashboardClient() {
     setLoading(true);
   };
 
+  const handleAssignBrand = async (cohortId: string, brandName: string) => {
+    try {
+      const response = await fetch(`/api/admin/cohorts/${cohortId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand_name: brandName }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to assign brand");
+      }
+
+      toast.success(`Brand "${brandName}" assigned`, {
+        description: "Scraper recommendations will now be available.",
+      });
+
+      await fetchCohorts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to assign brand");
+    }
+  };
+
   if (loading && cohorts.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -244,7 +285,8 @@ export function CohortDashboardClient() {
             Cohort Batch Monitoring
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Real-time monitoring of product line scraping cohorts
+            Real-time monitoring of product line scraping cohorts. Assign brands to
+            enable automatic scraper recommendations.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -342,6 +384,7 @@ export function CohortDashboardClient() {
                 metadataError === null || metadataError === undefined
                   ? null
                   : String(metadataError);
+              const hasBrand = !!(cohort.brand_name || cohort.brands?.name);
 
               return (
                 <Card
@@ -356,6 +399,11 @@ export function CohortDashboardClient() {
                             {cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
                           </h3>
                           <StatusBadge status={cohort.status} />
+                          <CohortBrandBadge 
+                            cohortId={cohort.id} 
+                            brandName={cohort.brand_name || cohort.brands?.name || null} 
+                            onAssign={handleAssignBrand} 
+                          />
                         </div>
 
                         <div className="space-y-1 text-sm text-muted-foreground">
@@ -377,6 +425,15 @@ export function CohortDashboardClient() {
                             <div className="mt-2">
                               <Badge variant="outline" className="text-xs">
                                 Config: {cohort.scraper_config}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {hasBrand && (
+                            <div className="mt-1">
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <Sparkles className="h-3 w-3" />
+                                Recommendations available
                               </Badge>
                             </div>
                           )}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 
 export type RealtimeConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
 export type RealtimePresenceState = ReturnType<RealtimeChannel['presenceState']>;
@@ -26,10 +27,6 @@ const channelPool = new Map<string, PooledChannelEntry>();
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 const INITIAL_RECONNECT_DELAY_MS = 1000;
-
-function getCreateClient(): SupabaseClientFactory {
-  return (require('@/lib/supabase/client') as typeof import('@/lib/supabase/client')).createClient;
-}
 
 function destroyPooledChannel(entry: PooledChannelEntry) {
   if (entry.destroyed) {
@@ -68,7 +65,7 @@ function getOrCreateChannel(channelName: string): PooledChannelEntry {
     return existingChannel;
   }
 
-  const client = getCreateClient()();
+  const client = createClient();
   const channel = client.channel(channelName, {
     config: {
       private: true,
@@ -305,7 +302,9 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions): UseRealt
     [channelName, clearReconnectTimer, scheduleReconnect],
   );
 
-  connectInternalRef.current = connectInternal;
+  useEffect(() => {
+    connectInternalRef.current = connectInternal;
+  }, [connectInternal]);
 
   const connect = useCallback(() => {
     connectInternal(true);

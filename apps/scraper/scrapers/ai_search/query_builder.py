@@ -1,6 +1,5 @@
 """Query building utilities for AI Search."""
 
-import os
 import re
 from typing import Optional
 
@@ -45,6 +44,10 @@ class QueryBuilder:
         """Build the lowest-cost identifier-only query for a product."""
         return self._clean_text(sku)
 
+    def build_name_query(self, product_name: Optional[str]) -> str:
+        """Build the canonical follow-up query from a consolidated product name."""
+        return self._clean_text(product_name)
+
     def is_ambiguous_identifier(self, sku: Optional[str]) -> bool:
         """Return True when an identifier-only query is likely too generic to stand on its own."""
         sku_clean = self._clean_text(sku)
@@ -57,46 +60,9 @@ class QueryBuilder:
         brand: Optional[str],
         category: Optional[str] = None,
     ) -> str:
-        """Build an effective search query for the product."""
-        sku_clean = self._clean_text(sku)
-        name_clean = self._clean_text(product_name)
-        brand_clean = self._clean_text(brand)
-        category_clean = self._clean_text(category)
-
-        query_tokens: list[str] = []
-        if brand_clean:
-            query_tokens.append(brand_clean)
-        if name_clean:
-            query_tokens.append(name_clean)
-
-        if sku_clean:
-            query_tokens.append(sku_clean)
-            if sku_clean.isdigit() and len(sku_clean) in (12, 13, 14):
-                query_tokens.append(f"UPC {sku_clean}")
-
-        if category_clean:
-            query_tokens.append(category_clean)
-
-        query_tokens.extend(
-            [
-                "product",
-                "details",
-                "-review",
-                "-comparison",
-                "-reddit",
-                "-youtube",
-                "-pinterest",
-                "-coupon",
-            ]
-        )
-
-        enable_brand_site_bias = os.getenv("BRAVE_BRAND_SITE_BIAS", "false").lower() == "true"
-        if brand_clean and enable_brand_site_bias:
-            brand_site_token = re.sub(r"[^a-z0-9]", "", brand_clean.lower())
-            if brand_site_token:
-                query_tokens.append(f"site:{brand_site_token}.com")
-
-        return " ".join(token for token in query_tokens if token)
+        """Build the preferred discovery query for the current search step."""
+        del brand, category
+        return self.build_name_query(product_name) or self.build_identifier_query(sku)
 
     def build_query_variants(
         self,
@@ -105,37 +71,10 @@ class QueryBuilder:
         brand: Optional[str],
         category: Optional[str],
     ) -> list[str]:
-        """Build multiple query variants to try."""
-        sku_clean = self._clean_text(sku)
-        name_clean = self._clean_text(product_name)
-        brand_clean = self._clean_text(brand)
-        category_clean = self._clean_text(category)
-
-        variants: list[str] = []
-
-        if sku_clean and sku_clean.isdigit() and len(sku_clean) in (12, 13, 14):
-            variants.append(f"UPC {sku_clean}")
-
-        if name_clean and sku_clean:
-            variants.append(f"{name_clean} {sku_clean}")
-
-        if brand_clean and name_clean:
-            variants.append(f"{brand_clean} {name_clean}")
-
-        if brand_clean and name_clean and sku_clean:
-            variants.append(f"{brand_clean} {name_clean} {sku_clean}")
-
-        if brand_clean and category_clean and sku_clean:
-            variants.append(f"{brand_clean} {category_clean} {sku_clean}")
-
-        if not variants and name_clean:
-            variants.append(name_clean)
-        elif not variants and brand_clean:
-            variants.append(brand_clean)
-        elif not variants and category_clean:
-            variants.append(category_clean)
-
-        return self._dedupe_queries(variants)
+        """Build the single follow-up name query used after SKU discovery."""
+        del sku, brand, category
+        name_query = self.build_name_query(product_name)
+        return self._dedupe_queries([name_query] if name_query else [])
 
     def build_site_query_variants(
         self,
@@ -145,11 +84,10 @@ class QueryBuilder:
         brand: Optional[str],
         category: Optional[str],
     ) -> list[str]:
-        """Build site-constrained variants for a preferred cohort domain."""
-        sku_clean = self._clean_text(sku)
-        name_clean = self._clean_text(product_name)
-        brand_clean = self._clean_text(brand)
-        category_clean = self._clean_text(category)
+        """Build site-constrained rescue queries using only SKU and consolidated name."""
+        del brand, category
+        sku_clean = self.build_identifier_query(sku)
+        name_clean = self.build_name_query(product_name)
 
         variants: list[str] = []
         for domain in domains or []:
@@ -160,15 +98,7 @@ class QueryBuilder:
             prefix = f"site:{domain_clean}"
             if sku_clean:
                 variants.append(f"{prefix} {sku_clean}")
-            if brand_clean and name_clean:
-                variants.append(f"{prefix} {brand_clean} {name_clean}")
             if name_clean:
                 variants.append(f"{prefix} {name_clean}")
-            if name_clean and sku_clean:
-                variants.append(f"{prefix} {name_clean} {sku_clean}")
-            if brand_clean and name_clean and sku_clean:
-                variants.append(f"{prefix} {brand_clean} {name_clean} {sku_clean}")
-            if brand_clean and category_clean and sku_clean:
-                variants.append(f"{prefix} {brand_clean} {category_clean} {sku_clean}")
 
         return self._dedupe_queries(variants)

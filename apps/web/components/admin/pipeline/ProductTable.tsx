@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   Column,
   ColumnDef,
@@ -25,11 +25,16 @@ import {
   ChevronDown, 
   ChevronUp, 
   ChevronsUpDown, 
-  AlertCircle
+  AlertCircle,
+  Search,
+  CheckSquare,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PipelineProduct, PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
+import { PipelineFilters } from "./PipelineFilters";
+import { Input } from "@/components/ui/input";
 
 interface ProductTableProps {
   products: PipelineProduct[];
@@ -44,6 +49,18 @@ interface ProductTableProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   currentStage: PipelineStage;
+  // Filter props
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  filters?: {
+    source?: string;
+    product_line?: string;
+    cohort_id?: string;
+  };
+  onFilterChange?: (filters: any) => void;
+  availableSources?: string[];
+  totalCount?: number;
+  onSelectAllTotal?: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -104,11 +121,38 @@ export function ProductTable({
   onSelectSku,
   onSelectAll,
   onDeselectAll,
+  onSelectAllTotal,
   currentStage,
+  search,
+  onSearchChange,
+  filters,
+  onFilterChange,
+  availableSources,
+  totalCount,
 }: ProductTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "sku", desc: false }]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [localSearch, setLocalSearch] = useState(search || "");
+
+  // Sync local search with prop
+  useEffect(() => {
+    if (search !== undefined) setLocalSearch(search);
+  }, [search]);
+
+  const handleCommitSearch = useCallback(() => {
+    if (onSearchChange) {
+      onSearchChange(localSearch);
+    }
+  }, [localSearch, onSearchChange]);
+
+  const handleClearSearch = useCallback(() => {
+    setLocalSearch("");
+    if (onSearchChange) {
+      onSearchChange("");
+    }
+  }, [onSearchChange]);
 
   const showSources = currentStage === "scraped";
   const showConfidence = currentStage === "finalizing";
@@ -348,9 +392,9 @@ export function ProductTable({
   return (
     <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-card shadow-sm" ref={containerRef}>
       <Table className="table-fixed">
-        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
+        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm border-b">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+            <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-0">
               {headerGroup.headers.map((header) => {
                 // Define fixed widths for columns to ensure alignment across multiple tables
                 let widthClass = "";
@@ -361,7 +405,7 @@ export function ProductTable({
                 else if (header.id === "updated_at") widthClass = "w-[150px]";
 
                 return (
-                  <TableHead key={header.id} className={cn("bg-muted/30", widthClass)}>
+                  <TableHead key={header.id} className={cn("bg-muted/30 h-8 py-0", widthClass)}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -373,6 +417,33 @@ export function ProductTable({
               })}
             </TableRow>
           ))}
+          
+          {/* Selection info row */}
+          {selectedSkus.size > 0 && (
+            <TableRow className="hover:bg-transparent border-b">
+              <TableCell className="bg-muted/5 py-1 px-3" colSpan={columns.length}>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1" />
+
+                  {totalCount !== undefined && totalCount > selectedSkus.size && (
+                     <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={onSelectAllTotal}
+                      className="h-7 text-[10px] text-brand-forest-green hover:bg-brand-forest-green/10 gap-1"
+                     >
+                       <CheckSquare className="h-3 w-3" />
+                       Select all {totalCount} products in stage
+                     </Button>
+                  )}
+
+                  <div className="flex items-center gap-2 px-1.5 py-0.5 rounded bg-brand-forest-green/10 text-brand-forest-green text-[9px] font-bold uppercase tracking-wider">
+                    {selectedSkus.size} Selected
+                  </div>
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length ? (

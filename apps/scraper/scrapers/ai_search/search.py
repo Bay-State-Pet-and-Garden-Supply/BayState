@@ -8,21 +8,28 @@ from collections import OrderedDict
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from scrapers.providers.gemini_search import GeminiSearchClient
+from scrapers.providers.serper import SerperSearchClient
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_SEARCH_PROVIDERS = {"auto", "gemini"}
+SUPPORTED_SEARCH_PROVIDERS = {"auto", "serper"}
+LEGACY_SEARCH_PROVIDER_ALIASES = {
+    "brave": "serper",
+    "serpapi": "serper",
+    "gemini": "serper",
+}
+DEFAULT_SEARCH_PROVIDER = "serper"
 TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "srsltid"}
 TRACKING_QUERY_PREFIXES = ("utm_",)
 DEFAULT_PROVIDER_COST_USD = {
-    "gemini": 0.0,
+    "serper": 0.0,
 }
 
 
 def normalize_search_provider(provider: str | None) -> str:
     """Normalize configured search provider."""
     normalized = str(provider or "auto").strip().lower()
+    normalized = LEGACY_SEARCH_PROVIDER_ALIASES.get(normalized, normalized)
     if normalized in SUPPORTED_SEARCH_PROVIDERS:
         return normalized
 
@@ -79,7 +86,7 @@ def _dedupe_results(results: list[dict[str, Any]], limit: int) -> list[dict[str,
 
 
 class SearchClient:
-    """Simplified search client using Gemini for discovery."""
+    """Simplified search client with Serper as the default discovery provider."""
 
     def __init__(
         self,
@@ -89,14 +96,20 @@ class SearchClient:
         api_key: str | None = None,
     ):
         self.max_results = max_results
-        self.provider = "gemini"  # Force Gemini
+        requested_provider = normalize_search_provider(provider)
+        self.provider = DEFAULT_SEARCH_PROVIDER if requested_provider == "auto" else requested_provider
         self._cache: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
         self._cache_max = cache_max
         self._inflight_queries: dict[str, asyncio.Future[tuple[list[dict[str, Any]], str | None]]] = {}
-        self.gemini_client = GeminiSearchClient(max_results=max_results, api_key=api_key)
+        self.serper_client: SerperSearchClient | None = SerperSearchClient(max_results=max_results, api_key=api_key)
 
     def _normalize_query_key(self, query: str) -> str:
         return " ".join(str(query or "").split()).lower()
+
+    def _get_provider_client(self) -> SerperSearchClient:
+        if self.serper_client is None:
+            raise RuntimeError("Serper search client is not configured")
+        return self.serper_client
 
     def _cache_get(self, key: str) -> list[dict[str, Any]] | None:
         if key not in self._cache:
@@ -112,6 +125,21 @@ class SearchClient:
         self._cache[key] = value
         while len(self._cache) > self._cache_max:
             self._cache.popitem(last=False)
+
+    def _finalize_provider_results(
+        self,
+        cache_key: str,
+        results: list[dict[str, Any]],
+        error: str | None,
+        provider_cost: float,
+    ) -> tuple[list[dict[str, Any]], str | None, float]:
+        normalized_results = _dedupe_results(results, self.max_results)
+        if normalized_results:
+            self._cache_set(cache_key, normalized_results)
+            return normalized_results, None, provider_cost
+        if error:
+            return [], error, provider_cost
+        return [], None, provider_cost
 
     async def search_with_cost(
         self,
@@ -132,19 +160,17 @@ class SearchClient:
         self._inflight_queries[cache_key] = future
 
         try:
-            results, error = await self.gemini_client.search(query)
-            normalized_results = _dedupe_results(results, self.max_results)
-            if normalized_results:
-                self._cache_set(cache_key, normalized_results)
-                future.set_result((normalized_results, None))
-                return normalized_results, None, 0.0
-            
-            if error:
-                future.set_result(([], error))
-                return [], error, 0.0
-            
-            future.set_result(([], None))
-            return [], None, 0.0
+            provider_client = self._get_provider_client()
+            provider_cost = float(DEFAULT_PROVIDER_COST_USD.get(self.provider, 0.0))
+            results, error = await provider_client.search(query)
+            normalized_results, normalized_error, total_cost = self._finalize_provider_results(
+                cache_key,
+                results,
+                error,
+                provider_cost,
+            )
+            future.set_result((normalized_results, normalized_error))
+            return normalized_results, normalized_error, total_cost
         except Exception as e:
             if not future.done():
                 future.set_result(([], str(e)))
@@ -152,7 +178,74 @@ class SearchClient:
         finally:
             self._inflight_queries.pop(cache_key, None)
 
+    async def search_many_with_cost(
+        self,
+        queries: list[str],
+        *,
+        max_concurrent: int = 5,
+    ) -> list[tuple[list[dict[str, Any]], str | None, float]]:
+        if not queries:
+            return []
+
+        outputs: list[tuple[list[dict[str, Any]], str | None, float] | None] = [None] * len(queries)
+        pending_queries: OrderedDict[str, tuple[str, list[int]]] = OrderedDict()
+
+        for index, query in enumerate(queries):
+            cache_key = self._normalize_query_key(query)
+            if not cache_key:
+                outputs[index] = ([], None, 0.0)
+                continue
+
+            cached = self._cache_get(cache_key)
+            if cached is not None:
+                outputs[index] = (cached, None, 0.0)
+                continue
+
+            pending_query = pending_queries.get(cache_key)
+            if pending_query is None:
+                pending_queries[cache_key] = (query, [index])
+            else:
+                pending_query[1].append(index)
+
+        if pending_queries:
+            provider_client = self._get_provider_client()
+            provider_cost = float(DEFAULT_PROVIDER_COST_USD.get(self.provider, 0.0))
+            pending_items = list(pending_queries.items())
+            unique_queries = [query for _, (query, _) in pending_items]
+
+            search_many = getattr(provider_client, "search_many", None)
+            if callable(search_many):
+                provider_results = await search_many(unique_queries)
+            else:
+                semaphore = asyncio.Semaphore(max(1, max_concurrent))
+
+                async def search_one(query: str) -> tuple[list[dict[str, Any]], str | None]:
+                    async with semaphore:
+                        return await provider_client.search(query)
+
+                provider_results = await asyncio.gather(*(search_one(query) for query in unique_queries))
+
+            for item_index, (cache_key, (_, indices)) in enumerate(pending_items):
+                raw_results: list[dict[str, Any]] = []
+                error: str | None = None
+                if item_index < len(provider_results):
+                    raw_results, error = provider_results[item_index]
+                finalized = self._finalize_provider_results(cache_key, raw_results, error, provider_cost)
+                for original_index in indices:
+                    outputs[original_index] = finalized
+
+        return [result if result is not None else ([], None, 0.0) for result in outputs]
+
     async def search(self, query: str) -> tuple[list[dict[str, Any]], str | None]:
-        """Search using Gemini."""
+        """Search using the configured discovery provider."""
         results, error, _ = await self.search_with_cost(query)
         return results, error
+
+    async def search_many(
+        self,
+        queries: list[str],
+        *,
+        max_concurrent: int = 5,
+    ) -> list[tuple[list[dict[str, Any]], str | None]]:
+        results = await self.search_many_with_cost(queries, max_concurrent=max_concurrent)
+        return [(query_results, error) for query_results, error, _ in results]

@@ -1,9 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-const GEMINI_COST_PROVIDER_LABEL = 'Google Gemini API';
-const OPENAI_COST_PROVIDER_LABEL = 'OpenAI API';
-
 interface ServiceCostRecord {
   id: string;
   service: string;
@@ -28,28 +25,65 @@ interface BatchJobRecord {
   description: string | null;
 }
 
-interface BatchSummary {
+interface ScrapeJobRecord {
+  id: string;
+  type: string;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+  scrapers: string[] | null;
+  metadata: Record<string, unknown> | null;
+}
+
+interface FeatureUsageSummary {
   totalCost: number;
   totalJobs: number;
   completedJobs: number;
   failedJobs: number;
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
 }
 
-function isGeminiProvider(provider: string | null | undefined): boolean {
-  return provider === 'gemini';
+interface RecentUsageRecord {
+  id: string;
+  feature: 'AI Search' | 'Crawl4AI' | 'Consolidation';
+  provider: string;
+  status: string;
+  estimated_cost: number;
+  total_tokens: number;
+  created_at: string;
+  completed_at: string | null;
+  description: string | null;
 }
 
-function summarizeBatchJobs(jobs: BatchJobRecord[]): BatchSummary {
-  return jobs.reduce<BatchSummary>(
+function toNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function summarizeBatchJobs(jobs: BatchJobRecord[]): FeatureUsageSummary {
+  return jobs.reduce<FeatureUsageSummary>(
     (acc, job) => {
-      acc.totalCost += parseFloat(String(job.estimated_cost ?? 0));
+      acc.totalCost += toNumber(job.estimated_cost);
       acc.totalJobs += 1;
-      acc.promptTokens += job.prompt_tokens ?? 0;
-      acc.completionTokens += job.completion_tokens ?? 0;
-      acc.totalTokens += job.total_tokens ?? 0;
+      acc.promptTokens = (acc.promptTokens ?? 0) + (job.prompt_tokens ?? 0);
+      acc.completionTokens = (acc.completionTokens ?? 0) + (job.completion_tokens ?? 0);
+      acc.totalTokens = (acc.totalTokens ?? 0) + (job.total_tokens ?? 0);
 
       if (job.status === 'completed') acc.completedJobs += 1;
       if (job.status === 'failed') acc.failedJobs += 1;
@@ -68,6 +102,52 @@ function summarizeBatchJobs(jobs: BatchJobRecord[]): BatchSummary {
   );
 }
 
+function summarizeScrapeJobs(
+  jobs: ScrapeJobRecord[],
+  feature: 'ai_search' | 'crawl4ai'
+): FeatureUsageSummary {
+  return jobs.reduce<FeatureUsageSummary>(
+    (acc, job) => {
+      const metadata = asRecord(job.metadata);
+      const featureMetadata = asRecord(metadata?.[feature]);
+      const crawl4aiMetadata = asRecord(metadata?.crawl4ai);
+      const costBreakdown = asRecord(crawl4aiMetadata?.cost_breakdown);
+      const nestedCosts = asRecord(costBreakdown?.costs);
+      const totalCost = feature === 'ai_search'
+        ? toNumber(featureMetadata?.total_cost ?? metadata?.total_cost)
+        : toNumber(
+            metadata?.total_cost
+              ?? nestedCosts?.total_cost_usd
+              ?? costBreakdown?.total_cost_usd
+          );
+
+      acc.totalCost += totalCost;
+      acc.totalJobs += 1;
+      if (job.status === 'completed') acc.completedJobs += 1;
+      if (job.status === 'failed') acc.failedJobs += 1;
+      return acc;
+    },
+    {
+      totalCost: 0,
+      totalJobs: 0,
+      completedJobs: 0,
+      failedJobs: 0,
+    }
+  );
+}
+
+function isAISearchJob(job: ScrapeJobRecord): boolean {
+  return job.type === 'ai_search' || (job.scrapers ?? []).includes('ai_search');
+}
+
+function isCrawl4AiJob(job: ScrapeJobRecord): boolean {
+  if (job.type === 'crawl4ai') {
+    return true;
+  }
+
+  return (job.scrapers ?? []).includes('crawl4ai_discovery') || (job.scrapers ?? []).includes('crawl4ai');
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const days = parseInt(searchParams.get('days') || '30', 10);
@@ -80,78 +160,135 @@ export async function GET(request: Request) {
     .split('T')[0];
 
   try {
-    // Fetch fixed service costs
-    const { data: services, error: servicesError } = await supabase
-      .from('service_costs')
-      .select('*')
-      .eq('is_active', true)
-      .order('category', { ascending: true });
+    const [servicesResult, batchJobsResult, scrapeJobsResult] = await Promise.all([
+      supabase
+        .from('service_costs')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true }),
+      supabase
+        .from('batch_jobs')
+        .select(
+          'id, status, provider, estimated_cost, prompt_tokens, completion_tokens, total_tokens, created_at, completed_at, description'
+        )
+        .gte('created_at', `${startDate}T00:00:00Z`)
+        .lte('created_at', `${endDate}T23:59:59Z`)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('scrape_jobs')
+        .select('id, type, status, created_at, completed_at, scrapers, metadata')
+        .gte('created_at', `${startDate}T00:00:00Z`)
+        .lte('created_at', `${endDate}T23:59:59Z`)
+        .order('created_at', { ascending: false }),
+    ]);
 
-    if (servicesError) throw servicesError;
+    if (servicesResult.error) throw servicesResult.error;
+    if (batchJobsResult.error) throw batchJobsResult.error;
+    if (scrapeJobsResult.error) throw scrapeJobsResult.error;
 
-    // Fetch AI batch consolidation costs from batch_jobs
-    const { data: batchJobs, error: batchError } = await supabase
-      .from('batch_jobs')
-      .select(
-        'id, status, provider, estimated_cost, prompt_tokens, completion_tokens, total_tokens, created_at, completed_at, description'
-      )
-      .gte('created_at', `${startDate}T00:00:00Z`)
-      .lte('created_at', `${endDate}T23:59:59Z`)
-      .order('created_at', { ascending: false });
+    const activeServices = (servicesResult.data ?? []) as ServiceCostRecord[];
+    const batchJobs = (batchJobsResult.data ?? []) as BatchJobRecord[];
+    const scrapeJobs = ((scrapeJobsResult.data ?? []) as Array<Omit<ScrapeJobRecord, 'metadata'> & { metadata: unknown }>).map(
+      (job) => ({
+        ...job,
+        metadata: asRecord(job.metadata),
+      })
+    );
 
-    if (batchError) throw batchError;
+    const aiSearchJobs = scrapeJobs.filter(isAISearchJob);
+    const crawl4aiJobs = scrapeJobs.filter(isCrawl4AiJob);
 
-    const activeServices = (services ?? []) as ServiceCostRecord[];
-    const allBatchJobs = (batchJobs ?? []) as BatchJobRecord[];
-    const geminiJobs = allBatchJobs.filter((job) => isGeminiProvider(job.provider));
-    const openaiJobs = allBatchJobs.filter((job) => !isGeminiProvider(job.provider));
-    const geminiSummary = summarizeBatchJobs(geminiJobs);
-    const openaiSummary = summarizeBatchJobs(openaiJobs);
-    const combinedSummary = summarizeBatchJobs(allBatchJobs);
+    const consolidation = summarizeBatchJobs(batchJobs);
+    const aiSearch = summarizeScrapeJobs(aiSearchJobs, 'ai_search');
+    const crawl4ai = summarizeScrapeJobs(crawl4aiJobs, 'crawl4ai');
 
-    // Calculate fixed monthly total
     const fixedMonthlyTotal = activeServices.reduce(
-      (sum, svc) => sum + parseFloat(String(svc.monthly_cost ?? 0)),
+      (sum, svc) => sum + toNumber(svc.monthly_cost),
       0
     );
 
-    // Group services by category
     const servicesByCategory = activeServices.reduce(
       (acc, svc) => {
-        const cat = svc.category as string;
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(svc);
+        const category = svc.category as string;
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(svc);
         return acc;
       },
       {} as Record<string, ServiceCostRecord[]>
     );
 
-    const ai = {
-      gemini: {
-        ...geminiSummary,
-        providerLabel: GEMINI_COST_PROVIDER_LABEL,
-      },
-      openai: {
-        ...openaiSummary,
-        providerLabel: OPENAI_COST_PROVIDER_LABEL,
-      },
-      combined: {
-        totalCost: combinedSummary.totalCost,
-        totalJobs: combinedSummary.totalJobs,
-        promptTokens: combinedSummary.promptTokens,
-        completionTokens: combinedSummary.completionTokens,
-        totalTokens: combinedSummary.totalTokens,
-      },
-      recentJobs: allBatchJobs.slice(0, 10),
-    };
+    const recentUsage: RecentUsageRecord[] = [
+      ...batchJobs.map((job) => ({
+        id: job.id,
+        feature: 'Consolidation' as const,
+        provider: job.provider || 'openai',
+        status: job.status,
+        estimated_cost: toNumber(job.estimated_cost),
+        total_tokens: job.total_tokens ?? 0,
+        created_at: job.created_at,
+        completed_at: job.completed_at,
+        description: job.description,
+      })),
+      ...aiSearchJobs.map((job) => {
+        const metadata = asRecord(job.metadata);
+        const aiSearchMetadata = asRecord(metadata?.ai_search);
+        return {
+          id: job.id,
+          feature: 'AI Search' as const,
+          provider: String(aiSearchMetadata?.llm_provider ?? 'openai'),
+          status: job.status,
+          estimated_cost: toNumber(aiSearchMetadata?.total_cost ?? metadata?.total_cost),
+          total_tokens: 0,
+          created_at: job.created_at,
+          completed_at: job.completed_at,
+          description: 'AI Search scrape job',
+        };
+      }),
+      ...crawl4aiJobs.map((job) => {
+        const metadata = asRecord(job.metadata);
+        const crawl4aiMetadata = asRecord(metadata?.crawl4ai);
+        const costBreakdown = asRecord(crawl4aiMetadata?.cost_breakdown);
+        const nestedCosts = asRecord(costBreakdown?.costs);
+        return {
+          id: job.id,
+          feature: 'Crawl4AI' as const,
+          provider: 'openai',
+          status: job.status,
+          estimated_cost: toNumber(
+            metadata?.total_cost
+              ?? nestedCosts?.total_cost_usd
+              ?? costBreakdown?.total_cost_usd
+          ),
+          total_tokens: 0,
+          created_at: job.created_at,
+          completed_at: job.completed_at,
+          description: 'Crawl4AI scrape job',
+        };
+      }),
+    ]
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, 12);
+
+    const totalUsageCost = aiSearch.totalCost + crawl4ai.totalCost + consolidation.totalCost;
 
     return NextResponse.json({
       dateRange: { start: startDate, end: endDate, days },
       fixedMonthlyTotal,
       services: activeServices,
       servicesByCategory,
-      ai,
-      estimatedMonthlyTotal: fixedMonthlyTotal + combinedSummary.totalCost,
+      usage: {
+        aiSearch,
+        crawl4ai,
+        consolidation,
+        combined: {
+          totalCost: totalUsageCost,
+          totalJobs: aiSearch.totalJobs + crawl4ai.totalJobs + consolidation.totalJobs,
+        },
+      },
+      recentUsage,
+      estimatedMonthlyTotal: fixedMonthlyTotal + totalUsageCost,
     });
   } catch (error) {
     console.error('Cost Tracking API Error:', error);
@@ -177,8 +314,7 @@ export async function PUT(request: Request) {
     }
 
     const updates: Record<string, unknown> = {};
-    if (monthly_cost !== undefined)
-      updates.monthly_cost = parseFloat(monthly_cost);
+    if (monthly_cost !== undefined) updates.monthly_cost = parseFloat(monthly_cost);
     if (notes !== undefined) updates.notes = notes;
 
     const { data, error } = await supabase

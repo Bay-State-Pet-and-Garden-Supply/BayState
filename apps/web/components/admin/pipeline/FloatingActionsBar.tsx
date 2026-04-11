@@ -25,8 +25,8 @@ const BULK_ACTIONS: Record<
 > = {
   imported: { label: "Scrape Selected", nextStage: "scraped" },
   scraped: {
-    label: "Finalize Selected",
-    nextStage: "finalized",
+    label: "Consolidate Selected",
+    nextStage: null,
     resetLabel: "Clear & Return to Import",
     previousStage: "imported",
     secondaryAction: "Scrape Additional Sources",
@@ -34,6 +34,12 @@ const BULK_ACTIONS: Record<
   published: { label: "", nextStage: null },
   scraping: { label: "", nextStage: null },
   consolidating: { label: "", nextStage: null },
+  failed: {
+    label: "Return to Import",
+    nextStage: "imported",
+    resetLabel: "Clear & Return to Import",
+    previousStage: "imported",
+  },
   finalizing: {
     label: "",
     nextStage: null,
@@ -51,6 +57,7 @@ interface FloatingActionsBarProps {
   onSelectAll: () => void;
   onBulkAction: (nextStage: PersistedPipelineStatus) => void;
   onResetStage?: (previousStage: PersistedPipelineStatus) => void;
+  onConsolidate?: () => void;
   onOpenScrapeDialog?: () => void;
   onDelete?: () => void;
   actionState?: "upload" | "zip" | null;
@@ -67,6 +74,7 @@ export function FloatingActionsBar({
   onSelectAll,
   onBulkAction,
   onResetStage,
+  onConsolidate,
   onOpenScrapeDialog,
   onDelete,
   actionState = null,
@@ -79,7 +87,7 @@ export function FloatingActionsBar({
 
   const bulkAction = BULK_ACTIONS[currentStage];
   const isTerminalStage = currentStage === "published";
-  const hasBulkAction = !isTerminalStage && bulkAction.nextStage !== null;
+  const hasBulkAction = !isTerminalStage && (bulkAction.nextStage !== null || (currentStage === "scraped" && !!onConsolidate));
   const hasResetAction =
     !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
   const isImported = currentStage === "imported";
@@ -89,6 +97,8 @@ export function FloatingActionsBar({
   const handlePrimaryAction = () => {
     if (isImported && onOpenScrapeDialog) {
       onOpenScrapeDialog();
+    } else if (currentStage === "scraped" && onConsolidate) {
+      onConsolidate();
     } else if (bulkAction.nextStage) {
       onBulkAction(bulkAction.nextStage);
     }

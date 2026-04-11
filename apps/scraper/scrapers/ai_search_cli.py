@@ -45,7 +45,7 @@ Examples:
     parser.add_argument(
         "--search-provider",
         default=os.getenv("AI_SEARCH_PROVIDER", "auto"),
-        choices=["auto", "gemini", "serpapi"],
+        choices=["auto", "gemini", "serper"],
         help="Search provider preference (default: auto)",
     )
     parser.add_argument("--headless", action="store_true", default=True, help="Run browser in headless mode (default: True)")

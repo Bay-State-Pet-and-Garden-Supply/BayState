@@ -21,6 +21,7 @@ export const PIPELINE_TABS = [
   "scraped",
   "consolidating",
   "finalizing",
+  "failed",
   "published",
 ] as const;
 
@@ -65,27 +66,6 @@ export function isPipelineStage(value: string): value is PipelineStage {
 }
 
 /**
- * Derives the active admin workflow tab from persisted status and active work.
- */
-export function statusToTab(
-  status: PersistedPipelineStatus,
-  hasActiveScrapeJob: boolean,
-  hasActiveConsolidation: boolean,
-): PipelineStage {
-  switch (status) {
-    case "imported":
-      return "imported";
-    case "scraped":
-      return hasActiveScrapeJob ? "scraping" : "scraped";
-    case "finalized":
-      return hasActiveConsolidation ? "consolidating" : "finalizing";
-    case "failed":
-    default:
-      return "imported";
-  }
-}
-
-/**
  * Returns the persisted status needed to hydrate a route stage, if any.
  */
 export function getStageDataStatus(
@@ -98,34 +78,10 @@ export function getStageDataStatus(
       return "scraped";
     case "finalizing":
       return "finalized";
+    case "failed":
+      return "failed";
     default:
       return null;
-  }
-}
-
-/**
- * Returns the query characteristics for a given workflow tab.
- */
-export function tabToQueryFilter(tab: PipelineStage): {
-  status?: PersistedPipelineStatus;
-  scrapeJobActive?: boolean;
-  consolidationActive?: boolean;
-} {
-  switch (tab) {
-    case "imported":
-      return { status: "imported", scrapeJobActive: false };
-    case "scraping":
-      return { status: "scraped", scrapeJobActive: true };
-    case "scraped":
-      return { status: "scraped", scrapeJobActive: false };
-    case "consolidating":
-      return { status: "finalized", consolidationActive: true };
-    case "finalizing":
-      return { status: "finalized", consolidationActive: false };
-    case "published":
-      return { status: "finalized" };
-    default:
-      return {};
   }
 }
 
@@ -174,6 +130,8 @@ export interface PipelineProduct {
   retry_count?: number;
   /** Product line / Cohort identifier for batch processing */
   product_line?: string | null;
+  /** ID of the cohort batch this product belongs to */
+  cohort_id?: string | null;
   /** Record creation timestamp */
   created_at: string;
   /** Last update timestamp */

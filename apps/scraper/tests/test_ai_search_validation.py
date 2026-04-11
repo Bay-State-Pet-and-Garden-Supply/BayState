@@ -221,15 +221,13 @@ class TestQueryVariants:
         variants = scraper._query_builder.build_query_variants(sku="12345", product_name=None, brand=None, category=None)
         assert variants == []
 
-    def test_sku_and_name_generates_name_sku_variant(self, scraper):
+    def test_sku_and_name_generate_name_follow_up_variant(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku="12345", product_name="PURINA CHKN", brand=None, category=None)
-        assert variants == ["PURINA CHKN 12345"]
+        assert variants == ["PURINA CHKN"]
 
-    def test_all_fields_generates_multiple_variants(self, scraper):
+    def test_all_fields_reduce_to_consolidated_name_follow_up(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku="12345", product_name="Pro Plan Chicken", brand="Purina", category="Dog Food")
-        assert len(variants) >= 2
-        assert "Pro Plan Chicken 12345" in variants
-        assert "Purina Pro Plan Chicken" in variants
+        assert variants == ["Pro Plan Chicken"]
 
     def test_empty_inputs_returns_empty_list(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku=None, product_name=None, brand=None, category=None)
@@ -237,7 +235,7 @@ class TestQueryVariants:
 
     def test_duplicates_removed(self, scraper):
         variants = scraper._query_builder.build_query_variants(sku="12345 product", product_name="12345", brand=None, category=None)
-        assert len(variants) == len(set(variants))
+        assert variants == ["12345"]
 
 
 class TestConfidenceThreshold:

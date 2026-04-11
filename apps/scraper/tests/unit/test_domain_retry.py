@@ -160,10 +160,11 @@ class TestDominantDomainMinimumCountVariants:
 
 
 class TestDominantDomainRetryLogic:
-    """Tests for dominant domain retry logic in BatchSearchOrchestrator.
+    """Tests for dominant domain signals without extra retry searches.
 
-    These tests verify the retry behavior by testing the cohort_state
-    integration and the conditions that trigger retry.
+    The cohort state still tracks dominant domains for ranking, but the
+    simplified production flow no longer issues follow-up site-specific
+    searches after the two-step SKU -> name discovery path.
     """
 
     def test_dominant_domain_established_after_3_successes(self) -> None:
@@ -222,18 +223,13 @@ class TestDominantDomainRetryLogic:
         # chewy.com now has 4 successes, should be dominant
         assert state.dominant_domain(minimum_count=3) == "chewy.com"
 
-    def test_retry_condition_requires_minimum_3_successes(self) -> None:
-        """The retry mechanism uses minimum_count=3 to determine dominant domain.
-
-        This test verifies the condition used in batch_search.py:
-            dominant_domain = self._cohort_state.dominant_domain(minimum_count=3)
-        """
+    def test_dominant_signal_requires_minimum_3_successes(self) -> None:
+        """Dominant-domain ranking still requires 3 cohort successes."""
         state = _BatchCohortState(
             key="test",
             preferred_domain_counts={"petswarehouse.com": 2},
             preferred_brand_counts={},
         )
-        # With only 2 successes, no dominant domain for retry
         result = state.dominant_domain(minimum_count=3)
         assert result is None
 
@@ -311,7 +307,7 @@ def _ranked(url: str, score: float = 10.0) -> RankedResult:
 
 
 @pytest.mark.asyncio
-async def test_retry_triggered_when_product_fails_and_dominant_exists() -> None:
+async def test_no_site_retry_even_when_dominant_domain_exists() -> None:
     cohort_state = _BatchCohortState(
         key="test",
         preferred_domain_counts={"petswarehouse.com": 3},
@@ -330,10 +326,10 @@ async def test_retry_triggered_when_product_fails_and_dominant_exists() -> None:
 
     result = await orchestrator.extract_batch({"SKU-1": [_ranked(initial_url)]}, max_concurrent=1)
 
-    assert orchestrator.site_search_calls == ["petswarehouse.com"]
-    assert orchestrator.extract_attempts == [initial_url, retry_url]
-    assert result["SKU-1"]["success"] is True
-    assert cohort_state.preferred_domain_counts["petswarehouse.com"] == 4
+    assert orchestrator.site_search_calls == []
+    assert orchestrator.extract_attempts == [initial_url]
+    assert result["SKU-1"] == {"success": False, "error": "Initial extraction failed"}
+    assert cohort_state.preferred_domain_counts["petswarehouse.com"] == 3
 
 
 @pytest.mark.asyncio
@@ -359,7 +355,7 @@ async def test_no_retry_when_no_dominant_domain_exists() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fallback_after_retry_failure() -> None:
+async def test_failure_preserves_initial_error_without_site_retry() -> None:
     cohort_state = _BatchCohortState(
         key="test",
         preferred_domain_counts={"petswarehouse.com": 3},
@@ -378,13 +374,13 @@ async def test_fallback_after_retry_failure() -> None:
 
     result = await orchestrator.extract_batch({"SKU-1": [_ranked(initial_url)]}, max_concurrent=1)
 
-    assert orchestrator.site_search_calls == ["petswarehouse.com"]
-    assert orchestrator.extract_attempts == [initial_url, retry_url]
-    assert result["SKU-1"] == {"success": False, "error": "Dominant retry failed"}
+    assert orchestrator.site_search_calls == []
+    assert orchestrator.extract_attempts == [initial_url]
+    assert result["SKU-1"] == {"success": False, "error": "Initial extraction failed"}
 
 
 @pytest.mark.asyncio
-async def test_cohort_state_updated_after_retry_success() -> None:
+async def test_failed_extract_does_not_change_cohort_state_without_site_retry() -> None:
     cohort_state = _BatchCohortState(
         key="test",
         preferred_domain_counts={"petswarehouse.com": 3},
@@ -403,4 +399,4 @@ async def test_cohort_state_updated_after_retry_success() -> None:
 
     _ = await orchestrator.extract_batch({"SKU-1": [_ranked(initial_url)]}, max_concurrent=1)
 
-    assert cohort_state.preferred_domain_counts["petswarehouse.com"] == 4
+    assert cohort_state.preferred_domain_counts["petswarehouse.com"] == 3

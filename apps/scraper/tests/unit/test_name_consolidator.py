@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from scrapers.ai_search.name_consolidator import NameConsolidator
 
+
 @pytest.mark.asyncio
 async def test_name_consolidator_infers_canonical_name() -> None:
     # Mock initial search results
@@ -17,38 +18,69 @@ async def test_name_consolidator_infers_canonical_name() -> None:
             "description": "Advantage II by Elanco (Bayer)."
         }
     ]
-    
-    # Mock OpenAI response
+
     mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="Bayer Advantage II Large Cat"))
-    ]
+    mock_response.text = "Bayer Advantage II Large Cat"
     mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=10)
-    
+
     consolidator = NameConsolidator(api_key="test-key")
-    assert consolidator.client is not None
-    consolidator.client.chat.completions.create = AsyncMock(return_value=mock_response)
+    assert consolidator.provider is not None
+    consolidator.provider.generate_text = AsyncMock(return_value=mock_response)
 
     consolidated_name, cost = await consolidator.consolidate_name(
         sku="84170364",
         abbreviated_name="ADVNTG II CAT LRG",
         search_snippets=results
     )
-    
+
     assert consolidated_name == "Bayer Advantage II Large Cat"
     assert cost > 0
+
+
+@pytest.mark.asyncio
+async def test_name_consolidator_uses_specific_snippet_candidate_when_llm_is_too_generic() -> None:
+    results = [
+        {
+            "url": "https://arett.com/item/B104+HTG001/Bentley-Seed-Tomato-Jubilee-1943",
+            "title": "Bentley Seed Tomato Jubilee 1943 - B104 HTG001 - Arett Sales",
+            "description": "Fresh crop non-gmo seed packets.",
+        },
+        {
+            "url": "https://arett.com/products/seed-starting",
+            "title": "Seed Starting - Page 1 of 43 - Arett",
+            "description": "Seed starting catalog page.",
+        },
+    ]
+
+    mock_response = MagicMock()
+    mock_response.text = "Bentley Seed"
+    mock_response.usage = MagicMock(prompt_tokens=120, completion_tokens=4)
+
+    consolidator = NameConsolidator(api_key="test-key")
+    assert consolidator.provider is not None
+    consolidator.provider.generate_text = AsyncMock(return_value=mock_response)
+
+    consolidated_name, cost = await consolidator.consolidate_name(
+        sku="051588178896",
+        abbreviated_name="BENTLEY SEED TOMATO JUBILEE",
+        search_snippets=results,
+    )
+
+    assert consolidated_name == "Bentley Seed Tomato Jubilee 1943"
+    assert cost > 0
+
 
 @pytest.mark.asyncio
 async def test_name_consolidator_returns_original_if_llm_fails() -> None:
     consolidator = NameConsolidator(api_key="test-key")
-    assert consolidator.client is not None
-    consolidator.client.chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
+    assert consolidator.provider is not None
+    consolidator.provider.generate_text = AsyncMock(side_effect=Exception("API Error"))
 
     consolidated_name, cost = await consolidator.consolidate_name(
         sku="123",
         abbreviated_name="ABBRV NAME",
         search_snippets=[{"title": "One", "description": "Two"}]
     )
-    
+
     assert consolidated_name == "ABBRV NAME"
     assert cost == 0.0
