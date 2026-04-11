@@ -517,13 +517,6 @@ function parseStructuredConsolidationText(
         .map((value) => validateCategory(value, categories))
         .filter((value, index, array) => array.indexOf(value) === index);
 
-    if (normalizedCategory.length === 0) {
-        return {
-            sku,
-            error: 'Invalid taxonomy values returned by consolidation model',
-        };
-    }
-
     const productOnPages = Array.isArray(validated.product_on_pages)
         ? (validated.product_on_pages as string[]).join('|')
         : typeof validated.product_on_pages === 'string'
@@ -533,7 +526,7 @@ function parseStructuredConsolidationText(
     return {
         sku,
         ...validated,
-        category: normalizedCategory.join('|'),
+        ...(normalizedCategory.length > 0 ? { category: normalizedCategory.join('|') } : {}),
         ...(productOnPages ? { product_on_pages: productOnPages } : {}),
     } as ConsolidationResult;
 }
