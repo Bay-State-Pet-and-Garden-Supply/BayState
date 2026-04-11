@@ -19,12 +19,15 @@ import {
   Info,
   AlertCircle,
   Bug,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { TimelineView } from "./TimelineView";
+import { ChunkStatusTable, ChunkSummaryLine } from "./ChunkStatusTable";
+import type { ChunkDetail } from "./ChunkStatusTable";
 import { useJobSubscription } from "@/lib/realtime/useJobSubscription";
 import { useLogSubscription } from "@/lib/realtime/useLogSubscription";
 import type { LogEntry } from "@/lib/realtime/useLogSubscription";
@@ -39,6 +42,7 @@ interface ActiveJob {
   scrapers: string[];
   status: "pending" | "running" | "completed" | "failed" | "cancelled";
   createdAt: string;
+  completedAt: string | null;
   progress: number;
   runnerName: string | null;
   progressMessage: string | null;
@@ -51,6 +55,14 @@ interface ActiveJob {
   lastLogAt: string | null;
   lastUpdateAt: string | null;
   heartbeatAt: string | null;
+  chunks: ChunkDetail[];
+  chunkSummary: {
+    total: number;
+    pending: number;
+    running: number;
+    completed: number;
+    failed: number;
+  };
 }
 
 type TimeRange = "1h" | "6h" | "24h" | "7d" | "30d";
@@ -155,6 +167,7 @@ function toActiveJob(job: JobAssignment): ActiveJob {
         ? "running"
         : (job.status as ActiveJob["status"]),
     createdAt: job.created_at,
+    completedAt: null,
     progress: liveProgress?.progress ?? 0,
     runnerName: job.runner_name ?? liveProgress?.runner_name ?? null,
     progressMessage: liveProgress?.message ?? null,
@@ -171,13 +184,250 @@ function toActiveJob(job: JobAssignment): ActiveJob {
       job.updated_at ??
       job.created_at,
     heartbeatAt: job.heartbeat_at ?? null,
+    // Chunks are populated from the API, not from realtime
+    chunks: [],
+    chunkSummary: { total: 0, pending: 0, running: 0, completed: 0, failed: 0 },
   };
+}
+
+/** Panels to expand within a job card */
+type ExpandPanel = "chunks" | "logs";
+
+function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
+  const statusMap = {
+    running: {
+      className: "bg-primary/10 text-primary",
+      icon: <Loader2 className="mr-1 h-3 w-3 animate-spin" />,
+      label: "Running",
+    },
+    completed: {
+      className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      icon: <CheckCircle className="mr-1 h-3 w-3" />,
+      label: "Completed",
+    },
+    failed: {
+      className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      icon: <AlertCircle className="mr-1 h-3 w-3" />,
+      label: "Failed",
+    },
+    cancelled: {
+      className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      icon: <XCircle className="mr-1 h-3 w-3" />,
+      label: "Cancelled",
+    },
+    pending: {
+      className: "bg-muted text-muted-foreground",
+      icon: <Clock className="mr-1 h-3 w-3" />,
+      label: "Pending",
+    },
+  };
+
+  const config = statusMap[status] || statusMap.pending;
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${config.className}`}
+    >
+      {config.icon}
+      {config.label}
+    </span>
+  );
+}
+
+function JobCard({
+  job,
+  logs,
+  expandedPanel,
+  onTogglePanel,
+  onCancelClick,
+  cancellingId,
+  logCount,
+}: {
+  job: ActiveJob;
+  logs: LogEntry[];
+  expandedPanel: ExpandPanel | null;
+  onTogglePanel: (panel: ExpandPanel) => void;
+  onCancelClick: (jobId: string) => void;
+  cancellingId: string | null;
+  logCount: number;
+}) {
+  const hasChunks = job.chunkSummary.total > 0;
+  const isActive = job.status === "pending" || job.status === "running";
+
+  return (
+    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+      <div className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-medium text-foreground">
+                Job {job.id.slice(0, 8)}
+              </h3>
+              <JobStatusBadge status={job.status} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {job.scrapers.join(", ")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {job.skuCount} SKUs • Started{" "}
+              {new Date(job.createdAt).toLocaleString()}
+              {job.completedAt && (
+                <> • Finished {new Date(job.completedAt).toLocaleString()}</>
+              )}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {job.runnerName ? (
+                <span className="rounded-full bg-muted px-2 py-0.5">
+                  Runner: {job.runnerName}
+                </span>
+              ) : null}
+              {job.progressPhase ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 uppercase">
+                  {job.progressPhase}
+                </span>
+              ) : null}
+              {job.currentSku ? (
+                <span className="font-mono text-foreground">
+                  {job.currentSku}
+                </span>
+              ) : null}
+              {typeof job.itemsProcessed === "number" &&
+              typeof job.itemsTotal === "number" ? (
+                <span>
+                  {job.itemsProcessed}/{job.itemsTotal}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Section */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground">Progress</span>
+              {hasChunks && <ChunkSummaryLine summary={job.chunkSummary} />}
+            </div>
+            <span className="font-medium text-foreground tabular-nums">
+              {job.progress}%
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${job.progress}%` }}
+            />
+          </div>
+          {(job.progressMessage || job.lastLogMessage) && (
+            <div className="mt-2 space-y-1 text-xs">
+              {job.progressMessage ? (
+                <p className="text-foreground">
+                  {job.progressMessage}
+                </p>
+              ) : null}
+              {job.lastLogMessage ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  {job.lastLogLevel ? (
+                    <LogLevelBadge level={job.lastLogLevel} />
+                  ) : null}
+                  <span className="line-clamp-1">
+                    {job.lastLogMessage}
+                  </span>
+                  {job.lastLogAt ? (
+                    <span className="shrink-0 tabular-nums">
+                      {new Date(job.lastLogAt).toLocaleTimeString()}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {/* Chunks Toggle */}
+            {hasChunks && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onTogglePanel("chunks")}
+                className={`text-xs gap-1.5 ${expandedPanel === "chunks" ? "bg-muted" : ""}`}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                {job.chunkSummary.total} Chunks
+                {expandedPanel === "chunks" ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            )}
+
+            {/* Logs Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onTogglePanel("logs")}
+              className={`text-xs gap-1.5 ${expandedPanel === "logs" ? "bg-muted" : ""}`}
+            >
+              Logs
+              {logCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-0.5 text-[10px] px-1.5 py-0"
+                >
+                  {logCount}
+                </Badge>
+              )}
+              {expandedPanel === "logs" ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isActive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onCancelClick(job.id)}
+                disabled={cancellingId === job.id}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                {cancellingId === job.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/admin/scrapers/runs/${job.id}`}>
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expandable Panels */}
+      {expandedPanel === "chunks" && hasChunks && (
+        <ChunkStatusTable chunks={job.chunks} />
+      )}
+      {expandedPanel === "logs" && <JobLogPanel jobId={job.id} logs={logs} />}
+    </div>
+  );
 }
 
 export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   const isDocumentVisible = useDocumentVisible();
   const router = useRouter();
   const [jobs, setJobs] = useState<ActiveJob[]>([]);
+  const [recentJobs, setRecentJobs] = useState<ActiveJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -185,7 +435,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   const [pendingCancelJobId, setPendingCancelJobId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
   const [timeRange, setTimeRange] = useState<TimeRange>("1h");
-  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+  const [expandedPanels, setExpandedPanels] = useState<Map<string, ExpandPanel>>(new Map());
 
   // Supabase Realtime: subscribe to scrape_jobs changes
   const { isConnected: jobsConnected, jobs: realtimeJobs } = useJobSubscription(
@@ -210,17 +460,19 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   });
   const isRealtimeConnected = jobsConnected || logsConnected;
 
-  // Initial fetch + periodic refresh (as fallback alongside realtime)
+  // Fetch jobs with chunk data from API
   const fetchJobs = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/pipeline/active-runs");
       if (!response.ok) throw new Error("Failed to fetch jobs");
       const data = await response.json();
-      const activeJobs = (data.jobs || []).filter(
+
+      const activeJobs: ActiveJob[] = (data.jobs || []).filter(
         (job: ActiveJob) =>
           job.status === "pending" || job.status === "running",
       );
       setJobs(activeJobs);
+      setRecentJobs(data.recentJobs || []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -233,14 +485,29 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     void fetchJobs();
   }, [fetchJobs]);
 
+  // Poll for chunk updates when active jobs exist (5s interval)
   useEffect(() => {
-    if (!isDocumentVisible || isRealtimeConnected) {
-      return;
-    }
+    if (!isDocumentVisible) return;
+
+    const hasActiveJobs = jobs.some(
+      (j) => j.status === "pending" || j.status === "running",
+    );
+    if (!hasActiveJobs) return;
 
     const interval = setInterval(() => {
       void fetchJobs();
-    }, 60000);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [fetchJobs, isDocumentVisible, jobs]);
+
+  // Fallback polling when realtime is disconnected (slower)
+  useEffect(() => {
+    if (!isDocumentVisible || isRealtimeConnected) return;
+
+    const interval = setInterval(() => {
+      void fetchJobs();
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [fetchJobs, isDocumentVisible, isRealtimeConnected]);
@@ -252,13 +519,12 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   const failedJobs = realtimeJobs.failed;
   const cancelledJobs = realtimeJobs.cancelled;
 
-  // Merge realtime job updates into the local state (only active statuses)
+  // Merge realtime job updates into active jobs (preserving chunk data from API)
   useEffect(() => {
     const activeRealtimeJobs = [...pendingJobs, ...runningJobs];
 
     if (activeRealtimeJobs.length > 0) {
       setJobs((prev) => {
-        // Use a map for efficient updates, keeping previous state for unchanged jobs
         const jobMap = new Map(prev.map((j) => [j.id, j]));
         let hasChanges = false;
 
@@ -266,9 +532,18 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
           const nextJob = toActiveJob(rj);
           const existing = jobMap.get(rj.id);
 
+          if (existing) {
+            // Preserve chunk data from last API fetch
+            nextJob.chunks = existing.chunks;
+            nextJob.chunkSummary = existing.chunkSummary;
+          }
+
           if (
             !existing ||
-            JSON.stringify(existing) !== JSON.stringify(nextJob)
+            existing.status !== nextJob.status ||
+            existing.progress !== nextJob.progress ||
+            existing.runnerName !== nextJob.runnerName ||
+            existing.progressMessage !== nextJob.progressMessage
           ) {
             jobMap.set(rj.id, nextJob);
             hasChanges = true;
@@ -316,13 +591,13 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     setPendingCancelJobId(null);
   };
 
-  const toggleJobExpanded = (jobId: string) => {
-    setExpandedJobs((prev) => {
-      const next = new Set(prev);
-      if (next.has(jobId)) {
+  const togglePanel = (jobId: string, panel: ExpandPanel) => {
+    setExpandedPanels((prev) => {
+      const next = new Map(prev);
+      if (next.get(jobId) === panel) {
         next.delete(jobId);
       } else {
-        next.add(jobId);
+        next.set(jobId, panel);
       }
       return next;
     });
@@ -362,7 +637,9 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     );
   }
 
-  if (jobs.length === 0) {
+  const hasNoData = jobs.length === 0 && recentJobs.length === 0;
+
+  if (hasNoData) {
     return (
       <div
         className={`flex flex-col items-center justify-center py-12 text-center ${className}`}
@@ -423,186 +700,45 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         />
       ) : (
         <>
-          {jobs.map((job) => {
-            const isExpanded = expandedJobs.has(job.id);
-            const logCount = getJobLogCount(job.id);
+          {/* Active Jobs */}
+          {jobs.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              logs={logs}
+              expandedPanel={expandedPanels.get(job.id) ?? null}
+              onTogglePanel={(panel) => togglePanel(job.id, panel)}
+              onCancelClick={handleCancelClick}
+              cancellingId={cancellingId}
+              logCount={getJobLogCount(job.id)}
+            />
+          ))}
 
-            return (
-              <div
-                key={job.id}
-                className="rounded-lg border border-border bg-card shadow-sm overflow-hidden"
-              >
-                <div className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-foreground">
-                          Job {job.id.slice(0, 8)}
-                        </h3>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            job.status === "running"
-                              ? "bg-primary/10 text-primary"
-                              : job.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : job.status === "failed" ||
-                                    job.status === "cancelled"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {job.status === "running" ? (
-                            <>
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                              Running
-                            </>
-                          ) : job.status === "completed" ? (
-                            <>
-                              <CheckCircle className="mr-1 h-3 w-3" />
-                              Completed
-                            </>
-                          ) : job.status === "failed" ? (
-                            <>
-                              <AlertCircle className="mr-1 h-3 w-3" />
-                              Failed
-                            </>
-                          ) : job.status === "cancelled" ? (
-                            <>
-                              <XCircle className="mr-1 h-3 w-3" />
-                              Cancelled
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="mr-1 h-3 w-3" />
-                              Pending
-                            </>
-                          )}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {job.scrapers.join(", ")}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {job.skuCount} SKUs • Started{" "}
-                        {new Date(job.createdAt).toLocaleString()}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        {job.runnerName ? (
-                          <span className="rounded-full bg-muted px-2 py-0.5">
-                            Runner: {job.runnerName}
-                          </span>
-                        ) : null}
-                        {job.progressPhase ? (
-                          <span className="rounded-full bg-muted px-2 py-0.5 uppercase">
-                            {job.progressPhase}
-                          </span>
-                        ) : null}
-                        {job.currentSku ? (
-                          <span className="font-mono text-foreground">
-                            {job.currentSku}
-                          </span>
-                        ) : null}
-                        {typeof job.itemsProcessed === "number" &&
-                        typeof job.itemsTotal === "number" ? (
-                          <span>
-                            {job.itemsProcessed}/{job.itemsTotal}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium text-foreground">
-                          {job.progress}%
-                        </span>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-500"
-                          style={{ width: `${job.progress}%` }}
-                        />
-                      </div>
-                      {(job.progressMessage || job.lastLogMessage) && (
-                        <div className="mt-2 space-y-1 text-xs">
-                          {job.progressMessage ? (
-                            <p className="text-foreground">
-                              {job.progressMessage}
-                            </p>
-                          ) : null}
-                          {job.lastLogMessage ? (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              {job.lastLogLevel ? (
-                                <LogLevelBadge level={job.lastLogLevel} />
-                              ) : null}
-                              <span className="line-clamp-1">
-                                {job.lastLogMessage}
-                              </span>
-                              {job.lastLogAt ? (
-                                <span className="shrink-0 tabular-nums">
-                                  {new Date(job.lastLogAt).toLocaleTimeString()}
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleJobExpanded(job.id)}
-                        className="text-muted-foreground hover:text-muted-foreground"
-                      >
-                        {isExpanded ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                        {logCount > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="ml-1 text-[10px] px-1.5 py-0"
-                          >
-                            {logCount}
-                          </Badge>
-                        )}
-                      </Button>
-                      {(job.status === "pending" ||
-                        job.status === "running") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCancelClick(job.id)}
-                          disabled={cancellingId === job.id}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          {cancellingId === job.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <XCircle className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/scrapers/runs/${job.id}`}>
-                          <ExternalLink className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Collapsible Log Panel */}
-                {isExpanded && <JobLogPanel jobId={job.id} logs={logs} />}
+          {/* Recent Completed/Failed Jobs */}
+          {recentJobs.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
+                  Recent (last hour)
+                </span>
+                <div className="h-px flex-1 bg-border" />
               </div>
-            );
-          })}
+
+              {recentJobs.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  logs={logs}
+                  expandedPanel={expandedPanels.get(job.id) ?? null}
+                  onTogglePanel={(panel) => togglePanel(job.id, panel)}
+                  onCancelClick={handleCancelClick}
+                  cancellingId={cancellingId}
+                  logCount={getJobLogCount(job.id)}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 

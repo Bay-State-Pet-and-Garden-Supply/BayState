@@ -6,7 +6,7 @@ import {
     submitBatch,
 } from '@/lib/consolidation/batch-service';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { buildPromptContext, getCategories } from '@/lib/consolidation/prompt-builder';
+import { buildPromptContext, buildUserPrompt } from '@/lib/consolidation/prompt-builder';
 import { getConsolidationConfig, getOpenAIClient } from '@/lib/consolidation/openai-client';
 
 jest.mock('@/lib/supabase/server', () => ({
@@ -16,7 +16,7 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/consolidation/prompt-builder', () => ({
     buildPromptContext: jest.fn(),
-    getCategories: jest.fn(),
+    buildUserPrompt: jest.fn(),
 }));
 
 jest.mock('@/lib/consolidation/openai-client', () => ({
@@ -58,11 +58,10 @@ describe('consolidation batch integration behavior', () => {
             configured_llm_provider: 'openai',
             llm_api_key: 'test-openai-key',
             llm_base_url: null,
-            gemini_api_key: null,
             llm_supports_batch_api: true,
             routing_key: null,
         });
-        (getCategories as jest.Mock).mockResolvedValue([{ id: 'cat-1', name: 'Dog', slug: 'dog' }]);
+        (buildUserPrompt as jest.Mock).mockReturnValue('user prompt');
     });
 
     it('submitBatch persists OpenAI batch id and string metadata', async () => {
@@ -97,6 +96,7 @@ describe('consolidation batch integration behavior', () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
             shopsitePages: ['Dog Toys', 'Dog Supplies Shop All'],
+            categories: ['Dog'],
         });
 
         const openAiMock = {
@@ -149,8 +149,8 @@ describe('consolidation batch integration behavior', () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
             shopsitePages: ['Dog Toys', 'Dog Supplies Shop All'],
+            categories: ['Dog'],
         });
-        (getCategories as jest.Mock).mockResolvedValue([{ id: 'cat-1', name: 'Dog', slug: 'dog' }]);
         (createAdminClient as jest.Mock).mockResolvedValue({
             from: jest.fn((table: string) => {
                 if (table !== 'batch_jobs') {
@@ -231,10 +231,8 @@ describe('consolidation batch integration behavior', () => {
         (buildPromptContext as jest.Mock).mockResolvedValue({
             systemPrompt: 'system',
             shopsitePages: ['Horse Treats'],
+            categories: ['Horse Feed & Treats'],
         });
-        (getCategories as jest.Mock).mockResolvedValue([
-            { id: 'cat-1', name: 'Horse Feed & Treats', slug: 'horse-feed-treats' },
-        ]);
         (createAdminClient as jest.Mock).mockResolvedValue({
             from: jest.fn((table: string) => {
                 if (table !== 'batch_jobs') {

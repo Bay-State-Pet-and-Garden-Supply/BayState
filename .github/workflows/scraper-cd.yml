@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       force_build:
-        description: 'Force build even without scraper changes'
+        description: "Force build even without scraper changes"
         required: false
         default: false
         type: boolean
@@ -12,12 +12,12 @@ on:
     branches: [main, master, develop, dev]
     tags: ["v*"]
     paths:
-      - 'apps/scraper/**'
-      - '.github/workflows/scraper-cd.yml'
+      - "apps/scraper/**"
+      - ".github/workflows/scraper-cd.yml"
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/scraper
+  IMAGE_NAME: scraper
 
 jobs:
   changes:
@@ -47,9 +47,15 @@ jobs:
     permissions:
       contents: read
       packages: write
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare IMAGE_NAME
+        run: |
+          echo "IMAGE_NAME=$(echo ${{ github.repository }}/${{ env.IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -95,7 +101,7 @@ jobs:
         if: contains(steps.meta.outputs.tags, ':latest')
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Publish latest runner release metadata
         if: contains(steps.meta.outputs.tags, ':latest')

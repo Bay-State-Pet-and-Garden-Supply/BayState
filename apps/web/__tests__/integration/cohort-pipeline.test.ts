@@ -66,6 +66,7 @@ interface MockSupabaseBundle {
 }
 
 const NOW = '2026-04-08T15:00:00.000Z';
+const NOW_NUM = new Date(NOW).getTime();
 
 const mockedCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockedSubmitBatch = submitBatch as jest.MockedFunction<typeof submitBatch>;
@@ -106,8 +107,8 @@ function createCompletedBatchStatus(): BatchStatus {
         completed_requests: 4,
         failed_requests: 0,
         progress_percent: 100,
-        created_at: NOW,
-        completed_at: NOW,
+        created_at: NOW_NUM,
+        completed_at: NOW_NUM,
         metadata: {},
     };
 }
@@ -123,8 +124,8 @@ function createFailedBatchStatus(): BatchStatus {
         completed_requests: 0,
         failed_requests: 1,
         progress_percent: 0,
-        created_at: NOW,
-        completed_at: NOW,
+        created_at: NOW_NUM,
+        completed_at: NOW_NUM,
         metadata: {},
     };
 }

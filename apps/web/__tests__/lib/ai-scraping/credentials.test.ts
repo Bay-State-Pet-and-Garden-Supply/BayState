@@ -10,7 +10,7 @@ import {
   getAIScrapingRuntimeCredentials,
   setAIScrapingProviderSecret,
 } from '@/lib/ai-scraping/credentials';
-import { DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
+import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
 describe('AI scraping credentials compatibility', () => {
   beforeEach(() => {
@@ -74,7 +74,7 @@ describe('AI scraping credentials compatibility', () => {
     warnSpy.mockRestore();
   });
 
-  it('reads Gemini status and runtime credentials from the compatibility fallback store', async () => {
+  it('reads Gemini status from the compatibility fallback store without changing active OpenAI runtime defaults', async () => {
     const encrypted = encryptSecret('gemini-live-key-9876');
     const compatValue = {
       provider: 'gemini',
@@ -140,8 +140,8 @@ describe('AI scraping credentials compatibility', () => {
                         key === 'ai_scraping_defaults'
                           ? {
                               value: {
-                                llm_provider: 'gemini',
-                                llm_model: DEFAULT_GEMINI_MODEL,
+                                llm_provider: 'openai',
+                                llm_model: DEFAULT_AI_MODEL,
                                 llm_base_url: null,
                                 max_search_results: 5,
                                 max_steps: 15,
@@ -193,8 +193,7 @@ describe('AI scraping credentials compatibility', () => {
     });
 
     const runtime = await getAIScrapingRuntimeCredentials();
-    expect(runtime.llm_model).toBe(DEFAULT_GEMINI_MODEL);
-    expect(runtime.gemini_api_key).toBe('gemini-live-key-9876');
-    expect(runtime.llm_api_key).toBe('gemini-live-key-9876');
+    expect(runtime.llm_model).toBe(DEFAULT_AI_MODEL);
+    expect(runtime.llm_api_key).toBeUndefined();
   });
 });

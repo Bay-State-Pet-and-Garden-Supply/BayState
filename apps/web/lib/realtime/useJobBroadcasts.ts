@@ -275,13 +275,11 @@ export function useJobBroadcasts(
 
   const channelName = useMemo(() => providedChannelName ?? 'job-broadcast', [providedChannelName]);
 
-  const [state, setState] = useState<JobBroadcastState>({
+  const [state, setState] = useState<Omit<JobBroadcastState, 'isConnected' | 'error'>>({
     broadcasts: {},
     latest: {},
     logs: [],
     progress: {},
-    isConnected: false,
-    error: null,
   });
 
   const eventOverridesRef = useRef<BroadcastEventOverrides>(new Map());
@@ -325,7 +323,7 @@ export function useJobBroadcasts(
         // Update latest
         newLatest[event] = broadcast;
 
-        const updates: Partial<JobBroadcastState> = {
+        const updates: Partial<Omit<JobBroadcastState, 'isConnected' | 'error'>> = {
           broadcasts: newBroadcasts,
           latest: newLatest,
         };
@@ -386,22 +384,6 @@ export function useJobBroadcasts(
     onError: handleRealtimeError,
   });
 
-  useEffect(() => {
-    const isConnected = connectionState === 'connected';
-
-    setState((prev) => {
-      if (prev.isConnected === isConnected && prev.error === lastError) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        isConnected,
-        error: lastError,
-      };
-    });
-  }, [connectionState, lastError]);
-
   /**
    * Subscribe to a specific broadcast event
    */
@@ -425,10 +407,8 @@ export function useJobBroadcasts(
       latest: {},
       logs: [],
       progress: {},
-      isConnected: state.isConnected,
-      error: null,
     });
-  }, [state.isConnected]);
+  }, []);
 
   /**
    * Clear logs
@@ -449,6 +429,8 @@ export function useJobBroadcasts(
 
   return {
     ...state,
+    isConnected: connectionState === 'connected',
+    error: lastError,
     connect,
     disconnect,
     subscribe,

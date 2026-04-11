@@ -13,7 +13,6 @@ import {
     pickNumber,
     sanitizeDiscoveryConfig,
 } from '@/lib/ai-scraping/discovery-config';
-import { getGeminiFeatureFlags, type GeminiFeatureFlags } from '@/lib/config/gemini-feature-flags';
 import {
     buildRunnerBuildHeaders,
     buildRunnerBuildMetadata,
@@ -47,7 +46,6 @@ interface ChunkResponse {
     job_type?: string;
     job_config?: Record<string, unknown>;
     ai_credentials?: AIScrapingRuntimeCredentials;
-    feature_flags?: GeminiFeatureFlags;
     lease_token?: string;
     lease_expires_at?: string;
 }
@@ -205,10 +203,9 @@ export async function POST(request: NextRequest) {
         const chunk = claimedChunks[0];
         
         // Fetch AI credentials and defaults
-        const [aiDefaults, aiCredentials, featureFlags] = await Promise.all([
+        const [aiDefaults, aiCredentials] = await Promise.all([
             getAIScrapingDefaults(),
             getAIScrapingRuntimeCredentials(),
-            getGeminiFeatureFlags(),
         ]);
 
         // Update runner status
@@ -236,7 +233,6 @@ export async function POST(request: NextRequest) {
                 job_type: chunk.type || 'standard',
                 job_config: chunk.config || undefined,
                 ai_credentials: aiCredentials || undefined,
-                feature_flags: featureFlags,
                 lease_token: chunk.lease_token || undefined,
                 lease_expires_at: chunk.lease_expires_at || undefined,
             },

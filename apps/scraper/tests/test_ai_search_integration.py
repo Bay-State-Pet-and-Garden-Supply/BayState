@@ -238,7 +238,7 @@ async def test_ai_search_scrape_product_uses_best_result_and_validates_match(mon
     async def fake_crawl4ai_extract(url: str, sku: str, product_name: str | None, brand: str | None) -> ExtractionResult:
         assert url == selected_url
         assert sku == "12345"
-        assert product_name == "Squeaky Ball"
+        assert product_name in {"Squeaky Ball", "Acme Squeaky Ball 12345"}
         assert brand == "Acme"
         return _make_extraction_result(
             product_name="Acme Squeaky Ball 12345",
@@ -433,6 +433,7 @@ async def test_ai_search_scrape_product_uses_two_step_refined_results_when_impro
         raise AssertionError("fallback extractor should not be used on the two-step success path")
 
     monkeypatch.setenv("AI_SEARCH_ENABLE_TWO_STEP", "true")
+    monkeypatch.setenv("AI_SEARCH_PROVIDER", "gemini")
     scraper = _build_scraper(
         monkeypatch,
         confidence_threshold=0.7,
@@ -484,7 +485,7 @@ async def test_ai_search_scrape_product_uses_two_step_refined_results_when_impro
 
     assert result.success is True
     assert result.url == refined_url
-    assert result.cost_usd == pytest.approx(0.03)
+    assert result.cost_usd == pytest.approx(0.04)
     assert extracted_urls == [refined_url]
     refine_call = refiner.refine.await_args
     assert refine_call is not None
@@ -511,6 +512,7 @@ async def test_ai_search_scrape_product_falls_back_to_first_pass_when_two_step_e
         raise AssertionError("fallback extractor should not be used when first-pass extraction succeeds")
 
     monkeypatch.setenv("AI_SEARCH_ENABLE_TWO_STEP", "true")
+    monkeypatch.setenv("AI_SEARCH_PROVIDER", "gemini")
     scraper = _build_scraper(
         monkeypatch,
         confidence_threshold=0.7,

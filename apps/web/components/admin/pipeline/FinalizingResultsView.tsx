@@ -42,6 +42,13 @@ import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
   onRefresh: (silent?: boolean) => void;
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  groupedProducts?: {
+    groups: Record<string, PipelineProduct[]>;
+    cohortIds: string[];
+  };
+  cohortBrands?: Record<string, string>;
 }
 
 interface Brand {
@@ -57,6 +64,10 @@ interface Category {
 export function FinalizingResultsView({
   products,
   onRefresh,
+  search,
+  onSearchChange,
+  groupedProducts,
+  cohortBrands = {},
 }: FinalizingResultsViewProps) {
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
@@ -671,13 +682,17 @@ export function FinalizingResultsView({
   const isCustomImageSource = activeImageSourceOption?.id === "custom";
 
   return (
-    <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <ProductListSidebar
         products={sortedProducts}
         selectedSku={selectedSku}
         onSelectProduct={setPreferredSku}
         scrollContainerRef={scrollContainerRef}
+        search={search}
+        onSearchChange={onSearchChange}
+        groupedProducts={groupedProducts}
+        cohortBrands={cohortBrands}
       />
 
       {/* Right Column: Editing Form */}

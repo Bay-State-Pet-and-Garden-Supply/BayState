@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import Any
 
-from core.api_client import *
-from core.config_fetcher import *
-from core.realtime_manager import *
+from core.api_client import ScraperAPIClient
+from core.realtime_manager import RealtimeManager
 from utils.logging_handlers import JobLoggingSession
 from utils.structured_logging import generate_trace_id
 
-from runner import run_job
+from runner.job_execution import execute_claimed_job
 
 logger = logging.getLogger(__name__)
 
@@ -109,146 +109,26 @@ async def run_realtime_mode(client: ScraperAPIClient, runner_name: str) -> None:
                 phase="received",
             )
 
-            try:
-                client.update_status(job_id, "running", runner_name=runner_name)
-                job_logging.emit_progress(
-                    status="running",
-                    progress=5,
-                    message="Fetching job configuration",
-                    phase="configuring",
-                )
-
-                job_config = client.get_job_config(job_id)
-                if not job_config:
-                    logger.error(
-                        "Failed to fetch job configuration",
-                        extra={
-                            "job_id": job_id,
-                            "runner_name": runner_name,
-                            "trace_id": realtime_trace_id,
-                            "job_trace_id": job_trace_id,
-                            "phase": "configuring",
-                            "flush_immediately": True,
-                        },
-                    )
-                    job_logging.emit_progress(
-                        status="failed",
-                        progress=0,
-                        message="Failed to fetch job configuration",
-                        phase="configuring",
-                    )
-                    client.submit_results(
-                        job_id,
-                        "failed",
-                        runner_name=runner_name,
-                        lease_token=job_data.get("lease_token"),
-                        error_message="Failed to fetch job configuration",
-                    )
-                    return
-
-                lease_token = job_config.lease_token
-                job_logging.emit_progress(
-                    status="running",
-                    progress=10,
-                    message="Configuration loaded",
-                    phase="configuring",
-                    details={"skus": len(job_config.skus), "scrapers": [s.name for s in job_config.scrapers]},
-                    items_total=len(job_config.skus),
-                )
-
-                results = run_job(
-                    job_config,
-                    runner_name=runner_name,
-                    api_client=client,
-                    job_logging=job_logging,
-                )
-
-                client.submit_results(
-                    job_id,
-                    "completed",
-                    runner_name=runner_name,
-                    lease_token=lease_token,
-                    results=results,
-                )
-            except ConfigValidationError as e:
-                logger.error(
-                    f"Config validation failed: {e}",
-                    extra={
-                        "job_id": job_id,
-                        "runner_name": runner_name,
-                        "trace_id": realtime_trace_id,
-                        "job_trace_id": job_trace_id,
-                        "phase": "configuring",
-                        "error_type": "ConfigValidationError",
-                        "flush_immediately": True,
-                    },
-                )
-                job_logging.emit_progress(
-                    status="failed",
-                    progress=0,
-                    message=f"Config validation failed: {e}",
-                    phase="configuring",
-                )
-                client.submit_results(
-                    job_id,
-                    "failed",
-                    runner_name=runner_name,
-                    lease_token=lease_token,
-                    error_message=f"Config validation failed: {e}",
-                )
-            except ConfigFetchError as e:
-                logger.error(
-                    f"Config fetch failed: {e}",
-                    extra={
-                        "job_id": job_id,
-                        "runner_name": runner_name,
-                        "trace_id": realtime_trace_id,
-                        "job_trace_id": job_trace_id,
-                        "phase": "configuring",
-                        "error_type": "ConfigFetchError",
-                        "flush_immediately": True,
-                    },
-                )
-                job_logging.emit_progress(
-                    status="failed",
-                    progress=0,
-                    message=f"Config fetch failed: {e}",
-                    phase="configuring",
-                )
-                client.submit_results(
-                    job_id,
-                    "failed",
-                    runner_name=runner_name,
-                    lease_token=lease_token,
-                    error_message=f"Config fetch failed: {e}",
-                )
-            except Exception as e:
-                logger.exception(
-                    "Realtime job failed with error",
-                    extra={
-                        "job_id": job_id,
-                        "runner_name": runner_name,
-                        "trace_id": realtime_trace_id,
-                        "job_trace_id": job_trace_id,
-                        "phase": "failed",
-                        "error_type": type(e).__name__,
-                        "flush_immediately": True,
-                    },
-                )
-                job_logging.emit_progress(
-                    status="failed",
-                    progress=0,
-                    message=f"Job failed: {e}",
-                    phase="failed",
-                    details={"error_type": type(e).__name__},
-                )
-                client.submit_results(
-                    job_id,
-                    "failed",
-                    runner_name=runner_name,
-                    lease_token=lease_token,
-                    error_message=str(e),
-                )
+            success, _ = execute_claimed_job(
+                client=client,
+                job_id=job_id,
+                runner_name=runner_name,
+                trace_id=realtime_trace_id,
+                job_trace_id=job_trace_id,
+                job_logging=job_logging,
+                initial_lease_token=job_data.get("lease_token"),
+                config_fetch_progress=5,
+                config_fetch_phase="configuring",
+                config_loaded_progress=10,
+                config_loaded_details_builder=lambda job_config: {
+                    "skus": len(job_config.skus),
+                    "scrapers": [scraper.name for scraper in job_config.scrapers],
+                },
+                config_loaded_items_total_builder=lambda job_config: len(job_config.skus),
+                generic_failure_log_message="Realtime job failed with error",
+            )
+            if not success:
+                return
 
     def on_job(job_data: dict[str, Any]) -> None:
         asyncio.create_task(handle_job(job_data))

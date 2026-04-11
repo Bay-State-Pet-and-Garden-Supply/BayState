@@ -66,3 +66,51 @@ async def test_scrape_product_falls_back_to_heuristics_when_llm_fails() -> None:
         
         # Verify fallback
         scraper._heuristic_source_selection.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_scrape_product_infers_brand_hint_before_llm_source_selection() -> None:
+    with patch.dict(os.environ, {"AI_SEARCH_USE_LLM_SOURCE_RANKING": "true"}):
+        scraper = AISearchScraper()
+
+        mock_results = [
+            {
+                "url": "https://bentleyseeds.com/products/tomato-jubilee-seed-packets-copy",
+                "title": "Bentley Seed Tomato Jubilee 1943",
+                "description": "Official Bentley Seeds product page",
+            },
+            {
+                "url": "https://arett.com/item/B104+HTG001/Bentley-Seed-Tomato-Jubilee-1943",
+                "title": "Bentley Seed Tomato Jubilee 1943 - Arett Sales",
+                "description": "Retailer listing",
+            },
+        ]
+        scraper._search_client.search_with_cost = AsyncMock(return_value=(mock_results, None, 0.0))
+        scraper._name_consolidator.consolidate_name = AsyncMock(return_value=("Bentley Seed Tomato Jubilee 1943", 0.0))
+
+        observed_brands: list[str | None] = []
+
+        async def identify_best_source(search_results, sku, brand=None, product_name=None, cost_context=None, preferred_domains=None):
+            del search_results, sku, product_name, cost_context, preferred_domains
+            observed_brands.append(brand)
+            return "https://bentleyseeds.com/products/tomato-jubilee-seed-packets-copy"
+
+        scraper._identify_best_source = AsyncMock(side_effect=identify_best_source)
+        scraper._extract_product_data = AsyncMock(
+            return_value={
+                "success": True,
+                "product_name": "Bentley Seed Tomato Jubilee 1943",
+                "brand": "Bentley Seed",
+                "confidence": 0.9,
+            }
+        )
+        scraper._validator.validate_extraction_match = MagicMock(return_value=(True, "ok"))
+
+        result = await scraper.scrape_product(
+            sku="051588178896",
+            product_name="BENTLEY SEED TOMATO JUBILEE",
+            brand=None,
+        )
+
+        assert result.url == "https://bentleyseeds.com/products/tomato-jubilee-seed-packets-copy"
+        assert observed_brands == ["Bentley Seed"]

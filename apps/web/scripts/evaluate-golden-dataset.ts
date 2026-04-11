@@ -8,10 +8,9 @@ import {
   type ConsolidationResult,
   type ParallelRunComparison,
 } from '@/lib/consolidation';
-import { buildPromptContext, getCategories } from '@/lib/consolidation/prompt-builder';
+import { buildPromptContext } from '@/lib/consolidation/prompt-builder';
 import {
   getConsolidationConfig,
-  getGeminiClient,
 } from '@/lib/consolidation/openai-client';
 import {
   normalizeConsolidationResult,
@@ -58,22 +57,22 @@ Usage:
 Options:
   --input <path>       Dataset JSONL path (default: tests/fixtures/golden-dataset.jsonl)
   --output <path>      Optional JSON report path
-  --providers <csv>    Provider list (default: openai,gemini)
+  --providers <csv>    Provider list (default: openai)
   --limit <number>     Number of records to evaluate (default: 10)
   --help
 `.trim());
 }
 
 function parseProviders(value: string | undefined): LLMProvider[] {
-  const providers = (value ?? 'openai,gemini')
+  const providers = (value ?? 'openai')
     .split(',')
     .map((provider) => provider.trim())
     .filter((provider): provider is LLMProvider =>
-      provider === 'openai' || provider === 'openai_compatible' || provider === 'gemini'
+      provider === 'openai'
     );
 
   if (providers.length === 0) {
-    throw new Error('Expected at least one provider in --providers');
+    throw new Error('Expected at least one OpenAI provider in --providers');
   }
 
   return Array.from(new Set(providers));
@@ -83,7 +82,7 @@ function parseArgs(argv: string[]): EvaluationOptions {
   const options: EvaluationOptions = {
     inputPath: resolveScriptPath('tests/fixtures/golden-dataset.jsonl'),
     outputPath: null,
-    providers: ['openai', 'gemini'],
+    providers: ['openai'],
     limit: 10,
   };
 
@@ -156,9 +155,7 @@ async function runOpenAICompatibleEvaluation(
     throw new Error(`Malformed ${provider} request body for ${record.sku}`);
   }
 
-  const baseUrl = provider === 'openai_compatible'
-    ? config.llm_base_url?.replace(/\/$/, '') ?? null
-    : 'https://api.openai.com/v1';
+  const baseUrl = 'https://api.openai.com/v1';
 
   if (!baseUrl || !config.llm_api_key) {
     throw new Error(`${provider} runtime is not configured`);
@@ -209,56 +206,6 @@ async function runOpenAICompatibleEvaluation(
   };
 }
 
-async function runGeminiEvaluation(
-  record: GoldenDatasetRecord,
-  payload: Record<string, unknown>,
-  config: Awaited<ReturnType<typeof getConsolidationConfig>>,
-  responseSchema: object,
-): Promise<{ text: string; usage?: ProviderExecutionResult['usage'] }> {
-  const request = payload.request;
-  if (!request || typeof request !== 'object' || Array.isArray(request)) {
-    throw new Error(`Malformed Gemini request body for ${record.sku}`);
-  }
-
-  const contents = Array.isArray((request as { contents?: unknown[] }).contents)
-    ? ((request as { contents: Array<{ parts?: Array<{ text?: string }> }> }).contents)
-    : [];
-  const prompt = contents[0]?.parts?.[0]?.text;
-  const systemInstruction = Array.isArray(
-    ((request as { system_instruction?: { parts?: Array<{ text?: string }> } }).system_instruction?.parts)
-  )
-    ? ((request as { system_instruction?: { parts?: Array<{ text?: string }> } }).system_instruction?.parts?.[0]?.text)
-    : undefined;
-
-  if (!prompt) {
-    throw new Error(`Missing Gemini prompt for ${record.sku}`);
-  }
-
-  const client = await getGeminiClient({ forceProvider: 'gemini', routingKey: 'consolidation_eval' });
-  if (!client) {
-    throw new Error('Gemini runtime is not configured');
-  }
-
-  const response = await client.generate({
-    model: config.model,
-    prompt,
-    systemInstruction,
-    temperature: config.temperature,
-    maxOutputTokens: config.maxTokens,
-    responseJsonSchema: responseSchema,
-    responseMimeType: 'application/json',
-  });
-
-  return {
-    text: response.text,
-    usage: {
-      prompt_tokens: response.usage?.promptTokens,
-      completion_tokens: response.usage?.completionTokens,
-      total_tokens: response.usage?.totalTokens,
-    },
-  };
-}
-
 function normalizeModelOutput(
   rawText: string,
   categories: string[],
@@ -293,9 +240,7 @@ async function evaluateProvider(
   for (const record of records) {
     try {
       const payload = extractPromptPayload(record, provider, context.systemPrompt, context.responseSchema, config);
-      const execution = provider === 'gemini'
-        ? await runGeminiEvaluation(record, payload, config, context.responseSchema)
-        : await runOpenAICompatibleEvaluation(provider, record, payload, config);
+      const execution = await runOpenAICompatibleEvaluation(provider, record, payload, config);
       const output = normalizeModelOutput(execution.text, context.categories, context.shopsitePages);
       const comparison = compareConsolidationResults(record.expected_output, output);
 
@@ -326,11 +271,7 @@ async function main(): Promise<void> {
     throw new Error('No dataset records found to evaluate');
   }
 
-  const [{ systemPrompt, shopsitePages = [] }, categoryList] = await Promise.all([
-    buildPromptContext(),
-    getCategories(),
-  ]);
-  const categories = categoryList.map((category) => category.name);
+  const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
   const responseSchema = buildResponseSchema(categories, shopsitePages);
 
   const providerResultsEntries = await Promise.all(

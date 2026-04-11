@@ -43,7 +43,7 @@ export function pickNumber(value: unknown, fallback: number): number {
 export function normalizeDiscoveryLLMProvider(_provider?: unknown, _fallback?: unknown): LLMProvider {
   void _provider;
   void _fallback;
-  return 'gemini';
+  return 'openai';
 }
 
 function pickNonEmptyString(value: unknown): string | null {
@@ -55,17 +55,17 @@ function pickNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serpapi' | 'gemini' | null {
+function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serper' | null {
   const provider = pickNonEmptyString(value);
   if (!provider) {
     return null;
   }
 
-  if (provider === 'brave') {
-    return 'gemini';
+  if (provider === 'brave' || provider === 'serpapi' || provider === 'gemini') {
+    return 'serper';
   }
 
-  if (provider === 'auto' || provider === 'serpapi' || provider === 'gemini') {
+  if (provider === 'auto' || provider === 'serper') {
     return provider;
   }
 

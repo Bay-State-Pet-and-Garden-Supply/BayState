@@ -267,11 +267,7 @@ class TwoStepSearchRefiner:
             if not original_sku or not product_name:
                 return [], "Missing SKU or extracted product name", 0.0
 
-            query = self.query_builder.build_search_query(
-                sku=original_sku,
-                product_name=product_name,
-                brand=self._active_brand,
-            )
+            query = self.query_builder.build_name_query(product_name)
             if not query:
                 return [], "Unable to build refined search query", 0.0
 

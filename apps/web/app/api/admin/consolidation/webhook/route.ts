@@ -20,8 +20,8 @@ function isUuid(value: string): boolean {
 }
 
 function normalizeProvider(value: unknown): LLMProvider | null {
-    if (value === 'gemini' || value === 'openai_compatible' || value === 'openai') {
-        return value;
+    if (value === 'openai' || value === 'openai_compatible') {
+        return value === 'openai_compatible' ? 'openai' : value;
     }
 
     return null;
@@ -123,9 +123,9 @@ async function findBatchJob(batchId: string, provider: LLMProvider | null) {
 
 /**
  * POST /api/admin/consolidation/webhook
- * Provider-aware internal/manual notification endpoint for consolidation batches.
+ * Internal/manual notification endpoint for OpenAI consolidation batches.
  *
- * Gemini batch processing does not emit native webhooks, so this route accepts either:
+ * This route accepts either:
  * 1. An authenticated admin request, or
  * 2. An HMAC-signed request using CONSOLIDATION_WEBHOOK_SECRET.
  */

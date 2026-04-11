@@ -30,6 +30,8 @@ class MatchingUtils:
     BRAND_PREFIX_EXCLUDED_TOKENS = {
         "new",
         "best",
+        "heirloom",
+        "official",
         "premium",
         "organic",
         "product",
@@ -251,6 +253,8 @@ class MatchingUtils:
         candidate_text: Optional[str],
         expected_name: Optional[str],
         source_url: str = "",
+        *,
+        allow_url_fallback: bool = True,
     ) -> Optional[str]:
         expected_tokens = {
             token
@@ -263,6 +267,9 @@ class MatchingUtils:
         brand_from_text = self._extract_brand_prefix(candidate_text, expected_tokens)
         if brand_from_text:
             return brand_from_text
+
+        if not allow_url_fallback:
+            return None
 
         path_segments = [segment for segment in urlparse(source_url).path.split("/") if segment]
         if not path_segments:

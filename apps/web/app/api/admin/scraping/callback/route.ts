@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
 
         const { data: existingJob, error: existingJobError } = await supabase
             .from('scrape_jobs')
-            .select('id, status, lease_token, attempt_count, max_attempts')
+            .select('id, type, status, lease_token, attempt_count, max_attempts, config')
             .eq('id', payload.job_id)
             .single();
 
@@ -276,9 +276,18 @@ export async function POST(request: NextRequest) {
         const priorMetadata = (existingJobMetadata?.metadata && typeof existingJobMetadata.metadata === 'object')
             ? (existingJobMetadata.metadata as Record<string, unknown>)
             : {};
+        const jobConfig = (existingJob.config && typeof existingJob.config === 'object')
+            ? (existingJob.config as Record<string, unknown>)
+            : {};
+        const aiSearchConfig = (jobConfig.aiSearch && typeof jobConfig.aiSearch === 'object')
+            ? (jobConfig.aiSearch as Record<string, unknown>)
+            : jobConfig;
 
         const priorCrawl4Ai = (priorMetadata.crawl4ai && typeof priorMetadata.crawl4ai === 'object')
             ? (priorMetadata.crawl4ai as Record<string, unknown>)
+            : {};
+        const priorAiSearch = (priorMetadata.ai_search && typeof priorMetadata.ai_search === 'object')
+            ? (priorMetadata.ai_search as Record<string, unknown>)
             : {};
 
         const previousLlmCount = typeof priorCrawl4Ai.llm_count === 'number' ? priorCrawl4Ai.llm_count : 0;
@@ -305,9 +314,54 @@ export async function POST(request: NextRequest) {
             nextCrawl4AiMetadata.anti_bot_metrics = crawl4aiMetadata.antiBotMetrics;
         }
 
+        const aiSearchTotalCost = typeof payload.results?.total_cost === 'number' ? payload.results.total_cost : null;
+        const aiSearchLlmCost = typeof payload.results?.llm_cost === 'number' ? payload.results.llm_cost : aiSearchTotalCost;
+        const aiSearchErrors = Array.isArray(payload.results?.ai_search_errors) ? payload.results.ai_search_errors : [];
+        const aiSearchExtractionStrategy = typeof payload.results?.extraction_strategy === 'string'
+            ? payload.results.extraction_strategy
+            : null;
+        const aiSearchProvider = typeof aiSearchConfig.llm_provider === 'string'
+            ? aiSearchConfig.llm_provider
+            : (typeof priorAiSearch.llm_provider === 'string' ? priorAiSearch.llm_provider : 'openai');
+        const aiSearchModel = typeof aiSearchConfig.llm_model === 'string'
+            ? aiSearchConfig.llm_model
+            : (typeof priorAiSearch.llm_model === 'string' ? priorAiSearch.llm_model : null);
+        const nextAiSearchMetadata: Record<string, unknown> = {
+            ...priorAiSearch,
+            updated_at: nowIso,
+            llm_provider: aiSearchProvider,
+        };
+
+        if (aiSearchModel) {
+            nextAiSearchMetadata.llm_model = aiSearchModel;
+        }
+        if (aiSearchExtractionStrategy) {
+            nextAiSearchMetadata.extraction_strategy = aiSearchExtractionStrategy;
+        }
+        if (aiSearchTotalCost !== null) {
+            nextAiSearchMetadata.total_cost = aiSearchTotalCost;
+        }
+        if (aiSearchLlmCost !== null) {
+            nextAiSearchMetadata.llm_cost = aiSearchLlmCost;
+        }
+        if (aiSearchErrors.length > 0) {
+            nextAiSearchMetadata.ai_search_errors = aiSearchErrors;
+        }
+        if (typeof payload.results?.anti_bot_success_rate === 'number') {
+            nextAiSearchMetadata.anti_bot_success_rate = payload.results.anti_bot_success_rate;
+        }
+
         updateData.metadata = {
             ...priorMetadata,
             crawl4ai: nextCrawl4AiMetadata,
+            ...(existingJob.type === 'ai_search' ? { ai_search: nextAiSearchMetadata } : {}),
+            ...(aiSearchTotalCost !== null ? { total_cost: aiSearchTotalCost } : {}),
+            ...(aiSearchLlmCost !== null ? { llm_cost: aiSearchLlmCost } : {}),
+            ...(aiSearchExtractionStrategy ? { extraction_strategy: aiSearchExtractionStrategy } : {}),
+            ...(aiSearchErrors.length > 0 ? { ai_search_errors: aiSearchErrors } : {}),
+            ...(typeof payload.results?.anti_bot_success_rate === 'number'
+                ? { anti_bot_success_rate: payload.results.anti_bot_success_rate }
+                : {}),
         };
 
         let jobUpdateQuery = supabase

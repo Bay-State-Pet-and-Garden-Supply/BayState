@@ -12,13 +12,13 @@ jest.mock('@/lib/auth/actions', () => ({
 
 describe('UserMenu', () => {
     it('renders Sign In link when user is null', () => {
-        render(<UserMenu user={null} />);
+        render(<UserMenu user={null} userRole={null} />);
         expect(screen.getByRole('link', { name: /sign in/i })).toBeInTheDocument();
     });
 
     it('renders Account link and Sign Out button when user exists', () => {
         const mockUser = { email: 'test@example.com' } as User;
-        render(<UserMenu user={mockUser} />);
+        render(<UserMenu user={mockUser} userRole="user" />);
 
         const links = screen.getAllByRole('link', { name: /account/i });
         expect(links.length).toBeGreaterThan(0);

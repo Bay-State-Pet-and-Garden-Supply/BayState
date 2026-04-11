@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from scrapers.ai_search.cohort_state import _BatchCohortState
 from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.query_builder import QueryBuilder
+from scrapers.ai_search.search import SearchClient
 
 from .validation import ExtractionValidator
 
@@ -25,6 +26,7 @@ class ProductInput:
     sku: str
     name: str
     brand: str | None = None
+    category: str | None = None
 
 
 @dataclass
@@ -133,7 +135,63 @@ class BatchSearchOrchestrator:
         self._name_consolidator = name_consolidator
         self._validator = validator or ExtractionValidator()
         self._product_context: dict[str, ProductInput] = {}
+        self._consolidated_names: dict[str, str] = {}
         self._cohort_state = cohort_state
+
+    @staticmethod
+    def _to_search_results(raw_results: list[dict[str, Any]]) -> list[SearchResult]:
+        return [
+            SearchResult(
+                url=result.get("url", ""),
+                title=result.get("title"),
+                description=result.get("description"),
+            )
+            for result in raw_results
+        ]
+
+    async def _run_query_batch(
+        self,
+        query_pairs: list[tuple[str, str]],
+        *,
+        max_concurrent: int,
+    ) -> dict[str, list[SearchResult]]:
+        output: dict[str, list[SearchResult]] = {key: [] for key, _ in query_pairs}
+        pending = [(key, query) for key, query in query_pairs if query]
+        if not pending:
+            return output
+
+        if isinstance(self._search_client, SearchClient):
+            batch_results = await self._search_client.search_many(
+                [query for _, query in pending],
+                max_concurrent=max_concurrent,
+            )
+            for (key, _), (raw_results, error) in zip(pending, batch_results):
+                output[key] = [] if error else self._to_search_results(raw_results)
+            return output
+
+        search_many = getattr(self._search_client, "search_many", None)
+        if callable(search_many):
+            batch_results = await search_many([query for _, query in pending])
+            for (key, _), (raw_results, error) in zip(pending, batch_results):
+                output[key] = [] if error else self._to_search_results(raw_results)
+            return output
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def search_one(key: str, query: str) -> tuple[str, list[SearchResult]]:
+            async with semaphore:
+                raw_results, error = await self._search_client.search(query)
+                if error:
+                    return key, []
+                return key, self._to_search_results(raw_results)
+
+        results = await asyncio.gather(*(search_one(key, query) for key, query in pending), return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                continue
+            key, search_results = result
+            output[key] = search_results
+        return output
 
     async def search_cohort(
         self,
@@ -144,9 +202,11 @@ class BatchSearchOrchestrator:
     ) -> BatchSearchResult:
         """Search all SKUs in a cohort."""
         self._product_context = {product.sku: product for product in products}
+        self._consolidated_names = {}
 
-        # Step 1: Search all SKUs in parallel
-        search_results = await self.search_all_skus(products, max_concurrent=max_search_concurrent)
+        # Step 1: Search all SKUs using the shared two-step SKU-first flow.
+        search_results = await self.search_sku_first(products, max_concurrent=max_search_concurrent)
+        self._seed_cohort_context_from_results(products, search_results)
 
         # Step 2: Analyze domain frequency
         domain_frequency = self.analyze_domain_frequency(search_results)
@@ -161,8 +221,8 @@ class BatchSearchOrchestrator:
                     search_results[sku],
                     domain_frequency,
                     brand=product.brand,
-                    product_name=product.name,
-                    category=None,
+                    product_name=self._consolidated_names.get(product.sku) or product.name,
+                    category=product.category,
                 )
                 ranked_results[sku] = ranked
 
@@ -187,67 +247,25 @@ class BatchSearchOrchestrator:
         max_concurrent: int = 5,
     ) -> dict[str, list[SearchResult]]:
         """Search all SKUs in parallel with concurrency limit."""
-        semaphore = asyncio.Semaphore(max_concurrent)
         query_builder = QueryBuilder()
-
-        async def search_one(product: ProductInput) -> tuple[str, list[SearchResult]]:
-            async with semaphore:
-                # Build search query using QueryBuilder with available data
-                query = query_builder.build_search_query(
-                    sku=product.sku,
-                    product_name=product.name,
-                    brand=product.brand,
-                    category=None,
-                )
-                raw_results, error = await self._search_client.search(query)
-                if error:
-                    return product.sku, []
-                results = [
-                    SearchResult(
-                        url=r.get("url", ""),
-                        title=r.get("title"),
-                        description=r.get("description"),
-                    )
-                    for r in raw_results
-                ]
-                return product.sku, results
-
-        tasks = [search_one(p) for p in products]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        output: dict[str, list[SearchResult]] = {}
-        for result in results:
-            if isinstance(result, BaseException):
-                continue
-            sku, res = result
-            output[sku] = res
-        return output
+        query_pairs = [(product.sku, query_builder.build_identifier_query(product.sku)) for product in products]
+        return await self._run_query_batch(query_pairs, max_concurrent=max_concurrent)
 
     async def search_sku_first(
         self,
         products: list[ProductInput],
         max_concurrent: int = 5,
     ) -> dict[str, list[SearchResult]]:
-        """Proactive SKU-first search strategy with three-phase refinement.
-
-        Phase 1: Search by SKU only (identifier query)
-        Phase 2: Consolidate names using NameConsolidator
-        Phase 3: Search with consolidated names
-        Phase 4: Merge and deduplicate results
-        """
-        # Phase 1: SKU-only searches (parallel)
+        """Run the cohort-wide two-step SKU-first discovery flow."""
         sku_results = await self._search_by_sku_only(products, max_concurrent)
-
-        # Phase 2: Name consolidation (parallel)
-        consolidated_names = await self._consolidate_names(sku_results, max_concurrent)
-
-        # Phase 3: Manufacturer searches with consolidated names (parallel)
-        manufacturer_results = await self._search_with_names(products, consolidated_names, max_concurrent)
-
-        # Phase 4: Merge and deduplicate
-        merged = self._merge_search_results(sku_results, manufacturer_results)
-
-        return merged
+        consolidated_names = await self._consolidate_names(products, sku_results, max_concurrent)
+        self._consolidated_names = {
+            sku: consolidated_name
+            for sku, (consolidated_name, _) in consolidated_names.items()
+            if str(consolidated_name or "").strip()
+        }
+        name_results = await self._search_with_names(products, consolidated_names, max_concurrent)
+        return self._merge_search_results(sku_results, name_results)
 
     async def _search_by_sku_only(
         self,
@@ -255,42 +273,13 @@ class BatchSearchOrchestrator:
         max_concurrent: int,
     ) -> dict[str, list[SearchResult]]:
         """Phase 1: Search by SKU only using identifier queries."""
-        semaphore = asyncio.Semaphore(max_concurrent)
         query_builder = QueryBuilder()
-
-        async def search_one(product: ProductInput) -> tuple[str, list[SearchResult]]:
-            async with semaphore:
-                query = query_builder.build_identifier_query(product.sku)
-                if not query:
-                    return product.sku, []
-
-                raw_results, error = await self._search_client.search(query)
-                if error:
-                    return product.sku, []
-
-                results = [
-                    SearchResult(
-                        url=r.get("url", ""),
-                        title=r.get("title"),
-                        description=r.get("description"),
-                    )
-                    for r in raw_results
-                ]
-                return product.sku, results
-
-        tasks = [search_one(p) for p in products]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        output: dict[str, list[SearchResult]] = {}
-        for result in results:
-            if isinstance(result, BaseException):
-                continue
-            sku, res = result
-            output[sku] = res
-        return output
+        query_pairs = [(product.sku, query_builder.build_identifier_query(product.sku)) for product in products]
+        return await self._run_query_batch(query_pairs, max_concurrent=max_concurrent)
 
     async def _consolidate_names(
         self,
+        products: list[ProductInput],
         sku_results: dict[str, list[SearchResult]],
         max_concurrent: int,
     ) -> dict[str, tuple[str, list[dict[str, Any]]]]:
@@ -301,6 +290,7 @@ class BatchSearchOrchestrator:
 
         name_consolidator = self._name_consolidator
         semaphore = asyncio.Semaphore(max_concurrent)
+        product_map = {product.sku: product for product in products}
 
         async def consolidate_one(
             sku: str,
@@ -320,7 +310,14 @@ class BatchSearchOrchestrator:
 
                 return sku, (consolidated_name, snippets)
 
-        tasks = [consolidate_one(sku, "", results) for sku, results in sku_results.items()]
+        tasks = [
+            consolidate_one(
+                sku,
+                (product_map.get(sku).name if product_map.get(sku) is not None else ""),
+                results,
+            )
+            for sku, results in sku_results.items()
+        ]
 
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -339,53 +336,24 @@ class BatchSearchOrchestrator:
         max_concurrent: int,
     ) -> dict[str, list[SearchResult]]:
         """Phase 3: Search using consolidated names."""
-        semaphore = asyncio.Semaphore(max_concurrent)
         query_builder = QueryBuilder()
 
         # Build product lookup
         product_map = {p.sku: p for p in products}
-
-        async def search_one(sku: str) -> tuple[str, list[SearchResult]]:
-            async with semaphore:
-                product = product_map.get(sku)
-                if not product:
-                    return sku, []
-
-                consolidated_name, _ = consolidated_names.get(sku, (product.name, []))
-                if not consolidated_name:
-                    consolidated_name = product.name
-
-                query = query_builder.build_search_query(
-                    sku=product.sku,
-                    product_name=consolidated_name,
-                    brand=product.brand,
-                    category=None,
-                )
-
-                raw_results, error = await self._search_client.search(query)
-                if error:
-                    return sku, []
-
-                results = [
-                    SearchResult(
-                        url=r.get("url", ""),
-                        title=r.get("title"),
-                        description=r.get("description"),
-                    )
-                    for r in raw_results
-                ]
-                return sku, results
-
-        tasks = [search_one(sku) for sku in consolidated_names.keys()]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        output: dict[str, list[SearchResult]] = {}
-        for result in results:
-            if isinstance(result, BaseException):
+        query_pairs: list[tuple[str, str]] = []
+        for sku in consolidated_names.keys():
+            product = product_map.get(sku)
+            if not product:
+                query_pairs.append((sku, ""))
                 continue
-            sku, res = result
-            output[sku] = res
-        return output
+
+            consolidated_name, _ = consolidated_names.get(sku, (product.name, []))
+            if not consolidated_name:
+                consolidated_name = product.name
+
+            query_pairs.append((sku, query_builder.build_name_query(consolidated_name)))
+
+        return await self._run_query_batch(query_pairs, max_concurrent=max_concurrent)
 
     def _merge_search_results(
         self,
@@ -457,12 +425,105 @@ class BatchSearchOrchestrator:
             normalized = normalized[4:]
         return normalized.split("/", 1)[0].strip()
 
-    def _remember_successful_domain(self, url: str) -> None:
+    def _remember_successful_domain(self, url: str, brand: str | None = None) -> None:
         """Record a successful extraction domain for cohort ranking."""
         if not self._cohort_state:
             return
         domain = self._extract_domain(url)
+        normalized_brand = str(brand or "").strip() or None
         self._cohort_state.remember_domain(domain)
+        if normalized_brand:
+            self._cohort_state.remember_brand(normalized_brand)
+            if self._scorer.classify_source_domain(domain, normalized_brand) == "official":
+                self._cohort_state.remember_official_domain(domain)
+
+    def _preferred_ranking_domains(self) -> list[str]:
+        if not self._cohort_state:
+            return []
+
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for domain in self._cohort_state.ranked_official_domains() + self._cohort_state.ranked_domains():
+            if not domain or domain in seen:
+                continue
+            seen.add(domain)
+            ordered.append(domain)
+        return ordered
+
+    def _infer_brand_hint(
+        self,
+        product: ProductInput,
+        results: list[SearchResult],
+    ) -> str | None:
+        if product.brand:
+            return product.brand
+
+        brand_counts: dict[str, int] = {}
+        for result in results[:5]:
+            result_dict = {
+                "url": result.url,
+                "title": result.title or "",
+                "description": result.description or "",
+            }
+            inferred_brand = self._scorer.infer_brand_from_result(result_dict, product.name)
+            if not inferred_brand:
+                inferred_brand = self._scorer.infer_brand_from_domain(self._extract_domain(result.url), product.name)
+            if not inferred_brand:
+                continue
+            brand_counts[inferred_brand] = brand_counts.get(inferred_brand, 0) + 1
+
+        if not brand_counts:
+            return None
+
+        return sorted(
+            brand_counts.items(),
+            key=lambda item: (-item[1], item[0].lower()),
+        )[0][0]
+
+    def _seed_cohort_context_from_results(
+        self,
+        products: list[ProductInput],
+        search_results: dict[str, list[SearchResult]],
+    ) -> None:
+        if not products:
+            return
+
+        for product in products:
+            results = search_results.get(product.sku, [])
+            if not results:
+                continue
+
+            inferred_brand = self._infer_brand_hint(product, results)
+            if inferred_brand and not product.brand:
+                product.brand = inferred_brand
+            effective_brand = product.brand or inferred_brand
+
+            if self._cohort_state and effective_brand:
+                self._cohort_state.remember_brand(effective_brand)
+
+            if not self._cohort_state:
+                continue
+
+            for result in results[:5]:
+                result_dict = {
+                    "url": result.url,
+                    "title": result.title or "",
+                    "description": result.description or "",
+                }
+                if self._scorer.is_low_quality_result(result_dict):
+                    continue
+                domain = self._extract_domain(result.url)
+                if not domain or self._scorer.is_marketplace(domain):
+                    continue
+                if self._scorer.classify_source_domain(domain, effective_brand) == "official":
+                    self._cohort_state.remember_official_domain(domain)
+
+    def _should_use_sku_first(self, products: list[ProductInput]) -> bool:
+        """Use SKU-first discovery when product context is too thin for direct ranking."""
+        if self._name_consolidator is None:
+            return False
+
+        return any(not str(product.brand or "").strip() for product in products)
 
     async def _extract_and_validate(
         self,
@@ -478,8 +539,8 @@ class BatchSearchOrchestrator:
             result = await self._extractor.extract(
                 source_url,
                 sku,
-                candidate.title,
-                None,
+                product_name,
+                brand,
             )
         except Exception as exc:
             error_message = str(exc).strip()
@@ -500,7 +561,10 @@ class BatchSearchOrchestrator:
         if not is_acceptable:
             return None, rejection_reason
 
-        self._remember_successful_domain(str(result.get("url") or source_url))
+        self._remember_successful_domain(
+            str(result.get("url") or source_url),
+            str(result.get("brand") or brand or "").strip() or None,
+        )
         return result, ""
 
     async def _extract_ranked_results(
@@ -549,10 +613,11 @@ class BatchSearchOrchestrator:
             return []
 
         query_builder = QueryBuilder()
+        search_name = self._consolidated_names.get(product.sku) or product.name
         queries = query_builder.build_site_query_variants(
             domains=[normalized_domain],
             sku=product.sku,
-            product_name=product.name,
+            product_name=search_name,
             brand=product.brand,
             category=None,
         )
@@ -589,8 +654,8 @@ class BatchSearchOrchestrator:
             search_results=list(site_results.values()),
             domain_frequency={},
             brand=product.brand,
-            product_name=product.name,
-            category=None,
+            product_name=search_name,
+            category=product.category,
         )
 
     def rank_urls_for_sku(
@@ -604,6 +669,8 @@ class BatchSearchOrchestrator:
     ) -> list[RankedResult]:
         """Rank URLs considering cohort-wide signals."""
         ranked: list[RankedResult] = []
+        preferred_domains = self._preferred_ranking_domains()
+        official_domains = self._cohort_state.ranked_official_domains() if self._cohort_state else []
 
         for result in search_results:
             domain = self._extract_domain(result.url)
@@ -619,13 +686,24 @@ class BatchSearchOrchestrator:
                 brand=brand,
                 product_name=product_name,
                 category=category,
+                prefer_manufacturer=True,
+                preferred_domains=preferred_domains,
             )
+            effective_brand = brand or self._scorer.infer_brand_from_result(result_dict, product_name)
+            source_tier = self._scorer.classify_source_domain(domain, effective_brand)
 
             freq = domain_frequency.get(domain)
-            if freq and freq.sku_count > 3:
-                base_score += 5.0
-            elif freq and freq.sku_count > 1:
-                base_score += 2.0
+            if freq and freq.sku_count > 1:
+                if source_tier == "official":
+                    base_score += min(5.0, float(freq.sku_count) * 1.5)
+                elif source_tier in {"major_retailer", "secondary_retailer"}:
+                    base_score += min(2.0, float(freq.sku_count - 1))
+                else:
+                    base_score += min(1.0, float(freq.sku_count - 1) * 0.5)
+
+            if official_domains and domain in official_domains:
+                official_rank = official_domains.index(domain)
+                base_score += max(5.0 - float(official_rank), 3.0)
 
             # Boost score for domains preferred by cohort
             if self._cohort_state:
@@ -641,18 +719,32 @@ class BatchSearchOrchestrator:
                 if dominant and domain == dominant:
                     base_score += 2.0
 
-            from scrapers.ai_search.scoring import get_domain_success_rate
-
-            success_rate = get_domain_success_rate(domain)
-            if success_rate > 0.8:
-                base_score += 3.0
-            elif success_rate < 0.3:
-                base_score -= 3.0
-
             ranked.append(RankedResult(result=result, score=base_score))
 
         ranked.sort(key=lambda x: x.score, reverse=True)
         return ranked
+
+    @staticmethod
+    def _merge_ranked_results(
+        primary: list[RankedResult],
+        rescue: list[RankedResult],
+        *,
+        limit: int,
+    ) -> list[RankedResult]:
+        merged: list[RankedResult] = []
+        seen_urls: set[str] = set()
+
+        for bucket in (rescue, primary):
+            for ranked in bucket:
+                url = ranked.result.url
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                merged.append(ranked)
+                if len(merged) >= limit:
+                    return merged
+
+        return merged
 
     def _is_blocked_url(self, url: str) -> bool:
         """Check if URL should be skipped before extraction."""
@@ -683,10 +775,29 @@ class BatchSearchOrchestrator:
                 brand = product.brand if product else None
                 last_error = "All URLs failed"
                 attempted_urls: set[str] = set()
-                retried_dominant_domains: set[str] = set()
-                dominant_retry_attempts = 0
+                candidate_urls = list(urls)
 
-                for ranked in urls:
+                rescue_domains: list[str] = []
+                if self._cohort_state:
+                    rescue_domains.extend(self._cohort_state.ranked_official_domains()[:2])
+                    if not rescue_domains:
+                        dominant_domain = self._cohort_state.dominant_domain(minimum_count=2)
+                        if dominant_domain:
+                            rescue_domains.append(dominant_domain)
+
+                top_domain = self._extract_domain(candidate_urls[0].result.url) if candidate_urls else ""
+                if product and rescue_domains and top_domain not in rescue_domains:
+                    for rescue_domain in rescue_domains:
+                        site_specific = await self._search_site_specific(rescue_domain, product)
+                        if site_specific:
+                            candidate_urls = self._merge_ranked_results(
+                                candidate_urls,
+                                site_specific,
+                                limit=max(5, len(candidate_urls) + len(site_specific)),
+                            )
+                            break
+
+                for ranked in candidate_urls:
                     source_url = ranked.result.url
                     if not source_url or source_url in attempted_urls:
                         continue
@@ -705,29 +816,6 @@ class BatchSearchOrchestrator:
                         return sku, result
                     if error:
                         last_error = error
-
-                    dominant_domain = None
-                    if self._cohort_state and dominant_retry_attempts < self._MAX_DOMINANT_RETRIES:
-                        dominant_domain = self._cohort_state.dominant_domain(minimum_count=3)
-
-                    if not dominant_domain or dominant_domain in retried_dominant_domains:
-                        continue
-
-                    retried_dominant_domains.add(dominant_domain)
-                    dominant_retry_attempts += 1
-
-                    site_specific_results = await self._search_site_specific(dominant_domain, product)
-                    retry_result, retry_error = await self._extract_ranked_results(
-                        sku=sku,
-                        ranked_results=site_specific_results,
-                        product_name=product_name,
-                        brand=brand,
-                        attempted_urls=attempted_urls,
-                    )
-                    if retry_result:
-                        return sku, retry_result
-                    if retry_error:
-                        last_error = retry_error
 
             return sku, {"success": False, "error": last_error}
 

@@ -184,44 +184,9 @@ def signal_handler(signum, frame):
     _shutdown_requested = True
 
 
-def run_job(job_config, client, log_buffer=None, job_logging=None) -> dict[str, Any]:
-    """
-    Execute a scrape job using the existing runner logic.
-
-    This imports and calls the run_job function from runner.py,
-    but fetches credentials from the coordinator instead of local storage.
-    """
-    from runner import run_job  # type: ignore
-
-    # Fetch credentials for any scrapers that require login
-    for scraper in job_config.scrapers:
-        if needs_credentials(scraper.name):
-            creds = client.get_credentials(scraper.name)
-            if creds:
-                # Inject credentials into scraper options
-                if scraper.options is None:
-                    scraper.options = {}
-                scraper.options["_credentials"] = creds
-                logger.debug(
-                    f"Injected credentials for {scraper.name}",
-                    extra={
-                        "job_id": job_config.job_id,
-                        "runner_name": client.runner_name,
-                        "scraper_name": scraper.name,
-                        "phase": "configuring",
-                    },
-                )
-
-    return run_job(
-        job_config,
-        runner_name=client.runner_name,
-        log_buffer=log_buffer,
-        api_client=client,
-        job_logging=job_logging,
-    )
-
-
 def run_claimed_chunk(chunk, client, log_buffer=None, job_logging=None) -> dict[str, Any]:
+    from runner import run_job as run_runner_job  # type: ignore
+
     job_config = client.get_job_config(chunk.job_id)
     if not job_config:
         raise RuntimeError(f"Failed to fetch job config for chunk job {chunk.job_id}")
@@ -233,14 +198,13 @@ def run_claimed_chunk(chunk, client, log_buffer=None, job_logging=None) -> dict[
     if chunk.scrapers:
         job_config.scrapers = [s for s in job_config.scrapers if s.name in chunk.scrapers or (s.display_name and s.display_name in chunk.scrapers)]
 
-    return run_job(job_config, client, log_buffer, job_logging=job_logging)
-
-
-def needs_credentials(scraper_name: str) -> bool:
-    """Check if a scraper requires login credentials."""
-    # Known scrapers that require authentication
-    LOGIN_SCRAPERS = {"petfoodex", "phillips", "orgill", "shopsite"}
-    return scraper_name.lower() in LOGIN_SCRAPERS
+    return run_runner_job(
+        job_config,
+        runner_name=client.runner_name,
+        log_buffer=log_buffer,
+        api_client=client,
+        job_logging=job_logging,
+    )
 
 async def process_chunk(chunk, client, rm):
     """Process a claimed chunk of SKUs."""
@@ -350,6 +314,8 @@ async def process_chunk(chunk, client, rm):
 
 async def process_cohort(cohort, client, rm):
     """Process a claimed cohort batch."""
+    from runner import run_job as run_runner_job  # type: ignore
+
     from utils.logging_handlers import JobLoggingSession
 
     cohort_id = cohort.cohort_id
@@ -409,7 +375,14 @@ async def process_cohort(cohort, client, rm):
             if cohort.scrapers:
                 job_config.scrapers = [s for s in job_config.scrapers if s.name in cohort.scrapers]
 
-            results = await asyncio.to_thread(run_job, job_config, client, None, job_logging=job_logging)
+            results = await asyncio.to_thread(
+                run_runner_job,
+                job_config,
+                runner_name=client.runner_name,
+                log_buffer=None,
+                api_client=client,
+                job_logging=job_logging,
+            )
             elapsed = time.time() - start_time
 
             logger.info(

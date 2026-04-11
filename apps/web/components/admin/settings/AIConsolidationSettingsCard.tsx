@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Layers, Save, RefreshCw } from 'lucide-react';
-import { GeminiModelCombobox } from '@/components/admin/settings/GeminiModelCombobox';
-import { DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
+import { AIModelCombobox } from '@/components/admin/settings/AIModelCombobox';
+import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
 interface ProviderStatus {
   provider: string;
@@ -18,7 +18,7 @@ interface ProviderStatus {
 }
 
 interface ConsolidationDefaults {
-  llm_provider: 'gemini';
+  llm_provider: 'openai';
   llm_model: string;
   llm_base_url: string | null;
   llm_supports_batch_api: boolean;
@@ -27,21 +27,21 @@ interface ConsolidationDefaults {
 
 interface ApiResponse {
   statuses: {
-    gemini: ProviderStatus;
+    openai: ProviderStatus;
   };
   consolidationDefaults: ConsolidationDefaults;
 }
 
 const DEFAULTS: ConsolidationDefaults = {
-  llm_provider: 'gemini',
-  llm_model: DEFAULT_GEMINI_MODEL,
+  llm_provider: 'openai',
+  llm_model: DEFAULT_AI_MODEL,
   llm_base_url: null,
   llm_supports_batch_api: true,
   confidence_threshold: 0.7,
 };
 
-const EMPTY_GEMINI_STATUS: ProviderStatus = {
-  provider: 'gemini',
+const EMPTY_OPENAI_STATUS: ProviderStatus = {
+  provider: 'openai',
   configured: false,
   last4: null,
   updated_at: null,
@@ -51,8 +51,8 @@ export function AIConsolidationSettingsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [geminiStatus, setGeminiStatus] = useState<ProviderStatus>(EMPTY_GEMINI_STATUS);
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [openaiStatus, setOpenaiStatus] = useState<ProviderStatus>(EMPTY_OPENAI_STATUS);
   const [defaults, setDefaults] = useState<ConsolidationDefaults>(DEFAULTS);
   const [initialDefaults, setInitialDefaults] = useState<ConsolidationDefaults>(DEFAULTS);
 
@@ -67,18 +67,18 @@ export function AIConsolidationSettingsCard() {
       }
 
       const data = (await res.json()) as ApiResponse;
-      setGeminiStatus(data.statuses.gemini ?? EMPTY_GEMINI_STATUS);
+      setOpenaiStatus(data.statuses.openai ?? EMPTY_OPENAI_STATUS);
       setDefaults({
         ...DEFAULTS,
         ...data.consolidationDefaults,
-        llm_provider: 'gemini',
+        llm_provider: 'openai',
         llm_base_url: null,
         llm_supports_batch_api: true,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...data.consolidationDefaults,
-        llm_provider: 'gemini',
+        llm_provider: 'openai',
         llm_base_url: null,
         llm_supports_batch_api: true,
       });
@@ -95,11 +95,11 @@ export function AIConsolidationSettingsCard() {
 
   const hasChanges = useMemo(() => {
     return (
-      geminiApiKey.trim().length > 0 ||
+      openaiApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [defaults, geminiApiKey, initialDefaults]);
+  }, [defaults, openaiApiKey, initialDefaults]);
 
   const onSave = async () => {
     setSaving(true);
@@ -107,10 +107,10 @@ export function AIConsolidationSettingsCard() {
 
     try {
       const payload = {
-        gemini_api_key: geminiApiKey.trim() || undefined,
+        openai_api_key: openaiApiKey.trim() || undefined,
         consolidationDefaults: {
           ...defaults,
-          llm_provider: 'gemini' as const,
+          llm_provider: 'openai' as const,
           llm_base_url: null,
           llm_supports_batch_api: true,
         },
@@ -132,22 +132,22 @@ export function AIConsolidationSettingsCard() {
         consolidationDefaults: ConsolidationDefaults;
       };
 
-      setGeminiStatus(body.statuses.gemini ?? EMPTY_GEMINI_STATUS);
+      setOpenaiStatus(body.statuses.openai ?? EMPTY_OPENAI_STATUS);
       setDefaults({
         ...DEFAULTS,
         ...body.consolidationDefaults,
-        llm_provider: 'gemini',
+        llm_provider: 'openai',
         llm_base_url: null,
         llm_supports_batch_api: true,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...body.consolidationDefaults,
-        llm_provider: 'gemini',
+        llm_provider: 'openai',
         llm_base_url: null,
         llm_supports_batch_api: true,
       });
-      setGeminiApiKey('');
+      setOpenaiApiKey('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
@@ -165,9 +165,8 @@ export function AIConsolidationSettingsCard() {
           <div>
             <CardTitle>AI Consolidation Settings</CardTitle>
             <CardDescription>
-              Consolidation now submits directly to Gemini batch processing. The
-              OpenAI migration is complete, so only the shared Gemini API key
-              and default Gemini model are configurable here.
+              Consolidation now runs on the OpenAI batch pipeline. Shared OpenAI
+              credentials and the default batch model are configurable here.
             </CardDescription>
           </div>
         </div>
@@ -183,24 +182,24 @@ export function AIConsolidationSettingsCard() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="consolidation-gemini-key">Gemini API Key</Label>
+                <Label htmlFor="consolidation-openai-key">OpenAI API Key</Label>
                 <Input
-                  id="consolidation-gemini-key"
+                  id="consolidation-openai-key"
                   type="password"
-                  value={geminiApiKey}
-                  onChange={(e) => setGeminiApiKey(e.target.value)}
-                  placeholder="AIza..."
+                  value={openaiApiKey}
+                  onChange={(e) => setOpenaiApiKey(e.target.value)}
+                  placeholder="sk-..."
                 />
                 <div className="text-xs text-muted-foreground">
-                  {geminiStatus.configured
-                    ? `Configured (ending in ${geminiStatus.last4 ?? '****'})`
+                  {openaiStatus.configured
+                    ? `Configured (ending in ${openaiStatus.last4 ?? '****'})`
                     : 'Required for batch consolidation'}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="consolidation-ai-model">Gemini Model</Label>
-                <GeminiModelCombobox
+                <Label htmlFor="consolidation-ai-model">OpenAI Model</Label>
+                <AIModelCombobox
                   id="consolidation-ai-model"
                   value={defaults.llm_model}
                   onChange={(value) =>
@@ -233,13 +232,13 @@ export function AIConsolidationSettingsCard() {
             </div>
 
             <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
-              Gemini batch support is always enabled for consolidation jobs in this environment.
+              Legacy Gemini consolidation settings are deprecated. New consolidation jobs submit through the OpenAI batch flow.
             </div>
 
             <div className="flex items-center justify-between border-t pt-4">
               <div className="flex gap-2">
-                <Badge variant={geminiStatus.configured ? 'default' : 'secondary'}>
-                  Gemini Batch {geminiStatus.configured ? 'Ready' : 'Missing'}
+                <Badge variant={openaiStatus.configured ? 'default' : 'secondary'}>
+                  OpenAI Batch {openaiStatus.configured ? 'Ready' : 'Missing'}
                 </Badge>
               </div>
               <div className="flex gap-2">

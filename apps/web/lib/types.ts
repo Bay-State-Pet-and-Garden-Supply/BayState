@@ -298,6 +298,10 @@ export interface CohortBatch {
   product_line: string | null;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   scraper_config: string | null;
+  /** FK to brands table for known catalog brands */
+  brand_id: string | null;
+  /** Free-text brand name for scraping context */
+  brand_name: string | null;
   created_at: string;
   updated_at: string;
   metadata: Record<string, unknown> | null;
@@ -309,6 +313,22 @@ export interface CohortMember {
   upc_prefix: string;
   sort_order: number;
   created_at: string;
+}
+
+/** Tracks which scrapers historically produce results for which brands */
+export interface BrandScraperAffinity {
+  id: string;
+  brand_name: string;
+  scraper_slug: string;
+  total_attempts: number;
+  successful_extractions: number;
+  hit_rate: number;
+  avg_fields_extracted: number;
+  avg_images_found: number;
+  last_success_at: string | null;
+  last_attempt_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================================================

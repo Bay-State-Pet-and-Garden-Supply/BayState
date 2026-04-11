@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Filter, Eye, Play, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,8 +24,9 @@ interface AdminProductLinesClientProps {
 
 export function AdminProductLinesClient({
 	initialProductLines,
-	totalCount,
+	totalCount: _totalCount,
 }: AdminProductLinesClientProps) {
+	const router = useRouter();
 	const [productLines] = useState<ProductLine[]>(initialProductLines);
 	const [search, setSearch] = useState('');
 	const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -109,11 +111,11 @@ export function AdminProductLinesClient({
 	];
 
 	const handleView = (productLine: ProductLine) => {
-		window.location.href = `/admin/product-lines/${productLine.id}`;
+		router.push(`/admin/product-lines/${productLine.id}`);
 	};
 
 	const handleProcess = (productLine: ProductLine) => {
-		window.location.href = `/admin/pipeline?productLine=${productLine.id}`;
+		router.push(`/admin/pipeline?productLine=${productLine.id}`);
 	};
 
 	return (

@@ -9,10 +9,9 @@ from datetime import datetime, timezone
 from collections.abc import Mapping
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from core.api_client import JobConfig
+from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
-from scrapers.config.feature_flags import GeminiFeatureFlags
 from scrapers.ai_search import AISearchScraper
 from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
@@ -137,30 +136,6 @@ def _build_data_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "availability": payload.get("availability"),
         "image_count": image_count,
     }
-
-
-def _normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
-    """Normalize API selectors payload into list format expected by ScraperConfig."""
-    if isinstance(raw_selectors, list):
-        return raw_selectors
-
-    # API can return an empty object for "no selectors" in some paths.
-    if raw_selectors is None or raw_selectors == {}:
-        return []
-
-    # Backward-compat for legacy dict format: {"Field": {"selector": "..."}}
-    if isinstance(raw_selectors, dict):
-        normalized: list[dict[str, Any]] = []
-        for field_name, field_config in raw_selectors.items():
-            if not isinstance(field_config, dict):
-                continue
-            item = dict(field_config)
-            if "name" not in item and isinstance(field_name, str):
-                item["name"] = field_name
-            normalized.append(item)
-        return normalized
-
-    return []
 
 
 def _build_telemetry_from_events(events: list[ScraperEvent]) -> Dict[str, Any]:
@@ -600,7 +575,7 @@ def _run_sequential_job(
                 "name": scraper_cfg.name,
                 "base_url": scraper_cfg.base_url,
                 "search_url_template": scraper_cfg.search_url_template,
-                "selectors": _normalize_selectors_payload(scraper_cfg.selectors),
+                "selectors": normalize_selectors_payload(scraper_cfg.selectors),
                 "workflows": options.get("workflows", []),
                 "timeout": options.get("timeout", getattr(scraper_cfg, "timeout", 30)),
                 "use_stealth": options.get("use_stealth", True),
@@ -1070,6 +1045,21 @@ def _run_ai_search_job(
         trimmed = raw_value.strip()
         return trimmed if trimmed else None
 
+    def _normalize_openai_model(raw_value: str | None) -> str:
+        candidate = str(raw_value or "").strip()
+        if not candidate:
+            return "gpt-4o-mini"
+
+        lowered = candidate.lower()
+        if lowered.startswith(("gpt-", "o1", "o3", "o4")):
+            return candidate
+
+        logger.info(
+            "[AI Search] Ignoring legacy non-OpenAI model '%s' and defaulting to gpt-4o-mini",
+            candidate,
+        )
+        return "gpt-4o-mini"
+
     search_cfg = job_config.job_config or {}
     scraper_name = "ai_search"
 
@@ -1078,46 +1068,52 @@ def _run_ai_search_job(
     max_steps = int(search_cfg.get("max_steps", 15) or 15)
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
     runtime_credentials: Dict[str, Any] = job_config.ai_credentials or {}
-    feature_flags = GeminiFeatureFlags.from_payload(job_config.feature_flags)
-    llm_provider = "gemini"
+    requested_llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "openai").strip().lower()
+    llm_provider = "openai"
+    if requested_llm_provider and requested_llm_provider != "openai":
+        logger.info(
+            "[AI Search] Ignoring legacy LLM provider '%s' and routing this job to OpenAI",
+            requested_llm_provider,
+        )
 
-    llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "gemini-2.5-flash")
-    if not llm_model.strip():
-        llm_model = "gemini-2.5-flash"
-    elif llm_model.startswith("gpt-"):
-        llm_model = "gemini-2.5-flash"
-    search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto")
-    if search_provider == "brave":
-        search_provider = "gemini"
-    elif search_provider not in {"auto", "serpapi", "gemini"}:
+    requested_llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "").strip()
+    llm_model = _normalize_openai_model(requested_llm_model)
+    search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
+    if search_provider in {"brave", "serpapi"}:
+        search_provider = "serper"
+    elif search_provider not in {"auto", "serper"}:
         search_provider = "auto"
     if search_provider == "auto":
-        search_provider = "gemini"
+        search_provider = "serper"
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
     extraction_strategy = str(search_cfg.get("extraction_strategy", "llm") or "llm")
     raw_prefer_manufacturer = search_cfg.get("prefer_manufacturer")
     prefer_manufacturer = True if raw_prefer_manufacturer is None else bool(raw_prefer_manufacturer)
 
-    llm_base_url = None
-
     runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
     runtime_llm_api_key = _get_optional_string(runtime_credentials, "llm_api_key")
-    llm_api_key = _get_optional_string(runtime_credentials, "gemini_api_key")
-    if llm_api_key is None and runtime_provider == "gemini":
+    llm_base_url = None
+
+    llm_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
+    if llm_api_key is None and runtime_provider == llm_provider:
+        llm_api_key = runtime_llm_api_key
+    if llm_api_key is None:
         llm_api_key = runtime_llm_api_key
 
-    previous_serpapi = os.environ.get("SERPAPI_API_KEY")
-    runtime_serpapi = _get_optional_string(runtime_credentials, "serpapi_api_key")
+    previous_serper = os.environ.get("SERPER_API_KEY")
+    runtime_serper = _get_optional_string(runtime_credentials, "serper_api_key")
+    if runtime_serper is None:
+        runtime_serper = _get_optional_string(runtime_credentials, "serpapi_api_key")
 
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
     if llm_api_key:
         logger.debug(f"Resolved {llm_provider} LLM API key for AI Search: {llm_api_key[:4]}...")
-    if runtime_serpapi:
-        logger.debug(f"Setting SERPAPI_API_KEY from job payload: {runtime_serpapi[:4]}...")
+    if runtime_serper:
+        logger.debug(f"Setting SERPER_API_KEY from job payload: {runtime_serper[:4]}...")
 
-    if runtime_serpapi:
-        os.environ["SERPAPI_API_KEY"] = runtime_serpapi
+    if runtime_serper:
+        os.environ["SERPER_API_KEY"] = runtime_serper
 
     item_context_by_sku: Dict[str, Dict[str, Any]] = {}
 
@@ -1173,10 +1169,6 @@ def _run_ai_search_job(
             "cache_enabled": cache_enabled,
             "extraction_strategy": extraction_strategy,
             "prefer_manufacturer": prefer_manufacturer,
-            "feature_flags": {
-                "gemini_ai_search_enabled": feature_flags.gemini_ai_search_enabled,
-                "gemini_crawl4ai_enabled": feature_flags.gemini_crawl4ai_enabled,
-            },
         },
         scraper_name=scraper_name,
         phase="starting",
@@ -1208,6 +1200,7 @@ def _run_ai_search_job(
             llm_model=llm_model,
             llm_base_url=llm_base_url,
             llm_api_key=llm_api_key,
+            search_api_key=runtime_serper,
             crawl4ai_llm_provider=crawl4ai_llm_provider,
             crawl4ai_llm_model=crawl4ai_llm_model,
             crawl4ai_llm_base_url=crawl4ai_llm_base_url,
@@ -1222,15 +1215,20 @@ def _run_ai_search_job(
     try:
         batch_results = asyncio.run(_run())
     finally:
-        if runtime_serpapi:
-            if previous_serpapi is None:
-                os.environ.pop("SERPAPI_API_KEY", None)
+        if runtime_serper:
+            if previous_serper is None:
+                os.environ.pop("SERPER_API_KEY", None)
             else:
-                os.environ["SERPAPI_API_KEY"] = previous_serpapi
+                os.environ["SERPER_API_KEY"] = previous_serper
+
+    total_cost = 0.0
+    error_counts: Dict[str, Dict[str, Any]] = {}
 
     for search_result in batch_results:
         sku = search_result.sku
         results["skus_processed"] += 1
+        result_cost = float(search_result.cost_usd or 0.0)
+        total_cost += result_cost
         if not sku:
             continue
 
@@ -1249,7 +1247,7 @@ def _run_ai_search_job(
                 "url": search_result.url,
                 "source_website": search_result.source_website,
                 "confidence": search_result.confidence,
-                "cost_usd": search_result.cost_usd,
+                "cost_usd": result_cost,
                 "scraped_at": datetime.now().isoformat(),
             }
             _emit_runner_log(
@@ -1263,7 +1261,7 @@ def _run_ai_search_job(
                     "confidence": search_result.confidence,
                     "source_website": search_result.source_website,
                     "image_count": len(search_result.images or []),
-                    "cost_usd": search_result.cost_usd,
+                    "cost_usd": result_cost,
                 },
                 scraper_name=scraper_name,
                 sku=sku,
@@ -1272,9 +1270,24 @@ def _run_ai_search_job(
         else:
             results["data"][sku][scraper_name] = {
                 "error": search_result.error,
-                "cost_usd": search_result.cost_usd,
+                "cost_usd": result_cost,
                 "scraped_at": datetime.now().isoformat(),
             }
+            error_type = "search_failed"
+            message = str(search_result.error or "AI Search failed")
+            if "timeout" in message.lower():
+                error_type = "timeout"
+            elif "rate limit" in message.lower():
+                error_type = "rate_limit"
+            current_error = error_counts.get(error_type)
+            if current_error is None:
+                error_counts[error_type] = {
+                    "error_type": error_type,
+                    "message": message,
+                    "count": 1,
+                }
+            else:
+                current_error["count"] += 1
             _emit_runner_log(
                 job_id=job_config.job_id,
                 runner_name=runner_name,
@@ -1282,7 +1295,7 @@ def _run_ai_search_job(
                 log_buffer=log_buffer,
                 level="warning",
                 message=f"{scraper_name}/{sku}: {search_result.error or 'Failed'}",
-                details={"cost_usd": search_result.cost_usd},
+                details={"cost_usd": result_cost},
                 scraper_name=scraper_name,
                 sku=sku,
                 phase="scraping",
@@ -1324,35 +1337,14 @@ def _run_ai_search_job(
     )
     results["logs"] = job_logging.snapshot() if job_logging else log_buffer
     results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
+    results["extraction_strategy"] = extraction_strategy
+    results["llm_cost"] = total_cost
+    results["total_cost"] = total_cost
+    results["ai_search_errors"] = list(error_counts.values())
     return results
-
-
-# Execution engine imports
-from runner.execution import (
-    ExecutionResult,
-    WorkerConfig,
-    create_work_stealing_queues,
-    execute_with_thread_pool,
-    load_skus_from_excel,
-    load_skus_with_metadata,
-    process_sku_with_batch_restart,
-    run_worker_thread,
-    should_restart_browser,
-)
-
 __all__ = [
     "ConfigurationError",
     "create_emitter",
     "create_log_entry",
     "run_job",
-    # Execution engine exports
-    "ExecutionResult",
-    "WorkerConfig",
-    "create_work_stealing_queues",
-    "execute_with_thread_pool",
-    "load_skus_from_excel",
-    "load_skus_with_metadata",
-    "process_sku_with_batch_restart",
-    "run_worker_thread",
-    "should_restart_browser",
 ]

@@ -1,6 +1,6 @@
 // Known schema versions - must be kept in sync with Python Pydantic model
 import { z } from 'zod';
-import { DEFAULT_GEMINI_MODEL, GEMINI_MODEL_VALUES } from '@/lib/ai-scraping/models';
+import { AI_MODEL_VALUES, DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
 const KNOWN_SCHEMA_VERSIONS = ["1.0"] as const;
 
@@ -15,7 +15,7 @@ export const schemaVersionSchema = z.enum(KNOWN_SCHEMA_VERSIONS);
 export const scraperTypeSchema = z.enum(['static', 'agentic']);
 export type ScraperType = z.infer<typeof scraperTypeSchema>;
 
-export const aiModelSchema = z.enum(GEMINI_MODEL_VALUES);
+export const aiModelSchema = z.enum(AI_MODEL_VALUES);
 export type AIModel = z.infer<typeof aiModelSchema>;
 
 export const aiConfigSchema = z.object({
@@ -23,7 +23,7 @@ export const aiConfigSchema = z.object({
   task: z.string().min(1, 'AI task description is required'),
   max_steps: z.number().min(1).max(50).default(10),
   confidence_threshold: z.number().min(0).max(1).default(0.7),
-  llm_model: aiModelSchema.default(DEFAULT_GEMINI_MODEL),
+  llm_model: aiModelSchema.default(DEFAULT_AI_MODEL),
   use_vision: z.boolean().default(true),
   headless: z.boolean().default(true),
 });

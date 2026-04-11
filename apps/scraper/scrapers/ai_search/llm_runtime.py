@@ -1,4 +1,4 @@
-"""Helpers for provider-aware LLM runtime configuration."""
+"""Helpers for OpenAI-first LLM runtime configuration."""
 
 from __future__ import annotations
 
@@ -8,9 +8,8 @@ from typing import Literal
 
 from openai import AsyncOpenAI
 
-LLMProvider = Literal["openai", "openai_compatible", "gemini"]
-DEFAULT_LLM_MODEL = "gemini-3.1-flash-lite-preview"
-DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+LLMProvider = Literal["openai", "openai_compatible"]
+DEFAULT_LLM_MODEL = "gpt-4o-mini"
 DEFAULT_OPENAI_COMPATIBLE_MODEL = "google/gemma-3-12b-it"
 LOCAL_OPENAI_COMPATIBLE_API_KEY = "baystate-local"
 
@@ -37,9 +36,7 @@ def normalize_llm_provider(value: str | None) -> LLMProvider:
         return "openai"
     if normalized == "openai_compatible":
         return "openai_compatible"
-    if normalized == "gemini":
-        return "gemini"
-    return "gemini"
+    return "openai"
 
 
 @dataclass(frozen=True)
@@ -51,8 +48,6 @@ class LLMRuntimeConfig:
 
     @property
     def crawl4ai_provider(self) -> str:
-        if self.provider == "gemini":
-            return f"gemini/{self.model}"
         return f"openai/{self.model}"
 
 
@@ -67,14 +62,9 @@ def resolve_llm_runtime(
     default_model = DEFAULT_LLM_MODEL
     if normalized_provider == "openai_compatible":
         default_model = DEFAULT_OPENAI_COMPATIBLE_MODEL
-    elif normalized_provider == "gemini":
-        default_model = DEFAULT_GEMINI_MODEL
     normalized_model = _normalize_optional_string(model) or default_model
 
-    if normalized_provider == "gemini":
-        normalized_base_url = None
-        normalized_api_key = _normalize_optional_string(api_key or os.getenv("GEMINI_API_KEY"))
-    elif normalized_provider == "openai_compatible":
+    if normalized_provider == "openai_compatible":
         normalized_base_url = _normalize_base_url(base_url or os.getenv("OPENAI_COMPATIBLE_BASE_URL"))
         normalized_api_key = _normalize_optional_string(api_key or os.getenv("OPENAI_COMPATIBLE_API_KEY"))
         if normalized_base_url and normalized_api_key is None:
@@ -92,9 +82,6 @@ def resolve_llm_runtime(
 
 
 def create_async_openai_client(runtime: LLMRuntimeConfig) -> AsyncOpenAI | None:
-    if runtime.provider == "gemini":
-        return None
-
     if runtime.provider == "openai":
         if runtime.api_key is None:
             return None

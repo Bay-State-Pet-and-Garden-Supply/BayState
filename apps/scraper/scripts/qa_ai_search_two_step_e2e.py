@@ -190,8 +190,8 @@ async def main() -> int:
         print(f"Loaded {env_name}, but OPENAI_API_KEY is missing")
         print(f"Real SKUs [0/{total_cases} pass] | Cost Valid [NO] | Telemetry Valid [NO] | VERDICT: REJECT")
         return 1
-    if not os.environ.get("SERPAPI_API_KEY") and not os.environ.get("BRAVE_API_KEY"):
-        print(f"Loaded {env_name}, but neither SERPAPI_API_KEY nor BRAVE_API_KEY is set")
+    if not os.environ.get("SERPER_API_KEY"):
+        print(f"Loaded {env_name}, but SERPER_API_KEY is missing")
         print(f"Real SKUs [0/{total_cases} pass] | Cost Valid [NO] | Telemetry Valid [NO] | VERDICT: REJECT")
         return 1
 

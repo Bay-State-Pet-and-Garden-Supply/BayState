@@ -10,6 +10,7 @@ from scrapers.ai_search.batch_search import (
     SearchResult,
 )
 from scrapers.ai_search.cohort_state import _BatchCohortState
+from scrapers.ai_search.scoring import SearchScorer
 
 
 class MockScorer:
@@ -488,3 +489,91 @@ class TestContextAwareRanking:
         # Verify scores are in descending order
         scores = [r.score for r in ranked]
         assert scores == sorted(scores, reverse=True)
+
+    def test_rank_urls_for_sku_does_not_double_apply_domain_history(self, monkeypatch) -> None:
+        monkeypatch.setattr("scrapers.ai_search.scoring.get_domain_success_rate", lambda _domain: 0.9)
+
+        scorer = SearchScorer()
+        orchestrator = BatchSearchOrchestrator(
+            search_client=None,
+            extractor=MockExtractor(),
+            scorer=scorer,
+        )
+
+        search_results = [
+            make_search_result(
+                url="https://example.com/product/12345",
+                title="Example Product",
+                description="Exact product detail page",
+            )
+        ]
+
+        ranked = orchestrator.rank_urls_for_sku(
+            sku="12345",
+            search_results=search_results,
+            domain_frequency={},
+            brand=None,
+            product_name="Example Product",
+            category=None,
+        )
+
+        direct_score = scorer.score_search_result(
+            {
+                "url": "https://example.com/product/12345",
+                "title": "Example Product",
+                "description": "Exact product detail page",
+            },
+            "12345",
+            None,
+            "Example Product",
+            None,
+            prefer_manufacturer=True,
+        )
+
+        assert ranked[0].score == direct_score
+
+    def test_real_scorer_prefers_inferred_official_domain_over_high_frequency_retailer(self) -> None:
+        orchestrator = BatchSearchOrchestrator(
+            search_client=None,
+            extractor=MockExtractor(),
+            scorer=SearchScorer(),
+        )
+
+        official_url = "https://bentleyseeds.com/products/jubilee-tomato-seed"
+        retailer_url = "https://www.edenbrothers.com/products/tomato_seeds_jubilee"
+        search_results = [
+            make_search_result(
+                url=retailer_url,
+                title="Bentley Seed Tomato Jubilee 1943",
+                description="Retailer listing for Bentley Seed Tomato Jubilee 1943",
+            ),
+            make_search_result(
+                url=official_url,
+                title="Tomato, Jubilee Seed Packets - Bentley Seeds",
+                description="Official Bentley Seeds product page",
+            ),
+        ]
+
+        domain_frequency = {
+            "edenbrothers.com": DomainFrequency(
+                domain="edenbrothers.com",
+                sku_count=5,
+                skus={"sku1", "sku2", "sku3", "sku4", "sku5"},
+            ),
+            "bentleyseeds.com": DomainFrequency(
+                domain="bentleyseeds.com",
+                sku_count=1,
+                skus={"sku1"},
+            ),
+        }
+
+        ranked = orchestrator.rank_urls_for_sku(
+            sku="051588178896",
+            search_results=search_results,
+            domain_frequency=domain_frequency,
+            brand=None,
+            product_name="Bentley Seed Tomato Jubilee 1943",
+            category="Vegetable Seeds",
+        )
+
+        assert ranked[0].result.url == official_url

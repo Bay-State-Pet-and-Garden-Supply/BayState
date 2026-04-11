@@ -41,18 +41,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json()) as Partial<AIConsolidationDefaults> & {
-      gemini_api_key?: string;
+      openai_api_key?: string;
       defaults?: Partial<AIConsolidationDefaults>;
     };
     const {
-      gemini_api_key,
+      openai_api_key,
       defaults,
       ...rawDefaults
     } = body;
 
-    if (gemini_api_key && gemini_api_key.trim()) {
-      await setAIScrapingProviderSecret('gemini', gemini_api_key, auth.user.id);
-      return NextResponse.json({ message: 'Gemini API key updated successfully' });
+    if (openai_api_key && openai_api_key.trim()) {
+      await setAIScrapingProviderSecret('openai', openai_api_key, auth.user.id);
+      return NextResponse.json({ message: 'OpenAI API key updated successfully' });
     }
 
     const nextDefaults = defaults ?? rawDefaults;

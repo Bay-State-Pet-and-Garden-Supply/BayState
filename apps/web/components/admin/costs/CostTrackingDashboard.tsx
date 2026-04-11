@@ -1,21 +1,20 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  DollarSign,
   Brain,
-  Sparkles,
-  Server,
-  CreditCard,
-  Mail,
-  GitBranch,
-  Cloud,
-  Pencil,
   Check,
-  X,
-  TrendingUp,
-  Zap,
+  Cloud,
+  DollarSign,
+  GitBranch,
+  Mail,
+  Pencil,
   RefreshCw,
+  Server,
+  Sparkles,
+  TrendingUp,
+  X,
+  Zap,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,36 +35,26 @@ interface ServiceCost {
   is_active: boolean;
 }
 
-interface BatchJob {
-  id: string;
-  status: string;
-  provider: string;
-  estimated_cost: number;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  created_at: string;
-  completed_at: string | null;
-  description: string | null;
-}
-
-interface ProviderCostData {
+interface FeatureUsage {
   totalCost: number;
   totalJobs: number;
   completedJobs: number;
   failedJobs: number;
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  providerLabel: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
 }
 
-interface AiCombinedSummary {
-  totalCost: number;
-  totalJobs: number;
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
+interface RecentUsageRecord {
+  id: string;
+  feature: 'AI Search' | 'Crawl4AI' | 'Consolidation';
+  provider: string;
+  status: string;
+  estimated_cost: number;
+  total_tokens: number;
+  created_at: string;
+  completed_at: string | null;
+  description: string | null;
 }
 
 interface CostData {
@@ -73,12 +62,16 @@ interface CostData {
   fixedMonthlyTotal: number;
   services: ServiceCost[];
   servicesByCategory: Record<string, ServiceCost[]>;
-  ai: {
-    gemini: ProviderCostData;
-    openai: ProviderCostData;
-    combined: AiCombinedSummary;
-    recentJobs: BatchJob[];
+  usage: {
+    aiSearch: FeatureUsage;
+    crawl4ai: FeatureUsage;
+    consolidation: FeatureUsage;
+    combined: {
+      totalCost: number;
+      totalJobs: number;
+    };
   };
+  recentUsage: RecentUsageRecord[];
   estimatedMonthlyTotal: number;
 }
 
@@ -89,7 +82,6 @@ const SERVICE_ICONS: Record<string, React.ElementType> = {
   google: Sparkles,
   resend: Mail,
   github: GitBranch,
-  stripe: CreditCard,
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -132,11 +124,18 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function getProviderLabel(provider: string): string {
+  if (provider === 'openai_compatible') return 'OpenAI-Compatible';
+  if (provider === 'serper') return 'Serper';
+  return 'OpenAI';
+}
+
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, string> = {
     completed: 'bg-green-500/10 text-green-400 border-green-500/20',
     failed: 'bg-red-500/10 text-red-400 border-red-500/20',
     in_progress: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    running: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     pending: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
     cancelled: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
   };
@@ -151,30 +150,21 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function getProviderLabel(provider: string): string {
-  if (provider === 'gemini') return 'Gemini';
-  if (provider === 'openai_compatible') return 'OpenAI Compatible';
-  return 'OpenAI';
-}
-
-function ProviderBadge({ provider }: { provider: string }) {
-  const variants: Record<string, string> = {
-    gemini: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    openai: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    openai_compatible: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
+function FeatureBadge({ feature }: { feature: RecentUsageRecord['feature'] }) {
+  const variants: Record<RecentUsageRecord['feature'], string> = {
+    'AI Search': 'bg-violet-500/10 text-violet-300 border-violet-500/20',
+    Crawl4AI: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
+    Consolidation: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
   };
 
   return (
-    <Badge
-      variant="outline"
-      className={cn('text-[10px] font-medium', variants[provider] ?? variants.openai)}
-    >
-      {getProviderLabel(provider)}
+    <Badge variant="outline" className={cn('text-[10px] font-medium', variants[feature])}>
+      {feature}
     </Badge>
   );
 }
 
-const batchJobColumns: Column<BatchJob>[] = [
+const recentUsageColumns: Column<RecentUsageRecord>[] = [
   {
     key: 'created_at',
     header: 'Date',
@@ -186,20 +176,26 @@ const batchJobColumns: Column<BatchJob>[] = [
     ),
   },
   {
-    key: 'description',
-    header: 'Description',
-    searchable: true,
-    render: (_, row) => (
-      <span className="text-xs truncate max-w-[200px] block">
-        {row.description ?? '—'}
-      </span>
-    ),
+    key: 'feature',
+    header: 'Feature',
+    sortable: true,
+    render: (_, row) => <FeatureBadge feature={row.feature} />,
   },
   {
     key: 'provider',
     header: 'Provider',
     sortable: true,
-    render: (_, row) => <ProviderBadge provider={row.provider} />,
+    render: (_, row) => (
+      <span className="text-xs text-muted-foreground">{getProviderLabel(row.provider)}</span>
+    ),
+  },
+  {
+    key: 'description',
+    header: 'Description',
+    searchable: true,
+    render: (_, row) => (
+      <span className="text-xs truncate max-w-[220px] block">{row.description ?? '—'}</span>
+    ),
   },
   {
     key: 'status',
@@ -208,24 +204,13 @@ const batchJobColumns: Column<BatchJob>[] = [
     render: (_, row) => <StatusBadge status={row.status} />,
   },
   {
-    key: 'total_tokens',
-    header: 'Tokens',
-    sortable: true,
-    className: 'text-right',
-    render: (_, row) => (
-      <span className="text-xs tabular-nums text-muted-foreground">
-        {formatTokens(row.total_tokens ?? 0)}
-      </span>
-    ),
-  },
-  {
     key: 'estimated_cost',
     header: 'Cost',
     sortable: true,
     className: 'text-right',
     render: (_, row) => (
       <span className="text-xs tabular-nums font-medium">
-        {formatCurrency(parseFloat(String(row.estimated_cost ?? 0)))}
+        {formatCurrency(row.estimated_cost)}
       </span>
     ),
   },
@@ -277,22 +262,10 @@ function EditableCostCell({
           autoFocus
           disabled={saving}
         />
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6"
-          onClick={handleSave}
-          disabled={saving}
-        >
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSave} disabled={saving}>
           <Check className="h-3 w-3 text-green-400" />
         </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6"
-          onClick={handleCancel}
-          disabled={saving}
-        >
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancel} disabled={saving}>
           <X className="h-3 w-3 text-red-400" />
         </Button>
       </div>
@@ -305,9 +278,7 @@ function EditableCostCell({
       onClick={() => setEditing(true)}
       className="group flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer"
     >
-      <span className="font-semibold tabular-nums">
-        {formatCurrency(service.monthly_cost)}
-      </span>
+      <span className="font-semibold tabular-nums">{formatCurrency(service.monthly_cost)}</span>
       <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity" />
     </button>
   );
@@ -325,8 +296,7 @@ export function CostTrackingDashboard() {
     try {
       const res = await fetch(`/api/admin/costs?days=${days}`);
       if (!res.ok) throw new Error('Failed to fetch cost data');
-      const json = await res.json();
-      setData(json);
+      setData(await res.json());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -370,21 +340,14 @@ export function CostTrackingDashboard() {
   }
 
   const categories = Object.entries(data.servicesByCategory);
-  const aiProviderLabels = `${data.ai.gemini.providerLabel} and ${data.ai.openai.providerLabel}`;
 
   return (
     <div className="space-y-6">
-      <PageHeader providerLabels={aiProviderLabels} />
+      <PageHeader />
 
-      {/* Period Selector */}
       <div className="flex items-center gap-2">
         {[7, 30, 90].map((d) => (
-          <Button
-            key={d}
-            variant={days === d ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setDays(d)}
-          >
+          <Button key={d} variant={days === d ? 'default' : 'outline'} size="sm" onClick={() => setDays(d)}>
             {d}d
           </Button>
         ))}
@@ -394,13 +357,12 @@ export function CostTrackingDashboard() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard
           title="Estimated Monthly"
           value={formatCurrency(data.estimatedMonthlyTotal)}
           icon={DollarSign}
-          description="Fixed + usage-based"
+          description="Fixed + tracked external usage"
           accent="text-green-400"
           bgAccent="bg-green-500/10"
         />
@@ -413,32 +375,31 @@ export function CostTrackingDashboard() {
           bgAccent="bg-blue-500/10"
         />
         <SummaryCard
-          title={`Gemini Costs (${days}d)`}
-          value={formatCurrency(data.ai.gemini.totalCost)}
-          icon={Sparkles}
-          description={`${data.ai.gemini.totalJobs} batch jobs · ${data.ai.gemini.completedJobs} completed`}
-          accent="text-purple-400"
-          bgAccent="bg-purple-500/10"
-        />
-        <SummaryCard
-          title={`OpenAI Costs (${days}d)`}
-          value={formatCurrency(data.ai.openai.totalCost)}
+          title={`AI Search (${days}d)`}
+          value={formatCurrency(data.usage.aiSearch.totalCost)}
           icon={Brain}
-          description={`${data.ai.openai.totalJobs} batch jobs · ${data.ai.openai.completedJobs} completed`}
-          accent="text-blue-400"
-          bgAccent="bg-blue-500/10"
+          description={`${data.usage.aiSearch.totalJobs} jobs · ${data.usage.aiSearch.completedJobs} completed`}
+          accent="text-violet-300"
+          bgAccent="bg-violet-500/10"
         />
         <SummaryCard
-          title={`Combined AI Costs (${days}d)`}
-          value={formatCurrency(data.ai.combined.totalCost)}
-          icon={Zap}
-          description={`${data.ai.combined.totalJobs} jobs · ${formatTokens(data.ai.combined.promptTokens)} in · ${formatTokens(data.ai.combined.completionTokens)} out`}
-          accent="text-amber-400"
+          title={`Crawl4AI (${days}d)`}
+          value={formatCurrency(data.usage.crawl4ai.totalCost)}
+          icon={Sparkles}
+          description={`${data.usage.crawl4ai.totalJobs} jobs · ${data.usage.crawl4ai.completedJobs} completed`}
+          accent="text-amber-300"
           bgAccent="bg-amber-500/10"
+        />
+        <SummaryCard
+          title={`Consolidation (${days}d)`}
+          value={formatCurrency(data.usage.consolidation.totalCost)}
+          icon={Zap}
+          description={`${data.usage.consolidation.totalJobs} jobs · ${formatTokens(data.usage.consolidation.totalTokens ?? 0)} tokens`}
+          accent="text-cyan-300"
+          bgAccent="bg-cyan-500/10"
         />
       </div>
 
-      {/* Service Costs by Category */}
       <div className="grid gap-6 lg:grid-cols-2">
         {categories.map(([category, services]) => (
           <Card key={category}>
@@ -447,18 +408,15 @@ export function CostTrackingDashboard() {
                 <span className={CATEGORY_COLORS[category]}>●</span>
                 {CATEGORY_LABELS[category] ?? category}
                 <Badge variant="outline" className="ml-auto text-[10px]">
-                  {(services ?? []).length} service{(services ?? []).length !== 1 ? 's' : ''}
+                  {services.length} service{services.length !== 1 ? 's' : ''}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {(services ?? []).map((svc) => {
+              {services.map((svc) => {
                 const Icon = SERVICE_ICONS[svc.service] ?? Server;
                 return (
-                  <div
-                    key={svc.id}
-                    className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
-                  >
+                  <div key={svc.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="p-1.5 rounded-md bg-muted">
                         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -466,9 +424,7 @@ export function CostTrackingDashboard() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{svc.display_name}</p>
                         {svc.notes && (
-                          <p className="text-[11px] text-muted-foreground truncate max-w-[240px]">
-                            {svc.notes}
-                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate max-w-[240px]">{svc.notes}</p>
                         )}
                       </div>
                     </div>
@@ -485,12 +441,7 @@ export function CostTrackingDashboard() {
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-xs text-muted-foreground font-medium">Category Total</span>
                 <span className="text-sm font-bold">
-                  {formatCurrency(
-                    (services ?? []).reduce(
-                      (sum, svc) => sum + parseFloat(String(svc.monthly_cost)),
-                      0
-                    )
-                  )}
+                  {formatCurrency(services.reduce((sum, svc) => sum + svc.monthly_cost, 0))}
                 </span>
               </div>
             </CardContent>
@@ -498,43 +449,36 @@ export function CostTrackingDashboard() {
         ))}
       </div>
 
-      {/* Recent AI Batch Jobs */}
-      {data.ai.recentJobs.length > 0 && (
+      {data.recentUsage.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Brain className="h-4 w-4 text-purple-400" />
-              Recent Gemini + OpenAI Batch Jobs
+              <TrendingUp className="h-4 w-4 text-green-400" />
+              Recent External Usage
               <Badge variant="outline" className="ml-auto text-[10px]">
                 Last {days} days
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-              <DataTable
-                data={data.ai.recentJobs}
-                columns={batchJobColumns}
-                pageSize={10}
-                emptyMessage="No recent Gemini or OpenAI batch jobs."
-              />
-            </CardContent>
-          </Card>
+            <DataTable
+              data={data.recentUsage}
+              columns={recentUsageColumns}
+              pageSize={12}
+              emptyMessage="No recent external usage in the selected period."
+            />
+          </CardContent>
+        </Card>
       )}
 
-      {/* Footer Note */}
       <p className="text-xs text-muted-foreground text-center pb-4">
-        Fixed costs are manually entered estimates. Gemini and OpenAI costs are tracked automatically from {aiProviderLabels}
-        {' '}batch jobs. Click any fixed cost value to update it.
+        Fixed costs are manually maintained. Usage-based totals now track active external features across AI Search, Crawl4AI, and OpenAI batch consolidation.
       </p>
     </div>
   );
 }
 
-function PageHeader({
-  providerLabels = 'Google Gemini API and OpenAI API',
-}: {
-  providerLabels?: string;
-}) {
+function PageHeader() {
   return (
     <div className="flex flex-col gap-1">
       <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
@@ -542,7 +486,7 @@ function PageHeader({
         Cost Tracking
       </h1>
       <p className="text-muted-foreground text-sm">
-        Monitor and manage monthly costs across fixed services plus separate {providerLabels} usage.
+        Monitor fixed services alongside live external spend for AI Search, Crawl4AI, and consolidation.
       </p>
     </div>
   );
@@ -580,7 +524,7 @@ function SummaryCard({
 }
 
 function CostTrackingSkeleton() {
-  const summarySkeletonKeys = ['estimated', 'fixed', 'gemini', 'openai', 'combined'];
+  const summarySkeletonKeys = ['estimated', 'fixed', 'search', 'crawl4ai', 'consolidation'];
   const categorySkeletonKeys = ['infrastructure', 'ai', 'payment', 'communication'];
 
   return (
