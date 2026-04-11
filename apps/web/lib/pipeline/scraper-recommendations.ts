@@ -121,7 +121,7 @@ export async function getScraperRecommendations(
   }));
 
   // Build affinity lookup
-  const affinityBySlug = new Map<string, typeof affinityRows extends Array<infer T> ? T : never>();
+  const affinityBySlug = new Map<string, any>();
   (affinityRows || []).forEach((row) => {
     affinityBySlug.set(row.scraper_slug, row);
   });
