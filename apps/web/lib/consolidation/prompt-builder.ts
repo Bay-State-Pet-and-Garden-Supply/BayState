@@ -32,7 +32,6 @@ const TRUSTED_SOURCE_FRAGMENTS = [
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
 const CONSISTENCY_RULES = [
     'Keep the same BRAND across sibling products unless higher-trust evidence for this SKU clearly conflicts.',
-    'Prefer the same deepest CATEGORY taxonomy pattern used by siblings when the purchase intent matches.',
     'Keep naming and description style aligned across the product line while preserving real variant differences.',
 ];
 
@@ -42,7 +41,6 @@ interface SiblingProductPromptSummary {
     sku: string;
     name: string;
     brand?: string;
-    category?: string;
 }
 
 interface ProductLinePromptContext {
@@ -50,7 +48,6 @@ interface ProductLinePromptContext {
     sibling_products: SiblingProductPromptSummary[];
     consistency_rules: string[];
     expected_brand?: string;
-    expected_category?: string;
     consistency_examples?: string[];
 }
 
@@ -108,19 +105,6 @@ function getSourceBrand(source: CanonicalProductSourceRecord): string | undefine
     return brand ? brand.replace(/^brand\s*:\s*/i, '').trim() : undefined;
 }
 
-function getSourceCategory(source: CanonicalProductSourceRecord): string | undefined {
-    const category = trimString(source.category);
-    if (category) {
-        return category;
-    }
-
-    if (Array.isArray(source.categories)) {
-        return source.categories.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim();
-    }
-
-    return undefined;
-}
-
 function getSiblingBrand(rawSources: Record<string, unknown>): string | undefined {
     for (const source of getPreferredPromptSources(rawSources)) {
         const brand = getSourceBrand(source);
@@ -132,23 +116,11 @@ function getSiblingBrand(rawSources: Record<string, unknown>): string | undefine
     return undefined;
 }
 
-function getSiblingCategory(rawSources: Record<string, unknown>): string | undefined {
-    for (const source of getPreferredPromptSources(rawSources)) {
-        const category = getSourceCategory(source);
-        if (category) {
-            return category;
-        }
-    }
-
-    return undefined;
-}
-
 function buildSiblingProductSummary(sibling: SiblingProduct): SiblingProductPromptSummary {
     return {
         sku: sibling.sku,
         name: trimString(sibling.name) || sibling.sku,
         ...(getSiblingBrand(sibling.sources) ? { brand: getSiblingBrand(sibling.sources) } : {}),
-        ...(getSiblingCategory(sibling.sources) ? { category: getSiblingCategory(sibling.sources) } : {}),
     };
 }
 
@@ -162,13 +134,12 @@ export function buildProductLinePromptContext(product: ProductSource): ProductLi
         .slice(0, MAX_SIBLING_PRODUCTS)
         .map((sibling) => buildSiblingProductSummary(sibling));
     const expectedBrand = trimString(context.expectedBrand);
-    const expectedCategory = trimString(context.expectedCategory);
     const consistencyExamples = siblingProducts
         .map((sibling) => sibling.name)
         .filter((name) => name.trim().length > 0)
         .slice(0, 3);
 
-    if (siblingProducts.length === 0 && !expectedBrand && !expectedCategory) {
+    if (siblingProducts.length === 0 && !expectedBrand) {
         return undefined;
     }
 
@@ -177,7 +148,6 @@ export function buildProductLinePromptContext(product: ProductSource): ProductLi
         sibling_products: siblingProducts,
         consistency_rules: [...CONSISTENCY_RULES],
         ...(expectedBrand ? { expected_brand: expectedBrand } : {}),
-        ...(expectedCategory ? { expected_category: expectedCategory } : {}),
         ...(consistencyExamples.length >= 2 ? { consistency_examples: consistencyExamples } : {}),
     };
 }
@@ -234,37 +204,21 @@ export function generateSystemPrompt(categories: string[]): string {
 
     return `You consolidate multi-source product data into one ShopSite export-ready product record.
 
-${schemaConstraintInstruction} Never invent taxonomy breadcrumbs or ShopSite page names.
+${schemaConstraintInstruction} Never invent ShopSite page names.
 
-Prioritize outputs that are ready for ShopSite export: name, brand, weight, description, long_description, search_keywords, product_on_pages, and category.
-
-Taxonomy rules:
-- Classify from the product's actual function, ingredients, materials, form factor, and intended animal/use case.
-- Ignore stale or overly broad legacy category strings when stronger product evidence points elsewhere.
-- Choose the deepest valid leaf taxonomy breadcrumb that best represents the primary purchase intent.
-- Do not return broad parent-only categories when a more specific leaf exists.
-- Example: Ortho Home Defense belongs under Lawn & Garden > Pest & Weed Control > Insect Control.
-- Treat planting seeds as Lawn & Garden items. Seed packets, bulk garden seed, vegetable seeds, flower seeds, herb seeds, wildflower or pollinator mixes, bulbs, seed potatoes, and seed-starting supplies belong under Lawn & Garden when trusted source evidence indicates planting or gardening intent.
-- Treat seed as animal, poultry, bird, or small pet taxonomy only when trusted source evidence explicitly describes feeding intent such as feed, food, treats, scratch, forage, suet, millet spray, feeder use, livestock use, or small-pet use.
-- When "seed" appears in the product name, default to the Lawn & Garden hierarchy unless trusted source descriptions explicitly indicate animal, livestock, wild bird, caged bird, or small pet feeding intent.
-- Do not map planting seeds to Farm Animal, Bird, Wild Bird, or Small Pet categories solely because the word "seed" appears in the product name.
-- Variety names and merchandising phrases like Jack O Lantern, pollinator, butterfly, bouquet, fall color, or decorative do not change a planting seed product into seasonal utility, decor, or service taxonomy.
-- Example: Bentley Seed Tomato Jubilee Seed Packets belongs under Lawn & Garden > Flower & Vegetable Seeds.
-- Example: Pumpkin Jack O Lantern Seed Packets still belongs under Lawn & Garden > Flower & Vegetable Seeds.
-- Example: Chicken scratch mixed seed belongs under Farm Animal > Chicken > Feed.
-- Example: Black oil sunflower seed blend for backyard feeders belongs under Wild Bird > Seed & Food > Seed Blends.
+Prioritize outputs that are ready for ShopSite export: name, brand, weight, description, long_description, search_keywords, and product_on_pages.
 
 Source trust rules:
 - Highest trust: "shopsite_input" for current ShopSite assignments.
 - High trust: manufacturer, distributor, and catalog sources for factual product data.
 - Lower trust: marketplace and retailer listings such as Amazon, Walmart, eBay, and seller-provided labels.
-- When sources conflict on brand, category, or product_on_pages, prefer the highest-trust source with direct evidence.
+- When sources conflict on brand or product_on_pages, prefer the highest-trust source with direct evidence.
 - Preserve shopsite_input product_on_pages unless higher-trust evidence clearly supports a change.
 - Never let marketplace seller labels or "Brand: ..." prefixes override higher-trust brand evidence.
 
 Sibling product context:
 - Use sibling product context only as consistency guidance when it is provided.
-- Keep supported naming, brand, and taxonomy patterns aligned across related SKUs without inventing details from siblings.
+- Keep supported naming and brand patterns aligned across related SKUs without inventing details from siblings.
 
 Product-name rules:
 - Exclude brand from the product name; put it only in brand.
@@ -289,7 +243,6 @@ Field rules:
 - weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
 - product_on_pages: match the customer shopping intent. Planting seed products should use Seeds & Seed Starting and can also use Lawn & Garden Shop All when supported. Do not use Farm Animal, Bird, Small Pet, or Wild Bird pages for seed products unless trusted source descriptions explicitly indicate feed or treat intent.
 - product_on_pages: never use service-only pages such as #Services for a physical retail product unless the trusted source clearly describes a service, rental, refill, pickup, or delivery offering.
-- category: prefer a single best-fit leaf breadcrumb. Only return multiple category values when the product genuinely belongs in multiple customer-facing aisles, and never include an ancestor plus its child together.
 - confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain.
 
 Return valid JSON only through the response schema. Every required string field must be non-empty.`;

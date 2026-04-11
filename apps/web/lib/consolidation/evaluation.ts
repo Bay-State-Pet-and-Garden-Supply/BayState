@@ -10,7 +10,6 @@ const COMPARISON_FIELDS = [
     'description',
     'long_description',
     'search_keywords',
-    'category',
     'product_on_pages',
     'confidence_score',
 ] as const;
@@ -22,7 +21,6 @@ const COMPLETENESS_FIELDS = [
     'description',
     'long_description',
     'search_keywords',
-    'category',
     'product_on_pages',
 ] as const;
 
@@ -142,24 +140,15 @@ export function calculateTaxonomyCorrectness(
         return 0;
     }
 
-    const actualCategory = normalizeDelimitedSet(actual.category, 'pipe');
     const actualPages = normalizeDelimitedSet(actual.product_on_pages, 'pipe');
 
     if (!expected) {
-        const categoryScore = actualCategory.length > 0 ? 1 : 0;
-        const pageScore = actualPages.length > 0 ? 1 : 0;
-        return (categoryScore + pageScore) / 2;
+        return actualPages.length > 0 ? 1 : 0;
     }
 
-    const expectedCategory = normalizeDelimitedSet(expected.category, 'pipe');
     const expectedPages = normalizeDelimitedSet(expected.product_on_pages, 'pipe');
 
-    const categoryScore =
-        actualCategory.length > 0 && JSON.stringify(actualCategory) === JSON.stringify(expectedCategory) ? 1 : 0;
-    const pageScore =
-        actualPages.length > 0 && JSON.stringify(actualPages) === JSON.stringify(expectedPages) ? 1 : 0;
-
-    return (categoryScore + pageScore) / 2;
+    return actualPages.length > 0 && JSON.stringify(actualPages) === JSON.stringify(expectedPages) ? 1 : 0;
 }
 
 export function compareConsolidationResults(

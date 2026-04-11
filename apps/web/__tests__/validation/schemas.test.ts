@@ -167,6 +167,7 @@ describe('Consolidation Schemas', () => {
     describe('BatchJobSchema', () => {
         const validBatchJob = {
             id: '550e8400-e29b-41d4-a716-446655440000',
+            provider: 'openai',
             status: 'completed',
             description: 'Test batch job',
             auto_apply: false,

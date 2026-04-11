@@ -846,14 +846,14 @@ export function ScrapedResultsView({
                               {currentSourceData.upc || "N/A"}
                             </span>
                           </div>
+                        </div>
+                        <div className="space-y-3">
                           <div className="flex flex-col gap-1">
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                              Category
+                              Status
                             </span>
-                            <span className="text-foreground truncate">
-                              {currentSourceData.category ||
-                                currentSourceData.categories?.[0] ||
-                                "Uncategorized"}
+                            <span className="text-foreground truncate uppercase font-bold text-[10px] tracking-tighter">
+                              {currentSourceData.availability || "Unknown"}
                             </span>
                           </div>
                         </div>
