@@ -84,3 +84,38 @@ async def test_name_consolidator_returns_original_if_llm_fails() -> None:
 
     assert consolidated_name == "ABBRV NAME"
     assert cost == 0.0
+
+
+@pytest.mark.asyncio
+async def test_name_consolidator_disables_llm_after_auth_failure() -> None:
+    results = [
+        {
+            "url": "https://www.chewy.com/advantage-ii-large-cat",
+            "title": "Advantage II Large Cat Flea Treatment",
+            "description": "Bayer Advantage II for Cats over 9 lbs.",
+        }
+    ]
+
+    consolidator = NameConsolidator(api_key="test-key")
+    assert consolidator.provider is not None
+    consolidator.provider.generate_text = AsyncMock(
+        side_effect=Exception("Error code: 401 - {'error': {'code': 'invalid_api_key'}}")
+    )
+
+    first_name, first_cost = await consolidator.consolidate_name(
+        sku="84170364",
+        abbreviated_name="ADVNTG II CAT LRG",
+        search_snippets=results,
+    )
+    second_name, second_cost = await consolidator.consolidate_name(
+        sku="84170364",
+        abbreviated_name="ADVNTG II CAT LRG",
+        search_snippets=results,
+    )
+
+    assert consolidator.provider.generate_text.await_count == 1
+    assert consolidator._auth_failed is True
+    assert first_name == "Advantage II Large Cat Flea Treatment"
+    assert second_name == "Advantage II Large Cat Flea Treatment"
+    assert first_cost == 0.0
+    assert second_cost == 0.0

@@ -4,6 +4,7 @@ import asyncio
 import logging
 import threading
 import time
+from concurrent.futures import Future
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -141,7 +142,7 @@ async def test_connect_should_enable_transport_reconnect(realtime_manager: Realt
     client_cls.assert_called_once_with(
         "wss://test.supabase.co/realtime/v1",
         "test-key",
-        auto_reconnect=True,
+        auto_reconnect=False,
     )
     fake_client.connect.assert_awaited_once()
     assert realtime_manager.client is fake_client
@@ -333,3 +334,29 @@ def test_reconnect_delays_exponential_backoff() -> None:
 def test_broadcast_circuit_breaker_constants() -> None:
     assert BROADCAST_CIRCUIT_BREAKER_THRESHOLD == 5
     assert BROADCAST_CIRCUIT_BREAKER_TIMEOUT_SECONDS == 60.0
+
+
+def test_job_log_transport_suppresses_expected_realtime_errors(
+    fake_realtime_manager: FakeRealtimeManager,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    transport = JobLogTransport(
+        job_id="job-123",
+        runner_id="runner-1",
+        runner_name="runner-one",
+        realtime_manager=fake_realtime_manager,
+        flush_interval=10.0,
+    )
+    future: Future[None] = Future()
+    future.set_exception(RealtimeError("Broadcast channel is not connected"))
+
+    with caplog.at_level(logging.ERROR):
+        transport._handle_realtime_future(
+            future,
+            operation="broadcast job log",
+            payload={"job_id": "job-123"},
+        )
+
+    assert isinstance(transport._last_realtime_error, RealtimeError)
+    assert caplog.records == []
+    transport.close()

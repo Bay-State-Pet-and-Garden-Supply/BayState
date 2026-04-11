@@ -10,6 +10,7 @@ import re
 from urllib.parse import urlparse
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai.async_logger import AsyncLogger, LogLevel
 from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
@@ -35,6 +36,7 @@ class Crawl4AIEngine:
         self.config = self._normalize_config(config)
         self._crawler: Optional[AsyncWebCrawler] = None
         self._browser_config = self._build_browser_config()
+        self._crawl4ai_logger = AsyncLogger(log_level=LogLevel.ERROR, verbose=False)
 
     @staticmethod
     def _normalize_config(config: dict[str, Any] | EngineConfig) -> dict[str, Any]:
@@ -293,7 +295,7 @@ class Crawl4AIEngine:
 
     def _create_crawler(self) -> AsyncWebCrawler:
         """Build the AsyncWebCrawler instance for the current browser config."""
-        return AsyncWebCrawler(config=self._browser_config)
+        return AsyncWebCrawler(config=self._browser_config, logger=self._crawl4ai_logger)
 
     async def initialize(self) -> None:
         """Initialize the underlying crawler.

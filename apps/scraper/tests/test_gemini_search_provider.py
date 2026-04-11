@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from scrapers.ai_search.search import GeminiSearchClient
+from scrapers.providers.gemini_search import GeminiSearchClient
 
 pytestmark = pytest.mark.asyncio
 

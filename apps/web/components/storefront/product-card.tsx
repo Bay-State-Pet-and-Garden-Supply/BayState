@@ -77,7 +77,7 @@ export function ProductCard({ product }: ProductCardProps) {
             {/* Product Info Area */}
             <div className="flex flex-1 flex-col p-4 pt-3">
               {product.brand && (
-                <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400 font-display">
                   {product.brand.name}
                 </p>
               )}
@@ -89,7 +89,7 @@ export function ProductCard({ product }: ProductCardProps) {
               {/* Tiered Pricing Section */}
               <div className="mt-auto flex flex-col gap-1 pt-2 border-t border-zinc-100">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black tracking-tighter text-zinc-900 italic">
+                  <span className="text-xl font-black tracking-tighter text-zinc-900 font-display">
                     {formattedPrice}
                   </span>
                 </div>

@@ -19,7 +19,7 @@ export function AccountSidebar() {
     const pathname = usePathname()
 
     return (
-        <nav className="flex flex-row overflow-x-auto md:flex-col space-x-2 md:space-x-0 md:space-y-1 pb-2 md:pb-0 scrollbar-hide">
+        <nav className="flex flex-row overflow-x-auto md:flex-col border-b-4 md:border-b-0 md:border-l-4 border-zinc-900 pb-2 md:pb-0 scrollbar-hide">
             {items.map((item) => {
                 const isActive = pathname === item.href
                 return (
@@ -27,23 +27,28 @@ export function AccountSidebar() {
                         key={item.href}
                         href={item.href}
                         className={cn(
-                            "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors flex-shrink-0",
-                            isActive ? "bg-zinc-100 text-zinc-900" : "text-zinc-600 hover:text-zinc-900",
-                            // Mobile specific adjustments for touch targets
-                            "min-h-[44px]"
+                            "flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest transition-all flex-shrink-0",
+                            isActive 
+                                ? "bg-zinc-900 text-white md:-ml-1 md:border-l-8 md:border-primary" 
+                                : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50",
+                            "min-h-[48px]"
                         )}
                     >
-                        <item.icon className={cn("h-4 w-4", isActive ? "text-zinc-900" : "text-zinc-500")} />
+                        <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-zinc-400")} />
                         {item.label}
                     </Link>
                 )
             })}
-            <form action={signOutAction} className="flex-shrink-0 md:pt-4 md:mt-4 md:border-t">
-                <button type="submit" className="flex w-full items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors whitespace-nowrap min-h-[44px]">
+            <form action={signOutAction} className="flex-shrink-0 md:mt-8">
+                <button 
+                    type="submit" 
+                    className="flex w-full items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap min-h-[48px] border-t-2 md:border-t-4 border-zinc-100 md:border-zinc-900"
+                >
                     <LogOut className="h-4 w-4" />
                     Sign Out
                 </button>
             </form>
         </nav>
     )
+
 }

@@ -24,6 +24,13 @@ RETAILER_NOISE_TOKENS = {
     "shop",
     "store",
 }
+AUTH_FAILURE_MARKERS = (
+    "401",
+    "incorrect api key",
+    "invalid_api_key",
+    "authentication",
+    "unauthorized",
+)
 
 
 class NameConsolidator:
@@ -53,6 +60,7 @@ class NameConsolidator:
         )
         self.client = getattr(self.provider, "_client", None) if self.provider is not None else None
         self._cost_tracker = AICostTracker()
+        self._auth_failed = False
 
     def _normalized_tokens(self, text: str) -> list[str]:
         return [token.lower() for token in TOKEN_RE.findall(str(text or "")) if token]
@@ -150,6 +158,24 @@ class NameConsolidator:
             return heuristic_candidate
         return abbreviated_name
 
+    @staticmethod
+    def _summarize_error(error: Exception, *, max_length: int = 240) -> str:
+        text = " ".join(str(error).split())
+        if len(text) <= max_length:
+            return text
+        return f"{text[: max_length - 3]}..."
+
+    @classmethod
+    def _is_auth_error(cls, error: Exception) -> bool:
+        message = str(error).lower()
+        status_code = getattr(error, "status_code", None)
+        if status_code == 401:
+            return True
+        response = getattr(error, "response", None)
+        if getattr(response, "status_code", None) == 401:
+            return True
+        return any(marker in message for marker in AUTH_FAILURE_MARKERS)
+
     async def consolidate_name(
         self,
         sku: str,
@@ -171,6 +197,8 @@ class NameConsolidator:
 
         heuristic_candidate = self._best_snippet_candidate(abbreviated_name, search_snippets)
         fallback_candidate = heuristic_candidate or abbreviated_name
+        if self._auth_failed:
+            return fallback_candidate, 0.0
         if not self.provider:
             return fallback_candidate, 0.0
 
@@ -227,5 +255,10 @@ TASK:
             return resolved_name, cost
 
         except Exception as e:
-            logger.error(f"[Name Consolidator] Consolidation failed: {e}")
+            if self._is_auth_error(e):
+                self._auth_failed = True
+                logger.warning("[Name Consolidator] Disabling LLM consolidation after authentication failure")
+                return fallback_candidate, 0.0
+
+            logger.warning("[Name Consolidator] Consolidation failed: %s", self._summarize_error(e))
             return fallback_candidate, 0.0

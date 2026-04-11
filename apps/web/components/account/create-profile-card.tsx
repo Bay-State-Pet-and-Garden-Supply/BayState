@@ -31,25 +31,26 @@ export function CreateProfileCard({ userEmail, userName }: CreateProfileCardProp
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserPlus className="h-5 w-5" />
-          Complete Your Profile
-        </CardTitle>
-        <CardDescription>
-          We need to set up your profile to continue. This only takes a moment.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2 text-sm">
-          <p><span className="font-medium">Email:</span> {userEmail}</p>
-          {userName && <p><span className="font-medium">Name:</span> {userName}</p>}
+    <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)]">
+      <div className="bg-zinc-900 p-4 border-b-4 border-zinc-900 text-white flex items-center gap-3">
+        <UserPlus className="h-6 w-6 text-accent" />
+        <div className="flex flex-col">
+            <h2 className="text-2xl font-black uppercase tracking-tight font-display">Complete Your Profile</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">We need to set up your profile to continue.</p>
+        </div>
+      </div>
+      <div className="p-8 space-y-6">
+        <div className="space-y-3 bg-zinc-50 border-2 border-zinc-100 p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-zinc-500">ACCOUNT DETAILS</p>
+          <div className="grid gap-2">
+            <p className="text-sm font-bold"><span className="uppercase text-zinc-400 mr-2 text-[10px]">Email:</span> {userEmail}</p>
+            {userName && <p className="text-sm font-bold"><span className="uppercase text-zinc-400 mr-2 text-[10px]">Name:</span> {userName}</p>}
+          </div>
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-            <AlertCircle className="h-4 w-4" />
+          <div className="flex items-center gap-3 p-4 border-2 border-red-600 bg-red-50 text-red-700 font-black uppercase tracking-tight text-xs">
+            <AlertCircle className="h-5 w-5" />
             {error}
           </div>
         )}
@@ -57,18 +58,19 @@ export function CreateProfileCard({ userEmail, userName }: CreateProfileCardProp
         <Button 
           onClick={handleCreateProfile} 
           disabled={isPending}
-          className="w-full"
+          className="w-full h-14 text-lg font-black uppercase tracking-widest border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all"
         >
           {isPending ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Creating Profile...
             </>
           ) : (
             'Create My Profile'
           )}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
+
 }

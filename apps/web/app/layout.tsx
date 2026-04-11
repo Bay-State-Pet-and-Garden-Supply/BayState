@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import { Inter, Arvo } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
-const outfit = Outfit({
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-outfit",
-  fallback: ["system-ui", "sans-serif"],
+  variable: "--font-inter",
+});
+
+const arvo = Arvo({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-arvo",
 });
 
 export const metadata: Metadata = {
@@ -54,7 +60,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${outfit.variable} antialiased font-sans`}
+        className={`${inter.variable} ${arvo.variable} antialiased font-sans`}
       >
         {children}
         <Toaster duration={5000} closeButton />
