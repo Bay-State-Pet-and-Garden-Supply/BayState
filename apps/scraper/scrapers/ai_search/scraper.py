@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -86,7 +87,7 @@ class AISearchScraper:
     """AI-powered search scraper for universal product extraction.
 
     This scraper doesn't require pre-configured site definitions. Instead, it:
-    1. Searches for the product using SerpAPI/Google search with provider fallbacks
+    1. Searches for the product using the configured discovery provider
     2. Uses AI to identify the most likely manufacturer/official product page
     3. Navigates to that page and extracts structured data
     4. Returns results in a standardized format
@@ -102,6 +103,7 @@ class AISearchScraper:
         llm_provider: str = "openai",
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
+        search_api_key: str | None = None,
         crawl4ai_llm_provider: str | None = None,
         crawl4ai_llm_model: str | None = None,
         crawl4ai_llm_base_url: str | None = None,
@@ -130,7 +132,8 @@ class AISearchScraper:
             cache_enabled: Whether to enable/disable Crawl4AI caching
             extraction_strategy: Strategy for data extraction (llm, json_ld, etc)
             prompt_version: Which prompt version to use (v1, v2, etc)
-            search_provider: Search provider preference (auto, serpapi, gemini)
+            search_provider: Search provider preference (auto, serper, gemini)
+            search_api_key: Search provider API key override
         """
         self._llm_runtime = resolve_llm_runtime(
             provider=llm_provider,
@@ -156,11 +159,18 @@ class AISearchScraper:
         self.extraction_strategy = extraction_strategy
         self.prompt_version = prompt_version
         self.search_provider = normalize_search_provider(search_provider or os.getenv("AI_SEARCH_PROVIDER"))
+        if self.search_provider == "auto":
+            self.search_provider = "serper"
+        self.search_api_key = search_api_key
         self.prefer_manufacturer = prefer_manufacturer
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
-        self.max_follow_up_queries = _read_int_env("AI_SEARCH_MAX_FOLLOW_UP_QUERIES", default=2)
-        # Two-step search refinement configuration
-        self.enable_two_step = os.getenv("AI_SEARCH_ENABLE_TWO_STEP", "false").lower() == "true"
+        self.max_follow_up_queries = min(1, _read_int_env("AI_SEARCH_MAX_FOLLOW_UP_QUERIES", default=1))
+        requested_two_step_refiner = os.getenv("AI_SEARCH_ENABLE_TWO_STEP", "false").lower() == "true"
+        # The production discovery flow is already SKU -> consolidated name. Keep the
+        # old refiner disabled for Serper so we never exceed two searches per product.
+        self.enable_two_step = requested_two_step_refiner and self.search_provider == "gemini"
+        if requested_two_step_refiner and not self.enable_two_step:
+            logger.info("[AI Search] Disabling legacy search refiner for provider '%s'", self.search_provider)
         self.secondary_threshold = _read_float_env("AI_SEARCH_SECONDARY_THRESHOLD", default=0.75)
         self.circuit_breaker_threshold = _read_float_env("AI_SEARCH_CIRCUIT_BREAKER_THRESHOLD", default=0.85)
         self.confidence_delta = _read_float_env("AI_SEARCH_CONFIDENCE_DELTA", default=0.1)
@@ -196,7 +206,7 @@ class AISearchScraper:
         self._search_client = SearchClient(
             max_results=max_search_results,
             provider=self.search_provider,
-            api_key=self.llm_api_key,
+            api_key=self.search_api_key if self.search_provider == "serper" else self.llm_api_key,
         )
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
@@ -385,7 +395,11 @@ class AISearchScraper:
                 logger.info(f"[AI Search] Follow-up search: {follow_up_query}")
                 await run_query(follow_up_query)
 
-        search_brand = brand or self._infer_search_brand_hint(aggregated_results, working_name or product_name)
+        search_brand = (
+            brand
+            or self._infer_domain_brand_hint(aggregated_results, working_name or product_name)
+            or self._infer_search_brand_hint(aggregated_results, working_name or product_name)
+        )
 
         prepared_results = self._prepare_candidate_pool(
             search_results=aggregated_results,
@@ -502,6 +516,42 @@ class AISearchScraper:
         )[0][0]
         logger.info("[AI Search] Inferred search brand hint '%s' from search snippets", inferred_brand)
         return inferred_brand
+
+    def _infer_domain_brand_hint(self, search_results: list[dict[str, Any]], product_name: Optional[str]) -> Optional[str]:
+        if not search_results or not product_name:
+            return None
+
+        tokens = [
+            token
+            for token in re.findall(r"[a-z0-9]+", product_name.lower())
+            if token and not token.isdigit()
+        ]
+        if not tokens:
+            return None
+
+        normalized_domains = [
+            self._matching.normalize_token_text(self._scoring.domain_from_url(str(result.get("url") or "")))
+            for result in search_results[:5]
+        ]
+        normalized_domains = [domain for domain in normalized_domains if domain]
+        if not normalized_domains:
+            return None
+
+        for prefix_length in range(min(3, len(tokens)), 0, -1):
+            prefix_tokens = tokens[:prefix_length]
+            if all(token in self._matching.BRAND_PREFIX_EXCLUDED_TOKENS for token in prefix_tokens):
+                continue
+
+            candidate_brand = " ".join(token.capitalize() for token in prefix_tokens)
+            normalized_candidate = self._matching.normalize_token_text(candidate_brand)
+            if len(normalized_candidate) < 4:
+                continue
+
+            if any(normalized_candidate in domain for domain in normalized_domains):
+                logger.info("[AI Search] Inferred domain brand hint '%s' from candidate domains", candidate_brand)
+                return candidate_brand
+
+        return None
 
     def _should_expand_search(
         self,
@@ -1210,6 +1260,11 @@ class AISearchScraper:
                 cost_context=cost_context,
                 preferred_domains=preferred_domains,
             )
+            if not effective_brand:
+                effective_brand = (
+                    self._infer_domain_brand_hint(search_results, product_name)
+                    or self._infer_search_brand_hint(search_results, product_name)
+                )
 
             if not search_results:
                 error_msg = search_error or "No search results found"

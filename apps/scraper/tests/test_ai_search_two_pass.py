@@ -7,7 +7,14 @@ from scrapers.ai_search.scraper import AISearchScraper
 @pytest.mark.asyncio
 async def test_scrape_product_performs_two_pass_discovery() -> None:
     # Enable LLM source selection and two-step refinement via env var
-    with patch.dict(os.environ, {"AI_SEARCH_USE_LLM_SOURCE_RANKING": "true", "AI_SEARCH_ENABLE_TWO_STEP": "true"}):
+    with patch.dict(
+        os.environ,
+        {
+            "AI_SEARCH_USE_LLM_SOURCE_RANKING": "true",
+            "AI_SEARCH_ENABLE_TWO_STEP": "true",
+            "AI_SEARCH_PROVIDER": "gemini",
+        },
+    ):
         scraper = AISearchScraper()
 
         # Mock search client

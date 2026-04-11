@@ -35,15 +35,15 @@ class TestTwoStepConfigOverrides:
     """Test that two-step search refinement config can be overridden via env vars."""
 
     def test_enable_two_step_can_be_enabled(self) -> None:
-        """enable_two_step can be set to True via env var."""
-        with patch.dict(os.environ, {"AI_SEARCH_ENABLE_TWO_STEP": "true"}):
+        """enable_two_step can be set to True for the explicit Gemini flow."""
+        with patch.dict(os.environ, {"AI_SEARCH_ENABLE_TWO_STEP": "true", "AI_SEARCH_PROVIDER": "gemini"}):
             scraper = AISearchScraper()
             assert scraper.enable_two_step is True
             assert isinstance(scraper._two_step_refiner, TwoStepSearchRefiner)
 
     def test_enable_two_step_false_case_insensitive(self) -> None:
         """enable_two_step is case-insensitive for boolean parsing."""
-        with patch.dict(os.environ, {"AI_SEARCH_ENABLE_TWO_STEP": "TRUE"}):
+        with patch.dict(os.environ, {"AI_SEARCH_ENABLE_TWO_STEP": "TRUE", "AI_SEARCH_PROVIDER": "gemini"}):
             scraper = AISearchScraper()
             assert scraper.enable_two_step is True
 

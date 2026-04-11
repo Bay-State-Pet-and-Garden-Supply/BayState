@@ -144,7 +144,7 @@ describe('AI scraping credentials admin route', () => {
     const req = {
       json: async () => ({
         gemini_api_key: 'gemini-test',
-        serpapi_api_key: 'serpapi-test',
+        serper_api_key: 'serper-test',
         brave_api_key: 'brave-test',
         defaults: {
           llm_provider: 'gemini',
@@ -171,7 +171,7 @@ describe('AI scraping credentials admin route', () => {
     expect(res?.status).toBe(200);
 
     expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('gemini', 'gemini-test', 'user-1');
-    expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('serpapi', 'serpapi-test', 'user-1');
+    expect(setAIScrapingProviderSecret).toHaveBeenCalledWith('serpapi', 'serper-test', 'user-1');
     expect(setAIScrapingProviderSecret).not.toHaveBeenCalledWith('brave', 'brave-test', 'user-1');
     expect(upsertAIScrapingDefaults).toHaveBeenCalled();
     expect(upsertAIConsolidationDefaults).toHaveBeenCalled();

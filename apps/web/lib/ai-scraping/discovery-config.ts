@@ -55,17 +55,17 @@ function pickNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serpapi' | 'gemini' | null {
+function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serper' | 'gemini' | null {
   const provider = pickNonEmptyString(value);
   if (!provider) {
     return null;
   }
 
-  if (provider === 'brave') {
-    return 'gemini';
+  if (provider === 'brave' || provider === 'serpapi') {
+    return 'serper';
   }
 
-  if (provider === 'auto' || provider === 'serpapi' || provider === 'gemini') {
+  if (provider === 'auto' || provider === 'serper' || provider === 'gemini') {
     return provider;
   }
 

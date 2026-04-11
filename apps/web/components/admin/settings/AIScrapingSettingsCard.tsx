@@ -16,7 +16,7 @@ import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
 import { GeminiModelCombobox } from "@/components/admin/settings/GeminiModelCombobox";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/ai-scraping/models";
 
-type ProviderName = "gemini";
+type ProviderName = "gemini" | "serpapi";
 
 interface ProviderStatus {
   provider: string;
@@ -55,6 +55,12 @@ const EMPTY_STATUSES: Record<ProviderName, ProviderStatus> = {
     last4: null,
     updated_at: null,
   },
+  serpapi: {
+    provider: "serpapi",
+    configured: false,
+    last4: null,
+    updated_at: null,
+  },
 };
 
 export function AIScrapingSettingsCard() {
@@ -62,6 +68,7 @@ export function AIScrapingSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [serperApiKey, setSerperApiKey] = useState("");
   const [statuses, setStatuses] =
     useState<Record<ProviderName, ProviderStatus>>(EMPTY_STATUSES);
   const [defaults, setDefaults] = useState<ScrapingDefaults>(DEFAULTS);
@@ -81,6 +88,7 @@ export function AIScrapingSettingsCard() {
       const data = (await res.json()) as ApiResponse;
       setStatuses({
         gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
+        serpapi: data.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
       });
       setDefaults({
         ...DEFAULTS,
@@ -108,12 +116,13 @@ export function AIScrapingSettingsCard() {
   const hasChanges = useMemo(() => {
     return (
       geminiApiKey.trim().length > 0 ||
+      serperApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [defaults, geminiApiKey, initialDefaults]);
+  }, [defaults, geminiApiKey, serperApiKey, initialDefaults]);
 
   const onSave = async () => {
     setSaving(true);
@@ -122,6 +131,7 @@ export function AIScrapingSettingsCard() {
     try {
       const payload = {
         gemini_api_key: geminiApiKey.trim() || undefined,
+        serper_api_key: serperApiKey.trim() || undefined,
         defaults: {
           ...defaults,
           llm_provider: "gemini" as const,
@@ -149,6 +159,7 @@ export function AIScrapingSettingsCard() {
 
       setStatuses({
         gemini: body.statuses.gemini ?? EMPTY_STATUSES.gemini,
+        serpapi: body.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
       });
       setDefaults({
         ...DEFAULTS,
@@ -163,6 +174,7 @@ export function AIScrapingSettingsCard() {
         llm_base_url: null,
       });
       setGeminiApiKey("");
+      setSerperApiKey("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -180,10 +192,7 @@ export function AIScrapingSettingsCard() {
           <div>
             <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
-              AI scraping now runs on Gemini directly. Configure the Gemini API
-              key used for Crawl4AI and AI search. Legacy SerpAPI and Brave
-              Search discovery keys are deprecated and no longer configured
-              here.
+              Configure the Gemini API key used for Crawl4AI and AI search. The Serper API key is used as the backing search engine for resolving official product pages.
             </CardDescription>
           </div>
         </div>
@@ -201,19 +210,37 @@ export function AIScrapingSettingsCard() {
               </div>
             )}
 
-            <div className="max-w-md space-y-2">
-              <Label htmlFor="gemini-api-key">Gemini API Key</Label>
-              <Input
-                id="gemini-api-key"
-                type="password"
-                value={geminiApiKey}
-                onChange={(e) => setGeminiApiKey(e.target.value)}
-                placeholder="AIza..."
-              />
-              <div className="text-xs text-muted-foreground">
-                {statuses.gemini.configured
-                  ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
-                  : "Required for AI scraping"}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="gemini-api-key">Gemini API Key</Label>
+                <Input
+                  id="gemini-api-key"
+                  type="password"
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  placeholder="AIza..."
+                />
+                <div className="text-xs text-muted-foreground">
+                  {statuses.gemini.configured
+                    ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
+                    : "Required for AI scraping"}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="serper-api-key">Serper API Key</Label>
+                <Input
+                  id="serper-api-key"
+                  type="password"
+                  value={serperApiKey}
+                  onChange={(e) => setSerperApiKey(e.target.value)}
+                  placeholder="Paste Serper key..."
+                />
+                <div className="text-xs text-muted-foreground">
+                  {statuses.serpapi.configured
+                    ? `Configured (ending in ${statuses.serpapi.last4 ?? "****"})`
+                    : "Required for search-backed discovery"}
+                </div>
               </div>
             </div>
 
@@ -295,6 +322,11 @@ export function AIScrapingSettingsCard() {
                   variant={statuses.gemini.configured ? "default" : "secondary"}
                 >
                   Gemini {statuses.gemini.configured ? "Ready" : "Missing"}
+                </Badge>
+                <Badge
+                  variant={statuses.serpapi.configured ? "default" : "secondary"}
+                >
+                  Serper {statuses.serpapi.configured ? "Ready" : "Missing"}
                 </Badge>
               </div>
 
