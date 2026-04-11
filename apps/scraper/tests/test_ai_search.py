@@ -220,6 +220,33 @@ def test_prepare_search_results_demotes_marketplaces_below_official_brand_pages(
     assert prepared[0]["url"] == "https://nutrisourcepetfoods.com/our-food/ocean-select-entree/"
 
 
+def test_prepare_search_results_prefers_official_brand_segment_when_brand_missing() -> None:
+    scraper = AISearchScraper(prefer_manufacturer=True)
+    results = [
+        {
+            "url": "https://arett.com/item/B104+HTG001/Bentley-Seed-Tomato-Jubilee-1943",
+            "title": "Tomato Jubilee 1943",
+            "description": "Bentley Seed retailer listing exact product with add to cart",
+        },
+        {
+            "url": "https://bentleyseeds.com/products/jubilee-tomato-seed",
+            "title": "Seed Packets - Bentley Seeds",
+            "description": "Official product page",
+        },
+    ]
+
+    prepared = scraper._scoring.prepare_search_results(
+        search_results=results,
+        sku="051588178896",
+        brand=None,
+        product_name="Tomato Jubilee 1943",
+        category="Vegetable Seeds",
+        prefer_manufacturer=True,
+    )
+
+    assert prepared[0]["url"] == "https://bentleyseeds.com/products/jubilee-tomato-seed"
+
+
 def test_scraper_passes_runtime_api_key_to_search_client(monkeypatch) -> None:
     captured: dict[str, object] = {}
 

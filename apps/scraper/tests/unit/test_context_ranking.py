@@ -531,3 +531,49 @@ class TestContextAwareRanking:
         )
 
         assert ranked[0].score == direct_score
+
+    def test_real_scorer_prefers_inferred_official_domain_over_high_frequency_retailer(self) -> None:
+        orchestrator = BatchSearchOrchestrator(
+            search_client=None,
+            extractor=MockExtractor(),
+            scorer=SearchScorer(),
+        )
+
+        official_url = "https://bentleyseeds.com/products/jubilee-tomato-seed"
+        retailer_url = "https://www.edenbrothers.com/products/tomato_seeds_jubilee"
+        search_results = [
+            make_search_result(
+                url=retailer_url,
+                title="Bentley Seed Tomato Jubilee 1943",
+                description="Retailer listing for Bentley Seed Tomato Jubilee 1943",
+            ),
+            make_search_result(
+                url=official_url,
+                title="Tomato, Jubilee Seed Packets - Bentley Seeds",
+                description="Official Bentley Seeds product page",
+            ),
+        ]
+
+        domain_frequency = {
+            "edenbrothers.com": DomainFrequency(
+                domain="edenbrothers.com",
+                sku_count=5,
+                skus={"sku1", "sku2", "sku3", "sku4", "sku5"},
+            ),
+            "bentleyseeds.com": DomainFrequency(
+                domain="bentleyseeds.com",
+                sku_count=1,
+                skus={"sku1"},
+            ),
+        }
+
+        ranked = orchestrator.rank_urls_for_sku(
+            sku="051588178896",
+            search_results=search_results,
+            domain_frequency=domain_frequency,
+            brand=None,
+            product_name="Bentley Seed Tomato Jubilee 1943",
+            category="Vegetable Seeds",
+        )
+
+        assert ranked[0].result.url == official_url
