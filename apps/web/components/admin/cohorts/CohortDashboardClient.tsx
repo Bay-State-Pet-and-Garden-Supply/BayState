@@ -37,6 +37,7 @@ interface BrandInfo {
 
 interface CohortBatch {
   id: string;
+  name: string | null;
   upc_prefix: string;
   product_line: string | null;
   status: "pending" | "processing" | "completed" | "failed";
@@ -396,7 +397,7 @@ export function CohortDashboardClient() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-medium text-foreground">
-                            {cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
+                            {cohort.name || cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
                           </h3>
                           <StatusBadge status={cohort.status} />
                           <CohortBrandBadge 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Brain, ChevronRight, Layers, Tag, Plus, Database, Upload, Archive, Loader2, Search, X } from "lucide-react";
+import { Activity, Brain, ChevronRight, Layers, Tag, Plus, Database, Upload, Archive, Loader2, Search, X, Edit2 } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
@@ -34,6 +34,7 @@ import { getStageDataStatus, isPipelineStage } from "@/lib/pipeline/types";
 const ScraperSelectDialog = dynamic(() => import("./ScraperSelectDialog").then(mod => mod.ScraperSelectDialog), { ssr: false });
 const ManualAddProductDialog = dynamic(() => import("./ManualAddProductDialog").then(mod => mod.ManualAddProductDialog), { ssr: false });
 const IntegraImportDialog = dynamic(() => import("./IntegraImportDialog").then(mod => mod.IntegraImportDialog), { ssr: false });
+const CohortEditDialog = dynamic(() => import("./CohortEditDialog").then(mod => mod.CohortEditDialog), { ssr: false });
 
 const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
   'scraping',
@@ -121,12 +122,12 @@ export function PipelineClient({
     "upload" | "zip" | null
   >(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [editingCohort, setEditingCohort] = useState<{ id: string; name: string | null; brandName: string | null } | null>(null);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [sourceFilter, setSourceFilter] = useState(searchParams.get("source") || "");
   const [productLineFilter, setProductLineFilter] = useState(searchParams.get("product_line") || "");
   const [cohortIdFilter, setCohortIdFilter] = useState(searchParams.get("cohort_id") || "");
   const publishedSkuCacheRef = useRef<string[] | null>(null);
-  const [cohortBrands, setCohortBrands] = useState<Record<string, string>>({});
 
   const filteredProducts = useMemo(() => {
     if (currentStage === "published") {
@@ -145,6 +146,8 @@ export function PipelineClient({
   const groupedProducts = useMemo(() => {
     const groups: Record<string, PipelineProduct[]> = {};
     const cohortIds: string[] = [];
+    const brands: Record<string, string> = {};
+    const names: Record<string, string> = {};
 
     filteredProducts.forEach((product) => {
       const cohortId = product.cohort_id || "ungrouped";
@@ -153,6 +156,14 @@ export function PipelineClient({
         cohortIds.push(cohortId);
       }
       groups[cohortId].push(product);
+      
+      if (cohortId !== "ungrouped" && product.cohort_brand_name && !brands[cohortId]) {
+        brands[cohortId] = product.cohort_brand_name;
+      }
+
+      if (cohortId !== "ungrouped" && product.cohort_name && !names[cohortId]) {
+        names[cohortId] = product.cohort_name;
+      }
     });
 
     // Sort IDs: ungrouped first, then alphabetical
@@ -162,40 +173,8 @@ export function PipelineClient({
       return a.localeCompare(b);
     });
 
-    return { groups, cohortIds };
+    return { groups, cohortIds, brands, names };
   }, [filteredProducts]);
-
-  // Fetch brand names for cohort groups
-  useEffect(() => {
-    const cohortUuids = groupedProducts.cohortIds.filter((id) => id !== "ungrouped");
-    if (cohortUuids.length === 0) return;
-
-    // Only fetch for cohorts we don't already have brand data for
-    const missingIds = cohortUuids.filter((id) => !(id in cohortBrands));
-    if (missingIds.length === 0) return;
-
-    Promise.all(
-      missingIds.map(async (id) => {
-        try {
-          const res = await fetch(`/api/admin/cohorts/${id}`);
-          if (res.ok) {
-            const data = await res.json();
-            const brand = data.cohort?.brand_name || null;
-            return [id, brand] as const;
-          }
-        } catch { /* ignore */ }
-        return [id, null] as const;
-      })
-    ).then((results) => {
-      const newBrands: Record<string, string> = {};
-      results.forEach(([id, brand]) => {
-        if (brand) newBrands[id] = brand;
-      });
-      if (Object.keys(newBrands).length > 0) {
-        setCohortBrands((prev) => ({ ...prev, ...newBrands }));
-      }
-    });
-  }, [groupedProducts.cohortIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
@@ -407,16 +386,6 @@ export function PipelineClient({
       isMounted = false;
     };
   }, [search, fetchProducts, currentStage]);
-
-  useEffect(() => {
-    void getPublishedSkus()
-      .then((publishedSkus) => {
-        setCounts((previousCounts) => mergePublishedCount(previousCounts, publishedSkus.length));
-      })
-      .catch(() => {
-        // Ignore badge derivation failures until the published tab is opened.
-      });
-  }, [getPublishedSkus]);
 
   useEffect(() => {
     if (currentStage !== "published") {
@@ -1133,7 +1102,10 @@ export function PipelineClient({
             }}
             availableSources={sources}
             groupedProducts={groupedProducts}
-            cohortBrands={cohortBrands}
+            cohortBrands={groupedProducts.brands}
+            onEditCohort={(id, name, brandName) => {
+              setEditingCohort({ id, name, brandName });
+            }}
           />
         ) : currentStage === "finalizing" || currentStage === "published" ? (
           <FinalizingResultsView
@@ -1142,7 +1114,10 @@ export function PipelineClient({
             search={search}
             onSearchChange={(value) => setSearch(value)}
             groupedProducts={groupedProducts}
-            cohortBrands={cohortBrands}
+            cohortBrands={groupedProducts.brands}
+            onEditCohort={(id, name, brandName) => {
+              setEditingCohort({ id, name, brandName });
+            }}
           />
         ) : (
           <div className="space-y-4">
@@ -1171,7 +1146,7 @@ export function PipelineClient({
                 onSelectAllTotal={handleSelectAll}
               />
             ) : (
-              <Accordion type="multiple" defaultValue={groupedProducts.cohortIds} className="space-y-4">
+              <Accordion type="multiple" className="space-y-4">
                 {groupedProducts.cohortIds.map((cohortId) => {
                   const groupProducts = groupedProducts.groups[cohortId] || [];
                   return (
@@ -1185,18 +1160,38 @@ export function PipelineClient({
                           <ChevronRight className="h-4 w-4 transition-transform duration-200 text-muted-foreground" />
                           <div className="flex items-center gap-2">
                             <Layers className="h-3.5 w-3.5 text-brand-forest-green/70" />
-                            <span className="font-bold text-xs uppercase tracking-tight text-foreground/80">
-                              {cohortId === "ungrouped" ? "Ungrouped Products" : `Cohort: ${cohortId}`}
+                            <span className="font-bold text-sm uppercase tracking-tight text-foreground/90">
+                              {cohortId === "ungrouped" 
+                                ? "Ungrouped Products" 
+                                : groupedProducts.names[cohortId] || `Cohort: ${cohortId}`
+                              }
                             </span>
-                            {cohortBrands[cohortId] && (
+                            {groupedProducts.brands[cohortId] && (
                               <Badge variant="outline" className="ml-1 text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green">
                                 <Tag className="h-3 w-3" />
-                                {cohortBrands[cohortId]}
+                                {groupedProducts.brands[cohortId]}
                               </Badge>
                             )}
                             <Badge variant="secondary" className="ml-2 bg-muted text-muted-foreground font-normal">
                               {groupProducts.length} items
                             </Badge>
+                            {cohortId !== "ungrouped" && (currentStage === "imported" || currentStage === "failed") && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="ml-2 h-6 w-6 p-0 text-muted-foreground hover:text-brand-forest-green"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCohort({
+                                    id: cohortId,
+                                    name: groupedProducts.names[cohortId] || null,
+                                    brandName: groupedProducts.brands[cohortId] || null,
+                                  });
+                                }}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </AccordionTrigger>
@@ -1259,7 +1254,7 @@ export function PipelineClient({
           const firstSku = Array.from(selectedSkus)[0];
           const product = filteredProducts.find((p) => p.sku === firstSku);
           const cId = product?.cohort_id;
-          return cId ? cohortBrands[cId] || null : null;
+          return cId ? groupedProducts.brands[cId] || null : null;
         })()}
       />
       {/* Manual Add Product Dialog */}
@@ -1310,6 +1305,15 @@ export function PipelineClient({
           }
         />
       )}
+
+      <CohortEditDialog
+        open={editingCohort !== null}
+        onOpenChange={(open) => !open && setEditingCohort(null)}
+        cohortId={editingCohort?.id || ""}
+        initialName={editingCohort?.name || null}
+        initialBrandName={editingCohort?.brandName || null}
+        onSuccess={refreshAll}
+      />
 
       <ConfirmationDialog
         open={confirmDeleteOpen}

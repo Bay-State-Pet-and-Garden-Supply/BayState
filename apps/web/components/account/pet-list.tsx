@@ -35,19 +35,22 @@ export function PetList({ pets, petTypes }: PetListProps) {
                     className="border-dashed"
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>Add a Pet</DialogTitle>
-                            <DialogDescription>
+                    <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)] p-0">
+                        <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Add a Pet</DialogTitle>
+                            <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
                                 Tell us about your pet to get personalized recommendations.
                             </DialogDescription>
                         </DialogHeader>
-                        <PetForm
-                            petTypes={petTypes}
-                            onSuccess={() => setOpen(false)}
-                        />
+                        <div className="p-8">
+                            <PetForm
+                                petTypes={petTypes}
+                                onSuccess={() => setOpen(false)}
+                            />
+                        </div>
                     </DialogContent>
                 </Dialog>
+
             </>
         )
     }

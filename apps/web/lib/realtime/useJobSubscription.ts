@@ -167,17 +167,18 @@ function getLatestJob(jobs: JobBuckets): JobAssignment | null {
   })[0];
 }
 
-function ensureSharedJobChannel(channelName: string): SharedJobChannelEntry {
-  const channel = createClient().channel(channelName);
-  const existingEntry = sharedJobChannels.get(channelName);
+function ensureSharedJobChannel(baseChannelName: string): SharedJobChannelEntry {
+  const pgChannelName = `${baseChannelName}-pg`;
+  const existingEntry = sharedJobChannels.get(pgChannelName);
 
-  if (existingEntry && existingEntry.channel === channel) {
+  if (existingEntry) {
     return existingEntry;
   }
 
+  const channel = createClient().channel(pgChannelName);
   const entry: SharedJobChannelEntry = {
     channel,
-    listeners: existingEntry?.listeners ?? new Set(),
+    listeners: new Set(),
   };
 
   channel.on(
@@ -192,9 +193,13 @@ function ensureSharedJobChannel(channelName: string): SharedJobChannelEntry {
         listener(payload as JobRealtimePayload);
       }
     }
-  );
+  ).subscribe((status) => {
+    if (status === 'CHANNEL_ERROR') {
+      console.error(`[Job Subscription] Postgres Changes channel error: ${pgChannelName}`);
+    }
+  });
 
-  sharedJobChannels.set(channelName, entry);
+  sharedJobChannels.set(pgChannelName, entry);
   return entry;
 }
 
@@ -239,6 +244,7 @@ export function useJobSubscription(
   } = filters;
 
   const channelName = useMemo(() => providedChannelName ?? 'scrape-jobs', [providedChannelName]);
+  const pgChannelName = useMemo(() => `${channelName}-pg`, [channelName]);
   const [dataState, setDataState] = useState<JobSubscriptionData>(() => createInitialDataState());
   const activeRef = useRef(autoConnect);
   const callbacksRef = useRef({ onJobCreated, onJobUpdated, onJobDeleted });
@@ -412,11 +418,12 @@ export function useJobSubscription(
     return () => {
       sharedChannel.listeners.delete(handleRealtimePayload);
 
-      if (sharedChannel.listeners.size === 0 && sharedJobChannels.get(channelName) === sharedChannel) {
-        sharedJobChannels.delete(channelName);
+      if (sharedChannel.listeners.size === 0 && sharedJobChannels.get(pgChannelName) === sharedChannel) {
+        createClient().removeChannel(sharedChannel.channel);
+        sharedJobChannels.delete(pgChannelName);
       }
     };
-  }, [channelName, handleRealtimePayload]);
+  }, [channelName, pgChannelName, handleRealtimePayload]);
 
   const {
     connectionState,

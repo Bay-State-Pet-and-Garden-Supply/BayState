@@ -129,7 +129,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
   const fetchCohort = useCallback(async () => {
     try {
-      const response = await fetch(`/api/admin/cohorts/${cohortId}`);
+      const response = await fetch(`/api/admin/cohorts/${cohortId}?include_members=true`);
       if (!response.ok) throw new Error("Failed to fetch cohort");
 
       const data = await response.json();

@@ -31,4 +31,19 @@ describe('normalizeConsolidationResult', () => {
             })
         );
     });
+
+    it('correctly normalizes units while avoiding partial matches and prepositions', () => {
+        const result = normalizeConsolidationResult({
+            name: 'Tomato Jubilee Seed packets 5 packs',
+            description: 'Made in USA with 10 inches and 5 gallons info',
+        });
+
+        // "packets" should be untouched, "packs" should become "pk."
+        // "inches" should become "in."
+        // "in" in "Made in USA" should be untouched.
+        // "gallons" should become "gal."
+        // "info" should be untouched.
+        expect(result.name).toBe('Tomato Jubilee Seed Packets 5 pk.');
+        expect(result.description).toBe('Made in USA with 10 in. and 5 gal. info');
+    });
 });

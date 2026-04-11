@@ -6,7 +6,7 @@ import { AddressForm } from './address-form'
 import { Button } from '@/components/ui/button'
 import { Plus, Trash2, CheckCircle, MapPin } from 'lucide-react'
 import { deleteAddressAction, setDefaultAddressAction } from '@/lib/account/actions'
-import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/empty-state'
 
 export function AddressList({ initialAddresses }: { initialAddresses: Address[] }) {

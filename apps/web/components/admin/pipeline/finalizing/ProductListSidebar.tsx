@@ -1,9 +1,10 @@
 "use client";
 
-import { Search, X, ChevronRight, Layers, Tag } from "lucide-react";
+import { Search, X, ChevronRight, Layers, Tag, Edit2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Accordion,
   AccordionContent,
@@ -23,8 +24,10 @@ export interface ProductListSidebarProps {
   groupedProducts?: {
     groups: Record<string, PipelineProduct[]>;
     cohortIds: string[];
+    names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
+  onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
 }
 
 export function ProductListSidebar({
@@ -36,6 +39,7 @@ export function ProductListSidebar({
   onSearchChange,
   groupedProducts,
   cohortBrands = {},
+  onEditCohort,
 }: ProductListSidebarProps) {
   const [localSearch, setLocalSearch] = useState(search || "");
 
@@ -123,7 +127,7 @@ export function ProductListSidebar({
       </div>
       <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
         {groupedProducts && groupedProducts.cohortIds.length > 1 ? (
-          <Accordion type="multiple" defaultValue={groupedProducts.cohortIds} className="divide-y divide-border/50">
+          <Accordion type="multiple" className="divide-y divide-border/50">
             {groupedProducts.cohortIds.map((cohortId) => {
               const groupProducts = groupedProducts.groups[cohortId] || [];
               if (groupProducts.length === 0) return null;
@@ -138,8 +142,11 @@ export function ProductListSidebar({
                     <div className="flex items-center gap-2">
                       <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 text-muted-foreground" />
                       <div className="flex items-center gap-1.5 overflow-hidden">
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-foreground/70 truncate">
-                          {cohortId === "ungrouped" ? "Ungrouped" : `Cohort: ${cohortId}`}
+                        <span className="font-bold text-xs uppercase tracking-wider text-foreground/80 truncate">
+                          {cohortId === "ungrouped" 
+                            ? "Ungrouped" 
+                            : groupedProducts?.names?.[cohortId] || `Cohort: ${cohortId}`
+                          }
                         </span>
                         {cohortBrands[cohortId] && (
                           <Badge variant="outline" className="h-4 text-[9px] px-1 font-bold border-brand-forest-green/30 text-brand-forest-green bg-brand-forest-green/5">
@@ -149,6 +156,23 @@ export function ProductListSidebar({
                         <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-muted text-muted-foreground font-normal">
                           {groupProducts.length}
                         </Badge>
+                        {cohortId !== "ungrouped" && onEditCohort && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-brand-forest-green"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditCohort(
+                                cohortId,
+                                groupedProducts?.names?.[cohortId] || null,
+                                cohortBrands[cohortId] || null
+                              );
+                            }}
+                          >
+                            <Edit2 className="h-2.5 w-2.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </AccordionTrigger>

@@ -132,6 +132,10 @@ export interface PipelineProduct {
   product_line?: string | null;
   /** ID of the cohort batch this product belongs to */
   cohort_id?: string | null;
+  /** Interpolated name from the associated cohort batch */
+  cohort_name?: string | null;
+  /** Brand name from the associated cohort batch */
+  cohort_brand_name?: string | null;
   /** Record creation timestamp */
   created_at: string;
   /** Last update timestamp */

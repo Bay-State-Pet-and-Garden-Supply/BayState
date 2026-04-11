@@ -54,18 +54,18 @@ function toTitleCasePreserveBrand(text: string): string {
  */
 function normalizeUnits(text: string): string {
     const replacements: [RegExp, string][] = [
-        [/\b(lbs?\.?)/gi, 'lb.'],
-        [/\b(pounds?)\b/gi, 'lb.'],
-        [/\b(ounces?|oz\.?)/gi, 'oz.'],
-        [/\b(count|ct\.?)/gi, 'ct.'],
-        [/\b(feet|ft\.?)/gi, 'ft.'],
-        [/\b(inches?|in\.?)/gi, 'in.'],
+        [/\b(lbs?|pounds?)\b\.?/gi, 'lb.'],
+        [/\b(ounces?|oz)\b\.?/gi, 'oz.'],
+        [/\b(count|ct)\b\.?/gi, 'ct.'],
+        [/\b(feet|ft)\b\.?/gi, 'ft.'],
+        [/\b(inches?)\b/gi, 'in.'],
+        [/(?<=\d\s*)in\b\.?/gi, 'in.'],
         [/"/g, ' in. '],
-        [/\b(gallons?|gal\.?)/gi, 'gal.'],
-        [/\b(quarts?|qt\.?)/gi, 'qt.'],
-        [/\b(pints?|pt\.?)/gi, 'pt.'],
-        [/\b(packs?|pk\.?)/gi, 'pk.'],
-        [/\b(liters?|l\.?)/gi, 'L'],
+        [/\b(gallons?|gal)\b\.?/gi, 'gal.'],
+        [/\b(quarts?|qt)\b\.?/gi, 'qt.'],
+        [/\b(pints?|pt)\b\.?/gi, 'pt.'],
+        [/\b(packs?|pk)\b\.?/gi, 'pk.'],
+        [/\b(liters?)\b|\bL\.?/g, 'L'],
     ];
     let output = text;
     for (const [pattern, replacement] of replacements) {
@@ -110,7 +110,7 @@ function normalizeDecimals(text: string): string {
  * Ensure unit abbreviations have trailing periods.
  */
 function ensureUnitPeriods(text: string): string {
-    return text.replace(/\b(lb|oz|ct|in|ft|gal|qt|pt|pk)(?!\.)\b/gi, '$1.');
+    return text.replace(/\b(lb|oz|ct|ft|gal|qt|pt|pk)(?!\.)\b/gi, '$1.');
 }
 
 /**
@@ -118,17 +118,17 @@ function ensureUnitPeriods(text: string): string {
  */
 function normalizeUnitCasing(text: string): string {
     return text
-        .replace(/\b(LB)\./g, 'lb.')
-        .replace(/\b(OZ)\./g, 'oz.')
-        .replace(/\b(CT)\./g, 'ct.')
-        .replace(/\b(FT)\./g, 'ft.')
-        .replace(/\b(IN)\./g, 'in.')
-        .replace(/\b(GAL)\./g, 'gal.')
-        .replace(/\b(QT)\./g, 'qt.')
-        .replace(/\b(PT)\./g, 'pt.')
-        .replace(/\b(PK)\./g, 'pk.')
-        .replace(/\b(l)\b/g, 'L')
-        .replace(/\b(Lb)\./g, 'lb.');
+        .replace(/\b(lb|lb)\b\.?/gi, 'lb.')
+        .replace(/\b(oz|oz)\b\.?/gi, 'oz.')
+        .replace(/\b(ct|ct)\b\.?/gi, 'ct.')
+        .replace(/\b(ft|ft)\b\.?/gi, 'ft.')
+        .replace(/(?<=\d\s*)(in|in)\b\.?/gi, 'in.')
+        .replace(/\b(in|in)\b\./gi, 'in.')
+        .replace(/\b(gal|gal)\b\.?/gi, 'gal.')
+        .replace(/\b(qt|qt)\b\.?/gi, 'qt.')
+        .replace(/\b(pt|pt)\b\.?/gi, 'pt.')
+        .replace(/\b(pk|pk)\b\.?/gi, 'pk.')
+        .replace(/\b(l)\b/gi, 'L');
 }
 
 /**
@@ -171,6 +171,20 @@ function normalizeSearchKeywords(value: string): string {
 }
 
 /**
+ * Applies all unit-related normalization rules to a string.
+ */
+function normalizeStringUnits(text: string): string {
+    let result = text;
+    result = normalizeUnits(result);
+    result = normalizeDecimals(result);
+    result = ensureUnitPeriods(result);
+    result = normalizeUnitCasing(result);
+    result = ensureInchesSpacing(result);
+    result = normalizeSpacing(result);
+    return result;
+}
+
+/**
  * Normalize a consolidation result from the LLM.
  * Applies all normalization rules to the name field.
  */
@@ -184,18 +198,10 @@ export function normalizeConsolidationResult(
         let name = normalized.name;
         name = expandAbbreviations(name);
         name = normalizeDimensions(name);
-        name = normalizeUnits(name);
-        name = normalizeDecimals(name);
-        name = ensureUnitPeriods(name);
-        name = normalizeUnitCasing(name);
-        name = ensureInchesSpacing(name);
-        name = normalizeSpacing(name);
+        name = normalizeStringUnits(name);
         name = toTitleCasePreserveBrand(name);
         // Re-assert canonical units after title case
-        name = normalizeUnitCasing(normalizeUnits(name));
-        name = ensureUnitPeriods(name);
-        name = ensureInchesSpacing(name);
-        name = normalizeSpacing(name);
+        name = normalizeStringUnits(name);
         normalized.name = name;
     }
 
@@ -204,11 +210,11 @@ export function normalizeConsolidationResult(
     }
 
     if (typeof normalized.description === 'string') {
-        normalized.description = normalizePlainText(normalized.description);
+        normalized.description = normalizeStringUnits(normalizePlainText(normalized.description));
     }
 
     if (typeof normalized.long_description === 'string') {
-        normalized.long_description = normalizePlainText(normalized.long_description);
+        normalized.long_description = normalizeStringUnits(normalizePlainText(normalized.long_description));
     }
 
     if (typeof normalized.search_keywords === 'string') {
