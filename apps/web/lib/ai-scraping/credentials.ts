@@ -409,6 +409,14 @@ function normalizeLLMModel(value: unknown, fallback: string): string {
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
+function normalizeOpenAIModel(value: unknown, fallback: string): string {
+  const model = normalizeLLMModel(value, fallback);
+  const lowered = model.toLowerCase();
+  return lowered.startsWith('gpt-') || lowered.startsWith('o1') || lowered.startsWith('o3') || lowered.startsWith('o4')
+    ? model
+    : fallback;
+}
+
 function resolveOpenAIApiKey(apiKey: string | null | undefined): string | null {
   if (apiKey && apiKey.trim()) {
     return apiKey.trim();
@@ -425,7 +433,7 @@ function normalizeDefaults(raw: unknown): AIScrapingDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   const llmProvider = normalizeLLMProvider(value.llm_provider);
-  const llmModel = normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider));
+  const llmModel = normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
   const llmBaseUrl = null;
   const maxSearchResults = Number.isFinite(value.max_search_results) ? Number(value.max_search_results) : DEFAULT_AI_SCRAPING_DEFAULTS.max_search_results;
   const maxSteps = Number.isFinite(value.max_steps) ? Number(value.max_steps) : DEFAULT_AI_SCRAPING_DEFAULTS.max_steps;
@@ -489,7 +497,7 @@ function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   const llmProvider = normalizeLLMProvider(value.llm_provider);
-  const llmModel = normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider));
+  const llmModel = normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
   const llmBaseUrl = null;
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
     ? Number(value.confidence_threshold)

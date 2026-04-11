@@ -37,7 +37,7 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
 
     return (
         <section
-            className="relative w-full h-[400px] sm:h-[500px] overflow-hidden rounded-2xl mb-12"
+            className="relative w-full h-[400px] sm:h-[500px] overflow-hidden rounded-sm mb-12 border-2 border-zinc-200"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
         >
@@ -48,62 +48,63 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
                     alt={currentSlide.title}
                     fill
                     priority
-                    className="object-cover transition-opacity duration-500"
+                    className="object-cover transition-opacity duration-300"
                 />
             )}
 
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-
-            {/* Content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-end pb-16 px-4 text-center text-white">
-                <h2 className="text-3xl sm:text-5xl font-bold mb-3 drop-shadow-lg">
+            {/* Content Box - Rugged Utilitarian Style */}
+            <div className="absolute bottom-6 left-6 right-6 sm:right-auto p-6 sm:p-10 bg-primary text-white max-w-xl border-l-[12px] border-accent shadow-[12px_12px_0px_rgba(0,0,0,0.25)] z-10">
+                <h2 className="text-3xl sm:text-5xl font-black uppercase italic mb-3 leading-tight tracking-tighter">
                     {currentSlide.title}
                 </h2>
                 {currentSlide.subtitle && (
-                    <p className="text-lg sm:text-xl mb-6 max-w-2xl text-white/90 drop-shadow">
+                    <p className="text-lg sm:text-xl font-bold mb-8 text-white/90 uppercase tracking-wide">
                         {currentSlide.subtitle}
                     </p>
                 )}
                 {currentSlide.linkUrl && (
-                    <Button size="lg" asChild className="h-12 px-8 text-base">
-                        <Link href={currentSlide.linkUrl} className="hover:underline underline-offset-4">
+                    <Button 
+                        size="lg" 
+                        asChild 
+                        className="h-14 px-10 text-lg font-black uppercase rounded-none bg-accent text-secondary hover:bg-accent/90 border-b-4 border-black/20"
+                    >
+                        <Link href={currentSlide.linkUrl}>
                             {currentSlide.linkText || 'Shop Now'}
                         </Link>
                     </Button>
                 )}
             </div>
 
-            {/* Navigation Arrows */}
+            {/* Navigation Arrows - Solid and Opaque */}
             {slides.length > 1 && (
-                <>
+                <div className="absolute top-6 right-6 flex gap-3 z-20">
                     <button
                         onClick={goToPrev}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full p-2 transition-colors"
+                        className="bg-white border-2 border-black text-black hover:bg-zinc-100 p-3 shadow-[4px_4px_0px_rgba(0,0,0,0.2)] transition-transform active:translate-x-0.5 active:translate-y-0.5"
                         aria-label="Previous slide"
                     >
-                        <ChevronLeft className="h-6 w-6 text-white" />
+                        <ChevronLeft className="h-6 w-6" />
                     </button>
                     <button
                         onClick={goToNext}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full p-2 transition-colors"
+                        className="bg-white border-2 border-black text-black hover:bg-zinc-100 p-3 shadow-[4px_4px_0px_rgba(0,0,0,0.2)] transition-transform active:translate-x-0.5 active:translate-y-0.5"
                         aria-label="Next slide"
                     >
-                        <ChevronRight className="h-6 w-6 text-white" />
+                        <ChevronRight className="h-6 w-6" />
                     </button>
-                </>
+                </div>
             )}
 
-            {/* Dots Indicator */}
+            {/* Progress Indicators - Solid Rectangles */}
             {slides.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                <div className="absolute top-6 left-6 flex gap-1 z-20">
                     {slides.map((_, idx) => (
                         <button
                             key={idx}
                             onClick={() => setCurrentIndex(idx)}
-                            className={`w-2.5 h-2.5 rounded-full transition-all ${idx === currentIndex
-                                    ? 'bg-white w-6'
-                                    : 'bg-white/50 hover:bg-white/70'
+                            className={`h-1.5 w-12 transition-all ${idx === currentIndex
+                                    ? 'bg-accent shadow-[2px_2px_0px_rgba(0,0,0,0.2)]'
+                                    : 'bg-white/40 hover:bg-white/70'
                                 }`}
                             aria-label={`Go to slide ${idx + 1}`}
                         />
