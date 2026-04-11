@@ -86,7 +86,7 @@ export interface ScrapeOptions {
         max_search_results?: number;
         max_steps?: number;
         confidence_threshold?: number;
-        llm_provider?: 'gemini';
+        llm_provider?: 'openai';
         llm_model?: string;
         llm_base_url?: string | null;
         prefer_manufacturer?: boolean;

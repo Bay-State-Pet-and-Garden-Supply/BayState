@@ -8,21 +8,20 @@ from collections import OrderedDict
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from scrapers.providers.gemini_search import GeminiSearchClient
 from scrapers.providers.serper import SerperSearchClient
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_SEARCH_PROVIDERS = {"auto", "gemini", "serper"}
+SUPPORTED_SEARCH_PROVIDERS = {"auto", "serper"}
 LEGACY_SEARCH_PROVIDER_ALIASES = {
     "brave": "serper",
     "serpapi": "serper",
+    "gemini": "serper",
 }
 DEFAULT_SEARCH_PROVIDER = "serper"
 TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "srsltid"}
 TRACKING_QUERY_PREFIXES = ("utm_",)
 DEFAULT_PROVIDER_COST_USD = {
-    "gemini": 0.0,
     "serper": 0.0,
 }
 
@@ -102,22 +101,12 @@ class SearchClient:
         self._cache: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
         self._cache_max = cache_max
         self._inflight_queries: dict[str, asyncio.Future[tuple[list[dict[str, Any]], str | None]]] = {}
-        self.gemini_client: GeminiSearchClient | None = None
-        self.serper_client: SerperSearchClient | None = None
-        if self.provider == "gemini":
-            self.gemini_client = GeminiSearchClient(max_results=max_results, api_key=api_key)
-        else:
-            self.serper_client = SerperSearchClient(max_results=max_results, api_key=api_key)
+        self.serper_client: SerperSearchClient | None = SerperSearchClient(max_results=max_results, api_key=api_key)
 
     def _normalize_query_key(self, query: str) -> str:
         return " ".join(str(query or "").split()).lower()
 
-    def _get_provider_client(self) -> GeminiSearchClient | SerperSearchClient:
-        if self.provider == "gemini":
-            if self.gemini_client is None:
-                raise RuntimeError("Gemini search client is not configured")
-            return self.gemini_client
-
+    def _get_provider_client(self) -> SerperSearchClient:
         if self.serper_client is None:
             raise RuntimeError("Serper search client is not configured")
         return self.serper_client
