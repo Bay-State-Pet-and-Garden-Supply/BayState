@@ -3,15 +3,15 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Brain, ChevronRight, Layers, Tag } from "lucide-react";
+import { Activity, Brain, ChevronRight, Layers, Tag, Plus, Database, Upload, Archive, Loader2 } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
-import { PipelineToolbar } from "./PipelineToolbar";
 import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
+import { PipelineFilters } from "./PipelineFilters";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import {
   Accordion,
@@ -20,6 +20,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import type {
   PipelineProduct,
@@ -480,7 +481,7 @@ export function PipelineClient({
     // This allows the server to fetch clean data for the new stage
     setSearch("");
     setSourceFilter("");
-    setLastSelectedIndex(null);
+    setLastSelectedSku(null);
 
     const params = new URLSearchParams(searchParams.toString());
     params.set("stage", stage);
@@ -492,9 +493,7 @@ export function PipelineClient({
     });
   }, [pathname, router, searchParams]);
 
-  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
-    null,
-  );
+  const [lastSelectedSku, setLastSelectedSku] = useState<string | null>(null);
 
   // Toggle product selection with optional Shift+Click range support
   const handleSelectSku = useCallback(
@@ -510,20 +509,27 @@ export function PipelineClient({
       setSelectedSkus((prev) => {
         const next = new Set(prev);
 
-        if (isShiftClick && index !== undefined && lastSelectedIndex !== null) {
-          const [start, end] = [lastSelectedIndex, index].sort((a, b) => a - b);
-          const rangeSkus = sourceProducts
-            .slice(start, end + 1)
-            .map((p) => p.sku);
+        if (isShiftClick && index !== undefined && lastSelectedSku !== null) {
+          const lastIndex = sourceProducts.findIndex((p) => p.sku === lastSelectedSku);
 
-          if (selected) {
-            rangeSkus.forEach((skuItem) => {
-              next.add(skuItem);
-            });
+          if (lastIndex !== -1) {
+            const [start, end] = [lastIndex, index].sort((a, b) => a - b);
+            const rangeSkus = sourceProducts.slice(start, end + 1).map((p) => p.sku);
+
+            if (selected) {
+              rangeSkus.forEach((skuItem) => {
+                next.add(skuItem);
+              });
+            } else {
+              rangeSkus.forEach((skuItem) => {
+                next.delete(skuItem);
+              });
+            }
           } else {
-            rangeSkus.forEach((skuItem) => {
-              next.delete(skuItem);
-            });
+            // Last selected item is not in this specific list (e.g. different cohort).
+            // Default to single selection.
+            if (selected) next.add(sku);
+            else next.delete(sku);
           }
         } else {
           if (selected) {
@@ -536,11 +542,9 @@ export function PipelineClient({
         return next;
       });
 
-      if (index !== undefined) {
-        setLastSelectedIndex(index);
-      }
+      setLastSelectedSku(sku);
     },
-    [filteredProducts, lastSelectedIndex],
+    [filteredProducts, lastSelectedSku],
   );
 
   // Select all visible products
@@ -591,6 +595,7 @@ export function PipelineClient({
   // Clear selection
   const handleClearSelection = useCallback(() => {
     setSelectedSkus(new Set());
+    setLastSelectedSku(null);
   }, []);
 
   // Handle consolidation submission for scraped products
@@ -946,32 +951,108 @@ export function PipelineClient({
   };
 
   return (
-    <div className="flex h-full flex-col space-y-2 -mt-4">
-      {/* Stage Tabs */}
+    <div className="flex h-full flex-col space-y-0.5 -mt-2">
+      {/* Stage Tabs & Inline Actions */}
       <StageTabs
         currentStage={currentStage}
         counts={counts}
         onStageChange={handleStageChange}
-      />
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="relative group w-48 md:w-64">
+              <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
+              <Input
+                placeholder="Search SKUs or names..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-7.5 pr-7 bg-muted/20 border-muted-foreground/10 focus-visible:ring-brand-forest-green/30 text-xs"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
 
-      {/* Pipeline Toolbar — hidden for live operational tabs */}
-      {!isLiveOperationalTab(currentStage) && (
-        <PipelineToolbar
-          currentStage={currentStage}
-          isLoading={isLoading}
-          onManualAdd={() => setIsManualAddOpen(true)}
-          onIntegraImport={() => setIsIntegraImportOpen(true)}
-          actionState={
-            currentStage === "published" ? publishedActionState : null
-          }
-          onUploadShopSite={
-            currentStage === "published" ? handleUploadAllShopSite : undefined
-          }
-          onDownloadZip={
-            currentStage === "published" ? handleDownloadAllZip : undefined
-          }
-        />
-      )}
+            {currentStage === "scraped" && (
+              <PipelineFilters
+                filters={{
+                  source: sourceFilter,
+                  product_line: productLineFilter,
+                  cohort_id: cohortIdFilter,
+                }}
+                onFilterChange={(newFilters) => {
+                  if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
+                  if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
+                  if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+                }}
+                availableSources={sources}
+                className="h-8"
+              />
+            )}
+
+            {currentStage === "imported" && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsIntegraImportOpen(true)}
+                  disabled={isLoading}
+                  className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
+                >
+                  <Database className="mr-1.5 h-3.5 w-3.5" />
+                  Import CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsManualAddOpen(true)}
+                  disabled={isLoading}
+                  className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add Product
+                </Button>
+              </>
+            )}
+            {currentStage === "published" && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUploadAllShopSite}
+                  disabled={isLoading || publishedActionState === "upload"}
+                  className="h-8 border-brand-forest-green/20 text-brand-forest-green hover:bg-brand-forest-green/5 text-xs font-semibold"
+                >
+                  {publishedActionState === "upload" ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Upload to ShopSite
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadAllZip}
+                  disabled={isLoading || publishedActionState === "zip"}
+                  className="h-8 border-brand-burgundy/20 text-brand-burgundy hover:bg-brand-burgundy/5 text-xs font-semibold"
+                >
+                  {publishedActionState === "zip" ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Archive className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Images ZIP
+                </Button>
+              </>
+            )}
+          </div>
+        }
+      />
 
       {/* Content Area */}
       <div className="flex-1 min-h-0">
@@ -1022,6 +1103,20 @@ export function PipelineClient({
             products={filteredProducts}
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
+            onSelectAll={(skus) => {
+              setSelectedSkus(prev => {
+                const next = new Set(prev);
+                skus.forEach(sku => next.add(sku));
+                return next;
+              });
+            }}
+            onDeselectAll={(skus) => {
+              setSelectedSkus(prev => {
+                const next = new Set(prev);
+                skus.forEach(sku => next.delete(sku));
+                return next;
+              });
+            }}
             onRefresh={refreshAll}
             search={search}
             onSearchChange={(value) => setSearch(value)}
@@ -1036,6 +1131,8 @@ export function PipelineClient({
               if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
             }}
             availableSources={sources}
+            groupedProducts={groupedProducts}
+            cohortBrands={cohortBrands}
           />
         ) : currentStage === "finalizing" || currentStage === "published" ? (
           <FinalizingResultsView
@@ -1043,6 +1140,8 @@ export function PipelineClient({
             onRefresh={refreshAll}
             search={search}
             onSearchChange={(value) => setSearch(value)}
+            groupedProducts={groupedProducts}
+            cohortBrands={cohortBrands}
           />
         ) : (
           <div className="space-y-4">
@@ -1078,15 +1177,15 @@ export function PipelineClient({
                     <AccordionItem 
                       key={cohortId} 
                       value={cohortId}
-                      className="rounded-xl border border-border bg-card shadow-sm overflow-hidden"
+                      className="rounded-lg border border-border bg-card shadow-sm overflow-hidden border-l-4 border-l-brand-forest-green/40"
                     >
-                      <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                      <AccordionTrigger className="px-3 py-2 hover:bg-muted/30 hover:no-underline [&[data-state=open]>div>svg]:rotate-90 bg-muted/10">
                         <div className="flex items-center gap-3">
                           <ChevronRight className="h-4 w-4 transition-transform duration-200 text-muted-foreground" />
                           <div className="flex items-center gap-2">
-                            <Layers className="h-4 w-4 text-brand-forest-green" />
-                            <span className="font-semibold text-foreground">
-                              {cohortId === "ungrouped" ? "Ungrouped Products" : `Cohort ID: ${cohortId}`}
+                            <Layers className="h-3.5 w-3.5 text-brand-forest-green/70" />
+                            <span className="font-bold text-xs uppercase tracking-tight text-foreground/80">
+                              {cohortId === "ungrouped" ? "Ungrouped Products" : `Cohort: ${cohortId}`}
                             </span>
                             {cohortBrands[cohortId] && (
                               <Badge variant="outline" className="ml-1 text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green">
@@ -1194,6 +1293,7 @@ export function PipelineClient({
           onSelectAll={handleSelectAll}
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
+          onConsolidate={() => handleConsolidate(Array.from(selectedSkus))}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onDelete={handleDelete}
           actionState={

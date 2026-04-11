@@ -30,7 +30,6 @@ import {
     getAIScrapingDefaults,
     getAIScrapingRuntimeCredentials,
 } from '@/lib/ai-scraping/credentials';
-import { getGeminiFeatureFlags } from '@/lib/config/gemini-feature-flags';
 import type { NextRequest } from 'next/server';
 import {
     RUNNER_BUILD_ID_HEADER,
@@ -48,10 +47,6 @@ jest.mock('@supabase/supabase-js', () => ({
 jest.mock('@/lib/ai-scraping/credentials', () => ({
     getAIScrapingDefaults: jest.fn(),
     getAIScrapingRuntimeCredentials: jest.fn(),
-}));
-
-jest.mock('@/lib/config/gemini-feature-flags', () => ({
-    getGeminiFeatureFlags: jest.fn(),
 }));
 
 describe('POST /api/scraper/v1/poll', () => {
@@ -111,22 +106,14 @@ describe('POST /api/scraper/v1/poll', () => {
         };
         (createClient as jest.Mock).mockReturnValue(mockSupabase);
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'gemini',
-            llm_model: 'gemini-2.5-flash',
+            llm_provider: 'openai',
+            llm_model: 'gpt-4o-mini',
             llm_base_url: null,
             max_search_results: 5,
             max_steps: 15,
             confidence_threshold: 0.7,
         });
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue(null);
-        (getGeminiFeatureFlags as jest.Mock).mockResolvedValue({
-            GEMINI_AI_SEARCH_ENABLED: false,
-            GEMINI_CRAWL4AI_ENABLED: false,
-            GEMINI_BATCH_ENABLED: false,
-            GEMINI_PARALLEL_RUN_ENABLED: false,
-            GEMINI_TRAFFIC_PERCENT: 0,
-            GEMINI_PARALLEL_SAMPLE_PERCENT: 10,
-        });
     });
 
     const createRequest = (body: any = {}, headers: Record<string, string> = {}) => {
@@ -246,7 +233,6 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job).not.toBeNull();
         expect(data.job.job_id).toBe('job-123');
         expect(data.job.skus).toHaveLength(2);
-        expect(data.job.feature_flags.GEMINI_AI_SEARCH_ENABLED).toBe(false);
     });
 
     it('rejects outdated runners before claiming a job', async () => {
@@ -338,10 +324,6 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.ai_credentials.llm_api_key).toBe('openai-test-key');
         expect(data.job.ai_credentials.openai_api_key).toBe('openai-test-key');
         expect(data.job.ai_credentials.serper_api_key).toBe('serper-test-key');
-        expect(data.job.feature_flags).toMatchObject({
-            GEMINI_AI_SEARCH_ENABLED: false,
-            GEMINI_CRAWL4AI_ENABLED: false,
-        });
         expect(data.job.job_config.max_search_results).toBe(7);
         expect(data.job.job_config.max_steps).toBe(20);
         expect(data.job.job_config.confidence_threshold).toBe(0.82);

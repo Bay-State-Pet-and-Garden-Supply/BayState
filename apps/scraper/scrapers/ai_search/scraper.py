@@ -4,8 +4,10 @@ import asyncio
 import json
 import logging
 import os
+import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Awaitable, Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
@@ -26,6 +28,12 @@ from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
 from scrapers.ai_search.validation import ExtractionValidator
 
 logger = logging.getLogger(__name__)
+
+_PRECHECK_BRAND: ContextVar[str | None] = ContextVar("ai_search_precheck_brand", default=None)
+_PRECHECK_PREFERRED_DOMAINS: ContextVar[tuple[str, ...]] = ContextVar(
+    "ai_search_precheck_preferred_domains",
+    default=(),
+)
 
 
 def _read_int_env(name: str, default: int, minimum: int = 0) -> int:
@@ -157,19 +165,21 @@ class AISearchScraper:
         self.cache_enabled = cache_enabled
         self.extraction_strategy = extraction_strategy
         self.prompt_version = prompt_version
-        self.search_provider = normalize_search_provider(search_provider or os.getenv("AI_SEARCH_PROVIDER"))
-        if self.search_provider == "auto":
-            self.search_provider = "serper"
+        requested_search_provider = str(search_provider or os.getenv("AI_SEARCH_PROVIDER") or "auto").strip().lower()
+        self.requested_search_provider = requested_search_provider or "auto"
+        self.search_provider = normalize_search_provider(self.requested_search_provider)
+        effective_search_provider = "serper" if self.search_provider == "auto" else self.search_provider
         self.search_api_key = search_api_key
         self.prefer_manufacturer = prefer_manufacturer
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
         self.max_follow_up_queries = min(1, _read_int_env("AI_SEARCH_MAX_FOLLOW_UP_QUERIES", default=1))
         requested_two_step_refiner = os.getenv("AI_SEARCH_ENABLE_TWO_STEP", "false").lower() == "true"
-        # The production discovery flow is already SKU -> consolidated name. Keep the
-        # old refiner disabled for Serper so we never exceed two searches per product.
-        self.enable_two_step = requested_two_step_refiner and self.search_provider == "gemini"
+        # The legacy refiner is opt-in. Preserve the caller's original provider
+        # preference so aliases like "gemini" still enable the extra refinement
+        # pass even when discovery normalizes to Serper under the hood.
+        self.enable_two_step = requested_two_step_refiner and self.requested_search_provider == "gemini"
         if requested_two_step_refiner and not self.enable_two_step:
-            logger.info("[AI Search] Disabling legacy search refiner for provider '%s'", self.search_provider)
+            logger.info("[AI Search] Disabling legacy search refiner for provider '%s'", self.requested_search_provider)
         self.secondary_threshold = _read_float_env("AI_SEARCH_SECONDARY_THRESHOLD", default=0.75)
         self.circuit_breaker_threshold = _read_float_env("AI_SEARCH_CIRCUIT_BREAKER_THRESHOLD", default=0.85)
         self.confidence_delta = _read_float_env("AI_SEARCH_CONFIDENCE_DELTA", default=0.1)
@@ -205,7 +215,7 @@ class AISearchScraper:
         self._search_client = SearchClient(
             max_results=max_search_results,
             provider=self.search_provider,
-            api_key=self.search_api_key if self.search_provider == "serper" else self.llm_api_key,
+            api_key=(self.search_api_key or self.llm_api_key) if effective_search_provider == "serper" else self.llm_api_key,
         )
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
@@ -283,10 +293,19 @@ class AISearchScraper:
         if os.getenv("AI_SEARCH_PRECHECK_STRUCTURED_DATA", "true").lower() != "true":
             return False
 
+        domain = self._scoring.domain_from_url(url)
+        protected_domains = _PRECHECK_PREFERRED_DOMAINS.get()
+        if domain and any(domain == preferred or domain.endswith(f".{preferred}") for preferred in protected_domains):
+            return False
+
+        source_tier = self._scoring.classify_source_domain(domain, _PRECHECK_BRAND.get())
+        if source_tier in {"official", "major_retailer", "secondary_retailer"}:
+            return False
+
         # Quick check
         has_data = await self._scoring.has_structured_data(url)
         if has_data is False:
-            logger.info("[AI Search] Skipping %s - no structured data detected", url)
+            logger.info("[AI Search] Skipping low-trust source %s - no structured data detected", url)
             return True
 
         return False
@@ -430,9 +449,10 @@ class AISearchScraper:
         )
 
     def _build_cohort_key(self, item: dict[str, Any]) -> str:
-        brand = self._matching.normalize_token_text(str(item.get("brand") or ""))
         product_name = str(item.get("product_name") or "")
+        brand = self._matching.normalize_token_text(str(item.get("brand") or ""))
         brand_tokens = self._matching.tokenize_keywords(str(item.get("brand") or ""))
+        category_key = self._matching.normalize_token_text(str(item.get("category") or ""))
         cohort_variant_hints = {
             "small",
             "medium",
@@ -454,19 +474,27 @@ class AISearchScraper:
             "blue",
             "red",
         }
+        cohort_brand_hint = self._infer_cohort_brand_hint(
+            item=item,
+            category_key=category_key,
+            cohort_variant_hints=cohort_variant_hints,
+        )
         name_tokens = [
             token
             for token in self._matching.tokenize_keywords(product_name)
             if (token not in brand_tokens and token not in cohort_variant_hints and not any(character.isdigit() for character in token))
         ]
-        family_tokens = name_tokens[:4]
+        family_tokens = sorted(dict.fromkeys(name_tokens))[:4]
         if family_tokens:
             family_key = "-".join(family_tokens)
         else:
             normalized_name = self._matching.normalize_token_text(product_name)
             family_key = normalized_name[:32] or self._matching.normalize_token_text(str(item.get("sku") or ""))
 
-        return f"{brand or 'unknown'}::{family_key or 'unknown'}"
+        if not brand and cohort_brand_hint and category_key:
+            return f"{cohort_brand_hint}::{category_key}"
+
+        return f"{brand or cohort_brand_hint or 'unknown'}::{family_key or category_key or 'unknown'}"
 
     def _score_item_context(self, item: dict[str, Any]) -> int:
         score = 0
@@ -481,6 +509,77 @@ class AISearchScraper:
             score += 2
 
         return score
+
+    def _infer_cohort_brand_hint(
+        self,
+        item: dict[str, Any],
+        category_key: str,
+        cohort_variant_hints: set[str],
+    ) -> str:
+        explicit_brand = self._matching.normalize_token_text(str(item.get("brand") or ""))
+        if explicit_brand:
+            return explicit_brand
+
+        if not category_key:
+            return ""
+
+        category_tokens = self._matching.tokenize_keywords(str(item.get("category") or ""))
+        product_tokens = [
+            token
+            for token in re.findall(r"[a-z0-9]+", str(item.get("product_name") or "").lower())
+            if token and not token.isdigit()
+        ]
+
+        prefix_tokens: list[str] = []
+        for token in product_tokens:
+            if token in cohort_variant_hints:
+                if prefix_tokens:
+                    break
+                continue
+            if prefix_tokens and token in category_tokens:
+                break
+            if not prefix_tokens and token in self._matching.BRAND_PREFIX_EXCLUDED_TOKENS:
+                continue
+            prefix_tokens.append(token)
+            if len(prefix_tokens) >= 2:
+                break
+
+        if not prefix_tokens:
+            return ""
+        if len(prefix_tokens) == 1 and len(prefix_tokens[0]) < 4:
+            return ""
+        return self._matching.normalize_token_text(" ".join(prefix_tokens))
+
+    def _preferred_cohort_domains(self, cohort_state: _BatchCohortState | None) -> list[str] | None:
+        if cohort_state is None:
+            return None
+
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for domain in cohort_state.ranked_official_domains() + cohort_state.ranked_domains():
+            if not domain or domain in seen:
+                continue
+            seen.add(domain)
+            ordered.append(domain)
+        return ordered or None
+
+    def _remember_cohort_success(
+        self,
+        cohort_state: _BatchCohortState,
+        result: AISearchResult,
+        fallback_brand: str | None = None,
+    ) -> None:
+        if not result.success:
+            return
+
+        domain = self._scoring.domain_from_url(result.url or "")
+        effective_brand = str(result.brand or fallback_brand or "").strip() or None
+        if domain and not self._scoring.is_marketplace(domain):
+            cohort_state.remember_domain(domain)
+            if self._scoring.classify_source_domain(domain, effective_brand) == "official":
+                cohort_state.remember_official_domain(domain)
+        if effective_brand:
+            cohort_state.remember_brand(effective_brand)
 
     def _has_preferred_domain_candidate(self, search_results: list[dict[str, Any]], preferred_domains: Optional[list[str]]) -> bool:
         if not search_results or not preferred_domains:
@@ -501,7 +600,12 @@ class AISearchScraper:
         for result in search_results[:5]:
             source_url = str(result.get("url") or "")
             for candidate_text in (result.get("title"), result.get("description")):
-                brand_hint = self._matching.infer_brand_prefix(str(candidate_text or ""), product_name, source_url)
+                brand_hint = self._matching.infer_brand_prefix(
+                    str(candidate_text or ""),
+                    product_name,
+                    source_url,
+                    allow_url_fallback=False,
+                )
                 if not brand_hint:
                     continue
                 brand_counts[brand_hint] = brand_counts.get(brand_hint, 0) + 1
@@ -629,12 +733,14 @@ class AISearchScraper:
                 key=cohort_key,
                 preferred_domain_counts=dict(cached.preferred_domain_counts),
                 preferred_brand_counts=dict(cached.preferred_brand_counts),
+                official_domain_counts=dict(cached.official_domain_counts),
             )
 
         return _BatchCohortState(
             key=cohort_key,
             preferred_domain_counts={},
             preferred_brand_counts={},
+            official_domain_counts={},
         )
 
     def _save_cohort_state(self, cohort_state: _BatchCohortState) -> None:
@@ -699,13 +805,13 @@ class AISearchScraper:
         )
         extracted_results = batch_result.to_search_results()
 
-        for (original_index, _), result in zip(valid_batch, extracted_results):
+        for (original_index, product), result in zip(valid_batch, extracted_results):
             cohort_results.append((original_index, result))
-            domain = self._scoring.domain_from_url(result.url or "")
-            if result.success and domain and not self._scoring.is_marketplace(domain):
-                cohort_state.remember_domain(domain)
-            if result.success and result.brand:
-                cohort_state.remember_brand(result.brand)
+            self._remember_cohort_success(
+                cohort_state,
+                result,
+                fallback_brand=str(product.get("brand") or "").strip() or None,
+            )
 
         return cohort_results
 
@@ -762,12 +868,11 @@ class AISearchScraper:
                         cohort_state=cohort_state,
                     )
                     cohort_results.append((original_index, result))
-
-                    domain = self._scoring.domain_from_url(result.url or "")
-                    if result.success and domain and not self._scoring.is_marketplace(domain):
-                        cohort_state.remember_domain(domain)
-                    if result.success and result.brand:
-                        cohort_state.remember_brand(result.brand)
+                    self._remember_cohort_success(
+                        cohort_state,
+                        result,
+                        fallback_brand=str(product.get("brand") or "").strip() or None,
+                    )
 
                 dominant_domain = cohort_state.dominant_domain()
                 if dominant_domain:
@@ -1229,7 +1334,7 @@ class AISearchScraper:
         """
         cost_context = _ScrapeCostContext()
         try:
-            preferred_domains = cohort_state.ranked_domains() if cohort_state is not None else None
+            preferred_domains = self._preferred_cohort_domains(cohort_state)
             inferred_brand = None
             if not brand and cohort_state is not None:
                 ranked_brands = cohort_state.ranked_brands()
@@ -1332,59 +1437,65 @@ class AISearchScraper:
             last_rejection_reason: Optional[str] = None
             target_url: Optional[str] = None
             tried_urls: set[str] = set()
+            precheck_brand_token = _PRECHECK_BRAND.set(effective_brand)
+            precheck_domains_token = _PRECHECK_PREFERRED_DOMAINS.set(tuple(preferred_domains or ()))
 
-            for attempt, candidate in enumerate(ordered_results[:max_attempts], start=1):
-                target_url = str(candidate.get("url") or "").strip()
-                if not target_url or target_url in tried_urls:
-                    continue
+            try:
+                for attempt, candidate in enumerate(ordered_results[:max_attempts], start=1):
+                    target_url = str(candidate.get("url") or "").strip()
+                    if not target_url or target_url in tried_urls:
+                        continue
 
-                self._log_telemetry(sku, target_url, "source_selected", True, f"attempt {attempt}")
-                logger.info(f"[AI Search] Selected source (attempt {attempt}): {target_url}")
+                    self._log_telemetry(sku, target_url, "source_selected", True, f"attempt {attempt}")
+                    logger.info(f"[AI Search] Selected source (attempt {attempt}): {target_url}")
 
-                if self._scoring.is_low_quality_result(candidate):
-                    last_rejection_reason = "Selected source appears to be a non-product/review/aggregator page"
-                    self._log_telemetry(sku, target_url, "source_selected", False, last_rejection_reason)
-                    continue
+                    if self._scoring.is_low_quality_result(candidate):
+                        last_rejection_reason = "Selected source appears to be a non-product/review/aggregator page"
+                        self._log_telemetry(sku, target_url, "source_selected", False, last_rejection_reason)
+                        continue
 
-                # Pre-extraction URL validation: skip blocked domains and
-                # category-like URLs without launching a browser.
-                if self._is_blocked_url(target_url):
-                    last_rejection_reason = "URL blocked by pre-extraction validation (domain or category pattern)"
-                    self._log_telemetry(sku, target_url, "pre_extraction_block", False, last_rejection_reason)
-                    logger.info("[AI Search] Pre-extraction block: %s", target_url)
-                    continue
+                    # Pre-extraction URL validation: skip blocked domains and
+                    # category-like URLs without launching a browser.
+                    if self._is_blocked_url(target_url):
+                        last_rejection_reason = "URL blocked by pre-extraction validation (domain or category pattern)"
+                        self._log_telemetry(sku, target_url, "pre_extraction_block", False, last_rejection_reason)
+                        logger.info("[AI Search] Pre-extraction block: %s", target_url)
+                        continue
 
-                # Optional: Structured data pre-check before browser launch
-                if await self._should_skip_url(target_url):
-                    last_rejection_reason = "No structured data detected"
-                    self._log_telemetry(sku, target_url, "pre_extraction_block", False, last_rejection_reason)
-                    logger.info("[AI Search] Pre-check skip: %s", target_url)
-                    continue
+                    # Optional: Structured data pre-check before browser launch
+                    if await self._should_skip_url(target_url):
+                        last_rejection_reason = "No structured data detected"
+                        self._log_telemetry(sku, target_url, "pre_extraction_block", False, last_rejection_reason)
+                        logger.info("[AI Search] Pre-check skip: %s", target_url)
+                        continue
 
-                tried_urls.add(target_url)
-                self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
-                extraction_result = await self._extract_product_data(target_url, sku, product_name, effective_brand)
-                fetch_ok = bool(extraction_result.get("success"))
-                fetch_details = str(extraction_result.get("error") or "ok") if not fetch_ok else "ok"
-                self._log_telemetry(sku, target_url, "fetch_attempt", fetch_ok, fetch_details)
-                self._log_telemetry(sku, target_url, "validation", True, "initiated")
-                is_acceptable, rejection_reason = self._validator.validate_extraction_match(
-                    extraction_result=extraction_result,
-                    sku=sku,
-                    product_name=product_name,
-                    brand=effective_brand,
-                    source_url=target_url,
-                )
-                self._log_telemetry(sku, target_url, "validation", is_acceptable, rejection_reason if not is_acceptable else "ok")
-                if is_acceptable:
-                    accepted_result = extraction_result
-                    break
+                    tried_urls.add(target_url)
+                    self._log_telemetry(sku, target_url, "fetch_attempt", True, "initiated")
+                    extraction_result = await self._extract_product_data(target_url, sku, product_name, effective_brand)
+                    fetch_ok = bool(extraction_result.get("success"))
+                    fetch_details = str(extraction_result.get("error") or "ok") if not fetch_ok else "ok"
+                    self._log_telemetry(sku, target_url, "fetch_attempt", fetch_ok, fetch_details)
+                    self._log_telemetry(sku, target_url, "validation", True, "initiated")
+                    is_acceptable, rejection_reason = self._validator.validate_extraction_match(
+                        extraction_result=extraction_result,
+                        sku=sku,
+                        product_name=product_name,
+                        brand=effective_brand,
+                        source_url=target_url,
+                    )
+                    self._log_telemetry(sku, target_url, "validation", is_acceptable, rejection_reason if not is_acceptable else "ok")
+                    if is_acceptable:
+                        accepted_result = extraction_result
+                        break
 
-                last_rejection_reason = rejection_reason
-                # Record domain failure for history tracking
-                if target_url:
-                    domain = self._scoring.domain_from_url(target_url)
-                    record_domain_attempt(domain, False)
+                    last_rejection_reason = rejection_reason
+                    # Record domain failure for history tracking
+                    if target_url:
+                        domain = self._scoring.domain_from_url(target_url)
+                        record_domain_attempt(domain, False)
+            finally:
+                _PRECHECK_BRAND.reset(precheck_brand_token)
+                _PRECHECK_PREFERRED_DOMAINS.reset(precheck_domains_token)
 
             if not accepted_result:
                 # Change 5: Parallel candidate discovery fallback.

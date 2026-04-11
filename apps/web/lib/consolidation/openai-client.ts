@@ -1,9 +1,7 @@
 import OpenAI from 'openai';
-import type { GeminiClientAdapter } from '@/lib/providers/gemini-client';
 import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 import {
     getAIConsolidationRuntimeConfig,
-    getDefaultModelForProvider,
 } from '@/lib/ai-scraping/credentials';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
@@ -20,7 +18,6 @@ export interface ConsolidationRuntimeConfig {
     configured_llm_provider: LLMProvider;
     llm_base_url: string | null;
     llm_api_key: string | null;
-    gemini_api_key: string | null;
     llm_supports_batch_api: boolean;
     confidence_threshold: number;
     routing_key: string | null;
@@ -35,11 +32,9 @@ function resolveEffectiveProvider(
     configuredProvider: LLMProvider,
     options: ConsolidationConfigOptions | undefined
 ): LLMProvider {
-    if (options?.forceProvider) {
-        return options.forceProvider;
-    }
-
-    return configuredProvider;
+    void configuredProvider;
+    void options;
+    return 'openai';
 }
 
 /**
@@ -47,41 +42,23 @@ function resolveEffectiveProvider(
  */
 export async function getOpenAIClient(options?: ConsolidationConfigOptions): Promise<OpenAI | null> {
     const runtimeConfig = await getConsolidationConfig(options);
-    const baseURL = runtimeConfig.llm_provider === 'openai_compatible'
-        ? runtimeConfig.llm_base_url ?? undefined
-        : undefined;
-
-    if (runtimeConfig.llm_provider === 'openai' && !runtimeConfig.llm_api_key) {
+    if (!runtimeConfig.llm_api_key) {
         console.error('[Consolidation] OpenAI API key not set in environment or runtime credentials');
         return null;
     }
 
-    if (runtimeConfig.llm_provider === 'openai_compatible' && !baseURL) {
-        console.error('[Consolidation] OpenAI-compatible base URL is not configured');
-        return null;
-    }
-
-    const apiKey = runtimeConfig.llm_api_key || 'baystate-local';
+    const apiKey = runtimeConfig.llm_api_key;
     const clientSignature = JSON.stringify({
         provider: runtimeConfig.llm_provider,
         apiKey,
-        baseURL: baseURL ?? null,
     });
 
     if (clientSignature !== lastClientSignature || !openaiClient) {
         lastClientSignature = clientSignature;
-        openaiClient = new OpenAI({
-            apiKey,
-            ...(baseURL ? { baseURL } : {}),
-        });
+        openaiClient = new OpenAI({ apiKey });
     }
 
     return openaiClient;
-}
-
-export async function getGeminiClient(_options?: ConsolidationConfigOptions): Promise<GeminiClientAdapter | null> {
-    void _options;
-    return null;
 }
 
 /**
@@ -89,11 +66,7 @@ export async function getGeminiClient(_options?: ConsolidationConfigOptions): Pr
  */
 export async function isOpenAIConfigured(options?: ConsolidationConfigOptions): Promise<boolean> {
     const runtimeConfig = await getConsolidationConfig(options);
-    if (runtimeConfig.llm_provider === 'openai') {
-        return !!runtimeConfig.llm_api_key;
-    }
-
-    return !!runtimeConfig.llm_base_url;
+    return !!runtimeConfig.llm_api_key;
 }
 
 /**
@@ -123,30 +96,17 @@ export async function getConsolidationConfig(
             runtimeConfig.llm_provider,
             options
         );
-        const model = effectiveProvider === runtimeConfig.llm_provider
-            ? runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model
-            : getDefaultModelForProvider(effectiveProvider);
-        const baseUrl = effectiveProvider === 'openai_compatible'
-            ? runtimeConfig.openai_compatible_base_url ?? runtimeConfig.llm_base_url
-            : null;
-        const apiKey = effectiveProvider === 'openai_compatible'
-                ? runtimeConfig.openai_compatible_api_key
-                    ?? (runtimeConfig.llm_provider === 'openai_compatible' ? runtimeConfig.llm_api_key : null)
-                : runtimeConfig.openai_api_key
-                    ?? (runtimeConfig.llm_provider === 'openai' ? runtimeConfig.llm_api_key : null);
+        const model = runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model;
+        const apiKey = runtimeConfig.openai_api_key ?? runtimeConfig.llm_api_key;
 
         return {
             ...CONSOLIDATION_CONFIG,
             model,
             llm_provider: effectiveProvider,
             configured_llm_provider: runtimeConfig.llm_provider,
-            llm_base_url: baseUrl,
+            llm_base_url: null,
             llm_api_key: apiKey ?? null,
-            gemini_api_key: runtimeConfig.gemini_api_key ?? null,
-            llm_supports_batch_api:
-                effectiveProvider === 'openai_compatible'
-                    ? runtimeConfig.llm_supports_batch_api
-                    : true,
+            llm_supports_batch_api: true,
             confidence_threshold: runtimeConfig.confidence_threshold,
             routing_key: options?.routingKey ?? null,
         };
@@ -158,7 +118,6 @@ export async function getConsolidationConfig(
             configured_llm_provider: 'openai' as const,
             llm_base_url: null,
             llm_api_key: null,
-            gemini_api_key: null,
             llm_supports_batch_api: true,
             confidence_threshold: 0.7,
             routing_key: options?.routingKey ?? null,

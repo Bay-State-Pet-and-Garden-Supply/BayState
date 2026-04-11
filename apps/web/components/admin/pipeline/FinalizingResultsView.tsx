@@ -44,6 +44,11 @@ interface FinalizingResultsViewProps {
   onRefresh: (silent?: boolean) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
+  groupedProducts?: {
+    groups: Record<string, PipelineProduct[]>;
+    cohortIds: string[];
+  };
+  cohortBrands?: Record<string, string>;
 }
 
 interface Brand {
@@ -61,6 +66,8 @@ export function FinalizingResultsView({
   onRefresh,
   search,
   onSearchChange,
+  groupedProducts,
+  cohortBrands = {},
 }: FinalizingResultsViewProps) {
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
@@ -675,7 +682,7 @@ export function FinalizingResultsView({
   const isCustomImageSource = activeImageSourceOption?.id === "custom";
 
   return (
-    <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <ProductListSidebar
         products={sortedProducts}
@@ -684,6 +691,8 @@ export function FinalizingResultsView({
         scrollContainerRef={scrollContainerRef}
         search={search}
         onSearchChange={onSearchChange}
+        groupedProducts={groupedProducts}
+        cohortBrands={cohortBrands}
       />
 
       {/* Right Column: Editing Form */}

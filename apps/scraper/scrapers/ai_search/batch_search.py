@@ -206,6 +206,7 @@ class BatchSearchOrchestrator:
 
         # Step 1: Search all SKUs using the shared two-step SKU-first flow.
         search_results = await self.search_sku_first(products, max_concurrent=max_search_concurrent)
+        self._seed_cohort_context_from_results(products, search_results)
 
         # Step 2: Analyze domain frequency
         domain_frequency = self.analyze_domain_frequency(search_results)
@@ -424,12 +425,98 @@ class BatchSearchOrchestrator:
             normalized = normalized[4:]
         return normalized.split("/", 1)[0].strip()
 
-    def _remember_successful_domain(self, url: str) -> None:
+    def _remember_successful_domain(self, url: str, brand: str | None = None) -> None:
         """Record a successful extraction domain for cohort ranking."""
         if not self._cohort_state:
             return
         domain = self._extract_domain(url)
+        normalized_brand = str(brand or "").strip() or None
         self._cohort_state.remember_domain(domain)
+        if normalized_brand:
+            self._cohort_state.remember_brand(normalized_brand)
+            if self._scorer.classify_source_domain(domain, normalized_brand) == "official":
+                self._cohort_state.remember_official_domain(domain)
+
+    def _preferred_ranking_domains(self) -> list[str]:
+        if not self._cohort_state:
+            return []
+
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for domain in self._cohort_state.ranked_official_domains() + self._cohort_state.ranked_domains():
+            if not domain or domain in seen:
+                continue
+            seen.add(domain)
+            ordered.append(domain)
+        return ordered
+
+    def _infer_brand_hint(
+        self,
+        product: ProductInput,
+        results: list[SearchResult],
+    ) -> str | None:
+        if product.brand:
+            return product.brand
+
+        brand_counts: dict[str, int] = {}
+        for result in results[:5]:
+            result_dict = {
+                "url": result.url,
+                "title": result.title or "",
+                "description": result.description or "",
+            }
+            inferred_brand = self._scorer.infer_brand_from_result(result_dict, product.name)
+            if not inferred_brand:
+                inferred_brand = self._scorer.infer_brand_from_domain(self._extract_domain(result.url), product.name)
+            if not inferred_brand:
+                continue
+            brand_counts[inferred_brand] = brand_counts.get(inferred_brand, 0) + 1
+
+        if not brand_counts:
+            return None
+
+        return sorted(
+            brand_counts.items(),
+            key=lambda item: (-item[1], item[0].lower()),
+        )[0][0]
+
+    def _seed_cohort_context_from_results(
+        self,
+        products: list[ProductInput],
+        search_results: dict[str, list[SearchResult]],
+    ) -> None:
+        if not products:
+            return
+
+        for product in products:
+            results = search_results.get(product.sku, [])
+            if not results:
+                continue
+
+            inferred_brand = self._infer_brand_hint(product, results)
+            if inferred_brand and not product.brand:
+                product.brand = inferred_brand
+            effective_brand = product.brand or inferred_brand
+
+            if self._cohort_state and effective_brand:
+                self._cohort_state.remember_brand(effective_brand)
+
+            if not self._cohort_state:
+                continue
+
+            for result in results[:5]:
+                result_dict = {
+                    "url": result.url,
+                    "title": result.title or "",
+                    "description": result.description or "",
+                }
+                if self._scorer.is_low_quality_result(result_dict):
+                    continue
+                domain = self._extract_domain(result.url)
+                if not domain or self._scorer.is_marketplace(domain):
+                    continue
+                if self._scorer.classify_source_domain(domain, effective_brand) == "official":
+                    self._cohort_state.remember_official_domain(domain)
 
     def _should_use_sku_first(self, products: list[ProductInput]) -> bool:
         """Use SKU-first discovery when product context is too thin for direct ranking."""
@@ -474,7 +561,10 @@ class BatchSearchOrchestrator:
         if not is_acceptable:
             return None, rejection_reason
 
-        self._remember_successful_domain(str(result.get("url") or source_url))
+        self._remember_successful_domain(
+            str(result.get("url") or source_url),
+            str(result.get("brand") or brand or "").strip() or None,
+        )
         return result, ""
 
     async def _extract_ranked_results(
@@ -579,6 +669,8 @@ class BatchSearchOrchestrator:
     ) -> list[RankedResult]:
         """Rank URLs considering cohort-wide signals."""
         ranked: list[RankedResult] = []
+        preferred_domains = self._preferred_ranking_domains()
+        official_domains = self._cohort_state.ranked_official_domains() if self._cohort_state else []
 
         for result in search_results:
             domain = self._extract_domain(result.url)
@@ -595,13 +687,23 @@ class BatchSearchOrchestrator:
                 product_name=product_name,
                 category=category,
                 prefer_manufacturer=True,
+                preferred_domains=preferred_domains,
             )
+            effective_brand = brand or self._scorer.infer_brand_from_result(result_dict, product_name)
+            source_tier = self._scorer.classify_source_domain(domain, effective_brand)
 
             freq = domain_frequency.get(domain)
-            if freq and freq.sku_count > 3:
-                base_score += 5.0
-            elif freq and freq.sku_count > 1:
-                base_score += 2.0
+            if freq and freq.sku_count > 1:
+                if source_tier == "official":
+                    base_score += min(5.0, float(freq.sku_count) * 1.5)
+                elif source_tier in {"major_retailer", "secondary_retailer"}:
+                    base_score += min(2.0, float(freq.sku_count - 1))
+                else:
+                    base_score += min(1.0, float(freq.sku_count - 1) * 0.5)
+
+            if official_domains and domain in official_domains:
+                official_rank = official_domains.index(domain)
+                base_score += max(5.0 - float(official_rank), 3.0)
 
             # Boost score for domains preferred by cohort
             if self._cohort_state:
@@ -621,6 +723,28 @@ class BatchSearchOrchestrator:
 
         ranked.sort(key=lambda x: x.score, reverse=True)
         return ranked
+
+    @staticmethod
+    def _merge_ranked_results(
+        primary: list[RankedResult],
+        rescue: list[RankedResult],
+        *,
+        limit: int,
+    ) -> list[RankedResult]:
+        merged: list[RankedResult] = []
+        seen_urls: set[str] = set()
+
+        for bucket in (rescue, primary):
+            for ranked in bucket:
+                url = ranked.result.url
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                merged.append(ranked)
+                if len(merged) >= limit:
+                    return merged
+
+        return merged
 
     def _is_blocked_url(self, url: str) -> bool:
         """Check if URL should be skipped before extraction."""
@@ -651,8 +775,29 @@ class BatchSearchOrchestrator:
                 brand = product.brand if product else None
                 last_error = "All URLs failed"
                 attempted_urls: set[str] = set()
+                candidate_urls = list(urls)
 
-                for ranked in urls:
+                rescue_domains: list[str] = []
+                if self._cohort_state:
+                    rescue_domains.extend(self._cohort_state.ranked_official_domains()[:2])
+                    if not rescue_domains:
+                        dominant_domain = self._cohort_state.dominant_domain(minimum_count=2)
+                        if dominant_domain:
+                            rescue_domains.append(dominant_domain)
+
+                top_domain = self._extract_domain(candidate_urls[0].result.url) if candidate_urls else ""
+                if product and rescue_domains and top_domain not in rescue_domains:
+                    for rescue_domain in rescue_domains:
+                        site_specific = await self._search_site_specific(rescue_domain, product)
+                        if site_specific:
+                            candidate_urls = self._merge_ranked_results(
+                                candidate_urls,
+                                site_specific,
+                                limit=max(5, len(candidate_urls) + len(site_specific)),
+                            )
+                            break
+
+                for ranked in candidate_urls:
                     source_url = ranked.result.url
                     if not source_url or source_url in attempted_urls:
                         continue

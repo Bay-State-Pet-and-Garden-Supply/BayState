@@ -65,7 +65,7 @@ def test_run_ai_search_job_wires_serper_credentials_and_restores_env(monkeypatch
                 "search_provider": "serper",
             },
             ai_credentials={
-                "gemini_api_key": "gemini-runtime-key-1234567890",
+                "openai_api_key": "openai-runtime-key-1234567890",
                 "serper_api_key": "serper-runtime-key-1234567890",
             },
         ),
@@ -75,9 +75,9 @@ def test_run_ai_search_job_wires_serper_credentials_and_restores_env(monkeypatch
     )
 
     assert init_args["search_provider"] == "serper"
-    assert init_args["llm_provider"] == "gemini"
-    assert init_args["llm_model"] == "gemini-2.5-flash"
-    assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
+    assert init_args["llm_provider"] == "openai"
+    assert init_args["llm_model"] == "gpt-4o-mini"
+    assert init_args["llm_api_key"] == "openai-runtime-key-1234567890"
     assert init_args["search_api_key"] == "serper-runtime-key-1234567890"
     assert init_args["prefer_manufacturer"] is True
     assert updated["data"]["SKU-1"]["ai_search"]["title"] == "Acme Squeaky Ball"
@@ -130,7 +130,7 @@ def test_run_ai_search_job_maps_legacy_provider_payloads_to_serper(monkeypatch) 
                 "llm_base_url": "http://localhost:8000/v1",
             },
             ai_credentials={
-                "gemini_api_key": "gemini-runtime-key-2222222222",
+                "openai_api_key": "openai-runtime-key-2222222222",
             },
         ),
         skus=["SKU-2"],
@@ -138,16 +138,16 @@ def test_run_ai_search_job_maps_legacy_provider_payloads_to_serper(monkeypatch) 
         log_buffer=[],
     )
 
-    assert init_args["llm_provider"] == "gemini"
-    assert init_args["llm_model"] == "gemini-2.5-flash"
+    assert init_args["llm_provider"] == "openai"
+    assert init_args["llm_model"] == "gpt-4o-mini"
     assert init_args["llm_base_url"] is None
-    assert init_args["llm_api_key"] == "gemini-runtime-key-2222222222"
+    assert init_args["llm_api_key"] == "openai-runtime-key-2222222222"
     assert init_args["search_provider"] == "serper"
     assert updated["data"]["SKU-2"]["ai_search"]["title"] == "Local Model Product"
     assert "BRAVE_API_KEY" not in os.environ
 
 
-def test_run_ai_search_job_uses_gemini_without_feature_flag_fallback(monkeypatch) -> None:
+def test_run_ai_search_job_routes_legacy_gemini_payloads_to_openai(monkeypatch) -> None:
     init_args: dict[str, object] = {}
 
     class StubAISearchScraper:
@@ -186,11 +186,7 @@ def test_run_ai_search_job_uses_gemini_without_feature_flag_fallback(monkeypatch
                 "llm_provider": "gemini",
             },
             ai_credentials={
-                "gemini_api_key": "gemini-runtime-key-1234567890",
-            },
-            feature_flags={
-                "GEMINI_AI_SEARCH_ENABLED": False,
-                "GEMINI_CRAWL4AI_ENABLED": False,
+                "openai_api_key": "openai-runtime-key-1234567890",
             },
         ),
         skus=["SKU-3"],
@@ -198,8 +194,8 @@ def test_run_ai_search_job_uses_gemini_without_feature_flag_fallback(monkeypatch
         log_buffer=[],
     )
 
-    assert init_args["llm_provider"] == "gemini"
-    assert init_args["llm_model"] == "gemini-2.5-flash"
-    assert init_args["llm_api_key"] == "gemini-runtime-key-1234567890"
+    assert init_args["llm_provider"] == "openai"
+    assert init_args["llm_model"] == "gpt-4o-mini"
+    assert init_args["llm_api_key"] == "openai-runtime-key-1234567890"
     assert init_args["search_provider"] == "serper"
     assert updated["data"]["SKU-3"]["ai_search"]["title"] == "Gemini Product"

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_AI_MODEL, DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
+import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
 export type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'serpapi' | 'brave';
 export type LLMProvider = 'openai' | 'openai_compatible' | 'gemini';
@@ -35,8 +35,6 @@ export interface AIScrapingRuntimeCredentials {
   llm_base_url?: string;
   llm_api_key?: string;
   openai_api_key?: string;
-  openai_compatible_api_key?: string;
-  gemini_api_key?: string;
   serper_api_key?: string;
   serpapi_api_key?: string;
 }
@@ -47,9 +45,6 @@ export interface AIConsolidationRuntimeConfig {
   llm_base_url: string | null;
   llm_api_key: string | null;
   openai_api_key?: string;
-  openai_compatible_api_key?: string;
-  openai_compatible_base_url?: string | null;
-  gemini_api_key?: string;
   confidence_threshold: number;
   llm_supports_batch_api: boolean;
 }
@@ -58,9 +53,6 @@ const AI_DEFAULTS_SETTINGS_KEY = 'ai_scraping_defaults';
 const AI_CONSOLIDATION_DEFAULTS_SETTINGS_KEY = 'ai_consolidation_defaults';
 const AI_PROVIDER_COMPAT_SETTINGS_KEY_PREFIX = 'ai_provider_credentials_compat_';
 const ENCRYPTION_KEY_ENV_NAME = 'AI_CREDENTIALS_ENCRYPTION_KEY';
-const OPENAI_COMPATIBLE_API_KEY_ENV_NAME = 'OPENAI_COMPATIBLE_API_KEY';
-const OPENAI_COMPATIBLE_BASE_URL_ENV_NAME = 'OPENAI_COMPATIBLE_BASE_URL';
-const GEMINI_API_KEY_ENV_NAME = 'GEMINI_API_KEY';
 const SITE_SETTINGS_COMPATIBLE_PROVIDERS = ['gemini', 'openai_compatible'] as const;
 const ENCRYPTION_KEY_HELP =
   'Set AI_CREDENTIALS_ENCRYPTION_KEY to a 32-byte UTF-8 string or base64-encoded 32-byte key (example: `openssl rand -base64 32`).';
@@ -87,15 +79,8 @@ const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
 };
 
 export function getDefaultModelForProvider(provider: LLMProvider): string {
-  switch (provider) {
-    case 'gemini':
-      return DEFAULT_GEMINI_MODEL;
-    case 'openai_compatible':
-      return 'google/gemma-3-12b-it';
-    case 'openai':
-    default:
-      return 'gpt-4o-mini';
-  }
+  void provider;
+  return DEFAULT_AI_MODEL;
 }
 
 function getSupabaseAdmin(): SupabaseClient {
@@ -410,16 +395,8 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
   console.error(`[Scraper API] Failed to decrypt ${provider} secret: ${getErrorMessage(error)}`);
 }
 
-function normalizeLLMProvider(provider?: unknown): LLMProvider {
-  if (typeof provider !== 'string') {
-    return 'openai';
-  }
-
-  const normalized = provider.trim().toLowerCase();
-  if (normalized === 'openai' || normalized === 'openai_compatible') {
-    return normalized;
-  }
-
+function normalizeLLMProvider(_provider?: unknown): LLMProvider {
+  void _provider;
   return 'openai';
 }
 
@@ -432,28 +409,6 @@ function normalizeLLMModel(value: unknown, fallback: string): string {
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function normalizeLLMBaseUrl(value: unknown): string | null {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  return trimmed.replace(/\/+$/, '');
-}
-
-function resolveOpenAICompatibleBaseUrl(baseUrl: string | null | undefined): string | null {
-  if (baseUrl && baseUrl.trim()) {
-    return normalizeLLMBaseUrl(baseUrl);
-  }
-
-  const envBaseUrl = process.env[OPENAI_COMPATIBLE_BASE_URL_ENV_NAME];
-  return normalizeLLMBaseUrl(envBaseUrl);
-}
-
 function resolveOpenAIApiKey(apiKey: string | null | undefined): string | null {
   if (apiKey && apiKey.trim()) {
     return apiKey.trim();
@@ -461,32 +416,6 @@ function resolveOpenAIApiKey(apiKey: string | null | undefined): string | null {
 
   if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim()) {
     return process.env.OPENAI_API_KEY.trim();
-  }
-
-  return null;
-}
-
-function resolveOpenAICompatibleApiKey(apiKey: string | null | undefined): string | null {
-  if (apiKey && apiKey.trim()) {
-    return apiKey.trim();
-  }
-
-  const envApiKey = process.env[OPENAI_COMPATIBLE_API_KEY_ENV_NAME];
-  if (envApiKey && envApiKey.trim()) {
-    return envApiKey.trim();
-  }
-
-  return null;
-}
-
-function resolveGeminiApiKey(apiKey: string | null | undefined): string | null {
-  if (apiKey && apiKey.trim()) {
-    return apiKey.trim();
-  }
-
-  const envApiKey = process.env[GEMINI_API_KEY_ENV_NAME];
-  if (envApiKey && envApiKey.trim()) {
-    return envApiKey.trim();
   }
 
   return null;
@@ -532,12 +461,9 @@ export async function getAIScrapingDefaults(): Promise<AIScrapingDefaults> {
 export async function upsertAIScrapingDefaults(partial: Partial<AIScrapingDefaults>): Promise<AIScrapingDefaults> {
   const admin = getSupabaseAdmin();
   const current = await getAIScrapingDefaults();
-  const merged = { ...current, ...partial };
+  const merged = { ...current, ...partial, llm_base_url: null };
   if (partial.llm_provider && partial.llm_model === undefined) {
     merged.llm_model = getDefaultModelForProvider(partial.llm_provider);
-  }
-  if (partial.llm_provider && partial.llm_provider !== 'openai_compatible' && partial.llm_base_url === undefined) {
-    merged.llm_base_url = null;
   }
   const next = normalizeDefaults(merged);
 
@@ -597,12 +523,9 @@ export async function getAIConsolidationDefaults(): Promise<AIConsolidationDefau
 export async function upsertAIConsolidationDefaults(partial: Partial<AIConsolidationDefaults>): Promise<AIConsolidationDefaults> {
   const admin = getSupabaseAdmin();
   const current = await getAIConsolidationDefaults();
-  const merged = { ...current, ...partial };
+  const merged = { ...current, ...partial, llm_base_url: null };
   if (partial.llm_provider && partial.llm_model === undefined) {
     merged.llm_model = getDefaultModelForProvider(partial.llm_provider);
-  }
-  if (partial.llm_provider && partial.llm_provider !== 'openai_compatible' && partial.llm_base_url === undefined) {
-    merged.llm_base_url = null;
   }
   const next = normalizeConsolidationDefaults(merged);
 
@@ -761,18 +684,14 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
 }
 
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const [defaults, openai, openaiCompatible, legacySearchKey] = await Promise.all([
+  const [defaults, openai, legacySearchKey] = await Promise.all([
     getAIScrapingDefaults(),
     getAIScrapingProviderSecret('openai'),
-    getAIScrapingProviderSecret('openai_compatible'),
     getAIScrapingProviderSecret('serpapi'),
   ]);
 
   const resolvedOpenAI = resolveOpenAIApiKey(openai);
-  const resolvedOpenAICompatible = resolveOpenAICompatibleApiKey(openaiCompatible);
-  const llmApiKey = defaults.llm_provider === 'openai_compatible'
-    ? resolvedOpenAICompatible
-    : resolvedOpenAI;
+  const llmApiKey = resolvedOpenAI;
 
   const credentials: AIScrapingRuntimeCredentials = {
     llm_provider: defaults.llm_provider,
@@ -782,17 +701,8 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
   if (llmApiKey) {
     credentials.llm_api_key = llmApiKey;
   }
-  if (defaults.llm_provider === 'openai_compatible') {
-    const baseUrl = resolveOpenAICompatibleBaseUrl(defaults.llm_base_url);
-    if (baseUrl) {
-      credentials.llm_base_url = baseUrl;
-    }
-  }
   if (resolvedOpenAI) {
     credentials.openai_api_key = resolvedOpenAI;
-  }
-  if (resolvedOpenAICompatible) {
-    credentials.openai_compatible_api_key = resolvedOpenAICompatible;
   }
   if (legacySearchKey) {
     credentials.serper_api_key = legacySearchKey;
@@ -803,34 +713,20 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
 }
 
 export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
-  const [defaults, openai, openaiCompatible, gemini] = await Promise.all([
+  const [defaults, openai] = await Promise.all([
     getAIConsolidationDefaults(),
     getAIScrapingProviderSecret('openai'),
-    getAIScrapingProviderSecret('openai_compatible'),
-    getAIScrapingProviderSecret('gemini'),
   ]);
 
   const resolvedOpenAI = resolveOpenAIApiKey(openai);
-  const resolvedOpenAICompatible = resolveOpenAICompatibleApiKey(openaiCompatible);
-  const resolvedGemini = resolveGeminiApiKey(gemini);
-
-  const llmApiKey = defaults.llm_provider === 'openai_compatible'
-    ? resolvedOpenAICompatible
-    : resolvedOpenAI;
+  const llmApiKey = resolvedOpenAI;
 
   return {
     llm_provider: defaults.llm_provider,
     llm_model: defaults.llm_model,
-    llm_base_url: defaults.llm_provider === 'openai_compatible'
-      ? resolveOpenAICompatibleBaseUrl(defaults.llm_base_url)
-      : null,
+    llm_base_url: null,
     llm_api_key: llmApiKey,
     ...(resolvedOpenAI ? { openai_api_key: resolvedOpenAI } : {}),
-    ...(resolvedOpenAICompatible ? { openai_compatible_api_key: resolvedOpenAICompatible } : {}),
-    ...(resolvedOpenAICompatible ? {
-      openai_compatible_base_url: resolveOpenAICompatibleBaseUrl(defaults.llm_base_url),
-    } : {}),
-    ...(resolvedGemini ? { gemini_api_key: resolvedGemini } : {}),
     confidence_threshold: defaults.confidence_threshold,
     llm_supports_batch_api: defaults.llm_supports_batch_api,
   };

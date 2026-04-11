@@ -509,7 +509,7 @@ class Crawl4AIExtractor:
                         schema=self._product_schema,
                         extraction_type="schema",
                         instruction=instruction,
-                        input_format="fit_markdown",
+                        input_format="markdown",
                         chunk_token_threshold=4000,
                         overlap_rate=0.1,
                     )

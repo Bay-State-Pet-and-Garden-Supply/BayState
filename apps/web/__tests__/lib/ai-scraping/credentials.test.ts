@@ -194,7 +194,6 @@ describe('AI scraping credentials compatibility', () => {
 
     const runtime = await getAIScrapingRuntimeCredentials();
     expect(runtime.llm_model).toBe(DEFAULT_AI_MODEL);
-    expect(runtime.gemini_api_key).toBeUndefined();
     expect(runtime.llm_api_key).toBeUndefined();
   });
 });

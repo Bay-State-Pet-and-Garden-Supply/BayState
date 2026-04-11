@@ -12,7 +12,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
-from scrapers.config.feature_flags import GeminiFeatureFlags
 from scrapers.ai_search import AISearchScraper
 from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
@@ -1046,6 +1045,21 @@ def _run_ai_search_job(
         trimmed = raw_value.strip()
         return trimmed if trimmed else None
 
+    def _normalize_openai_model(raw_value: str | None) -> str:
+        candidate = str(raw_value or "").strip()
+        if not candidate:
+            return "gpt-4o-mini"
+
+        lowered = candidate.lower()
+        if lowered.startswith(("gpt-", "o1", "o3", "o4")):
+            return candidate
+
+        logger.info(
+            "[AI Search] Ignoring legacy non-OpenAI model '%s' and defaulting to gpt-4o-mini",
+            candidate,
+        )
+        return "gpt-4o-mini"
+
     search_cfg = job_config.job_config or {}
     scraper_name = "ai_search"
 
@@ -1054,15 +1068,16 @@ def _run_ai_search_job(
     max_steps = int(search_cfg.get("max_steps", 15) or 15)
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
     runtime_credentials: Dict[str, Any] = job_config.ai_credentials or {}
-    feature_flags = GeminiFeatureFlags.from_payload(job_config.feature_flags)
-    requested_llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "gemini").strip().lower()
-    llm_provider = "gemini"
+    requested_llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "openai").strip().lower()
+    llm_provider = "openai"
+    if requested_llm_provider and requested_llm_provider != "openai":
+        logger.info(
+            "[AI Search] Ignoring legacy LLM provider '%s' and routing this job to OpenAI",
+            requested_llm_provider,
+        )
 
     requested_llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "").strip()
-    if requested_llm_provider == "gemini" and requested_llm_model:
-        llm_model = requested_llm_model
-    else:
-        llm_model = "gemini-2.5-flash"
+    llm_model = _normalize_openai_model(requested_llm_model)
     search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
     if search_provider in {"brave", "serpapi"}:
         search_provider = "serper"
@@ -1079,7 +1094,7 @@ def _run_ai_search_job(
     runtime_llm_api_key = _get_optional_string(runtime_credentials, "llm_api_key")
     llm_base_url = None
 
-    llm_api_key = _get_optional_string(runtime_credentials, "gemini_api_key")
+    llm_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
     if llm_api_key is None and runtime_provider == llm_provider:
         llm_api_key = runtime_llm_api_key
     if llm_api_key is None:
@@ -1154,10 +1169,6 @@ def _run_ai_search_job(
             "cache_enabled": cache_enabled,
             "extraction_strategy": extraction_strategy,
             "prefer_manufacturer": prefer_manufacturer,
-            "feature_flags": {
-                "gemini_ai_search_enabled": feature_flags.gemini_ai_search_enabled,
-                "gemini_crawl4ai_enabled": feature_flags.gemini_crawl4ai_enabled,
-            },
         },
         scraper_name=scraper_name,
         phase="starting",

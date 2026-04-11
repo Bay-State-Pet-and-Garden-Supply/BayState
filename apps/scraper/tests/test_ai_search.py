@@ -247,6 +247,45 @@ def test_prepare_search_results_prefers_official_brand_segment_when_brand_missin
     assert prepared[0]["url"] == "https://bentleyseeds.com/products/jubilee-tomato-seed"
 
 
+def test_build_cohort_key_groups_unknown_brand_products_by_prefix_and_category() -> None:
+    scraper = AISearchScraper()
+
+    first_key = scraper._build_cohort_key(
+        {
+            "sku": "SV-001",
+            "product_name": "Bentley Seed Tomato Jubilee 1943",
+            "category": "Vegetable Seeds",
+        }
+    )
+    second_key = scraper._build_cohort_key(
+        {
+            "sku": "SV-002",
+            "product_name": "Bentley Seed Roma Tomato",
+            "category": "Vegetable Seeds",
+        }
+    )
+
+    assert first_key == "bentleyseed::vegetableseeds"
+    assert second_key == first_key
+
+
+def test_infer_search_brand_hint_prefers_title_text_over_slug_fallback() -> None:
+    scraper = AISearchScraper()
+
+    inferred_brand = scraper._infer_search_brand_hint(
+        [
+            {
+                "url": "https://petswarehouse.com/products/acme-pads-small",
+                "title": "Four Paws Wee-Wee Pads small",
+                "description": "Product details with add to cart",
+            }
+        ],
+        "WEE WEE CAT PADS 11X17 10CT",
+    )
+
+    assert inferred_brand == "Four Paws"
+
+
 def test_scraper_passes_runtime_api_key_to_search_client(monkeypatch) -> None:
     captured: dict[str, object] = {}
 

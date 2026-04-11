@@ -5,7 +5,7 @@ and brands across multiple search results within a batch, enabling intelligent
 ranking and selection of the most relevant product pages.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -34,6 +34,7 @@ class _BatchCohortState:
     key: str
     preferred_domain_counts: dict[str, int]
     preferred_brand_counts: dict[str, int]
+    official_domain_counts: dict[str, int] = field(default_factory=dict)
 
     def ranked_domains(self) -> list[str]:
         """Return domains sorted by frequency (descending) then alphabetically.
@@ -58,6 +59,23 @@ class _BatchCohortState:
         if not domain:
             return
         self.preferred_domain_counts[domain] = self.preferred_domain_counts.get(domain, 0) + 1
+
+    def ranked_official_domains(self) -> list[str]:
+        """Return official domains sorted by frequency (descending) then alphabetically."""
+        return [
+            domain
+            for domain, _count in sorted(
+                self.official_domain_counts.items(),
+                key=lambda item: (-item[1], item[0]),
+            )
+        ]
+
+    def remember_official_domain(self, domain: str) -> None:
+        """Record a domain that has official-brand evidence for the cohort."""
+        if not domain:
+            return
+        self.official_domain_counts[domain] = self.official_domain_counts.get(domain, 0) + 1
+        self.remember_domain(domain)
 
     def ranked_brands(self) -> list[str]:
         """Return brands sorted by frequency (descending) then alphabetically (case-insensitive).
@@ -98,5 +116,15 @@ class _BatchCohortState:
             return None
         top_domain = ranked[0]
         if self.preferred_domain_counts.get(top_domain, 0) < minimum_count:
+            return None
+        return top_domain
+
+    def dominant_official_domain(self, minimum_count: int = 1) -> str | None:
+        """Get the most frequent official domain if it meets the threshold."""
+        ranked = self.ranked_official_domains()
+        if not ranked:
+            return None
+        top_domain = ranked[0]
+        if self.official_domain_counts.get(top_domain, 0) < minimum_count:
             return None
         return top_domain
