@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Brain, ChevronRight, Layers } from "lucide-react";
+import { Activity, Brain, ChevronRight, Layers, Tag } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
@@ -124,6 +124,7 @@ export function PipelineClient({
   const [productLineFilter, setProductLineFilter] = useState(searchParams.get("product_line") || "");
   const [cohortIdFilter, setCohortIdFilter] = useState(searchParams.get("cohort_id") || "");
   const publishedSkuCacheRef = useRef<string[] | null>(null);
+  const [cohortBrands, setCohortBrands] = useState<Record<string, string>>({});
 
   const filteredProducts = useMemo(() => {
     if (currentStage === "published") {
@@ -161,6 +162,38 @@ export function PipelineClient({
 
     return { groups, cohortIds };
   }, [filteredProducts]);
+
+  // Fetch brand names for cohort groups
+  useEffect(() => {
+    const cohortUuids = groupedProducts.cohortIds.filter((id) => id !== "ungrouped");
+    if (cohortUuids.length === 0) return;
+
+    // Only fetch for cohorts we don't already have brand data for
+    const missingIds = cohortUuids.filter((id) => !(id in cohortBrands));
+    if (missingIds.length === 0) return;
+
+    Promise.all(
+      missingIds.map(async (id) => {
+        try {
+          const res = await fetch(`/api/admin/cohorts/${id}`);
+          if (res.ok) {
+            const data = await res.json();
+            const brand = data.cohort?.brand_name || null;
+            return [id, brand] as const;
+          }
+        } catch { /* ignore */ }
+        return [id, null] as const;
+      })
+    ).then((results) => {
+      const newBrands: Record<string, string> = {};
+      results.forEach(([id, brand]) => {
+        if (brand) newBrands[id] = brand;
+      });
+      if (Object.keys(newBrands).length > 0) {
+        setCohortBrands((prev) => ({ ...prev, ...newBrands }));
+      }
+    });
+  }, [groupedProducts.cohortIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
@@ -877,6 +910,7 @@ export function PipelineClient({
           skus,
           scrapers,
           enrichment_method: enrichmentMethod,
+          cohort_id: cohortIdFilter || undefined,
         }),
       });
 
@@ -1046,6 +1080,12 @@ export function PipelineClient({
                             <span className="font-semibold text-foreground">
                               {cohortId === "ungrouped" ? "Ungrouped Products" : `Cohort ID: ${cohortId}`}
                             </span>
+                            {cohortBrands[cohortId] && (
+                              <Badge variant="outline" className="ml-1 text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green">
+                                <Tag className="h-3 w-3" />
+                                {cohortBrands[cohortId]}
+                              </Badge>
+                            )}
                             <Badge variant="secondary" className="ml-2 bg-muted text-muted-foreground font-normal">
                               {groupProducts.length} items
                             </Badge>
@@ -1087,6 +1127,13 @@ export function PipelineClient({
         onOpenChange={setIsScrapeDialogOpen}
         selectedSkuCount={selectedSkus.size}
         onConfirm={handleScrapeConfirm}
+        brandName={(() => {
+          // Derive brand from the first selected product's cohort
+          const firstSku = Array.from(selectedSkus)[0];
+          const product = filteredProducts.find((p) => p.sku === firstSku);
+          const cId = product?.cohort_id;
+          return cId ? cohortBrands[cId] || null : null;
+        })()}
       />
       {/* Manual Add Product Dialog */}
       {isManualAddOpen && (
