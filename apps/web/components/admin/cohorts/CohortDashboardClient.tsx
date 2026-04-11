@@ -399,7 +399,11 @@ export function CohortDashboardClient() {
                             {cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
                           </h3>
                           <StatusBadge status={cohort.status} />
-                          <BrandBadge cohort={cohort} onAssign={handleAssignBrand} />
+                          <CohortBrandBadge 
+                            cohortId={cohort.id} 
+                            brandName={cohort.brand_name || cohort.brands?.name || null} 
+                            onAssign={handleAssignBrand} 
+                          />
                         </div>
 
                         <div className="space-y-1 text-sm text-muted-foreground">
