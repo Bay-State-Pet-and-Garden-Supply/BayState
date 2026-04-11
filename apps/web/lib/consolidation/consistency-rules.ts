@@ -1,9 +1,7 @@
-import { parseTaxonomyValues } from '@/lib/taxonomy';
-
 import type { ProductSource } from './types';
 
 export type ConsistencySeverity = 'error' | 'warning' | 'info';
-export type ConsistencyRuleName = 'brand-consistency' | 'category-consistency' | 'description-format';
+export type ConsistencyRuleName = 'brand-consistency' | 'description-format';
 
 export interface ConsistencyRule {
     name: ConsistencyRuleName;
@@ -104,18 +102,6 @@ function getFirstString(record: SourceRecord, fields: string[]): string | null {
     return null;
 }
 
-function toTaxonomyInput(value: unknown): string | string[] | null | undefined {
-    if (typeof value === 'string' || value === null || value === undefined) {
-        return value;
-    }
-
-    if (Array.isArray(value) && value.every((entry) => typeof entry === 'string')) {
-        return value;
-    }
-
-    return undefined;
-}
-
 function extractBrand(product: ProductSource, sourcePriority: string[]): string | null {
     for (const payload of orderSourcePayloads(product, sourcePriority)) {
         const brand = getFirstString(payload, ['brand', 'manufacturer', 'vendor']);
@@ -125,22 +111,6 @@ function extractBrand(product: ProductSource, sourcePriority: string[]): string 
     }
 
     return null;
-}
-
-function extractCategoryValues(product: ProductSource, sourcePriority: string[]): string[] {
-    for (const payload of orderSourcePayloads(product, sourcePriority)) {
-        const category = parseTaxonomyValues(toTaxonomyInput(payload.category));
-        if (category.length > 0) {
-            return category;
-        }
-
-        const categories = parseTaxonomyValues(toTaxonomyInput(payload.categories));
-        if (categories.length > 0) {
-            return categories;
-        }
-    }
-
-    return [];
 }
 
 function extractDescription(product: ProductSource, sourcePriority: string[]): string | null {
@@ -362,65 +332,6 @@ function buildBrandConsistencyRule(config: ConsistencyRulesConfig = {}): Consist
     };
 }
 
-function buildCategoryConsistencyRule(config: ConsistencyRulesConfig = {}): ConsistencyRule {
-    const sourcePriority = config.sourcePriority ?? DEFAULT_SOURCE_PRIORITY;
-    const severity = getSeverity(config, 'category-consistency', 'error');
-
-    return {
-        name: 'category-consistency',
-        severity,
-        validate: (products) => {
-            const observedCategories = new Map<string, ObservedValue>();
-            for (const product of products) {
-                const categories = extractCategoryValues(product, sourcePriority);
-                if (categories.length > 0) {
-                    const display = categories.join(' | ');
-                    observeValue(observedCategories, display.toLowerCase(), display, product.sku);
-                }
-            }
-
-            if (observedCategories.size === 0) {
-                return [];
-            }
-
-            const observedValues = Array.from(observedCategories.values());
-            const expectedCategory = getExpectedProductLineValue(
-                products,
-                (product) => {
-                    const categories = parseTaxonomyValues(product.productLineContext?.expectedCategory);
-                    return categories.length > 0 ? categories.join(' | ') : null;
-                },
-                normalizeText
-            );
-            const baselineCategory = expectedCategory ?? getDominantValue(observedValues);
-
-            if (observedValues.length === 1 && (!baselineCategory || observedValues[0].normalized === baselineCategory.normalized)) {
-                return [];
-            }
-
-            const outlierValues = baselineCategory
-                ? observedValues.filter((value) => value.normalized !== baselineCategory.normalized)
-                : observedValues;
-            const affectedSkus = formatOutlierProducts(outlierValues);
-            const expected = baselineCategory?.display ?? 'single taxonomy path across the product line';
-            const actual = formatObservedValues(observedValues);
-            const message = baselineCategory
-                ? `Category taxonomy should stay aligned across the product line. Expected ${baselineCategory.display}, but found ${actual}.`
-                : `Category taxonomy should stay aligned across the product line. Found multiple taxonomy paths: ${actual}.`;
-
-            return buildSingleFieldViolation(
-                'category-consistency',
-                severity,
-                'category',
-                message,
-                affectedSkus,
-                expected,
-                actual
-            );
-        },
-    };
-}
-
 function buildDescriptionFormatRule(config: ConsistencyRulesConfig = {}): ConsistencyRule {
     const sourcePriority = config.sourcePriority ?? DEFAULT_SOURCE_PRIORITY;
     const severity = getSeverity(config, 'description-format', 'warning');
@@ -492,7 +403,6 @@ function buildDescriptionFormatRule(config: ConsistencyRulesConfig = {}): Consis
 export function createConsistencyRules(config: ConsistencyRulesConfig = {}): ConsistencyRule[] {
     return [
         buildBrandConsistencyRule(config),
-        buildCategoryConsistencyRule(config),
         buildDescriptionFormatRule(config),
     ];
 }
@@ -505,6 +415,5 @@ export function validateConsistency(
 }
 
 export const brandConsistencyRule = buildBrandConsistencyRule();
-export const categoryConsistencyRule = buildCategoryConsistencyRule();
 export const descriptionFormatRule = buildDescriptionFormatRule();
 export const defaultConsistencyRules = createConsistencyRules();
