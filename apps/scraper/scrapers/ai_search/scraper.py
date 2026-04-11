@@ -4,7 +4,6 @@ import asyncio
 import json
 import logging
 import os
-import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -521,35 +520,21 @@ class AISearchScraper:
         if not search_results or not product_name:
             return None
 
-        tokens = [
-            token
-            for token in re.findall(r"[a-z0-9]+", product_name.lower())
-            if token and not token.isdigit()
-        ]
-        if not tokens:
-            return None
-
-        normalized_domains = [
-            self._matching.normalize_token_text(self._scoring.domain_from_url(str(result.get("url") or "")))
-            for result in search_results[:5]
-        ]
-        normalized_domains = [domain for domain in normalized_domains if domain]
-        if not normalized_domains:
-            return None
-
-        for prefix_length in range(min(3, len(tokens)), 0, -1):
-            prefix_tokens = tokens[:prefix_length]
-            if all(token in self._matching.BRAND_PREFIX_EXCLUDED_TOKENS for token in prefix_tokens):
+        brand_counts: dict[str, int] = {}
+        for result in search_results[:5]:
+            domain = self._scoring.domain_from_url(str(result.get("url") or ""))
+            brand_hint = self._scoring.infer_brand_from_domain(domain, product_name)
+            if not brand_hint:
                 continue
+            brand_counts[brand_hint] = brand_counts.get(brand_hint, 0) + 1
 
-            candidate_brand = " ".join(token.capitalize() for token in prefix_tokens)
-            normalized_candidate = self._matching.normalize_token_text(candidate_brand)
-            if len(normalized_candidate) < 4:
-                continue
-
-            if any(normalized_candidate in domain for domain in normalized_domains):
-                logger.info("[AI Search] Inferred domain brand hint '%s' from candidate domains", candidate_brand)
-                return candidate_brand
+        if brand_counts:
+            inferred_brand = sorted(
+                brand_counts.items(),
+                key=lambda item: (-item[1], item[0].lower()),
+            )[0][0]
+            logger.info("[AI Search] Inferred domain brand hint '%s' from candidate domains", inferred_brand)
+            return inferred_brand
 
         return None
 

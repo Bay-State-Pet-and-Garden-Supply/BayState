@@ -265,27 +265,40 @@ class ExtractionUtils:
 
         return url
 
-    def _is_page_relative_files_artifact(self, raw: str, source_url: str, resolved_url: str) -> bool:
-        """Detect malformed `files/...` image paths resolved under page routes.
+    def _is_page_relative_path_artifact(self, raw: str, source_url: str, resolved_url: str) -> bool:
+        """Detect malformed relative image paths resolved under page routes.
 
-        Some extractors/LLMs return bare `files/<name>.jpg` values for Shopify-style
-        assets. Resolving those against a PDP like `/products/<slug>` produces
-        `/products/files/<name>.jpg`, which is typically a broken URL.
+        Some extractors/LLMs return bare relative paths like `files/<name>.jpg`
+        or `products/<name>.jpg`.  Resolving those against a PDP like
+        `/products/<slug>` produces broken URLs such as
+        `/products/files/<name>.jpg` or `/products/products/<name>.jpg`.
+
+        This guard catches any bare relative path whose leading segment is
+        either ``files`` or any member of ``_PAGE_RESOURCE_SEGMENTS`` and that
+        resolved under a page-route source URL produces a doubled/misplaced
+        segment.
         """
         value = str(raw or "").strip()
         if not value or value.startswith(("/", "//", "./", "../")):
             return False
 
         raw_path = urlparse(value).path.lower()
-        if not raw_path.startswith("files/"):
+        raw_leading = raw_path.split("/", 1)[0] if "/" in raw_path else ""
+        if not raw_leading:
             return False
 
-        source_segments = [segment for segment in urlparse(source_url).path.lower().split("/") if segment]
+        # Only flag paths whose leading segment is a known page-route or `files`
+        flagged_segments = self._PAGE_RESOURCE_SEGMENTS | {"files"}
+        if raw_leading not in flagged_segments:
+            return False
+
+        source_segments = [seg for seg in urlparse(source_url).path.lower().split("/") if seg]
         if not source_segments or source_segments[0] not in self._PAGE_RESOURCE_SEGMENTS:
             return False
 
         resolved_path = urlparse(resolved_url).path.lower()
-        return resolved_path.startswith(f"/{source_segments[0]}/files/")
+        # Doubled: /products/products/... or /products/files/... etc.
+        return resolved_path.startswith(f"/{source_segments[0]}/{raw_leading}/")
 
     def normalize_images(self, images: list[str], source_url: str) -> list[str]:
         """Normalize and dedupe image URLs."""
@@ -297,7 +310,7 @@ class ExtractionUtils:
             if not value:
                 continue
             absolute = urljoin(source_url, value)
-            if self._is_page_relative_files_artifact(value, source_url, absolute):
+            if self._is_page_relative_path_artifact(value, source_url, absolute):
                 continue
             resolved = self._resolve_template_placeholders(absolute)
             if resolved is None:

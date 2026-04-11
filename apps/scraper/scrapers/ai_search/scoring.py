@@ -255,6 +255,83 @@ class SearchScorer:
             return False
         return brand_normalized in domain_normalized
 
+    def _iter_product_name_brand_candidates(self, product_name: Optional[str]) -> list[str]:
+        tokens = [
+            token
+            for token in re.findall(r"[a-z0-9]+", str(product_name or "").lower())
+            if token and not token.isdigit()
+        ]
+        candidates: list[str] = []
+        for prefix_length in range(min(3, len(tokens)), 0, -1):
+            prefix_tokens = tokens[:prefix_length]
+            if all(token in self._matching.BRAND_PREFIX_EXCLUDED_TOKENS for token in prefix_tokens):
+                continue
+            candidate = " ".join(token.capitalize() for token in prefix_tokens)
+            normalized_candidate = self._matching.normalize_token_text(candidate)
+            if len(normalized_candidate) < 4:
+                continue
+            candidates.append(candidate)
+        return candidates
+
+    def infer_brand_from_domain(self, domain: str, product_name: Optional[str]) -> Optional[str]:
+        """Infer a brand-like prefix from the product name when the domain supports it."""
+        normalized_domain = self._matching.normalize_token_text(domain)
+        if not normalized_domain:
+            return None
+
+        for candidate in self._iter_product_name_brand_candidates(product_name):
+            if self.is_brand_domain(domain, candidate):
+                return candidate
+        return None
+
+    @staticmethod
+    def _split_title_segments(title: str) -> list[str]:
+        segments = [str(title or "").strip()]
+        for separator in ("|", "—", "–"):
+            next_segments: list[str] = []
+            for segment in segments:
+                next_segments.extend(part.strip() for part in segment.split(separator))
+            segments = next_segments
+
+        next_segments = []
+        for segment in segments:
+            if " - " in segment:
+                next_segments.extend(part.strip() for part in segment.split(" - "))
+            else:
+                next_segments.append(segment)
+
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for segment in next_segments:
+            cleaned = " ".join(segment.split())
+            lowered = cleaned.lower()
+            if cleaned and lowered not in seen:
+                seen.add(lowered)
+                deduped.append(cleaned)
+        return deduped
+
+    def infer_brand_from_result(self, result: dict[str, Any], product_name: Optional[str]) -> Optional[str]:
+        """Infer a brand hint from a result when explicit brand context is missing."""
+        url = str(result.get("url") or "")
+        domain = self.domain_from_url(url)
+        if not domain:
+            return None
+
+        for candidate_text in (result.get("title"), result.get("description")):
+            brand_hint = self._matching.infer_brand_prefix(str(candidate_text or ""), product_name, url)
+            if brand_hint and self.is_brand_domain(domain, brand_hint):
+                return brand_hint
+
+        title = str(result.get("title") or "")
+        for segment in self._split_title_segments(title):
+            normalized_segment = self._matching.normalize_token_text(segment)
+            if len(normalized_segment) < 4:
+                continue
+            if self.is_brand_domain(domain, segment):
+                return segment
+
+        return self.infer_brand_from_domain(domain, product_name)
+
     def classify_source_domain(self, domain: str, brand: Optional[str]) -> str:
         """Classify a source domain for ranking and validation."""
         if domain and self.is_brand_domain(domain, brand):
@@ -414,7 +491,8 @@ class SearchScorer:
         if any(marker in combined for marker in ["/product", "/products", "/p/", "-p-"]):
             score += 1.0
 
-        source_tier = self.classify_source_domain(domain, brand)
+        effective_brand = brand or self.infer_brand_from_result(result, product_name)
+        source_tier = self.classify_source_domain(domain, effective_brand)
         if source_tier == "official":
             score += 6.0 if prefer_manufacturer else 4.5
         elif source_tier == "major_retailer":
