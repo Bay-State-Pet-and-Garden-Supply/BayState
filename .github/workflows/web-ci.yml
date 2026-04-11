@@ -15,7 +15,7 @@ on:
 jobs:
   test:
     name: Test & Lint
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux]
     defaults:
       run:
         working-directory: ./apps/web

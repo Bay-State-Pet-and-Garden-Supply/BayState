@@ -41,7 +41,7 @@ jobs:
 
   build-and-push-docker:
     name: Build & Push Docker Image
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, linux, arm64, docker]
     needs: changes
     if: needs.changes.outputs.scraper == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_build)
     permissions:

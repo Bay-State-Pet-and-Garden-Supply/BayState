@@ -10,7 +10,7 @@ on:
 jobs:
   validate:
     name: Validate YAML scraper configs
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux]
     defaults:
       run:
         working-directory: ./apps/scraper
