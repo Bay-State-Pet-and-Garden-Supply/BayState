@@ -17,7 +17,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/scraper
+  IMAGE_NAME: scraper
 
 jobs:
   changes:
@@ -57,6 +57,10 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare IMAGE_NAME
+        run: |
+          echo "IMAGE_NAME=$(echo ${{ github.repository }}/${{ env.IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Prepare platform env
         run: |
@@ -143,6 +147,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/checkout@v4
+
+      - name: Prepare IMAGE_NAME
+        run: |
+          echo "IMAGE_NAME=$(echo ${{ github.repository }}/${{ env.IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
