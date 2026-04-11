@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createClient } from '@/lib/supabase/server';
-import { isOpenAIConfigured, TwoPhaseConsolidationService, buildDefaultConsistencyRules } from '@/lib/consolidation';
+import { isOpenAIConfigured, submitBatch } from '@/lib/consolidation';
 import type { ProductSource } from '@/lib/consolidation';
 import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
@@ -60,47 +60,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const twoPhaseService = new TwoPhaseConsolidationService();
-
-        const result = await twoPhaseService.consolidate(productsWithSources, {
-            batchMetadata: {
-                description: description || `Consolidation batch for ${productsWithSources.length} products`,
-                auto_apply: auto_apply || false,
-            },
-            enablePhase2: true,
-            phaseSelection: 'both',
-            consistencyRules: buildDefaultConsistencyRules(),
+        const result = await submitBatch(productsWithSources, {
+            description: description || `Consolidation batch for ${productsWithSources.length} products`,
+            auto_apply: auto_apply || false,
         });
 
-        // Generate a batch ID from the first product result or use timestamp
-        const batchId = result.products[0]?.sku ? `consolidation-${Date.now()}` : `consolidation-${Date.now()}`;
-
-        if (result.phase === 'phase2' && result.consistencyReport) {
-            return NextResponse.json({
-                success: true,
-                batch_id: batchId,
-                provider: 'openai',
-                provider_batch_id: batchId,
-                product_count: result.products.length,
-                skipped_count: skus.length - productsWithSources.length,
-                phase: result.phase,
-                consistency_report: {
-                    enabled: result.consistencyReport.enabled,
-                    total_products: result.consistencyReport.totalProducts,
-                    flagged_products: result.consistencyReport.flaggedProducts,
-                    total_issues: result.consistencyReport.totalIssues,
-                },
-            });
+        if (!result.success) {
+            return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
         return NextResponse.json({
             success: true,
-            batch_id: batchId,
-            provider: 'openai',
-            provider_batch_id: batchId,
-            product_count: result.products.length,
+            batch_id: result.batch_id,
+            provider: result.provider,
+            provider_batch_id: result.provider_batch_id,
+            product_count: result.product_count,
             skipped_count: skus.length - productsWithSources.length,
-            phase: result.phase,
         });
     } catch (error) {
         console.error('[Consolidation API] Submit error:', error);

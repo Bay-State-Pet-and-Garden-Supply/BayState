@@ -6,7 +6,7 @@
  * Ported and adapted from BayStateTools.
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
     CONSOLIDATION_CONFIG,
     getConsolidationConfig,
@@ -939,6 +939,27 @@ async function submitBatchToProvider(
     };
 }
 
+async function markProductsAsConsolidating(skus: string[]): Promise<void> {
+    if (skus.length === 0) return;
+
+    try {
+        const supabase = await createAdminClient();
+        const { error } = await supabase
+            .from('products_ingestion')
+            .update({
+                pipeline_status: 'finalized',
+                updated_at: new Date().toISOString(),
+            })
+            .in('sku', skus);
+
+        if (error) {
+            console.error('[Consolidation] Failed to mark products as consolidating:', error);
+        }
+    } catch (err) {
+        console.error('[Consolidation] Unexpected error marking products as consolidating:', err);
+    }
+}
+
 async function persistBatchJobRecord(payload: {
     provider: BatchProviderKey;
     providerBatchId: string;
@@ -1126,6 +1147,10 @@ export async function submitBatch(
             totalRequests: products.length,
             metadata: stringMetadata,
         });
+
+        // NEW: Mark products as finalized/consolidating immediately after submission
+        const skus = products.map((p) => p.sku);
+        await markProductsAsConsolidating(skus);
 
         return {
             success: true,

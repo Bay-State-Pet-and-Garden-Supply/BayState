@@ -12,12 +12,14 @@ import {
 export interface ConsolidationJob {
   id: string;
   status: string;
+  description: string | null;
   totalProducts: number;
   processedCount: number;
   successCount: number;
   errorCount: number;
   createdAt: string;
   progress: number;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface BatchHistoryJob {
@@ -45,20 +47,20 @@ export const STATUS_CONFIG: Record<
 > = {
   validating: {
     label: "Validating",
-    color: "text-muted-foreground",
-    bgColor: "bg-muted",
+    color: "text-zinc-700",
+    bgColor: "bg-zinc-100",
     icon: Clock,
   },
   pending: {
     label: "Pending",
-    color: "text-muted-foreground",
-    bgColor: "bg-muted",
+    color: "text-zinc-700",
+    bgColor: "bg-zinc-100",
     icon: Clock,
   },
   in_progress: {
     label: "In Progress",
-    color: "text-blue-700",
-    bgColor: "bg-blue-50",
+    color: "text-brand-burgundy",
+    bgColor: "bg-brand-burgundy/10",
     icon: Loader2,
   },
   finalizing: {
@@ -87,8 +89,8 @@ export const STATUS_CONFIG: Record<
   },
   cancelled: {
     label: "Cancelled",
-    color: "text-muted-foreground",
-    bgColor: "bg-muted",
+    color: "text-zinc-500",
+    bgColor: "bg-zinc-100",
     icon: XCircle,
   },
 };
