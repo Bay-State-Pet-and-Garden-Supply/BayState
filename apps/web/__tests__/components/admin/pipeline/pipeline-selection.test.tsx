@@ -10,6 +10,10 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockSearchParamGet = jest.fn();
 const mockSearchParamsToString = jest.fn(() => "");
+const mockSearchParams = {
+  get: mockSearchParamGet,
+  toString: mockSearchParamsToString,
+};
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -17,10 +21,7 @@ jest.mock("next/navigation", () => ({
     replace: mockReplace,
   }),
   usePathname: () => "/admin/pipeline",
-  useSearchParams: () => ({
-    get: mockSearchParamGet,
-    toString: mockSearchParamsToString,
-  }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 const products: PipelineProduct[] = [
@@ -55,10 +56,12 @@ const products: PipelineProduct[] = [
 
 const counts: StatusCount[] = [
   { status: "imported", count: 3 },
+  { status: "scraping", count: 0 },
   { status: "scraped", count: 0 },
-  { status: "consolidated", count: 0 },
+  { status: "consolidating", count: 0 },
   { status: "finalized", count: 0 },
-  { status: "published", count: 0 },
+  { status: "export", count: 0 },
+  { status: "failed", count: 0 },
 ];
 
 beforeAll(() => {

@@ -36,7 +36,7 @@ const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
   { value: 'imported', label: 'Imported' },
   { value: 'scraped', label: 'Scraped' },
   { value: 'finalized', label: 'Finalized' },
-  { value: 'published', label: 'Published' },
+  { value: 'failed', label: 'Failed' },
 ];
 
 export function PipelineProductDetail({
@@ -200,12 +200,20 @@ export function PipelineProductDetail({
           .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/')),
       };
 
-      const newStatus = andApprove ? 'finalized' : pipelineStatus;
+      const requestedStatus = andApprove ? 'finalized' : pipelineStatus;
+      const payload: {
+        consolidated: typeof consolidated;
+        pipeline_status?: PipelineStatus;
+      } = { consolidated };
+
+      if (product?.pipeline_status !== requestedStatus) {
+        payload.pipeline_status = requestedStatus;
+      }
 
       const res = await fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consolidated, pipeline_status: newStatus }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -466,7 +474,7 @@ export function PipelineProductDetail({
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Saving…' : 'Save Draft'}
             </Button>
-            {pipelineStatus !== 'finalized' && pipelineStatus !== 'published' && (
+            {pipelineStatus !== 'finalized' && (
               <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1 sm:flex-none">
                 <CheckCircle className="mr-2 h-4 w-4" />
                 {saving ? 'Saving…' : 'Save & Verify'}

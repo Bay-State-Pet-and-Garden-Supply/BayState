@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
-import { getProductsByStatus, getStatusCounts, getAvailableSources } from '@/lib/pipeline';
-import { getStageDataStatus, isPipelineStage } from '@/lib/pipeline/types';
+import { getProductsByStage, getStatusCounts, getAvailableSourcesByStage } from '@/lib/pipeline';
+import { normalizePipelineStage } from '@/lib/pipeline/types';
 import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
 
 export const metadata: Metadata = {
@@ -17,6 +17,15 @@ interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+type StageWithProducts = Extract<
+    PipelineStage,
+    'imported' | 'scraped' | 'finalized' | 'export' | 'failed'
+>;
+
+function isStageWithProducts(stage: PipelineStage): stage is StageWithProducts {
+    return ['imported', 'scraped', 'finalized', 'export', 'failed'].includes(stage);
+}
+
 export default async function PipelinePage({ searchParams }: PageProps) {
     const params = await searchParams;
     const rawStageParam = params.stage ?? params.status;
@@ -28,9 +37,8 @@ export default async function PipelinePage({ searchParams }: PageProps) {
     const source = typeof params.source === 'string' ? params.source : undefined;
     const product_line = typeof params.product_line === 'string' ? params.product_line : undefined;
 
-    const initialStage: PipelineStage = stageParam && isPipelineStage(stageParam)
-        ? stageParam
-        : 'imported';
+    const initialStage: PipelineStage =
+        normalizePipelineStage(stageParam) ?? 'imported';
 
     let initialCounts: StatusCount[] = [];
     let initialProducts: PipelineProduct[] = [];
@@ -43,18 +51,16 @@ export default async function PipelinePage({ searchParams }: PageProps) {
         let totalCount = 0;
         let sources: string[] = [];
 
-        const initialDataStatus = getStageDataStatus(initialStage);
-
-        if (initialDataStatus) {
+        if (isStageWithProducts(initialStage)) {
             const [pResult, countsResult, sourcesResult] = await Promise.all([
-                getProductsByStatus(initialDataStatus, { 
+                getProductsByStage(initialStage, {
                     limit: 500,
                     search,
                     source,
                     product_line
                 }),
                 getStatusCounts(),
-                getAvailableSources(initialDataStatus),
+                getAvailableSourcesByStage(initialStage),
             ]);
             products = pResult.products;
             totalCount = pResult.count;

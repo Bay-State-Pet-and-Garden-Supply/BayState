@@ -3,6 +3,7 @@ import {
     PERSISTED_PIPELINE_STATUSES,
     isPersistedStatus,
     type PersistedPipelineStatus,
+    type PipelineStage,
     type PipelineProduct,
     type SelectedImage,
     type StatusCount,
@@ -13,6 +14,35 @@ import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
     status => `'${status}'`
 ).join(', ');
+
+type StageBackedPipelineStage = Extract<
+    PipelineStage,
+    'imported' | 'scraped' | 'finalized' | 'export' | 'failed'
+>;
+
+const PIPELINE_STAGE_QUERY_SOURCE: Record<
+    StageBackedPipelineStage,
+    { table: string; status?: PersistedPipelineStatus }
+> = {
+    imported: {
+        table: 'products_ingestion',
+        status: 'imported',
+    },
+    scraped: {
+        table: 'products_ingestion',
+        status: 'scraped',
+    },
+    finalized: {
+        table: 'pipeline_finalized_review',
+    },
+    export: {
+        table: 'pipeline_export_queue',
+    },
+    failed: {
+        table: 'products_ingestion',
+        status: 'failed',
+    },
+};
 
 function getInvalidTargetStatusError(targetStatus: string): string {
     return `Invalid status transition to '${targetStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}`;
@@ -29,6 +59,13 @@ export function validateStatusTransition(
     to: PersistedPipelineStatus
 ): boolean {
     return validateTransition(from, to);
+}
+
+function getStageQuerySource(stage: StageBackedPipelineStage): {
+    table: string;
+    status?: PersistedPipelineStatus;
+} {
+    return PIPELINE_STAGE_QUERY_SOURCE[stage];
 }
 
 function toImageUrlArray(value: unknown): string[] {
@@ -158,6 +195,140 @@ export async function getProductsByStatus(
     return { products, count: count || 0 };
 }
 
+async function hydrateCohortMetadata(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    products: PipelineProduct[]
+): Promise<PipelineProduct[]> {
+    const cohortIds = Array.from(
+        new Set(
+            products
+                .map((product) => product.cohort_id)
+                .filter((cohortId): cohortId is string => typeof cohortId === 'string' && cohortId.length > 0)
+        )
+    );
+
+    if (cohortIds.length === 0) {
+        return products.map((product) => withMergedImageCandidates(product));
+    }
+
+    const { data, error } = await supabase
+        .from('cohort_batches')
+        .select('id, name, brand_name')
+        .in('id', cohortIds);
+
+    if (error) {
+        console.error('Error fetching cohort metadata:', error);
+        return products.map((product) => withMergedImageCandidates(product));
+    }
+
+    const cohortsById = new Map<string, { name: string | null; brand_name: string | null }>();
+    (data || []).forEach((row: { id: string; name: string | null; brand_name: string | null }) => {
+        cohortsById.set(row.id, {
+            name: row.name,
+            brand_name: row.brand_name,
+        });
+    });
+
+    return products.map((product) => {
+        const hydrated = withMergedImageCandidates(product);
+        const cohort = product.cohort_id ? cohortsById.get(product.cohort_id) : undefined;
+        if (!cohort) {
+            return hydrated;
+        }
+
+        return {
+            ...hydrated,
+            cohort_name: cohort.name,
+            cohort_brand_name: cohort.brand_name,
+        };
+    });
+}
+
+export async function getProductsByStage(
+    stage: StageBackedPipelineStage,
+    options?: {
+        limit?: number;
+        offset?: number;
+        search?: string;
+        startDate?: string;
+        endDate?: string;
+        source?: string;
+        minConfidence?: number;
+        maxConfidence?: number;
+        product_line?: string;
+        cohort_id?: string;
+    }
+): Promise<{ products: PipelineProduct[]; count: number }> {
+    const supabase = await createClient();
+    const querySource = getStageQuerySource(stage);
+
+    let query = supabase
+        .from(querySource.table)
+        .select('*', { count: 'exact' })
+        .order('updated_at', { ascending: false });
+
+    if (querySource.status) {
+        query = query.eq('pipeline_status', querySource.status);
+    }
+
+    if (options?.product_line) {
+        query = query.eq('product_line', options.product_line);
+    }
+
+    if (options?.cohort_id) {
+        query = query.eq('cohort_id', options.cohort_id);
+    }
+
+    if (options?.search) {
+        query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
+    }
+
+    if (options?.startDate) {
+        query = query.gte('updated_at', options.startDate);
+    }
+
+    if (options?.endDate) {
+        query = query.lte('updated_at', options.endDate);
+    }
+
+    if (options?.source) {
+        query = query.filter('sources', '?', options.source);
+    }
+
+    if (options?.minConfidence !== undefined) {
+        query = query.gte('confidence_score', options.minConfidence);
+    }
+
+    if (options?.maxConfidence !== undefined) {
+        query = query.lte('confidence_score', options.maxConfidence);
+    }
+
+    if (options?.limit) {
+        query = query.limit(options.limit);
+    }
+
+    if (options?.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+        console.error(`Error fetching products for stage ${stage}:`, error);
+        return { products: [], count: 0 };
+    }
+
+    const products = await hydrateCohortMetadata(
+        supabase,
+        ((data as PipelineProduct[]) || [])
+    );
+
+    return {
+        products,
+        count: count || 0,
+    };
+}
+
 /**
  * Fetches all SKUs matching a pipeline status + filters.
  * Used by "select all matching" flows in the admin pipeline.
@@ -229,6 +400,75 @@ export async function getSkusByStatus(
     };
 }
 
+export async function getSkusByStage(
+    stage: StageBackedPipelineStage,
+    options?: {
+        search?: string;
+        startDate?: string;
+        endDate?: string;
+        source?: string;
+        minConfidence?: number;
+        maxConfidence?: number;
+        product_line?: string;
+        cohort_id?: string;
+    }
+): Promise<{ skus: string[]; count: number }> {
+    const supabase = await createClient();
+    const querySource = getStageQuerySource(stage);
+
+    let query = supabase
+        .from(querySource.table)
+        .select('sku', { count: 'exact' })
+        .order('updated_at', { ascending: false });
+
+    if (querySource.status) {
+        query = query.eq('pipeline_status', querySource.status);
+    }
+
+    if (options?.product_line) {
+        query = query.eq('product_line', options.product_line);
+    }
+
+    if (options?.cohort_id) {
+        query = query.eq('cohort_id', options.cohort_id);
+    }
+
+    if (options?.search) {
+        query = query.or(`sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`);
+    }
+
+    if (options?.startDate) {
+        query = query.gte('updated_at', options.startDate);
+    }
+
+    if (options?.endDate) {
+        query = query.lte('updated_at', options.endDate);
+    }
+
+    if (options?.source) {
+        query = query.filter('sources', '?', options.source);
+    }
+
+    if (options?.minConfidence !== undefined) {
+        query = query.gte('confidence_score', options.minConfidence);
+    }
+
+    if (options?.maxConfidence !== undefined) {
+        query = query.lte('confidence_score', options.maxConfidence);
+    }
+
+    const { data, error, count } = await query;
+    if (error) {
+        console.error(`Error fetching SKUs for stage ${stage}:`, error);
+        return { skus: [], count: 0 };
+    }
+
+    return {
+        skus: (data || []).map((row: { sku: string }) => row.sku).filter(Boolean),
+        count: count || 0,
+    };
+}
+
 /**
  * Fetches all unique source keys from the sources JSONB column for a given status.
  */
@@ -261,20 +501,69 @@ export async function getAvailableSources(status: PersistedPipelineStatus): Prom
     return Array.from(allSources).sort();
 }
 
+export async function getAvailableSourcesByStage(
+    stage: StageBackedPipelineStage
+): Promise<string[]> {
+    const supabase = await createClient();
+    const querySource = getStageQuerySource(stage);
+
+    let query = supabase
+        .from(querySource.table)
+        .select('sources')
+        .not('sources', 'is', null);
+
+    if (querySource.status) {
+        query = query.eq('pipeline_status', querySource.status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error(`Error fetching available sources for stage ${stage}:`, error);
+        return [];
+    }
+
+    const allSources = new Set<string>();
+    (data || []).forEach((row: { sources: Record<string, unknown> | null }) => {
+        if (row.sources && typeof row.sources === 'object') {
+            Object.keys(row.sources)
+                .filter(key => !key.startsWith('_'))
+                .forEach(key => allSources.add(key));
+        }
+    });
+
+    return Array.from(allSources).sort();
+}
+
 /**
- * Fetches count of products for each pipeline status using a single aggregated query.
- * This eliminates the N+1 pattern of making separate queries for each status.
+ * Fetches count of products for each pipeline stage used by the admin UI.
  */
 export async function getStatusCounts(): Promise<StatusCount[]> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-        .from('products_ingestion')
-        .select('pipeline_status');
+    const [{ data, error }, finalizedReviewResult, exportQueueResult] = await Promise.all([
+        supabase
+            .from('products_ingestion')
+            .select('pipeline_status'),
+        supabase
+            .from('pipeline_finalized_review')
+            .select('sku', { count: 'exact', head: true }),
+        supabase
+            .from('pipeline_export_queue')
+            .select('sku', { count: 'exact', head: true }),
+    ]);
 
     if (error) {
         console.error('Error fetching status counts:', error);
-        return PERSISTED_PIPELINE_STATUSES.map(status => ({ status, count: 0 }));
+        return [
+            { status: 'imported', count: 0 },
+            { status: 'scraping', count: 0 },
+            { status: 'scraped', count: 0 },
+            { status: 'consolidating', count: 0 },
+            { status: 'finalized', count: 0 },
+            { status: 'export', count: 0 },
+            { status: 'failed', count: 0 },
+        ];
     }
 
     const countMap: Record<PersistedPipelineStatus, number> = {
@@ -290,10 +579,15 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         }
     });
 
-    return PERSISTED_PIPELINE_STATUSES.map(status => ({
-        status,
-        count: countMap[status] || 0,
-    }));
+    return [
+        { status: 'imported', count: countMap.imported || 0 },
+        { status: 'scraping', count: 0 },
+        { status: 'scraped', count: countMap.scraped || 0 },
+        { status: 'consolidating', count: 0 },
+        { status: 'finalized', count: finalizedReviewResult.count || 0 },
+        { status: 'export', count: exportQueueResult.count || 0 },
+        { status: 'failed', count: countMap.failed || 0 },
+    ];
 }
 
 /**

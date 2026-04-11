@@ -10,12 +10,12 @@ const counts: StatusCount[] = [
   { status: "imported", count: 4 },
   { status: "scraped", count: 2 },
   { status: "finalized", count: 3 },
+  { status: "export", count: 7 },
   { status: "failed", count: 1 },
-  { status: "published", count: 7 },
 ];
 
 describe("StageTabs", () => {
-  it("renders the live six-tab workflow", () => {
+  it("renders the live seven-tab workflow", () => {
     render(
       <StageTabs
         currentStage="imported"
@@ -25,30 +25,31 @@ describe("StageTabs", () => {
     );
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(6);
+    expect(tabs).toHaveLength(7);
 
     expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Scraping/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Scraped/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Consolidating/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Finalizing/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Published/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Finalized/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Export/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Failed/i })).toBeInTheDocument();
   });
 
-  it("shows derived counts for finalizing and published", () => {
+  it("shows derived counts for finalized and export", () => {
     render(
       <StageTabs
-        currentStage="finalizing"
+        currentStage="finalized"
         counts={counts}
         onStageChange={() => {}}
       />,
     );
 
-    const finalizingTab = screen.getByRole("tab", { name: /Finalizing/i });
-    const publishedTab = screen.getByRole("tab", { name: /Published/i });
+    const finalizedTab = screen.getByRole("tab", { name: /Finalized/i });
+    const exportTab = screen.getByRole("tab", { name: /Export/i });
 
-    expect(within(finalizingTab).getByText("3")).toBeInTheDocument();
-    expect(within(publishedTab).getByText("7")).toBeInTheDocument();
+    expect(within(finalizedTab).getByText("3")).toBeInTheDocument();
+    expect(within(exportTab).getByText("7")).toBeInTheDocument();
   });
 
   it("shows zero for in-progress derived tabs", () => {

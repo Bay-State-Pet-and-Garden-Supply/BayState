@@ -6,8 +6,9 @@ import { render } from "@testing-library/react";
 import PipelinePage from "@/app/admin/pipeline/page";
 
 let lastPipelineClientProps: Record<string, unknown> | null = null;
-const mockGetProductsByStatus = jest.fn();
+const mockGetProductsByStage = jest.fn();
 const mockGetStatusCounts = jest.fn();
+const mockGetAvailableSourcesByStage = jest.fn();
 
 jest.mock("@/components/admin/pipeline/PipelineClient", () => ({
   PipelineClient: (props: Record<string, unknown>) => {
@@ -17,24 +18,30 @@ jest.mock("@/components/admin/pipeline/PipelineClient", () => ({
 }));
 
 jest.mock("@/lib/pipeline", () => ({
-  getProductsByStatus: (...args: unknown[]) => mockGetProductsByStatus(...args),
+  getProductsByStage: (...args: unknown[]) => mockGetProductsByStage(...args),
   getStatusCounts: (...args: unknown[]) => mockGetStatusCounts(...args),
+  getAvailableSourcesByStage: (...args: unknown[]) =>
+    mockGetAvailableSourcesByStage(...args),
 }));
 
 describe("admin pipeline page stage params", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     lastPipelineClientProps = null;
-    mockGetProductsByStatus.mockResolvedValue({ products: [], count: 0 });
+    mockGetProductsByStage.mockResolvedValue({ products: [], count: 0 });
     mockGetStatusCounts.mockResolvedValue([]);
+    mockGetAvailableSourcesByStage.mockResolvedValue([]);
   });
 
-  it("accepts the published stage without fetching persisted products", async () => {
+  it("maps the legacy published stage param to the export workspace", async () => {
     render(await PipelinePage({ searchParams: Promise.resolve({ stage: "published" }) }));
 
-    expect(mockGetProductsByStatus).not.toHaveBeenCalled();
+    expect(mockGetProductsByStage).toHaveBeenCalledWith(
+      "export",
+      expect.objectContaining({ limit: 500 }),
+    );
     expect(lastPipelineClientProps).toMatchObject({
-      initialStage: "published",
+      initialStage: "export",
       initialProducts: [],
       initialTotal: 0,
     });
@@ -43,16 +50,22 @@ describe("admin pipeline page stage params", () => {
   it("hydrates finalizing from finalized products", async () => {
     render(await PipelinePage({ searchParams: Promise.resolve({ stage: "finalizing" }) }));
 
-    expect(mockGetProductsByStatus).toHaveBeenCalledWith("finalized", { limit: 500 });
+    expect(mockGetProductsByStage).toHaveBeenCalledWith(
+      "finalized",
+      expect.objectContaining({ limit: 500 }),
+    );
     expect(lastPipelineClientProps).toMatchObject({
-      initialStage: "finalizing",
+      initialStage: "finalized",
     });
   });
 
   it("falls back to imported for unknown stage params", async () => {
     render(await PipelinePage({ searchParams: Promise.resolve({ stage: "legacy-status" }) }));
 
-    expect(mockGetProductsByStatus).toHaveBeenCalledWith("imported", { limit: 500 });
+    expect(mockGetProductsByStage).toHaveBeenCalledWith(
+      "imported",
+      expect.objectContaining({ limit: 500 }),
+    );
     expect(lastPipelineClientProps).toMatchObject({
       initialStage: "imported",
     });

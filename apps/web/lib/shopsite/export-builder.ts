@@ -18,10 +18,6 @@ export interface ShopSiteExportBrandRow {
     slug: string | null;
 }
 
-interface PublishedProductSkuRow {
-    sku: string;
-}
-
 type JsonRecord = Record<string, unknown>;
 
 export interface PreparedShopSiteExportProduct extends ShopSiteExportProduct {
@@ -201,7 +197,7 @@ function buildUniqueStem(base: string, usedStems: Set<string>, sku: string): str
     return finalCandidate;
 }
 
-export function preparePublishedShopSiteExport(
+export function prepareStorefrontShopSiteExport(
     rows: ShopSiteExportSourceRow[],
     brandsById: Map<string, ShopSiteExportBrandRow> = new Map(),
 ): PreparedShopSiteExportProduct[] {
@@ -279,7 +275,7 @@ export function preparePublishedShopSiteExport(
     });
 }
 
-export async function loadPublishedShopSiteExport(
+export async function loadStorefrontShopSiteExport(
     options: { skus?: string[] } = {},
 ): Promise<PreparedShopSiteExport> {
     const supabase = await createAdminClient();
@@ -291,42 +287,28 @@ export async function loadPublishedShopSiteExport(
         const from = page * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        let publishedSkuQuery = supabase
-            .from('products')
-            .select('sku')
+        let publishedQuery = supabase
+            .from('pipeline_export_queue')
+            .select('sku, input, consolidated, selected_images')
             .order('sku', { ascending: true });
 
         if (requestedSkus.length > 0) {
-            publishedSkuQuery = publishedSkuQuery.in('sku', requestedSkus);
+            publishedQuery = publishedQuery.in('sku', requestedSkus);
         }
 
-        const { data: publishedSkuData, error: publishedSkuError } = await publishedSkuQuery.range(from, to);
-        if (publishedSkuError) {
-            throw new Error(`Failed to load published products: ${publishedSkuError.message}`);
-        }
-
-        const publishedSkus = uniqueStrings(
-            ((publishedSkuData ?? []) as PublishedProductSkuRow[]).map((row) => row.sku),
-        );
-
-        if (publishedSkus.length === 0) {
-            break;
-        }
-
-        const { data, error } = await supabase
-            .from('products_ingestion')
-            .select('sku, input, consolidated, selected_images')
-            .in('sku', publishedSkus)
-            .order('sku', { ascending: true });
-
+        const { data, error } = await publishedQuery.range(from, to);
         if (error) {
             throw new Error(`Failed to load published products: ${error.message}`);
         }
 
         const batch = (data ?? []) as ShopSiteExportSourceRow[];
+        if (batch.length === 0) {
+            break;
+        }
+
         rows.push(...batch);
 
-        if (publishedSkus.length < PAGE_SIZE) {
+        if (batch.length < PAGE_SIZE) {
             break;
         }
 
@@ -337,7 +319,7 @@ export async function loadPublishedShopSiteExport(
         const foundSkus = new Set(rows.map((row) => row.sku));
         const missingSkus = requestedSkus.filter((sku) => !foundSkus.has(sku));
         if (missingSkus.length > 0) {
-            throw new Error(`Some requested products are not published: ${missingSkus.join(', ')}`);
+            throw new Error(`Some requested products are not in the export queue: ${missingSkus.join(', ')}`);
         }
     }
 
@@ -364,6 +346,9 @@ export async function loadPublishedShopSiteExport(
     }
 
     return {
-        products: preparePublishedShopSiteExport(rows, brandsById),
+        products: prepareStorefrontShopSiteExport(rows, brandsById),
     };
 }
+
+export const preparePublishedShopSiteExport = prepareStorefrontShopSiteExport;
+export const loadPublishedShopSiteExport = loadStorefrontShopSiteExport;

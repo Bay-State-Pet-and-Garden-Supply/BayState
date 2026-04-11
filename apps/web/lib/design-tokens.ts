@@ -12,6 +12,7 @@ export const STATUS_COLORS = {
     QUEUED: '#6B7280',
     FAILED: '#EF4444',
     WARNING: '#F59E0B',
+    PUBLISHED: BRAND_COLORS.FOREST_GREEN,
 } as const;
 
 export type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];

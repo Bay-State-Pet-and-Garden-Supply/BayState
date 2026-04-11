@@ -88,13 +88,15 @@ function createError(
 }
 
 describe("WORKFLOW_PIPELINE_TABS", () => {
-  it("exposes the five single-pipeline workflow tabs", () => {
+  it("exposes the canonical workflow tabs", () => {
     expect(WORKFLOW_PIPELINE_TABS).toEqual([
       "imported",
       "scraping",
       "scraped",
       "consolidating",
-      "finalizing",
+      "finalized",
+      "published",
+      "failed",
     ]);
   });
 });
@@ -149,15 +151,20 @@ describe("deriveTabFromProduct", () => {
       expected: "consolidating",
     },
     {
-      name: "keeps finalized products without active consolidation in finalizing",
+      name: "keeps finalized products without active consolidation in finalized",
       product: { pipeline_status: "finalized" },
       activeJobs: { consolidation: false },
-      expected: "finalizing",
+      expected: "finalized",
     },
     {
-      name: "routes failed products back to imported for retry",
+      name: "keeps published products in published",
+      product: { pipeline_status: "published" },
+      expected: "published",
+    },
+    {
+      name: "routes failed products into failed",
       product: { pipeline_status: "failed" },
-      expected: "imported",
+      expected: "failed",
     },
     {
       name: "defaults unknown products to imported",

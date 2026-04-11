@@ -16,7 +16,7 @@ jest.mock('@/lib/product-image-storage', () => ({
 const { createClient } = require('@/lib/supabase/server');
 
 describe('publishToStorefront', () => {
-    it('reuses the existing storefront row by SKU and never writes published back to ingestion', async () => {
+    it('reuses the existing storefront row by SKU without mutating pipeline_status', async () => {
         const ingestionEq = jest.fn().mockResolvedValue({
             data: {
                 sku: 'SKU-1',
@@ -31,14 +31,13 @@ describe('publishToStorefront', () => {
             maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'product-1' }, error: null }),
         });
 
-        const updateEq = jest.fn().mockResolvedValue({ error: null });
-
+        const storefrontUpdateEq = jest.fn().mockResolvedValue({ error: null });
         const productsTable = {
             select: jest.fn().mockImplementation(() => ({
                 eq: productsEq,
             })),
             update: jest.fn().mockImplementation((payload) => ({
-                eq: updateEq,
+                eq: storefrontUpdateEq,
             })),
             insert: jest.fn(),
         };
@@ -64,9 +63,7 @@ describe('publishToStorefront', () => {
 
         expect(result).toEqual({ success: true, action: 'updated', productId: 'product-1' });
         expect(productsEq).toHaveBeenCalledWith('sku', 'SKU-1');
-        expect(ingestionTable.update).not.toHaveBeenCalledWith(
-            expect.objectContaining({ pipeline_status: 'published' }),
-        );
+        expect(ingestionTable.update).not.toHaveBeenCalled();
         expect(productsTable.update).toHaveBeenCalled();
     });
 

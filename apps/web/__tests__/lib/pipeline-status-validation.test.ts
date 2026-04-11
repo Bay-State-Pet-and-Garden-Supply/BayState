@@ -16,6 +16,7 @@ describe('validateStatusTransition', () => {
     it('allows canonical forward and retry/rework transitions', () => {
         expect(validateStatusTransition('imported', 'scraped')).toBe(true);
         expect(validateStatusTransition('scraped', 'finalized')).toBe(true);
+        expect(validateStatusTransition('scraped', 'imported')).toBe(true);
         expect(validateStatusTransition('finalized', 'scraped')).toBe(true);
         expect(validateStatusTransition('failed', 'imported')).toBe(true);
     });
@@ -23,7 +24,6 @@ describe('validateStatusTransition', () => {
     it('rejects invalid canonical transitions', () => {
         expect(validateStatusTransition('imported', 'finalized')).toBe(false);
         expect(validateStatusTransition('imported', 'failed')).toBe(false);
-        expect(validateStatusTransition('scraped', 'imported')).toBe(false);
         expect(validateStatusTransition('scraped', 'failed')).toBe(false);
         expect(validateStatusTransition('finalized', 'imported')).toBe(false);
         expect(validateStatusTransition('finalized', 'failed')).toBe(false);
@@ -31,10 +31,10 @@ describe('validateStatusTransition', () => {
         expect(validateStatusTransition('failed', 'finalized')).toBe(false);
     });
 
-    it('enforces the full 4-state transition matrix', () => {
+    it('enforces the full canonical transition matrix', () => {
         const validTargets: Record<PersistedPipelineStatus, PersistedPipelineStatus[]> = {
             imported: ['imported', 'scraped'],
-            scraped: ['scraped', 'finalized'],
+            scraped: ['scraped', 'finalized', 'imported'],
             finalized: ['finalized', 'scraped'],
             failed: ['failed', 'imported'],
         };

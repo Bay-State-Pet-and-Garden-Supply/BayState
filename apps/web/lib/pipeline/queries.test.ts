@@ -4,7 +4,7 @@
 
 import {
   queryConsolidatingTabProducts,
-  queryFinalizingTabProducts,
+  queryFinalizedTabProducts,
   queryImportedTabProducts,
   queryProductsForWorkflowTab,
   queryScrapedTabProducts,
@@ -98,10 +98,14 @@ function createSupabaseClient(plansByTable: Record<string, QueryPlan[]>): Pipeli
   };
 }
 
-function createProduct(id: string, sku: string, status: "imported" | "scraped" | "finalized"): {
+function createProduct(
+  id: string,
+  sku: string,
+  status: "imported" | "scraped" | "finalized" | "published" | "failed"
+): {
   id: string;
   sku: string;
-  pipeline_status: "imported" | "scraped" | "finalized";
+  pipeline_status: "imported" | "scraped" | "finalized" | "published" | "failed";
   input: { name: string; price: number };
   sources: Record<string, never>;
   consolidated: { name: string; price: number };
@@ -243,7 +247,7 @@ describe("pipeline queries", () => {
     ]);
   });
 
-  it("queries finalizing products by excluding active consolidation identifiers", async () => {
+  it("queries finalized products by excluding active consolidation identifiers", async () => {
     const activeConsolidationsPlan = createQueryPlan({
       data: [
         {
@@ -265,9 +269,9 @@ describe("pipeline queries", () => {
       products_ingestion: [productsPlan],
     });
 
-    const result = await queryFinalizingTabProducts(supabase);
+    const result = await queryFinalizedTabProducts(supabase);
 
-    expect(result.tab).toBe("finalizing");
+    expect(result.tab).toBe("finalized");
     expect(result.count).toBe(1);
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
@@ -298,7 +302,7 @@ describe("pipeline queries", () => {
     expect((supabase.from as jest.Mock).mock.calls).toEqual([["scrape_jobs"]]);
   });
 
-  it("still queries finalizing products when active consolidation lookup fails non-fatally", async () => {
+  it("still queries finalized products when active consolidation lookup fails non-fatally", async () => {
     const activeConsolidationsPlan = createQueryPlan({
       data: null,
       error: { code: "42703", message: "column product_ids does not exist" },
@@ -313,9 +317,9 @@ describe("pipeline queries", () => {
       products_ingestion: [productsPlan],
     });
 
-    const result = await queryProductsForWorkflowTab("finalizing", supabase);
+    const result = await queryProductsForWorkflowTab("finalized", supabase);
 
-    expect(result.tab).toBe("finalizing");
+    expect(result.tab).toBe("finalized");
     expect(result.count).toBe(1);
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
@@ -340,7 +344,7 @@ describe("pipeline queries", () => {
     );
   });
 
-  it("aggregates counts for all five workflow tabs", async () => {
+  it("aggregates counts for all workflow tabs", async () => {
     const supabase = createSupabaseClient({
       products_ingestion: [
         createQueryPlan({ data: [createProduct("p-1", "SKU-1", "imported")], error: null, count: 11 }),
@@ -348,6 +352,8 @@ describe("pipeline queries", () => {
         createQueryPlan({ data: [createProduct("p-3", "SKU-3", "scraped")], error: null, count: 3 }),
         createQueryPlan({ data: [createProduct("p-4", "SKU-4", "finalized")], error: null, count: 4 }),
         createQueryPlan({ data: [createProduct("p-5", "SKU-5", "finalized")], error: null, count: 5 }),
+        createQueryPlan({ data: [createProduct("p-6", "SKU-6", "published")], error: null, count: 6 }),
+        createQueryPlan({ data: [createProduct("p-7", "SKU-7", "failed")], error: null, count: 7 }),
       ],
       scrape_jobs: [
         createQueryPlan({ data: [{ product_id: "p-2", skus: [] }], error: null }),
@@ -362,7 +368,9 @@ describe("pipeline queries", () => {
       scraping: 2,
       scraped: 3,
       consolidating: 4,
-      finalizing: 5,
+      finalized: 5,
+      published: 6,
+      failed: 7,
     });
 
     const fromCalls = (supabase.from as jest.Mock).mock.calls.map(([table]) => table);

@@ -2,5 +2,10 @@ export { SHOPSITE_PAGES, SHOPSITE_XML_VERSION, SHOPSITE_FIELD_MAP, IMAGE_FIELD_M
 export type { ShopSitePage } from './constants';
 export { buildShopSiteNewProductTag, generateShopSiteXml, generateShopSiteXmlStream } from './xml-generator';
 export type { ShopSiteExportProduct } from './xml-generator';
-export { loadPublishedShopSiteExport, preparePublishedShopSiteExport } from './export-builder';
+export {
+    loadPublishedShopSiteExport,
+    loadStorefrontShopSiteExport,
+    preparePublishedShopSiteExport,
+    prepareStorefrontShopSiteExport,
+} from './export-builder';
 export type { PreparedShopSiteExport, PreparedShopSiteExportProduct, ShopSiteExportBrandRow, ShopSiteExportSourceRow } from './export-builder';

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { ShopSiteClient } from '@/lib/admin/migration/shopsite-client';
 import { getStoredShopSiteConfig } from '@/lib/admin/shopsite-settings';
-import { loadPublishedShopSiteExport } from '@/lib/shopsite/export-builder';
+import { loadStorefrontShopSiteExport } from '@/lib/shopsite/export-builder';
 import { buildShopSiteNewProductTag, generateShopSiteXml } from '@/lib/shopsite/xml-generator';
 
 export const runtime = 'nodejs';
@@ -42,13 +42,13 @@ export async function POST(request: NextRequest) {
     try {
         const body = await parseRequestBody(request);
         const skus = parseSkuSelection(body);
-        const { products } = await loadPublishedShopSiteExport({
+        const { products } = await loadStorefrontShopSiteExport({
             skus: skus.length > 0 ? skus : undefined,
         });
 
         if (products.length === 0) {
             return NextResponse.json(
-                { error: 'No published products available for ShopSite upload' },
+                { error: 'No export-ready storefront products available for ShopSite upload' },
                 { status: 404 },
             );
         }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         });
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to upload products to ShopSite';
-        const status = message.includes('Expected "skus"') || message.includes('not published') ? 400 : 500;
+        const status = message.includes('Expected "skus"') || message.includes('export queue') ? 400 : 500;
         console.error('[UploadShopSite] Error:', err);
         return NextResponse.json({ error: message }, { status });
     }

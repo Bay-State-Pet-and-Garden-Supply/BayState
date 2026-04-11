@@ -109,7 +109,7 @@ export async function PATCH(
     const body = await request.json();
     const { consolidated, pipeline_status, sources } = body as {
       consolidated?: unknown;
-      pipeline_status?: PersistedPipelineStatus;
+      pipeline_status?: string;
       sources?: Record<string, unknown>;
     };
 
@@ -140,6 +140,15 @@ export async function PATCH(
     }
 
     if (pipeline_status !== undefined) {
+      if (pipeline_status === 'published') {
+        return NextResponse.json(
+          {
+            error: 'Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.',
+          },
+          { status: 400 }
+        );
+      }
+
       const { data: currentRow, error: fetchError } = await supabase
         .from('products_ingestion')
         .select('pipeline_status')

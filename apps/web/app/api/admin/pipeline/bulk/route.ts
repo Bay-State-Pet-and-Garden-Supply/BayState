@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bulkUpdateStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { publishToStorefront } from '@/lib/pipeline/publish';
 import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus } from '@/lib/pipeline/types';
 
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
@@ -40,26 +39,20 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        if (toStatus === 'published') {
+            return NextResponse.json(
+                {
+                    error: 'Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.',
+                },
+                { status: 400 }
+            );
+        }
+
         if (!isPersistedStatus(toStatus)) {
             return NextResponse.json(
                 { error: `Invalid status '${toStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}` },
                 { status: 400 }
             );
-        }
-
-        // Finalized rows can still be pushed to the storefront table separately.
-        if (toStatus === 'finalized') {
-            const publishResults = await Promise.all(
-                skus.map(sku => publishToStorefront(sku))
-            );
-
-            const failures = publishResults.filter(r => !r.success);
-            if (failures.length > 0 && failures.length === skus.length) {
-                return NextResponse.json(
-                    { error: 'Failed to publish any products to storefront', details: failures[0].error },
-                    { status: 500 }
-                );
-            }
         }
 
         const result = await bulkUpdateStatus(skus, toStatus, auth.user.id, resetResults);

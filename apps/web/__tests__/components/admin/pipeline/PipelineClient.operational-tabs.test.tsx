@@ -11,6 +11,11 @@ const mockSearchParamsToString = jest.fn(() => "");
 const mockReplace = jest.fn();
 const mockFetch = jest.fn();
 let lastFinalizingResultsProps: Record<string, unknown> | null = null;
+const mockRouter = { replace: mockReplace };
+const mockSearchParams = {
+  get: mockSearchParamGet,
+  toString: mockSearchParamsToString,
+};
 
 global.fetch = mockFetch as typeof fetch;
 
@@ -21,12 +26,9 @@ jest.mock("next/dynamic", () => () => {
 });
 
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => mockRouter,
   usePathname: () => "/admin/pipeline",
-  useSearchParams: () => ({
-    get: mockSearchParamGet,
-    toString: mockSearchParamsToString,
-  }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 jest.mock("@/components/admin/pipeline/StageTabs", () => ({
@@ -37,9 +39,6 @@ jest.mock("@/components/admin/pipeline/ProductTable", () => ({
 }));
 jest.mock("@/components/admin/pipeline/ScrapedResultsView", () => ({
   ScrapedResultsView: () => <div data-testid="scraped-results" />,
-}));
-jest.mock("@/components/admin/pipeline/PipelineToolbar", () => ({
-  PipelineToolbar: () => <div data-testid="pipeline-toolbar" />,
 }));
 jest.mock("@/components/admin/pipeline/FloatingActionsBar", () => ({
   FloatingActionsBar: () => <div data-testid="floating-actions" />,
@@ -84,8 +83,7 @@ describe("PipelineClient live tab handling", () => {
     mockSearchParamGet.mockImplementation(() => null);
     mockFetch.mockResolvedValue({
       ok: true,
-      text: async () => "<?xml version=\"1.0\"?><Products></Products>",
-      json: async () => ({ counts }),
+      json: async () => ({ counts, products: [], count: 0, availableSources: [] }),
     });
   });
 
@@ -104,15 +102,7 @@ describe("PipelineClient live tab handling", () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/pipeline/export-xml",
-        expect.objectContaining({ cache: "no-store" }),
-      );
-    });
-
     expect(screen.getByTestId("active-runs")).toBeInTheDocument();
-    expect(screen.queryByTestId("pipeline-toolbar")).not.toBeInTheDocument();
     expect(screen.queryByTestId("floating-actions")).not.toBeInTheDocument();
   });
 
@@ -127,100 +117,50 @@ describe("PipelineClient live tab handling", () => {
         initialCounts={counts}
         initialProducts={products}
         initialTotal={1}
-        initialStage="finalizing"
+        initialStage="finalized"
       />,
     );
 
     expect(await screen.findByTestId("finalizing-results")).toBeInTheDocument();
     expect(lastFinalizingResultsProps).toMatchObject({ products });
-    expect(screen.getByTestId("pipeline-toolbar")).toBeInTheDocument();
+    expect(screen.getByTestId("floating-actions")).toBeInTheDocument();
     expect(screen.queryByTestId("product-table")).not.toBeInTheDocument();
   });
 
-  it("loads the published list from published SKUs instead of persisted ingestion status", async () => {
+  it("renders the published stage from server-hydrated published products", async () => {
     mockSearchParamGet.mockImplementation((key: string) => {
       if (key === "stage") return "published";
       return null;
     });
 
-    mockFetch.mockImplementation((input: RequestInfo | URL) => {
-      const url = String(input);
-
-      if (url.includes("/api/admin/pipeline/export-xml")) {
-        return Promise.resolve({
-          ok: true,
-          text: async () => `<?xml version="1.0"?><Products><Product><SKU>SKU001</SKU></Product><Product><SKU>SKU002</SKU></Product></Products>`,
-          json: async () => ({}),
-        });
-      }
-
-      if (url.includes("/api/admin/pipeline/SKU001")) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            product: products[0],
-          }),
-        });
-      }
-
-      if (url.includes("/api/admin/pipeline/SKU002")) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            product: {
-              ...products[0],
-              sku: "SKU002",
-              input: { name: "Product 2", price: 15 },
-              consolidated: { name: "Product 2", price: 15 },
-            },
-          }),
-        });
-      }
-
-      if (url.includes("/api/admin/pipeline/counts")) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ counts }),
-        });
-      }
-
-      return Promise.resolve({
-        ok: true,
-        text: async () => "<?xml version=\"1.0\"?><Products></Products>",
-        json: async () => ({ counts }),
-      });
-    });
+    const publishedProducts: PipelineProduct[] = [
+      {
+        ...products[0],
+        pipeline_status: "published",
+      },
+      {
+        ...products[0],
+        sku: "SKU002",
+        input: { name: "Product 2", price: 15 },
+        consolidated: { name: "Product 2", price: 15 },
+        pipeline_status: "published",
+      },
+    ];
 
     render(
       <PipelineClient
         initialCounts={counts}
-        initialProducts={[]}
-        initialTotal={0}
-        initialStage="imported"
+        initialProducts={publishedProducts}
+        initialTotal={publishedProducts.length}
+        initialStage="published"
       />,
     );
 
     await waitFor(() => {
       expect(lastFinalizingResultsProps).toMatchObject({
-        products: [
-          expect.objectContaining({ sku: "SKU001" }),
-          expect.objectContaining({ sku: "SKU002" }),
-        ],
+        products: publishedProducts,
       });
     });
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/admin/pipeline/export-xml",
-      expect.objectContaining({ cache: "no-store" }),
-    );
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/admin/pipeline/SKU001",
-      expect.objectContaining({ cache: "no-store" }),
-    );
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/admin/pipeline/SKU002",
-      expect.objectContaining({ cache: "no-store" }),
-    );
   });
 
   it("treats legacy consolidated stage params as out-of-bounds and falls back to the canonical stage", async () => {
@@ -238,15 +178,7 @@ describe("PipelineClient live tab handling", () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/pipeline/export-xml",
-        expect.objectContaining({ cache: "no-store" }),
-      );
-    });
-
     expect(screen.getByTestId("product-table")).toBeInTheDocument();
-    expect(screen.getByTestId("pipeline-toolbar")).toBeInTheDocument();
     expect(screen.queryByTestId("finalizing-results")).not.toBeInTheDocument();
   });
 });

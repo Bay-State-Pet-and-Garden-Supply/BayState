@@ -13,7 +13,7 @@ export interface ProductSaveActionsProps {
   saving: boolean;
   publishing: boolean;
   rejecting: boolean;
-  isPublished?: boolean;
+  isInStorefront?: boolean;
   onSave: () => void;
   onPublish: () => void;
   onReject: () => void;
@@ -28,7 +28,7 @@ export function ProductSaveActions({
   saving,
   publishing,
   rejecting,
-  isPublished,
+  isInStorefront,
   onSave,
   onPublish,
   onReject,
@@ -97,13 +97,13 @@ export function ProductSaveActions({
           disabled={saving || publishing}
         >
           {publishing ? (
-              "Publishing..."
-            ) : (
+                "Publishing..."
+              ) : (
               <>
                 <CheckCircle className="h-4 w-4 mr-2" />
-                {isPublished
-                  ? "Update Published Product"
-                  : "Finalize & Publish"}
+                {isInStorefront
+                  ? "Update Storefront Product"
+                  : "Publish to Storefront"}
               </>
             )}
         </Button>

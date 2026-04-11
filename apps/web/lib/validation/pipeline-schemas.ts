@@ -9,13 +9,12 @@ export const PipelineStatusSchema = z.enum([
 
 export const PipelineStageSchema = z.enum([
     'imported',
-    'monitoring',
+    'scraping',
     'scraped',
     'consolidating',
     'finalized',
-    'failed',
-    'images',
     'export',
+    'failed',
 ]);
 
 export const PipelineProductInputSchema = z.object({

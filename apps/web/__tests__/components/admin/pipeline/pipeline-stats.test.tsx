@@ -10,7 +10,6 @@ const mockCounts: StatusCount[] = [
   { status: 'imported', count: 10 },
   { status: 'scraped', count: 25 },
   { status: 'finalized', count: 15 },
-  { status: 'published', count: 30 },
 ];
 
 describe('PipelineStats', () => {
@@ -26,8 +25,6 @@ describe('PipelineStats', () => {
     expect(screen.getByText('Finalized')).toBeInTheDocument();
     expect(screen.getByText('15')).toBeInTheDocument();
 
-    expect(screen.getByText('Published')).toBeInTheDocument();
-    expect(screen.getByText('30')).toBeInTheDocument();
   });
 
   it('renders zero counts when no products', () => {
@@ -35,12 +32,11 @@ describe('PipelineStats', () => {
       { status: 'imported', count: 0 },
       { status: 'scraped', count: 0 },
       { status: 'finalized', count: 0 },
-      { status: 'published', count: 0 },
     ];
 
     render(<PipelineStats counts={emptyCounts} />);
 
-    expect(screen.getAllByText('0')).toHaveLength(4);
+    expect(screen.getAllByText('0')).toHaveLength(3);
   });
 
   it('calls onStatusChange when card is clicked', () => {
@@ -62,7 +58,6 @@ describe('PipelineStats', () => {
       imported: 5,
       scraped: -3,
       finalized: 0,
-      published: 15,
     };
 
     render(<PipelineStats counts={mockCounts} trends={trends} />);
@@ -70,7 +65,6 @@ describe('PipelineStats', () => {
     expect(screen.getByText('↑ 5%')).toBeInTheDocument();
     expect(screen.getByText('↓ 3%')).toBeInTheDocument();
     expect(screen.getByText('↑ 0%')).toBeInTheDocument();
-    expect(screen.getByText('↑ 15%')).toBeInTheDocument();
   });
 
   it('does not render trend indicators when trends are not provided', () => {
@@ -99,13 +93,13 @@ describe('PipelineStats', () => {
     expect(screen.getByText('10')).toBeInTheDocument();
     // Missing statuses should show 0
     const zeros = screen.getAllByText('0');
-    expect(zeros).toHaveLength(3);
+    expect(zeros).toHaveLength(2);
   });
   it('renders correct icons for each status', () => {
     render(<PipelineStats counts={mockCounts} />);
 
     const icons = document.querySelectorAll('svg');
-    expect(icons.length).toBeGreaterThanOrEqual(4);
+    expect(icons.length).toBeGreaterThanOrEqual(3);
   });
 
   it('formats large numbers with locale string', () => {
@@ -113,7 +107,6 @@ describe('PipelineStats', () => {
       { status: 'imported', count: 10000 },
       { status: 'scraped', count: 25000 },
       { status: 'finalized', count: 15000 },
-      { status: 'published', count: 30000 },
     ];
 
     render(<PipelineStats counts={largeCounts} />);
@@ -121,6 +114,5 @@ describe('PipelineStats', () => {
     expect(screen.getByText('10,000')).toBeInTheDocument();
     expect(screen.getByText('25,000')).toBeInTheDocument();
     expect(screen.getByText('15,000')).toBeInTheDocument();
-    expect(screen.getByText('30,000')).toBeInTheDocument();
   });
 });

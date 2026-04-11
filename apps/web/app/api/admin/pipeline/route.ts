@@ -1,17 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bulkUpdateStatus, getProductsByStatus, getSkusByStatus, getAvailableSources } from '@/lib/pipeline';
+import {
+    bulkUpdateStatus,
+    getProductsByStatus,
+    getProductsByStage,
+    getSkusByStatus,
+    getSkusByStage,
+    getAvailableSources,
+    getAvailableSourcesByStage,
+} from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus, type PersistedPipelineStatus } from '@/lib/pipeline/types';
+import {
+    PERSISTED_PIPELINE_STATUSES,
+    isPersistedStatus,
+    normalizePipelineStage,
+    type PersistedPipelineStatus,
+    type PipelineStage,
+} from '@/lib/pipeline/types';
 
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
     status => `'${status}'`
 ).join(', ');
+
+type StageWithProducts = Extract<
+    PipelineStage,
+    'imported' | 'scraped' | 'finalized' | 'export' | 'failed'
+>;
+
+function isStageWithProducts(stage: PipelineStage): stage is StageWithProducts {
+    return ['imported', 'scraped', 'finalized', 'export', 'failed'].includes(stage);
+}
 
 export async function GET(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
+    const rawStage = searchParams.get('stage');
     const rawStatus = searchParams.get('status') || 'imported';
     const search = searchParams.get('search') || '';
     const limit = parseInt(searchParams.get('limit') || '200', 10);
@@ -25,6 +49,70 @@ export async function GET(request: NextRequest) {
     const cohort_id = searchParams.get('cohort_id') || undefined;
     const minConfidence = searchParams.get('minConfidence') ? parseFloat(searchParams.get('minConfidence')!) : undefined;
     const maxConfidence = searchParams.get('maxConfidence') ? parseFloat(searchParams.get('maxConfidence')!) : undefined;
+
+    if (rawStage) {
+        const stage = normalizePipelineStage(rawStage);
+
+        if (!stage) {
+            return NextResponse.json(
+                { error: `Invalid stage '${rawStage}'.` },
+                { status: 400 }
+            );
+        }
+
+        if (!isStageWithProducts(stage)) {
+            return NextResponse.json({
+                products: [],
+                count: 0,
+                availableSources: [],
+                skus: [],
+            });
+        }
+
+        try {
+            if (selectAll) {
+                const { skus, count } = await getSkusByStage(stage, {
+                    search: search || undefined,
+                    startDate,
+                    endDate,
+                    source,
+                    product_line,
+                    cohort_id,
+                    minConfidence,
+                    maxConfidence,
+                });
+
+                return NextResponse.json({
+                    skus,
+                    count,
+                });
+            }
+
+            const [{ products, count }, availableSources] = await Promise.all([
+                getProductsByStage(stage, {
+                    limit,
+                    offset,
+                    search: search || undefined,
+                    startDate,
+                    endDate,
+                    source,
+                    product_line,
+                    cohort_id,
+                    minConfidence,
+                    maxConfidence,
+                }),
+                getAvailableSourcesByStage(stage),
+            ]);
+
+            return NextResponse.json({ products, count, availableSources });
+        } catch (error) {
+            console.error('Pipeline GET error:', error);
+            return NextResponse.json(
+                { error: error instanceof Error ? error.message : 'Unknown error during pipeline fetch' },
+                { status: 500 }
+            );
+        }
+    }
 
     if (!isPersistedStatus(rawStatus)) {
         return NextResponse.json(
@@ -94,6 +182,15 @@ export async function POST(request: NextRequest) {
 
         if (!newStatus) {
             return NextResponse.json({ error: 'New status is required' }, { status: 400 });
+        }
+
+        if (newStatus === 'published') {
+            return NextResponse.json(
+                {
+                    error: 'Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.',
+                },
+                { status: 400 }
+            );
         }
 
         if (!isPersistedStatus(newStatus)) {

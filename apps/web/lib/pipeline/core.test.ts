@@ -12,6 +12,7 @@ const PERSISTED_STATUSES: PersistedPipelineStatus[] = [
   'imported',
   'scraped',
   'finalized',
+  'published',
   'failed',
 ];
 
@@ -20,7 +21,8 @@ describe('STATUS_TRANSITIONS', () => {
     expect(STATUS_TRANSITIONS).toEqual({
       imported: ['scraped'],
       scraped: ['finalized', 'imported'],
-      finalized: ['scraped'],
+      finalized: ['published', 'scraped'],
+      published: [],
       failed: ['imported'],
     });
   });
@@ -35,6 +37,7 @@ describe('validateTransition', () => {
     expect(validateTransition('imported', 'scraped')).toBe(true);
     expect(validateTransition('scraped', 'finalized')).toBe(true);
     expect(validateTransition('scraped', 'imported')).toBe(true);
+    expect(validateTransition('finalized', 'published')).toBe(true);
     expect(validateTransition('finalized', 'scraped')).toBe(true);
     expect(validateTransition('failed', 'imported')).toBe(true);
   });
@@ -43,11 +46,18 @@ describe('validateTransition', () => {
     const invalidTransitions: Array<[PersistedPipelineStatus, PersistedPipelineStatus]> = [
       ['imported', 'finalized'],
       ['imported', 'failed'],
+      ['imported', 'published'],
       ['scraped', 'failed'],
+      ['scraped', 'published'],
       ['finalized', 'imported'],
       ['finalized', 'failed'],
+      ['published', 'imported'],
+      ['published', 'scraped'],
+      ['published', 'finalized'],
+      ['published', 'failed'],
       ['failed', 'scraped'],
       ['failed', 'finalized'],
+      ['failed', 'published'],
     ];
 
     invalidTransitions.forEach(([from, to]) => {
