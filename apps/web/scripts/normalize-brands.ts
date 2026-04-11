@@ -93,6 +93,18 @@ async function normalizeBrands() {
             console.log(`  Updated ${count || 0} products.`);
             totalUpdatedProducts += (count || 0);
 
+            // Update cohort_batches
+            const { count: cohortCount, error: cohortUpdateError } = await supabase
+                .from('cohort_batches')
+                .update({ brand_id: canonicalBrand.id })
+                .in('brand_id', otherIds);
+
+            if (cohortUpdateError) {
+                console.error(`  FAILED to update cohort_batches: ${cohortUpdateError.message}`);
+            } else {
+                console.log(`  Updated ${cohortCount || 0} cohort_batches.`);
+            }
+
             // Update products_ingestion (consolidated JSONB brand_id)
             for (const otherId of otherIds) {
                 const { count: ingestionCount, error: ingestionError } = await supabase

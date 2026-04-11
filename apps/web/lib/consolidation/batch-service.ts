@@ -541,7 +541,7 @@ function parseStructuredConsolidationText(
 type SourceTrustLevel = 'canonical' | 'trusted' | 'standard' | 'marketplace';
 type AnimalSignal = 'dog' | 'cat' | 'horse' | 'bird' | 'small-pet';
 
-const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
+const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller', 'ai_search', 'shop'];
 const TRUSTED_SOURCE_FRAGMENTS = [
     'shopsite_input',
     'bradley',
