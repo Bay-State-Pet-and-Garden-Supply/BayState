@@ -7,6 +7,9 @@ import {
   Trash2,
   Image as ImageIcon,
   AlertCircle,
+  Search,
+  X,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -15,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { PipelineFilters } from "./PipelineFilters";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 interface ScrapedResultsViewProps {
@@ -28,6 +32,16 @@ interface ScrapedResultsViewProps {
     visibleProducts?: PipelineProduct[],
   ) => void;
   onRefresh: (silent?: boolean) => void;
+  // Filter props
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  filters?: {
+    source?: string;
+    product_line?: string;
+    cohort_id?: string;
+  };
+  onFilterChange?: (filters: any) => void;
+  availableSources?: string[];
 }
 
 interface SourceDetails extends Record<string, unknown> {
@@ -62,7 +76,27 @@ export function ScrapedResultsView({
   selectedSkus,
   onSelectSku,
   onRefresh,
+  search,
+  onSearchChange,
+  filters,
+  onFilterChange,
+  availableSources = [],
 }: ScrapedResultsViewProps) {
+  const [localSearch, setLocalSearch] = useState(search || "");
+
+  useEffect(() => {
+    if (search !== undefined) setLocalSearch(search);
+  }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== search && onSearchChange) {
+        onSearchChange(localSearch);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [localSearch, onSearchChange, search]);
+
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
   }, [products]);
@@ -293,6 +327,34 @@ export function ScrapedResultsView({
     <div className="flex h-[calc(100vh-13rem)] min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
+        <div className="p-3 border-b bg-card flex items-center gap-2">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
+            <input
+              type="text"
+              placeholder="Search SKUs or names..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-8 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-forest-green/50 focus-visible:border-brand-forest-green disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            {localSearch && (
+              <button
+                onClick={() => setLocalSearch("")}
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {filters && onFilterChange && (
+            <PipelineFilters
+              filters={filters}
+              onFilterChange={onFilterChange}
+              availableSources={availableSources}
+              className="h-9 w-9 shrink-0 p-0 flex items-center justify-center"
+            />
+          )}
+        </div>
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
           <div className="divide-y">
             {sortedProducts.map((product, index) => {

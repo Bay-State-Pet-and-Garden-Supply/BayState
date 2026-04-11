@@ -957,26 +957,10 @@ export function PipelineClient({
       {/* Pipeline Toolbar — hidden for live operational tabs */}
       {!isLiveOperationalTab(currentStage) && (
         <PipelineToolbar
-          totalCount={totalCount}
           currentStage={currentStage}
           isLoading={isLoading}
-          search={search}
-          onSearchChange={(value) => setSearch(value)}
-          onSelectAll={handleSelectAll}
           onManualAdd={() => setIsManualAddOpen(true)}
           onIntegraImport={() => setIsIntegraImportOpen(true)}
-          filters={{
-            source: sourceFilter,
-            product_line: productLineFilter,
-            cohort_id: cohortIdFilter,
-          }}
-          onFilterChange={(newFilters) => {
-            if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
-            if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
-            if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
-          }}
-          availableSources={sources}
-          selectedCount={selectedSkus.size}
           actionState={
             currentStage === "published" ? publishedActionState : null
           }
@@ -1039,17 +1023,26 @@ export function PipelineClient({
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
             onRefresh={refreshAll}
+            search={search}
+            onSearchChange={(value) => setSearch(value)}
+            filters={{
+              source: sourceFilter,
+              product_line: productLineFilter,
+              cohort_id: cohortIdFilter,
+            }}
+            onFilterChange={(newFilters) => {
+              if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
+              if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
+              if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+            }}
+            availableSources={sources}
           />
-        ) : currentStage === "finalizing" ? (
+        ) : currentStage === "finalizing" || currentStage === "published" ? (
           <FinalizingResultsView
             products={filteredProducts}
             onRefresh={refreshAll}
-          />
-        ) : currentStage === "published" ? (
-          // Published products view - shows finalized products ready for ShopSite upload
-          <FinalizingResultsView
-            products={filteredProducts}
-            onRefresh={refreshAll}
+            search={search}
+            onSearchChange={(value) => setSearch(value)}
           />
         ) : (
           <div className="space-y-4">
@@ -1061,6 +1054,21 @@ export function PipelineClient({
                 onSelectAll={handleSelectAllVisible}
                 onDeselectAll={handleClearSelection}
                 currentStage={currentStage}
+                search={search}
+                onSearchChange={(value) => setSearch(value)}
+                filters={{
+                  source: sourceFilter,
+                  product_line: productLineFilter,
+                  cohort_id: cohortIdFilter,
+                }}
+                onFilterChange={(newFilters) => {
+                  if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
+                  if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
+                  if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+                }}
+                availableSources={sources}
+                totalCount={totalCount}
+                onSelectAllTotal={handleSelectAll}
               />
             ) : (
               <Accordion type="multiple" defaultValue={groupedProducts.cohortIds} className="space-y-4">
@@ -1110,6 +1118,25 @@ export function PipelineClient({
                             setSelectedSkus(groupSkus);
                           }}
                           currentStage={currentStage}
+                          search={search}
+                          onSearchChange={(value) => setSearch(value)}
+                          filters={{
+                            source: sourceFilter,
+                            product_line: productLineFilter,
+                            cohort_id: cohortIdFilter,
+                          }}
+                          onFilterChange={(newFilters) => {
+                            if (newFilters.source !== undefined) setSourceFilter(newFilters.source || "");
+                            if (newFilters.product_line !== undefined) setProductLineFilter(newFilters.product_line || "");
+                            if (newFilters.cohort_id !== undefined) setCohortIdFilter(newFilters.cohort_id || "");
+                          }}
+                          availableSources={sources}
+                          totalCount={groupProducts.length}
+                          onSelectAllTotal={() => {
+                            const groupSkus = new Set(selectedSkus);
+                            groupProducts.forEach(p => groupSkus.add(p.sku));
+                            setSelectedSkus(groupSkus);
+                          }}
                         />
                       </AccordionContent>
                     </AccordionItem>

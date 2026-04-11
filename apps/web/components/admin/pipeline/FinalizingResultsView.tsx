@@ -42,6 +42,8 @@ import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
   onRefresh: (silent?: boolean) => void;
+  search?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 interface Brand {
@@ -57,6 +59,8 @@ interface Category {
 export function FinalizingResultsView({
   products,
   onRefresh,
+  search,
+  onSearchChange,
 }: FinalizingResultsViewProps) {
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
@@ -678,6 +682,8 @@ export function FinalizingResultsView({
         selectedSku={selectedSku}
         onSelectProduct={setPreferredSku}
         scrollContainerRef={scrollContainerRef}
+        search={search}
+        onSearchChange={onSearchChange}
       />
 
       {/* Right Column: Editing Form */}
