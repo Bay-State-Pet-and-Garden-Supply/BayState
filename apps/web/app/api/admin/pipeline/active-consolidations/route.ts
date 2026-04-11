@@ -5,12 +5,14 @@ import { requireAdminAuth } from '@/lib/admin/api-auth';
 interface ActiveConsolidationJob {
     id: string;
     status: string;
+    description: string | null;
     totalProducts: number;
     processedCount: number;
     successCount: number;
     errorCount: number;
     createdAt: string;
     progress: number;
+    metadata: Record<string, unknown> | null;
 }
 
 export async function GET() {
@@ -24,7 +26,7 @@ export async function GET() {
 
     const { data: jobs, error: jobsError } = await supabase
         .from('batch_jobs')
-        .select('id, status, created_at, total_requests, completed_requests, failed_requests')
+        .select('id, status, description, created_at, total_requests, completed_requests, failed_requests, metadata')
         .or(`status.not.in.(completed,failed,expired,cancelled),and(status.in.(completed,failed,expired,cancelled),created_at.gt.${last24Hours})`)
         .order('created_at', { ascending: false })
         .limit(15);
@@ -48,12 +50,14 @@ export async function GET() {
         return {
             id: job.id,
             status: job.status,
+            description: job.description,
             totalProducts: total,
             processedCount,
             successCount: completed,
             errorCount: failed,
             createdAt: job.created_at,
             progress,
+            metadata: job.metadata,
         };
     });
 
