@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
+import { DEFAULT_AI_MODEL, DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
 
 export type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'serpapi' | 'brave';
 export type LLMProvider = 'openai' | 'openai_compatible' | 'gemini';
@@ -70,8 +70,8 @@ let hasLoggedInvalidEncryptionKeyLength = false;
 const loggedDecryptFailures = new Set<AIProvider>();
 
 const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
-  llm_provider: 'gemini',
-  llm_model: DEFAULT_GEMINI_MODEL,
+  llm_provider: 'openai',
+  llm_model: DEFAULT_AI_MODEL,
   llm_base_url: null,
   max_search_results: 5,
   max_steps: 15,
@@ -79,8 +79,8 @@ const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
 };
 
 const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
-  llm_provider: 'gemini',
-  llm_model: DEFAULT_GEMINI_MODEL,
+  llm_provider: 'openai',
+  llm_model: DEFAULT_AI_MODEL,
   llm_base_url: null,
   confidence_threshold: 0.7,
   llm_supports_batch_api: true,
@@ -410,9 +410,17 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
   console.error(`[Scraper API] Failed to decrypt ${provider} secret: ${getErrorMessage(error)}`);
 }
 
-function normalizeLLMProvider(_provider?: unknown): LLMProvider {
-  void _provider;
-  return 'gemini';
+function normalizeLLMProvider(provider?: unknown): LLMProvider {
+  if (typeof provider !== 'string') {
+    return 'openai';
+  }
+
+  const normalized = provider.trim().toLowerCase();
+  if (normalized === 'openai' || normalized === 'openai_compatible') {
+    return normalized;
+  }
+
+  return 'openai';
 }
 
 function normalizeLLMModel(value: unknown, fallback: string): string {
@@ -753,14 +761,18 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
 }
 
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const [defaults, gemini, legacySearchKey] = await Promise.all([
+  const [defaults, openai, openaiCompatible, legacySearchKey] = await Promise.all([
     getAIScrapingDefaults(),
-    getAIScrapingProviderSecret('gemini'),
+    getAIScrapingProviderSecret('openai'),
+    getAIScrapingProviderSecret('openai_compatible'),
     getAIScrapingProviderSecret('serpapi'),
   ]);
 
-  const resolvedGemini = resolveGeminiApiKey(gemini);
-  const llmApiKey = resolvedGemini;
+  const resolvedOpenAI = resolveOpenAIApiKey(openai);
+  const resolvedOpenAICompatible = resolveOpenAICompatibleApiKey(openaiCompatible);
+  const llmApiKey = defaults.llm_provider === 'openai_compatible'
+    ? resolvedOpenAICompatible
+    : resolvedOpenAI;
 
   const credentials: AIScrapingRuntimeCredentials = {
     llm_provider: defaults.llm_provider,
@@ -770,8 +782,17 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
   if (llmApiKey) {
     credentials.llm_api_key = llmApiKey;
   }
-  if (resolvedGemini) {
-    credentials.gemini_api_key = resolvedGemini;
+  if (defaults.llm_provider === 'openai_compatible') {
+    const baseUrl = resolveOpenAICompatibleBaseUrl(defaults.llm_base_url);
+    if (baseUrl) {
+      credentials.llm_base_url = baseUrl;
+    }
+  }
+  if (resolvedOpenAI) {
+    credentials.openai_api_key = resolvedOpenAI;
+  }
+  if (resolvedOpenAICompatible) {
+    credentials.openai_compatible_api_key = resolvedOpenAICompatible;
   }
   if (legacySearchKey) {
     credentials.serper_api_key = legacySearchKey;
@@ -793,12 +814,16 @@ export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidation
   const resolvedOpenAICompatible = resolveOpenAICompatibleApiKey(openaiCompatible);
   const resolvedGemini = resolveGeminiApiKey(gemini);
 
-  const llmApiKey = resolvedGemini;
+  const llmApiKey = defaults.llm_provider === 'openai_compatible'
+    ? resolvedOpenAICompatible
+    : resolvedOpenAI;
 
   return {
     llm_provider: defaults.llm_provider,
     llm_model: defaults.llm_model,
-    llm_base_url: null,
+    llm_base_url: defaults.llm_provider === 'openai_compatible'
+      ? resolveOpenAICompatibleBaseUrl(defaults.llm_base_url)
+      : null,
     llm_api_key: llmApiKey,
     ...(resolvedOpenAI ? { openai_api_key: resolvedOpenAI } : {}),
     ...(resolvedOpenAICompatible ? { openai_compatible_api_key: resolvedOpenAICompatible } : {}),

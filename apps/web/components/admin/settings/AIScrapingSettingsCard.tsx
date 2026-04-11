@@ -13,10 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
-import { GeminiModelCombobox } from "@/components/admin/settings/GeminiModelCombobox";
-import { DEFAULT_GEMINI_MODEL } from "@/lib/ai-scraping/models";
+import { AIModelCombobox } from "@/components/admin/settings/AIModelCombobox";
+import { DEFAULT_AI_MODEL } from "@/lib/ai-scraping/models";
 
-type ProviderName = "gemini" | "serpapi";
+type ProviderName = "openai" | "serpapi";
 
 interface ProviderStatus {
   provider: string;
@@ -26,7 +26,7 @@ interface ProviderStatus {
 }
 
 interface ScrapingDefaults {
-  llm_provider: "gemini";
+  llm_provider: "openai";
   llm_model: string;
   llm_base_url: string | null;
   max_search_results: number;
@@ -40,8 +40,8 @@ interface ApiResponse {
 }
 
 const DEFAULTS: ScrapingDefaults = {
-  llm_provider: "gemini",
-  llm_model: DEFAULT_GEMINI_MODEL,
+  llm_provider: "openai",
+  llm_model: DEFAULT_AI_MODEL,
   llm_base_url: null,
   max_search_results: 5,
   max_steps: 15,
@@ -49,8 +49,8 @@ const DEFAULTS: ScrapingDefaults = {
 };
 
 const EMPTY_STATUSES: Record<ProviderName, ProviderStatus> = {
-  gemini: {
-    provider: "gemini",
+  openai: {
+    provider: "openai",
     configured: false,
     last4: null,
     updated_at: null,
@@ -67,7 +67,7 @@ export function AIScrapingSettingsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [serperApiKey, setSerperApiKey] = useState("");
   const [statuses, setStatuses] =
     useState<Record<ProviderName, ProviderStatus>>(EMPTY_STATUSES);
@@ -87,19 +87,19 @@ export function AIScrapingSettingsCard() {
 
       const data = (await res.json()) as ApiResponse;
       setStatuses({
-        gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
+        openai: data.statuses.openai ?? EMPTY_STATUSES.openai,
         serpapi: data.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
       });
       setDefaults({
         ...DEFAULTS,
         ...data.defaults,
-        llm_provider: "gemini",
+        llm_provider: "openai",
         llm_base_url: null,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...data.defaults,
-        llm_provider: "gemini",
+        llm_provider: "openai",
         llm_base_url: null,
       });
     } catch (e) {
@@ -115,14 +115,14 @@ export function AIScrapingSettingsCard() {
 
   const hasChanges = useMemo(() => {
     return (
-      geminiApiKey.trim().length > 0 ||
+      openaiApiKey.trim().length > 0 ||
       serperApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
-  }, [defaults, geminiApiKey, serperApiKey, initialDefaults]);
+  }, [defaults, openaiApiKey, serperApiKey, initialDefaults]);
 
   const onSave = async () => {
     setSaving(true);
@@ -130,11 +130,11 @@ export function AIScrapingSettingsCard() {
 
     try {
       const payload = {
-        gemini_api_key: geminiApiKey.trim() || undefined,
+        openai_api_key: openaiApiKey.trim() || undefined,
         serper_api_key: serperApiKey.trim() || undefined,
         defaults: {
           ...defaults,
-          llm_provider: "gemini" as const,
+          llm_provider: "openai" as const,
           llm_base_url: null,
         },
       };
@@ -158,22 +158,22 @@ export function AIScrapingSettingsCard() {
       };
 
       setStatuses({
-        gemini: body.statuses.gemini ?? EMPTY_STATUSES.gemini,
+        openai: body.statuses.openai ?? EMPTY_STATUSES.openai,
         serpapi: body.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
       });
       setDefaults({
         ...DEFAULTS,
         ...body.defaults,
-        llm_provider: "gemini",
+        llm_provider: "openai",
         llm_base_url: null,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...body.defaults,
-        llm_provider: "gemini",
+        llm_provider: "openai",
         llm_base_url: null,
       });
-      setGeminiApiKey("");
+      setOpenaiApiKey("");
       setSerperApiKey("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -192,7 +192,7 @@ export function AIScrapingSettingsCard() {
           <div>
             <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
-              Configure the Gemini API key used for Crawl4AI and AI search. The Serper API key is used as the backing search engine for resolving official product pages.
+              Configure the OpenAI API key used for AI Search and Crawl4AI enrichment. Serper remains the discovery search provider for resolving official product pages.
             </CardDescription>
           </div>
         </div>
@@ -212,17 +212,17 @@ export function AIScrapingSettingsCard() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="gemini-api-key">Gemini API Key</Label>
+                <Label htmlFor="openai-api-key">OpenAI API Key</Label>
                 <Input
-                  id="gemini-api-key"
+                  id="openai-api-key"
                   type="password"
-                  value={geminiApiKey}
-                  onChange={(e) => setGeminiApiKey(e.target.value)}
-                  placeholder="AIza..."
+                  value={openaiApiKey}
+                  onChange={(e) => setOpenaiApiKey(e.target.value)}
+                  placeholder="sk-..."
                 />
                 <div className="text-xs text-muted-foreground">
-                  {statuses.gemini.configured
-                    ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
+                  {statuses.openai.configured
+                    ? `Configured (ending in ${statuses.openai.last4 ?? "****"})`
                     : "Required for AI scraping"}
                 </div>
               </div>
@@ -246,8 +246,8 @@ export function AIScrapingSettingsCard() {
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="scraping-ai-model">Gemini Model</Label>
-                <GeminiModelCombobox
+                <Label htmlFor="scraping-ai-model">OpenAI Model</Label>
+                <AIModelCombobox
                   id="scraping-ai-model"
                   value={defaults.llm_model}
                   onChange={(value) =>
@@ -316,12 +316,16 @@ export function AIScrapingSettingsCard() {
               </div>
             </div>
 
+            <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
+              Legacy Gemini scraping settings are deprecated. Active scraper jobs now use OpenAI for reasoning and Serper for discovery.
+            </div>
+
             <div className="flex items-center justify-between border-t pt-4">
               <div className="flex gap-2">
                 <Badge
-                  variant={statuses.gemini.configured ? "default" : "secondary"}
+                  variant={statuses.openai.configured ? "default" : "secondary"}
                 >
-                  Gemini {statuses.gemini.configured ? "Ready" : "Missing"}
+                  OpenAI {statuses.openai.configured ? "Ready" : "Missing"}
                 </Badge>
                 <Badge
                   variant={statuses.serpapi.configured ? "default" : "secondary"}

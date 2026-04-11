@@ -272,8 +272,8 @@ describe('POST /api/scraper/v1/poll', () => {
         });
 
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'gemini',
-            llm_model: 'gemini-2.5-flash',
+            llm_provider: 'openai',
+            llm_model: 'gpt-4o-mini',
             llm_base_url: null,
             max_search_results: 7,
             max_steps: 20,
@@ -281,10 +281,10 @@ describe('POST /api/scraper/v1/poll', () => {
         });
 
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
-            llm_provider: 'gemini',
-            llm_model: 'gemini-2.5-flash',
-            llm_api_key: 'gemini-test-key',
-            gemini_api_key: 'gemini-test-key',
+            llm_provider: 'openai',
+            llm_model: 'gpt-4o-mini',
+            llm_api_key: 'openai-test-key',
+            openai_api_key: 'openai-test-key',
             serper_api_key: 'serper-test-key',
         });
 
@@ -333,10 +333,10 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(res.status).toBe(200);
 
         const data = await res.json();
-        expect(data.job.ai_credentials.llm_provider).toBe('gemini');
-        expect(data.job.ai_credentials.llm_model).toBe('gemini-2.5-flash');
-        expect(data.job.ai_credentials.llm_api_key).toBe('gemini-test-key');
-        expect(data.job.ai_credentials.gemini_api_key).toBe('gemini-test-key');
+        expect(data.job.ai_credentials.llm_provider).toBe('openai');
+        expect(data.job.ai_credentials.llm_model).toBe('gpt-4o-mini');
+        expect(data.job.ai_credentials.llm_api_key).toBe('openai-test-key');
+        expect(data.job.ai_credentials.openai_api_key).toBe('openai-test-key');
         expect(data.job.ai_credentials.serper_api_key).toBe('serper-test-key');
         expect(data.job.feature_flags).toMatchObject({
             GEMINI_AI_SEARCH_ENABLED: false,
@@ -345,8 +345,8 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.max_search_results).toBe(7);
         expect(data.job.job_config.max_steps).toBe(20);
         expect(data.job.job_config.confidence_threshold).toBe(0.82);
-        expect(data.job.job_config.llm_provider).toBe('gemini');
-        expect(data.job.job_config.llm_model).toBe('gemini-2.5-flash');
+        expect(data.job.job_config.llm_provider).toBe('openai');
+        expect(data.job.job_config.llm_model).toBe('gpt-4o-mini');
         expect(data.job.job_config.llm_base_url).toBeUndefined();
     });
 

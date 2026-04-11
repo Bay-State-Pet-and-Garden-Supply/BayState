@@ -41,9 +41,17 @@ export function pickNumber(value: unknown, fallback: number): number {
 }
 
 export function normalizeDiscoveryLLMProvider(_provider?: unknown, _fallback?: unknown): LLMProvider {
-  void _provider;
-  void _fallback;
-  return 'gemini';
+  const provider = typeof _provider === 'string' ? _provider.trim().toLowerCase() : '';
+  if (provider === 'openai_compatible') {
+    return 'openai_compatible';
+  }
+
+  const fallback = typeof _fallback === 'string' ? _fallback.trim().toLowerCase() : '';
+  if (fallback === 'openai_compatible') {
+    return 'openai_compatible';
+  }
+
+  return 'openai';
 }
 
 function pickNonEmptyString(value: unknown): string | null {
@@ -55,17 +63,17 @@ function pickNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serper' | 'gemini' | null {
+function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serper' | null {
   const provider = pickNonEmptyString(value);
   if (!provider) {
     return null;
   }
 
-  if (provider === 'brave' || provider === 'serpapi') {
+  if (provider === 'brave' || provider === 'serpapi' || provider === 'gemini') {
     return 'serper';
   }
 
-  if (provider === 'auto' || provider === 'serper' || provider === 'gemini') {
+  if (provider === 'auto' || provider === 'serper') {
     return provider;
   }
 

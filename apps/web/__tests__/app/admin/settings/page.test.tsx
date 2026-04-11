@@ -14,16 +14,16 @@ jest.mock('@/components/admin/settings/AIConsolidationSettingsCard', () => ({
 }));
 
 describe('Admin Settings Page', () => {
-  it('renders the Gemini migration notice', () => {
+  it('renders the finalized external stack notice', () => {
     render(<AdminSettingsPage />);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings');
-    expect(screen.getByText('AI provider migration complete')).toBeInTheDocument();
+    expect(screen.getByText('External AI stack finalized')).toBeInTheDocument();
     expect(
-      screen.getByText(/OpenAI and SerpAPI credentials have been removed from this admin UI/i)
+      screen.getByText(/Scraping and consolidation now run on OpenAI/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Brave Search has been deprecated in favor of Gemini-powered discovery/i)
+      screen.getByText(/Legacy Gemini, Brave Search, and SerpAPI credentials are deprecated/i)
     ).toBeInTheDocument();
   });
 });

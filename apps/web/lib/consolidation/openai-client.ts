@@ -1,17 +1,15 @@
 import OpenAI from 'openai';
+import type { GeminiClientAdapter } from '@/lib/providers/gemini-client';
 import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 import {
     getAIConsolidationRuntimeConfig,
     getDefaultModelForProvider,
 } from '@/lib/ai-scraping/credentials';
-import { DEFAULT_GEMINI_MODEL } from '@/lib/ai-scraping/models';
-import { GeminiClientAdapter } from '@/lib/providers/gemini-client';
+import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
 // We cache the client but only if the effective connection settings haven't changed.
 let lastClientSignature: string | null = null;
 let openaiClient: OpenAI | null = null;
-let lastGeminiSignature: string | null = null;
-let geminiClient: GeminiClientAdapter | null = null;
 
 export interface ConsolidationRuntimeConfig {
     model: string;
@@ -46,17 +44,12 @@ function resolveEffectiveProvider(
 
 /**
  * Get the OpenAI-compatible client instance for the current effective provider.
- * Returns null if Gemini is selected or the provider is not configured.
  */
 export async function getOpenAIClient(options?: ConsolidationConfigOptions): Promise<OpenAI | null> {
     const runtimeConfig = await getConsolidationConfig(options);
     const baseURL = runtimeConfig.llm_provider === 'openai_compatible'
         ? runtimeConfig.llm_base_url ?? undefined
         : undefined;
-
-    if (runtimeConfig.llm_provider === 'gemini') {
-        return null;
-    }
 
     if (runtimeConfig.llm_provider === 'openai' && !runtimeConfig.llm_api_key) {
         console.error('[Consolidation] OpenAI API key not set in environment or runtime credentials');
@@ -86,29 +79,9 @@ export async function getOpenAIClient(options?: ConsolidationConfigOptions): Pro
     return openaiClient;
 }
 
-/**
- * Get the Gemini client instance for the current effective provider.
- */
-export async function getGeminiClient(
-    options?: ConsolidationConfigOptions
-): Promise<GeminiClientAdapter | null> {
-    const runtimeConfig = await getConsolidationConfig(options);
-
-    if (runtimeConfig.llm_provider !== 'gemini' || !runtimeConfig.llm_api_key) {
-        return null;
-    }
-
-    const clientSignature = JSON.stringify({
-        provider: runtimeConfig.llm_provider,
-        apiKey: runtimeConfig.llm_api_key,
-    });
-
-    if (clientSignature !== lastGeminiSignature || !geminiClient) {
-        lastGeminiSignature = clientSignature;
-        geminiClient = new GeminiClientAdapter(runtimeConfig.llm_api_key);
-    }
-
-    return geminiClient;
+export async function getGeminiClient(_options?: ConsolidationConfigOptions): Promise<GeminiClientAdapter | null> {
+    void _options;
+    return null;
 }
 
 /**
@@ -116,10 +89,6 @@ export async function getGeminiClient(
  */
 export async function isOpenAIConfigured(options?: ConsolidationConfigOptions): Promise<boolean> {
     const runtimeConfig = await getConsolidationConfig(options);
-    if (runtimeConfig.llm_provider === 'gemini') {
-        return !!runtimeConfig.llm_api_key;
-    }
-
     if (runtimeConfig.llm_provider === 'openai') {
         return !!runtimeConfig.llm_api_key;
     }
@@ -133,7 +102,7 @@ export async function isOpenAIConfigured(options?: ConsolidationConfigOptions): 
  */
 export const CONSOLIDATION_CONFIG = {
     /** Model to use for consolidation */
-    model: DEFAULT_GEMINI_MODEL,
+    model: DEFAULT_AI_MODEL,
     /** Maximum tokens per response */
     maxTokens: 1024,
     /** Temperature for responses (low = more deterministic) */
@@ -160,10 +129,7 @@ export async function getConsolidationConfig(
         const baseUrl = effectiveProvider === 'openai_compatible'
             ? runtimeConfig.openai_compatible_base_url ?? runtimeConfig.llm_base_url
             : null;
-        const apiKey = effectiveProvider === 'gemini'
-            ? runtimeConfig.gemini_api_key
-                ?? (runtimeConfig.llm_provider === 'gemini' ? runtimeConfig.llm_api_key : null)
-            : effectiveProvider === 'openai_compatible'
+        const apiKey = effectiveProvider === 'openai_compatible'
                 ? runtimeConfig.openai_compatible_api_key
                     ?? (runtimeConfig.llm_provider === 'openai_compatible' ? runtimeConfig.llm_api_key : null)
                 : runtimeConfig.openai_api_key
@@ -188,8 +154,8 @@ export async function getConsolidationConfig(
         console.error('[Consolidation] Failed to load config from DB, using hardcoded defaults:', err);
         return {
             ...CONSOLIDATION_CONFIG,
-            llm_provider: 'gemini' as const,
-            configured_llm_provider: 'gemini' as const,
+            llm_provider: 'openai' as const,
+            configured_llm_provider: 'openai' as const,
             llm_base_url: null,
             llm_api_key: null,
             gemini_api_key: null,

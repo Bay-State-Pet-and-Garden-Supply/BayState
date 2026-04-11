@@ -1079,17 +1079,17 @@ def _run_ai_search_job(
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
     runtime_credentials: Dict[str, Any] = job_config.ai_credentials or {}
     feature_flags = GeminiFeatureFlags.from_payload(job_config.feature_flags)
-    llm_provider = "gemini"
+    llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "openai").strip().lower()
+    if llm_provider not in {"openai", "openai_compatible"}:
+        llm_provider = "openai"
 
-    llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "gemini-2.5-flash")
+    llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "gpt-4o-mini")
     if not llm_model.strip():
-        llm_model = "gemini-2.5-flash"
-    elif llm_model.startswith("gpt-"):
-        llm_model = "gemini-2.5-flash"
+        llm_model = "gpt-4o-mini"
     search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
     if search_provider in {"brave", "serpapi"}:
         search_provider = "serper"
-    elif search_provider not in {"auto", "serper", "gemini"}:
+    elif search_provider not in {"auto", "serper"}:
         search_provider = "auto"
     if search_provider == "auto":
         search_provider = "serper"
@@ -1098,12 +1098,16 @@ def _run_ai_search_job(
     raw_prefer_manufacturer = search_cfg.get("prefer_manufacturer")
     prefer_manufacturer = True if raw_prefer_manufacturer is None else bool(raw_prefer_manufacturer)
 
-    llm_base_url = None
+    llm_base_url = _get_optional_string(runtime_credentials, "llm_base_url")
+    if llm_provider != "openai_compatible":
+        llm_base_url = None
 
     runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
     runtime_llm_api_key = _get_optional_string(runtime_credentials, "llm_api_key")
-    llm_api_key = _get_optional_string(runtime_credentials, "gemini_api_key")
-    if llm_api_key is None and runtime_provider == "gemini":
+    llm_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
+    if llm_provider == "openai_compatible":
+        llm_api_key = _get_optional_string(runtime_credentials, "openai_compatible_api_key")
+    if llm_api_key is None and runtime_provider == llm_provider:
         llm_api_key = runtime_llm_api_key
 
     previous_serper = os.environ.get("SERPER_API_KEY")
@@ -1231,9 +1235,14 @@ def _run_ai_search_job(
             else:
                 os.environ["SERPER_API_KEY"] = previous_serper
 
+    total_cost = 0.0
+    error_counts: Dict[str, Dict[str, Any]] = {}
+
     for search_result in batch_results:
         sku = search_result.sku
         results["skus_processed"] += 1
+        result_cost = float(search_result.cost_usd or 0.0)
+        total_cost += result_cost
         if not sku:
             continue
 
@@ -1252,7 +1261,7 @@ def _run_ai_search_job(
                 "url": search_result.url,
                 "source_website": search_result.source_website,
                 "confidence": search_result.confidence,
-                "cost_usd": search_result.cost_usd,
+                "cost_usd": result_cost,
                 "scraped_at": datetime.now().isoformat(),
             }
             _emit_runner_log(
@@ -1266,7 +1275,7 @@ def _run_ai_search_job(
                     "confidence": search_result.confidence,
                     "source_website": search_result.source_website,
                     "image_count": len(search_result.images or []),
-                    "cost_usd": search_result.cost_usd,
+                    "cost_usd": result_cost,
                 },
                 scraper_name=scraper_name,
                 sku=sku,
@@ -1275,9 +1284,24 @@ def _run_ai_search_job(
         else:
             results["data"][sku][scraper_name] = {
                 "error": search_result.error,
-                "cost_usd": search_result.cost_usd,
+                "cost_usd": result_cost,
                 "scraped_at": datetime.now().isoformat(),
             }
+            error_type = "search_failed"
+            message = str(search_result.error or "AI Search failed")
+            if "timeout" in message.lower():
+                error_type = "timeout"
+            elif "rate limit" in message.lower():
+                error_type = "rate_limit"
+            current_error = error_counts.get(error_type)
+            if current_error is None:
+                error_counts[error_type] = {
+                    "error_type": error_type,
+                    "message": message,
+                    "count": 1,
+                }
+            else:
+                current_error["count"] += 1
             _emit_runner_log(
                 job_id=job_config.job_id,
                 runner_name=runner_name,
@@ -1285,7 +1309,7 @@ def _run_ai_search_job(
                 log_buffer=log_buffer,
                 level="warning",
                 message=f"{scraper_name}/{sku}: {search_result.error or 'Failed'}",
-                details={"cost_usd": search_result.cost_usd},
+                details={"cost_usd": result_cost},
                 scraper_name=scraper_name,
                 sku=sku,
                 phase="scraping",
@@ -1327,6 +1351,10 @@ def _run_ai_search_job(
     )
     results["logs"] = job_logging.snapshot() if job_logging else log_buffer
     results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
+    results["extraction_strategy"] = extraction_strategy
+    results["llm_cost"] = total_cost
+    results["total_cost"] = total_cost
+    results["ai_search_errors"] = list(error_counts.values())
     return results
 
 
