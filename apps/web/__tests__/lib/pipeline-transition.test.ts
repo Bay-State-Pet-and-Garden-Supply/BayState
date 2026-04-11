@@ -42,31 +42,51 @@ describe('pipeline status transition CRUD', () => {
     });
 
     it('returns counts for all pipeline status buckets', async () => {
-        const select = jest.fn().mockResolvedValue({
+        const productsSelect = jest.fn().mockResolvedValue({
             data: [
                 { pipeline_status: 'imported' },
                 { pipeline_status: 'imported' },
                 { pipeline_status: 'scraped' },
-                { pipeline_status: 'consolidated' },
                 { pipeline_status: 'finalized' },
                 { pipeline_status: 'failed' },
                 { pipeline_status: 'failed' },
-                { pipeline_status: 'published' },
             ],
+            error: null,
+        });
+        const finalizedSelect = jest.fn().mockResolvedValue({
+            count: 1,
+            error: null,
+        });
+        const exportSelect = jest.fn().mockResolvedValue({
+            count: 1,
             error: null,
         });
 
         (createClient as jest.Mock).mockResolvedValue({
-            from: jest.fn().mockReturnValue({ select }),
+            from: jest.fn((table: string) => {
+                if (table === 'products_ingestion') {
+                    return { select: productsSelect };
+                }
+                if (table === 'pipeline_finalized_review') {
+                    return { select: finalizedSelect };
+                }
+                if (table === 'pipeline_export_queue') {
+                    return { select: exportSelect };
+                }
+                throw new Error(`Unexpected table ${table}`);
+            }),
         });
 
         const counts = await getStatusCounts();
 
-        expect(select).toHaveBeenCalledWith('pipeline_status');
+        expect(productsSelect).toHaveBeenCalledWith('pipeline_status');
         expect(counts).toEqual([
             { status: 'imported', count: 2 },
+            { status: 'scraping', count: 0 },
             { status: 'scraped', count: 1 },
+            { status: 'consolidating', count: 0 },
             { status: 'finalized', count: 1 },
+            { status: 'export', count: 1 },
             { status: 'failed', count: 2 },
         ]);
     });

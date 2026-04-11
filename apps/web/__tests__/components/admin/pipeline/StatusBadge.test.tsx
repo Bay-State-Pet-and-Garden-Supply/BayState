@@ -35,20 +35,20 @@ describe("StatusBadge", () => {
     });
   });
 
-  describe("finalizing status", () => {
-    it("renders finalizing status with CheckCircle2 icon", () => {
-      const { container } = render(<StatusBadge status="finalizing" />);
+  describe("finalized status", () => {
+    it("renders finalized status with CheckCircle2 icon", () => {
+      const { container } = render(<StatusBadge status="finalized" />);
 
       const icon = container.querySelector("[data-slot='badge'] svg");
       expect(icon).toBeInTheDocument();
     });
   });
 
-  describe("published status", () => {
-    it("renders published status with Globe icon", () => {
-      render(<StatusBadge status="published" />);
+  describe("export status", () => {
+    it("renders export status with Globe icon", () => {
+      render(<StatusBadge status="export" />);
 
-      const badge = screen.getByText("Published").closest("[data-slot='badge']");
+      const badge = screen.getByText("Export").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
     });
   });

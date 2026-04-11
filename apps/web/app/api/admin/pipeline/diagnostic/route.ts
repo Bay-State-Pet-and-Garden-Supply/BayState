@@ -8,10 +8,17 @@ export async function GET() {
     try {
         const supabase = await createClient();
 
-        // Query products_ingestion for status counts
-        const { data: productsData, error: productsError } = await supabase
-            .from('products_ingestion')
-            .select('pipeline_status');
+        const [
+            { data: productsData, error: productsError },
+            { count: exportQueueCount, error: exportQueueError },
+        ] = await Promise.all([
+            supabase
+                .from('products_ingestion')
+                .select('pipeline_status'),
+            supabase
+                .from('pipeline_export_queue')
+                .select('sku', { count: 'exact', head: true }),
+        ]);
 
         if (productsError) {
             console.error('Error fetching products_ingestion:', productsError);
@@ -19,6 +26,10 @@ export async function GET() {
                 { error: 'Failed to query products_ingestion', details: productsError.message },
                 { status: 500 }
             );
+        }
+
+        if (exportQueueError) {
+            console.error('Warning: Error fetching pipeline_export_queue:', exportQueueError);
         }
 
         // Calculate counts by status
@@ -67,6 +78,7 @@ export async function GET() {
             summary: {
                 total_products: totalProducts,
                 by_status: byStatus,
+                export_queue: exportQueueCount || 0,
             },
             active_jobs: {
                 scraping: scrapingCount,

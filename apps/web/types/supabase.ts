@@ -3534,11 +3534,10 @@ export type Database = {
     Enums: {
       pipeline_status_five:
         | "imported"
-        | "monitoring"
         | "scraped"
-        | "consolidated"
         | "finalized"
         | "published"
+        | "failed"
       pipeline_status_new_enum: "registered" | "enriched" | "finalized"
     }
     CompositeTypes: {
@@ -3669,11 +3668,10 @@ export const Constants = {
     Enums: {
       pipeline_status_five: [
         "imported",
-        "monitoring",
         "scraped",
-        "consolidated",
         "finalized",
         "published",
+        "failed",
       ],
       pipeline_status_new_enum: ["registered", "enriched", "finalized"],
     },

@@ -12,7 +12,9 @@ export const WORKFLOW_PIPELINE_TABS = [
   'scraping',
   'scraped',
   'consolidating',
-  'finalizing',
+  'finalized',
+  'export',
+  'failed',
 ] as const;
 
 export type WorkflowPipelineTab = Extract<
@@ -24,6 +26,7 @@ export interface ProductTabDerivationInput {
   pipeline_status?: PersistedPipelineStatus | null;
   id?: string | number | null;
   sku?: string | null;
+  in_storefront?: boolean | null;
 }
 
 export interface ActivePipelineJobs {
@@ -123,9 +126,12 @@ export function deriveTabFromProduct(
     case 'scraped':
       return resolvedActiveJobs.scraping ? 'scraping' : 'scraped';
     case 'finalized':
-      return resolvedActiveJobs.consolidation ? 'consolidating' : 'finalizing';
+      if (resolvedActiveJobs.consolidation) {
+        return 'consolidating';
+      }
+      return product?.in_storefront ? 'export' : 'finalized';
     case 'failed':
-      return 'imported';
+      return 'failed';
     default:
       return 'imported';
   }

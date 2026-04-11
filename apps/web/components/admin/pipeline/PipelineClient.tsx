@@ -50,7 +50,7 @@ import type {
   PersistedPipelineStatus,
   StatusCount,
 } from "@/lib/pipeline/types";
-import { getStageDataStatus, isPipelineStage } from "@/lib/pipeline/types";
+import { normalizePipelineStage } from "@/lib/pipeline/types";
 
 const ScraperSelectDialog = dynamic(
   () => import("./ScraperSelectDialog").then((mod) => mod.ScraperSelectDialog),
@@ -76,53 +76,7 @@ const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
   "scraping",
   "consolidating",
 ]);
-
-const SKU_TAG_PATTERN = /<SKU>([^<]+)<\/SKU>/g;
-
-function parsePublishedSkus(xml: string): string[] {
-  const skus = new Set<string>();
-
-  for (const match of xml.matchAll(SKU_TAG_PATTERN)) {
-    const sku = match[1]?.trim();
-    if (sku) {
-      skus.add(sku);
-    }
-  }
-
-  return Array.from(skus);
-}
-
-function productMatchesSearch(
-  product: PipelineProduct,
-  searchTerm: string,
-): boolean {
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-  if (!normalizedSearch) {
-    return true;
-  }
-
-  const candidates = [
-    product.sku,
-    product.input?.name,
-    product.consolidated?.name,
-  ];
-
-  return candidates.some(
-    (value) =>
-      typeof value === "string" &&
-      value.toLowerCase().includes(normalizedSearch),
-  );
-}
-
-function mergePublishedCount(
-  nextCounts: StatusCount[],
-  publishedCount: number,
-): StatusCount[] {
-  return [
-    ...nextCounts.filter((count) => count.status !== "published"),
-    { status: "published", count: publishedCount },
-  ];
-}
+const EMPTY_SOURCES: string[] = [];
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
   return LIVE_OPERATIONAL_TABS.has(stage);
@@ -141,7 +95,7 @@ export function PipelineClient({
   initialProducts,
   initialTotal,
   initialStage = "imported",
-  initialSources = [],
+  initialSources = EMPTY_SOURCES,
 }: PipelineClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -150,7 +104,7 @@ export function PipelineClient({
 
   const stageFromUrl = searchParams.get("stage");
   const currentStage: PipelineStage =
-    stageFromUrl && isPipelineStage(stageFromUrl) ? stageFromUrl : initialStage;
+    normalizePipelineStage(stageFromUrl) ?? initialStage;
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
@@ -160,7 +114,7 @@ export function PipelineClient({
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
-  const [publishedActionState, setPublishedActionState] = useState<
+  const [exportActionState, setExportActionState] = useState<
     "upload" | "zip" | null
   >(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -179,8 +133,6 @@ export function PipelineClient({
   const [cohortIdFilter, setCohortIdFilter] = useState(
     searchParams.get("cohort_id") || "",
   );
-  const publishedSkuCacheRef = useRef<string[] | null>(null);
-
   const canEditCohorts = currentStage === "imported";
 
   useEffect(() => {
@@ -190,12 +142,6 @@ export function PipelineClient({
   }, [canEditCohorts]);
 
   const filteredProducts = useMemo(() => {
-    if (currentStage === "published") {
-      return products.filter((product) =>
-        productMatchesSearch(product, search),
-      );
-    }
-
     if (!sourceFilter || currentStage !== "scraped") return products;
     return products.filter((product) => {
       const productSources = product.sources ?? {};
@@ -252,9 +198,7 @@ export function PipelineClient({
   // Fetch products for a specific stage
   const fetchProducts = useCallback(
     async (stage: PipelineStage, searchTerm?: string, silent = false) => {
-      const dataStatus = getStageDataStatus(stage);
-
-      if (!dataStatus) {
+      if (isLiveOperationalTab(stage)) {
         setProducts([]);
         setTotalCount(0);
         setSelectedSkus(new Set());
@@ -264,7 +208,7 @@ export function PipelineClient({
       if (!silent) setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          status: dataStatus,
+          stage,
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
@@ -294,123 +238,28 @@ export function PipelineClient({
 
   // Fetch counts for all stages
   const fetchCounts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/pipeline/counts", {
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCounts((previousCounts) => {
-          const publishedCount = previousCounts.find(
-            (count) => count.status === "published",
-          )?.count;
-          const nextCounts = data.counts || [];
-
-          return typeof publishedCount === "number"
-            ? mergePublishedCount(nextCounts, publishedCount)
-            : nextCounts;
-        });
-      }
-    } catch {
-      // Silently fail for counts
-    }
-  }, []);
-
-  const getPublishedSkus = useCallback(async (forceRefresh = false) => {
-    if (!forceRefresh && publishedSkuCacheRef.current) {
-      return publishedSkuCacheRef.current;
-    }
-
-    const response = await fetch("/api/admin/pipeline/export-xml", {
-      cache: "no-store",
-    });
-    if (response.status === 404) {
-      publishedSkuCacheRef.current = [];
-      return [];
-    }
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.error || "Failed to derive published products");
-    }
-
-    const xml = await response.text();
-    const skus = parsePublishedSkus(xml);
-    publishedSkuCacheRef.current = skus;
-    return skus;
-  }, []);
-
-  const fetchPublishedProducts = useCallback(
-    async (silent = false, forceRefresh = false) => {
-      if (!silent) {
-        setIsLoading(true);
-      }
-
       try {
-        const publishedSkus = await getPublishedSkus(forceRefresh);
-
-        if (publishedSkus.length === 0) {
-          setProducts([]);
-          setTotalCount(0);
-          setCounts((previousCounts) => mergePublishedCount(previousCounts, 0));
-          return;
+        const res = await fetch("/api/admin/pipeline/counts", {
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCounts(data.counts || []);
         }
-
-        const productResponses = await Promise.all(
-          publishedSkus.map(async (sku) => {
-            const response = await fetch(
-              `/api/admin/pipeline/${encodeURIComponent(sku)}`,
-              {
-                cache: "no-store",
-              },
-            );
-
-            if (!response.ok) {
-              return null;
-            }
-
-            const payload = await response.json();
-            return (payload.product ?? null) as PipelineProduct | null;
-          }),
-        );
-
-        const nextProducts = productResponses.filter(
-          (product): product is PipelineProduct => product !== null,
-        );
-
-        setProducts(nextProducts);
-        setTotalCount(nextProducts.length);
-        setCounts((previousCounts) =>
-          mergePublishedCount(previousCounts, nextProducts.length),
-        );
       } catch {
-        toast.error("Failed to fetch published products");
-      } finally {
-        if (!silent) {
-          setIsLoading(false);
-        }
+        // Silently fail for counts
       }
-    },
-    [getPublishedSkus],
-  );
+    }, []);
 
   // Refresh everything
   const refreshAll = useCallback(
     async (silent = false) => {
-      if (currentStage === "published") {
-        await Promise.all([
-          fetchPublishedProducts(silent, true),
-          fetchCounts(),
-        ]);
-        return;
-      }
-
       await Promise.all([
         fetchProducts(currentStage, search, silent),
         fetchCounts(),
       ]);
     },
-    [currentStage, search, fetchProducts, fetchCounts, fetchPublishedProducts],
+    [currentStage, search, fetchProducts, fetchCounts],
   );
 
   const isFirstMount = useRef(true);
@@ -459,11 +308,6 @@ export function PipelineClient({
         return;
       }
 
-      if (currentStage === "published") {
-        setSelectedSkus(new Set());
-        return;
-      }
-
       await fetchProducts(currentStage, search);
       if (isMounted) {
         setSelectedSkus(new Set());
@@ -477,14 +321,6 @@ export function PipelineClient({
       isMounted = false;
     };
   }, [search, fetchProducts, currentStage]);
-
-  useEffect(() => {
-    if (currentStage !== "published") {
-      return;
-    }
-
-    void fetchPublishedProducts();
-  }, [currentStage, fetchPublishedProducts]);
 
   // Sync state from URL (e.g. on navigation or back button)
   useEffect(() => {
@@ -642,13 +478,8 @@ export function PipelineClient({
 
   // Select ALL matching (including beyond visible page) via API
   const handleSelectAll = async () => {
-    if (currentStage === "finalizing") {
+    if (currentStage === "finalized") {
       // Finalizing should not support select-all behavior; enforce one-by-one in UI.
-      return;
-    }
-
-    if (currentStage === "published") {
-      handleSelectAllVisible();
       return;
     }
 
@@ -661,7 +492,7 @@ export function PipelineClient({
 
     try {
       const params = new URLSearchParams({
-        status: currentStage,
+        stage: currentStage,
         selectAll: "true",
       });
       if (search) params.set("search", search);
@@ -769,7 +600,7 @@ export function PipelineClient({
         return;
       }
 
-      setPublishedActionState("upload");
+      setExportActionState("upload");
       try {
         const response = await fetch("/api/admin/pipeline/upload-shopsite", {
           method: "POST",
@@ -794,7 +625,7 @@ export function PipelineClient({
             : uploadCount;
 
         toast.success("Uploaded to ShopSite", {
-          description: `${uploadedCount} published product${uploadedCount === 1 ? "" : "s"}${marker ? ` tagged ${marker}` : ""}`,
+          description: `${uploadedCount} storefront product${uploadedCount === 1 ? "" : "s"}${marker ? ` tagged ${marker}` : ""}`,
         });
       } catch (error) {
         toast.error(
@@ -803,7 +634,7 @@ export function PipelineClient({
             : "Failed to upload products to ShopSite",
         );
       } finally {
-        setPublishedActionState(null);
+        setExportActionState(null);
       }
     },
     [totalCount],
@@ -816,7 +647,7 @@ export function PipelineClient({
         return;
       }
 
-      setPublishedActionState("zip");
+      setExportActionState("zip");
       try {
         const response =
           skus && skus.length > 0
@@ -848,7 +679,7 @@ export function PipelineClient({
         window.URL.revokeObjectURL(url);
 
         toast.success("Image ZIP downloaded", {
-          description: `${exportCount} published product${exportCount === 1 ? "" : "s"}`,
+          description: `${exportCount} storefront product${exportCount === 1 ? "" : "s"}`,
         });
       } catch (error) {
         toast.error(
@@ -857,7 +688,7 @@ export function PipelineClient({
             : "Failed to download image ZIP",
         );
       } finally {
-        setPublishedActionState(null);
+        setExportActionState(null);
       }
     },
     [totalCount],
@@ -1116,16 +947,16 @@ export function PipelineClient({
                 </Button>
               </>
             )}
-            {currentStage === "published" && (
+            {currentStage === "export" && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleUploadAllShopSite}
-                  disabled={isLoading || publishedActionState === "upload"}
+                  disabled={isLoading || exportActionState === "upload"}
                   className="h-8 border-brand-forest-green/20 text-brand-forest-green hover:bg-brand-forest-green/5 text-xs font-semibold"
                 >
-                  {publishedActionState === "upload" ? (
+                  {exportActionState === "upload" ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <Upload className="mr-1.5 h-3.5 w-3.5" />
@@ -1136,10 +967,10 @@ export function PipelineClient({
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadAllZip}
-                  disabled={isLoading || publishedActionState === "zip"}
+                  disabled={isLoading || exportActionState === "zip"}
                   className="h-8 border-brand-burgundy/20 text-brand-burgundy hover:bg-brand-burgundy/5 text-xs font-semibold"
                 >
-                  {publishedActionState === "zip" ? (
+                  {exportActionState === "zip" ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <Archive className="mr-1.5 h-3.5 w-3.5" />
@@ -1242,9 +1073,10 @@ export function PipelineClient({
                 : undefined
             }
           />
-        ) : currentStage === "finalizing" || currentStage === "published" ? (
+        ) : currentStage === "finalized" || currentStage === "export" ? (
           <FinalizingResultsView
             products={filteredProducts}
+            isExportStage={currentStage === "export"}
             onRefresh={refreshAll}
             search={search}
             onSearchChange={(value) => setSearch(value)}
@@ -1458,15 +1290,15 @@ export function PipelineClient({
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onDelete={handleDelete}
           actionState={
-            currentStage === "published" ? publishedActionState : null
+            currentStage === "export" ? exportActionState : null
           }
           onUploadShopSite={
-            currentStage === "published"
+            currentStage === "export"
               ? handleUploadSelectedShopSite
               : undefined
           }
           onDownloadZip={
-            currentStage === "published" ? handleDownloadSelectedZip : undefined
+            currentStage === "export" ? handleDownloadSelectedZip : undefined
           }
         />
       )}

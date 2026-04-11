@@ -41,13 +41,6 @@ const statusConfig: Array<{
     color: "text-brand-forest-green",
     bgColor: "bg-brand-forest-green/10",
   },
-  {
-    status: "published",
-    label: "Published",
-    icon: CheckCircle2,
-    color: "text-brand-burgundy",
-    bgColor: "bg-brand-burgundy/10",
-  },
 ];
 
 function TrendIndicator({ value }: { value: number }) {
@@ -80,8 +73,8 @@ export function PipelineStats({
 }: PipelineStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <Skeleton className="h-4 w-24" />
@@ -97,7 +90,7 @@ export function PipelineStats({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {statusConfig.map((config) => {
         const count = getCountForStatus(counts, config.status);
         const trend = trends?.[config.status];

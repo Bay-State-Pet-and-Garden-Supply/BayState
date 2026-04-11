@@ -36,8 +36,7 @@ const statusConfig: Record<
   consolidating: { variant: "warning", label: "Consolidating", icon: Sparkles },
   failed: { variant: "destructive", label: "Failed", icon: AlertCircle },
   finalized: { variant: "warning", label: "Finalized", icon: CheckCircle2 },
-  finalizing: { variant: "warning", label: "Finalizing", icon: CheckCircle2 },
-  published: { variant: "success", label: "Published", icon: Globe },
+  export: { variant: "success", label: "Export", icon: Globe },
 };
 
 const defaultStatusConfig = {

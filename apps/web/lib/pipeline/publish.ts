@@ -6,13 +6,6 @@ import {
 } from '@/lib/product-image-storage';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
 
-/**
- * Publishes a product from the ingestion pipeline to the storefront catalog.
- * Copies consolidated data to the main 'products' table.
- * 
- * @param sku The SKU of the product to publish
- * @returns Object with success status and details
- */
 export async function publishToStorefront(sku: string) {
     const supabase = await createClient();
 
@@ -28,7 +21,6 @@ export async function publishToStorefront(sku: string) {
             return { success: false, error: 'Product not found in pipeline' };
         }
 
-        // Publishing is only allowed from the canonical finalized status.
         const publishableStatuses = new Set(['finalized']);
         if (!publishableStatuses.has(ingestionProduct.pipeline_status)) {
             return { 
@@ -59,7 +51,7 @@ export async function publishToStorefront(sku: string) {
             const sourceImages = (consolidated.images as unknown[])
                 .filter((img): img is string => typeof img === 'string' && img.trim() !== '');
             const durableImages = await replaceInlineImageDataUrls(supabase, sourceImages, {
-                folderPath: buildProductImageStorageFolder('pipeline-published', sku),
+                folderPath: buildProductImageStorageFolder('pipeline-storefront', sku),
                 onError: (message, error) => {
                     console.error(`[Publish] ${message}`, error);
                 },
@@ -118,8 +110,8 @@ export async function publishToStorefront(sku: string) {
             low_stock_threshold: 5,
         };
 
-        // Reuse existing storefront rows by SKU so published state remains
-        // deterministically derived from products.sku existence.
+        // Reuse existing storefront rows by SKU so re-publishes update the same
+        // storefront record instead of creating duplicates.
         const { data: existingProduct } = await supabase
             .from('products')
             .select('id')
@@ -147,8 +139,6 @@ try {
     return { success: false, error: 'Failed to sync product categories in storefront' };
 }
 */
-
-
             return { success: true, action: 'updated', productId: existingProduct.id };
         } else {
             // Insert new product

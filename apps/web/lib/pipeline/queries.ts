@@ -134,27 +134,76 @@ export async function queryConsolidatingTabProducts(
   };
 }
 
-export async function queryFinalizingTabProducts(
+export async function queryFinalizedTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
-  activeConsolidationIdentifiers?: ActiveIdentifiers
+  activeConsolidationIdentifiers?: ActiveIdentifiers,
+  storefrontIdentifiers?: ActiveIdentifiers,
 ): Promise<PipelineTabQueryResult> {
   const startedAt = Date.now();
   const resolvedActiveConsolidationIdentifiers =
     activeConsolidationIdentifiers
     ?? await getActiveConsolidationIdentifiers(supabase);
+  const resolvedStorefrontIdentifiers =
+    storefrontIdentifiers ?? await getStorefrontIdentifiers(supabase);
 
   const result = await queryProductsByStatus(supabase, "finalized", pagination, {
-    exclude: resolvedActiveConsolidationIdentifiers,
+    exclude: mergeIdentifiers(
+      resolvedActiveConsolidationIdentifiers,
+      resolvedStorefrontIdentifiers,
+    ),
   });
 
   return {
-    tab: "finalizing",
+    tab: "finalized",
     products: result.products,
     count: result.count,
     durationMs: Date.now() - startedAt,
   };
 }
+
+export async function queryExportTabProducts(
+  supabase: PipelineQuerySupabaseClient,
+  pagination?: PipelineTabPagination,
+  activeConsolidationIdentifiers?: ActiveIdentifiers,
+  storefrontIdentifiers?: ActiveIdentifiers,
+): Promise<PipelineTabQueryResult> {
+  const startedAt = Date.now();
+  const resolvedActiveConsolidationIdentifiers =
+    activeConsolidationIdentifiers
+    ?? await getActiveConsolidationIdentifiers(supabase);
+  const resolvedStorefrontIdentifiers =
+    storefrontIdentifiers ?? await getStorefrontIdentifiers(supabase);
+
+  const result = await queryProductsByStatus(supabase, "finalized", pagination, {
+    include: resolvedStorefrontIdentifiers,
+    exclude: resolvedActiveConsolidationIdentifiers,
+  });
+
+  return {
+    tab: "export",
+    products: result.products,
+    count: result.count,
+    durationMs: Date.now() - startedAt,
+  };
+}
+
+export async function queryFailedTabProducts(
+  supabase: PipelineQuerySupabaseClient,
+  pagination?: PipelineTabPagination
+): Promise<PipelineTabQueryResult> {
+  const startedAt = Date.now();
+  const result = await queryProductsByStatus(supabase, "failed", pagination);
+
+  return {
+    tab: "failed",
+    products: result.products,
+    count: result.count,
+    durationMs: Date.now() - startedAt,
+  };
+}
+
+export const queryFinalizingTabProducts = queryFinalizedTabProducts;
 
 export async function queryProductsForWorkflowTab(
   tab: WorkflowPipelineTab,
@@ -170,8 +219,12 @@ export async function queryProductsForWorkflowTab(
       return queryScrapedTabProducts(supabase, pagination);
     case "consolidating":
       return queryConsolidatingTabProducts(supabase, pagination);
-    case "finalizing":
-      return queryFinalizingTabProducts(supabase, pagination);
+    case "finalized":
+      return queryFinalizedTabProducts(supabase, pagination);
+    case "export":
+      return queryExportTabProducts(supabase, pagination);
+    case "failed":
+      return queryFailedTabProducts(supabase, pagination);
     default:
       return queryImportedTabProducts(supabase, pagination);
   }
@@ -181,19 +234,36 @@ export async function queryWorkflowTabCounts(
   supabase: PipelineQuerySupabaseClient
 ): Promise<Record<WorkflowPipelineTab, number>> {
   const pagination = { limit: 1, offset: 0 };
-  const [activeScrapeIdentifiers, activeConsolidationIdentifiers] =
+  const [
+    activeScrapeIdentifiers,
+    activeConsolidationIdentifiers,
+    storefrontIdentifiers,
+  ] =
     await Promise.all([
       getActiveScrapeIdentifiers(supabase),
       getActiveConsolidationIdentifiers(supabase),
+      getStorefrontIdentifiers(supabase),
     ]);
 
-  const [imported, scraping, scraped, consolidating, finalizing] =
+  const [imported, scraping, scraped, consolidating, finalized, exportTab, failed] =
     await Promise.all([
       queryImportedTabProducts(supabase, pagination),
       queryScrapingTabProducts(supabase, pagination, activeScrapeIdentifiers),
       queryScrapedTabProducts(supabase, pagination, activeScrapeIdentifiers),
       queryConsolidatingTabProducts(supabase, pagination, activeConsolidationIdentifiers),
-      queryFinalizingTabProducts(supabase, pagination, activeConsolidationIdentifiers),
+      queryFinalizedTabProducts(
+        supabase,
+        pagination,
+        activeConsolidationIdentifiers,
+        storefrontIdentifiers,
+      ),
+      queryExportTabProducts(
+        supabase,
+        pagination,
+        activeConsolidationIdentifiers,
+        storefrontIdentifiers,
+      ),
+      queryFailedTabProducts(supabase, pagination),
     ]);
 
   return {
@@ -201,7 +271,9 @@ export async function queryWorkflowTabCounts(
     scraping: scraping.count,
     scraped: scraped.count,
     consolidating: consolidating.count,
-    finalizing: finalizing.count,
+    finalized: finalized.count,
+    export: exportTab.count,
+    failed: failed.count,
   };
 }
 
@@ -281,9 +353,41 @@ async function getActiveConsolidationIdentifiers(
   };
 }
 
+async function getStorefrontIdentifiers(
+  supabase: PipelineQuerySupabaseClient
+): Promise<ActiveIdentifiers> {
+  const query = supabase
+    .from<{ sku?: string | null }>("products")
+    .select("sku")
+    .not("published_at", "is", "null");
+
+  const { data, error } = await query;
+
+  if (error) {
+    if (isNonFatalQueryError(error)) {
+      return EMPTY_IDENTIFIERS;
+    }
+
+    throw new Error(error.message);
+  }
+
+  const skuSet = new Set<string>();
+
+  for (const row of data ?? []) {
+    if (typeof row.sku === "string" && row.sku.trim().length > 0) {
+      skuSet.add(row.sku.trim());
+    }
+  }
+
+  return {
+    ids: [],
+    skus: Array.from(skuSet),
+  };
+}
+
 async function queryProductsByStatus(
   supabase: PipelineQuerySupabaseClient,
-  status: "imported" | "scraped" | "finalized",
+  status: "imported" | "scraped" | "finalized" | "failed",
   pagination?: PipelineTabPagination,
   options?: {
     include?: ActiveIdentifiers;
@@ -335,6 +439,25 @@ async function queryProductsByStatus(
   return {
     products: (data ?? []) as PipelineProduct[],
     count: count ?? 0,
+  };
+}
+
+function mergeIdentifiers(...collections: ActiveIdentifiers[]): ActiveIdentifiers {
+  const ids = new Set<string>();
+  const skus = new Set<string>();
+
+  for (const collection of collections) {
+    for (const id of collection.ids) {
+      ids.add(id);
+    }
+    for (const sku of collection.skus) {
+      skus.add(sku);
+    }
+  }
+
+  return {
+    ids: Array.from(ids),
+    skus: Array.from(skus),
   };
 }
 

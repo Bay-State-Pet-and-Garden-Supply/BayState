@@ -51,7 +51,6 @@ describe('preparePublishedShopSiteExport', () => {
             brand_name: 'Feathered Friend',
             brand_folder: 'feathered-friend',
             category: 'Wild Bird Food',
-            product_type: 'Seeds & Seed Mixes',
             file_name: 'feathered-friend-favorite-20-lb.html',
             gtin: '011641750056',
             availability: 'in stock',
@@ -104,24 +103,24 @@ describe('preparePublishedShopSiteExport', () => {
 });
 
 describe('loadPublishedShopSiteExport', () => {
-    it('derives published export rows from matching storefront SKUs', async () => {
-        const productsRange = jest.fn().mockResolvedValue({
-            data: [{ sku: 'SKU-1' }],
+    it('loads export queue rows directly from the derived storefront export view', async () => {
+        const publishedRange = jest.fn().mockResolvedValue({
+            data: [
+                {
+                    sku: 'SKU-1',
+                    input: { name: 'Exported Product', price: 12.99 },
+                    consolidated: { name: 'Exported Product', brand_id: 'brand-1' },
+                    selected_images: [],
+                },
+            ],
             error: null,
         });
-        const ingestionIn = jest.fn().mockReturnValue({
-            order: jest.fn().mockResolvedValue({
-                data: [
-                    {
-                        sku: 'SKU-1',
-                        input: { name: 'Exported Product', price: 12.99 },
-                        consolidated: { name: 'Exported Product', brand_id: 'brand-1' },
-                        selected_images: [],
-                    },
-                ],
-                error: null,
-            }),
-        });
+        const ingestionQuery = {
+            eq: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            range: publishedRange,
+        };
         const brandsIn = jest.fn().mockResolvedValue({
             data: [{ id: 'brand-1', name: 'Test Brand', slug: 'test-brand' }],
             error: null,
@@ -129,21 +128,9 @@ describe('loadPublishedShopSiteExport', () => {
 
         const supabase = {
             from: jest.fn((table: string) => {
-                if (table === 'products') {
+                if (table === 'pipeline_export_queue') {
                     return {
-                        select: jest.fn().mockReturnValue({
-                            order: jest.fn().mockReturnValue({
-                                range: productsRange,
-                            }),
-                        }),
-                    };
-                }
-
-                if (table === 'products_ingestion') {
-                    return {
-                        select: jest.fn().mockReturnValue({
-                            in: ingestionIn,
-                        }),
+                        select: jest.fn().mockReturnValue(ingestionQuery),
                     };
                 }
 
@@ -163,8 +150,8 @@ describe('loadPublishedShopSiteExport', () => {
 
         const result = await loadPublishedShopSiteExport();
 
-        expect(productsRange).toHaveBeenCalledWith(0, 199);
-        expect(ingestionIn).toHaveBeenCalledWith('sku', ['SKU-1']);
+        expect(supabase.from).toHaveBeenCalledWith('pipeline_export_queue');
+        expect(publishedRange).toHaveBeenCalledWith(0, 199);
         expect(result.products).toHaveLength(1);
         expect(result.products[0]).toMatchObject({
             sku: 'SKU-1',

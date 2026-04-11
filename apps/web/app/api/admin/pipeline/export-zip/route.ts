@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { loadPublishedShopSiteExport } from '@/lib/shopsite/export-builder';
+import { loadStorefrontShopSiteExport } from '@/lib/shopsite/export-builder';
 import archiver from 'archiver';
 import sharp from 'sharp';
 import { PassThrough } from 'node:stream';
@@ -30,10 +30,10 @@ function parseSkuSelection(body: ExportRequestBody): string[] {
 }
 
 async function buildZipResponse(skus?: string[]) {
-    const { products } = await loadPublishedShopSiteExport({ skus });
+    const { products } = await loadStorefrontShopSiteExport({ skus });
     if (products.length === 0) {
         return NextResponse.json(
-            { error: 'No published products available for ShopSite export' },
+            { error: 'No export-ready storefront products available for ShopSite export' },
             { status: 404 },
         );
     }
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         return await buildZipResponse(skus.length > 0 ? skus : undefined);
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to generate ZIP export';
-        const status = message.includes('Expected "skus"') || message.includes('not published') ? 400 : 500;
+        const status = message.includes('Expected "skus"') || message.includes('export queue') ? 400 : 500;
         console.error('[ExportZip] Setup error:', err);
         return NextResponse.json({ error: message }, { status });
     }

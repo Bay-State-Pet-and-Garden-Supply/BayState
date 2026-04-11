@@ -20,9 +20,9 @@ export const PIPELINE_TABS = [
   "scraping",
   "scraped",
   "consolidating",
-  "finalizing",
+  "finalized",
+  "export",
   "failed",
-  "published",
 ] as const;
 
 export type PipelineStage = (typeof PIPELINE_TABS)[number];
@@ -32,14 +32,13 @@ export type PipelineTab = PipelineStage;
 export const DERIVED_PIPELINE_TABS = [
   "scraping",
   "consolidating",
-  "finalizing",
-  "published",
+  "export",
 ] as const;
 
 export type DerivedPipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
 
 /** Status-like labels that appear in badges, counts, or actions. */
-export type PipelineStatus = PersistedPipelineStatus | "published";
+export type PipelineStatus = PersistedPipelineStatus;
 
 /** Displayable status or stage labels used by shared UI primitives. */
 export type PipelineDisplayStatus = PersistedPipelineStatus | PipelineStage;
@@ -50,6 +49,10 @@ const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
 
 const DERIVED_PIPELINE_TAB_SET = new Set<string>(DERIVED_PIPELINE_TABS);
 const PIPELINE_STAGE_SET = new Set<string>(PIPELINE_TABS);
+const LEGACY_PIPELINE_STAGE_ALIASES = {
+  finalizing: "finalized",
+  published: "export",
+} as const;
 
 export function isPersistedStatus(
   value: string,
@@ -65,6 +68,24 @@ export function isPipelineStage(value: string): value is PipelineStage {
   return PIPELINE_STAGE_SET.has(value);
 }
 
+export function normalizePipelineStage(
+  value: string | null | undefined,
+): PipelineStage | null {
+  if (!value) {
+    return null;
+  }
+
+  if (isPipelineStage(value)) {
+    return value;
+  }
+
+  return (
+    LEGACY_PIPELINE_STAGE_ALIASES[
+      value as keyof typeof LEGACY_PIPELINE_STAGE_ALIASES
+    ] ?? null
+  );
+}
+
 /**
  * Returns the persisted status needed to hydrate a route stage, if any.
  */
@@ -76,7 +97,7 @@ export function getStageDataStatus(
       return "imported";
     case "scraped":
       return "scraped";
-    case "finalizing":
+    case "finalized":
       return "finalized";
     case "failed":
       return "failed";
@@ -143,11 +164,11 @@ export interface PipelineProduct {
 }
 
 /**
- * Aggregate count of products per persisted status plus the derived published tab.
+ * Aggregate count of products per workflow tab or persisted status.
  */
 export interface StatusCount {
-  /** Pipeline status value */
-  status: PipelineStatus;
+  /** Pipeline stage or status value */
+  status: PipelineDisplayStatus;
   /** Number of products in this status */
   count: number;
 }
@@ -194,17 +215,12 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   finalized: {
     label: "Finalized",
     color: "#F59E0B",
-    description: "Products ready for downstream publishing workflows",
+    description: "Products ready for final review and storefront publishing",
   },
-  finalizing: {
-    label: "Finalizing",
-    color: "#F59E0B",
-    description: "Products ready for final review and publishing actions",
-  },
-  published: {
-    label: "Published",
+  export: {
+    label: "Export",
     color: "#008850",
-    description: "Products already published to the storefront",
+    description: "Products already in the storefront and ready for downstream export workflows",
   },
   failed: {
     label: "Failed",

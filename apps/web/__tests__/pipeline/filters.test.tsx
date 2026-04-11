@@ -7,18 +7,20 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockSearchParamGet = jest.fn();
 const mockSearchParamsToString = jest.fn(() => '');
+const mockRouter = {
+    push: mockPush,
+    replace: mockReplace,
+};
+const mockSearchParams = {
+    get: mockSearchParamGet,
+    toString: mockSearchParamsToString,
+};
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-    useRouter: () => ({
-        push: mockPush,
-        replace: mockReplace,
-    }),
+    useRouter: () => mockRouter,
     usePathname: () => '/admin/pipeline',
-    useSearchParams: () => ({
-        get: mockSearchParamGet,
-        toString: mockSearchParamsToString,
-    }),
+    useSearchParams: () => mockSearchParams,
 }));
 
 // Mock lib/pipeline-scraping
@@ -55,7 +57,7 @@ describe('PipelineFilters', () => {
                 onFilterChange={jest.fn()}
             />
         );
-        expect(screen.getByText('Filters')).toBeInTheDocument();
+        expect(screen.getByRole('button')).toBeInTheDocument();
     });
 
     it('opens popover and shows filter options', async () => {
@@ -66,7 +68,7 @@ describe('PipelineFilters', () => {
             />
         );
 
-        fireEvent.click(screen.getByText('Filters'));
+        fireEvent.click(screen.getByRole('button'));
 
         expect(screen.getByText('Date Range (Updated)')).toBeInTheDocument();
         expect(screen.getByLabelText('Source')).toBeInTheDocument();
@@ -79,14 +81,14 @@ describe('PipelineFilters', () => {
             <PipelineFilters
                 filters={{}}
                 onFilterChange={onFilterChange}
+                availableSources={['scraper-1']}
             />
         );
 
-        fireEvent.click(screen.getByText('Filters'));
-        
-        // Type in source
-        const sourceInput = screen.getByLabelText('Source');
-        fireEvent.change(sourceInput, { target: { value: 'scraper-1' } });
+        fireEvent.click(screen.getByRole('button'));
+
+        fireEvent.click(screen.getByRole('combobox', { name: 'Source' }));
+        fireEvent.click(screen.getByText('scraper-1'));
 
         // Click Apply
         fireEvent.click(screen.getByText('Apply Filters'));

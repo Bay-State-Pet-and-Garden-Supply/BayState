@@ -44,17 +44,22 @@ jest.mock('@/lib/admin/api-auth', () => ({
 
 jest.mock('@/lib/pipeline', () => ({
     getProductsByStatus: jest.fn(),
+    getProductsByStage: jest.fn(),
     getSkusByStatus: jest.fn(),
+    getSkusByStage: jest.fn(),
+    getAvailableSources: jest.fn(),
+    getAvailableSourcesByStage: jest.fn(),
     bulkUpdateStatus: jest.fn(),
 }));
 
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
-const { getProductsByStatus, getSkusByStatus, bulkUpdateStatus } = require('@/lib/pipeline');
+const { getProductsByStatus, getSkusByStatus, getAvailableSources, bulkUpdateStatus } = require('@/lib/pipeline');
 
 describe('/api/admin/pipeline route', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (requireAdminAuth as jest.Mock).mockResolvedValue({ authorized: true, user: { id: 'admin-1' } });
+        (getAvailableSources as jest.Mock).mockResolvedValue([]);
     });
 
     it('lists canonical statuses with the requested filters', async () => {
@@ -77,12 +82,15 @@ describe('/api/admin/pipeline route', () => {
             startDate: '2026-01-01',
             endDate: '2026-01-31',
             source: 'amazon',
+            product_line: undefined,
+            cohort_id: undefined,
             minConfidence: 0.4,
             maxConfidence: 0.9,
         });
         expect(payload).toEqual({
             products: [{ sku: 'SKU-1', pipeline_status: 'scraped' }],
             count: 1,
+            availableSources: [],
         });
     });
 
@@ -102,6 +110,8 @@ describe('/api/admin/pipeline route', () => {
             startDate: undefined,
             endDate: undefined,
             source: 'chewy',
+            product_line: undefined,
+            cohort_id: undefined,
             minConfidence: undefined,
             maxConfidence: undefined,
         });
@@ -130,7 +140,7 @@ describe('/api/admin/pipeline route', () => {
         expect(response.status).toBe(400);
         expect(bulkUpdateStatus).not.toHaveBeenCalled();
         expect(payload).toEqual({
-            error: "Invalid status 'published'. Allowed persisted statuses: 'imported', 'scraped', 'finalized', 'failed'",
+            error: "Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.",
         });
     });
 });

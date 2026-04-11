@@ -25,10 +25,6 @@ export function StageTabs({
       return 0;
     }
 
-    if (stage === "finalizing") {
-      return counts.find((count) => count.status === "finalized")?.count ?? 0;
-    }
-
     return counts.find((count) => count.status === stage)?.count ?? 0;
   };
 

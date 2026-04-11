@@ -1,473 +1,128 @@
 # Pipeline Documentation
 
-This document describes the new export-focused pipeline system for managing products from import to export.
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Workflow](#workflow)
-3. [Image Selection](#image-selection)
-4. [Export Process](#export-process)
-5. [Migration Guide](#migration-guide)
-6. [API Endpoints](#api-endpoints)
-
----
+This document describes the current Bay State ingestion pipeline used by the admin workflow in `apps/web`.
 
 ## Overview
 
-### Purpose
+The pipeline separates **persisted ingestion statuses** from **UI workflow stages**:
 
-The pipeline is an export-focused system designed to manage the lifecycle of products from initial import through final export. Unlike the previous multi-stage system, this pipeline uses a simplified 3-status workflow optimized for data enrichment and export operations.
+| Kind | Values | Purpose |
+|------|--------|---------|
+| Persisted statuses | `imported`, `scraped`, `finalized`, `failed` | Durable state stored in `products_ingestion.pipeline_status` |
+| UI stages | `imported`, `scraping`, `scraped`, `consolidating`, `finalized`, `export`, `failed` | Admin tabs shown in the pipeline UI |
 
-### Status Model
+The key rule is:
 
-The pipeline uses three distinct statuses:
+- **`finalized`** is the explicit review state.
+- **`export`** is a derived workflow tab for finalized products that already exist in the storefront `products` table.
+- **`scraping`** and **`consolidating`** are derived UI stages based on active jobs, not stored statuses.
 
-| Status | Description | Color |
-|--------|-------------|-------|
-| `registered` | Product imported, awaiting enrichment | Orange |
-| `enriched` | Scraping complete, ready for image selection | Blue |
-| `finalized` | Images selected, ready for export | Green |
+Legacy `stage=finalizing` links are normalized to `finalized`, and legacy `stage=published` links are normalized to `export`.
 
-### Key Differences from Legacy Pipeline
+## Lifecycle
 
-- **Simplified flow**: 3 statuses instead of 6 (staging, scraped, consolidated, approved, published, failed)
-- **Export-focused**: Products remain in `finalized` status instead of being published to storefront
-- **Retry support**: Failed products are mapped back to `registered` for reprocessing
-- **Image-centric**: Dedicated image selection step before finalization
+### 1. Imported
 
----
+Products enter the pipeline as `imported`.
 
-## Workflow
+### 2. Scraping / Scraped
 
-### 1. Import Products (registered status)
+When a product has an active scrape job, the UI shows it in `scraping`.
 
-Products enter the pipeline with `registered` status when:
+After scrape results are written and no scrape job is active, the persisted status remains `scraped` and the UI shows `scraped`.
 
-- Imported from ShopSite XML
-- Bulk uploaded via admin interface
-- Created via API
+### 3. Consolidating / Finalized
 
-```typescript
-// Example: Register a product
-await registerProduct({
-  sku: "PET-001",
-  name: "Premium Dog Food",
-  input: { ... },
-  pipeline_status_new: "registered"
-});
-```
+AI consolidation works against `scraped` products. While a consolidation batch is active, the UI shows `consolidating`.
 
-### 2. Scrape/Enrich (enriched status)
+When consolidation is complete, the product moves to persisted status `finalized`. This is the manual review and approval queue.
 
-Products transition to `enriched` status after:
+### 4. Export
 
-- Web scrapers gather additional data
-- AI consolidation merges multiple sources
-- `selected_images` column populated with candidate URLs
+Publishing to the storefront does **not** create a new ingestion status.
 
-```typescript
-// Example: Transition to enriched
-await transitionStatus({
-  sku: "PET-001",
-  fromStatus: "registered",
-  toStatus: "enriched"
-});
-```
+When `/api/admin/pipeline/publish` succeeds, the product is synced into the storefront `products` table and the ingestion row remains `finalized`.
 
-**Data gathered during enrichment:**
+The admin UI then derives the product into the `export` tab based on storefront presence (`products.sku` with `published_at IS NOT NULL`), so it leaves the `finalized` review queue without introducing a separate persisted pipeline status.
 
-- Product descriptions
-- Specifications
-- Pricing information
-- Image candidates (stored in `image_candidates`)
-- Brand and category metadata
+### 5. Failed
 
-### 3. Image Selection (finalized status)
+Failed products remain in persisted status `failed` until retried or corrected.
 
-Before a product can be exported, images must be selected:
+## Transition Rules
 
-1. Navigate to Image Selection workspace
-2. Choose up to 10 images from candidates
-3. Click "Mark as Finalized" to transition status
+Canonical persisted transitions:
 
-```typescript
-// Example: Transition to finalized
-await transitionStatus({
-  sku: "PET-001",
-  fromStatus: "enriched",
-  toStatus: "finalized"
-});
-```
+- `imported -> scraped`
+- `scraped -> finalized`
+- `scraped -> imported`
+- `finalized -> scraped`
+- `failed -> imported`
 
-### 4. Export (products stay finalized)
+Same-status writes are allowed for idempotency.
 
-Export products at any time from the `finalized` status. Products remain in `finalized` status after export.
+Direct writes to `published` are intentionally blocked because `published` is no longer a valid persisted pipeline status.
 
-```typescript
-// Example: Export finalized products
-const response = await fetch('/api/admin/pipeline/export?status=finalized');
-const blob = await response.blob();
-// Download Excel file
-```
+## Admin UI Model
 
----
+The admin pipeline page uses the following tabs:
 
-## Image Selection
+1. `imported`
+2. `scraping`
+3. `scraped`
+4. `consolidating`
+5. `finalized`
+6. `export`
+7. `failed`
 
-### Accessing Image Selection
+Hydration rules:
 
-Navigate to the Image Selection workspace at:
+- `imported`, `scraped`, and `failed` load directly from `products_ingestion.pipeline_status`
+- `finalized` loads finalized ingestion rows that are **not** yet present in the storefront
+- `export` loads finalized ingestion rows that **are** already present in the storefront
+- `scraping` and `consolidating` are derived from active scrape/consolidation work
 
-```
-/admin/pipeline/image-selection?sku={SKU}
-```
+## Publishing Rules
 
-**Example:**
+These routes reject direct attempts to set `published` as a pipeline status:
 
-```
-/admin/pipeline/image-selection?sku=PET-001
-```
+- `PATCH /api/admin/pipeline/[sku]`
+- `POST /api/admin/pipeline`
+- `POST /api/admin/pipeline/bulk`
+- `POST /api/admin/pipeline/transition`
 
-### Selection Rules
+Use:
 
-- **Maximum 10 images** per product
-- Images must be from `image_candidates` array
-- Selected images are saved to `selected_images` column
-- Selection can be saved without finalizing
+- `POST /api/admin/pipeline/publish`
 
-### Image Selection UI
+Publish and re-publish operations must originate from finalized products. The storefront row is the durable publication record.
 
-The Image Selection workspace provides:
+## Export Behavior
 
-1. **Image Gallery**: Grid display of all candidate images
-2. **Selection Counter**: Shows "X of 10 selected"
-3. **Max Limit Warning**: Disables selection when limit reached
-4. **Two Action Buttons**:
-   - **Save Selections**: Save without status change
-   - **Mark as Finalized**: Save and transition to `finalized`
+ShopSite export data is sourced from the derived export queue.
 
-### API for Image Selection
+- `loadStorefrontShopSiteExport()` reads `pipeline_export_queue`
+- `pipeline_export_queue` contains finalized ingestion rows that already exist in the storefront
+- `products_published` projects those export-queue rows into the storefront-ready shape used by downstream export workflows
 
-```typescript
-// Save selected images
-POST /api/admin/pipeline/images
-{
-  "sku": "PET-001",
-  "selectedImages": [
-    { "url": "https://...", "source": "scraper_a" },
-    { "url": "https://...", "source": "scraper_b" }
-  ]
-}
+This keeps exports aligned with actual storefront presence instead of duplicating publication state in `products_ingestion.pipeline_status`.
 
-// Transition to finalized
-POST /api/admin/pipeline/transition
-{
-  "sku": "PET-001",
-  "fromStatus": "enriched",
-  "toStatus": "finalized"
-}
-```
+## Key Endpoints
 
----
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/admin/pipeline` | `GET` | List pipeline products by workflow stage or persisted status |
+| `/api/admin/pipeline/counts` | `GET` | Get status counts for pipeline tabs |
+| `/api/admin/pipeline/[sku]` | `GET` | Load a single pipeline product |
+| `/api/admin/pipeline/[sku]` | `PATCH` | Update pipeline product data |
+| `/api/admin/pipeline/bulk` | `POST` | Bulk persisted-status updates except invalid legacy `published` writes |
+| `/api/admin/pipeline/transition` | `POST` | Transition persisted statuses |
+| `/api/admin/pipeline/publish` | `POST` | Publish finalized products to the storefront `products` table |
 
-## Export Process
+## Database Notes
 
-### Accessing Export
+`products_ingestion.pipeline_status` is the source of truth for ingestion lifecycle state.
 
-Navigate to the Export workspace at:
+`pipeline_finalized_review` and `pipeline_export_queue` are derived views that split finalized ingestion rows by storefront presence.
 
-```
-/admin/pipeline/export
-```
-
-### Export Options
-
-The export interface allows filtering by status:
-
-- `registered` - Export newly imported products
-- `enriched` - Export enriched but not finalized products
-- `finalized` - Export ready-to-export products
-- `all` - Export all products regardless of status
-
-### Export Format
-
-The export generates an Excel (.xlsx) file with the following columns:
-
-| Column | Source | Description |
-|--------|--------|-------------|
-| SKU | `sku` | Product identifier |
-| Name | `consolidated.name` or `input.name` | Product name |
-| Description | `consolidated.description` | Full product description |
-| Price | `consolidated.price` | Product price |
-| Brand | `consolidated.brand` | Brand name |
-| Weight | `consolidated.weight` | Product weight |
-| Category | `consolidated.category` | Product category |
-| Product Type | `consolidated.product_type` | Type classification |
-| Stock Status | `consolidated.stock_status` | In/Out of stock |
-| Images | `selected_images` | URLs of selected images |
-
-### Streaming Export
-
-The export endpoint uses streaming to handle large datasets:
-
-- Products fetched in pages of 200
-- Rows written immediately to keep memory bounded
-- Supports datasets of 10,000+ products
-
-```typescript
-// Example: Stream export
-const response = await fetch('/api/admin/pipeline/export?status=finalized');
-const blob = await response.blob();
-const url = URL.createObjectURL(blob);
-
-const a = document.createElement('a');
-a.href = url;
-a.download = 'products-export.xlsx';
-a.click();
-URL.revokeObjectURL(url);
-```
-
----
-
-## Migration Guide
-
-### Running the Migration
-
-To migrate existing products to the new pipeline statuses, run:
-
-```bash
-cd apps/web
-npx tsx scripts/migrate-pipeline-statuses.ts
-```
-
-### Migration Mapping
-
-The migration maps legacy statuses to new statuses:
-
-| Legacy Status | New Status | Notes |
-|---------------|------------|-------|
-| `staging` | `registered` | Awaiting enrichment |
-| `failed` | `registered` | Retry capability |
-| `scraped` | `enriched` | Enrichment complete |
-| `consolidated` | `finalized` | Ready for export |
-| `approved` | `finalized` | Ready for export |
-| `published` | `finalized` | Ready for export |
-
-### Automatic Backup
-
-The migration script creates an automatic backup of affected rows before making changes. The backup includes:
-
-- Original `pipeline_status` values
-- Timestamps
-- SKU identifiers
-
-### Rollback
-
-If you need to rollback the migration:
-
-```bash
-cd apps/web
-npx tsx scripts/rollback-pipeline-statuses.ts
-```
-
-This restores the original `pipeline_status` values from the backup.
-
-### Post-Migration
-
-After migration:
-
-1. Update application code to use `pipeline_status_new` column
-2. Verify status counts in admin dashboard
-3. Test image selection workflow
-4. Test export functionality
-
----
-
-## API Endpoints
-
-### POST /api/admin/pipeline/transition
-
-Transitions a product from one status to another.
-
-**Request:**
-
-```typescript
-{
-  "sku": string;
-  "fromStatus": "registered" | "enriched" | "finalized";
-  "toStatus": "registered" | "enriched" | "finalized";
-  "reason"?: string;
-}
-```
-
-**Valid Transitions:**
-
-- `registered` → `enriched`
-- `enriched` → `finalized`
-- `registered` → `finalized` (skip enrichment)
-
-**Response:**
-
-```typescript
-{
-  "success": true,
-  "sku": "PET-001",
-  "newStatus": "enriched"
-}
-```
-
-**Error Codes:**
-
-- `400` - Invalid transition or validation error
-- `404` - Product not found
-- `409` - Status mismatch (product not in expected `fromStatus`)
-
----
-
-### GET /api/admin/pipeline/export
-
-Generates an Excel export of products.
-
-**Query Parameters:**
-
-- `status` (required): `registered` | `enriched` | `finalized` | `all`
-
-**Response:**
-
-Returns a streaming Excel file (.xlsx) with product data.
-
-**Headers:**
-
-```
-Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-Content-Disposition: attachment; filename="products-{status}-{date}.xlsx"
-```
-
----
-
-### POST /api/admin/pipeline/publish
-
-Publishes finalized products to the storefront.
-
-**Request:**
-
-```typescript
-{
-  "skus": string[];  // Array of SKUs to publish
-}
-```
-
-**Response:**
-
-```typescript
-{
-  "success": true,
-  "published": 5,
-  "failed": 0,
-  "products": [
-    { "sku": "PET-001", "status": "published" }
-  ]
-}
-```
-
----
-
-### Additional Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/admin/pipeline` | GET | List products with filtering |
-| `/api/admin/pipeline/[sku]` | GET | Get single product |
-| `/api/admin/pipeline/[sku]` | PATCH | Update product data |
-| `/api/admin/pipeline/bulk` | POST | Bulk status updates |
-| `/api/admin/pipeline/delete` | POST | Bulk delete products |
-| `/api/admin/pipeline/counts` | GET | Get status counts |
-| `/api/admin/pipeline/images` | POST | Save selected images |
-
----
-
-## Developer Guide
-
-### Adding New Pipeline Features
-
-When working with the pipeline:
-
-1. **Always use `pipeline_status_new`** for new code
-2. **Validate transitions** with `validateStatusTransition()`
-3. **Log all changes** to `pipeline_audit_log`
-4. **Test with large datasets** to verify streaming performance
-
-### Code Patterns
-
-**Status transition:**
-
-```typescript
-import { validateStatusTransition } from '@/lib/pipeline';
-
-const isValid = validateStatusTransition(fromStatus, toStatus);
-if (!isValid) {
-  throw new Error(`Invalid transition: ${fromStatus} → ${toStatus}`);
-}
-```
-
-**Fetching products by status:**
-
-```typescript
-import { getProductsByStatus } from '@/lib/pipeline';
-
-const products = await getProductsByStatus('finalized', { limit: 100 });
-```
-
-**Bulk operations:**
-
-```typescript
-import { bulkUpdateStatus } from '@/lib/pipeline';
-
-await bulkUpdateStatus({
-  skus: ['PET-001', 'PET-002'],
-  newStatus: 'finalized'
-});
-```
-
-### Testing
-
-Run pipeline tests:
-
-```bash
-# Run all tests
-bun run web test
-
-# Run pipeline-specific tests
-bun run web test -- --testPathPatterns="pipeline"
-```
-
----
-
-## Troubleshooting
-
-### Products not appearing in export
-
-- Verify product has `finalized` status
-- Check `selected_images` column is populated
-- Ensure no validation errors in `consolidated` data
-
-### Image selection not saving
-
-- Confirm SKU exists in `products_ingestion`
-- Verify product has `image_candidates` array
-- Check browser console for API errors
-
-### Migration rollback needed
-
-- Run rollback script: `npx tsx scripts/rollback-pipeline-statuses.ts`
-- Verify backup data in rollback log
-- Check `pipeline_audit_log` for transition history
-
----
-
-## Related Documentation
-
-- [API Endpoints](./api/pipeline-endpoints.md) - Detailed API reference
-- [Migration Guide](./migration/pipeline-v2.md) - Legacy migration guide
-- [Audit Log](./audit-log.md) - Audit trail documentation
+`products_published` remains the convenience storefront-export view, but it is now sourced from `pipeline_export_queue` rather than a persisted `published` ingestion status.

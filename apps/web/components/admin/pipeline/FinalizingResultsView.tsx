@@ -41,6 +41,7 @@ import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
+  isExportStage?: boolean;
   onRefresh: (silent?: boolean) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -60,6 +61,7 @@ interface Brand {
 
 export function FinalizingResultsView({
   products,
+  isExportStage = false,
   onRefresh,
   search,
   onSearchChange,
@@ -75,7 +77,7 @@ export function FinalizingResultsView({
     sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
 
-  // track previous products to detect when a product is removed (published/rejected)
+  // track previous products to detect when a product is removed (moved to export/rejected)
   const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
 
   // Brand state
@@ -94,9 +96,6 @@ export function FinalizingResultsView({
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
-  const [publishedSkuSet, setPublishedSkuSet] = useState<Set<string>>(
-    () => new Set(),
-  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredBrands = useMemo(() => {
@@ -163,8 +162,7 @@ export function FinalizingResultsView({
   );
 
   const selectedSku = selectedProduct?.sku ?? null;
-  const isSelectedProductPublished =
-    !!selectedSku && publishedSkuSet.has(selectedSku);
+  const isSelectedProductInStorefront = isExportStage;
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
@@ -173,7 +171,7 @@ export function FinalizingResultsView({
     if (prevProducts !== sortedProducts) {
       const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
       if (!currentExists && preferredSku) {
-        // Current SKU was removed (published or rejected).
+        // Current SKU was removed (for example, published to storefront or rejected).
         // Find where it was in the PREVIOUS list.
         const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
         if (prevIndex !== -1) {
@@ -191,46 +189,6 @@ export function FinalizingResultsView({
       prevProductsRef.current = sortedProducts;
     }
   }, [sortedProducts, preferredSku]);
-
-  useEffect(() => {
-    if (!selectedSku) return;
-
-    let cancelled = false;
-
-    async function fetchPublishedState() {
-      try {
-        const response = await fetch(
-          `/api/admin/pipeline/publish?sku=${encodeURIComponent(selectedSku)}`,
-          { method: "GET" },
-        );
-
-        if (!response.ok) {
-          return;
-        }
-
-        const data = (await response.json()) as { inStorefront?: boolean };
-        if (cancelled) return;
-
-        setPublishedSkuSet((prev) => {
-          const next = new Set(prev);
-          if (data.inStorefront) {
-            next.add(selectedSku);
-          } else {
-            next.delete(selectedSku);
-          }
-          return next;
-        });
-      } catch (err) {
-        console.error("Failed to check storefront publish state:", err);
-      }
-    }
-
-    void fetchPublishedState();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSku]);
 
   // Fetch brands
   useEffect(() => {
@@ -414,12 +372,10 @@ export function FinalizingResultsView({
           throw new Error(data.error || "Failed to publish to storefront");
         }
 
-        setPublishedSkuSet((prev) => new Set(prev).add(selectedSku));
-
         toast.success(
-          isSelectedProductPublished
-            ? "Published product updated successfully!"
-            : "Product finalized and published to website!",
+          isSelectedProductInStorefront
+            ? "Storefront product updated successfully!"
+            : "Product published to storefront!",
         );
       } else if (!silent) {
         toast.success("Changes saved successfully");
@@ -436,7 +392,7 @@ export function FinalizingResultsView({
       setSaving(false);
       setPublishing(false);
     }
-  }, [formData, isSelectedProductPublished, onRefresh, selectedSku]);
+  }, [formData, isSelectedProductInStorefront, onRefresh, selectedSku]);
 
   // Keyboard navigation and shortcuts
   useEffect(() => {
@@ -637,7 +593,7 @@ export function FinalizingResultsView({
               saving={saving}
               publishing={publishing}
               rejecting={rejecting}
-              isPublished={isSelectedProductPublished}
+              isInStorefront={isSelectedProductInStorefront}
               onSave={() => handleSave(false)}
               onPublish={() => handleSave(true)}
               onReject={handleReject}

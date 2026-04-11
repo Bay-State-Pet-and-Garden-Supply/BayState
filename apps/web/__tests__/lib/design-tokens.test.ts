@@ -43,6 +43,10 @@ describe('design-tokens', () => {
         it('should have correct Warning value', () => {
             expect(STATUS_COLORS.WARNING).toBe('#F59E0B');
         });
+
+        it('should have correct Published value', () => {
+            expect(STATUS_COLORS.PUBLISHED).toBe('#008850');
+        });
     });
 
     describe('PIPELINE_STATUS_COLORS', () => {

@@ -99,12 +99,12 @@ describe('Pipeline Accessibility', () => {
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs.length).toBe(6);
+      expect(tabs.length).toBe(7);
       expect(screen.getAllByRole('tab', { name: /Imported/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Scraping/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Scraped/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Finalizing/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Published/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Finalized/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Export/i }).length).toBeGreaterThan(0);
     });
   });
 

@@ -126,7 +126,7 @@ describe('pipeline export route compatibility boundary', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: 'Invalid status. Expected one of: imported, scraped, finalized, failed, all',
+      error: 'Invalid status. Expected one of: imported, scraped, finalized, published, failed, all',
     });
   });
 });

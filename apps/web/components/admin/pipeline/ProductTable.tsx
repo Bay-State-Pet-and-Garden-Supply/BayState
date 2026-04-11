@@ -155,7 +155,7 @@ export function ProductTable({
   }, [onSearchChange]);
 
   const showSources = currentStage === "scraped";
-  const showConfidence = currentStage === "finalizing";
+  const showConfidence = currentStage === "finalized";
 
   const columns = useMemo<ColumnDef<PipelineProduct>[]>(() => [
     {
