@@ -25,11 +25,16 @@ import {
   ChevronDown, 
   ChevronUp, 
   ChevronsUpDown, 
-  AlertCircle
+  AlertCircle,
+  Search,
+  CheckSquare,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PipelineProduct, PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
+import { PipelineFilters } from "./PipelineFilters";
+import { Input } from "@/components/ui/input";
 
 interface ProductTableProps {
   products: PipelineProduct[];
@@ -44,6 +49,18 @@ interface ProductTableProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   currentStage: PipelineStage;
+  // Filter props
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  filters?: {
+    source?: string;
+    product_line?: string;
+    cohort_id?: string;
+  };
+  onFilterChange?: (filters: any) => void;
+  availableSources?: string[];
+  totalCount?: number;
+  onSelectAllTotal?: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -104,11 +121,28 @@ export function ProductTable({
   onSelectSku,
   onSelectAll,
   onDeselectAll,
-  currentStage,
+  onSelectAllTotal,
 }: ProductTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "sku", desc: false }]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [localSearch, setLocalSearch] = useState(search || "");
+
+  // Sync local search with prop
+  useEffect(() => {
+    if (search !== undefined) setLocalSearch(search);
+  }, [search]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== search && onSearchChange) {
+        onSearchChange(localSearch);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [localSearch, onSearchChange, search]);
 
   const showSources = currentStage === "scraped";
   const showConfidence = currentStage === "finalizing";
@@ -348,9 +382,9 @@ export function ProductTable({
   return (
     <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-card shadow-sm" ref={containerRef}>
       <Table className="table-fixed">
-        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
+        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm border-b">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+            <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-0">
               {headerGroup.headers.map((header) => {
                 // Define fixed widths for columns to ensure alignment across multiple tables
                 let widthClass = "";
@@ -361,7 +395,7 @@ export function ProductTable({
                 else if (header.id === "updated_at") widthClass = "w-[150px]";
 
                 return (
-                  <TableHead key={header.id} className={cn("bg-muted/30", widthClass)}>
+                  <TableHead key={header.id} className={cn("bg-muted/30 h-10 py-0", widthClass)}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -373,6 +407,60 @@ export function ProductTable({
               })}
             </TableRow>
           ))}
+          
+          {/* Filter Row */}
+          <TableRow className="hover:bg-transparent border-b">
+            <TableCell className="bg-muted/5 py-2 px-4" colSpan={columns.length}>
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1 group max-w-md">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
+                  <Input
+                    placeholder="Search SKUs or names..."
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
+                    className="h-9 pl-9 pr-8 bg-background border-muted-foreground/20 focus-visible:ring-brand-forest-green/30"
+                  />
+                  {localSearch && (
+                    <button
+                      onClick={() => setLocalSearch("")}
+                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {filters && onFilterChange && (
+                  <PipelineFilters
+                    filters={filters}
+                    onFilterChange={onFilterChange}
+                    availableSources={availableSources}
+                    className="h-9"
+                  />
+                )}
+
+                <div className="flex-1" />
+
+                {selectedSkus.size > 0 && totalCount !== undefined && totalCount > selectedSkus.size && (
+                   <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={onSelectAllTotal}
+                    className="h-8 text-xs text-brand-forest-green hover:bg-brand-forest-green/10 gap-1.5"
+                   >
+                     <CheckSquare className="h-3.5 w-3.5" />
+                     Select all {totalCount} products in stage
+                   </Button>
+                )}
+
+                {selectedSkus.size > 0 && (
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-brand-forest-green/10 text-brand-forest-green text-[11px] font-bold uppercase tracking-wider">
+                    {selectedSkus.size} Selected
+                  </div>
+                )}
+              </div>
+            </TableCell>
+          </TableRow>
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length ? (
