@@ -20,7 +20,6 @@ const mockProducts: Product[] = [
     low_stock_threshold: 5,
     is_taxable: true,
     published_at: '2024-01-01',
-    category: null,
     created_at: '2024-01-01',
   },
   {
@@ -40,7 +39,6 @@ const mockProducts: Product[] = [
     low_stock_threshold: 5,
     is_taxable: true,
     published_at: '2024-01-01',
-    category: null,
     created_at: '2024-01-01',
   },
 ];

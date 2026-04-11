@@ -13,13 +13,8 @@ describe('published export actions', () => {
 
         render(
             <PipelineToolbar
-                totalCount={12}
                 currentStage="published"
                 isLoading={false}
-                search=""
-                onSearchChange={() => {}}
-                onSelectAll={() => {}}
-                selectedCount={0}
                 onUploadShopSite={onUploadShopSite}
                 onDownloadZip={onDownloadZip}
             />,

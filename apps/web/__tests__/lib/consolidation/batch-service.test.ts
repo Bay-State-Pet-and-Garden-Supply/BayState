@@ -370,7 +370,6 @@ describe('consolidation batch service', () => {
                 weight: '3',
                 product_on_pages: 'Dog Toys|Dog Supplies Shop All',
                 category: 'Dog',
-                product_type: 'Dog Toys',
                 search_keywords: 'fetch toy, tennis ball',
                 confidence_score: 0.94,
             },
@@ -505,7 +504,6 @@ describe('consolidation batch service', () => {
                 product_on_pages: 'Dog Food Dry|Dog Food Shop All',
                 weight: '12',
                 category: 'Dog',
-                product_type: 'Dog Food',
                 confidence_score: 0.92,
             },
         ]);
@@ -628,7 +626,6 @@ describe('consolidation batch service', () => {
                 long_description: 'Longer detail-page description with more product context.',
                 search_keywords: 'dog treats, crunchy bites, acme treats',
                 category: 'Dog',
-                product_type: 'Dog Treats',
                 confidence_score: 0.88,
             },
         ]);
@@ -738,7 +735,6 @@ describe('consolidation batch service', () => {
                 search_keywords: 'cat pads, litter box pads, odor control',
                 product_on_pages: 'Cat Litter & Litter Boxes|Cat Supplies Shop All',
                 category: 'Cat Supplies',
-                product_type: 'Cat Litter & Litter Boxes',
                 confidence_score: 0.65,
             },
         ]);
@@ -846,7 +842,6 @@ describe('consolidation batch service', () => {
                 search_keywords: 'horse treats, flax seed treats, stud muffins',
                 product_on_pages: 'Horse Feed & Treats Shop All|Horse Treats',
                 category: 'Horse Feed & Treats',
-                product_type: 'Treats',
                 confidence_score: 0.95,
             },
         ]);
@@ -965,7 +960,6 @@ describe('consolidation batch service', () => {
                 search_keywords: 'horse treats, nugget treats, alfalfa molasses',
                 product_on_pages: 'Horse Feed & Treats Shop All|Horse Treats',
                 category: 'Horse Feed & Treats',
-                product_type: 'Treats',
                 confidence_score: 0.95,
             },
             {
@@ -977,7 +971,6 @@ describe('consolidation batch service', () => {
                 search_keywords: 'horse treats, carrot spice treats, nugget treats',
                 product_on_pages: 'Horse Feed & Treats Shop All|Horse Treats',
                 category: 'Horse Feed & Treats',
-                product_type: 'Treats',
                 confidence_score: 0.95,
             },
         ]);
