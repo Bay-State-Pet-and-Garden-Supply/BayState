@@ -595,9 +595,7 @@ export function ScrapedResultsView({
             <div className="bg-card border-b flex-shrink-0 z-10">
               <div className="p-4 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-muted rounded-lg">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                  </div>
+                  <Package className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <h2 className="text-lg font-bold tracking-tight line-clamp-1">
                       {selectedProduct.consolidated?.name ||
@@ -605,16 +603,10 @@ export function ScrapedResultsView({
                     </h2>
                     <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
                       <span className="bg-muted px-1 rounded">{selectedProduct.sku}</span>
-                      {currentSourceData?.price && (
-                        <>
-                          <span>•</span>
-                          <span className="font-bold text-primary text-[13px]">
-                            ${typeof currentSourceData.price === "number"
-                              ? currentSourceData.price.toFixed(2)
-                              : currentSourceData.price}
-                          </span>
-                        </>
-                      )}
+                      <span>•</span>
+                      <span className="font-bold text-primary">
+                        ${Number(currentSourceData?.price || selectedProduct.input?.price || 0).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </div>
