@@ -13,7 +13,7 @@ import {
     getOpenAIClient,
     type ConsolidationRuntimeConfig,
 } from './openai-client';
-import { buildPromptContext, buildUserPrompt, getCategories } from './prompt-builder';
+import { buildPromptContext, buildUserPrompt } from './prompt-builder';
 import {
     buildOpenAIResponseFormat,
     buildResponseSchema,
@@ -50,7 +50,6 @@ import type {
 const RELEVANT_FIELDS = [
     'title',
     'brand',
-    'price',
     'weight',
     'size',
     'attributes',
@@ -77,7 +76,6 @@ const RELEVANT_FIELDS = [
     'unit_of_measure',
     'size_options',
     'confidence',
-    'source_website',
 ];
 
 function hasRelevantKeyName(key: string): boolean {
@@ -90,11 +88,9 @@ function hasRelevantKeyName(key: string): boolean {
         'attribute',
         'description',
         'category',
-        'type',
         'flavor',
         'colour',
         'color',
-        'price',
         'unit',
         'quantity',
         'material',
@@ -112,8 +108,6 @@ function hasRelevantKeyName(key: string): boolean {
         'breed',
         'feature',
         'page',
-        'value',
-        'data',
         'upc',
         'item_number',
         'manufacturer_part',
@@ -160,6 +154,10 @@ const EXCLUDED_FROM_CONSOLIDATED_MERGE = new Set([
     'is_taxable',
     'taxable',
 ]);
+const MAX_PROMPT_SOURCES = 4;
+const MAX_PROMPT_FALLBACK_FIELDS = 4;
+const MAX_PROMPT_ARRAY_ITEMS = 8;
+const MAX_PROMPT_NESTED_KEYS = 8;
 
 function pruneExcludedConsolidatedFields(value: Record<string, unknown>): Record<string, unknown> {
     return Object.fromEntries(
@@ -174,41 +172,85 @@ function isEmptyValue(value: unknown): boolean {
     return false;
 }
 
-function truncateSpecifications(value: string, maxLength = 500): string {
-    if (value.length <= maxLength) return value;
-    return value.slice(0, maxLength).replace(/\s+\S*$/, '…');
+function getPromptTextLimit(fieldName: string): number {
+    switch (fieldName.toLowerCase()) {
+        case 'title':
+        case 'name':
+            return 180;
+        case 'brand':
+            return 80;
+        case 'description':
+            return 360;
+        case 'long_description':
+            return 520;
+        case 'specifications':
+            return 360;
+        case 'dimensions':
+            return 140;
+        default:
+            return 120;
+    }
 }
 
-function sanitizeNestedComposite(value: unknown): unknown {
+function truncatePromptText(value: string, maxLength: number): string {
+    const trimmed = value.trim();
+    if (trimmed.length <= maxLength) {
+        return trimmed;
+    }
+
+    const truncated = trimmed.slice(0, maxLength).replace(/\s+\S*$/, '').trimEnd();
+    return `${truncated || trimmed.slice(0, maxLength).trimEnd()}…`;
+}
+
+function sanitizePrimitivePromptValue(fieldName: string, value: unknown): unknown {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed.length === 0 || trimmed.startsWith('http')) {
+            return undefined;
+        }
+
+        return truncatePromptText(trimmed, getPromptTextLimit(fieldName));
+    }
+
+    return isEmptyValue(value) ? undefined : value;
+}
+
+function sanitizeNestedComposite(
+    value: unknown,
+    fieldName: string = '',
+    depth: number = 0
+): unknown {
+    if (depth > 3) {
+        return undefined;
+    }
+
     if (Array.isArray(value)) {
         const sanitizedItems = value
-            .map((entry) => sanitizeNestedComposite(entry))
-            .filter((entry) => !isEmptyValue(entry));
+            .map((entry) => sanitizeNestedComposite(entry, fieldName, depth + 1))
+            .filter((entry) => !isEmptyValue(entry))
+            .slice(0, MAX_PROMPT_ARRAY_ITEMS);
         return sanitizedItems.length > 0 ? sanitizedItems : undefined;
     }
 
     if (!value || typeof value !== 'object') {
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (trimmed.length === 0 || trimmed.startsWith('http')) {
-                return undefined;
-            }
-            return trimmed;
-        }
-
-        return isEmptyValue(value) ? undefined : value;
+        return sanitizePrimitivePromptValue(fieldName, value);
     }
 
     const sanitizedObject: Record<string, unknown> = {};
-    Object.entries(value as Record<string, unknown>).forEach(([key, nestedValue]) => {
-        if (isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) {
-            return;
+    Object.entries(value as Record<string, unknown>).some(([key, nestedValue]) => {
+        if (Object.keys(sanitizedObject).length >= MAX_PROMPT_NESTED_KEYS) {
+            return true;
         }
 
-        const sanitizedValue = sanitizeNestedComposite(nestedValue);
+        if (isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) {
+            return false;
+        }
+
+        const sanitizedValue = sanitizeNestedComposite(nestedValue, key, depth + 1);
         if (!isEmptyValue(sanitizedValue)) {
             sanitizedObject[key] = sanitizedValue;
         }
+        return false;
     });
 
     return Object.keys(sanitizedObject).length > 0 ? sanitizedObject : undefined;
@@ -221,63 +263,44 @@ function filterSourceData(sourceData: Record<string, unknown>): Record<string, u
         if (EXCLUDED_FROM_LLM.has(field)) return;
         if (!(field in sourceData) || isEmptyValue(sourceData[field])) return;
 
-        let value = sourceData[field];
-        if (field === 'specifications' && typeof value === 'string') {
-            value = truncateSpecifications(value);
-        }
-
+        const value = sourceData[field];
         const sanitizedValue =
-            value && typeof value === 'object' ? sanitizeNestedComposite(value) : value;
+            value && typeof value === 'object'
+                ? sanitizeNestedComposite(value, field)
+                : sanitizePrimitivePromptValue(field, value);
         if (!isEmptyValue(sanitizedValue)) {
             filteredData[field] = sanitizedValue;
         }
     });
 
+    let fallbackFieldsAdded = 0;
     Object.entries(sourceData).forEach(([key, value]) => {
-        if (key in filteredData || isExcludedKeyName(key) || EXCLUDED_FROM_LLM.has(key)) return;
-        if (isEmptyValue(value)) return;
-
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (trimmed.length > 1 && !trimmed.startsWith('http')) {
-                filteredData[key] = trimmed;
-            }
+        if (
+            fallbackFieldsAdded >= MAX_PROMPT_FALLBACK_FIELDS
+            || key in filteredData
+            || isExcludedKeyName(key)
+            || EXCLUDED_FROM_LLM.has(key)
+            || !hasRelevantKeyName(key)
+        ) {
             return;
         }
 
-        if (typeof value === 'number' || typeof value === 'boolean') {
-            if (hasRelevantKeyName(key)) {
-                filteredData[key] = value;
+        if (isEmptyValue(value)) return;
+
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            const sanitizedValue = sanitizePrimitivePromptValue(key, value);
+            if (!isEmptyValue(sanitizedValue)) {
+                filteredData[key] = sanitizedValue;
+                fallbackFieldsAdded += 1;
             }
             return;
         }
 
         if (Array.isArray(value)) {
-            const primitiveValues = value.filter(
-                (entry) => typeof entry === 'string' || typeof entry === 'number' || typeof entry === 'boolean'
-            );
-            if (primitiveValues.length > 0 && hasRelevantKeyName(key)) {
-                filteredData[key] = primitiveValues.slice(0, 20);
-            }
-            return;
-        }
-
-        if (typeof value === 'object' && value !== null) {
-            const sanitizedValue = sanitizeNestedComposite(value);
-            if (isEmptyValue(sanitizedValue)) {
-                return;
-            }
-
-            try {
-                const json = JSON.stringify(sanitizedValue);
-                if (json.length > 2 && json.length < 1000 && hasRelevantKeyName(key)) {
-                    filteredData[key] = sanitizedValue;
-                }
-            } catch (serializationError: unknown) {
-                const fallback = Object.prototype.toString.call(serializationError);
-                if (fallback && hasRelevantKeyName(key)) {
-                    filteredData[key] = fallback;
-                }
+            const sanitizedValue = sanitizeNestedComposite(value, key);
+            if (Array.isArray(sanitizedValue) && sanitizedValue.length > 0) {
+                filteredData[key] = sanitizedValue;
+                fallbackFieldsAdded += 1;
             }
         }
     });
@@ -592,6 +615,27 @@ function getSourceTrustRank(trust: SourceTrustLevel): number {
     }
 }
 
+function getPromptEvidenceSortRank(sourceName: string, trust: SourceTrustLevel): number {
+    if (trust === 'canonical') {
+        return 0;
+    }
+
+    if (sourceName.toLowerCase().includes('manufacturer')) {
+        return 1;
+    }
+
+    switch (trust) {
+        case 'trusted':
+            return 2;
+        case 'standard':
+            return 3;
+        case 'marketplace':
+            return 4;
+        default:
+            return 5;
+    }
+}
+
 function cleanBrandLabel(rawBrandName: unknown): string | undefined {
     if (typeof rawBrandName !== 'string') {
         return undefined;
@@ -602,7 +646,7 @@ function cleanBrandLabel(rawBrandName: unknown): string | undefined {
 }
 
 function buildPromptSourceEvidence(filteredSources: Record<string, unknown>): PromptSourceEvidence[] {
-    return Object.entries(filteredSources)
+    const sourceEvidence = Object.entries(filteredSources)
         .filter(([, data]) => data && typeof data === 'object' && !Array.isArray(data))
         .map(([source, data]) => ({
             source,
@@ -610,13 +654,22 @@ function buildPromptSourceEvidence(filteredSources: Record<string, unknown>): Pr
             fields: data as Record<string, unknown>,
         }))
         .sort((left, right) => {
-            const trustComparison = getSourceTrustRank(left.trust) - getSourceTrustRank(right.trust);
+            const trustComparison =
+                getPromptEvidenceSortRank(left.source, left.trust)
+                - getPromptEvidenceSortRank(right.source, right.trust);
             if (trustComparison !== 0) {
                 return trustComparison;
             }
 
+            const fieldComparison = Object.keys(right.fields).length - Object.keys(left.fields).length;
+            if (fieldComparison !== 0) {
+                return fieldComparison;
+            }
+
             return left.source.localeCompare(right.source);
         });
+
+    return sourceEvidence.slice(0, MAX_PROMPT_SOURCES);
 }
 
 function collectAnimalSignalsFromValue(
@@ -684,7 +737,18 @@ function summarizeAnimalSignals(signals: Iterable<AnimalSignal>): string {
 function getPreferredTrustedBrand(
     sources: Record<string, unknown>
 ): { brand: string; source: string } | null {
-    const evidence = buildPromptSourceEvidence(normalizeProductSources(sources));
+    const evidence = Object.entries(normalizeProductSources(sources))
+        .filter(([, data]) => data && typeof data === 'object' && !Array.isArray(data))
+        .map(([source, data]) => ({
+            source,
+            trust: getSourceTrustLevel(source),
+            fields: data as Record<string, unknown>,
+        }))
+        .sort(
+            (left, right) =>
+                getPromptEvidenceSortRank(left.source, left.trust)
+                - getPromptEvidenceSortRank(right.source, right.trust)
+        );
 
     for (const source of evidence) {
         if (source.trust === 'marketplace') {
@@ -1011,12 +1075,10 @@ export async function submitBatch(
 
 
         // Build prompt context with taxonomy
-        const { systemPrompt, shopsitePages = [] } = await buildPromptContext();
-        const categoryList = await getCategories();
-        const categoryNames = categoryList.map((category) => category.breadcrumb ?? category.name);
+        const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
 
         // Build JSON schema with enum constraints
-        const responseSchema = buildResponseSchema(categoryNames, shopsitePages);
+        const responseSchema = buildResponseSchema(categories, shopsitePages);
 
         // Create JSONL content
         const content = createBatchContent(products, systemPrompt, responseSchema, {
@@ -1227,9 +1289,7 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
 export async function retrieveResults(batchId: string): Promise<ConsolidationResult[] | BatchErrorResponse> {
     try {
         // Fetch taxonomy for validation
-        const { shopsitePages = [] } = await buildPromptContext();
-        const categoryList = await getCategories();
-        const categories = categoryList.map((category) => category.breadcrumb ?? category.name);
+        const { shopsitePages = [], categories = [] } = await buildPromptContext();
         const resolved = await resolveProviderBatchId(batchId);
         const runtime = await getConfiguredBatchRuntime(false, {
             forceProvider: resolved.provider,

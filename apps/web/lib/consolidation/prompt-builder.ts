@@ -14,8 +14,9 @@ import {
 } from '@/lib/taxonomy';
 
 const USER_PROMPT_PREFIX =
-    'Consolidate this product into a canonical record using the provided source trust metadata and only source-supported values: ';
-const MAX_SIBLING_PRODUCTS = 5;
+    'Consolidate this product into a ShopSite export-ready record using the provided source trust metadata and only source-supported values: ';
+const MAX_SIBLING_PRODUCTS = 3;
+const PROMPT_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
 const TRUSTED_SOURCE_FRAGMENTS = [
     'shopsite_input',
     'bradley',
@@ -62,6 +63,15 @@ export interface ConsolidationPromptPayload {
     }>;
     product_line_context?: ProductLinePromptContext;
 }
+
+export interface ConsolidationPromptContext {
+    systemPrompt: string;
+    shopsitePages: string[];
+    categories: string[];
+}
+
+let cachedPromptContext: ConsolidationPromptContext | null = null;
+let cachedPromptContextExpiresAt = 0;
 
 function trimString(value: unknown): string | undefined {
     return typeof value === 'string' && value.trim().length > 0
@@ -217,39 +227,35 @@ export async function getCategories() {
  * Includes taxonomy constraints and formatting rules.
  */
 export function generateSystemPrompt(categories: string[]): string {
-    const categoryGuidance =
+    const schemaConstraintInstruction =
         categories.length > 0
-            ? `\n- ${categories.join('\n- ')}`
-            : '\n- No category values were provided.';
-    const pageGuidance = SHOPSITE_PAGES.join(', ');
+            ? 'The response schema already constrains allowed category and product_on_pages values. Use only exact schema values.'
+            : 'Use only exact source-supported category and product_on_pages values.';
 
-    return `You consolidate multi-source product data into one storefront-ready canonical record.
+    return `You consolidate multi-source product data into one ShopSite export-ready product record.
 
-Use only values allowed by the response schema for category and product_on_pages.
+${schemaConstraintInstruction} Never invent taxonomy breadcrumbs or ShopSite page names.
+
+Prioritize outputs that are ready for ShopSite export: name, brand, weight, description, long_description, search_keywords, product_on_pages, and category.
 
 Taxonomy rules:
 - Classify from the product's actual function, ingredients, materials, form factor, and intended animal/use case.
-- Ignore legacy category strings when stronger evidence from the product name, description, attributes, or trusted sources points elsewhere.
+- Ignore stale or overly broad legacy category strings when stronger product evidence points elsewhere.
 - Choose the deepest valid leaf taxonomy breadcrumb that best represents the primary purchase intent.
 - Do not return broad parent-only categories when a more specific leaf exists.
-- Do not invent new taxonomy values, abbreviate breadcrumb labels, or collapse the hierarchy.
 - Example: Ortho Home Defense belongs under Lawn & Garden > Pest & Weed Control > Insect Control.
 
 Source trust rules:
-- Highest trust: "shopsite_input" because it reflects the current storefront record.
-- High trust: manufacturer and distributor/catalog sources.
+- Highest trust: "shopsite_input" for current ShopSite assignments.
+- High trust: manufacturer, distributor, and catalog sources for factual product data.
 - Lower trust: marketplace and retailer listings such as Amazon, Walmart, eBay, and seller-provided labels.
 - When sources conflict on brand, category, or product_on_pages, prefer the highest-trust source with direct evidence.
-- Never let a marketplace seller label, alias, or "Brand: ..." prefix override higher-trust brand evidence.
-- If a source named "shopsite_input" includes product_on_pages, treat those as the current ShopSite assignments and preserve them unless higher-trust source evidence clearly supports a change.
+- Preserve shopsite_input product_on_pages unless higher-trust evidence clearly supports a change.
+- Never let marketplace seller labels or "Brand: ..." prefixes override higher-trust brand evidence.
 
-Cohort consistency rules (apply only when sibling product context is provided):
-- Use sibling product context as consistency guidance, never as permission to invent unsupported details.
-- Keep brand consistent across the product line unless higher-trust evidence for this SKU clearly supports a different brand.
-- Reuse the same deepest valid leaf taxonomy pattern used by sibling products when the purchase intent matches.
-- Keep naming, differentiators, and description style aligned across sibling products while preserving real variant differences.
-- Consistent line example: "Acme Puppy Recipe Dog Food 4 lb.", "Acme Puppy Recipe Dog Food 15 lb.", and "Acme Puppy Recipe Dog Food 30 lb." should share brand, taxonomy pattern, and naming structure while only the supported size changes.
-- Consistent line example: "Acme Chicken Recipe Cat Treats 3 oz." and "Acme Salmon Recipe Cat Treats 3 oz." should share brand, taxonomy pattern, and format while flavor changes only when source-supported.
+Sibling product context:
+- Use sibling product context only as consistency guidance when it is provided.
+- Keep supported naming, brand, and taxonomy patterns aligned across related SKUs without inventing details from siblings.
 
 Product-name rules:
 - Exclude brand from the product name; put it only in brand.
@@ -268,14 +274,12 @@ Product-name rules:
 - Use uppercase X with spaces for dimensions, for example 3 X 25 ft. or 11 X 17 in.
 
 Field rules:
-- description: 1-2 concise storefront sentences. It must be non-empty.
-- long_description: 3-5 concise detail-page sentences. It must be non-empty.
+- description: 1-2 concise ShopSite-ready sentences. It must be non-empty.
+- long_description: 3-5 concise ShopSite detail-page sentences. It must be non-empty.
 - search_keywords: a comma-separated string of 6-12 concise site-search phrases. Keep it source-supported, avoid duplicate phrases, avoid URLs, and do not stuff the brand repeatedly.
-- weight: numeric string only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
+- weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
 - category: prefer a single best-fit leaf breadcrumb. Only return multiple category values when the product genuinely belongs in multiple customer-facing aisles, and never include an ancestor plus its child together.
-
-Allowed category values: ${categoryGuidance}
-Allowed product_on_pages values: ${pageGuidance}
+- confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain.
 
 Return valid JSON only through the response schema. Every required string field must be non-empty.`;
 }
@@ -283,14 +287,28 @@ Return valid JSON only through the response schema. Every required string field 
 /**
  * Build the complete prompt context with taxonomy.
  */
-export async function buildPromptContext(): Promise<{
-    systemPrompt: string;
-    shopsitePages: string[];
-}> {
-    const categories = await getCategories();
+export async function buildPromptContext(): Promise<ConsolidationPromptContext> {
+    if (cachedPromptContext && Date.now() < cachedPromptContextExpiresAt) {
+        return {
+            systemPrompt: cachedPromptContext.systemPrompt,
+            shopsitePages: [...cachedPromptContext.shopsitePages],
+            categories: [...cachedPromptContext.categories],
+        };
+    }
+
+    const categoryRecords = await getCategories();
+    const categories = categoryRecords.map((category) => category.breadcrumb ?? category.name);
+
+    cachedPromptContext = {
+        systemPrompt: generateSystemPrompt(categories),
+        shopsitePages: [...SHOPSITE_PAGES],
+        categories,
+    };
+    cachedPromptContextExpiresAt = Date.now() + PROMPT_CONTEXT_CACHE_TTL_MS;
 
     return {
-        systemPrompt: generateSystemPrompt(categories.map((category) => category.breadcrumb)),
-        shopsitePages: [...SHOPSITE_PAGES],
+        systemPrompt: cachedPromptContext.systemPrompt,
+        shopsitePages: [...cachedPromptContext.shopsitePages],
+        categories: [...cachedPromptContext.categories],
     };
 }
