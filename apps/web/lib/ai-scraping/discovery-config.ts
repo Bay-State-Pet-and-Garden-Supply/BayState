@@ -55,6 +55,14 @@ function pickNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeDiscoveryOpenAIModel(value: unknown, fallback: string): string {
+  const model = pickNonEmptyString(value) ?? fallback;
+  const lowered = model.toLowerCase();
+  return lowered.startsWith('gpt-') || lowered.startsWith('o1') || lowered.startsWith('o3') || lowered.startsWith('o4')
+    ? model
+    : fallback;
+}
+
 function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serper' | null {
   const provider = pickNonEmptyString(value);
   if (!provider) {
@@ -103,7 +111,7 @@ export function sanitizeDiscoveryConfig(
   normalized.confidence_threshold = pickNumber(config.confidence_threshold, defaults.confidence_threshold);
 
   const llmProvider = normalizeDiscoveryLLMProvider(config.llm_provider, defaults.llm_provider);
-  const llmModel = pickNonEmptyString(config.llm_model) ?? defaults.llm_model;
+  const llmModel = normalizeDiscoveryOpenAIModel(config.llm_model, defaults.llm_model);
   const llmBaseUrl = null;
 
   normalized.llm_provider = llmProvider;

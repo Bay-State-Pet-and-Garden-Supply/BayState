@@ -332,6 +332,85 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.llm_base_url).toBeUndefined();
     });
 
+    it('normalizes deprecated Gemini discovery settings back to OpenAI defaults', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+
+        (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
+            llm_provider: 'openai',
+            llm_model: 'gpt-4o-mini',
+            llm_base_url: null,
+            max_search_results: 6,
+            max_steps: 18,
+            confidence_threshold: 0.8,
+        });
+
+        (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
+            llm_provider: 'openai',
+            llm_model: 'gpt-4o-mini',
+            llm_api_key: 'openai-test-key',
+            openai_api_key: 'openai-test-key',
+            serper_api_key: 'serper-test-key',
+        });
+
+        const mockScrapers = [
+            {
+                name: 'ai_discovery',
+                status: 'active',
+                workflows: [],
+                selectors: {},
+                timeout: 30,
+                base_url: null,
+                url_template: null,
+                test_skus: null,
+            },
+        ];
+
+        mockSupabase.eq.mockImplementation(function(this: any) {
+            if (this._isScraperQuery) {
+                return Promise.resolve({ data: mockScrapers, error: null });
+            }
+            return this;
+        });
+
+        mockSupabase.in.mockImplementation(function(this: any) {
+            this._isScraperQuery = true;
+            return this;
+        });
+
+        mockSupabase.rpc.mockResolvedValue({
+            data: [
+                {
+                    job_id: 'job-discovery-legacy-gemini',
+                    skus: ['SKU-1'],
+                    scrapers: ['ai_discovery'],
+                    type: 'discovery',
+                    config: {
+                        llm_provider: 'gemini',
+                        llm_model: 'gemini-2.5-flash',
+                    },
+                    test_mode: false,
+                    max_workers: 3,
+                },
+            ],
+            error: null,
+        });
+
+        const req = createRequest({});
+        const res = await POST(req);
+        expect(res.status).toBe(200);
+
+        const data = await res.json();
+        expect(data.job.ai_credentials.llm_provider).toBe('openai');
+        expect(data.job.ai_credentials.llm_model).toBe('gpt-4o-mini');
+        expect(data.job.ai_credentials.llm_api_key).toBe('openai-test-key');
+        expect(data.job.ai_credentials.openai_api_key).toBe('openai-test-key');
+        expect(data.job.job_config.llm_provider).toBe('openai');
+        expect(data.job.job_config.llm_model).toBe('gpt-4o-mini');
+    });
+
     it('preserves shared discovery keys and strips unsupported ones from discovery job config', async () => {
         (validateRunnerAuth as jest.Mock).mockResolvedValue({
             runnerName: 'test-runner',

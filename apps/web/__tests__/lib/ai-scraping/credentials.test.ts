@@ -196,4 +196,93 @@ describe('AI scraping credentials compatibility', () => {
     expect(runtime.llm_model).toBe(DEFAULT_AI_MODEL);
     expect(runtime.llm_api_key).toBeUndefined();
   });
+
+  it('normalizes deprecated Gemini defaults back to OpenAI runtime defaults', async () => {
+    const encrypted = encryptSecret('gemini-live-key-9876');
+    const compatValue = {
+      provider: 'gemini',
+      encrypted_value: encrypted.encryptedValue,
+      iv: encrypted.iv,
+      auth_tag: encrypted.authTag,
+      key_version: 1,
+      last4: '9876',
+      updated_at: '2026-04-06T20:00:00.000Z',
+    };
+
+    (createClient as jest.Mock).mockReturnValue({
+      from: jest.fn((table: string) => {
+        if (table === 'ai_provider_credentials') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: null,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+
+        if (table === 'site_settings') {
+          return {
+            select: (columns: string) => {
+              if (columns === 'value') {
+                return {
+                  eq: (_field: string, key: string) => ({
+                    single: jest.fn().mockResolvedValue({
+                      data:
+                        key === 'ai_scraping_defaults'
+                          ? {
+                              value: {
+                                llm_provider: 'gemini',
+                                llm_model: 'gemini-2.5-flash',
+                                llm_base_url: null,
+                                max_search_results: 5,
+                                max_steps: 15,
+                                confidence_threshold: 0.7,
+                              },
+                            }
+                          : null,
+                      error:
+                        key === 'ai_scraping_defaults'
+                          ? null
+                          : { message: 'missing row' },
+                    }),
+                  }),
+                };
+              }
+
+              if (columns === 'value, updated_at') {
+                return {
+                  eq: (_field: string, key: string) => ({
+                    maybeSingle: jest.fn().mockResolvedValue({
+                      data:
+                        key === 'ai_provider_credentials_compat_gemini'
+                          ? {
+                              value: compatValue,
+                              updated_at: '2026-04-06T20:00:00.000Z',
+                            }
+                          : null,
+                      error: null,
+                    }),
+                  }),
+                };
+              }
+
+              throw new Error(`Unexpected site_settings select: ${columns}`);
+            },
+          };
+        }
+
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    });
+
+    const runtime = await getAIScrapingRuntimeCredentials();
+    expect(runtime).toEqual({
+      llm_provider: 'openai',
+      llm_model: DEFAULT_AI_MODEL,
+    });
+  });
 });

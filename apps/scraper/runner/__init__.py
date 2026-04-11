@@ -13,6 +13,7 @@ from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
 from scrapers.ai_search import AISearchScraper
+from scrapers.ai_search.search import normalize_search_provider
 from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
 from scrapers.parser import ScraperConfigParser
@@ -1054,8 +1055,8 @@ def _run_ai_search_job(
         if lowered.startswith(("gpt-", "o1", "o3", "o4")):
             return candidate
 
-        logger.info(
-            "[AI Search] Ignoring legacy non-OpenAI model '%s' and defaulting to gpt-4o-mini",
+        logger.warning(
+            "[AI Search] Ignoring deprecated non-OpenAI model '%s' and defaulting to gpt-4o-mini",
             candidate,
         )
         return "gpt-4o-mini"
@@ -1071,18 +1072,15 @@ def _run_ai_search_job(
     requested_llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "openai").strip().lower()
     llm_provider = "openai"
     if requested_llm_provider and requested_llm_provider != "openai":
-        logger.info(
-            "[AI Search] Ignoring legacy LLM provider '%s' and routing this job to OpenAI",
+        logger.warning(
+            "[AI Search] Ignoring deprecated LLM provider '%s' and routing this job to OpenAI",
             requested_llm_provider,
         )
-
     requested_llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "").strip()
     llm_model = _normalize_openai_model(requested_llm_model)
-    search_provider = str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
-    if search_provider in {"brave", "serpapi"}:
-        search_provider = "serper"
-    elif search_provider not in {"auto", "serper"}:
-        search_provider = "auto"
+    search_provider = normalize_search_provider(
+        str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
+    )
     if search_provider == "auto":
         search_provider = "serper"
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
