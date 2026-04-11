@@ -75,6 +75,31 @@ describe('brand exclusion in prompt-builder', () => {
             expect(prompt).toContain('Motorsport Container Red 5 Gal.');
         });
 
+        it('distinguishes planting seeds from feed-oriented seed products', () => {
+            const prompt = generateSystemPrompt([
+                'Lawn & Garden > Flower & Vegetable Seeds',
+                'Farm Animal > Chicken > Feed',
+                'Wild Bird > Seed & Food > Seed Blends',
+            ]);
+
+            expect(prompt).toMatch(/treat planting seeds as lawn & garden items/i);
+            expect(prompt).toMatch(/trusted source evidence explicitly describes feeding intent/i);
+            expect(prompt).toMatch(/when "seed" appears in the product name, default to the lawn & garden hierarchy/i);
+            expect(prompt).toMatch(/Jack O Lantern.*do not change a planting seed product into seasonal utility, decor, or service taxonomy/i);
+            expect(prompt).toContain('Lawn & Garden > Flower & Vegetable Seeds');
+            expect(prompt).toContain('Farm Animal > Chicken > Feed');
+            expect(prompt).toContain('Wild Bird > Seed & Food > Seed Blends');
+        });
+
+        it('routes planting seed products to seeds and seed starting pages', () => {
+            const prompt = generateSystemPrompt(['Lawn & Garden > Flower & Vegetable Seeds']);
+
+            expect(prompt).toMatch(/planting seed products should use Seeds & Seed Starting/i);
+            expect(prompt).toMatch(/Do not use Farm Animal, Bird, Small Pet, or Wild Bird pages/i);
+            expect(prompt).toMatch(/never use service-only pages such as #Services/i);
+            expect(prompt).toContain('Lawn & Garden Shop All');
+        });
+
         it('includes source trust and keyword guidance', () => {
             const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
 

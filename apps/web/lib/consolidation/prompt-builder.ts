@@ -244,6 +244,15 @@ Taxonomy rules:
 - Choose the deepest valid leaf taxonomy breadcrumb that best represents the primary purchase intent.
 - Do not return broad parent-only categories when a more specific leaf exists.
 - Example: Ortho Home Defense belongs under Lawn & Garden > Pest & Weed Control > Insect Control.
+- Treat planting seeds as Lawn & Garden items. Seed packets, bulk garden seed, vegetable seeds, flower seeds, herb seeds, wildflower or pollinator mixes, bulbs, seed potatoes, and seed-starting supplies belong under Lawn & Garden when trusted source evidence indicates planting or gardening intent.
+- Treat seed as animal, poultry, bird, or small pet taxonomy only when trusted source evidence explicitly describes feeding intent such as feed, food, treats, scratch, forage, suet, millet spray, feeder use, livestock use, or small-pet use.
+- When "seed" appears in the product name, default to the Lawn & Garden hierarchy unless trusted source descriptions explicitly indicate animal, livestock, wild bird, caged bird, or small pet feeding intent.
+- Do not map planting seeds to Farm Animal, Bird, Wild Bird, or Small Pet categories solely because the word "seed" appears in the product name.
+- Variety names and merchandising phrases like Jack O Lantern, pollinator, butterfly, bouquet, fall color, or decorative do not change a planting seed product into seasonal utility, decor, or service taxonomy.
+- Example: Bentley Seed Tomato Jubilee Seed Packets belongs under Lawn & Garden > Flower & Vegetable Seeds.
+- Example: Pumpkin Jack O Lantern Seed Packets still belongs under Lawn & Garden > Flower & Vegetable Seeds.
+- Example: Chicken scratch mixed seed belongs under Farm Animal > Chicken > Feed.
+- Example: Black oil sunflower seed blend for backyard feeders belongs under Wild Bird > Seed & Food > Seed Blends.
 
 Source trust rules:
 - Highest trust: "shopsite_input" for current ShopSite assignments.
@@ -278,6 +287,8 @@ Field rules:
 - long_description: 3-5 concise ShopSite detail-page sentences. It must be non-empty.
 - search_keywords: a comma-separated string of 6-12 concise site-search phrases. Keep it source-supported, avoid duplicate phrases, avoid URLs, and do not stuff the brand repeatedly.
 - weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
+- product_on_pages: match the customer shopping intent. Planting seed products should use Seeds & Seed Starting and can also use Lawn & Garden Shop All when supported. Do not use Farm Animal, Bird, Small Pet, or Wild Bird pages for seed products unless trusted source descriptions explicitly indicate feed or treat intent.
+- product_on_pages: never use service-only pages such as #Services for a physical retail product unless the trusted source clearly describes a service, rental, refill, pickup, or delivery offering.
 - category: prefer a single best-fit leaf breadcrumb. Only return multiple category values when the product genuinely belongs in multiple customer-facing aisles, and never include an ancestor plus its child together.
 - confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain.
 
