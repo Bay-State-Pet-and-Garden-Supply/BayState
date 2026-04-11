@@ -10,6 +10,7 @@ import {
   Search,
   X,
   ChevronRight,
+  ChevronLeft,
   Layers,
   Tag,
   Edit2,
@@ -145,6 +146,9 @@ export function ScrapedResultsView({
   const [pendingDeleteSource, setPendingDeleteSource] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
   const selectedProduct =
     sortedProducts.find((product) => product.sku === preferredSku) ??
     sortedProducts[0] ??
@@ -163,6 +167,12 @@ export function ScrapedResultsView({
 
     return sourceKeys[0] ?? "";
   }, [preferredSource, sourceKeys]);
+
+  // Reset image index and description expansion when product or source changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+    setIsDescriptionExpanded(false);
+  }, [selectedSku, activeSource]);
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
@@ -590,54 +600,67 @@ export function ScrapedResultsView({
         {selectedProduct ? (
           <>
             {/* Header & Source Switcher */}
-            <div className="p-4 border-b space-y-4 flex-shrink-0">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-xl font-bold tracking-tight">
-                    {selectedProduct.consolidated?.name ||
-                      selectedProduct.input?.name}
-                  </h2>
+            <div className="bg-card border-b flex-shrink-0 z-10">
+              <div className="p-4 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-muted rounded-lg">
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight line-clamp-1">
+                      {selectedProduct.consolidated?.name ||
+                        selectedProduct.input?.name}
+                    </h2>
+                    <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
+                      <span className="bg-muted px-1 rounded">{selectedProduct.sku}</span>
+                      {currentSourceData?.price && (
+                        <>
+                          <span>•</span>
+                          <span className="font-bold text-primary text-[13px]">
+                            ${typeof currentSourceData.price === "number"
+                              ? currentSourceData.price.toFixed(2)
+                              : currentSourceData.price}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm font-mono text-muted-foreground">
-                  SKU: {selectedProduct.sku}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => onRefresh(true)}>
+                    Refresh Data
+                  </Button>
                 </div>
               </div>
 
-              {sourceKeys.length > 0 ? (
-                <Tabs
-                  value={activeSource}
-                  onValueChange={setPreferredSource}
-                  className="w-full"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <TabsList className="h-9 justify-start bg-muted/50 p-1 flex-1 overflow-x-auto">
+              {sourceKeys.length > 0 && (
+                <div className="px-4 pb-2 flex items-center justify-between gap-4">
+                  <Tabs
+                    value={activeSource}
+                    onValueChange={setPreferredSource}
+                    className="flex-1"
+                  >
+                    <TabsList className="h-8 justify-start bg-muted/50 p-1 w-fit">
                       {sourceKeys.map((key) => (
                         <TabsTrigger
                           key={key}
                           value={key}
-                          className="text-xs px-3"
+                          className="text-[10px] px-3 h-6 uppercase font-bold tracking-wider"
                         >
-                          {key.charAt(0).toUpperCase() + key.slice(1)}
+                          {key}
                         </TabsTrigger>
                       ))}
                     </TabsList>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive h-9 px-3 hover:bg-destructive/10"
-                      onClick={() => handleDeleteSourceClick(activeSource)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete {activeSource}
-                    </Button>
-                  </div>
-                </Tabs>
-              ) : (
-                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-100">
-                  <AlertCircle className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    No results for this SKU yet.
-                  </span>
+                  </Tabs>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive h-8 px-3 hover:bg-destructive/10"
+                    onClick={() => handleDeleteSourceClick(activeSource)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete {activeSource}
+                  </Button>
                 </div>
               )}
             </div>
@@ -647,27 +670,59 @@ export function ScrapedResultsView({
               {currentSourceData ? (
                 <div className="max-w-4xl mx-auto space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Left side: Image */}
+                    {/* Left side: Image Carousel */}
                     <div className="space-y-4">
                       <div className="aspect-square rounded-xl border bg-muted/30 flex items-center justify-center overflow-hidden relative group">
-                        {currentSourceData.images?.[0] ||
-                        currentSourceData.image_url ? (
+                        {currentSourceData.images && currentSourceData.images.length > 0 ? (
+                          <>
+                            <img
+                              src={currentSourceData.images[currentImageIndex]}
+                              alt={currentSourceData.title || currentSourceData.name}
+                              className="w-full h-full object-contain transition-all duration-300"
+                              data-testid="scraped-primary-image"
+                              onError={() => handleImageError(currentSourceData.images?.[currentImageIndex])}
+                            />
+                            
+                            {/* Navigation Arrows */}
+                            {currentSourceData.images.length > 1 && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentImageIndex((prev) => 
+                                      prev === 0 ? currentSourceData.images!.length - 1 : prev - 1
+                                    );
+                                  }}
+                                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity border"
+                                >
+                                  <ChevronLeft className="h-5 w-5 text-primary" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentImageIndex((prev) => 
+                                      prev === currentSourceData.images!.length - 1 ? 0 : prev + 1
+                                    );
+                                  }}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity border"
+                                >
+                                  <ChevronRight className="h-5 w-5 text-primary" />
+                                </button>
+                                
+                                {/* Image Counter Overlay */}
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card/60 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-primary border shadow-sm">
+                                  {currentImageIndex + 1} / {currentSourceData.images.length}
+                                </div>
+                              </>
+                            )}
+                          </>
+                        ) : currentSourceData.image_url ? (
                           <img
-                            src={
-                              currentSourceData.images?.[0] ||
-                              currentSourceData.image_url
-                            }
-                            alt={
-                              currentSourceData.title || currentSourceData.name
-                            }
-                            data-testid="scraped-primary-image"
+                            src={currentSourceData.image_url}
+                            alt={currentSourceData.title || currentSourceData.name}
                             className="w-full h-full object-contain"
-                            onError={() =>
-                              handleImageError(
-                                currentSourceData.images?.[0] ||
-                                  currentSourceData.image_url,
-                              )
-                            }
+                            data-testid="scraped-primary-image"
+                            onError={() => handleImageError(currentSourceData.image_url)}
                           />
                         ) : (
                           <div className="flex flex-col items-center text-muted-foreground">
@@ -675,6 +730,7 @@ export function ScrapedResultsView({
                             <span className="text-xs">No image available</span>
                           </div>
                         )}
+                        
                         {currentSourceData.url && (
                           <a
                             href={currentSourceData.url}
@@ -687,28 +743,28 @@ export function ScrapedResultsView({
                         )}
                       </div>
 
-                      {/* Secondary Images if any */}
-                      {currentSourceData.images &&
-                        currentSourceData.images.length > 1 && (
-                          <div className="grid grid-cols-4 gap-2">
-                            {currentSourceData.images
-                              .slice(1, 5)
-                              .map((img, i) => (
-                                <div
-                                  key={i}
-                                  className="aspect-square rounded-md border overflow-hidden bg-muted/20"
-                                >
-                                  <img
-                                    src={img}
-                                    alt=""
-                                    data-testid={`scraped-secondary-image-${i}`}
-                                    className="w-full h-full object-contain"
-                                    onError={() => handleImageError(img)}
-                                  />
-                                </div>
-                              ))}
-                          </div>
-                        )}
+                      {/* Thumbnails */}
+                      {currentSourceData.images && currentSourceData.images.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                          {currentSourceData.images.map((img, i) => (
+                            <div
+                              key={i}
+                              onClick={() => setCurrentImageIndex(i)}
+                              className={`aspect-square w-14 rounded-md border-2 overflow-hidden bg-muted/20 cursor-pointer transition-all flex-shrink-0 ${
+                                currentImageIndex === i ? "border-primary ring-2 ring-primary/10" : "border-transparent opacity-60 hover:opacity-100"
+                              }`}
+                            >
+                              <img
+                                src={img}
+                                alt=""
+                                className="w-full h-full object-contain"
+                                data-testid={i > 0 ? `scraped-secondary-image-${i - 1}` : undefined}
+                                onError={() => handleImageError(img)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Right side: Core Info */}
@@ -811,17 +867,33 @@ export function ScrapedResultsView({
                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                           Description
                         </h3>
-                        <div className="text-sm leading-relaxed text-muted-foreground prose prose-sm max-w-none">
-                          {currentSourceData.description ? (
-                            <div
-                              dangerouslySetInnerHTML={{
-                                __html: currentSourceData.description,
-                              }}
-                            />
-                          ) : (
-                            <p className="italic">
-                              No description provided by source.
-                            </p>
+                        <div className="relative">
+                          <div
+                            className={`text-sm leading-relaxed text-muted-foreground prose prose-sm max-w-none transition-all duration-300 ${
+                              isDescriptionExpanded ? "" : "line-clamp-6"
+                            }`}
+                          >
+                            {currentSourceData.description ? (
+                              <div
+                                dangerouslySetInnerHTML={{
+                                  __html: currentSourceData.description,
+                                }}
+                              />
+                            ) : (
+                              <p className="italic">
+                                No description provided by source.
+                              </p>
+                            )}
+                          </div>
+                          {currentSourceData.description && currentSourceData.description.length > 300 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 text-xs h-7 text-primary hover:text-primary hover:bg-primary/5"
+                              onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                            >
+                              {isDescriptionExpanded ? "Show Less" : "Show More"}
+                            </Button>
                           )}
                         </div>
                       </div>
