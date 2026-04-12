@@ -3,7 +3,7 @@ import { createAgentUIStreamResponse } from "ai";
 import { z } from "zod";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { finalizationCopilotAgent } from "@/lib/agents/finalization-copilot-agent";
-import { finalizationCopilotContextSchema } from "@/lib/pipeline/finalization-draft";
+import { finalizationCopilotContextSchema } from "@/lib/pipeline/finalization-copilot-workspace";
 
 export const maxDuration = 30;
 

@@ -76,16 +76,6 @@ export const finalizationCopilotProductSchema = z.object({
   confidence_score: z.number().nullable().optional(),
 });
 
-export const finalizationCopilotContextSchema = z.object({
-  product: finalizationCopilotProductSchema,
-  draft: finalizationDraftSchema,
-  savedDraft: finalizationDraftSchema,
-});
-
-export type FinalizationCopilotContext = z.infer<
-  typeof finalizationCopilotContextSchema
->;
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
