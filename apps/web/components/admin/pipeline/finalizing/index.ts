@@ -15,3 +15,5 @@ export type { ImageCarouselProps } from "./ImageCarousel";
 
 export { ProductSaveActions } from "./ProductSaveActions";
 export type { ProductSaveActionsProps } from "./ProductSaveActions";
+
+export { FinalizationCopilotPanel } from "./FinalizationCopilotPanel";
