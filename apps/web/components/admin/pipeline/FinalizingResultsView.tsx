@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  type SetStateAction,
+} from "react";
 import {
   Package,
   Plus,
@@ -16,6 +23,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -28,8 +43,6 @@ import {
   normalizeProductSources,
 } from "@/lib/product-sources";
 import {
-  toStringArray,
-  extractSelectedImageUrls,
   formatSourceLabel,
   isValidCustomImageUrl,
 } from "./finalizing/finalizing-utils";
@@ -37,7 +50,29 @@ import type { ImageSourceOption } from "./finalizing/finalizing-utils";
 import { ProductListSidebar } from "./finalizing/ProductListSidebar";
 import { ImageCarousel } from "./finalizing/ImageCarousel";
 import { ProductSaveActions } from "./finalizing/ProductSaveActions";
+import { FinalizationCopilotPanel } from "./finalizing/FinalizationCopilotPanel";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
+import {
+  buildConsolidatedPayloadFromDraft,
+  buildInitialFinalizationDraft,
+  createPersistedFinalizationDraftSnapshot,
+  EMPTY_FINALIZATION_DRAFT,
+  FINALIZATION_STOCK_STATUS_VALUES,
+  toFinalizationImageArray,
+  type FinalizationCopilotContext,
+  type FinalizationDraft,
+} from "@/lib/pipeline/finalization-draft";
+import type {
+  AddSelectedImagesInput,
+  AssignBrandInput,
+  CreateBrandInput,
+  RemoveSelectedImagesInput,
+  RemoveStorePagesInput,
+  ReplaceSelectedImagesInput,
+  SetProductFieldsInput,
+  SetStorePagesInput,
+  ToolSummary,
+} from "@/lib/tools/finalization-copilot";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -56,6 +91,7 @@ interface FinalizingResultsViewProps {
 interface Brand {
   id: string;
   name: string;
+  slug?: string | null;
 }
 
 export function FinalizingResultsView({
@@ -79,7 +115,19 @@ export function FinalizingResultsView({
   const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
 
   // Brand state
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brandsState, setBrandsState] = useState<Brand[]>([]);
+  const brandsRef = useRef<Brand[]>([]);
+  const setBrands = useCallback((value: SetStateAction<Brand[]>) => {
+    setBrandsState((prev) => {
+      const next =
+        typeof value === "function"
+          ? (value as (previous: Brand[]) => Brand[])(prev)
+          : value;
+      brandsRef.current = next;
+      return next;
+    });
+  }, []);
+  const brands = brandsState;
   const [brandSearch, setBrandSearch] = useState("");
   const [creatingBrand, setCreatingBrand] = useState(false);
   const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
@@ -90,7 +138,20 @@ export function FinalizingResultsView({
 
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [lastSavedData, setLastSavedData] = useState<string>("");
+  const [savedDraftState, setSavedDraftState] =
+    useState<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
+  const savedDraftRef = useRef<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
+  const setSavedDraft = useCallback((value: SetStateAction<FinalizationDraft>) => {
+    setSavedDraftState((prev) => {
+      const next =
+        typeof value === "function"
+          ? (value as (previous: FinalizationDraft) => FinalizationDraft)(prev)
+          : value;
+      savedDraftRef.current = next;
+      return next;
+    });
+  }, []);
+  const savedDraft = savedDraftState;
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
@@ -107,48 +168,71 @@ export function FinalizingResultsView({
     const search = pageSearch.toLowerCase();
     return SHOPSITE_PAGES.filter((p) => p.toLowerCase().includes(search));
   }, [pageSearch]);
+  const validStorePages = useMemo(() => new Set<string>(SHOPSITE_PAGES), []);
+
+  const createBrandRecord = useCallback(async (name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error("Brand name is required");
+    }
+
+    const res = await fetch("/api/admin/brands", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: trimmedName }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || "Failed to create brand");
+    }
+
+    const { brand } = (await res.json()) as { brand: Brand };
+    setBrands((prev) =>
+      [...prev, brand].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+
+    return brand;
+  }, [setBrands]);
 
   const handleCreateBrand = async () => {
     if (!brandSearch.trim()) return;
     setCreatingBrand(true);
     try {
-      const res = await fetch("/api/admin/brands", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: brandSearch.trim() }),
-      });
-      if (res.ok) {
-        const { brand } = await res.json();
-        setBrands((prev) =>
-          [...prev, brand].sort((a, b) => a.name.localeCompare(b.name)),
-        );
-        handleInputChange("brandId", brand.id);
-        setBrandSearch("");
-        setBrandPopoverOpen(false);
-        toast.success(`Brand "${brand.name}" created`);
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Failed to create brand");
-      }
-    } catch {
-      toast.error("An error occurred while creating brand");
+      const brand = await createBrandRecord(brandSearch);
+      handleInputChange("brandId", brand.id);
+      setBrandSearch("");
+      setBrandPopoverOpen(false);
+      toast.success(`Brand "${brand.name}" created`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "An error occurred while creating brand",
+      );
     } finally {
       setCreatingBrand(false);
     }
   };
 
   // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    price: "",
-    weight: "",
-    brandId: "none",
-    stockStatus: "in_stock",
-    productOnPages: [] as string[],
-    isSpecialOrder: false,
-    customImageUrl: "",
-    selectedImages: [] as string[],
-  });
+  const [formDataState, setFormDataState] =
+    useState<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
+  const formDataRef = useRef<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
+  const setFormData = useCallback(
+    (value: SetStateAction<FinalizationDraft>) => {
+      setFormDataState((prev) => {
+        const next =
+          typeof value === "function"
+            ? (value as (previous: FinalizationDraft) => FinalizationDraft)(prev)
+            : value;
+        formDataRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
+  const formData = formDataState;
   const [selectedImageSourceId, setSelectedImageSourceId] = useState("");
 
   const selectedProduct= useMemo(
@@ -158,8 +242,13 @@ export function FinalizingResultsView({
       null,
     [preferredSku, sortedProducts],
   );
+  const selectedProductRef = useRef<PipelineProduct | null>(selectedProduct);
 
   const selectedSku = selectedProduct?.sku ?? null;
+
+  useEffect(() => {
+    selectedProductRef.current = selectedProduct;
+  }, [selectedProduct]);
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
@@ -202,66 +291,27 @@ export function FinalizingResultsView({
       }
     }
     fetchData();
-  }, []);
+  }, [setBrands]);
 
   // Initialize form when selected product changes
   useEffect(() => {
     if (selectedProduct) {
-      const consolidated = selectedProduct.consolidated || {};
-      const input = selectedProduct.input || {};
+      const initialDraft = buildInitialFinalizationDraft(selectedProduct);
+      const persistedDraft =
+        createPersistedFinalizationDraftSnapshot(initialDraft);
 
-      const cons =
-        selectedProduct.consolidated || ({} as Record<string, unknown>);
-      const consolidatedImages = toStringArray(consolidated.images);
-      const selectedImagesFromMetadata = extractSelectedImageUrls(
-        selectedProduct.selected_images,
-      );
-      // Use consolidated.images as primary source (authoritative), fallback to selected_images
-      // toStringArray now uses Amazon-aware dedup to handle same image from different hosts
-      const initialSelectedImages =
-        consolidatedImages.length > 0
-          ? consolidatedImages
-          : selectedImagesFromMetadata;
-
-      const name = consolidated.name || input.name || "";
-
-      const initialData = {
-        name,
-        price: String(consolidated.price ?? input.price ?? ""),
-        weight: ((cons as Record<string, unknown>).weight as string) || "",
-        brandId: consolidated.brand_id || "none",
-        stockStatus:
-          ((consolidated as Record<string, unknown>).stock_status as string) ||
-          "in_stock",
-        productOnPages: Array.isArray(
-          (cons as Record<string, unknown>).product_on_pages,
-        )
-          ? ((cons as Record<string, unknown>).product_on_pages as string[])
-          : typeof (cons as Record<string, unknown>).product_on_pages ===
-               "string"
-            ? ((cons as Record<string, unknown>).product_on_pages as string)
-                .split("|")
-                .filter(Boolean)
-            : [],
-        isSpecialOrder: !!(cons as Record<string, unknown>).is_special_order,
-        customImageUrl: "",
-        selectedImages: initialSelectedImages,
-      };
-
-      setFormData(initialData);
-      setLastSavedData(JSON.stringify(initialData));
+      setFormData(initialDraft);
+      setSavedDraft(persistedDraft);
       setIsDirty(false);
       setSelectedImageSourceId("");
     }
-  }, [selectedProduct]);
+  }, [selectedProduct, setFormData, setSavedDraft]);
 
   // Track dirtiness
   useEffect(() => {
-    const currentData = JSON.stringify(formData);
-    setIsDirty(currentData !== lastSavedData);
-  }, [formData, lastSavedData]);
+    setIsDirty(JSON.stringify(formData) !== JSON.stringify(savedDraft));
+  }, [formData, savedDraft]);
 
-  // Handle name change and auto-populate descriptions if they match name
   const handleNameChange = (newName: string) => {
     setFormData((prev) => ({ ...prev, name: newName }));
   };
@@ -278,12 +328,15 @@ export function FinalizingResultsView({
     }
   }, [preferredSku]);
 
-  const handleInputChange = (
-    field: string,
-    value: string | boolean | string[],
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  const handleInputChange = useCallback(
+    <K extends keyof FinalizationDraft>(
+      field: K,
+      value: FinalizationDraft[K],
+    ) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    },
+    [setFormData],
+  );
 
   const toggleImage = (url: string) => {
     setFormData((prev) => {
@@ -319,85 +372,138 @@ export function FinalizingResultsView({
     }
   };
 
-  const handleSave = useCallback(async (andPublish = false, silent = false) => {
-    if (!selectedSku) return;
-
-    const isSaveAction = !andPublish;
-    if (isSaveAction && !silent) setSaving(true);
-    else if (andPublish) setPublishing(true);
-
-    try {
-      const consolidated = {
-        name: formData.name.trim(),
-        price: parseFloat(formData.price) || 0,
-        brand_id: formData.brandId === "none" ? null : formData.brandId,
-        stock_status: formData.stockStatus,
-        is_special_order: formData.isSpecialOrder,
-        weight: formData.weight.trim() || null,
-        product_on_pages: formData.productOnPages,
-        images: formData.selectedImages,
-      };
-
-      // 1. Save changes to ingestion table
-      const patchRes = await fetch(
-        `/api/admin/pipeline/${encodeURIComponent(selectedSku)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ consolidated }),
-        },
+  const normalizeStorePages = useCallback(
+    (pages: string[]) => {
+      const requestedPages = new Set(
+        pages.map((page) => page.trim()).filter((page) => validStorePages.has(page)),
       );
 
-      if (!patchRes.ok) {
-        const data = await patchRes.json();
-        throw new Error(data.error || "Failed to save changes");
+      return SHOPSITE_PAGES.filter((page) => requestedPages.has(page));
+    },
+    [validStorePages],
+  );
+
+  const normalizeSelectedImages = useCallback((images: string[]) => {
+    return toFinalizationImageArray(
+      images.filter((image) => isValidCustomImageUrl(image)),
+    );
+  }, []);
+
+  const persistCurrentDraft = useCallback(
+    async ({
+      andPublish = false,
+      silent = false,
+    }: {
+      andPublish?: boolean;
+      silent?: boolean;
+    } = {}): Promise<ToolSummary> => {
+      const currentProduct = selectedProductRef.current;
+      if (!currentProduct?.sku) {
+        throw new Error("Select a product before saving.");
       }
 
-      setLastSavedData(JSON.stringify(formData));
-      setIsDirty(false);
+      const currentDraft = formDataRef.current;
+      const persistedSnapshot =
+        createPersistedFinalizationDraftSnapshot(currentDraft);
+      const hasPersistableChanges =
+        JSON.stringify(persistedSnapshot) !== JSON.stringify(savedDraftRef.current);
+
+      if (!andPublish && !hasPersistableChanges) {
+        return { summary: "Draft already matches the saved finalizing state." };
+      }
 
       if (andPublish) {
-        // 2. Move the reviewed product into exporting.
-        const publishRes = await fetch(`/api/admin/pipeline/publish`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sku: selectedSku }),
-        });
+        setPublishing(true);
+      } else {
+        setSaving(true);
+      }
 
-        if (!publishRes.ok) {
-          const data = await publishRes.json();
-          throw new Error(data.error || "Failed to move product into exporting");
+      try {
+        if (hasPersistableChanges) {
+          const patchRes = await fetch(
+            `/api/admin/pipeline/${encodeURIComponent(currentProduct.sku)}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                consolidated: buildConsolidatedPayloadFromDraft(currentDraft),
+              }),
+            },
+          );
+
+          if (!patchRes.ok) {
+            const data = await patchRes.json().catch(() => null);
+            throw new Error(data?.error || "Failed to save changes");
+          }
+
+          setSavedDraft(persistedSnapshot);
         }
 
-        toast.success("Product moved to exporting");
-      } else if (!silent) {
-        toast.success("Changes saved successfully");
-      }
+        if (andPublish) {
+          const publishRes = await fetch(`/api/admin/pipeline/publish`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sku: currentProduct.sku }),
+          });
 
-      // If we moved the product into exporting, refresh the parent queue.
-      // If we just saved, we can silent refresh to update the parent's data
-      onRefresh(isSaveAction); 
-    } catch (err) {
-      if (!silent) {
-        toast.error(err instanceof Error ? err.message : "An error occurred");
+          if (!publishRes.ok) {
+            const data = await publishRes.json().catch(() => null);
+            throw new Error(
+              data?.error || "Failed to move product into exporting",
+            );
+          }
+
+          if (!silent) {
+            toast.success("Product moved to exporting");
+          }
+        } else if (!silent) {
+          toast.success("Changes saved successfully");
+        }
+
+        onRefresh(!andPublish);
+
+        return {
+          summary: andPublish
+            ? "Saved the draft and moved the product into exporting."
+            : hasPersistableChanges
+              ? "Saved the current draft changes."
+              : "Draft was already up to date.",
+        };
+      } catch (error) {
+        if (!silent) {
+          toast.error(
+            error instanceof Error ? error.message : "An error occurred",
+          );
+        }
+
+        throw error;
+      } finally {
+        setSaving(false);
+        setPublishing(false);
       }
-    } finally {
-      setSaving(false);
-      setPublishing(false);
-    }
-  }, [formData, onRefresh, selectedSku]);
+    },
+    [onRefresh, setSavedDraft],
+  );
 
   const handleSelectProduct = useCallback(
     async (newSku: string | null) => {
       if (newSku === preferredSku) return;
 
       if (isDirty && selectedSku && !saving && !publishing) {
-        // Silent save before switching
-        await handleSave(false, true);
+        try {
+          await persistCurrentDraft({ silent: true });
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to save the current draft before switching products.",
+          );
+          return;
+        }
       }
       setPreferredSku(newSku);
     },
-    [isDirty, selectedSku, preferredSku, handleSave, saving, publishing],
+    [isDirty, selectedSku, preferredSku, persistCurrentDraft, saving, publishing],
   );
 
   // Keyboard navigation and shortcuts
@@ -411,7 +517,7 @@ export function FinalizingResultsView({
 
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        void handleSave(false);
+        void persistCurrentDraft();
         return;
       }
 
@@ -424,7 +530,7 @@ export function FinalizingResultsView({
       ) {
         if (!isInput || activeElement?.id === "product-name") {
           e.preventDefault();
-          void handleSave(true);
+          void persistCurrentDraft({ andPublish: true });
           return;
         }
       }
@@ -448,39 +554,69 @@ export function FinalizingResultsView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSave, preferredSku, sortedProducts, handleSelectProduct]);
+  }, [persistCurrentDraft, preferredSku, sortedProducts, handleSelectProduct]);
 
   const handleReject = async () => {
     if (!selectedSku) return;
     setConfirmRejectOpen(true);
   };
 
+  const rejectCurrentProduct = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}): Promise<ToolSummary> => {
+      const currentProduct = selectedProductRef.current;
+      if (!currentProduct?.sku) {
+        throw new Error("Select a product before rejecting it.");
+      }
+
+      setRejecting(true);
+
+      try {
+        const res = await fetch(
+          `/api/admin/pipeline/${encodeURIComponent(currentProduct.sku)}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pipeline_status: "scraped" }),
+          },
+        );
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || "Failed to reject product");
+        }
+
+        if (!silent) {
+          toast.success("Product rejected and sent back to scraped stage.");
+        }
+
+        onRefresh(false);
+
+        return {
+          summary:
+            "Moved the product back to the scraped stage for additional review.",
+        };
+      } catch (error) {
+        if (!silent) {
+          toast.error(
+            error instanceof Error ? error.message : "An error occurred",
+          );
+        }
+
+        throw error;
+      } finally {
+        setRejecting(false);
+      }
+    },
+    [onRefresh],
+  );
+
   const handleConfirmReject = async () => {
     if (!selectedSku) return;
     setConfirmRejectOpen(false);
-
-    setRejecting(true);
     try {
-      const res = await fetch(
-        `/api/admin/pipeline/${encodeURIComponent(selectedSku)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pipeline_status: "scraped" }),
-        },
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to reject product");
-      }
-
-      toast.success("Product rejected and sent back to scraped stage.");
-      onRefresh(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setRejecting(false);
+      await rejectCurrentProduct();
+    } catch {
+      // rejectCurrentProduct already surfaces the error consistently
     }
   };
 
@@ -559,6 +695,258 @@ export function FinalizingResultsView({
   }, [activeImageSourceOption?.candidates, formData.selectedImages]);
   const isCustomImageSource = activeImageSourceOption?.id === "custom";
 
+  const getCopilotContext = useCallback((): FinalizationCopilotContext | null => {
+    const currentProduct = selectedProductRef.current;
+    if (!currentProduct) {
+      return null;
+    }
+
+    const input =
+      currentProduct.input
+      && typeof currentProduct.input === "object"
+      && !Array.isArray(currentProduct.input)
+        ? (currentProduct.input as Record<string, unknown>)
+        : null;
+
+    const consolidated =
+      currentProduct.consolidated
+      && typeof currentProduct.consolidated === "object"
+      && !Array.isArray(currentProduct.consolidated)
+        ? (currentProduct.consolidated as Record<string, unknown>)
+        : null;
+
+    return {
+      product: {
+        sku: currentProduct.sku,
+        input,
+        consolidated,
+        sources: currentProduct.sources || {},
+        selected_images: currentProduct.selected_images,
+        confidence_score: currentProduct.confidence_score ?? null,
+      },
+      draft: formDataRef.current,
+      savedDraft: savedDraftRef.current,
+    };
+  }, []);
+
+  const handleCopilotSetProductFields = useCallback(
+    async (input: SetProductFieldsInput): Promise<ToolSummary> => {
+      const updatedFields: string[] = [];
+
+      const next = { ...formDataRef.current };
+
+      if (input.name !== undefined) {
+        next.name = input.name.trim();
+        updatedFields.push("name");
+      }
+      if (input.description !== undefined) {
+        next.description = input.description.trim();
+        updatedFields.push("description");
+      }
+      if (input.longDescription !== undefined) {
+        next.longDescription = input.longDescription.trim();
+        updatedFields.push("long description");
+      }
+      if (input.price !== undefined) {
+        next.price = String(input.price);
+        updatedFields.push("price");
+      }
+      if (input.weight !== undefined) {
+        next.weight = input.weight.trim();
+        updatedFields.push("weight");
+      }
+      if (input.stockStatus !== undefined) {
+        next.stockStatus = input.stockStatus;
+        updatedFields.push("stock status");
+      }
+      if (input.availability !== undefined) {
+        next.availability = input.availability.trim();
+        updatedFields.push("availability");
+      }
+      if (input.minimumQuantity !== undefined) {
+        next.minimumQuantity = String(input.minimumQuantity);
+        updatedFields.push("minimum quantity");
+      }
+      if (input.searchKeywords !== undefined) {
+        next.searchKeywords = input.searchKeywords.trim();
+        updatedFields.push("search keywords");
+      }
+      if (input.gtin !== undefined) {
+        next.gtin = input.gtin.trim();
+        updatedFields.push("GTIN");
+      }
+      if (input.isSpecialOrder !== undefined) {
+        next.isSpecialOrder = input.isSpecialOrder;
+        updatedFields.push("special order");
+      }
+
+      setFormData(next);
+
+      return {
+        summary: `Updated ${updatedFields.join(", ")}.`,
+      };
+    },
+    [setFormData],
+  );
+
+  const handleCopilotAssignBrand = useCallback(
+    async ({ brandId, brandName }: AssignBrandInput): Promise<ToolSummary> => {
+      if (
+        brandId !== "none"
+        && !brandsRef.current.some((brand) => brand.id === brandId)
+      ) {
+        throw new Error(
+          `Brand "${brandName}" is not available. Search for the brand first.`,
+        );
+      }
+
+      handleInputChange("brandId", brandId);
+
+      return {
+        summary:
+          brandId === "none"
+            ? "Cleared the brand assignment."
+            : `Assigned the brand to ${brandName}.`,
+      };
+    },
+    [handleInputChange],
+  );
+
+  const handleCopilotCreateBrand = useCallback(
+    async ({ name }: CreateBrandInput): Promise<ToolSummary> => {
+      const brand = await createBrandRecord(name);
+      handleInputChange("brandId", brand.id);
+
+      return {
+        summary: `Created and assigned the brand ${brand.name}.`,
+      };
+    },
+    [createBrandRecord, handleInputChange],
+  );
+
+  const handleCopilotSetStorePages = useCallback(
+    async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
+      const nextPages = normalizeStorePages(pages);
+      if (nextPages.length === 0) {
+        throw new Error("Provide at least one valid ShopSite page.");
+      }
+
+      handleInputChange("productOnPages", nextPages);
+      return {
+        summary: `Set ShopSite pages to ${nextPages.join(", ")}.`,
+      };
+    },
+    [normalizeStorePages, handleInputChange],
+  );
+
+  const handleCopilotAddStorePages = useCallback(
+    async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
+      const nextPages = normalizeStorePages([
+        ...formDataRef.current.productOnPages,
+        ...pages,
+      ]);
+      handleInputChange("productOnPages", nextPages);
+
+      return {
+        summary: `Added ShopSite pages: ${normalizeStorePages(pages).join(", ")}.`,
+      };
+    },
+    [normalizeStorePages, handleInputChange],
+  );
+
+  const handleCopilotRemoveStorePages = useCallback(
+    async ({ pages }: RemoveStorePagesInput): Promise<ToolSummary> => {
+      const pagesToRemove = new Set(
+        normalizeStorePages(pages).map((page) => page.trim()),
+      );
+      const nextPages = formDataRef.current.productOnPages.filter(
+        (page) => !pagesToRemove.has(page),
+      );
+      handleInputChange("productOnPages", nextPages);
+
+      return {
+        summary: `Removed ShopSite pages: ${Array.from(pagesToRemove).join(", ")}.`,
+      };
+    },
+    [normalizeStorePages, handleInputChange],
+  );
+
+  const handleCopilotReplaceSelectedImages = useCallback(
+    async ({ images }: ReplaceSelectedImagesInput): Promise<ToolSummary> => {
+      const nextImages = normalizeSelectedImages(images);
+      if (nextImages.length === 0) {
+        throw new Error("Provide at least one valid image URL.");
+      }
+
+      handleInputChange("selectedImages", nextImages);
+      return {
+        summary: `Replaced the selected image set with ${nextImages.length} images.`,
+      };
+    },
+    [normalizeSelectedImages, handleInputChange],
+  );
+
+  const handleCopilotAddSelectedImages = useCallback(
+    async ({ images }: AddSelectedImagesInput): Promise<ToolSummary> => {
+      const nextImages = normalizeSelectedImages([
+        ...formDataRef.current.selectedImages,
+        ...images,
+      ]);
+      handleInputChange("selectedImages", nextImages);
+
+      return {
+        summary: `Added ${normalizeSelectedImages(images).length} images to the selection.`,
+      };
+    },
+    [normalizeSelectedImages, handleInputChange],
+  );
+
+  const handleCopilotRemoveSelectedImages = useCallback(
+    async ({ images }: RemoveSelectedImagesInput): Promise<ToolSummary> => {
+      const toRemove = new Set(normalizeSelectedImages(images));
+      const nextImages = formDataRef.current.selectedImages.filter(
+        (image) => !toRemove.has(image),
+      );
+      handleInputChange("selectedImages", nextImages);
+
+      return {
+        summary: `Removed ${toRemove.size} images from the selection.`,
+      };
+    },
+    [normalizeSelectedImages, handleInputChange],
+  );
+
+  const handleCopilotRestoreSavedDraft = useCallback(
+    async (): Promise<ToolSummary> => {
+      setFormData(savedDraftRef.current);
+      return {
+        summary: "Restored the draft to the last saved state.",
+      };
+    },
+    [setFormData],
+  );
+
+  const handleCopilotSaveDraft = useCallback(
+    async (): Promise<ToolSummary> => {
+      return persistCurrentDraft({ silent: true });
+    },
+    [persistCurrentDraft],
+  );
+
+  const handleCopilotApproveProduct = useCallback(
+    async (): Promise<ToolSummary> => {
+      return persistCurrentDraft({ andPublish: true, silent: true });
+    },
+    [persistCurrentDraft],
+  );
+
+  const handleCopilotRejectProduct = useCallback(
+    async (): Promise<ToolSummary> => {
+      return rejectCurrentProduct({ silent: true });
+    },
+    [rejectCurrentProduct],
+  );
+
   return (
     <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
@@ -588,64 +976,358 @@ export function FinalizingResultsView({
               saving={saving}
               publishing={publishing}
               rejecting={rejecting}
-              onSave={() => handleSave(false)}
-              onPublish={() => handleSave(true)}
+              onSave={() => {
+                void persistCurrentDraft();
+              }}
+              onPublish={() => {
+                void persistCurrentDraft({ andPublish: true });
+              }}
               onReject={handleReject}
             />
 
             {/* Form Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Core Details */}
-                <div className="space-y-6">
-                  {/* Product Info Group */}
-                  <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Product Info
-                    </h3>
-                    <Separator />
-                  </div>
+            <div className="flex-1 min-h-0 grid xl:grid-cols-[minmax(0,1fr)_24rem]">
+              <div className="overflow-y-auto p-6 space-y-8">
+                <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+                  <div className="space-y-6">
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Product Info
+                      </h3>
+                      <Separator />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="product-name">Product Name</Label>
-                    <Input
-                      id="product-name"
-                      value={formData.name}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                      placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="product-weight">Weight</Label>
+                      <Label htmlFor="product-name">Product Name</Label>
                       <Input
-                        id="product-weight"
-                        value={formData.weight}
-                        onChange={(e) =>
-                          handleInputChange("weight", e.target.value)
-                        }
-                        placeholder="e.g. 30"
+                        id="product-name"
+                        value={formData.name}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
                       />
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="product-brand">Brand</Label>
+                      <Label htmlFor="product-description">Description</Label>
+                      <Textarea
+                        id="product-description"
+                        value={formData.description}
+                        onChange={(e) =>
+                          handleInputChange("description", e.target.value)
+                        }
+                        placeholder="Short storefront description"
+                        className="min-h-28"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="product-long-description">
+                        Long Description
+                      </Label>
+                      <Textarea
+                        id="product-long-description"
+                        value={formData.longDescription}
+                        onChange={(e) =>
+                          handleInputChange("longDescription", e.target.value)
+                        }
+                        placeholder="Extended product copy, feeding notes, ingredients, or selling points"
+                        className="min-h-40"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="product-price">Price</Label>
+                        <Input
+                          id="product-price"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.price}
+                          onChange={(e) =>
+                            handleInputChange("price", e.target.value)
+                          }
+                          placeholder="e.g. 24.99"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="product-weight">Weight (lbs)</Label>
+                        <Input
+                          id="product-weight"
+                          value={formData.weight}
+                          onChange={(e) =>
+                            handleInputChange("weight", e.target.value)
+                          }
+                          placeholder="e.g. 30"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 pt-4">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Merchandising
+                      </h3>
+                      <Separator />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="product-brand">Brand</Label>
+                        <Popover
+                          open={brandPopoverOpen}
+                          onOpenChange={setBrandPopoverOpen}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="product-brand"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={brandPopoverOpen}
+                              className="w-full justify-between font-normal"
+                            >
+                              {formData.brandId === "none"
+                                ? "No Brand"
+                                : brands.find((brand) => brand.id === formData.brandId)
+                                    ?.name || "Select Brand"}
+                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-[var(--radix-popover-trigger-width)] p-0"
+                            align="start"
+                          >
+                            <div className="flex flex-col">
+                              <div className="flex items-center border-b px-3 py-2">
+                                <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                <input
+                                  className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                  placeholder="Search brands..."
+                                  value={brandSearch}
+                                  onChange={(e) => setBrandSearch(e.target.value)}
+                                />
+                              </div>
+                              <div className="max-h-[200px] overflow-y-auto p-1">
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                                    formData.brandId === "none"
+                                      && "bg-accent text-accent-foreground",
+                                  )}
+                                  onClick={() => {
+                                    handleInputChange("brandId", "none");
+                                    setBrandPopoverOpen(false);
+                                    setBrandSearch("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.brandId === "none"
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  No Brand
+                                </button>
+                                {filteredBrands.map((brand) => (
+                                  <button
+                                    type="button"
+                                    key={brand.id}
+                                    className={cn(
+                                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                      formData.brandId === brand.id
+                                        && "bg-accent text-accent-foreground",
+                                    )}
+                                    onClick={() => {
+                                      handleInputChange("brandId", brand.id);
+                                      setBrandPopoverOpen(false);
+                                      setBrandSearch("");
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        formData.brandId === brand.id
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    {brand.name}
+                                  </button>
+                                ))}
+                                {filteredBrands.length === 0 && brandSearch && (
+                                  <div className="p-2 text-xs text-muted-foreground italic">
+                                    No brands found.
+                                  </div>
+                                )}
+                              </div>
+                              {brandSearch.trim()
+                                && !brands.find(
+                                  (brand) =>
+                                    brand.name.toLowerCase()
+                                    === brandSearch.toLowerCase().trim(),
+                                ) && (
+                                  <div className="border-t p-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full justify-start text-xs font-normal"
+                                      onClick={handleCreateBrand}
+                                      disabled={creatingBrand}
+                                    >
+                                      <Plus className="mr-2 h-3 w-3" />
+                                      {creatingBrand
+                                        ? "Creating..."
+                                        : `Create "${brandSearch.trim()}"`}
+                                    </Button>
+                                  </div>
+                                )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="product-stock-status">Stock Status</Label>
+                        <Select
+                          value={formData.stockStatus}
+                          onValueChange={(value) =>
+                            handleInputChange(
+                              "stockStatus",
+                              value as (typeof FINALIZATION_STOCK_STATUS_VALUES)[number],
+                            )
+                          }
+                        >
+                          <SelectTrigger id="product-stock-status" className="w-full">
+                            <SelectValue placeholder="Select stock status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="in_stock">In Stock</SelectItem>
+                            <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                            <SelectItem value="pre_order">Pre-Order</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="product-availability">Availability Text</Label>
+                        <Input
+                          id="product-availability"
+                          value={formData.availability}
+                          onChange={(e) =>
+                            handleInputChange("availability", e.target.value)
+                          }
+                          placeholder="e.g. usually ships in 24 hours"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="product-minimum-quantity">
+                          Minimum Quantity
+                        </Label>
+                        <Input
+                          id="product-minimum-quantity"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={formData.minimumQuantity}
+                          onChange={(e) =>
+                            handleInputChange("minimumQuantity", e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="product-gtin">GTIN / UPC</Label>
+                        <Input
+                          id="product-gtin"
+                          value={formData.gtin}
+                          onChange={(e) =>
+                            handleInputChange("gtin", e.target.value)
+                          }
+                          placeholder="Barcode"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="product-search-keywords">
+                          Search Keywords
+                        </Label>
+                        <Input
+                          id="product-search-keywords"
+                          value={formData.searchKeywords}
+                          onChange={(e) =>
+                            handleInputChange("searchKeywords", e.target.value)
+                          }
+                          placeholder="comma-separated terms"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 pt-4">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Classification
+                      </h3>
+                      <Separator />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Store Pages</Label>
                       <Popover
-                        open={brandPopoverOpen}
-                        onOpenChange={setBrandPopoverOpen}
+                        open={pagePopoverOpen}
+                        onOpenChange={setPagePopoverOpen}
                       >
                         <PopoverTrigger asChild>
                           <Button
-                            id="product-brand"
                             variant="outline"
                             role="combobox"
-                            aria-expanded={brandPopoverOpen}
-                            className="w-full justify-between font-normal"
+                            aria-expanded={pagePopoverOpen}
+                            className="h-auto min-h-[40px] w-full justify-between font-normal"
                           >
-                            {formData.brandId === "none"
-                              ? "No Brand"
-                              : brands.find((b) => b.id === formData.brandId)
-                                  ?.name || "Select Brand"}
+                            <div className="flex flex-wrap gap-1">
+                              {formData.productOnPages.length > 0 ? (
+                                formData.productOnPages.map((page) => (
+                                  <div
+                                    key={page}
+                                    className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
+                                  >
+                                    {page}
+                                    <X
+                                      className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                      onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                      }}
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleInputChange(
+                                          "productOnPages",
+                                          normalizeStorePages(
+                                            formData.productOnPages.filter(
+                                              (entry) => entry !== page,
+                                            ),
+                                          ),
+                                        );
+                                      }}
+                                    />
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  Select Store Pages
+                                </span>
+                              )}
+                            </div>
                             <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -658,224 +1340,63 @@ export function FinalizingResultsView({
                               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                               <input
                                 className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Search brands..."
-                                value={brandSearch}
-                                onChange={(e) => setBrandSearch(e.target.value)}
+                                placeholder="Search pages..."
+                                value={pageSearch}
+                                onChange={(e) => setPageSearch(e.target.value)}
                               />
                             </div>
-                            <div className="max-h-[200px] overflow-y-auto p-1">
-                              <button
-                                type="button"
-                                className={cn(
-                                  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                                  formData.brandId === "none" &&
-                                    "bg-accent text-accent-foreground",
-                                )}
-                                onClick={() => {
-                                  handleInputChange("brandId", "none");
-                                  setBrandPopoverOpen(false);
-                                  setBrandSearch("");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.brandId === "none"
-                                      ? "opacity-100"
-                                      : "opacity-0",
-                                  )}
-                                />
-                                No Brand
-                              </button>
-                              {filteredBrands.map((brand) => (
-                                <button
-                                  type="button"
-                                  key={brand.id}
-                                  className={cn(
-                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                    formData.brandId === brand.id &&
-                                      "bg-accent text-accent-foreground",
-                                  )}
-                                  onClick={() => {
-                                    handleInputChange("brandId", brand.id);
-                                    setBrandPopoverOpen(false);
-                                    setBrandSearch("");
-                                  }}
-                                >
-                                  <Check
+                            <div className="max-h-[300px] overflow-y-auto p-1">
+                              {filteredPages.map((page) => {
+                                const isSelected =
+                                  formData.productOnPages.includes(page);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={page}
                                     className={cn(
-                                      "mr-2 h-4 w-4",
-                                      formData.brandId === brand.id
-                                        ? "opacity-100"
-                                        : "opacity-0",
+                                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                      isSelected
+                                        && "bg-accent text-accent-foreground",
                                     )}
-                                  />
-                                  {brand.name}
-                                </button>
-                              ))}
-                              {filteredBrands.length === 0 && brandSearch && (
-                                <div className="p-2 text-xs text-muted-foreground italic">
-                                  No brands found.
+                                    onClick={() => {
+                                      const pages = isSelected
+                                        ? formData.productOnPages.filter(
+                                            (entry) => entry !== page,
+                                          )
+                                        : [...formData.productOnPages, page];
+                                      handleInputChange(
+                                        "productOnPages",
+                                        normalizeStorePages(pages),
+                                      );
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        isSelected ? "opacity-100" : "opacity-0",
+                                      )}
+                                    />
+                                    {page}
+                                  </button>
+                                );
+                              })}
+                              {filteredPages.length === 0 && (
+                                <div className="p-2 text-center text-xs italic text-muted-foreground">
+                                  No pages found.
                                 </div>
                               )}
                             </div>
-                            {brandSearch.trim() &&
-                              !brands.find(
-                                (b) =>
-                                  b.name.toLowerCase() ===
-                                  brandSearch.toLowerCase().trim(),
-                              ) && (
-                                <div className="border-t p-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="w-full justify-start text-xs font-normal"
-                                    onClick={handleCreateBrand}
-                                    disabled={creatingBrand}
-                                  >
-                                    <Plus className="mr-2 h-3 w-3" />
-                                    {creatingBrand
-                                      ? "Creating..."
-                                      : `Create "${brandSearch.trim()}"`}
-                                  </Button>
-                                </div>
-                              )}
                           </div>
                         </PopoverContent>
                       </Popover>
                     </div>
-                  </div>
 
-
-
-                  {/* Classification Group */}
-                  <div className="space-y-1 pt-4">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Classification
-                    </h3>
-                    <Separator />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Store Pages</Label>
-                    <Popover
-                      open={pagePopoverOpen}
-                      onOpenChange={setPagePopoverOpen}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={pagePopoverOpen}
-                          className="w-full justify-between font-normal min-h-[40px] h-auto"
-                        >
-                          <div className="flex flex-wrap gap-1">
-                            {formData.productOnPages.length > 0 ? (
-                              formData.productOnPages.map((page) => (
-                                <div
-                                  key={page}
-                                  className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1"
-                                >
-                                  {page}
-                                  <X
-                                    className="h-2 w-2 cursor-pointer hover:text-destructive"
-                                    onPointerDown={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                    }}
-                                    onMouseDown={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const pages =
-                                        formData.productOnPages.filter(
-                                          (p) => p !== page,
-                                        );
-                                      handleInputChange(
-                                        "productOnPages",
-                                        pages,
-                                      );
-                                    }}
-                                  />
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground">
-                                Select Store Pages
-                              </span>
-                            )}
-                          </div>
-                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[var(--radix-popover-trigger-width)] p-0"
-                        align="start"
-                      >
-                        <div className="flex flex-col">
-                          <div className="flex items-center border-b px-3 py-2">
-                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                            <input
-                              className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                              placeholder="Search pages..."
-                              value={pageSearch}
-                              onChange={(e) => setPageSearch(e.target.value)}
-                            />
-                          </div>
-                          <div className="max-h-[300px] overflow-y-auto p-1">
-                            {filteredPages.map((page) => {
-                              const isSelected =
-                                formData.productOnPages.includes(page);
-                              return (
-                                <button
-                                  type="button"
-                                  key={page}
-                                  className={cn(
-                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                    isSelected &&
-                                      "bg-accent text-accent-foreground",
-                                  )}
-                                  onClick={() => {
-                                    const pages = isSelected
-                                      ? formData.productOnPages.filter(
-                                          (p) => p !== page,
-                                        )
-                                      : [...formData.productOnPages, page];
-                                    handleInputChange("productOnPages", pages);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      isSelected ? "opacity-100" : "opacity-0",
-                                    )}
-                                  />
-                                  {page}
-                                </button>
-                              );
-                            })}
-                            {filteredPages.length === 0 && (
-                              <div className="p-2 text-xs text-muted-foreground italic text-center">
-                                No pages found.
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Settings Group */}
-                  <div className="space-y-1 pt-4">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Settings
-                    </h3>
-                    <Separator />
-                  </div>
-
-                  <div className="space-y-3">
+                    <div className="space-y-1 pt-4">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Settings
+                      </h3>
+                      <Separator />
+                    </div>
 
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -893,50 +1414,71 @@ export function FinalizingResultsView({
                       </Label>
                     </div>
                   </div>
+
+                  <ImageCarousel
+                    selectedImages={formData.selectedImages}
+                    onToggleImage={toggleImage}
+                    imageSourceOptions={imageSourceOptions}
+                    selectedImageSourceId={selectedImageSourceId}
+                    onSelectImageSource={setSelectedImageSourceId}
+                    isCustomImageSource={isCustomImageSource}
+                    customImageUrl={formData.customImageUrl}
+                    onCustomImageUrlChange={(value) =>
+                      handleInputChange("customImageUrl", value)
+                    }
+                    onAddCustomImage={addCustomImage}
+                    imageCandidates={imageCandidates}
+                    activeSourceLabel={activeImageSourceOption?.label ?? "Image"}
+                  />
                 </div>
 
-                {/* Media Management */}
-                <ImageCarousel
-                  selectedImages={formData.selectedImages}
-                  onToggleImage={toggleImage}
-                  imageSourceOptions={imageSourceOptions}
-                  selectedImageSourceId={selectedImageSourceId}
-                  onSelectImageSource={setSelectedImageSourceId}
-                  isCustomImageSource={isCustomImageSource}
-                  customImageUrl={formData.customImageUrl}
-                  onCustomImageUrlChange={(value) => handleInputChange("customImageUrl", value)}
-                  onAddCustomImage={addCustomImage}
-                  imageCandidates={imageCandidates}
-                  activeSourceLabel={activeImageSourceOption?.label ?? "Image"}
-                />
+                <div className="pt-8">
+                  <Separator className="mb-8" />
+                  <details className="group overflow-hidden rounded-xl border">
+                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/30 list-none">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        View Raw Scraped Data
+                      </div>
+                      <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                    </summary>
+                    <div className="space-y-4 border-t bg-muted/20 p-4">
+                      {Object.entries(selectedProduct.sources || {}).map(
+                        ([source, data]) => (
+                          <div key={source} className="space-y-2">
+                            <div className="text-xs font-bold uppercase text-primary">
+                              {source}
+                            </div>
+                            <pre className="overflow-x-auto rounded border bg-card p-3 text-[10px]">
+                              {JSON.stringify(data, null, 2)}
+                            </pre>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </details>
+                </div>
               </div>
 
-              {/* Source Comparison */}
-              <div className="pt-8">
-                <Separator className="mb-8" />
-                <details className="group border rounded-xl overflow-hidden">
-                  <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 list-none font-bold text-sm uppercase tracking-wider text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      View Raw Scraped Data
-                    </div>
-                    <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                  </summary>
-                  <div className="p-4 bg-muted/20 border-t space-y-4">
-                    {Object.entries(selectedProduct.sources || {}).map(
-                      ([source, data]) => (
-                        <div key={source} className="space-y-2">
-                          <div className="text-xs font-bold text-primary uppercase">
-                            {source}
-                          </div>
-                          <pre className="text-[10px] bg-card p-3 rounded border overflow-x-auto">
-                            {JSON.stringify(data, null, 2)}
-                          </pre>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </details>
+              <div className="border-t xl:border-t-0 xl:border-l">
+                <FinalizationCopilotPanel
+                  key={selectedSku ?? "finalization-copilot-empty"}
+                  productSku={selectedSku}
+                  getContext={getCopilotContext}
+                  onSetProductFields={handleCopilotSetProductFields}
+                  onAssignBrand={handleCopilotAssignBrand}
+                  onCreateBrand={handleCopilotCreateBrand}
+                  onSetStorePages={handleCopilotSetStorePages}
+                  onAddStorePages={handleCopilotAddStorePages}
+                  onRemoveStorePages={handleCopilotRemoveStorePages}
+                  onReplaceSelectedImages={handleCopilotReplaceSelectedImages}
+                  onAddSelectedImages={handleCopilotAddSelectedImages}
+                  onRemoveSelectedImages={handleCopilotRemoveSelectedImages}
+                  onRestoreSavedDraft={handleCopilotRestoreSavedDraft}
+                  onSaveDraft={handleCopilotSaveDraft}
+                  onApproveProduct={handleCopilotApproveProduct}
+                  onRejectProduct={handleCopilotRejectProduct}
+                />
               </div>
             </div>
           </>

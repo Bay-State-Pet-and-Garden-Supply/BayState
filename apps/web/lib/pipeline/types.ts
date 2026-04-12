@@ -102,7 +102,18 @@ export interface PipelineProduct {
   /** Raw imported data */
   input: {
     name?: string;
+    description?: string;
+    long_description?: string;
     price?: number;
+    weight?: string | number;
+    stock_status?: string;
+    product_on_pages?: string[] | string;
+    gtin?: string;
+    availability?: string;
+    minimum_quantity?: number | string;
+    is_special_order?: boolean;
+    search_keywords?: string;
+    brand?: string;
   } | null;
   /** Scraped data from multiple sources keyed by source ID */
   sources: Record<string, unknown>;
@@ -110,10 +121,19 @@ export interface PipelineProduct {
   consolidated: {
     name?: string;
     description?: string;
+    long_description?: string;
     price?: number;
     images?: string[];
     brand_id?: string;
     is_featured?: boolean;
+    weight?: string | number | null;
+    stock_status?: string;
+    product_on_pages?: string[] | string;
+    is_special_order?: boolean;
+    search_keywords?: string;
+    gtin?: string;
+    availability?: string;
+    minimum_quantity?: number | string;
   } | null;
   pipeline_status: PersistedPipelineStatus;
   exported_at?: string | null;
