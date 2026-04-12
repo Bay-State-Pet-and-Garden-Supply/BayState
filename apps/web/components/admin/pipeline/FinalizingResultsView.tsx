@@ -425,28 +425,30 @@ export function FinalizingResultsView({
       if (e.key === "ArrowDown") {
         e.preventDefault();
         const nextIndex = Math.min(currentIndex + 1, sortedProducts.length - 1);
-        setPreferredSku(sortedProducts[nextIndex].sku);
+        void handleSelectProduct(sortedProducts[nextIndex].sku);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         const nextIndex = Math.max(currentIndex - 1, 0);
-        setPreferredSku(sortedProducts[nextIndex].sku);
+        void handleSelectProduct(sortedProducts[nextIndex].sku);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSave, preferredSku, sortedProducts]);
+  }, [handleSave, preferredSku, sortedProducts, handleSelectProduct]);
 
-  // Debounced auto-save
-  useEffect(() => {
-    if (!isDirty || !selectedSku || saving || publishing) return;
+  const handleSelectProduct = useCallback(
+    async (newSku: string | null) => {
+      if (newSku === preferredSku) return;
 
-    const timer = setTimeout(() => {
-      handleSave(false, true);
-    }, 2000); // Auto-save after 2 seconds of inactivity
-
-    return () => clearTimeout(timer);
-  }, [handleSave, isDirty, publishing, saving, selectedSku]);
+      if (isDirty && selectedSku && !saving && !publishing) {
+        // Silent save before switching
+        await handleSave(false, true);
+      }
+      setPreferredSku(newSku);
+    },
+    [isDirty, selectedSku, preferredSku, handleSave, saving, publishing],
+  );
 
   const handleReject = async () => {
     if (!selectedSku) return;
@@ -563,7 +565,7 @@ export function FinalizingResultsView({
       <ProductListSidebar
         products={sortedProducts}
         selectedSku={selectedSku}
-        onSelectProduct={setPreferredSku}
+        onSelectProduct={handleSelectProduct}
         scrollContainerRef={scrollContainerRef}
         search={search}
         onSearchChange={onSearchChange}
