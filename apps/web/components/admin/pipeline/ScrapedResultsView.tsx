@@ -352,7 +352,7 @@ export function ScrapedResultsView({
       <div
         key={product.sku}
         data-sku={product.sku}
-        className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
+        className={`group p-4 cursor-pointer hover:bg-muted/50 transition-colors relative ${
           isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]" : ""
         }`}
         onClick={() => setPreferredSku(product.sku)}
@@ -441,7 +441,7 @@ export function ScrapedResultsView({
   return (
     <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
-      <div className="w-56 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
+      <div className="w-80 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
         <div className="p-3 border-b bg-card flex items-center gap-2">
           <PipelineSearchField
             value={search || ""}
@@ -475,7 +475,7 @@ export function ScrapedResultsView({
                     className="border-b border-border/80"
                   >
                     <div className="flex items-center hover:bg-muted/40 bg-muted/20 pr-1 group">
-                      <div className="pl-3 py-1.5 flex items-center">
+                      <div className="pl-4 py-3 flex items-center">
                         <Checkbox
                           checked={allSelected ? true : someSelected ? "indeterminate" : false}
                           onCheckedChange={(checked) => {
@@ -490,7 +490,7 @@ export function ScrapedResultsView({
                           className="data-[state=checked]:bg-brand-forest-green data-[state=checked]:border-brand-forest-green"
                         />
                       </div>
-                      <AccordionTrigger className="flex-1 px-3 py-1.5 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                      <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
                         <div className="flex items-center gap-2 overflow-hidden">
                           <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
                           <div className="flex items-center gap-1.5 overflow-hidden">

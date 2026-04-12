@@ -68,7 +68,7 @@ export function ProductListSidebar({
       <div
         key={product.sku}
         data-sku={product.sku}
-        className={`group flex items-start p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
+        className={`group flex items-start p-4 cursor-pointer hover:bg-muted/50 transition-colors relative ${
           isFocused
             ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
             : ""
@@ -116,7 +116,7 @@ export function ProductListSidebar({
   };
 
   return (
-    <div className="w-56 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
+    <div className="w-80 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
       <div className="flex items-center gap-2 border-b bg-card p-3">
         <PipelineSearchField
           value={search || ""}
@@ -134,7 +134,7 @@ export function ProductListSidebar({
         ) : null}
       </div>
       <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
-        {groupedProducts && groupedProducts.cohortIds.length > 1 ? (
+        {groupedProducts && (groupedProducts.cohortIds.length > 1 || (groupedProducts.cohortIds.length === 1 && groupedProducts.cohortIds[0] !== "ungrouped")) ? (
           <Accordion type="multiple" className="divide-y divide-border/50">
             {groupedProducts.cohortIds.map((cohortId) => {
               const groupProducts = groupedProducts.groups[cohortId] || [];
@@ -147,7 +147,7 @@ export function ProductListSidebar({
                   className="border-b border-border/80"
                 >
                   <div className="flex items-center hover:bg-muted/40 bg-muted/20 pr-1 group">
-                    <AccordionTrigger className="flex-1 px-3 py-1.5 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                    <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
                         <div className="flex items-center gap-1.5 overflow-hidden">

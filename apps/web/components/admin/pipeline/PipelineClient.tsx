@@ -930,54 +930,7 @@ export function PipelineClient({
   }>;
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
-        <PipelineHeader
-          title="Product Ingestion Pipeline"
-          subtitle="Import, scrape, consolidate, review, and export catalog updates from one consistent admin workspace."
-        />
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="font-semibold">
-            {stageConfig.label}
-          </Badge>
-          <p className="text-sm text-muted-foreground">
-            {currentStageCount.toLocaleString()} product
-            {currentStageCount === 1 ? "" : "s"} currently in this stage.
-          </p>
-        </div>
-        {activeConstraints.length > 0 ? (
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/70 pt-4">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Active filters
-            </span>
-            {activeConstraints.map((constraint) => (
-              <button
-                key={constraint.key}
-                type="button"
-                onClick={constraint.clear}
-                className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2.5 py-1 text-xs text-foreground transition-colors hover:border-brand-forest-green/40 hover:bg-brand-forest-green/5"
-              >
-                <span className="max-w-[18rem] truncate">{constraint.label}</span>
-                <span className="text-muted-foreground">×</span>
-              </button>
-            ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => {
-                setSearch("");
-                setSourceFilter("");
-                setProductLineFilter("");
-                setCohortIdFilter("");
-              }}
-            >
-              Clear all
-            </Button>
-          </div>
-        ) : null}
-      </section>
-
+    <div className="flex h-full flex-col gap-2">
       {/* Stage Tabs & Inline Actions */}
       <StageTabs
         currentStage={currentStage}
@@ -1145,7 +1098,7 @@ export function PipelineClient({
         ) : currentStage === "exporting" ? (
           <div className="space-y-4">
             <ExportWorkspace />
-            {groupedProducts.cohortIds.length <= 1 ? (
+            {(groupedProducts.cohortIds.length <= 1 && (groupedProducts.cohortIds.length === 0 || groupedProducts.cohortIds[0] === "ungrouped")) ? (
               <ProductTable
                 products={filteredProducts}
                 selectedSkus={selectedSkus}
@@ -1251,7 +1204,7 @@ export function PipelineClient({
           </div>
         ) : (
           <div className="space-y-4">
-            {groupedProducts.cohortIds.length <= 1 ? (
+            {(groupedProducts.cohortIds.length <= 1 && (groupedProducts.cohortIds.length === 0 || groupedProducts.cohortIds[0] === "ungrouped")) ? (
               <ProductTable
                 products={filteredProducts}
                 selectedSkus={selectedSkus}
