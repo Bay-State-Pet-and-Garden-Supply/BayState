@@ -1128,56 +1128,63 @@ export function PipelineClient({
                       value={cohortId}
                       className="rounded-lg border border-border bg-card shadow-sm overflow-hidden border-l-4 border-l-brand-forest-green/40"
                     >
-                      <AccordionTrigger className="px-3 py-2 hover:bg-muted/30 hover:no-underline [&[data-state=open]>div>svg]:rotate-90 bg-muted/10">
-                        <div className="flex items-center gap-3">
-                          <ChevronRight className="h-4 w-4 transition-transform duration-200 text-muted-foreground" />
-                          <div className="flex items-center gap-2">
-                            <Layers className="h-3.5 w-3.5 text-brand-forest-green/70" />
-                            <span className="font-bold text-sm uppercase tracking-tight text-foreground/90">
-                              {cohortId === "ungrouped"
-                                ? "Ungrouped Products"
-                                : groupedProducts.names[cohortId] ||
-                                  `Cohort: ${cohortId}`}
-                            </span>
-                            {groupedProducts.brands[cohortId] && (
-                              <Badge
-                                variant="outline"
-                                className="ml-1 text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green"
-                              >
-                                <Tag className="h-3 w-3" />
-                                {groupedProducts.brands[cohortId]}
-                              </Badge>
-                            )}
-                            <Badge
-                              variant="secondary"
-                              className="ml-2 bg-muted text-muted-foreground font-normal"
-                            >
-                              {groupProducts.length} items
-                            </Badge>
-                            {cohortId !== "ungrouped" &&
-                              currentStage === "imported" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="ml-2 h-6 w-6 p-0 text-muted-foreground hover:text-brand-forest-green"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingCohort({
-                                      id: cohortId,
-                                      name:
-                                        groupedProducts.names[cohortId] || null,
-                                      brandName:
-                                        groupedProducts.brands[cohortId] ||
-                                        null,
-                                    });
-                                  }}
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
-                              )}
+                      <div className="flex items-center hover:bg-muted/30 bg-muted/10 pr-2 group">
+                        <AccordionTrigger className="flex-1 px-3 py-2 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <Layers className="h-3.5 w-3.5 shrink-0 text-brand-forest-green/70" />
+                              <span className="font-bold text-sm uppercase tracking-tight text-foreground/90 truncate">
+                                {cohortId === "ungrouped"
+                                  ? "Ungrouped Products"
+                                  : groupedProducts.names[cohortId] ||
+                                    `Cohort: ${cohortId}`}
+                              </span>
+                            </div>
                           </div>
+                        </AccordionTrigger>
+
+                        <div className="flex items-center gap-2 shrink-0 ml-auto pr-2">
+                          {groupedProducts.brands[cohortId] && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green"
+                            >
+                              <Tag className="h-3 w-3" />
+                              {groupedProducts.brands[cohortId]}
+                            </Badge>
+                          )}
+                          <Badge
+                            variant="secondary"
+                            className="bg-muted text-muted-foreground font-normal"
+                          >
+                            {groupProducts.length} items
+                          </Badge>
+                          {cohortId !== "ungrouped" &&
+                            currentStage === "imported" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-brand-forest-green"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setEditingCohort({
+                                    id: cohortId,
+                                    name:
+                                      groupedProducts.names[cohortId] || null,
+                                    brandName:
+                                      groupedProducts.brands[cohortId] ||
+                                      null,
+                                  });
+                                }}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            )}
                         </div>
-                      </AccordionTrigger>
+                      </div>
+
                       <AccordionContent className="pt-0 border-t border-border">
                         <ProductTable
                           products={groupProducts}

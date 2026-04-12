@@ -142,6 +142,28 @@ export type BulkSetProductFieldsInput = z.infer<
   typeof bulkSetProductFieldsInputSchema
 >;
 
+export const bulkTransformProductNamesInputSchema = z
+  .object({
+    scope: finalizationProductScopeSchema,
+    mode: z.enum(["prefix", "suffix", "replace"]),
+    value: z.string().min(1),
+    find: z.string().optional(),
+    skipIfContains: z.string().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode === "replace" && !value.find?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide the text to replace when using replace mode.",
+        path: ["find"],
+      });
+    }
+  });
+
+export type BulkTransformProductNamesInput = z.infer<
+  typeof bulkTransformProductNamesInputSchema
+>;
+
 export const assignBrandInputSchema = z.object({
   brandId: z.string().min(1),
   brandName: z.string().min(1),
@@ -318,8 +340,15 @@ export function createFinalizationCopilotTools(
 
     bulkSetProductFields: tool({
       description:
-        "Apply the same field changes to multiple products in the finalizing workspace. Use previewProductScope first, and only use scope.type='all' when the user explicitly wants every loaded finalizing product changed.",
+        "Apply the same exact final field values to multiple products in the finalizing workspace. Use this only when every targeted product should receive the identical final value. Never use this to rewrite product names based on their current text.",
       inputSchema: bulkSetProductFieldsInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
+    bulkTransformProductNames: tool({
+      description:
+        "Transform current product names relative to their existing text across multiple products. Use this for safe prefix, suffix, or find-and-replace operations such as appending a term only when it is missing, instead of overwriting every name with the same literal value.",
+      inputSchema: bulkTransformProductNamesInputSchema,
       outputSchema: toolSummarySchema,
     }),
 

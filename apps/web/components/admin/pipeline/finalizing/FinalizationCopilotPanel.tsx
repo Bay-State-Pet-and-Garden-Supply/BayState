@@ -16,6 +16,11 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +30,7 @@ import type {
   ApproveProductInput,
   AssignBrandInput,
   BulkAssignBrandInput,
+  BulkTransformProductNamesInput,
   BulkSetProductFieldsInput,
   BulkStorePagesInput,
   CreateBrandInput,
@@ -68,6 +74,7 @@ const TOOL_LABELS: Record<string, string> = {
   searchBrands: "Searching brands",
   setProductFields: "Updating fields",
   bulkSetProductFields: "Updating products",
+  bulkTransformProductNames: "Updating names",
   assignBrand: "Assigning brand",
   bulkAssignBrand: "Assigning brands",
   createBrand: "Creating brand",
@@ -91,8 +98,9 @@ const STARTER_PROMPTS = [
   "Tighten the product title, description, and long description for clarity.",
   "List the products in finalizing, then tell me which ones look risky or incomplete.",
   "Preview a workspace-wide change that updates availability text across all finalizing products.",
-  "Check the scraped sources, assign the best matching brand, and save the selected draft.",
-  "Review the image sources, pick the strongest set of images, and save them.",
+  "Check the scraped sources and assign the best matching brand for the selected draft.",
+  "Append Seed Packet to product names that need it without replacing the rest of the name.",
+  "Review the image sources and stage the strongest set of images for review.",
   "Audit the selected draft for anything risky before approval.",
 ] as const;
 
@@ -147,7 +155,13 @@ interface FinalizationCopilotPanelProps {
   selectedSku: string | null;
   workspaceProductCount: number;
   dirtyProductCount: number;
+  hasPendingCopilotReview: boolean;
+  pendingCopilotReviewCount: number;
+  pendingCopilotSummaries: string[];
+  reviewActionPending: boolean;
   getContext: () => FinalizationCopilotContext;
+  onAcceptPendingCopilotReview: () => Promise<void>;
+  onRejectPendingCopilotReview: () => void;
   onListWorkspaceProducts: (
     input: ListWorkspaceProductsInput,
   ) => Promise<ListWorkspaceProductsOutput>;
@@ -168,6 +182,9 @@ interface FinalizationCopilotPanelProps {
   ) => Promise<ToolSummary>;
   onBulkSetProductFields: (
     input: BulkSetProductFieldsInput,
+  ) => Promise<ToolSummary>;
+  onBulkTransformProductNames: (
+    input: BulkTransformProductNamesInput,
   ) => Promise<ToolSummary>;
   onAssignBrand: (input: AssignBrandInput) => Promise<ToolSummary>;
   onBulkAssignBrand: (input: BulkAssignBrandInput) => Promise<ToolSummary>;
@@ -214,6 +231,7 @@ type ClientToolName =
   | "listImageSources"
   | "setProductFields"
   | "bulkSetProductFields"
+  | "bulkTransformProductNames"
   | "assignBrand"
   | "bulkAssignBrand"
   | "createBrand"
@@ -236,7 +254,13 @@ export function FinalizationCopilotPanel({
   selectedSku,
   workspaceProductCount,
   dirtyProductCount,
+  hasPendingCopilotReview,
+  pendingCopilotReviewCount,
+  pendingCopilotSummaries,
+  reviewActionPending,
   getContext,
+  onAcceptPendingCopilotReview,
+  onRejectPendingCopilotReview,
   onListWorkspaceProducts,
   onPreviewProductScope,
   onGetProductSnapshot,
@@ -244,6 +268,7 @@ export function FinalizationCopilotPanel({
   onListImageSources,
   onSetProductFields,
   onBulkSetProductFields,
+  onBulkTransformProductNames,
   onAssignBrand,
   onBulkAssignBrand,
   onCreateBrand,
@@ -314,6 +339,9 @@ export function FinalizationCopilotPanel({
             break;
           case "bulkSetProductFields":
             addToolError("bulkSetProductFields", errorText);
+            break;
+          case "bulkTransformProductNames":
+            addToolError("bulkTransformProductNames", errorText);
             break;
           case "assignBrand":
             addToolError("assignBrand", errorText);
@@ -437,6 +465,16 @@ export function FinalizationCopilotPanel({
             const output = await onBulkSetProductFields(toolCall.input);
             void addToolOutput({
               tool: "bulkSetProductFields",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "bulkTransformProductNames": {
+            const output = await onBulkTransformProductNames(toolCall.input);
+            void addToolOutput({
+              tool: "bulkTransformProductNames",
               toolCallId: toolCall.toolCallId,
               output,
             });
@@ -627,7 +665,12 @@ export function FinalizationCopilotPanel({
   });
 
   const handleSubmit = () => {
-    if (workspaceProductCount === 0 || !input.trim() || status !== "ready") {
+    if (
+      workspaceProductCount === 0
+      || hasPendingCopilotReview
+      || !input.trim()
+      || status !== "ready"
+    ) {
       return;
     }
 
@@ -886,12 +929,54 @@ export function FinalizationCopilotPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        {hasPendingCopilotReview && (
+          <Alert className="mb-4 border-violet-200 bg-violet-50 text-violet-950">
+            <AlertTitle>Copilot changes are ready for review</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>
+                {pendingCopilotReviewCount} product
+                {pendingCopilotReviewCount === 1 ? "" : "s"} have staged
+                copilot edits. Accept autosaves them; reject restores the
+                previous drafts.
+              </p>
+              <div className="space-y-1">
+                {pendingCopilotSummaries.slice(-3).map((summary) => (
+                  <div key={summary} className="text-xs text-violet-900/80">
+                    - {summary}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    void onAcceptPendingCopilotReview();
+                  }}
+                  disabled={reviewActionPending || status !== "ready"}
+                >
+                  Accept & Autosave
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onRejectPendingCopilotReview}
+                  disabled={reviewActionPending || status !== "ready"}
+                >
+                  Reject
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {messages.length === 0 ? (
           <div className="space-y-4">
             <div className="rounded-xl border border-dashed border-border bg-background px-4 py-5 text-sm text-muted-foreground">
               Ask the copilot to inspect the selected product, preview a scope
-              across finalizing, apply bulk changes, then save or approve only
-              the exact products you intend.
+              across finalizing, and stage changes for review before anything is
+              saved or approved.
             </div>
 
             <div className="grid gap-2">
@@ -901,9 +986,19 @@ export function FinalizationCopilotPanel({
                   type="button"
                   variant="outline"
                   className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm"
-                  disabled={workspaceProductCount === 0 || status !== "ready"}
+                  disabled={
+                    workspaceProductCount === 0
+                    || hasPendingCopilotReview
+                    || status !== "ready"
+                  }
                   onClick={() => {
-                    if (workspaceProductCount === 0 || status !== "ready") return;
+                    if (
+                      workspaceProductCount === 0
+                      || hasPendingCopilotReview
+                      || status !== "ready"
+                    ) {
+                      return;
+                    }
                     sendMessage({ text: prompt });
                   }}
                 >
@@ -984,25 +1079,34 @@ export function FinalizationCopilotPanel({
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder={
-              workspaceProductCount > 0
+              hasPendingCopilotReview
+                ? "Accept or reject the staged copilot changes before sending another request."
+                : workspaceProductCount > 0
                 ? "Ask the copilot about the selected product or a scope across finalizing..."
                 : "No products are loaded in finalizing."
             }
-            disabled={workspaceProductCount === 0 || status !== "ready"}
+            disabled={
+              workspaceProductCount === 0
+              || hasPendingCopilotReview
+              || status !== "ready"
+            }
             className="min-h-28 resize-none"
           />
 
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              The copilot can inspect workspace scope, edit drafts, save,
-              approve, or reject selected or explicitly scoped products.
+              The copilot stages edits for review first. Accept autosaves the
+              staged changes; reject restores the previous drafts.
             </div>
 
             <Button
               type="button"
               onClick={handleSubmit}
               disabled={
-                workspaceProductCount === 0 || !input.trim() || status !== "ready"
+                workspaceProductCount === 0
+                || hasPendingCopilotReview
+                || !input.trim()
+                || status !== "ready"
               }
             >
               <SendHorizonal className="mr-2 h-4 w-4" />
