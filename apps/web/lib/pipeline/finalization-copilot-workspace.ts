@@ -362,7 +362,12 @@ export function applyProductNameTransform(
   const nextValue = input.value.trim();
   const skipIfContains = input.skipIfContains?.trim().toLowerCase();
 
-  if (!currentName || !nextValue) {
+  if (!currentName) {
+    return { draft, changed: false };
+  }
+
+  // Value must be provided for prefix/suffix modes; empty string is only allowed for replace mode
+  if (input.mode !== "replace" && !nextValue) {
     return { draft, changed: false };
   }
 

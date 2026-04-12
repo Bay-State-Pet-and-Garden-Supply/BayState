@@ -146,16 +146,24 @@ export const bulkTransformProductNamesInputSchema = z
   .object({
     scope: finalizationProductScopeSchema,
     mode: z.enum(["prefix", "suffix", "replace"]),
-    value: z.string().min(1),
+    value: z.string(),
     find: z.string().optional(),
     skipIfContains: z.string().optional(),
   })
-  .superRefine((value, ctx) => {
-    if (value.mode === "replace" && !value.find?.trim()) {
+  .superRefine((data, ctx) => {
+    if (data.mode === "replace" && !data.find?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Provide the text to replace when using replace mode.",
         path: ["find"],
+      });
+    }
+
+    if ((data.mode === "prefix" || data.mode === "suffix") && !data.value.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Provide the text to add when using ${data.mode} mode.`,
+        path: ["value"],
       });
     }
   });
