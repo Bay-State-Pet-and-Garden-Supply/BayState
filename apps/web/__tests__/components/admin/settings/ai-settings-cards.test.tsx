@@ -42,7 +42,7 @@ describe('AI settings cards', () => {
     render(<AIScrapingSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Gemini API Key (Finalization Copilot)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Gemini API Key (Optional)')).toBeInTheDocument();
     });
 
     expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
@@ -55,8 +55,11 @@ describe('AI settings cards', () => {
     expect(scrapingModelCombobox).toHaveTextContent('GPT-4o mini');
     fireEvent.click(scrapingModelCombobox);
     expect(screen.getByText('GPT-4o')).toBeInTheDocument();
-    expect(screen.getByText('Gemini Copilot Ready')).toBeInTheDocument();
+    expect(screen.getByText('Gemini Available')).toBeInTheDocument();
     expect(screen.getByText('OpenAI Ready')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Finalization Copilot now use OpenAI/i)
+    ).toBeInTheDocument();
   });
 
   it('renders OpenAI consolidation messaging', async () => {

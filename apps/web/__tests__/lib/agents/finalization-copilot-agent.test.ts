@@ -1,5 +1,5 @@
 jest.mock('@/lib/ai-scraping/credentials', () => ({
-  getAIProviderSecret: jest.fn(),
+  getAIConsolidationRuntimeConfig: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase/server', () => ({
@@ -10,22 +10,17 @@ jest.mock('@/lib/tools/finalization-copilot', () => ({
   createFinalizationCopilotTools: jest.fn(),
 }));
 
-jest.mock('ai', () => {
-  const actual = jest.requireActual('ai');
+jest.mock('@ai-sdk/openai', () => ({
+  createOpenAI: jest.fn(({ apiKey }: { apiKey: string }) =>
+    (modelId: string) => ({
+      apiKey,
+      modelId,
+    })
+  ),
+}));
 
-  return {
-    ...actual,
-    createGateway: jest.fn(({ apiKey }: { apiKey: string }) =>
-      (modelId: string) => ({
-        apiKey,
-        modelId,
-      })
-    ),
-  };
-});
-
-import { createGateway } from 'ai';
-import { getAIProviderSecret } from '@/lib/ai-scraping/credentials';
+import { createOpenAI } from '@ai-sdk/openai';
+import { getAIConsolidationRuntimeConfig } from '@/lib/ai-scraping/credentials';
 import { finalizationCopilotAgent } from '@/lib/agents/finalization-copilot-agent';
 import { createClient } from '@/lib/supabase/server';
 import { EMPTY_FINALIZATION_DRAFT } from '@/lib/pipeline/finalization-draft';
@@ -68,8 +63,16 @@ describe('finalizationCopilotAgent', () => {
     (createFinalizationCopilotTools as jest.Mock).mockReturnValue({});
   });
 
-  it('builds the gateway model with the stored Gemini key', async () => {
-    (getAIProviderSecret as jest.Mock).mockResolvedValue('gemini-live-key');
+  it('builds the OpenAI model with the consolidation runtime config', async () => {
+    (getAIConsolidationRuntimeConfig as jest.Mock).mockResolvedValue({
+      llm_provider: 'openai',
+      llm_model: 'gpt-4o',
+      llm_base_url: null,
+      llm_api_key: 'openai-live-key',
+      openai_api_key: 'openai-live-key',
+      confidence_threshold: 0.7,
+      llm_supports_batch_api: true,
+    });
 
     const prepareCall = (finalizationCopilotAgent as any).settings.prepareCall as (
       options: Record<string, unknown>,
@@ -83,16 +86,24 @@ describe('finalizationCopilotAgent', () => {
       options: context,
     });
 
-    expect(getAIProviderSecret).toHaveBeenCalledWith('gemini');
-    expect(createGateway).toHaveBeenCalledWith({ apiKey: 'gemini-live-key' });
+    expect(getAIConsolidationRuntimeConfig).toHaveBeenCalled();
+    expect(createOpenAI).toHaveBeenCalledWith({ apiKey: 'openai-live-key' });
     expect(result.model).toEqual({
-      apiKey: 'gemini-live-key',
-      modelId: 'google/gemini-3.1-pro-preview',
+      apiKey: 'openai-live-key',
+      modelId: 'gpt-4o',
     });
   });
 
-  it('fails fast when the Gemini key is missing', async () => {
-    (getAIProviderSecret as jest.Mock).mockResolvedValue(null);
+  it('fails fast when the OpenAI key is missing', async () => {
+    (getAIConsolidationRuntimeConfig as jest.Mock).mockResolvedValue({
+      llm_provider: 'openai',
+      llm_model: 'gpt-4o-mini',
+      llm_base_url: null,
+      llm_api_key: null,
+      openai_api_key: undefined,
+      confidence_threshold: 0.7,
+      llm_supports_batch_api: true,
+    });
 
     const prepareCall = (finalizationCopilotAgent as any).settings.prepareCall as (
       options: Record<string, unknown>,
@@ -107,7 +118,7 @@ describe('finalizationCopilotAgent', () => {
         options: context,
       })
     ).rejects.toThrow(
-      'Gemini API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.'
+      'OpenAI API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.'
     );
   });
 });

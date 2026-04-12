@@ -204,7 +204,10 @@ export function AIScrapingSettingsCard() {
           <div>
             <CardTitle>AI Scraping Settings</CardTitle>
             <CardDescription>
-              Configure the shared provider keys used across admin tooling: OpenAI for AI Search and Crawl4AI enrichment, Gemini for Finalization Copilot chat, and Serper for discovery.
+              Configure the shared provider keys used across admin tooling:
+              OpenAI powers AI Search, Crawl4AI enrichment, consolidation, and
+              Finalization Copilot; Serper powers discovery; Gemini remains
+              available for migration and testing workflows.
             </CardDescription>
           </div>
         </div>
@@ -224,9 +227,7 @@ export function AIScrapingSettingsCard() {
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="gemini-api-key">
-                  Gemini API Key (Finalization Copilot)
-                </Label>
+                <Label htmlFor="gemini-api-key">Gemini API Key (Optional)</Label>
                 <Input
                   id="gemini-api-key"
                   type="password"
@@ -237,7 +238,7 @@ export function AIScrapingSettingsCard() {
                 <div className="text-xs text-muted-foreground">
                   {statuses.gemini.configured
                     ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
-                    : "Required for Finalization Copilot chat"}
+                    : "Optional for Gemini migration and testing flows"}
                 </div>
               </div>
 
@@ -253,7 +254,7 @@ export function AIScrapingSettingsCard() {
                 <div className="text-xs text-muted-foreground">
                   {statuses.openai.configured
                     ? `Configured (ending in ${statuses.openai.last4 ?? "****"})`
-                    : "Required for AI scraping"}
+                    : "Required for AI scraping, consolidation, and Finalization Copilot"}
                 </div>
               </div>
 
@@ -347,7 +348,10 @@ export function AIScrapingSettingsCard() {
             </div>
 
             <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
-              Legacy Gemini scraping settings are deprecated. Active scraper jobs now use OpenAI for reasoning and Serper for discovery, while Finalization Copilot uses the Gemini key above for approval-time chat.
+              Legacy Gemini scraping settings are deprecated. Active scraper
+              jobs, consolidation, and Finalization Copilot now use OpenAI,
+              while Serper handles discovery. Keep a Gemini key only if you
+              still need Gemini migration or testing workflows.
             </div>
 
             <div className="flex items-center justify-between border-t pt-4">
@@ -355,7 +359,7 @@ export function AIScrapingSettingsCard() {
                 <Badge
                   variant={statuses.gemini.configured ? "default" : "secondary"}
                 >
-                  Gemini Copilot {statuses.gemini.configured ? "Ready" : "Missing"}
+                  Gemini {statuses.gemini.configured ? "Available" : "Optional"}
                 </Badge>
                 <Badge
                   variant={statuses.openai.configured ? "default" : "secondary"}

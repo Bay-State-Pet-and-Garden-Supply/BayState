@@ -1,11 +1,12 @@
 import {
-  createGateway,
   type InferUITools,
   ToolLoopAgent,
   type UIMessage,
   stepCountIs,
 } from "ai";
-import { getAIProviderSecret } from "@/lib/ai-scraping/credentials";
+import { createOpenAI } from "@ai-sdk/openai";
+import { getAIConsolidationRuntimeConfig } from "@/lib/ai-scraping/credentials";
+import { DEFAULT_AI_MODEL } from "@/lib/ai-scraping/models";
 import { createClient } from "@/lib/supabase/server";
 import {
   type FinalizationCopilotContext,
@@ -16,12 +17,12 @@ import {
   type FinalizationCopilotToolSet,
 } from "@/lib/tools/finalization-copilot";
 
-const FINALIZATION_COPILOT_MODEL = "google/gemini-3.1-pro-preview";
+const FINALIZATION_COPILOT_MODEL = DEFAULT_AI_MODEL;
 const FINALIZATION_COPILOT_MISSING_KEY_ERROR =
-  "Gemini API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.";
+  "OpenAI API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.";
 
-function buildFinalizationCopilotModel(apiKey: string) {
-  return createGateway({ apiKey })(FINALIZATION_COPILOT_MODEL);
+function buildFinalizationCopilotModel(apiKey: string, modelId: string) {
+  return createOpenAI({ apiKey })(modelId);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -76,22 +77,29 @@ Rules:
 }
 
 export const finalizationCopilotAgent = new ToolLoopAgent({
-  model: buildFinalizationCopilotModel("supabase-managed-finalization-copilot"),
+  model: buildFinalizationCopilotModel(
+    "supabase-managed-finalization-copilot",
+    FINALIZATION_COPILOT_MODEL,
+  ),
   callOptionsSchema: finalizationCopilotContextSchema,
   stopWhen: stepCountIs(16),
   instructions:
     "You are Bay State's finalization copilot. Use tools to inspect and update selected products or explicit workspace scopes safely.",
   prepareCall: async ({ options, ...settings }) => {
-    const gatewayApiKey = (await getAIProviderSecret("gemini"))?.trim();
-    if (!gatewayApiKey) {
+    const runtimeConfig = await getAIConsolidationRuntimeConfig();
+    const openaiApiKey = (
+      runtimeConfig.openai_api_key ?? runtimeConfig.llm_api_key
+    )?.trim();
+    if (!openaiApiKey) {
       throw new Error(FINALIZATION_COPILOT_MISSING_KEY_ERROR);
     }
+    const modelId = runtimeConfig.llm_model?.trim() || FINALIZATION_COPILOT_MODEL;
 
     const supabase = await createClient();
 
     return {
       ...settings,
-      model: buildFinalizationCopilotModel(gatewayApiKey),
+      model: buildFinalizationCopilotModel(openaiApiKey, modelId),
       instructions: buildInstructions(options),
       tools: createFinalizationCopilotTools({
         searchBrands: async (query) => {
