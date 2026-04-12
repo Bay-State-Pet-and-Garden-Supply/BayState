@@ -1,128 +1,136 @@
 # Pipeline Documentation
 
-This document describes the current Bay State ingestion pipeline used by the admin workflow in `apps/web`.
+This document describes the current Bay State admin ingestion pipeline in `apps/web`.
 
 ## Overview
 
-The pipeline separates **persisted ingestion statuses** from **UI workflow stages**:
-
-| Kind | Values | Purpose |
-|------|--------|---------|
-| Persisted statuses | `imported`, `scraped`, `finalized`, `failed` | Durable state stored in `products_ingestion.pipeline_status` |
-| UI stages | `imported`, `scraping`, `scraped`, `consolidating`, `finalized`, `export`, `failed` | Admin tabs shown in the pipeline UI |
-
-The key rule is:
-
-- **`finalized`** is the explicit review state.
-- **`export`** is a derived workflow tab for finalized products that already exist in the storefront `products` table.
-- **`scraping`** and **`consolidating`** are derived UI stages based on active jobs, not stored statuses.
-
-Legacy `stage=finalizing` links are normalized to `finalized`, and legacy `stage=published` links are normalized to `export`.
-
-## Lifecycle
-
-### 1. Imported
-
-Products enter the pipeline as `imported`.
-
-### 2. Scraping / Scraped
-
-When a product has an active scrape job, the UI shows it in `scraping`.
-
-After scrape results are written and no scrape job is active, the persisted status remains `scraped` and the UI shows `scraped`.
-
-### 3. Consolidating / Finalized
-
-AI consolidation works against `scraped` products. While a consolidation batch is active, the UI shows `consolidating`.
-
-When consolidation is complete, the product moves to persisted status `finalized`. This is the manual review and approval queue.
-
-### 4. Export
-
-Publishing to the storefront does **not** create a new ingestion status.
-
-When `/api/admin/pipeline/publish` succeeds, the product is synced into the storefront `products` table and the ingestion row remains `finalized`.
-
-The admin UI then derives the product into the `export` tab based on storefront presence (`products.sku` with `published_at IS NOT NULL`), so it leaves the `finalized` review queue without introducing a separate persisted pipeline status.
-
-### 5. Failed
-
-Failed products remain in persisted status `failed` until retried or corrected.
-
-## Transition Rules
-
-Canonical persisted transitions:
-
-- `imported -> scraped`
-- `scraped -> finalized`
-- `scraped -> imported`
-- `finalized -> scraped`
-- `failed -> imported`
-
-Same-status writes are allowed for idempotency.
-
-Direct writes to `published` are intentionally blocked because `published` is no longer a valid persisted pipeline status.
-
-## Admin UI Model
-
-The admin pipeline page uses the following tabs:
+The pipeline now uses a **single canonical workflow model**. `products_ingestion.pipeline_status` and the admin UI tabs use the same states:
 
 1. `imported`
 2. `scraping`
 3. `scraped`
 4. `consolidating`
-5. `finalized`
-6. `export`
+5. `finalizing`
+6. `exporting`
 7. `failed`
 
-Hydration rules:
+There is no persisted `published` or `finalized` status anymore. Completed exports stay in `products_ingestion` for audit, but leave active pipeline views by setting `exported_at`.
 
-- `imported`, `scraped`, and `failed` load directly from `products_ingestion.pipeline_status`
-- `finalized` loads finalized ingestion rows that are **not** yet present in the storefront
-- `export` loads finalized ingestion rows that **are** already present in the storefront
-- `scraping` and `consolidating` are derived from active scrape/consolidation work
+## Workflow
 
-## Publishing Rules
+### 1. Imported
 
-These routes reject direct attempts to set `published` as a pipeline status:
+Products enter the pipeline as `imported`.
 
-- `PATCH /api/admin/pipeline/[sku]`
-- `POST /api/admin/pipeline`
-- `POST /api/admin/pipeline/bulk`
-- `POST /api/admin/pipeline/transition`
+### 2. Scraping
 
-Use:
+Submitting scrape work moves products into `scraping`.
+
+When scrape work completes successfully, products move to `scraped`. Failed scrape jobs move still-scraping products to `failed`.
+
+### 3. Consolidating
+
+Submitting AI consolidation work moves products into `consolidating`.
+
+When consolidation results are applied successfully, products move to `finalizing`.
+
+### 4. Finalizing
+
+`finalizing` is the manual review and approval workspace.
+
+This is where staff confirm the consolidated record, make final edits, and approve the product for export workflows.
+
+### 5. Exporting
+
+Publishing from `finalizing` syncs the product into the storefront `products` table **and** moves the ingestion row into `exporting`.
+
+`exporting` is the multiselect export queue. ShopSite upload/export actions operate from this stage.
+
+When the terminal downstream export succeeds, the row stays in `products_ingestion` but gets `exported_at` set so it disappears from active pipeline tabs.
+
+### 6. Failed
+
+Failed products remain in `failed` until retried or manually corrected.
+
+## Transition Rules
+
+Canonical transitions:
+
+- `imported -> scraping`
+- `scraping -> scraped | failed | imported`
+- `scraped -> consolidating | finalizing | imported | failed`
+- `consolidating -> finalizing | scraped | failed`
+- `finalizing -> exporting | scraped | failed`
+- `exporting -> finalizing | failed`
+- `failed -> imported`
+
+Same-state writes are allowed for idempotency.
+
+Legacy `published` writes are blocked. Legacy stage aliases are normalized at the route boundary:
+
+- `finalized -> finalizing`
+- `export -> exporting`
+- `published -> exporting`
+
+## Admin UI Model
+
+The admin pipeline tabs match the stored workflow exactly:
+
+1. `imported`
+2. `scraping`
+3. `scraped`
+4. `consolidating`
+5. `finalizing`
+6. `exporting`
+7. `failed`
+
+Special behavior:
+
+- `scraping` and `consolidating` now have real persisted counts instead of derived zero placeholders.
+- `finalizing` remains the single-item review workspace.
+- `exporting` is the dedicated multiselect export workspace.
+
+## Publishing and Exporting
+
+### Publish to storefront
 
 - `POST /api/admin/pipeline/publish`
+- Requires the product to be in `finalizing`
+- Creates or updates the storefront `products` row
+- Moves the ingestion row to `exporting`
 
-Publish and re-publish operations must originate from finalized products. The storefront row is the durable publication record.
+### Active export queue
 
-## Export Behavior
+- `loadStorefrontShopSiteExport()` reads directly from `products_ingestion`
+- Only rows with `pipeline_status = 'exporting'` and `exported_at IS NULL` are included
 
-ShopSite export data is sourced from the derived export queue.
+### Terminal export completion
 
-- `loadStorefrontShopSiteExport()` reads `pipeline_export_queue`
-- `pipeline_export_queue` contains finalized ingestion rows that already exist in the storefront
-- `products_published` projects those export-queue rows into the storefront-ready shape used by downstream export workflows
-
-This keeps exports aligned with actual storefront presence instead of duplicating publication state in `products_ingestion.pipeline_status`.
+- `POST /api/admin/pipeline/upload-shopsite`
+- On success, marks selected/exported rows with `exported_at`
+- Exported rows leave active pipeline views but remain queryable for audit/history
 
 ## Key Endpoints
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/admin/pipeline` | `GET` | List pipeline products by workflow stage or persisted status |
-| `/api/admin/pipeline/counts` | `GET` | Get status counts for pipeline tabs |
+| `/api/admin/pipeline` | `GET` | List products by canonical workflow stage or persisted status |
+| `/api/admin/pipeline/counts` | `GET` | Return counts for all workflow states |
 | `/api/admin/pipeline/[sku]` | `GET` | Load a single pipeline product |
-| `/api/admin/pipeline/[sku]` | `PATCH` | Update pipeline product data |
-| `/api/admin/pipeline/bulk` | `POST` | Bulk persisted-status updates except invalid legacy `published` writes |
-| `/api/admin/pipeline/transition` | `POST` | Transition persisted statuses |
-| `/api/admin/pipeline/publish` | `POST` | Publish finalized products to the storefront `products` table |
+| `/api/admin/pipeline/[sku]` | `PATCH` | Update pipeline product data or workflow status |
+| `/api/admin/pipeline/bulk` | `POST` | Bulk workflow-state updates |
+| `/api/admin/pipeline/transition` | `POST` | Transition a product between valid workflow states |
+| `/api/admin/pipeline/publish` | `POST` | Approve a finalizing product and move it into exporting |
+| `/api/admin/pipeline/export` | `GET` | Download an XLSX export for a workflow status |
+| `/api/admin/pipeline/export-xml` | `GET` | Download ShopSite XML for the active exporting queue |
+| `/api/admin/pipeline/export-zip` | `GET` | Download ShopSite ZIP assets for the active exporting queue |
+| `/api/admin/pipeline/upload-shopsite` | `POST` | Complete terminal ShopSite upload and retire exported rows from active views |
 
 ## Database Notes
 
-`products_ingestion.pipeline_status` is the source of truth for ingestion lifecycle state.
-
-`pipeline_finalized_review` and `pipeline_export_queue` are derived views that split finalized ingestion rows by storefront presence.
-
-`products_published` remains the convenience storefront-export view, but it is now sourced from `pipeline_export_queue` rather than a persisted `published` ingestion status.
+- `products_ingestion.pipeline_status` is the source of truth for workflow state.
+- `products_ingestion.exported_at` records terminal export completion.
+- `pipeline_finalizing_queue` exposes active `finalizing` rows.
+- `pipeline_finalized_review` is now a compatibility alias for `pipeline_finalizing_queue`.
+- `pipeline_export_queue` exposes active `exporting` rows where `exported_at IS NULL`.
+- `products_published` is a legacy compatibility view over completed exported rows retained in ingestion audit history.

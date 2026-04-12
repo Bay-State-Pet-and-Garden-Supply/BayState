@@ -478,8 +478,8 @@ export function PipelineClient({
 
   // Select ALL matching (including beyond visible page) via API
   const handleSelectAll = async () => {
-    if (currentStage === "finalized") {
-      // Finalizing should not support select-all behavior; enforce one-by-one in UI.
+    if (currentStage === "finalizing") {
+      // Finalizing stays one-at-a-time; multiselect belongs to exporting.
       return;
     }
 
@@ -947,7 +947,7 @@ export function PipelineClient({
                 </Button>
               </>
             )}
-            {currentStage === "export" && (
+            {currentStage === "exporting" && (
               <>
                 <Button
                   variant="outline"
@@ -1073,10 +1073,9 @@ export function PipelineClient({
                 : undefined
             }
           />
-        ) : currentStage === "finalized" || currentStage === "export" ? (
+        ) : currentStage === "finalizing" ? (
           <FinalizingResultsView
             products={filteredProducts}
-            isExportStage={currentStage === "export"}
             onRefresh={refreshAll}
             search={search}
             onSearchChange={(value) => setSearch(value)}
@@ -1277,9 +1276,9 @@ export function PipelineClient({
 
       {/* Floating Bulk Actions Bar */}
       {!isLiveOperationalTab(currentStage) && (
-        <FloatingActionsBar
-          selectedCount={selectedSkus.size}
-          totalCount={totalCount}
+          <FloatingActionsBar
+            selectedCount={selectedSkus.size}
+            totalCount={totalCount}
           currentStage={currentStage}
           isLoading={isLoading}
           onClearSelection={handleClearSelection}
@@ -1290,15 +1289,15 @@ export function PipelineClient({
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onDelete={handleDelete}
           actionState={
-            currentStage === "export" ? exportActionState : null
+            currentStage === "exporting" ? exportActionState : null
           }
           onUploadShopSite={
-            currentStage === "export"
+            currentStage === "exporting"
               ? handleUploadSelectedShopSite
               : undefined
           }
           onDownloadZip={
-            currentStage === "export" ? handleDownloadSelectedZip : undefined
+            currentStage === "exporting" ? handleDownloadSelectedZip : undefined
           }
         />
       )}

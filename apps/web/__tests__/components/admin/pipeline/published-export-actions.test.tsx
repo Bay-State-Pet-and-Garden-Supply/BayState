@@ -62,8 +62,8 @@ const counts: StatusCount[] = [
     { status: 'scraping', count: 0 },
     { status: 'scraped', count: 0 },
     { status: 'consolidating', count: 0 },
-    { status: 'finalized', count: 0 },
-    { status: 'export', count: 2 },
+    { status: 'finalizing', count: 0 },
+    { status: 'exporting', count: 2 },
     { status: 'failed', count: 0 },
 ];
 
@@ -71,7 +71,7 @@ describe('export tab actions', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSearchParamsToString.mockReturnValue('');
-        mockSearchParamGet.mockImplementation((key: string) => key === 'stage' ? 'export' : null);
+        mockSearchParamGet.mockImplementation((key: string) => key === 'stage' ? 'exporting' : null);
         mockFetch.mockImplementation((input: RequestInfo | URL) => {
             const url = String(input);
 
@@ -101,13 +101,13 @@ describe('export tab actions', () => {
         HTMLAnchorElement.prototype.click = jest.fn();
     });
 
-    it('renders export-stage inline actions when nothing is selected', async () => {
+    it('renders exporting-stage inline actions when nothing is selected', async () => {
         render(
             <PipelineClient
                 initialCounts={counts}
                 initialProducts={[]}
                 initialTotal={2}
-                initialStage="export"
+                initialStage="exporting"
                 initialSources={[]}
             />,
         );
@@ -126,16 +126,16 @@ describe('export tab actions', () => {
         });
     });
 
-    it('renders selected export actions in the export floating action bar', () => {
+    it('renders selected export actions in the exporting floating action bar', () => {
         const onUploadShopSite = jest.fn();
         const onDownloadZip = jest.fn();
 
         render(
-            <FloatingActionsBar
-                selectedCount={3}
-                totalCount={12}
-                currentStage="export"
-                isLoading={false}
+                <FloatingActionsBar
+                    selectedCount={3}
+                    totalCount={12}
+                    currentStage="exporting"
+                    isLoading={false}
                 onClearSelection={() => {}}
                 onSelectAll={() => {}}
                 onBulkAction={() => {}}

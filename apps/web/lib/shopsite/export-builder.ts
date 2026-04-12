@@ -287,18 +287,20 @@ export async function loadStorefrontShopSiteExport(
         const from = page * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        let publishedQuery = supabase
-            .from('pipeline_export_queue')
+        let exportQueueQuery = supabase
+            .from('products_ingestion')
             .select('sku, input, consolidated, selected_images')
+            .eq('pipeline_status', 'exporting')
+            .is('exported_at', null)
             .order('sku', { ascending: true });
 
         if (requestedSkus.length > 0) {
-            publishedQuery = publishedQuery.in('sku', requestedSkus);
+            exportQueueQuery = exportQueueQuery.in('sku', requestedSkus);
         }
 
-        const { data, error } = await publishedQuery.range(from, to);
+        const { data, error } = await exportQueueQuery.range(from, to);
         if (error) {
-            throw new Error(`Failed to load published products: ${error.message}`);
+            throw new Error(`Failed to load export queue products: ${error.message}`);
         }
 
         const batch = (data ?? []) as ShopSiteExportSourceRow[];

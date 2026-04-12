@@ -940,7 +940,7 @@ async function markProductsAsConsolidating(skus: string[]): Promise<void> {
         const { error } = await supabase
             .from('products_ingestion')
             .update({
-                pipeline_status: 'finalized',
+                pipeline_status: 'consolidating',
                 updated_at: new Date().toISOString(),
             })
             .in('sku', skus);
@@ -1141,7 +1141,7 @@ export async function submitBatch(
             metadata: stringMetadata,
         });
 
-        // NEW: Mark products as finalized/consolidating immediately after submission
+        // Move products into the explicit consolidating workflow state immediately after submission.
         const skus = products.map((p) => p.sku);
         await markProductsAsConsolidating(skus);
 
@@ -1849,7 +1849,7 @@ export async function applyConsolidationResults(
             updateRows.push({
                 sku: result.sku,
                 next_fields: nextFields,
-                pipeline_status: 'finalized',
+                pipeline_status: 'finalizing',
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
                 outcome: 'finalized',

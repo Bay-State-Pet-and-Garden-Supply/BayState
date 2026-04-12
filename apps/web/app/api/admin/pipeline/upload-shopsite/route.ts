@@ -4,6 +4,7 @@ import { ShopSiteClient } from '@/lib/admin/migration/shopsite-client';
 import { getStoredShopSiteConfig } from '@/lib/admin/shopsite-settings';
 import { loadStorefrontShopSiteExport } from '@/lib/shopsite/export-builder';
 import { buildShopSiteNewProductTag, generateShopSiteXml } from '@/lib/shopsite/xml-generator';
+import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -72,6 +73,22 @@ export async function POST(request: NextRequest) {
                 index: true,
             },
         });
+
+        const exportedAt = new Date().toISOString();
+        const supabase = await createClient();
+        const uploadedSkus = products.map((product) => product.sku);
+        const { error: statusError } = await supabase
+            .from('products_ingestion')
+            .update({
+                exported_at: exportedAt,
+                updated_at: exportedAt,
+            })
+            .in('sku', uploadedSkus)
+            .eq('pipeline_status', 'exporting');
+
+        if (statusError) {
+            throw new Error(`ShopSite upload succeeded, but failed to retire exported products from the active pipeline: ${statusError.message}`);
+        }
 
         return NextResponse.json({
             success: true,

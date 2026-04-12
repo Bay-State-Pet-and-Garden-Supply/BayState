@@ -27,10 +27,12 @@ const mockProduct = {
 
 const mockCounts = [
   { status: 'imported', count: 10 },
+  { status: 'scraping', count: 4 },
   { status: 'scraped', count: 5 },
-  { status: 'finalized', count: 2 },
+  { status: 'consolidating', count: 1 },
+  { status: 'finalizing', count: 2 },
   { status: 'failed', count: 1 },
-  { status: 'published', count: 3 },
+  { status: 'exporting', count: 3 },
 ];
 
 describe('Pipeline Accessibility', () => {
@@ -103,8 +105,8 @@ describe('Pipeline Accessibility', () => {
       expect(screen.getAllByRole('tab', { name: /Imported/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Scraping/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Scraped/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Finalized/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Export/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Finalizing/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Exporting/i }).length).toBeGreaterThan(0);
     });
   });
 

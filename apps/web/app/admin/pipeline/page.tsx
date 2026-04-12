@@ -6,7 +6,7 @@ import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline
 
 export const metadata: Metadata = {
     title: 'Pipeline | Admin | Bay State Pet & Garden',
-    description: 'Manage product ingestion pipeline - import, scrape, consolidate, and publish products.',
+    description: 'Manage product ingestion workflow from import through exporting.',
     robots: {
         index: false,
         follow: false,
@@ -17,13 +17,10 @@ interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-type StageWithProducts = Extract<
-    PipelineStage,
-    'imported' | 'scraped' | 'finalized' | 'export' | 'failed'
->;
+type StageWithProducts = PipelineStage;
 
 function isStageWithProducts(stage: PipelineStage): stage is StageWithProducts {
-    return ['imported', 'scraped', 'finalized', 'export', 'failed'].includes(stage);
+    return Boolean(stage);
 }
 
 export default async function PipelinePage({ searchParams }: PageProps) {

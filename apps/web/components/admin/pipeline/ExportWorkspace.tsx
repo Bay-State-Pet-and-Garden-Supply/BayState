@@ -21,7 +21,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { Spinner } from '@/components/ui/spinner';
 
-type ExportStatus = 'imported' | 'scraped' | 'finalized' | 'all';
+type ExportStatus = 'finalizing' | 'exporting' | 'all';
 
 interface StatusCount {
   status: string;
@@ -35,14 +35,13 @@ interface ExportResult {
 }
 
 const STATUS_LABELS: Record<ExportStatus, string> = {
-  imported: 'Imported',
-  scraped: 'Scraped',
-  finalized: 'Finalized',
+  finalizing: 'Finalizing',
+  exporting: 'Exporting',
   all: 'All Products',
 };
 
 export function ExportWorkspace() {
-  const [selectedStatus, setSelectedStatus] = useState<ExportStatus>('finalized');
+  const [selectedStatus, setSelectedStatus] = useState<ExportStatus>('exporting');
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -238,14 +237,14 @@ export function ExportWorkspace() {
           Export Products
         </CardTitle>
         <CardDescription>
-          Export products as Excel spreadsheets, ShopSite XML, or image manifests
+          Work the export queue and download Excel, ShopSite XML, ZIP packages, or image manifests
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Status Filter */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-muted-foreground">
-            Filter by Status
+             Filter by Workflow Stage
           </label>
           <Select
             value={selectedStatus}
@@ -258,9 +257,8 @@ export function ExportWorkspace() {
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="finalized">Finalized</SelectItem>
-              <SelectItem value="scraped">Scraped</SelectItem>
-              <SelectItem value="imported">Imported</SelectItem>
+              <SelectItem value="exporting">Exporting</SelectItem>
+              <SelectItem value="finalizing">Finalizing</SelectItem>
               <SelectItem value="all">All Products</SelectItem>
             </SelectContent>
           </Select>
@@ -281,9 +279,9 @@ export function ExportWorkspace() {
             <Package className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">
               <span className="font-semibold text-foreground">{currentCount.toLocaleString()}</span>
-              {' products ready for export in '}
+              {' active products in '}
               <span className="font-medium">{STATUS_LABELS[selectedStatus].toLowerCase()}</span>
-              {' status'}
+              {' stage'}
             </span>
           </div>
         )}
@@ -293,7 +291,7 @@ export function ExportWorkspace() {
           <EmptyState
             icon={Package}
             title="No Products Found"
-            description={`No products found in ${STATUS_LABELS[selectedStatus].toLowerCase()} status. Try selecting a different status filter.`}
+            description={`No products found in ${STATUS_LABELS[selectedStatus].toLowerCase()} stage. Try selecting a different filter.`}
             actionLabel="Refresh Counts"
             onAction={fetchCounts}
           />

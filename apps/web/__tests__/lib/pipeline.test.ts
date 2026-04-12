@@ -27,6 +27,7 @@ describe('getProductsByStatus source filter', () => {
         queryBuilder.filter = jest.fn().mockReturnValue(queryBuilder);
         queryBuilder.contains = jest.fn().mockReturnValue(queryBuilder);
         queryBuilder.order = jest.fn().mockReturnValue(queryBuilder);
+        queryBuilder.is = jest.fn().mockReturnValue(queryBuilder);
         queryBuilder.limit = jest.fn().mockReturnValue(queryBuilder);
         queryBuilder.range = jest.fn().mockReturnValue(queryBuilder);
 
@@ -109,13 +110,13 @@ describe('getProductsByStatus source filter', () => {
     });
 
     it('works with date range filters combined with source', async () => {
-        await getProductsByStatus('finalized', {
+        await getProductsByStatus('finalizing', {
             source: 'scraper-v2',
             startDate: '2024-01-01',
             endDate: '2024-12-31',
         });
 
-        expect(mockSupabase._queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'finalized');
+        expect(mockSupabase._queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'finalizing');
         expect(mockSupabase._queryBuilder.filter).toHaveBeenCalledWith(
             'sources',
             '?',

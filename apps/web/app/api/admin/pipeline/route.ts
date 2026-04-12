@@ -21,13 +21,10 @@ const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
     status => `'${status}'`
 ).join(', ');
 
-type StageWithProducts = Extract<
-    PipelineStage,
-    'imported' | 'scraped' | 'finalized' | 'export' | 'failed'
->;
+type StageWithProducts = PipelineStage;
 
 function isStageWithProducts(stage: PipelineStage): stage is StageWithProducts {
-    return ['imported', 'scraped', 'finalized', 'export', 'failed'].includes(stage);
+    return Boolean(stage);
 }
 
 export async function GET(request: NextRequest) {
@@ -187,7 +184,7 @@ export async function POST(request: NextRequest) {
         if (newStatus === 'published') {
             return NextResponse.json(
                 {
-                    error: 'Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.',
+                    error: 'Published is no longer a workflow state. Use finalizing/exporting instead.',
                 },
                 { status: 400 }
             );

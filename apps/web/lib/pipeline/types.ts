@@ -1,13 +1,16 @@
 /**
  * Pipeline types
- * Distinguishes persisted ingestion statuses from admin workflow stages.
+ * The durable workflow states are the same states shown in the admin UI.
  */
 
-/** Canonical statuses persisted in products_ingestion.pipeline_status. */
+/** Canonical workflow states persisted in products_ingestion.pipeline_status. */
 export const PERSISTED_PIPELINE_STATUSES = [
   "imported",
+  "scraping",
   "scraped",
-  "finalized",
+  "consolidating",
+  "finalizing",
+  "exporting",
   "failed",
 ] as const;
 
@@ -15,25 +18,13 @@ export type PersistedPipelineStatus =
   (typeof PERSISTED_PIPELINE_STATUSES)[number];
 
 /** Main admin workflow tabs shown in the live pipeline UI. */
-export const PIPELINE_TABS = [
-  "imported",
-  "scraping",
-  "scraped",
-  "consolidating",
-  "finalized",
-  "export",
-  "failed",
-] as const;
+export const PIPELINE_TABS = PERSISTED_PIPELINE_STATUSES;
 
 export type PipelineStage = (typeof PIPELINE_TABS)[number];
 export type PipelineTab = PipelineStage;
 
-/** Tabs that are derived from persisted status plus active work or publish state. */
-export const DERIVED_PIPELINE_TABS = [
-  "scraping",
-  "consolidating",
-  "export",
-] as const;
+/** No pipeline tabs are derived; the workflow vocabulary is canonical everywhere. */
+export const DERIVED_PIPELINE_TABS = [] as const;
 
 export type DerivedPipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
 
@@ -41,7 +32,7 @@ export type DerivedPipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
 export type PipelineStatus = PersistedPipelineStatus;
 
 /** Displayable status or stage labels used by shared UI primitives. */
-export type PipelineDisplayStatus = PersistedPipelineStatus | PipelineStage;
+export type PipelineDisplayStatus = PersistedPipelineStatus;
 
 const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
   PERSISTED_PIPELINE_STATUSES,
@@ -50,8 +41,9 @@ const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
 const DERIVED_PIPELINE_TAB_SET = new Set<string>(DERIVED_PIPELINE_TABS);
 const PIPELINE_STAGE_SET = new Set<string>(PIPELINE_TABS);
 const LEGACY_PIPELINE_STAGE_ALIASES = {
-  finalizing: "finalized",
-  published: "export",
+  finalized: "finalizing",
+  export: "exporting",
+  published: "exporting",
 } as const;
 
 export function isPersistedStatus(
@@ -86,24 +78,9 @@ export function normalizePipelineStage(
   );
 }
 
-/**
- * Returns the persisted status needed to hydrate a route stage, if any.
- */
-export function getStageDataStatus(
-  stage: PipelineStage,
-): PersistedPipelineStatus | null {
-  switch (stage) {
-    case "imported":
-      return "imported";
-    case "scraped":
-      return "scraped";
-    case "finalized":
-      return "finalized";
-    case "failed":
-      return "failed";
-    default:
-      return null;
-  }
+/** Returns the persisted workflow state for a route stage. */
+export function getStageDataStatus(stage: PipelineStage): PersistedPipelineStatus {
+  return stage;
 }
 
 /**
@@ -116,7 +93,7 @@ export interface SelectedImage {
 
 /**
  * Product in the ingestion pipeline
- * Represents the full lifecycle of a product from import to publication
+ * Represents the full lifecycle of a product from import to export
  */
 export interface PipelineProduct {
   id?: string;
@@ -139,6 +116,7 @@ export interface PipelineProduct {
     is_featured?: boolean;
   } | null;
   pipeline_status: PersistedPipelineStatus;
+  exported_at?: string | null;
   /** Image URLs from scraping */
   image_candidates?: string[];
   /** Selected images with metadata */
@@ -199,7 +177,7 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   },
   scraping: {
     label: "Scraping",
-    color: "#3B82F6",
+    color: "#2563EB",
     description: "Products currently assigned to active scraper jobs",
   },
   scraped: {
@@ -212,15 +190,15 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
     color: "#8B5CF6",
     description: "Products in active AI consolidation batches",
   },
-  finalized: {
-    label: "Finalized",
+  finalizing: {
+    label: "Finalizing",
     color: "#F59E0B",
-    description: "Products ready for final review and storefront publishing",
+    description: "Products awaiting final review before they move into export work",
   },
-  export: {
-    label: "Export",
+  exporting: {
+    label: "Exporting",
     color: "#008850",
-    description: "Products already in the storefront and ready for downstream export workflows",
+    description: "Approved products queued for downstream export workflows",
   },
   failed: {
     label: "Failed",

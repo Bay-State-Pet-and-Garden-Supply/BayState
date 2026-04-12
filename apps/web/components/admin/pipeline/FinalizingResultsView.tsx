@@ -41,7 +41,6 @@ import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
-  isExportStage?: boolean;
   onRefresh: (silent?: boolean) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -61,7 +60,6 @@ interface Brand {
 
 export function FinalizingResultsView({
   products,
-  isExportStage = false,
   onRefresh,
   search,
   onSearchChange,
@@ -162,7 +160,6 @@ export function FinalizingResultsView({
   );
 
   const selectedSku = selectedProduct?.sku ?? null;
-  const isSelectedProductInStorefront = isExportStage;
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
@@ -171,7 +168,7 @@ export function FinalizingResultsView({
     if (prevProducts !== sortedProducts) {
       const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
       if (!currentExists && preferredSku) {
-        // Current SKU was removed (for example, published to storefront or rejected).
+        // Current SKU was removed (for example, moved into exporting or rejected).
         // Find where it was in the PREVIOUS list.
         const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
         if (prevIndex !== -1) {
@@ -360,7 +357,7 @@ export function FinalizingResultsView({
       setIsDirty(false);
 
       if (andPublish) {
-        // 2. Trigger publishing to storefront
+        // 2. Move the reviewed product into exporting.
         const publishRes = await fetch(`/api/admin/pipeline/publish`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -369,19 +366,15 @@ export function FinalizingResultsView({
 
         if (!publishRes.ok) {
           const data = await publishRes.json();
-          throw new Error(data.error || "Failed to publish to storefront");
+          throw new Error(data.error || "Failed to move product into exporting");
         }
 
-        toast.success(
-          isSelectedProductInStorefront
-            ? "Storefront product updated successfully!"
-            : "Product published to storefront!",
-        );
+        toast.success("Product moved to exporting");
       } else if (!silent) {
         toast.success("Changes saved successfully");
       }
 
-      // If we published, we need to refresh (silent refresh if possible)
+      // If we moved the product into exporting, refresh the parent queue.
       // If we just saved, we can silent refresh to update the parent's data
       onRefresh(isSaveAction); 
     } catch (err) {
@@ -392,7 +385,7 @@ export function FinalizingResultsView({
       setSaving(false);
       setPublishing(false);
     }
-  }, [formData, isSelectedProductInStorefront, onRefresh, selectedSku]);
+  }, [formData, onRefresh, selectedSku]);
 
   // Keyboard navigation and shortcuts
   useEffect(() => {
@@ -593,7 +586,6 @@ export function FinalizingResultsView({
               saving={saving}
               publishing={publishing}
               rejecting={rejecting}
-              isInStorefront={isSelectedProductInStorefront}
               onSave={() => handleSave(false)}
               onPublish={() => handleSave(true)}
               onReject={handleReject}

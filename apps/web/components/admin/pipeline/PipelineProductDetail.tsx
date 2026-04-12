@@ -34,8 +34,11 @@ interface PipelineProductDetailProps {
 
 const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
   { value: 'imported', label: 'Imported' },
+  { value: 'scraping', label: 'Scraping' },
   { value: 'scraped', label: 'Scraped' },
-  { value: 'finalized', label: 'Finalized' },
+  { value: 'consolidating', label: 'Consolidating' },
+  { value: 'finalizing', label: 'Finalizing' },
+  { value: 'exporting', label: 'Exporting' },
   { value: 'failed', label: 'Failed' },
 ];
 
@@ -200,7 +203,7 @@ export function PipelineProductDetail({
           .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/')),
       };
 
-      const requestedStatus = andApprove ? 'finalized' : pipelineStatus;
+      const requestedStatus = andApprove ? 'exporting' : pipelineStatus;
       const payload: {
         consolidated: typeof consolidated;
         pipeline_status?: PipelineStatus;
@@ -221,7 +224,7 @@ export function PipelineProductDetail({
         throw new Error(data.error || 'Failed to save');
       }
 
-      toast.success(andApprove ? 'Product saved and verified!' : 'Product saved successfully');
+      toast.success(andApprove ? 'Product moved to exporting!' : 'Product saved successfully');
       onSave();
       onClose();
     } catch (err) {
@@ -474,10 +477,10 @@ export function PipelineProductDetail({
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Saving…' : 'Save Draft'}
             </Button>
-            {pipelineStatus !== 'finalized' && (
+            {pipelineStatus !== 'exporting' && (
               <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1 sm:flex-none">
                 <CheckCircle className="mr-2 h-4 w-4" />
-                {saving ? 'Saving…' : 'Save & Verify'}
+                {saving ? 'Saving…' : 'Save & Move to Exporting'}
               </Button>
             )}
           </div>

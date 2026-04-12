@@ -22,7 +22,7 @@ describe('publishToStorefront', () => {
                 sku: 'SKU-1',
                 input: { name: 'Test Product', price: 12.99 },
                 consolidated: { name: 'Test Product', price: 12.99, images: ['https://cdn.example.com/source.jpg'] },
-                pipeline_status: 'finalized',
+                pipeline_status: 'finalizing',
             },
             error: null,
         });
@@ -42,11 +42,14 @@ describe('publishToStorefront', () => {
             insert: jest.fn(),
         };
 
+        const ingestionStatusEq = jest.fn().mockResolvedValue({ error: null });
         const ingestionTable = {
             select: jest.fn().mockImplementation(() => ({
                 eq: jest.fn().mockReturnValue({ single: ingestionEq }),
             })),
-            update: jest.fn(),
+            update: jest.fn().mockImplementation(() => ({
+                eq: ingestionStatusEq,
+            })),
         };
 
         const supabase = {
@@ -63,7 +66,13 @@ describe('publishToStorefront', () => {
 
         expect(result).toEqual({ success: true, action: 'updated', productId: 'product-1' });
         expect(productsEq).toHaveBeenCalledWith('sku', 'SKU-1');
-        expect(ingestionTable.update).not.toHaveBeenCalled();
+        expect(ingestionTable.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pipeline_status: 'exporting',
+                exported_at: null,
+            })
+        );
+        expect(ingestionStatusEq).toHaveBeenCalledWith('sku', 'SKU-1');
         expect(productsTable.update).toHaveBeenCalled();
     });
 
@@ -97,6 +106,6 @@ describe('publishToStorefront', () => {
         const result = await publishToStorefront('SKU-2');
 
         expect(result.success).toBe(false);
-        expect(result.error).toContain('reviewable status');
+        expect(result.error).toContain('must be in finalizing');
     });
 });

@@ -6,6 +6,9 @@ import {
 const LEGACY_ROUTE_STATUS_MAP = {
   registered: 'imported',
   enriched: 'scraped',
+  finalized: 'finalizing',
+  export: 'exporting',
+  published: 'exporting',
 } as const satisfies Record<string, PersistedPipelineStatus>;
 
 export const PIPELINE_ROUTE_STATUS_VALUES = [

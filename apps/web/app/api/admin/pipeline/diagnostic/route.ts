@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { PERSISTED_PIPELINE_STATUSES, type PersistedPipelineStatus } from '@/lib/pipeline/types';
 
-const PROJECT_ID = 'fapnuczapcatelxxmrail';
+const PROJECT_ID = 'fapnuczapctelxxmrail';
 
 export async function GET() {
     try {
@@ -14,10 +14,12 @@ export async function GET() {
         ] = await Promise.all([
             supabase
                 .from('products_ingestion')
-                .select('pipeline_status'),
+                .select('pipeline_status, exported_at'),
             supabase
-                .from('pipeline_export_queue')
-                .select('sku', { count: 'exact', head: true }),
+                .from('products_ingestion')
+                .select('sku', { count: 'exact', head: true })
+                .eq('pipeline_status', 'exporting')
+                .is('exported_at', null),
         ]);
 
         if (productsError) {
@@ -35,17 +37,22 @@ export async function GET() {
         // Calculate counts by status
         const byStatus: Record<PersistedPipelineStatus, number> = {
             imported: 0,
+            scraping: 0,
             scraped: 0,
-            finalized: 0,
+            consolidating: 0,
+            finalizing: 0,
+            exporting: 0,
             failed: 0,
         };
 
         let totalProducts = 0;
-        (productsData || []).forEach((row: { pipeline_status?: string }) => {
+        (productsData || []).forEach((row: { pipeline_status?: string; exported_at?: string | null }) => {
             if (row.pipeline_status && PERSISTED_PIPELINE_STATUSES.includes(row.pipeline_status as PersistedPipelineStatus)) {
                 byStatus[row.pipeline_status as PersistedPipelineStatus]++;
             }
-            totalProducts++;
+            if (!row.exported_at) {
+                totalProducts++;
+            }
         });
 
         // Query scrape_jobs for active job counts

@@ -143,7 +143,7 @@ export async function PATCH(
       if (pipeline_status === 'published') {
         return NextResponse.json(
           {
-            error: 'Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.',
+            error: 'Published is no longer a workflow state. Use finalizing/exporting instead.',
           },
           { status: 400 }
         );
@@ -199,6 +199,7 @@ export async function PATCH(
       }
 
       updateData.pipeline_status = targetStatus;
+      updateData.exported_at = null;
     }
 
     const { error } = await supabase

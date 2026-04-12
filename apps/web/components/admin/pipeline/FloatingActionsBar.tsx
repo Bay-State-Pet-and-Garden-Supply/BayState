@@ -31,7 +31,7 @@ const BULK_ACTIONS: Record<
     previousStage: "imported",
     secondaryAction: "Scrape Additional Sources",
   },
-  export: { label: "", nextStage: null },
+  exporting: { label: "", nextStage: null },
   scraping: { label: "", nextStage: null },
   consolidating: { label: "", nextStage: null },
   failed: {
@@ -40,7 +40,7 @@ const BULK_ACTIONS: Record<
     resetLabel: "Clear & Return to Import",
     previousStage: "imported",
   },
-  finalized: {
+  finalizing: {
     label: "",
     nextStage: null,
     resetLabel: "Return to Scraped",
@@ -86,7 +86,7 @@ export function FloatingActionsBar({
   if (selectedCount === 0) return null;
 
   const bulkAction = BULK_ACTIONS[currentStage];
-  const isTerminalStage = currentStage === "export";
+  const isTerminalStage = currentStage === "exporting";
   const hasBulkAction = !isTerminalStage && (bulkAction.nextStage !== null || (currentStage === "scraped" && !!onConsolidate));
   const hasResetAction =
     !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
@@ -141,7 +141,7 @@ export function FloatingActionsBar({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {selectedCount < totalCount && currentStage !== "finalized" && (
+          {selectedCount < totalCount && currentStage !== "finalizing" && (
             <Button
               variant="ghost"
               size="sm"

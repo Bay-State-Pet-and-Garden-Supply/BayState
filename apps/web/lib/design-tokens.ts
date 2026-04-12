@@ -12,6 +12,7 @@ export const STATUS_COLORS = {
     QUEUED: '#6B7280',
     FAILED: '#EF4444',
     WARNING: '#F59E0B',
+    CONSOLIDATING: '#8B5CF6',
     PUBLISHED: BRAND_COLORS.FOREST_GREEN,
 } as const;
 
@@ -19,15 +20,21 @@ export type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];
 
 export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor> = {
     imported: STATUS_COLORS.QUEUED,
+    scraping: STATUS_COLORS.RUNNING,
     scraped: STATUS_COLORS.RUNNING,
-    finalized: STATUS_COLORS.SUCCESS,
+    consolidating: STATUS_COLORS.CONSOLIDATING,
+    finalizing: STATUS_COLORS.WARNING,
+    exporting: STATUS_COLORS.PUBLISHED,
     failed: STATUS_COLORS.FAILED,
 } as const;
 
 export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
     imported: 'Imported',
+    scraping: 'Scraping',
     scraped: 'Scraped',
-    finalized: 'Finalized',
+    consolidating: 'Consolidating',
+    finalizing: 'Finalizing',
+    exporting: 'Exporting',
     failed: 'Failed',
 } as const;
 
@@ -43,6 +50,7 @@ export const CSS_CUSTOM_PROPERTIES = {
         QUEUED: '--color-status-queued',
         FAILED: '--color-status-failed',
         WARNING: '--color-status-warning',
+        CONSOLIDATING: '--color-status-consolidating',
     } as const,
 } as const;
 
@@ -53,8 +61,11 @@ export function getStatusColor(status: PersistedPipelineStatus): StatusColor {
 export function getStatusCssVar(status: PersistedPipelineStatus): string {
     const statusToCssVar: Record<PersistedPipelineStatus, string> = {
         imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
+        scraping: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
         scraped: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
-        finalized: CSS_CUSTOM_PROPERTIES.STATUS.SUCCESS,
+        consolidating: CSS_CUSTOM_PROPERTIES.STATUS.CONSOLIDATING,
+        finalizing: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
+        exporting: CSS_CUSTOM_PROPERTIES.BRAND.FOREST_GREEN,
         failed: CSS_CUSTOM_PROPERTIES.STATUS.FAILED,
     };
     return statusToCssVar[status];

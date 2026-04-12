@@ -103,7 +103,7 @@ describe('preparePublishedShopSiteExport', () => {
 });
 
 describe('loadPublishedShopSiteExport', () => {
-    it('loads export queue rows directly from the derived storefront export view', async () => {
+    it('loads active exporting rows directly from products_ingestion', async () => {
         const publishedRange = jest.fn().mockResolvedValue({
             data: [
                 {
@@ -117,6 +117,7 @@ describe('loadPublishedShopSiteExport', () => {
         });
         const ingestionQuery = {
             eq: jest.fn().mockReturnThis(),
+            is: jest.fn().mockReturnThis(),
             in: jest.fn().mockReturnThis(),
             order: jest.fn().mockReturnThis(),
             range: publishedRange,
@@ -128,7 +129,7 @@ describe('loadPublishedShopSiteExport', () => {
 
         const supabase = {
             from: jest.fn((table: string) => {
-                if (table === 'pipeline_export_queue') {
+                if (table === 'products_ingestion') {
                     return {
                         select: jest.fn().mockReturnValue(ingestionQuery),
                     };
@@ -150,7 +151,9 @@ describe('loadPublishedShopSiteExport', () => {
 
         const result = await loadPublishedShopSiteExport();
 
-        expect(supabase.from).toHaveBeenCalledWith('pipeline_export_queue');
+        expect(supabase.from).toHaveBeenCalledWith('products_ingestion');
+        expect(ingestionQuery.eq).toHaveBeenCalledWith('pipeline_status', 'exporting');
+        expect(ingestionQuery.is).toHaveBeenCalledWith('exported_at', null);
         expect(publishedRange).toHaveBeenCalledWith(0, 199);
         expect(result.products).toHaveLength(1);
         expect(result.products[0]).toMatchObject({
