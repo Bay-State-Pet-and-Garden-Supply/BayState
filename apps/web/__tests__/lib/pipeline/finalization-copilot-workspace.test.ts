@@ -256,19 +256,39 @@ describe("finalization copilot workspace helpers", () => {
       applyProductNameTransform(
         {
           ...draft,
-          name: "Tomato Seed Packet",
+          name: "Organic Corn Natural Bright Seed Packet",
         },
         {
-          mode: "suffix",
-          value: "Seed Packet",
-          skipIfContains: "Seed Packet",
+          mode: "replace",
+          find: "Organic",
+          value: "",
         },
       ),
     ).toEqual({
-      changed: false,
+      changed: true,
       draft: {
         ...draft,
-        name: "Tomato Seed Packet",
+        name: "Corn Natural Bright Seed Packet",
+      },
+    });
+
+    expect(
+      applyProductNameTransform(
+        {
+          ...draft,
+          name: "Organic Corn Natural Bright Seed Packet",
+        },
+        {
+          mode: "replace",
+          find: "Seed Packet",
+          value: "",
+        },
+      ),
+    ).toEqual({
+      changed: true,
+      draft: {
+        ...draft,
+        name: "Organic Corn Natural Bright",
       },
     });
   });

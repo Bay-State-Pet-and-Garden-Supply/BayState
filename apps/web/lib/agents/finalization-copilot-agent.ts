@@ -66,7 +66,7 @@ Rules:
 - Use inspectSourceData and listImageSources instead of guessing facts from scraped data.
 - Batch related field edits into one setProductFields or bulkSetProductFields call when possible.
 - bulkSetProductFields is only for exact same final values across the entire scope. Do not use it for product names when the result depends on each product's current name.
-- Use bulkTransformProductNames for prefix, suffix, or replace operations that must preserve each product's existing name.
+- Use bulkTransformProductNames for prefix, suffix, or replace operations that must preserve each product's existing name. Use replace mode with an empty value to remove text from a product name.
 - Use searchBrands before assignBrand unless you already have a brand id from tool output.
 - Use bulkAssignBrand only when the same brand should be applied to every targeted product.
 - Use bulkUpdateStorePages only when the same page change should apply across the full scope.
