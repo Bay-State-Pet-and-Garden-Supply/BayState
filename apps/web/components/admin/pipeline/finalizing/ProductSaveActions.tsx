@@ -10,6 +10,7 @@ export interface ProductSaveActionsProps {
   productPrice: string;
   selectedSku: string | null;
   isDirty: boolean;
+  hasPendingCopilotReview: boolean;
   saving: boolean;
   publishing: boolean;
   rejecting: boolean;
@@ -24,6 +25,7 @@ export function ProductSaveActions({
   productPrice,
   selectedSku,
   isDirty,
+  hasPendingCopilotReview,
   saving,
   publishing,
   rejecting,
@@ -57,13 +59,21 @@ export function ProductSaveActions({
             Saving...
           </Badge>
         )}
+        {hasPendingCopilotReview && (
+          <Badge
+            variant="outline"
+            className="ml-2 h-5 text-[10px] font-normal border-violet-200 bg-violet-50 text-violet-700"
+          >
+            Copilot Review Pending
+          </Badge>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={onReject}
-          disabled={saving || publishing || rejecting}
+          disabled={saving || publishing || rejecting || hasPendingCopilotReview}
           className="text-muted-foreground hover:text-destructive hover:bg-destructive/5"
         >
           {rejecting ? (
@@ -78,7 +88,7 @@ export function ProductSaveActions({
           variant="outline"
           size="sm"
           onClick={onSave}
-          disabled={saving || publishing}
+          disabled={saving || publishing || hasPendingCopilotReview}
         >
           {saving ? (
             "Saving..."
@@ -92,7 +102,7 @@ export function ProductSaveActions({
           size="sm"
           className="bg-primary hover:bg-primary/90"
           onClick={onPublish}
-          disabled={saving || publishing}
+          disabled={saving || publishing || hasPendingCopilotReview}
         >
           {publishing ? (
                 "Moving..."

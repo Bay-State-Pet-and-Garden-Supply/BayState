@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import {
+  applyProductNameTransform,
   applySetProductFieldsToDraft,
   inspectFinalizationProductSource,
   listFinalizationProductImageSources,
@@ -230,6 +231,45 @@ describe("finalization copilot workspace helpers", () => {
       minimumQuantity: "6",
       gtin: "999999999999",
       isSpecialOrder: true,
+    });
+  });
+
+  it("transforms product names without collapsing them to a shared literal", () => {
+    const product = createProduct("SKU-ALPHA");
+    const draft = buildInitialFinalizationDraft(product);
+
+    expect(
+      applyProductNameTransform(draft, {
+        mode: "suffix",
+        value: "Seed Packet",
+        skipIfContains: "Seed Packet",
+      }),
+    ).toEqual({
+      changed: true,
+      draft: {
+        ...draft,
+        name: "SKU-ALPHA Consolidated Seed Packet",
+      },
+    });
+
+    expect(
+      applyProductNameTransform(
+        {
+          ...draft,
+          name: "Tomato Seed Packet",
+        },
+        {
+          mode: "suffix",
+          value: "Seed Packet",
+          skipIfContains: "Seed Packet",
+        },
+      ),
+    ).toEqual({
+      changed: false,
+      draft: {
+        ...draft,
+        name: "Tomato Seed Packet",
+      },
     });
   });
 

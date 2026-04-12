@@ -345,6 +345,70 @@ export function applySetProductFieldsToDraft(
   return { draft: next, updatedFields };
 }
 
+function joinNameSegments(left: string, right: string): string {
+  return [left.trim(), right.trim()].filter(Boolean).join(" ").trim();
+}
+
+export function applyProductNameTransform(
+  draft: FinalizationDraft,
+  input: {
+    mode: "prefix" | "suffix" | "replace";
+    value: string;
+    find?: string;
+    skipIfContains?: string;
+  },
+): { draft: FinalizationDraft; changed: boolean } {
+  const currentName = draft.name.trim();
+  const nextValue = input.value.trim();
+  const skipIfContains = input.skipIfContains?.trim().toLowerCase();
+
+  if (!currentName || !nextValue) {
+    return { draft, changed: false };
+  }
+
+  if (skipIfContains && currentName.toLowerCase().includes(skipIfContains)) {
+    return { draft, changed: false };
+  }
+
+  let nextName = currentName;
+
+  switch (input.mode) {
+    case "prefix":
+      if (!currentName.toLowerCase().startsWith(nextValue.toLowerCase())) {
+        nextName = joinNameSegments(nextValue, currentName);
+      }
+      break;
+    case "suffix":
+      if (!currentName.toLowerCase().endsWith(nextValue.toLowerCase())) {
+        nextName = joinNameSegments(currentName, nextValue);
+      }
+      break;
+    case "replace": {
+      const find = input.find?.trim();
+      if (!find) {
+        throw new Error("Provide the text to replace when using replace mode.");
+      }
+      if (!currentName.includes(find)) {
+        return { draft, changed: false };
+      }
+      nextName = currentName.split(find).join(nextValue).trim();
+      break;
+    }
+  }
+
+  if (nextName === currentName) {
+    return { draft, changed: false };
+  }
+
+  return {
+    draft: {
+      ...draft,
+      name: nextName,
+    },
+    changed: true,
+  };
+}
+
 function formatSourceLabel(sourceKey: string): string {
   return sourceKey
     .replace(/^source:/i, "")

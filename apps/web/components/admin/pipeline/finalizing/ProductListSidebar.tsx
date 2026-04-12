@@ -100,7 +100,7 @@ export function ProductListSidebar({
   };
 
   return (
-    <div className="w-1/3 border-r flex flex-col min-w-[320px] bg-muted/5 overflow-hidden">
+    <div className="w-56 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
       <div className="p-3 border-b bg-card">
         <div className="relative group">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
@@ -138,44 +138,51 @@ export function ProductListSidebar({
                   value={cohortId}
                   className="border-b border-border/80 border-l-4 border-l-brand-forest-green/30"
                 >
-                  <AccordionTrigger className="px-3 py-1.5 hover:bg-muted/40 hover:no-underline [&[data-state=open]>div>svg]:rotate-90 bg-muted/20">
-                    <div className="flex items-center gap-2">
-                      <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 text-muted-foreground" />
-                      <div className="flex items-center gap-1.5 overflow-hidden">
-                        <span className="font-bold text-xs uppercase tracking-wider text-foreground/80 truncate">
-                          {cohortId === "ungrouped" 
-                            ? "Ungrouped" 
-                            : groupedProducts?.names?.[cohortId] || `Cohort: ${cohortId}`
-                          }
-                        </span>
-                        {cohortBrands[cohortId] && (
-                          <Badge variant="outline" className="h-4 text-[9px] px-1 font-bold border-brand-forest-green/30 text-brand-forest-green bg-brand-forest-green/5">
-                            {cohortBrands[cohortId]}
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-muted text-muted-foreground font-normal">
-                          {groupProducts.length}
-                        </Badge>
-                        {cohortId !== "ungrouped" && onEditCohort && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 w-5 p-0 text-muted-foreground hover:text-brand-forest-green"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditCohort(
-                                cohortId,
-                                groupedProducts?.names?.[cohortId] || null,
-                                cohortBrands[cohortId] || null
-                              );
-                            }}
-                          >
-                            <Edit2 className="h-2.5 w-2.5" />
-                          </Button>
-                        )}
+                  <div className="flex items-center hover:bg-muted/40 bg-muted/20 pr-1 group">
+                    <AccordionTrigger className="flex-1 px-3 py-1.5 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          <span className="font-bold text-xs uppercase tracking-wider text-foreground/80 truncate">
+                            {cohortId === "ungrouped" 
+                              ? "Ungrouped" 
+                              : groupedProducts?.names?.[cohortId] || `Cohort: ${cohortId}`
+                            }
+                          </span>
+                        </div>
                       </div>
+                    </AccordionTrigger>
+                    
+                    <div className="flex items-center gap-1.5 shrink-0 ml-auto pr-2">
+                      {cohortBrands[cohortId] && (
+                        <Badge variant="outline" className="h-4 text-[9px] px-1 font-bold border-brand-forest-green/30 text-brand-forest-green bg-brand-forest-green/5">
+                          {cohortBrands[cohortId]}
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-muted text-muted-foreground font-normal">
+                        {groupProducts.length}
+                      </Badge>
+                      {cohortId !== "ungrouped" && onEditCohort && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 text-muted-foreground hover:text-brand-forest-green"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onEditCohort(
+                              cohortId,
+                              groupedProducts?.names?.[cohortId] || null,
+                              cohortBrands[cohortId] || null
+                            );
+                          }}
+                        >
+                          <Edit2 className="h-2.5 w-2.5" />
+                        </Button>
+                      )}
                     </div>
-                  </AccordionTrigger>
+                  </div>
+
                   <AccordionContent className="pb-0">
                     <div className="divide-y divide-border/30 bg-muted/5">
                       {groupProducts.map((product) => renderProductItem(product))}

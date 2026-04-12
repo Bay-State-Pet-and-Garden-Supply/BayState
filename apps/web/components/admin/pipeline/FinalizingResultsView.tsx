@@ -24,6 +24,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -61,6 +66,7 @@ import { ProductSaveActions } from "./finalizing/ProductSaveActions";
 import { FinalizationCopilotPanel } from "./finalizing/FinalizationCopilotPanel";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import {
+  applyProductNameTransform,
   applySetProductFieldsToDraft,
   buildFinalizationProductSnapshot,
   buildWorkspaceProductSummary,
@@ -83,6 +89,7 @@ import type {
   AddSelectedImagesInput,
   AssignBrandInput,
   BulkAssignBrandInput,
+  BulkTransformProductNamesInput,
   BulkSetProductFieldsInput,
   BulkStorePagesInput,
   CreateBrandInput,
@@ -100,6 +107,12 @@ import type {
   SetStorePagesInput,
   ToolSummary,
 } from "@/lib/tools/finalization-copilot";
+import {
+  filterPendingCopilotDraftReview,
+  restorePendingCopilotDraftReview,
+  stagePendingCopilotDraftReview,
+  type PendingCopilotDraftReview,
+} from "@/lib/pipeline/finalization-copilot-review";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -119,6 +132,11 @@ interface Brand {
   id: string;
   name: string;
   slug?: string | null;
+}
+
+interface PersistProductsResult extends ToolSummary {
+  successfulSkus: string[];
+  failedSkus: string[];
 }
 
 async function runWithConcurrency<T, R>(
@@ -220,6 +238,9 @@ export function FinalizingResultsView({
   const draftsRef = useRef<Record<string, FinalizationDraft>>({});
   const setDrafts = useCallback(
     (value: SetStateAction<Record<string, FinalizationDraft>>) => {
+      if (typeof value !== "function") {
+        draftsRef.current = value;
+      }
       setDraftsState((prev) => {
         const next =
           typeof value === "function"
@@ -242,6 +263,9 @@ export function FinalizingResultsView({
   const savedDraftsRef = useRef<Record<string, FinalizationDraft>>({});
   const setSavedDrafts = useCallback(
     (value: SetStateAction<Record<string, FinalizationDraft>>) => {
+      if (typeof value !== "function") {
+        savedDraftsRef.current = value;
+      }
       setSavedDraftsState((prev) => {
         const next =
           typeof value === "function"
@@ -258,6 +282,30 @@ export function FinalizingResultsView({
     [],
   );
   const savedDraftsBySku = savedDraftsState;
+  const [pendingCopilotReviewState, setPendingCopilotReviewState] =
+    useState<PendingCopilotDraftReview | null>(null);
+  const pendingCopilotReviewRef = useRef<PendingCopilotDraftReview | null>(null);
+  const setPendingCopilotReview = useCallback(
+    (value: SetStateAction<PendingCopilotDraftReview | null>) => {
+      if (typeof value !== "function") {
+        pendingCopilotReviewRef.current = value;
+      }
+      setPendingCopilotReviewState((prev) => {
+        const next =
+          typeof value === "function"
+            ? (
+                value as (
+                  previous: PendingCopilotDraftReview | null,
+                ) => PendingCopilotDraftReview | null
+              )(prev)
+            : value;
+        pendingCopilotReviewRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
+  const pendingCopilotReview = pendingCopilotReviewState;
 
   const filteredBrands = useMemo(() => {
     if (!brandSearch.trim()) return brands;
@@ -447,6 +495,45 @@ export function FinalizingResultsView({
     },
     [setSavedDrafts],
   );
+  const hasPendingCopilotReview = pendingCopilotReview !== null;
+
+  const stageCopilotDraftReview = useCallback(
+    (skus: string[], summary: string): ToolSummary => {
+      const nextPendingReview = stagePendingCopilotDraftReview({
+        pendingReview: pendingCopilotReviewRef.current,
+        draftsBySku: draftsRef.current,
+        targetSkus: skus,
+        summary,
+      });
+      setPendingCopilotReview(nextPendingReview);
+      setCopilotOpen(true);
+
+      return {
+        summary: `${summary} Review and accept to autosave, or reject to restore the previous draft.`,
+      };
+    },
+    [setPendingCopilotReview],
+  );
+
+  const ensureNoPendingCopilotReview = useCallback(
+    (action: string) => {
+      if (!pendingCopilotReviewRef.current) {
+        return;
+      }
+
+      throw new Error(
+        `Review the staged copilot changes before ${action}. Accept autosaves them; reject restores the previous drafts.`,
+      );
+    },
+    [],
+  );
+
+  const notifyPendingCopilotReview = useCallback((action: string) => {
+    setCopilotOpen(true);
+    toast.error(
+      `Accept or reject the staged copilot changes before ${action}.`,
+    );
+  }, []);
 
   const handleInputChange = useCallback(
     <K extends keyof FinalizationDraft>(
@@ -456,14 +543,22 @@ export function FinalizingResultsView({
       if (!selectedSku) {
         return;
       }
+      if (pendingCopilotReviewRef.current) {
+        notifyPendingCopilotReview("editing the draft manually");
+        return;
+      }
 
       updateDraftForSku(selectedSku, (prev) => ({ ...prev, [field]: value }));
     },
-    [selectedSku, updateDraftForSku],
+    [notifyPendingCopilotReview, selectedSku, updateDraftForSku],
   );
 
   const handleCreateBrand = async () => {
     if (!brandSearch.trim()) return;
+    if (pendingCopilotReviewRef.current) {
+      notifyPendingCopilotReview("editing the draft manually");
+      return;
+    }
     setCreatingBrand(true);
     try {
       const brand = await createBrandRecord(brandSearch);
@@ -486,6 +581,10 @@ export function FinalizingResultsView({
     if (!selectedSku) {
       return;
     }
+    if (pendingCopilotReviewRef.current) {
+      notifyPendingCopilotReview("editing the draft manually");
+      return;
+    }
 
     updateDraftForSku(selectedSku, (prev) => ({ ...prev, name: newName }));
   };
@@ -506,6 +605,10 @@ export function FinalizingResultsView({
     if (!selectedSku) {
       return;
     }
+    if (pendingCopilotReviewRef.current) {
+      notifyPendingCopilotReview("editing the draft manually");
+      return;
+    }
 
     updateDraftForSku(selectedSku, (prev) => {
       const isSelected = prev.selectedImages.includes(url);
@@ -523,6 +626,10 @@ export function FinalizingResultsView({
   const addCustomImage = () => {
     if (!selectedSku) return;
     if (!formData.customImageUrl.trim()) return;
+    if (pendingCopilotReviewRef.current) {
+      notifyPendingCopilotReview("editing the draft manually");
+      return;
+    }
     const url = formData.customImageUrl.trim();
 
     if (!isValidCustomImageUrl(url)) {
@@ -570,7 +677,7 @@ export function FinalizingResultsView({
       skus: string[];
       andPublish?: boolean;
       silent?: boolean;
-    }): Promise<ToolSummary> => {
+    }): Promise<PersistProductsResult> => {
       const targetSkus = Array.from(
         new Set(skus.filter((sku) => sku.trim().length > 0)),
       );
@@ -710,7 +817,11 @@ export function FinalizingResultsView({
           }
         }
 
-        return { summary };
+        return {
+          summary,
+          successfulSkus: successful.map((result) => result.sku),
+          failedSkus,
+        };
       } catch (error) {
         if (!silent) {
           toast.error(
@@ -749,9 +860,71 @@ export function FinalizingResultsView({
     [persistProducts],
   );
 
+  const handleAcceptPendingCopilotReview = useCallback(async () => {
+    const currentPendingReview = pendingCopilotReviewRef.current;
+    if (!currentPendingReview) {
+      return;
+    }
+
+    try {
+      const result = await persistProducts({
+        skus: currentPendingReview.skus,
+        silent: true,
+      });
+
+      setPendingCopilotReview(
+        filterPendingCopilotDraftReview(currentPendingReview, result.failedSkus),
+      );
+
+      if (result.failedSkus.length > 0) {
+        toast.error(
+          `Accepted ${result.successfulSkus.length} copilot ${
+            result.successfulSkus.length === 1 ? "change" : "changes"
+          }, but ${result.failedSkus.length} product${
+            result.failedSkus.length === 1 ? "" : "s"
+          } still need review: ${result.failedSkus.join(", ")}.`,
+        );
+        return;
+      }
+
+      toast.success(`Accepted copilot changes. ${result.summary}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to accept the staged copilot changes.",
+      );
+    }
+  }, [persistProducts, setPendingCopilotReview]);
+
+  const handleRejectPendingCopilotReview = useCallback(() => {
+    const currentPendingReview = pendingCopilotReviewRef.current;
+    if (!currentPendingReview) {
+      return;
+    }
+
+    setDrafts((prev) =>
+      restorePendingCopilotDraftReview(prev, currentPendingReview),
+    );
+    setPendingCopilotReview(null);
+    toast.success(
+      `Rejected staged copilot changes for ${currentPendingReview.skus.length} product${
+        currentPendingReview.skus.length === 1 ? "" : "s"
+      }.`,
+    );
+  }, [setDrafts, setPendingCopilotReview]);
+
   const handleSelectProduct = useCallback(
     async (newSku: string | null) => {
       if (newSku === preferredSku) return;
+
+      if (pendingCopilotReviewRef.current) {
+        setCopilotOpen(true);
+        toast.error(
+          "Accept or reject the staged copilot changes before switching products.",
+        );
+        return;
+      }
 
       if (isDirty && selectedSku && !saving && !publishing) {
         try {
@@ -781,6 +954,10 @@ export function FinalizingResultsView({
 
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
+        if (pendingCopilotReviewRef.current) {
+          notifyPendingCopilotReview("saving");
+          return;
+        }
         void persistCurrentDraft();
         return;
       }
@@ -794,6 +971,10 @@ export function FinalizingResultsView({
       ) {
         if (!isInput || activeElement?.id === "product-name") {
           e.preventDefault();
+          if (pendingCopilotReviewRef.current) {
+            notifyPendingCopilotReview("approving");
+            return;
+          }
           void persistCurrentDraft({ andPublish: true });
           return;
         }
@@ -818,10 +999,20 @@ export function FinalizingResultsView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [persistCurrentDraft, preferredSku, sortedProducts, handleSelectProduct]);
+  }, [
+    persistCurrentDraft,
+    preferredSku,
+    sortedProducts,
+    handleSelectProduct,
+    notifyPendingCopilotReview,
+  ]);
 
   const handleReject = async () => {
     if (!selectedSku) return;
+    if (pendingCopilotReviewRef.current) {
+      notifyPendingCopilotReview("rejecting the product");
+      return;
+    }
     setConfirmRejectOpen(true);
   };
 
@@ -1172,13 +1363,15 @@ export function FinalizingResultsView({
         input,
       );
 
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        `Prepared updates for ${result.updatedFields.join(", ")} on ${currentSku}.`,
+      );
       updateDraftForSku(currentSku, result.draft);
 
-      return {
-        summary: `Updated ${result.updatedFields.join(", ")}.`,
-      };
+      return review;
     },
-    [updateDraftForSku],
+    [stageCopilotDraftReview, updateDraftForSku],
   );
 
   const handleCopilotBulkSetProductFields = useCallback(
@@ -1187,34 +1380,90 @@ export function FinalizingResultsView({
       changes,
     }: BulkSetProductFieldsInput): Promise<ToolSummary> => {
       const matchedSkus = resolveScopeSkus(scope);
+      if (matchedSkus.length > 1 && changes.name !== undefined) {
+        throw new Error(
+          "Bulk exact name replacement is blocked. Use the name-transform tool for prefix, suffix, or replace operations so existing names are preserved.",
+        );
+      }
       const updatedFields = new Set<string>();
+      const nextDrafts = { ...draftsRef.current };
 
-      setDrafts((prev) => {
-        const next = { ...prev };
-
-        matchedSkus.forEach((sku) => {
-          const result = applySetProductFieldsToDraft(
-            next[sku] ?? EMPTY_FINALIZATION_DRAFT,
-            changes,
-          );
-          next[sku] = result.draft;
-          result.updatedFields.forEach((field) => updatedFields.add(field));
-        });
-
-        return next;
+      matchedSkus.forEach((sku) => {
+        const result = applySetProductFieldsToDraft(
+          nextDrafts[sku] ?? EMPTY_FINALIZATION_DRAFT,
+          changes,
+        );
+        nextDrafts[sku] = result.draft;
+        result.updatedFields.forEach((field) => updatedFields.add(field));
       });
 
-      return {
-        summary: `Updated ${matchedSkus.length} product${
+      setDrafts(nextDrafts);
+
+      return stageCopilotDraftReview(
+        matchedSkus,
+        `Prepared updates for ${matchedSkus.length} product${
           matchedSkus.length === 1 ? "" : "s"
         }: ${Array.from(updatedFields).join(", ")}.`,
-      };
+      );
     },
-    [resolveScopeSkus, setDrafts],
+    [resolveScopeSkus, setDrafts, stageCopilotDraftReview],
+  );
+
+  const handleCopilotBulkTransformProductNames = useCallback(
+    async ({
+      scope,
+      mode,
+      value,
+      find,
+      skipIfContains,
+    }: BulkTransformProductNamesInput): Promise<ToolSummary> => {
+      const matchedSkus = resolveScopeSkus(scope);
+      let changedCount = 0;
+      const changedSkus: string[] = [];
+      const nextDrafts = { ...draftsRef.current };
+
+      matchedSkus.forEach((sku) => {
+        const result = applyProductNameTransform(
+          nextDrafts[sku] ?? EMPTY_FINALIZATION_DRAFT,
+          {
+            mode,
+            value,
+            find,
+            skipIfContains,
+          },
+        );
+        if (result.changed) {
+          changedCount += 1;
+          changedSkus.push(sku);
+          nextDrafts[sku] = result.draft;
+        }
+      });
+
+      if (changedCount === 0) {
+        return {
+          summary:
+            "No product names changed. The matched products already satisfied that naming rule.",
+        };
+      }
+
+      setDrafts(nextDrafts);
+
+      return stageCopilotDraftReview(
+        changedSkus,
+        `Prepared ${mode} name updates for ${changedCount} product${
+          changedCount === 1 ? "" : "s"
+        }.`,
+      );
+    },
+    [resolveScopeSkus, setDrafts, stageCopilotDraftReview],
   );
 
   const handleCopilotAssignBrand = useCallback(
     async ({ brandId, brandName }: AssignBrandInput): Promise<ToolSummary> => {
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before assigning a brand.");
+      }
       if (
         brandId !== "none"
         && !brandsRef.current.some((brand) => brand.id === brandId)
@@ -1224,28 +1473,35 @@ export function FinalizingResultsView({
         );
       }
 
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        brandId === "none"
+          ? `Prepared a cleared brand assignment for ${currentSku}.`
+          : `Prepared a brand assignment to ${brandName} for ${currentSku}.`,
+      );
       handleInputChange("brandId", brandId);
 
-      return {
-        summary:
-          brandId === "none"
-            ? "Cleared the brand assignment."
-            : `Assigned the brand to ${brandName}.`,
-      };
+      return review;
     },
-    [handleInputChange],
+    [handleInputChange, stageCopilotDraftReview],
   );
 
   const handleCopilotCreateBrand = useCallback(
     async ({ name }: CreateBrandInput): Promise<ToolSummary> => {
       const brand = await createBrandRecord(name);
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before assigning a brand.");
+      }
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        `Prepared a new brand assignment to ${brand.name} for ${currentSku}.`,
+      );
       handleInputChange("brandId", brand.id);
 
-      return {
-        summary: `Created and assigned the brand ${brand.name}.`,
-      };
+      return review;
     },
-    [createBrandRecord, handleInputChange],
+    [createBrandRecord, handleInputChange, stageCopilotDraftReview],
   );
 
   const handleCopilotBulkAssignBrand = useCallback(
@@ -1264,63 +1520,77 @@ export function FinalizingResultsView({
       }
 
       const matchedSkus = resolveScopeSkus(scope);
-      setDrafts((prev) => {
-        const next = { ...prev };
-        matchedSkus.forEach((sku) => {
-          next[sku] = {
-            ...(next[sku] ?? EMPTY_FINALIZATION_DRAFT),
-            brandId,
-          };
-        });
-        return next;
+      const nextDrafts = { ...draftsRef.current };
+      matchedSkus.forEach((sku) => {
+        nextDrafts[sku] = {
+          ...(nextDrafts[sku] ?? EMPTY_FINALIZATION_DRAFT),
+          brandId,
+        };
       });
+      setDrafts(nextDrafts);
 
-      return {
-        summary:
-          brandId === "none"
-            ? `Cleared the brand assignment for ${matchedSkus.length} product${
-                matchedSkus.length === 1 ? "" : "s"
-              }.`
-            : `Assigned ${brandName} to ${matchedSkus.length} product${
-                matchedSkus.length === 1 ? "" : "s"
-              }.`,
-      };
+      return stageCopilotDraftReview(
+        matchedSkus,
+        brandId === "none"
+          ? `Prepared cleared brand assignments for ${matchedSkus.length} product${
+              matchedSkus.length === 1 ? "" : "s"
+            }.`
+          : `Prepared ${brandName} brand assignments for ${matchedSkus.length} product${
+              matchedSkus.length === 1 ? "" : "s"
+            }.`,
+      );
     },
-    [resolveScopeSkus, setDrafts],
+    [resolveScopeSkus, setDrafts, stageCopilotDraftReview],
   );
 
   const handleCopilotSetStorePages = useCallback(
     async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before updating store pages.");
+      }
       const nextPages = normalizeStorePages(pages);
       if (nextPages.length === 0) {
         throw new Error("Provide at least one valid ShopSite page.");
       }
 
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        `Prepared ShopSite pages for ${currentSku}: ${nextPages.join(", ")}.`,
+      );
       handleInputChange("productOnPages", nextPages);
-      return {
-        summary: `Set ShopSite pages to ${nextPages.join(", ")}.`,
-      };
+      return review;
     },
-    [normalizeStorePages, handleInputChange],
+    [normalizeStorePages, handleInputChange, stageCopilotDraftReview],
   );
 
   const handleCopilotAddStorePages = useCallback(
     async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
+      if (!selectedSku) {
+        throw new Error("Select a product before updating store pages.");
+      }
       const nextPages = normalizeStorePages([
         ...(selectedSku ? draftsRef.current[selectedSku]?.productOnPages ?? [] : []),
         ...pages,
       ]);
+      const review = stageCopilotDraftReview(
+        [selectedSku],
+        `Prepared added ShopSite pages for ${selectedSku}: ${normalizeStorePages(
+          pages,
+        ).join(", ")}.`,
+      );
       handleInputChange("productOnPages", nextPages);
 
-      return {
-        summary: `Added ShopSite pages: ${normalizeStorePages(pages).join(", ")}.`,
-      };
+      return review;
     },
-    [normalizeStorePages, handleInputChange, selectedSku],
+    [normalizeStorePages, handleInputChange, selectedSku, stageCopilotDraftReview],
   );
 
   const handleCopilotRemoveStorePages = useCallback(
     async ({ pages }: RemoveStorePagesInput): Promise<ToolSummary> => {
+      if (!selectedSku) {
+        throw new Error("Select a product before updating store pages.");
+      }
       const pagesToRemove = new Set(
         normalizeStorePages(pages).map((page) => page.trim()),
       );
@@ -1329,13 +1599,17 @@ export function FinalizingResultsView({
       ).filter(
         (page) => !pagesToRemove.has(page),
       );
+      const review = stageCopilotDraftReview(
+        [selectedSku],
+        `Prepared removed ShopSite pages for ${selectedSku}: ${Array.from(
+          pagesToRemove,
+        ).join(", ")}.`,
+      );
       handleInputChange("productOnPages", nextPages);
 
-      return {
-        summary: `Removed ShopSite pages: ${Array.from(pagesToRemove).join(", ")}.`,
-      };
+      return review;
     },
-    [normalizeStorePages, handleInputChange, selectedSku],
+    [normalizeStorePages, handleInputChange, selectedSku, stageCopilotDraftReview],
   );
 
   const handleCopilotBulkUpdateStorePages = useCallback(
@@ -1347,79 +1621,100 @@ export function FinalizingResultsView({
       }
 
       const matchedSkus = resolveScopeSkus(scope);
-      setDrafts((prev) => {
-        const next = { ...prev };
+      const nextDrafts = { ...draftsRef.current };
 
-        matchedSkus.forEach((sku) => {
-          const currentPages = next[sku]?.productOnPages ?? [];
-          next[sku] = {
-            ...(next[sku] ?? EMPTY_FINALIZATION_DRAFT),
-            productOnPages:
-              mode === "replace"
-                ? normalizedPages
-                : mode === "add"
-                  ? normalizeStorePages([...currentPages, ...normalizedPages])
-                  : currentPages.filter((page) => !normalizedPageSet.has(page)),
-          };
-        });
-
-        return next;
+      matchedSkus.forEach((sku) => {
+        const currentPages = nextDrafts[sku]?.productOnPages ?? [];
+        nextDrafts[sku] = {
+          ...(nextDrafts[sku] ?? EMPTY_FINALIZATION_DRAFT),
+          productOnPages:
+            mode === "replace"
+              ? normalizedPages
+              : mode === "add"
+                ? normalizeStorePages([...currentPages, ...normalizedPages])
+                : currentPages.filter((page) => !normalizedPageSet.has(page)),
+        };
       });
 
-      return {
-        summary: `${mode === "replace" ? "Updated" : mode === "add" ? "Added" : "Removed"} ShopSite pages for ${matchedSkus.length} product${
+      setDrafts(nextDrafts);
+
+      return stageCopilotDraftReview(
+        matchedSkus,
+        `Prepared ${
+          mode === "replace" ? "updated" : mode === "add" ? "added" : "removed"
+        } ShopSite pages for ${matchedSkus.length} product${
           matchedSkus.length === 1 ? "" : "s"
         }.`,
-      };
+      );
     },
-    [normalizeStorePages, resolveScopeSkus, setDrafts],
+    [normalizeStorePages, resolveScopeSkus, setDrafts, stageCopilotDraftReview],
   );
 
   const handleCopilotReplaceSelectedImages = useCallback(
     async ({ images }: ReplaceSelectedImagesInput): Promise<ToolSummary> => {
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before updating images.");
+      }
       const nextImages = normalizeSelectedImages(images);
       if (nextImages.length === 0) {
         throw new Error("Provide at least one valid image URL.");
       }
 
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        `Prepared a replacement image set with ${nextImages.length} images for ${currentSku}.`,
+      );
       handleInputChange("selectedImages", nextImages);
-      return {
-        summary: `Replaced the selected image set with ${nextImages.length} images.`,
-      };
+      return review;
     },
-    [normalizeSelectedImages, handleInputChange],
+    [normalizeSelectedImages, handleInputChange, stageCopilotDraftReview],
   );
 
   const handleCopilotAddSelectedImages = useCallback(
     async ({ images }: AddSelectedImagesInput): Promise<ToolSummary> => {
+      if (!selectedSku) {
+        throw new Error("Select a product before updating images.");
+      }
       const nextImages = normalizeSelectedImages([
         ...(selectedSku ? draftsRef.current[selectedSku]?.selectedImages ?? [] : []),
         ...images,
       ]);
+      const review = stageCopilotDraftReview(
+        [selectedSku],
+        `Prepared ${normalizeSelectedImages(images).length} added image${
+          normalizeSelectedImages(images).length === 1 ? "" : "s"
+        } for ${selectedSku}.`,
+      );
       handleInputChange("selectedImages", nextImages);
 
-      return {
-        summary: `Added ${normalizeSelectedImages(images).length} images to the selection.`,
-      };
+      return review;
     },
-    [normalizeSelectedImages, handleInputChange, selectedSku],
+    [normalizeSelectedImages, handleInputChange, selectedSku, stageCopilotDraftReview],
   );
 
   const handleCopilotRemoveSelectedImages = useCallback(
     async ({ images }: RemoveSelectedImagesInput): Promise<ToolSummary> => {
+      if (!selectedSku) {
+        throw new Error("Select a product before updating images.");
+      }
       const toRemove = new Set(normalizeSelectedImages(images));
       const nextImages = (
         selectedSku ? draftsRef.current[selectedSku]?.selectedImages ?? [] : []
       ).filter(
         (image) => !toRemove.has(image),
       );
+      const review = stageCopilotDraftReview(
+        [selectedSku],
+        `Prepared removal of ${toRemove.size} image${
+          toRemove.size === 1 ? "" : "s"
+        } for ${selectedSku}.`,
+      );
       handleInputChange("selectedImages", nextImages);
 
-      return {
-        summary: `Removed ${toRemove.size} images from the selection.`,
-      };
+      return review;
     },
-    [normalizeSelectedImages, handleInputChange, selectedSku],
+    [normalizeSelectedImages, handleInputChange, selectedSku, stageCopilotDraftReview],
   );
 
   const handleCopilotRestoreSavedDraft = useCallback(
@@ -1429,67 +1724,75 @@ export function FinalizingResultsView({
         throw new Error("Select a product before restoring its draft.");
       }
 
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        `Prepared a restore to the last saved draft for ${currentSku}.`,
+      );
       updateDraftForSku(
         currentSku,
         savedDraftsRef.current[currentSku] ?? EMPTY_FINALIZATION_DRAFT,
       );
-      return {
-        summary: "Restored the draft to the last saved state.",
-      };
+      return review;
     },
-    [updateDraftForSku],
+    [stageCopilotDraftReview, updateDraftForSku],
   );
 
   const handleCopilotSaveDraft = useCallback(
     async (): Promise<ToolSummary> => {
+      ensureNoPendingCopilotReview("saving");
       return persistCurrentDraft({ silent: true });
     },
-    [persistCurrentDraft],
+    [ensureNoPendingCopilotReview, persistCurrentDraft],
   );
 
   const handleCopilotApproveProduct = useCallback(
     async (): Promise<ToolSummary> => {
+      ensureNoPendingCopilotReview("approving");
       return persistCurrentDraft({ andPublish: true, silent: true });
     },
-    [persistCurrentDraft],
+    [ensureNoPendingCopilotReview, persistCurrentDraft],
   );
 
   const handleCopilotRejectProduct = useCallback(
     async (): Promise<ToolSummary> => {
+      ensureNoPendingCopilotReview("rejecting");
       return rejectCurrentProduct({ silent: true });
     },
-    [rejectCurrentProduct],
+    [ensureNoPendingCopilotReview, rejectCurrentProduct],
   );
 
   const handleCopilotSaveProducts = useCallback(
     async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
+      ensureNoPendingCopilotReview("saving");
       return persistProducts({
         skus: resolveScopeSkus(scope),
         silent: true,
       });
     },
-    [persistProducts, resolveScopeSkus],
+    [ensureNoPendingCopilotReview, persistProducts, resolveScopeSkus],
   );
 
   const handleCopilotApproveProducts = useCallback(
     async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
+      ensureNoPendingCopilotReview("approving");
       return persistProducts({
         skus: resolveScopeSkus(scope),
         andPublish: true,
         silent: true,
       });
     },
-    [persistProducts, resolveScopeSkus],
+    [ensureNoPendingCopilotReview, persistProducts, resolveScopeSkus],
   );
 
   const handleCopilotRejectProducts = useCallback(
     async ({ scope }: ScopedRejectProductInput): Promise<ToolSummary> => {
+      ensureNoPendingCopilotReview("rejecting");
       return rejectProducts({
         skus: resolveScopeSkus(scope),
         silent: true,
       });
     },
-    [rejectProducts, resolveScopeSkus],
+    [ensureNoPendingCopilotReview, rejectProducts, resolveScopeSkus],
   );
 
   return (
@@ -1519,23 +1822,81 @@ export function FinalizingResultsView({
               productPrice={formData.price}
               selectedSku={selectedSku}
               isDirty={isDirty}
+              hasPendingCopilotReview={hasPendingCopilotReview}
               saving={saving}
               publishing={publishing}
               rejecting={rejecting}
               onSave={() => {
+                if (pendingCopilotReviewRef.current) {
+                  notifyPendingCopilotReview("saving");
+                  return;
+                }
                 void persistCurrentDraft();
               }}
               onPublish={() => {
+                if (pendingCopilotReviewRef.current) {
+                  notifyPendingCopilotReview("approving");
+                  return;
+                }
                 void persistCurrentDraft({ andPublish: true });
               }}
               onReject={handleReject}
             />
 
+            {hasPendingCopilotReview && (
+              <div className="border-b bg-violet-50/60 px-4 py-4">
+                <Alert className="border-violet-200 bg-violet-50 text-violet-950">
+                  <AlertTitle>Review staged copilot changes</AlertTitle>
+                  <AlertDescription className="space-y-3">
+                    <p>
+                      Copilot edits are staged for{" "}
+                      {pendingCopilotReview?.skus.length ?? 0} product
+                      {(pendingCopilotReview?.skus.length ?? 0) === 1 ? "" : "s"}.
+                      Accept autosaves them. Reject restores the previous drafts.
+                    </p>
+                    <div className="space-y-1">
+                      {(pendingCopilotReview?.summaries ?? [])
+                        .slice(-3)
+                        .map((summary) => (
+                          <div
+                            key={summary}
+                            className="text-xs text-violet-900/80"
+                          >
+                            - {summary}
+                          </div>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          void handleAcceptPendingCopilotReview();
+                        }}
+                        disabled={saving || publishing || rejecting}
+                      >
+                        Accept & Autosave
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRejectPendingCopilotReview}
+                        disabled={saving || publishing || rejecting}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             {/* Form Content */}
-            <div className="flex-1 min-h-0">
-              <div className="overflow-y-auto p-6 space-y-8">
-                <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
-                  <div className="space-y-6">
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-8">
+                <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="space-y-6 min-w-0">
                     <div className="space-y-1">
                       <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         Product Info
@@ -2039,8 +2400,9 @@ export function FinalizingResultsView({
             disabled={sortedProducts.length === 0}
           >
             <Bot className="mr-2 h-4 w-4" />
-            Finalization Copilot
-            {dirtySkus.length > 0 ? ` (${dirtySkus.length})` : ""}
+            {hasPendingCopilotReview
+              ? `Review Copilot Changes (${pendingCopilotReview?.skus.length ?? 0})`
+              : `Finalization Copilot${dirtySkus.length > 0 ? ` (${dirtySkus.length})` : ""}`}
           </Button>
         </SheetTrigger>
         <SheetContent
@@ -2057,7 +2419,13 @@ export function FinalizingResultsView({
             selectedSku={selectedSku}
             workspaceProductCount={sortedProducts.length}
             dirtyProductCount={dirtySkus.length}
+            hasPendingCopilotReview={hasPendingCopilotReview}
+            pendingCopilotReviewCount={pendingCopilotReview?.skus.length ?? 0}
+            pendingCopilotSummaries={pendingCopilotReview?.summaries ?? []}
+            reviewActionPending={saving || publishing || rejecting}
             getContext={getCopilotContext}
+            onAcceptPendingCopilotReview={handleAcceptPendingCopilotReview}
+            onRejectPendingCopilotReview={handleRejectPendingCopilotReview}
             onListWorkspaceProducts={handleCopilotListWorkspaceProducts}
             onPreviewProductScope={handleCopilotPreviewProductScope}
             onGetProductSnapshot={handleCopilotGetProductSnapshot}
@@ -2065,6 +2433,7 @@ export function FinalizingResultsView({
             onListImageSources={handleCopilotListImageSources}
             onSetProductFields={handleCopilotSetProductFields}
             onBulkSetProductFields={handleCopilotBulkSetProductFields}
+            onBulkTransformProductNames={handleCopilotBulkTransformProductNames}
             onAssignBrand={handleCopilotAssignBrand}
             onBulkAssignBrand={handleCopilotBulkAssignBrand}
             onCreateBrand={handleCopilotCreateBrand}
