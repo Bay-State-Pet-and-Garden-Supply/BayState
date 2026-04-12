@@ -1,4 +1,11 @@
-import { type InferUITools, ToolLoopAgent, type UIMessage, stepCountIs } from "ai";
+import {
+  createGateway,
+  type InferUITools,
+  ToolLoopAgent,
+  type UIMessage,
+  stepCountIs,
+} from "ai";
+import { getAIProviderSecret } from "@/lib/ai-scraping/credentials";
 import { createClient } from "@/lib/supabase/server";
 import {
   finalizationCopilotContextSchema,
@@ -10,6 +17,12 @@ import {
 } from "@/lib/tools/finalization-copilot";
 
 const FINALIZATION_COPILOT_MODEL = "google/gemini-3.1-pro-preview";
+const FINALIZATION_COPILOT_MISSING_KEY_ERROR =
+  "Gemini API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.";
+
+function buildFinalizationCopilotModel(apiKey: string) {
+  return createGateway({ apiKey })(FINALIZATION_COPILOT_MODEL);
+}
 
 function toRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -51,16 +64,22 @@ Rules:
 }
 
 export const finalizationCopilotAgent = new ToolLoopAgent({
-  model: FINALIZATION_COPILOT_MODEL,
+  model: buildFinalizationCopilotModel("supabase-managed-finalization-copilot"),
   callOptionsSchema: finalizationCopilotContextSchema,
   stopWhen: stepCountIs(12),
   instructions:
     "You are Bay State's finalization copilot. Use tools to inspect and update the product draft safely.",
   prepareCall: async ({ options, ...settings }) => {
+    const gatewayApiKey = (await getAIProviderSecret("gemini"))?.trim();
+    if (!gatewayApiKey) {
+      throw new Error(FINALIZATION_COPILOT_MISSING_KEY_ERROR);
+    }
+
     const supabase = await createClient();
 
     return {
       ...settings,
+      model: buildFinalizationCopilotModel(gatewayApiKey),
       instructions: buildInstructions(options),
       tools: createFinalizationCopilotTools(options, {
         searchBrands: async (query) => {

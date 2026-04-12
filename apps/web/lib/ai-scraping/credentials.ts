@@ -691,6 +691,10 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
   );
 }
 
+export async function getAIProviderSecret(provider: AIProvider): Promise<string | null> {
+  return getAIScrapingProviderSecret(provider);
+}
+
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
   const [defaults, openai, legacySearchKey] = await Promise.all([
     getAIScrapingDefaults(),
