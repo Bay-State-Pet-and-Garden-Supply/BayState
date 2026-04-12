@@ -24,8 +24,10 @@ export function StageTabs({
     return counts.find((count) => count.status === stage)?.count ?? 0;
   };
 
+  const currentConfig = STAGE_CONFIG[currentStage];
+
   return (
-    <div className="flex items-center justify-between gap-2 mb-1">
+    <div className="space-y-3">
       <Tabs
         value={currentStage}
         onValueChange={(value) => {
@@ -34,9 +36,9 @@ export function StageTabs({
             onStageChange(nextStage);
           }
         }}
-        className="flex-1"
+        className="space-y-3"
       >
-        <TabsList className="flex-wrap h-auto gap-0.5 bg-muted/30 p-0 w-full justify-start">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-0.5 bg-muted/30 p-0">
           {PIPELINE_TABS.map((stage, index) => {
             const config = STAGE_CONFIG[stage];
             const count = getCount(stage);
@@ -69,17 +71,27 @@ export function StageTabs({
           })}
         </TabsList>
         {PIPELINE_TABS.map((stage) => (
-          <TabsContent key={stage} value={stage} className="sr-only mt-0">
+          <TabsContent
+            key={stage}
+            value={stage}
+            forceMount
+            className="sr-only"
+          >
             {STAGE_CONFIG[stage].description}
           </TabsContent>
         ))}
       </Tabs>
 
-      {actions && (
-        <div className="flex items-center gap-2 shrink-0">
-          {actions}
-        </div>
-      )}
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {currentConfig.description}
+        </p>
+        {actions ? (
+          <div className="flex flex-wrap items-center gap-2 xl:shrink-0">
+            {actions}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

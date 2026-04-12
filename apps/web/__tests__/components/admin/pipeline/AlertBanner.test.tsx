@@ -3,28 +3,31 @@ import { AlertBanner } from "@/components/admin/pipeline/AlertBanner";
 
 describe("AlertBanner", () => {
   describe("Rendering all severities", () => {
-    it("renders error severity with red border", () => {
+    it("renders error severity with red surface treatment", () => {
       render(
         <AlertBanner severity="error" title="Error Title" />
       );
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveClass("border-l-red-500");
+      expect(alert).toHaveClass("border-red-200");
+      expect(alert).toHaveClass("bg-red-50/80");
     });
 
-    it("renders warning severity with yellow border", () => {
+    it("renders warning severity with yellow surface treatment", () => {
       render(
         <AlertBanner severity="warning" title="Warning Title" />
       );
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveClass("border-l-yellow-500");
+      expect(alert).toHaveClass("border-yellow-200");
+      expect(alert).toHaveClass("bg-yellow-50/80");
     });
 
-    it("renders info severity with blue border", () => {
+    it("renders info severity with blue surface treatment", () => {
       render(
         <AlertBanner severity="info" title="Info Title" />
       );
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveClass("border-l-blue-500");
+      expect(alert).toHaveClass("border-blue-200");
+      expect(alert).toHaveClass("bg-blue-50/80");
     });
 
     it("renders title text", () => {

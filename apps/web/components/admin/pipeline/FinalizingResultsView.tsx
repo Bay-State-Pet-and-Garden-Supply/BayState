@@ -10,7 +10,6 @@ import {
 } from "react";
 import {
   Package,
-  Bot,
   Plus,
   X,
   ChevronRight,
@@ -28,13 +27,6 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -64,6 +56,7 @@ import { ProductListSidebar } from "./finalizing/ProductListSidebar";
 import { ImageCarousel } from "./finalizing/ImageCarousel";
 import { ProductSaveActions } from "./finalizing/ProductSaveActions";
 import { FinalizationCopilotPanel } from "./finalizing/FinalizationCopilotPanel";
+import type { PipelineFiltersState } from "./PipelineFilters";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import {
   applyProductNameTransform,
@@ -119,6 +112,9 @@ interface FinalizingResultsViewProps {
   onRefresh: (silent?: boolean) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
+  filters?: PipelineFiltersState;
+  onFilterChange?: (filters: PipelineFiltersState) => void;
+  availableSources?: string[];
   groupedProducts?: {
     groups: Record<string, PipelineProduct[]>;
     cohortIds: string[];
@@ -126,6 +122,13 @@ interface FinalizingResultsViewProps {
   };
   cohortBrands?: Record<string, string>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
+  selectedSkus?: Set<string>;
+  onSelectSku?: (
+    sku: string,
+    selected: boolean,
+    index?: number,
+    isShift?: boolean,
+  ) => void;
 }
 
 interface Brand {
@@ -189,9 +192,14 @@ export function FinalizingResultsView({
   onRefresh,
   search,
   onSearchChange,
+  filters,
+  onFilterChange,
+  availableSources = [],
   groupedProducts,
   cohortBrands = {},
   onEditCohort,
+  selectedSkus = new Set(),
+  onSelectSku,
 }: FinalizingResultsViewProps) {
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
@@ -229,7 +237,6 @@ export function FinalizingResultsView({
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
-  const [copilotOpen, setCopilotOpen] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [draftsState, setDraftsState] = useState<Record<string, FinalizationDraft>>(
@@ -506,7 +513,6 @@ export function FinalizingResultsView({
         summary,
       });
       setPendingCopilotReview(nextPendingReview);
-      setCopilotOpen(true);
 
       return {
         summary: `${summary} Review and accept to autosave, or reject to restore the previous draft.`,
@@ -529,7 +535,6 @@ export function FinalizingResultsView({
   );
 
   const notifyPendingCopilotReview = useCallback((action: string) => {
-    setCopilotOpen(true);
     toast.error(
       `Accept or reject the staged copilot changes before ${action}.`,
     );
@@ -919,7 +924,6 @@ export function FinalizingResultsView({
       if (newSku === preferredSku) return;
 
       if (pendingCopilotReviewRef.current) {
-        setCopilotOpen(true);
         toast.error(
           "Accept or reject the staged copilot changes before switching products.",
         );
@@ -962,22 +966,14 @@ export function FinalizingResultsView({
         return;
       }
 
-      if (
-        e.key === "Enter" &&
-        !e.shiftKey &&
-        activeElement?.tagName !== "TEXTAREA" &&
-        !e.ctrlKey &&
-        !e.metaKey
-      ) {
-        if (!isInput || activeElement?.id === "product-name") {
-          e.preventDefault();
-          if (pendingCopilotReviewRef.current) {
-            notifyPendingCopilotReview("approving");
-            return;
-          }
-          void persistCurrentDraft({ andPublish: true });
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (pendingCopilotReviewRef.current) {
+          notifyPendingCopilotReview("approving");
           return;
         }
+        void persistCurrentDraft({ andPublish: true });
+        return;
       }
 
       if (isInput || sortedProducts.length === 0) return;
@@ -1795,102 +1791,113 @@ export function FinalizingResultsView({
     [ensureNoPendingCopilotReview, rejectProducts, resolveScopeSkus],
   );
 
+  const renderCopilotPanel = () => (
+    <FinalizationCopilotPanel
+      selectedSku={selectedSku}
+      workspaceProductCount={sortedProducts.length}
+      dirtyProductCount={dirtySkus.length}
+      hasPendingCopilotReview={hasPendingCopilotReview}
+      pendingCopilotReviewCount={pendingCopilotReview?.skus.length ?? 0}
+      pendingCopilotSummaries={pendingCopilotReview?.summaries ?? []}
+      reviewActionPending={saving || publishing || rejecting}
+      getContext={getCopilotContext}
+      onAcceptPendingCopilotReview={handleAcceptPendingCopilotReview}
+      onRejectPendingCopilotReview={handleRejectPendingCopilotReview}
+      onListWorkspaceProducts={handleCopilotListWorkspaceProducts}
+      onPreviewProductScope={handleCopilotPreviewProductScope}
+      onGetProductSnapshot={handleCopilotGetProductSnapshot}
+      onInspectSourceData={handleCopilotInspectSourceData}
+      onListImageSources={handleCopilotListImageSources}
+      onSetProductFields={handleCopilotSetProductFields}
+      onBulkSetProductFields={handleCopilotBulkSetProductFields}
+      onBulkTransformProductNames={handleCopilotBulkTransformProductNames}
+      onAssignBrand={handleCopilotAssignBrand}
+      onBulkAssignBrand={handleCopilotBulkAssignBrand}
+      onCreateBrand={handleCopilotCreateBrand}
+      onSetStorePages={handleCopilotSetStorePages}
+      onAddStorePages={handleCopilotAddStorePages}
+      onRemoveStorePages={handleCopilotRemoveStorePages}
+      onBulkUpdateStorePages={handleCopilotBulkUpdateStorePages}
+      onReplaceSelectedImages={handleCopilotReplaceSelectedImages}
+      onAddSelectedImages={handleCopilotAddSelectedImages}
+      onRemoveSelectedImages={handleCopilotRemoveSelectedImages}
+      onRestoreSavedDraft={handleCopilotRestoreSavedDraft}
+      onSaveDraft={handleCopilotSaveDraft}
+      onSaveProducts={handleCopilotSaveProducts}
+      onApproveProduct={handleCopilotApproveProduct}
+      onApproveProducts={handleCopilotApproveProducts}
+      onRejectProduct={handleCopilotRejectProduct}
+      onRejectProducts={handleCopilotRejectProducts}
+    />
+  );
+
   return (
     <>
-      <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
-      {/* Left Column: Product List */}
-      <ProductListSidebar
-        products={sortedProducts}
-        selectedSku={selectedSku}
-        onSelectProduct={handleSelectProduct}
-        scrollContainerRef={scrollContainerRef}
-        search={search}
-        onSearchChange={onSearchChange}
-        groupedProducts={groupedProducts}
-        cohortBrands={cohortBrands}
-        onEditCohort={onEditCohort}
-      />
+      <div className="flex h-full min-h-0 rounded-lg border bg-background shadow-sm overflow-hidden">
+        {/* Left Column: Product List */}
+        <ProductListSidebar
+          products={sortedProducts}
+          selectedSku={selectedSku}
+          onSelectProduct={handleSelectProduct}
+          scrollContainerRef={scrollContainerRef}
+          search={search}
+          onSearchChange={onSearchChange}
+          filters={filters}
+          onFilterChange={onFilterChange}
+          availableSources={availableSources}
+          showSourceFilter={false}
+          groupedProducts={groupedProducts}
+          cohortBrands={cohortBrands}
+          onEditCohort={onEditCohort}
+          selectedSkus={selectedSkus}
+          onSelectSku={onSelectSku}
+        />
 
-      {/* Right Column: Editing Form */}
-      <div className="flex-1 flex flex-col bg-background overflow-hidden">
-        {selectedProduct ? (
-          <>
-            {/* Header */}
-            <ProductSaveActions
-              productName={formData.name}
-              originalName={selectedProduct.input?.name || ""}
-              productPrice={formData.price}
-              selectedSku={selectedSku}
-              isDirty={isDirty}
-              hasPendingCopilotReview={hasPendingCopilotReview}
-              saving={saving}
-              publishing={publishing}
-              rejecting={rejecting}
-              onSave={() => {
-                if (pendingCopilotReviewRef.current) {
-                  notifyPendingCopilotReview("saving");
-                  return;
-                }
-                void persistCurrentDraft();
-              }}
-              onPublish={() => {
-                if (pendingCopilotReviewRef.current) {
-                  notifyPendingCopilotReview("approving");
-                  return;
-                }
-                void persistCurrentDraft({ andPublish: true });
-              }}
-              onReject={handleReject}
-            />
+        {/* Right Column: Editing Form */}
+        <div className="flex-1 flex flex-col bg-background overflow-hidden">
+          {selectedProduct ? (
+            <>
+              {/* Header */}
+              <ProductSaveActions
+                productName={formData.name}
+                originalName={selectedProduct.input?.name || ""}
+                productPrice={formData.price}
+                selectedSku={selectedSku}
+                isDirty={isDirty}
+                hasPendingCopilotReview={hasPendingCopilotReview}
+                saving={saving}
+                publishing={publishing}
+                rejecting={rejecting}
+                onSave={() => {
+                  if (pendingCopilotReviewRef.current) {
+                    notifyPendingCopilotReview("saving");
+                    return;
+                  }
+                  void persistCurrentDraft();
+                }}
+                onPublish={() => {
+                  if (pendingCopilotReviewRef.current) {
+                    notifyPendingCopilotReview("approving");
+                    return;
+                  }
+                  void persistCurrentDraft({ andPublish: true });
+                }}
+                onReject={handleReject}
+              />
 
-            {hasPendingCopilotReview && (
-              <div className="border-b bg-violet-50/60 px-4 py-4">
-                <Alert className="border-violet-200 bg-violet-50 text-violet-950">
-                  <AlertTitle>Review staged copilot changes</AlertTitle>
-                  <AlertDescription className="space-y-3">
-                    <p>
-                      Copilot edits are staged for{" "}
-                      {pendingCopilotReview?.skus.length ?? 0} product
-                      {(pendingCopilotReview?.skus.length ?? 0) === 1 ? "" : "s"}.
-                      Accept autosaves them. Reject restores the previous drafts.
-                    </p>
-                    <div className="space-y-1">
-                      {(pendingCopilotReview?.summaries ?? [])
-                        .slice(-3)
-                        .map((summary) => (
-                          <div
-                            key={summary}
-                            className="text-xs text-violet-900/80"
-                          >
-                            - {summary}
-                          </div>
-                        ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          void handleAcceptPendingCopilotReview();
-                        }}
-                        disabled={saving || publishing || rejecting}
-                      >
-                        Accept & Autosave
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={handleRejectPendingCopilotReview}
-                        disabled={saving || publishing || rejecting}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
+              {hasPendingCopilotReview ? (
+                <div className="border-b bg-violet-50/60 px-4 py-3">
+                  <Alert className="border-violet-200 bg-violet-50 text-violet-950">
+                    <AlertTitle>Copilot changes are staged</AlertTitle>
+                    <AlertDescription>
+                      Review {pendingCopilotReview?.skus.length ?? 0} product
+                      {(pendingCopilotReview?.skus.length ?? 0) === 1 ? "" : "s"}{" "}
+                      in the Copilot panel before saving, approving, or
+                      switching products.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              ) : null}
 
             {/* Form Content */}
             <div className="flex-1 min-h-0 flex flex-col">
@@ -2368,92 +2375,34 @@ export function FinalizingResultsView({
               </div>
 
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-            <Package className="h-16 w-16 mb-4 opacity-10" />
-            <h3 className="text-xl font-medium">Select a product to review</h3>
-            <p>
-              Products here have been consolidated by AI and are ready for your
-              final check.
-            </p>
-          </div>
-        )}
-      </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
+              <Package className="mb-4 h-16 w-16 opacity-10" />
+              <h3 className="text-xl font-medium">Select a product to review</h3>
+              <p>
+                Products here have been consolidated by AI and are ready for
+                your final check.
+              </p>
+            </div>
+          )}
 
-      <ConfirmationDialog
-        open={confirmRejectOpen}
-        onOpenChange={setConfirmRejectOpen}
-        onConfirm={handleConfirmReject}
-        title="Reject Product"
-        description="Are you sure you want to reject this product and send it back to the scraped stage? This will not clear your edits, but the product will move back to the manual review pipeline."
-        confirmLabel="Reject"
-      />
-      </div>
+          <div className="border-t bg-card/40 xl:hidden">{renderCopilotPanel()}</div>
+        </div>
 
-      <Sheet open={copilotOpen} onOpenChange={setCopilotOpen}>
-        <SheetTrigger asChild>
-          <Button
-            type="button"
-            size="lg"
-            className="fixed bottom-6 right-6 z-40 h-12 rounded-full px-5 shadow-lg"
-            disabled={sortedProducts.length === 0}
-          >
-            <Bot className="mr-2 h-4 w-4" />
-            {hasPendingCopilotReview
-              ? `Review Copilot Changes (${pendingCopilotReview?.skus.length ?? 0})`
-              : `Finalization Copilot${dirtySkus.length > 0 ? ` (${dirtySkus.length})` : ""}`}
-          </Button>
-        </SheetTrigger>
-        <SheetContent
-          side="right"
-          className="w-full border-l p-0 sm:max-w-xl xl:max-w-2xl"
-        >
-          <div className="sr-only">
-            <SheetTitle>Finalization Copilot</SheetTitle>
-            <SheetDescription>
-              AI chat for reviewing, editing, and approving products in finalizing.
-            </SheetDescription>
-          </div>
-          <FinalizationCopilotPanel
-            selectedSku={selectedSku}
-            workspaceProductCount={sortedProducts.length}
-            dirtyProductCount={dirtySkus.length}
-            hasPendingCopilotReview={hasPendingCopilotReview}
-            pendingCopilotReviewCount={pendingCopilotReview?.skus.length ?? 0}
-            pendingCopilotSummaries={pendingCopilotReview?.summaries ?? []}
-            reviewActionPending={saving || publishing || rejecting}
-            getContext={getCopilotContext}
-            onAcceptPendingCopilotReview={handleAcceptPendingCopilotReview}
-            onRejectPendingCopilotReview={handleRejectPendingCopilotReview}
-            onListWorkspaceProducts={handleCopilotListWorkspaceProducts}
-            onPreviewProductScope={handleCopilotPreviewProductScope}
-            onGetProductSnapshot={handleCopilotGetProductSnapshot}
-            onInspectSourceData={handleCopilotInspectSourceData}
-            onListImageSources={handleCopilotListImageSources}
-            onSetProductFields={handleCopilotSetProductFields}
-            onBulkSetProductFields={handleCopilotBulkSetProductFields}
-            onBulkTransformProductNames={handleCopilotBulkTransformProductNames}
-            onAssignBrand={handleCopilotAssignBrand}
-            onBulkAssignBrand={handleCopilotBulkAssignBrand}
-            onCreateBrand={handleCopilotCreateBrand}
-            onSetStorePages={handleCopilotSetStorePages}
-            onAddStorePages={handleCopilotAddStorePages}
-            onRemoveStorePages={handleCopilotRemoveStorePages}
-            onBulkUpdateStorePages={handleCopilotBulkUpdateStorePages}
-            onReplaceSelectedImages={handleCopilotReplaceSelectedImages}
-            onAddSelectedImages={handleCopilotAddSelectedImages}
-            onRemoveSelectedImages={handleCopilotRemoveSelectedImages}
-            onRestoreSavedDraft={handleCopilotRestoreSavedDraft}
-            onSaveDraft={handleCopilotSaveDraft}
-            onSaveProducts={handleCopilotSaveProducts}
-            onApproveProduct={handleCopilotApproveProduct}
-            onApproveProducts={handleCopilotApproveProducts}
-            onRejectProduct={handleCopilotRejectProduct}
-            onRejectProducts={handleCopilotRejectProducts}
-          />
-        </SheetContent>
-      </Sheet>
+        <aside className="hidden min-h-0 w-[26rem] shrink-0 border-l bg-card/40 xl:flex xl:flex-col">
+          {renderCopilotPanel()}
+        </aside>
+
+        <ConfirmationDialog
+          open={confirmRejectOpen}
+          onOpenChange={setConfirmRejectOpen}
+          onConfirm={handleConfirmReject}
+          title="Reject Product"
+          description="Are you sure you want to reject this product and send it back to the scraped stage? This will not clear your edits, but the product will move back to the manual review pipeline."
+          confirmLabel="Reject"
+        />
+      </div>
     </>
   );
 }

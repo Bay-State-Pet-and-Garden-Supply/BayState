@@ -34,26 +34,29 @@ export interface AlertBannerProps {
 const severityConfig: Record<
   AlertBannerProps["severity"],
   {
-    borderClass: string;
+    containerClass: string;
     iconBgClass: string;
     iconClass: string;
     IconComponent: React.ComponentType<{ className?: string }>;
   }
 > = {
   error: {
-    borderClass: "border-l-red-500",
+    containerClass:
+      "border-red-200 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/20",
     iconBgClass: "bg-red-100 dark:bg-red-900/30",
     iconClass: "text-red-600 dark:text-red-400",
     IconComponent: AlertCircle,
   },
   warning: {
-    borderClass: "border-l-yellow-500",
+    containerClass:
+      "border-yellow-200 bg-yellow-50/80 dark:border-yellow-900/40 dark:bg-yellow-950/20",
     iconBgClass: "bg-yellow-100 dark:bg-yellow-900/30",
     iconClass: "text-yellow-600 dark:text-yellow-400",
     IconComponent: AlertTriangle,
   },
   info: {
-    borderClass: "border-l-blue-500",
+    containerClass:
+      "border-blue-200 bg-blue-50/80 dark:border-blue-900/40 dark:bg-blue-950/20",
     iconBgClass: "bg-blue-100 dark:bg-blue-900/30",
     iconClass: "text-blue-600 dark:text-blue-400",
     IconComponent: Info,
@@ -64,7 +67,7 @@ const severityConfig: Record<
  * AlertBanner component for displaying dismissible alerts with actions.
  * 
  * Features:
- * - Color-coded left border based on severity (error=red, warning=yellow, info=blue)
+ * - Color-coded bordered surface based on severity (error=red, warning=yellow, info=blue)
  * - Appropriate icon for each severity level
  * - Optional dismiss button (top right)
  * - Optional action buttons (e.g., "Retry", "View Logs")
@@ -113,8 +116,7 @@ export function AlertBanner({
       aria-atomic="true"
       className={cn(
         "relative flex w-full items-start gap-3 rounded-lg border bg-background p-4 shadow-sm",
-        config.borderClass,
-        "border-l-4",
+        config.containerClass,
         className
       )}
     >

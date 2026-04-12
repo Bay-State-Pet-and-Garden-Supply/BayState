@@ -271,7 +271,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-zinc-950/55 flex items-center justify-center z-50">
         <div className="bg-card rounded-lg p-8 flex items-center gap-4">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-muted-foreground">Loading enrichment data…</span>
@@ -286,7 +286,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
   const enabledAI = aiSearchSources.filter((s) => enabledSourceIds.includes(s.id));
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-zinc-950/55 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-border bg-muted/50">
           <div>

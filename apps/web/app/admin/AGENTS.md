@@ -50,15 +50,29 @@ app/admin/
 - **NO** inline tables (use react-table)
 - **NO** bypassing RLS or direct DB mutations in components
 
-## PIPELINE (v2 - Unified)
-Main orchestrator: `components/admin/pipeline/UnifiedPipelineClient.tsx` (20+ sub-components).
+## ADMIN DESIGN PHILOSOPHY
+- **One route, one shell**: Every admin route should have an explicit page title, short purpose statement, and one stable control area before the main content.
+- **Two route archetypes only**: Prefer either a **Queue View** (lists, bulk actions, filters) or a **Workspace View** (sidebar + focused editor/reviewer). Do not mix multiple competing page types in one screen.
+- **One control surface per concern**: Search, filters, batch actions, and destructive actions should each live in one consistent place. Avoid duplicate buttons, floating helpers, or hidden secondary control strips.
+- **Quiet utilitarian styling**: Use Bay State colors as accents, not decoration. Favor sturdy borders, restrained fills, clear spacing, and direct labels over generic "AI dashboard" treatments.
+- **Visible guidance over hidden semantics**: Stage meaning, active filters, keyboard shortcuts, and risky states should be readable on screen. Do not hide important context in tooltips or `sr-only` text.
+- **Workspace safety first**: In review flows, high-impact actions must be explicit and reversible where possible. Avoid plain Enter-to-approve patterns or stacked confirmation surfaces.
 
-Routes: `pipeline/page.tsx` (main), `pipeline/monitoring/` (active runs), `pipeline/tools/` (import/export).
+## PIPELINE
+Main route: `app/admin/pipeline/page.tsx`
 
-**Status Flow:** Imported → Enhanced → Ready for Review → Verified → Live → Failed
+Main orchestrator: `components/admin/pipeline/PipelineClient.tsx`
 
-**Key Patterns:**
-- Status filtering via URL query params (`?status=staging`)
-- Bulk actions: Approve, Reject, Delete with undo
-- Real-time monitoring via WebSocket
-- Batch AI enhancement toolbar
+Key workspaces:
+- `ScrapedResultsView.tsx` for source review
+- `FinalizingResultsView.tsx` for final product editing and approval
+- `ExportWorkspace.tsx` for ShopSite/export tooling
+
+**Status Flow:** Imported → Scraping → Scraped → Consolidating → Finalizing → Exporting → Failed
+
+**Pipeline rules:**
+- Treat `scraping` and `consolidating` as operational monitoring views.
+- Treat `scraped` and `finalizing` as workspace views with their own focused sidebars.
+- Keep stage-level search/filter state in the URL (`stage`, `search`, `source`, `product_line`, `cohort_id`) and clear it when moving between stages.
+- Use cohort names as human-friendly **batch** labels whenever possible; avoid exposing raw UUIDs unless the ID itself is the point.
+- Keep copilot assistance embedded in the workspace, not as a floating global CTA.

@@ -149,7 +149,7 @@ export function ImageSelectionWorkspace({
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-zinc-950/55 flex items-center justify-center z-50">
         <div className="bg-card rounded-lg p-8 flex items-center gap-4">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-muted-foreground">Loading product images…</span>
@@ -160,7 +160,7 @@ export function ImageSelectionWorkspace({
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-zinc-950/55 flex items-center justify-center z-50 p-4">
         <div className="bg-card rounded-xl shadow-2xl max-w-lg w-full p-6">
           <div className="text-center">
             <div className="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
@@ -185,7 +185,7 @@ export function ImageSelectionWorkspace({
   const hasImages = imageCandidates.length > 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-zinc-950/55 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-muted/50">
