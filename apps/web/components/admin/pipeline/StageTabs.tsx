@@ -21,10 +21,6 @@ export function StageTabs({
   actions,
 }: StageTabsProps) {
   const getCount = (stage: PipelineStage): number => {
-    if (stage === "scraping" || stage === "consolidating") {
-      return 0;
-    }
-
     return counts.find((count) => count.status === stage)?.count ?? 0;
   };
 

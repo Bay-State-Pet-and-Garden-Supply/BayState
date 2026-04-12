@@ -1869,6 +1869,7 @@ export type Database = {
           created_at: string | null
           enrichment_config: Json | null
           error_message: string | null
+          exported_at: string | null
           image_candidates: string[] | null
           input: Json | null
           is_test_run: boolean | null
@@ -1888,6 +1889,7 @@ export type Database = {
           created_at?: string | null
           enrichment_config?: Json | null
           error_message?: string | null
+          exported_at?: string | null
           image_candidates?: string[] | null
           input?: Json | null
           is_test_run?: boolean | null
@@ -1907,6 +1909,7 @@ export type Database = {
           created_at?: string | null
           enrichment_config?: Json | null
           error_message?: string | null
+          exported_at?: string | null
           image_candidates?: string[] | null
           input?: Json | null
           is_test_run?: boolean | null
@@ -3534,9 +3537,11 @@ export type Database = {
     Enums: {
       pipeline_status_five:
         | "imported"
+        | "scraping"
         | "scraped"
-        | "finalized"
-        | "published"
+        | "consolidating"
+        | "finalizing"
+        | "exporting"
         | "failed"
       pipeline_status_new_enum: "registered" | "enriched" | "finalized"
     }

@@ -2,8 +2,11 @@ import { z } from 'zod';
 
 export const PipelineStatusSchema = z.enum([
     'imported',
+    'scraping',
     'scraped',
-    'finalized',
+    'consolidating',
+    'finalizing',
+    'exporting',
     'failed',
 ]);
 
@@ -12,8 +15,8 @@ export const PipelineStageSchema = z.enum([
     'scraping',
     'scraped',
     'consolidating',
-    'finalized',
-    'export',
+    'finalizing',
+    'exporting',
     'failed',
 ]);
 
@@ -48,6 +51,7 @@ export const PipelineProductSchema = z.object({
     sources: z.record(z.string(), z.unknown()),
     consolidated: PipelineProductConsolidatedSchema,
     pipeline_status: PipelineStatusSchema,
+    exported_at: z.string().nullable().optional(),
     created_at: z.string(),
     updated_at: z.string(),
 });

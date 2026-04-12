@@ -12,9 +12,12 @@ export const STATUS_TRANSITIONS: Record<
   PersistedPipelineStatus,
   PersistedPipelineStatus[]
 > = {
-  imported: ['scraped'],
-  scraped: ['finalized', 'imported'],
-  finalized: ['scraped'],
+  imported: ['scraping'],
+  scraping: ['scraped', 'failed', 'imported'],
+  scraped: ['consolidating', 'finalizing', 'imported', 'failed'],
+  consolidating: ['finalizing', 'scraped', 'failed'],
+  finalizing: ['exporting', 'scraped', 'failed'],
+  exporting: ['finalizing', 'failed'],
   failed: ['imported'],
 } as const;
 

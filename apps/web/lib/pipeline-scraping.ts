@@ -420,6 +420,24 @@ export async function scrapeProducts(
         return { success: false, error: 'Failed to create scraping work units' };
     }
 
+    if (!testMode) {
+        const { error: statusError } = await supabase
+            .from('products_ingestion')
+            .update({
+                pipeline_status: 'scraping',
+                updated_at: new Date().toISOString(),
+                error_message: null,
+            })
+            .in('sku', skus);
+
+        if (statusError) {
+            console.error('[Pipeline Scraping] Failed to move products into scraping:', statusError);
+            await supabase.from('scrape_job_chunks').delete().eq('job_id', job.id);
+            await supabase.from('scrape_jobs').delete().eq('id', job.id);
+            return { success: false, error: 'Failed to mark products as scraping' };
+        }
+    }
+
     console.log(`[Pipeline Scraping] Created parent job ${job.id} with ${chunks.length} chunks (${chunkSize} SKUs each)`);
 
     return {

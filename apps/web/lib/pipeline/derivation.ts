@@ -1,8 +1,8 @@
 /**
  * Pipeline tab derivation helpers.
  *
- * Persisted ingestion statuses stay canonical in the database while admin tabs
- * are derived from the current product status plus any active background work.
+ * The workflow state is canonical across the database and admin UI. Legacy
+ * helpers still exist for compatibility with tests and utility callers.
  */
 
 import type { PersistedPipelineStatus, PipelineStage } from './types';
@@ -12,8 +12,8 @@ export const WORKFLOW_PIPELINE_TABS = [
   'scraping',
   'scraped',
   'consolidating',
-  'finalized',
-  'export',
+  'finalizing',
+  'exporting',
   'failed',
 ] as const;
 
@@ -118,18 +118,21 @@ export function deriveTabFromProduct(
   product?: ProductTabDerivationInput | null,
   activeJobs?: Partial<ActivePipelineJobs> | null
 ): WorkflowPipelineTab {
-  const resolvedActiveJobs = normalizeActiveJobs(activeJobs);
+  void activeJobs;
 
   switch (product?.pipeline_status) {
     case 'imported':
       return 'imported';
+    case 'scraping':
+      return 'scraping';
     case 'scraped':
-      return resolvedActiveJobs.scraping ? 'scraping' : 'scraped';
-    case 'finalized':
-      if (resolvedActiveJobs.consolidation) {
-        return 'consolidating';
-      }
-      return product?.in_storefront ? 'export' : 'finalized';
+      return 'scraped';
+    case 'consolidating':
+      return 'consolidating';
+    case 'finalizing':
+      return 'finalizing';
+    case 'exporting':
+      return 'exporting';
     case 'failed':
       return 'failed';
     default:

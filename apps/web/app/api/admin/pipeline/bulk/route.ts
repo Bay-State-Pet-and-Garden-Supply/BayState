@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         if (toStatus === 'published') {
             return NextResponse.json(
                 {
-                    error: 'Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.',
+                    error: 'Published is no longer a workflow state. Use finalizing/exporting instead.',
                 },
                 { status: 400 }
             );

@@ -317,6 +317,40 @@ export async function POST(request: NextRequest) {
                     console.log(`[Chunk Callback] Job ${jobId} was already finalized by another callback`);
                 }
 
+                if (jobStatus === 'failed' && !isTestJob) {
+                    const failedSkus = Array.from(
+                        new Set(
+                            (allChunksForJob || []).flatMap((chunkRow) =>
+                                Array.isArray(chunkRow.skus)
+                                    ? chunkRow.skus.filter(
+                                          (sku): sku is string =>
+                                              typeof sku === 'string' && sku.trim().length > 0
+                                      )
+                                    : []
+                            )
+                        )
+                    );
+
+                    if (failedSkus.length > 0) {
+                        const { error: pipelineStatusError } = await supabase
+                            .from('products_ingestion')
+                            .update({
+                                pipeline_status: 'failed',
+                                error_message: terminalMessage,
+                                updated_at: completedAt,
+                            })
+                            .in('sku', failedSkus)
+                            .eq('pipeline_status', 'scraping');
+
+                        if (pipelineStatusError) {
+                            console.error(
+                                `[Chunk Callback] Failed to mark scraping products as failed for job ${jobId}:`,
+                                pipelineStatusError
+                            );
+                        }
+                    }
+                }
+
                 if (jobStatus === 'completed' && !isTestJob) {
                     console.log(
                         `[Chunk Callback] Job ${jobId} completed. Consolidation remains manual and must be user-triggered.`

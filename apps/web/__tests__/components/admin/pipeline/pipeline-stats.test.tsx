@@ -8,8 +8,12 @@ import type { StatusCount } from '@/lib/pipeline';
 
 const mockCounts: StatusCount[] = [
   { status: 'imported', count: 10 },
+  { status: 'scraping', count: 4 },
   { status: 'scraped', count: 25 },
-  { status: 'finalized', count: 15 },
+  { status: 'consolidating', count: 3 },
+  { status: 'finalizing', count: 15 },
+  { status: 'exporting', count: 2 },
+  { status: 'failed', count: 1 },
 ];
 
 describe('PipelineStats', () => {
@@ -22,21 +26,28 @@ describe('PipelineStats', () => {
     expect(screen.getByText('Scraped')).toBeInTheDocument();
     expect(screen.getByText('25')).toBeInTheDocument();
 
-    expect(screen.getByText('Finalized')).toBeInTheDocument();
+    expect(screen.getByText('Finalizing')).toBeInTheDocument();
     expect(screen.getByText('15')).toBeInTheDocument();
+
+    expect(screen.getByText('Exporting')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
 
   });
 
   it('renders zero counts when no products', () => {
     const emptyCounts: StatusCount[] = [
       { status: 'imported', count: 0 },
+      { status: 'scraping', count: 0 },
       { status: 'scraped', count: 0 },
-      { status: 'finalized', count: 0 },
+      { status: 'consolidating', count: 0 },
+      { status: 'finalizing', count: 0 },
+      { status: 'exporting', count: 0 },
+      { status: 'failed', count: 0 },
     ];
 
     render(<PipelineStats counts={emptyCounts} />);
 
-    expect(screen.getAllByText('0')).toHaveLength(3);
+    expect(screen.getAllByText('0')).toHaveLength(7);
   });
 
   it('calls onStatusChange when card is clicked', () => {
@@ -57,7 +68,7 @@ describe('PipelineStats', () => {
     const trends = {
       imported: 5,
       scraped: -3,
-      finalized: 0,
+      finalizing: 0,
     };
 
     render(<PipelineStats counts={mockCounts} trends={trends} />);
@@ -77,7 +88,7 @@ describe('PipelineStats', () => {
   it('renders loading skeleton when isLoading is true', () => {
     render(<PipelineStats counts={mockCounts} isLoading />);
 
-    // Should render 5 skeleton cards
+    // Should render workflow skeleton cards
     const skeletons = document.querySelectorAll('[class*="animate-pulse"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
@@ -93,20 +104,20 @@ describe('PipelineStats', () => {
     expect(screen.getByText('10')).toBeInTheDocument();
     // Missing statuses should show 0
     const zeros = screen.getAllByText('0');
-    expect(zeros).toHaveLength(2);
+    expect(zeros).toHaveLength(6);
   });
   it('renders correct icons for each status', () => {
     render(<PipelineStats counts={mockCounts} />);
 
     const icons = document.querySelectorAll('svg');
-    expect(icons.length).toBeGreaterThanOrEqual(3);
+    expect(icons.length).toBeGreaterThanOrEqual(7);
   });
 
   it('formats large numbers with locale string', () => {
     const largeCounts: StatusCount[] = [
       { status: 'imported', count: 10000 },
       { status: 'scraped', count: 25000 },
-      { status: 'finalized', count: 15000 },
+      { status: 'finalizing', count: 15000 },
     ];
 
     render(<PipelineStats counts={largeCounts} />);

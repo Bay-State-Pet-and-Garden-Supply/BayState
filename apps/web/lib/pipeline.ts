@@ -17,7 +17,7 @@ const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
 
 type StageBackedPipelineStage = Extract<
     PipelineStage,
-    'imported' | 'scraped' | 'finalized' | 'export' | 'failed'
+    'imported' | 'scraping' | 'scraped' | 'consolidating' | 'finalizing' | 'exporting' | 'failed'
 >;
 
 const PIPELINE_STAGE_QUERY_SOURCE: Record<
@@ -28,15 +28,25 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
         table: 'products_ingestion',
         status: 'imported',
     },
+    scraping: {
+        table: 'products_ingestion',
+        status: 'scraping',
+    },
     scraped: {
         table: 'products_ingestion',
         status: 'scraped',
     },
-    finalized: {
-        table: 'pipeline_finalized_review',
+    consolidating: {
+        table: 'products_ingestion',
+        status: 'consolidating',
     },
-    export: {
-        table: 'pipeline_export_queue',
+    finalizing: {
+        table: 'products_ingestion',
+        status: 'finalizing',
+    },
+    exporting: {
+        table: 'products_ingestion',
+        status: 'exporting',
     },
     failed: {
         table: 'products_ingestion',
@@ -123,9 +133,9 @@ export async function getProductsByStatus(
     let query = supabase
         .from('products_ingestion')
         .select('*, cohort_batches(name, brand_name)', { count: 'exact' })
-        .order('updated_at', { ascending: false });
-
-    query = query.eq('pipeline_status', status);
+        .order('updated_at', { ascending: false })
+        .eq('pipeline_status', status)
+        .is('exported_at', null);
 
     if (options?.product_line) {
         query = query.eq('product_line', options.product_line);
@@ -271,6 +281,10 @@ export async function getProductsByStage(
         query = query.eq('pipeline_status', querySource.status);
     }
 
+    if (querySource.table === 'products_ingestion') {
+        query = query.is('exported_at', null);
+    }
+
     if (options?.product_line) {
         query = query.eq('product_line', options.product_line);
     }
@@ -351,9 +365,9 @@ export async function getSkusByStatus(
     let query = supabase
         .from('products_ingestion')
         .select('sku', { count: 'exact' })
-        .order('updated_at', { ascending: false });
-
-    query = query.eq('pipeline_status', status);
+        .order('updated_at', { ascending: false })
+        .eq('pipeline_status', status)
+        .is('exported_at', null);
 
     if (options?.product_line) {
         query = query.eq('product_line', options.product_line);
@@ -425,6 +439,10 @@ export async function getSkusByStage(
         query = query.eq('pipeline_status', querySource.status);
     }
 
+    if (querySource.table === 'products_ingestion') {
+        query = query.is('exported_at', null);
+    }
+
     if (options?.product_line) {
         query = query.eq('product_line', options.product_line);
     }
@@ -482,6 +500,7 @@ export async function getAvailableSources(status: PersistedPipelineStatus): Prom
         .from('products_ingestion')
         .select('sources')
         .eq('pipeline_status', status)
+        .is('exported_at', null)
         .not('sources', 'is', null);
 
     if (error) {
@@ -516,6 +535,10 @@ export async function getAvailableSourcesByStage(
         query = query.eq('pipeline_status', querySource.status);
     }
 
+    if (querySource.table === 'products_ingestion') {
+        query = query.is('exported_at', null);
+    }
+
     const { data, error } = await query;
 
     if (error) {
@@ -541,35 +564,26 @@ export async function getAvailableSourcesByStage(
 export async function getStatusCounts(): Promise<StatusCount[]> {
     const supabase = await createClient();
 
-    const [{ data, error }, finalizedReviewResult, exportQueueResult] = await Promise.all([
-        supabase
-            .from('products_ingestion')
-            .select('pipeline_status'),
-        supabase
-            .from('pipeline_finalized_review')
-            .select('sku', { count: 'exact', head: true }),
-        supabase
-            .from('pipeline_export_queue')
-            .select('sku', { count: 'exact', head: true }),
-    ]);
+    const { data, error } = await supabase
+        .from('products_ingestion')
+        .select('pipeline_status')
+        .is('exported_at', null);
 
     if (error) {
         console.error('Error fetching status counts:', error);
-        return [
-            { status: 'imported', count: 0 },
-            { status: 'scraping', count: 0 },
-            { status: 'scraped', count: 0 },
-            { status: 'consolidating', count: 0 },
-            { status: 'finalized', count: 0 },
-            { status: 'export', count: 0 },
-            { status: 'failed', count: 0 },
-        ];
+        return PERSISTED_PIPELINE_STATUSES.map((status) => ({
+            status,
+            count: 0,
+        }));
     }
 
     const countMap: Record<PersistedPipelineStatus, number> = {
         imported: 0,
+        scraping: 0,
         scraped: 0,
-        finalized: 0,
+        consolidating: 0,
+        finalizing: 0,
+        exporting: 0,
         failed: 0,
     };
 
@@ -579,15 +593,10 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         }
     });
 
-    return [
-        { status: 'imported', count: countMap.imported || 0 },
-        { status: 'scraping', count: 0 },
-        { status: 'scraped', count: countMap.scraped || 0 },
-        { status: 'consolidating', count: 0 },
-        { status: 'finalized', count: finalizedReviewResult.count || 0 },
-        { status: 'export', count: exportQueueResult.count || 0 },
-        { status: 'failed', count: countMap.failed || 0 },
-    ];
+    return PERSISTED_PIPELINE_STATUSES.map((status) => ({
+        status,
+        count: countMap[status] || 0,
+    }));
 }
 
 /**
@@ -638,6 +647,7 @@ export async function bulkUpdateStatus(
     const updatePayload: {
         pipeline_status: PersistedPipelineStatus;
         updated_at: string;
+        exported_at?: string | null;
         sources?: Record<string, unknown>;
         consolidated?: PipelineProduct['consolidated'];
         image_candidates?: string[];
@@ -648,6 +658,7 @@ export async function bulkUpdateStatus(
     } = {
         pipeline_status: targetStatus,
         updated_at: new Date().toISOString(),
+        exported_at: null,
     };
 
     if (resetResults) {

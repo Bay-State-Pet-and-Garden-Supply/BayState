@@ -81,7 +81,7 @@ describe('Consolidation Schemas', () => {
 
     describe('PipelineStatusSchema', () => {
         it('should accept valid pipeline statuses', () => {
-            const validStatuses = ['imported', 'scraped', 'finalized', 'failed'];
+            const validStatuses = ['imported', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed'];
             for (const status of validStatuses) {
                 expect(PipelineStatusSchema.parse(status)).toBe(status);
             }

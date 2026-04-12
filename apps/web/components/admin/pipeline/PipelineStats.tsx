@@ -1,6 +1,14 @@
 "use client";
 
-import { Package, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  Brain,
+  CheckCircle2,
+  Package,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +36,13 @@ const statusConfig: Array<{
     bgColor: "bg-brand-forest-green/10",
   },
   {
+    status: "scraping",
+    label: "Scraping",
+    icon: Activity,
+    color: "text-blue-600",
+    bgColor: "bg-blue-600/10",
+  },
+  {
     status: "scraped",
     label: "Scraped",
     icon: Sparkles,
@@ -35,11 +50,32 @@ const statusConfig: Array<{
     bgColor: "bg-brand-burgundy/10",
   },
   {
-    status: "finalized",
-    label: "Finalized",
+    status: "consolidating",
+    label: "Consolidating",
+    icon: Brain,
+    color: "text-violet-600",
+    bgColor: "bg-violet-600/10",
+  },
+  {
+    status: "finalizing",
+    label: "Finalizing",
     icon: CheckCircle2,
+    color: "text-amber-600",
+    bgColor: "bg-amber-600/10",
+  },
+  {
+    status: "exporting",
+    label: "Exporting",
+    icon: Upload,
     color: "text-brand-forest-green",
     bgColor: "bg-brand-forest-green/10",
+  },
+  {
+    status: "failed",
+    label: "Failed",
+    icon: AlertCircle,
+    color: "text-red-600",
+    bgColor: "bg-red-600/10",
   },
 ];
 
@@ -72,10 +108,10 @@ export function PipelineStats({
   isLoading = false,
 }: PipelineStatsProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
+      return (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+          {Array.from({ length: statusConfig.length }).map((_, i) => (
+            <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-8 w-8 rounded-full" />
@@ -90,7 +126,7 @@ export function PipelineStats({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
       {statusConfig.map((config) => {
         const count = getCountForStatus(counts, config.status);
         const trend = trends?.[config.status];

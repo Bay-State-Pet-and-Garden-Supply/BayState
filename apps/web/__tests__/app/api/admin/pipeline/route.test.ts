@@ -101,11 +101,11 @@ describe('/api/admin/pipeline route', () => {
         });
 
         const response = await GET(
-            new NextRequest('http://localhost/api/admin/pipeline?status=finalized&selectAll=true&source=chewy')
+            new NextRequest('http://localhost/api/admin/pipeline?status=finalizing&selectAll=true&source=chewy')
         );
         const payload = await response.json();
 
-        expect(getSkusByStatus).toHaveBeenCalledWith('finalized', {
+        expect(getSkusByStatus).toHaveBeenCalledWith('finalizing', {
             search: undefined,
             startDate: undefined,
             endDate: undefined,
@@ -125,7 +125,7 @@ describe('/api/admin/pipeline route', () => {
         expect(response.status).toBe(400);
         expect(getProductsByStatus).not.toHaveBeenCalled();
         expect(payload).toEqual({
-            error: "Invalid status 'consolidated'. Allowed persisted statuses: 'imported', 'scraped', 'finalized', 'failed'",
+            error: "Invalid status 'consolidated'. Allowed persisted statuses: 'imported', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed'",
         });
     });
 
@@ -140,7 +140,7 @@ describe('/api/admin/pipeline route', () => {
         expect(response.status).toBe(400);
         expect(bulkUpdateStatus).not.toHaveBeenCalled();
         expect(payload).toEqual({
-            error: "Published is no longer a pipeline status. Use /api/admin/pipeline/publish and manage synced products from the export tab.",
+            error: "Published is no longer a workflow state. Use finalizing/exporting instead.",
         });
     });
 });

@@ -62,7 +62,7 @@ const products: PipelineProduct[] = [
     input: { name: "Product 1", price: 10 },
     sources: {},
     consolidated: { name: "Product 1", price: 10 },
-    pipeline_status: "finalized",
+    pipeline_status: "finalizing",
     created_at: "2026-01-01",
     updated_at: "2026-01-01",
   },
@@ -70,8 +70,11 @@ const products: PipelineProduct[] = [
 
 const counts: StatusCount[] = [
   { status: "imported", count: 1 },
+  { status: "scraping", count: 0 },
   { status: "scraped", count: 0 },
-  { status: "finalized", count: 1 },
+  { status: "consolidating", count: 0 },
+  { status: "finalizing", count: 1 },
+  { status: "exporting", count: 2 },
   { status: "failed", count: 0 },
 ];
 
@@ -113,13 +116,13 @@ describe("PipelineClient live tab handling", () => {
     });
 
     render(
-      <PipelineClient
-        initialCounts={counts}
-        initialProducts={products}
-        initialTotal={1}
-        initialStage="finalized"
-      />,
-    );
+        <PipelineClient
+          initialCounts={counts}
+          initialProducts={products}
+          initialTotal={1}
+          initialStage="finalizing"
+        />,
+      );
 
     expect(await screen.findByTestId("finalizing-results")).toBeInTheDocument();
     expect(lastFinalizingResultsProps).toMatchObject({ products });
@@ -127,40 +130,39 @@ describe("PipelineClient live tab handling", () => {
     expect(screen.queryByTestId("product-table")).not.toBeInTheDocument();
   });
 
-  it("renders the published stage from server-hydrated published products", async () => {
+  it("renders the exporting stage as the multiselect workspace", async () => {
     mockSearchParamGet.mockImplementation((key: string) => {
-      if (key === "stage") return "published";
+      if (key === "stage") return "exporting";
       return null;
     });
 
-    const publishedProducts: PipelineProduct[] = [
+    const exportingProducts: PipelineProduct[] = [
       {
         ...products[0],
-        pipeline_status: "published",
+        pipeline_status: "exporting",
       },
       {
         ...products[0],
         sku: "SKU002",
         input: { name: "Product 2", price: 15 },
         consolidated: { name: "Product 2", price: 15 },
-        pipeline_status: "published",
+        pipeline_status: "exporting",
       },
     ];
 
     render(
       <PipelineClient
         initialCounts={counts}
-        initialProducts={publishedProducts}
-        initialTotal={publishedProducts.length}
-        initialStage="published"
+        initialProducts={exportingProducts}
+        initialTotal={exportingProducts.length}
+        initialStage="exporting"
       />,
     );
 
     await waitFor(() => {
-      expect(lastFinalizingResultsProps).toMatchObject({
-        products: publishedProducts,
-      });
+      expect(screen.getByTestId("product-table")).toBeInTheDocument();
     });
+    expect(lastFinalizingResultsProps).toBeNull();
   });
 
   it("treats legacy consolidated stage params as out-of-bounds and falls back to the canonical stage", async () => {

@@ -34,9 +34,9 @@ const statusConfig: Record<
   scraping: { variant: "warning", label: "Scraping", icon: Loader2 },
   scraped: { variant: "success", label: "Scraped", icon: Sparkles },
   consolidating: { variant: "warning", label: "Consolidating", icon: Sparkles },
+  finalizing: { variant: "warning", label: "Finalizing", icon: CheckCircle2 },
+  exporting: { variant: "success", label: "Exporting", icon: Globe },
   failed: { variant: "destructive", label: "Failed", icon: AlertCircle },
-  finalized: { variant: "warning", label: "Finalized", icon: CheckCircle2 },
-  export: { variant: "success", label: "Export", icon: Globe },
 };
 
 const defaultStatusConfig = {

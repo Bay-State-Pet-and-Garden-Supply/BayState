@@ -26,15 +26,12 @@ import {
   ChevronUp, 
   ChevronsUpDown, 
   AlertCircle,
-  Search,
   CheckSquare,
-  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { PipelineProduct, PipelineStatus, PipelineStage } from "@/lib/pipeline/types";
-import { PipelineFilters } from "./PipelineFilters";
-import { Input } from "@/components/ui/input";
+import type { PipelineProduct, PipelineStage } from "@/lib/pipeline/types";
+import type { PipelineFiltersState } from "./PipelineFilters";
 
 interface ProductTableProps {
   products: PipelineProduct[];
@@ -57,7 +54,7 @@ interface ProductTableProps {
     product_line?: string;
     cohort_id?: string;
   };
-  onFilterChange?: (filters: any) => void;
+  onFilterChange?: (filters: PipelineFiltersState) => void;
   availableSources?: string[];
   totalCount?: number;
   onSelectAllTotal?: () => void;
@@ -155,7 +152,7 @@ export function ProductTable({
   }, [onSearchChange]);
 
   const showSources = currentStage === "scraped";
-  const showConfidence = currentStage === "finalized";
+  const showConfidence = currentStage === "finalizing";
 
   const columns = useMemo<ColumnDef<PipelineProduct>[]>(() => [
     {

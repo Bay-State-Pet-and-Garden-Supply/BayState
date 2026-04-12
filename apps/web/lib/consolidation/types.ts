@@ -250,4 +250,11 @@ export interface Category {
 /**
  * Pipeline status for product ingestion.
  */
-export type PipelineStatus = 'imported' | 'scraped' | 'finalized' | 'failed';
+export type PipelineStatus =
+    | 'imported'
+    | 'scraping'
+    | 'scraped'
+    | 'consolidating'
+    | 'finalizing'
+    | 'exporting'
+    | 'failed';

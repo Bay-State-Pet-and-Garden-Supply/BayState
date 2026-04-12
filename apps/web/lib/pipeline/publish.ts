@@ -21,11 +21,11 @@ export async function publishToStorefront(sku: string) {
             return { success: false, error: 'Product not found in pipeline' };
         }
 
-        const publishableStatuses = new Set(['finalized']);
+        const publishableStatuses = new Set(['finalizing']);
         if (!publishableStatuses.has(ingestionProduct.pipeline_status)) {
             return { 
                 success: false, 
-                error: `Product must be in a reviewable status to publish. Current status: ${ingestionProduct.pipeline_status}` 
+                error: `Product must be in finalizing before it can move into exporting. Current status: ${ingestionProduct.pipeline_status}` 
             };
         }
 
@@ -110,6 +110,27 @@ export async function publishToStorefront(sku: string) {
             low_stock_threshold: 5,
         };
 
+        const markProductAsExporting = async () => {
+            const { error: statusError } = await supabase
+                .from('products_ingestion')
+                .update({
+                    pipeline_status: 'exporting',
+                    exported_at: null,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('sku', sku);
+
+            if (statusError) {
+                console.error(`[Publish] Failed to move ${sku} into exporting:`, statusError);
+                return {
+                    success: false as const,
+                    error: 'Failed to move product into exporting',
+                };
+            }
+
+            return { success: true as const };
+        };
+
         // Reuse existing storefront rows by SKU so re-publishes update the same
         // storefront record instead of creating duplicates.
         const { data: existingProduct } = await supabase
@@ -128,6 +149,10 @@ export async function publishToStorefront(sku: string) {
             if (updateError) {
                 console.error(`[Publish] Error updating product ${sku}:`, updateError);
                 return { success: false, error: 'Failed to update product in storefront' };
+            }
+            const statusResult = await markProductAsExporting();
+            if (!statusResult.success) {
+                return statusResult;
             }
 // Sync categories (DISABLED: Hierarchical categories do not align with ShopSite export categories)
 /*
@@ -151,6 +176,11 @@ try {
             if (insertError) {
                 console.error(`[Publish] Error inserting product ${sku}:`, insertError);
                 return { success: false, error: 'Failed to create product in storefront' };
+            }
+
+            const statusResult = await markProductAsExporting();
+            if (!statusResult.success) {
+                return statusResult;
             }
 
             return { success: true, action: 'created', productId: insertedProduct?.id };

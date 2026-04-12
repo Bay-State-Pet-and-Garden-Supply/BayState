@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
 
         const { data: existingJob, error: existingJobError } = await supabase
             .from('scrape_jobs')
-            .select('id, type, status, lease_token, attempt_count, max_attempts, config')
+            .select('id, type, status, lease_token, attempt_count, max_attempts, config, skus')
             .eq('id', payload.job_id)
             .single();
 
@@ -423,6 +423,28 @@ export async function POST(request: NextRequest) {
         const isTestJob = jobData?.test_mode === true;
         const testRunId = jobData?.metadata?.test_run_id as string | undefined;
         const resultsData = payload.results?.data;
+
+        if (updateData.status === 'failed' && !isTestJob) {
+            const jobSkus = Array.isArray(existingJob.skus)
+                ? existingJob.skus.filter((sku): sku is string => typeof sku === 'string' && sku.trim().length > 0)
+                : [];
+
+            if (jobSkus.length > 0) {
+                const { error: pipelineStatusError } = await supabase
+                    .from('products_ingestion')
+                    .update({
+                        pipeline_status: 'failed',
+                        error_message: payload.error_message || 'Scrape job failed',
+                        updated_at: nowIso,
+                    })
+                    .in('sku', jobSkus)
+                    .eq('pipeline_status', 'scraping');
+
+                if (pipelineStatusError) {
+                    console.error('[Callback] Failed to mark scrape products as failed:', pipelineStatusError);
+                }
+            }
+        }
 
         if (isTestJob) {
             console.log(`[Callback] Test job detected: ${payload.job_id} (test_run_id: ${testRunId}) - Will NOT update products_ingestion or trigger consolidation`);

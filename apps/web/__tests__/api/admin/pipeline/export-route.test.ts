@@ -72,6 +72,7 @@ function createSupabaseMock() {
   const queryBuilder = {
     select: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
+    is: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     range: jest.fn().mockResolvedValue({ data: [], error: null }),
   };
@@ -109,6 +110,7 @@ describe('pipeline export route compatibility boundary', () => {
     expect(queryBuilder.select).toHaveBeenCalledWith(
       'sku, input, consolidated, selected_images, pipeline_status, updated_at'
     );
+    expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
     expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'imported');
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(
@@ -126,7 +128,7 @@ describe('pipeline export route compatibility boundary', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: 'Invalid status. Expected one of: imported, scraped, finalized, published, failed, all',
+      error: 'Invalid status. Expected one of: imported, scraping, scraped, consolidating, finalizing, exporting, failed, all',
     });
   });
 });

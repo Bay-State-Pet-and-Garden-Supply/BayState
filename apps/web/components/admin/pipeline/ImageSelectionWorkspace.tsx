@@ -12,7 +12,7 @@ interface ImageSelectionWorkspaceProps {
   onClose: () => void;
   /** Callback when images are saved (optional) */
   onSave?: () => void;
-  /** Callback when product is finalized (optional) */
+  /** Callback when product advances to finalizing (optional) */
   onFinalize?: () => void;
 }
 
@@ -100,7 +100,7 @@ export function ImageSelectionWorkspace({
     }
   };
 
-  const handleMarkAsFinalized = async () => {
+  const handleMoveToFinalizing = async () => {
     if (selectedUrls.length === 0) {
       toast.error('Please select at least one image');
       return;
@@ -120,14 +120,14 @@ export function ImageSelectionWorkspace({
         throw new Error(data.error || 'Failed to save images');
       }
 
-      // Then transition to finalized
+      // Then transition into finalizing for manual review/export approval
       const transitionRes = await fetch('/api/admin/pipeline/transition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sku,
           fromStatus: 'scraped',
-          toStatus: 'finalized',
+          toStatus: 'finalizing',
         }),
       });
 
@@ -136,11 +136,11 @@ export function ImageSelectionWorkspace({
         throw new Error(data.error || 'Failed to transition status');
       }
 
-      toast.success('Product finalized successfully');
+      toast.success('Product moved to finalizing');
       onFinalize?.();
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to finalize';
+      const message = err instanceof Error ? err.message : 'Failed to move product to finalizing';
       toast.error(message);
     } finally {
       setIsFinalizing(false);
@@ -305,12 +305,12 @@ export function ImageSelectionWorkspace({
               Save Selections
             </button>
             <button
-              onClick={handleMarkAsFinalized}
+              onClick={handleMoveToFinalizing}
               disabled={isFinalizing || selectedUrls.length === 0}
               className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isFinalizing && <Loader2 className="h-4 w-4 animate-spin" />}
-              Mark as Finalized
+              Move to Finalizing
             </button>
           </div>
         </div>

@@ -25,4 +25,4 @@ Every time a product's status is changed via `bulkUpdateStatus`, a record is ins
 When products are deleted via `bulkDeleteProducts`, the audit log preserves a record of the deleted SKUs in the `metadata` column, even after the product record is gone.
 
 ### Querying the Log
-Admins can view the audit log in the Pipeline Dashboard to see who moved products to `published` or who deleted a batch of items.
+Admins can view the audit log in the Pipeline Dashboard to see who moved products through workflow states such as `finalizing` and `exporting`, or who deleted a batch of items.

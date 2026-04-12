@@ -453,7 +453,7 @@ describe('consolidation batch service', () => {
         expect('status' in response && response.status === 'applied').toBe(true);
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'finalized',
+                pipeline_status: 'finalizing',
                 confidence_score: 0.94,
                 error_message: null,
                 consolidated: expect.objectContaining({
@@ -585,7 +585,7 @@ describe('consolidation batch service', () => {
         });
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'finalized',
+                pipeline_status: 'finalizing',
                 confidence_score: 0.92,
                 error_message: null,
                 consolidated: expect.objectContaining({
