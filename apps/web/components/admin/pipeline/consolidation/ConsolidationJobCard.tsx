@@ -49,22 +49,22 @@ export function ConsolidationJobCard({
   const llmProvider = job.metadata?.llm_provider as string | undefined;
 
   return (
-    <div className="rounded-none border-4 border-zinc-900 bg-white p-5 shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)]">
+    <div className="rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:bg-accent/5">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-black text-lg uppercase tracking-tighter text-zinc-900">
+            <h3 className="font-bold text-base text-foreground">
               {job.description || `Batch ${job.id.slice(0, 8)}`}
             </h3>
             <StatusBadge status={job.status} />
             {llmModel && (
-              <Badge variant="outline" className="rounded-none border-2 border-zinc-900 bg-zinc-100 font-bold uppercase text-[10px]">
+              <Badge variant="secondary" className="font-medium text-[10px] h-5">
                 <Cpu className="mr-1 h-3 w-3" />
                 {llmModel}
               </Badge>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-zinc-500 uppercase tracking-tight">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <Fingerprint className="h-3 w-3" />
               <span className="font-mono">{job.id.slice(0, 12)}</span>
@@ -79,12 +79,12 @@ export function ConsolidationJobCard({
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onSyncStatus(job.id)}
             disabled={syncingId === job.id}
-            title="Refresh status from OpenAI"
-            className="rounded-none border-2 border-zinc-900 hover:bg-zinc-100 h-9"
+            title="Refresh status"
+            className="h-8 w-8 p-0"
           >
             <RefreshCw
               className={`h-4 w-4 ${syncingId === job.id ? "animate-spin" : ""}`}
@@ -92,18 +92,17 @@ export function ConsolidationJobCard({
           </Button>
           {!isTerminalStatus(job.status) && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
               onClick={() => onCancel(job.id)}
               disabled={cancellingId === job.id}
-              title="Cancel batch"
-              className="rounded-none border-2 border-zinc-900 h-9 font-bold uppercase"
+              className="h-8 text-xs font-semibold text-destructive border-destructive/20 hover:bg-destructive/5"
             >
               {cancellingId === job.id ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <XCircle className="mr-2 h-4 w-4" />
+                  <XCircle className="mr-1.5 h-3.5 w-3.5" />
                   Cancel
                 </>
               )}
@@ -113,50 +112,50 @@ export function ConsolidationJobCard({
       </div>
 
       {/* Stats Grid */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="border-2 border-zinc-900 p-3 bg-zinc-50">
-          <p className="text-3xl font-black text-zinc-900 tracking-tighter">
+      <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-md border border-border p-3 bg-muted/20">
+          <p className="text-2xl font-bold text-foreground">
             {job.totalProducts}
           </p>
-          <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Total Products</p>
+          <p className="text-[10px] font-semibold text-muted-foreground">Total</p>
         </div>
-        <div className="border-2 border-zinc-900 p-3 bg-blue-50/30">
-          <p className="text-3xl font-black text-blue-700 tracking-tighter">
+        <div className="rounded-md border border-border p-3 bg-blue-50/20">
+          <p className="text-2xl font-bold text-blue-600">
             {job.processedCount}
           </p>
-          <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Processed</p>
+          <p className="text-[10px] font-semibold text-muted-foreground">Processed</p>
         </div>
-        <div className="border-2 border-zinc-900 p-3 bg-green-50/30">
-          <p className="text-3xl font-black text-green-700 tracking-tighter">
+        <div className="rounded-md border border-border p-3 bg-green-50/20">
+          <p className="text-2xl font-bold text-green-600">
             {job.successCount}
           </p>
-          <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Success</p>
+          <p className="text-[10px] font-semibold text-muted-foreground">Success</p>
         </div>
-        <div className="border-2 border-zinc-900 p-3 bg-red-50/30">
+        <div className="rounded-md border border-border p-3 bg-red-50/20">
           <p
-            className={`text-3xl font-black tracking-tighter ${job.errorCount > 0 ? "text-red-700" : "text-zinc-400"}`}
+            className={`text-2xl font-bold ${job.errorCount > 0 ? "text-red-600" : "text-muted-foreground"}`}
           >
             {job.errorCount}
           </p>
-          <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Errors</p>
+          <p className="text-[10px] font-semibold text-muted-foreground">Errors</p>
         </div>
       </div>
 
       {/* Error Warning */}
       {job.errorCount > 0 && (
-        <div className="mt-4 flex items-center gap-2 border-2 border-red-900 bg-red-50 px-3 py-2 text-xs font-bold text-red-900 uppercase tracking-tight">
-          <AlertTriangle className="h-4 w-4" />
+        <div className="mt-3 flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs font-medium text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5" />
           {job.errorCount} product{job.errorCount !== 1 ? "s" : ""} failed consolidation
         </div>
       )}
 
       {/* Progress Bar */}
-      <div className="mt-6 space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-          <span className="text-zinc-500">Pipeline Progress</span>
-          <span className="text-zinc-900">{job.progress}%</span>
+      <div className="mt-5 space-y-1.5">
+        <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+          <span>Pipeline Progress</span>
+          <span className="text-foreground">{job.progress}%</span>
         </div>
-        <div className="h-4 w-full border-2 border-zinc-900 bg-zinc-100 p-[2px]">
+        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
           <div
             className="h-full bg-brand-burgundy transition-all duration-500"
             style={{ width: `${job.progress}%` }}
@@ -166,27 +165,28 @@ export function ConsolidationJobCard({
 
       {/* Apply Button for completed batches */}
       {job.status === "completed" && (
-        <div className="mt-6 flex justify-end">
+        <div className="mt-5 flex justify-end">
           <Button
-            size="lg"
+            size="sm"
             onClick={() => onApply(job.id)}
             disabled={applyingId === job.id}
-            className="rounded-none border-4 border-zinc-900 bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-black uppercase tracking-tighter h-12 px-8 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+            className="h-9 px-6 bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-bold"
           >
             {applyingId === job.id ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Applying Results...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Applying...
               </>
             ) : (
               <>
-                <Zap className="mr-2 h-5 w-5 fill-current" />
-                Apply to Finalizing
+                <Zap className="mr-2 h-4 w-4 fill-current" />
+                Apply Results
               </>
             )}
           </Button>
         </div>
       )}
     </div>
+
   );
 }
