@@ -387,6 +387,19 @@ export function FinalizingResultsView({
     }
   }, [formData, onRefresh, selectedSku]);
 
+  const handleSelectProduct = useCallback(
+    async (newSku: string | null) => {
+      if (newSku === preferredSku) return;
+
+      if (isDirty && selectedSku && !saving && !publishing) {
+        // Silent save before switching
+        await handleSave(false, true);
+      }
+      setPreferredSku(newSku);
+    },
+    [isDirty, selectedSku, preferredSku, handleSave, saving, publishing],
+  );
+
   // Keyboard navigation and shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -436,19 +449,6 @@ export function FinalizingResultsView({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleSave, preferredSku, sortedProducts, handleSelectProduct]);
-
-  const handleSelectProduct = useCallback(
-    async (newSku: string | null) => {
-      if (newSku === preferredSku) return;
-
-      if (isDirty && selectedSku && !saving && !publishing) {
-        // Silent save before switching
-        await handleSave(false, true);
-      }
-      setPreferredSku(newSku);
-    },
-    [isDirty, selectedSku, preferredSku, handleSave, saving, publishing],
-  );
 
   const handleReject = async () => {
     if (!selectedSku) return;
