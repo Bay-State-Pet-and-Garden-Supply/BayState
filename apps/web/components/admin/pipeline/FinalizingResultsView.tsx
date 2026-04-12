@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   Package,
+  Bot,
   Plus,
   X,
   ChevronRight,
@@ -22,6 +23,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -53,22 +61,41 @@ import { ProductSaveActions } from "./finalizing/ProductSaveActions";
 import { FinalizationCopilotPanel } from "./finalizing/FinalizationCopilotPanel";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import {
+  applySetProductFieldsToDraft,
+  buildFinalizationProductSnapshot,
+  buildWorkspaceProductSummary,
+  inspectFinalizationProductSource,
+  listFinalizationProductImageSources,
+  listWorkspaceProducts as listWorkspaceProductSummaries,
+  resolveFinalizationProductScope,
+  type FinalizationCopilotContext,
+} from "@/lib/pipeline/finalization-copilot-workspace";
+import {
   buildConsolidatedPayloadFromDraft,
   buildInitialFinalizationDraft,
   createPersistedFinalizationDraftSnapshot,
   EMPTY_FINALIZATION_DRAFT,
   FINALIZATION_STOCK_STATUS_VALUES,
   toFinalizationImageArray,
-  type FinalizationCopilotContext,
   type FinalizationDraft,
 } from "@/lib/pipeline/finalization-draft";
 import type {
   AddSelectedImagesInput,
   AssignBrandInput,
+  BulkAssignBrandInput,
+  BulkSetProductFieldsInput,
+  BulkStorePagesInput,
   CreateBrandInput,
+  InspectSourceDataInput,
+  ListImageSourcesInput,
+  ListWorkspaceProductsInput,
+  PreviewProductScopeInput,
+  ProductSnapshotInput,
   RemoveSelectedImagesInput,
   RemoveStorePagesInput,
   ReplaceSelectedImagesInput,
+  ScopedProductActionInput,
+  ScopedRejectProductInput,
   SetProductFieldsInput,
   SetStorePagesInput,
   ToolSummary,
@@ -92,6 +119,51 @@ interface Brand {
   id: string;
   name: string;
   slug?: string | null;
+}
+
+async function runWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<Array<PromiseSettledResult<R>>> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const results: Array<PromiseSettledResult<R>> = new Array(items.length);
+  let currentIndex = 0;
+
+  async function runWorker() {
+    while (true) {
+      const index = currentIndex;
+      currentIndex += 1;
+
+      if (index >= items.length) {
+        return;
+      }
+
+      try {
+        results[index] = {
+          status: "fulfilled",
+          value: await worker(items[index]),
+        };
+      } catch (error) {
+        results[index] = {
+          status: "rejected",
+          reason: error,
+        };
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, items.length) },
+      () => runWorker(),
+    ),
+  );
+
+  return results;
 }
 
 export function FinalizingResultsView({
@@ -137,25 +209,55 @@ export function FinalizingResultsView({
   const [pagePopoverOpen, setPagePopoverOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  const [savedDraftState, setSavedDraftState] =
-    useState<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
-  const savedDraftRef = useRef<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
-  const setSavedDraft = useCallback((value: SetStateAction<FinalizationDraft>) => {
-    setSavedDraftState((prev) => {
-      const next =
-        typeof value === "function"
-          ? (value as (previous: FinalizationDraft) => FinalizationDraft)(prev)
-          : value;
-      savedDraftRef.current = next;
-      return next;
-    });
-  }, []);
-  const savedDraft = savedDraftState;
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [draftsState, setDraftsState] = useState<Record<string, FinalizationDraft>>(
+    {},
+  );
+  const draftsRef = useRef<Record<string, FinalizationDraft>>({});
+  const setDrafts = useCallback(
+    (value: SetStateAction<Record<string, FinalizationDraft>>) => {
+      setDraftsState((prev) => {
+        const next =
+          typeof value === "function"
+            ? (
+                value as (
+                  previous: Record<string, FinalizationDraft>,
+                ) => Record<string, FinalizationDraft>
+              )(prev)
+            : value;
+        draftsRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
+  const draftsBySku = draftsState;
+  const [savedDraftsState, setSavedDraftsState] = useState<
+    Record<string, FinalizationDraft>
+  >({});
+  const savedDraftsRef = useRef<Record<string, FinalizationDraft>>({});
+  const setSavedDrafts = useCallback(
+    (value: SetStateAction<Record<string, FinalizationDraft>>) => {
+      setSavedDraftsState((prev) => {
+        const next =
+          typeof value === "function"
+            ? (
+                value as (
+                  previous: Record<string, FinalizationDraft>,
+                ) => Record<string, FinalizationDraft>
+              )(prev)
+            : value;
+        savedDraftsRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
+  const savedDraftsBySku = savedDraftsState;
 
   const filteredBrands = useMemo(() => {
     if (!brandSearch.trim()) return brands;
@@ -194,46 +296,13 @@ export function FinalizingResultsView({
 
     return brand;
   }, [setBrands]);
-
-  const handleCreateBrand = async () => {
-    if (!brandSearch.trim()) return;
-    setCreatingBrand(true);
-    try {
-      const brand = await createBrandRecord(brandSearch);
-      handleInputChange("brandId", brand.id);
-      setBrandSearch("");
-      setBrandPopoverOpen(false);
-      toast.success(`Brand "${brand.name}" created`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "An error occurred while creating brand",
-      );
-    } finally {
-      setCreatingBrand(false);
-    }
-  };
-
-  // Form state
-  const [formDataState, setFormDataState] =
-    useState<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
-  const formDataRef = useRef<FinalizationDraft>(EMPTY_FINALIZATION_DRAFT);
-  const setFormData = useCallback(
-    (value: SetStateAction<FinalizationDraft>) => {
-      setFormDataState((prev) => {
-        const next =
-          typeof value === "function"
-            ? (value as (previous: FinalizationDraft) => FinalizationDraft)(prev)
-            : value;
-        formDataRef.current = next;
-        return next;
-      });
-    },
-    [],
-  );
-  const formData = formDataState;
   const [selectedImageSourceId, setSelectedImageSourceId] = useState("");
+  const productsBySku = useMemo(
+    () =>
+      Object.fromEntries(sortedProducts.map((product) => [product.sku, product])),
+    [sortedProducts],
+  );
+  const productsBySkuRef = useRef<Record<string, PipelineProduct>>(productsBySku);
 
   const selectedProduct= useMemo(
     () =>
@@ -249,6 +318,10 @@ export function FinalizingResultsView({
   useEffect(() => {
     selectedProductRef.current = selectedProduct;
   }, [selectedProduct]);
+
+  useEffect(() => {
+    productsBySkuRef.current = productsBySku;
+  }, [productsBySku]);
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
@@ -293,27 +366,128 @@ export function FinalizingResultsView({
     fetchData();
   }, [setBrands]);
 
-  // Initialize form when selected product changes
   useEffect(() => {
-    if (selectedProduct) {
-      const initialDraft = buildInitialFinalizationDraft(selectedProduct);
+    const nextDrafts: Record<string, FinalizationDraft> = {};
+    const nextSavedDrafts: Record<string, FinalizationDraft> = {};
+
+    sortedProducts.forEach((product) => {
+      const initialDraft = buildInitialFinalizationDraft(product);
       const persistedDraft =
         createPersistedFinalizationDraftSnapshot(initialDraft);
+      const existingDraft = draftsRef.current[product.sku];
+      const existingSavedDraft = savedDraftsRef.current[product.sku];
+      const preserveExistingDraft =
+        existingDraft
+        && existingSavedDraft
+        && JSON.stringify(existingDraft) !== JSON.stringify(existingSavedDraft);
 
-      setFormData(initialDraft);
-      setSavedDraft(persistedDraft);
-      setIsDirty(false);
-      setSelectedImageSourceId("");
-    }
-  }, [selectedProduct, setFormData, setSavedDraft]);
+      nextDrafts[product.sku] = preserveExistingDraft
+        ? existingDraft
+        : initialDraft;
+      nextSavedDrafts[product.sku] = preserveExistingDraft
+        ? existingSavedDraft
+        : persistedDraft;
+    });
 
-  // Track dirtiness
+    setDrafts(nextDrafts);
+    setSavedDrafts(nextSavedDrafts);
+  }, [sortedProducts, setDrafts, setSavedDrafts]);
+
   useEffect(() => {
-    setIsDirty(JSON.stringify(formData) !== JSON.stringify(savedDraft));
-  }, [formData, savedDraft]);
+    setSelectedImageSourceId("");
+  }, [selectedSku]);
+
+  const formData = selectedSku
+    ? draftsBySku[selectedSku] ?? EMPTY_FINALIZATION_DRAFT
+    : EMPTY_FINALIZATION_DRAFT;
+  const dirtySkus = useMemo(
+    () =>
+      sortedProducts
+        .filter((product) => {
+          const draft = draftsBySku[product.sku];
+          const saved = savedDraftsBySku[product.sku];
+
+          return (
+            !!draft
+            && !!saved
+            && JSON.stringify(draft) !== JSON.stringify(saved)
+          );
+        })
+        .map((product) => product.sku),
+    [draftsBySku, savedDraftsBySku, sortedProducts],
+  );
+  const isDirty = selectedSku ? dirtySkus.includes(selectedSku) : false;
+
+  const updateDraftForSku = useCallback(
+    (sku: string, value: SetStateAction<FinalizationDraft>) => {
+      setDrafts((prev) => {
+        const current = prev[sku] ?? EMPTY_FINALIZATION_DRAFT;
+        const nextDraft =
+          typeof value === "function"
+            ? (value as (previous: FinalizationDraft) => FinalizationDraft)(
+                current,
+              )
+            : value;
+
+        return {
+          ...prev,
+          [sku]: nextDraft,
+        };
+      });
+    },
+    [setDrafts],
+  );
+
+  const updateSavedDrafts = useCallback(
+    (updates: Record<string, FinalizationDraft>) => {
+      setSavedDrafts((prev) => ({
+        ...prev,
+        ...updates,
+      }));
+    },
+    [setSavedDrafts],
+  );
+
+  const handleInputChange = useCallback(
+    <K extends keyof FinalizationDraft>(
+      field: K,
+      value: FinalizationDraft[K],
+    ) => {
+      if (!selectedSku) {
+        return;
+      }
+
+      updateDraftForSku(selectedSku, (prev) => ({ ...prev, [field]: value }));
+    },
+    [selectedSku, updateDraftForSku],
+  );
+
+  const handleCreateBrand = async () => {
+    if (!brandSearch.trim()) return;
+    setCreatingBrand(true);
+    try {
+      const brand = await createBrandRecord(brandSearch);
+      handleInputChange("brandId", brand.id);
+      setBrandSearch("");
+      setBrandPopoverOpen(false);
+      toast.success(`Brand "${brand.name}" created`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "An error occurred while creating brand",
+      );
+    } finally {
+      setCreatingBrand(false);
+    }
+  };
 
   const handleNameChange = (newName: string) => {
-    setFormData((prev) => ({ ...prev, name: newName }));
+    if (!selectedSku) {
+      return;
+    }
+
+    updateDraftForSku(selectedSku, (prev) => ({ ...prev, name: newName }));
   };
 
   // Scroll active item into view
@@ -328,18 +502,12 @@ export function FinalizingResultsView({
     }
   }, [preferredSku]);
 
-  const handleInputChange = useCallback(
-    <K extends keyof FinalizationDraft>(
-      field: K,
-      value: FinalizationDraft[K],
-    ) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-    },
-    [setFormData],
-  );
-
   const toggleImage = (url: string) => {
-    setFormData((prev) => {
+    if (!selectedSku) {
+      return;
+    }
+
+    updateDraftForSku(selectedSku, (prev) => {
       const isSelected = prev.selectedImages.includes(url);
       if (isSelected) {
         return {
@@ -353,6 +521,7 @@ export function FinalizingResultsView({
   };
 
   const addCustomImage = () => {
+    if (!selectedSku) return;
     if (!formData.customImageUrl.trim()) return;
     const url = formData.customImageUrl.trim();
 
@@ -362,13 +531,16 @@ export function FinalizingResultsView({
     }
 
     if (!formData.selectedImages.includes(url)) {
-      setFormData((prev) => ({
+      updateDraftForSku(selectedSku, (prev) => ({
         ...prev,
         selectedImages: [...prev.selectedImages, url],
         customImageUrl: "",
       }));
     } else {
-      setFormData((prev) => ({ ...prev, customImageUrl: "" }));
+      updateDraftForSku(selectedSku, (prev) => ({
+        ...prev,
+        customImageUrl: "",
+      }));
     }
   };
 
@@ -389,27 +561,22 @@ export function FinalizingResultsView({
     );
   }, []);
 
-  const persistCurrentDraft = useCallback(
+  const persistProducts = useCallback(
     async ({
+      skus,
       andPublish = false,
       silent = false,
     }: {
+      skus: string[];
       andPublish?: boolean;
       silent?: boolean;
-    } = {}): Promise<ToolSummary> => {
-      const currentProduct = selectedProductRef.current;
-      if (!currentProduct?.sku) {
-        throw new Error("Select a product before saving.");
-      }
+    }): Promise<ToolSummary> => {
+      const targetSkus = Array.from(
+        new Set(skus.filter((sku) => sku.trim().length > 0)),
+      );
 
-      const currentDraft = formDataRef.current;
-      const persistedSnapshot =
-        createPersistedFinalizationDraftSnapshot(currentDraft);
-      const hasPersistableChanges =
-        JSON.stringify(persistedSnapshot) !== JSON.stringify(savedDraftRef.current);
-
-      if (!andPublish && !hasPersistableChanges) {
-        return { summary: "Draft already matches the saved finalizing state." };
+      if (targetSkus.length === 0) {
+        throw new Error("No products matched the requested scope.");
       }
 
       if (andPublish) {
@@ -419,56 +586,131 @@ export function FinalizingResultsView({
       }
 
       try {
-        if (hasPersistableChanges) {
-          const patchRes = await fetch(
-            `/api/admin/pipeline/${encodeURIComponent(currentProduct.sku)}`,
-            {
-              method: "PATCH",
+        const results = await runWithConcurrency(targetSkus, 4, async (sku) => {
+          const currentProduct = productsBySkuRef.current[sku];
+          const currentDraft = draftsRef.current[sku];
+          const currentSavedDraft = savedDraftsRef.current[sku];
+
+          if (!currentProduct || !currentDraft || !currentSavedDraft) {
+            throw new Error(`Missing draft state for ${sku}.`);
+          }
+
+          const persistedSnapshot =
+            createPersistedFinalizationDraftSnapshot(currentDraft);
+          const hasPersistableChanges =
+            JSON.stringify(persistedSnapshot)
+            !== JSON.stringify(currentSavedDraft);
+
+          if (hasPersistableChanges) {
+            const patchRes = await fetch(
+              `/api/admin/pipeline/${encodeURIComponent(currentProduct.sku)}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  consolidated: buildConsolidatedPayloadFromDraft(currentDraft),
+                }),
+              },
+            );
+
+            if (!patchRes.ok) {
+              const data = await patchRes.json().catch(() => null);
+              throw new Error(data?.error || "Failed to save changes");
+            }
+          }
+
+          if (andPublish) {
+            const publishRes = await fetch(`/api/admin/pipeline/publish`, {
+              method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                consolidated: buildConsolidatedPayloadFromDraft(currentDraft),
-              }),
-            },
+              body: JSON.stringify({ sku: currentProduct.sku }),
+            });
+
+            if (!publishRes.ok) {
+              const data = await publishRes.json().catch(() => null);
+              throw new Error(
+                data?.error || "Failed to move product into exporting",
+              );
+            }
+          }
+
+          return {
+            sku,
+            hasPersistableChanges,
+            persistedSnapshot,
+          };
+        });
+
+        const successful = results
+          .filter(
+            (
+              result,
+            ): result is PromiseFulfilledResult<{
+              sku: string;
+              hasPersistableChanges: boolean;
+              persistedSnapshot: FinalizationDraft;
+            }> => result.status === "fulfilled",
+          )
+          .map((result) => result.value);
+        const failedSkus = results
+          .map((result, index) =>
+            result.status === "rejected" ? targetSkus[index] : null,
+          )
+          .filter((sku): sku is string => sku !== null);
+
+        if (successful.length === 0 && failedSkus.length > 0) {
+          const firstFailure = results.find(
+            (result): result is PromiseRejectedResult =>
+              result.status === "rejected",
           );
 
-          if (!patchRes.ok) {
-            const data = await patchRes.json().catch(() => null);
-            throw new Error(data?.error || "Failed to save changes");
-          }
-
-          setSavedDraft(persistedSnapshot);
+          throw (
+            firstFailure?.reason
+            ?? new Error(`Failed to update ${failedSkus.join(", ")}.`)
+          );
         }
 
-        if (andPublish) {
-          const publishRes = await fetch(`/api/admin/pipeline/publish`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sku: currentProduct.sku }),
-          });
-
-          if (!publishRes.ok) {
-            const data = await publishRes.json().catch(() => null);
-            throw new Error(
-              data?.error || "Failed to move product into exporting",
-            );
-          }
-
-          if (!silent) {
-            toast.success("Product moved to exporting");
-          }
-        } else if (!silent) {
-          toast.success("Changes saved successfully");
+        const savedUpdates = Object.fromEntries(
+          successful.map((result) => [result.sku, result.persistedSnapshot]),
+        );
+        if (Object.keys(savedUpdates).length > 0) {
+          updateSavedDrafts(savedUpdates);
         }
 
-        onRefresh(!andPublish);
+        if (successful.length > 0) {
+          onRefresh(!andPublish);
+        }
 
-        return {
-          summary: andPublish
-            ? "Saved the draft and moved the product into exporting."
-            : hasPersistableChanges
-              ? "Saved the current draft changes."
-              : "Draft was already up to date.",
-        };
+        const changedCount = successful.filter(
+          (result) => result.hasPersistableChanges,
+        ).length;
+        const alreadyCurrentCount = successful.length - changedCount;
+        const noun = successful.length === 1 ? "product" : "products";
+        let summary = andPublish
+          ? `Approved ${successful.length} ${noun}.`
+          : changedCount > 0
+            ? `Saved ${changedCount} ${changedCount === 1 ? "product" : "products"}.`
+            : `All ${successful.length} matched drafts were already up to date.`;
+
+        if (!andPublish && changedCount > 0 && alreadyCurrentCount > 0) {
+          summary += ` ${alreadyCurrentCount} ${
+            alreadyCurrentCount === 1 ? "draft was" : "drafts were"
+          } already up to date.`;
+        }
+
+        if (failedSkus.length > 0) {
+          summary += ` ${failedSkus.length} failed: ${failedSkus.join(", ")}.`;
+        }
+
+        if (!silent) {
+          if (failedSkus.length > 0) {
+            toast.error(summary);
+          } else {
+            toast.success(summary);
+          }
+        }
+
+        return { summary };
       } catch (error) {
         if (!silent) {
           toast.error(
@@ -482,7 +724,29 @@ export function FinalizingResultsView({
         setPublishing(false);
       }
     },
-    [onRefresh, setSavedDraft],
+    [onRefresh, updateSavedDrafts],
+  );
+
+  const persistCurrentDraft = useCallback(
+    async ({
+      andPublish = false,
+      silent = false,
+    }: {
+      andPublish?: boolean;
+      silent?: boolean;
+    } = {}): Promise<ToolSummary> => {
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before saving.");
+      }
+
+      return persistProducts({
+        skus: [currentSku],
+        andPublish,
+        silent,
+      });
+    },
+    [persistProducts],
   );
 
   const handleSelectProduct = useCallback(
@@ -561,40 +825,61 @@ export function FinalizingResultsView({
     setConfirmRejectOpen(true);
   };
 
-  const rejectCurrentProduct = useCallback(
-    async ({ silent = false }: { silent?: boolean } = {}): Promise<ToolSummary> => {
-      const currentProduct = selectedProductRef.current;
-      if (!currentProduct?.sku) {
-        throw new Error("Select a product before rejecting it.");
+  const rejectProducts = useCallback(
+    async ({
+      skus,
+      silent = false,
+    }: {
+      skus: string[];
+      silent?: boolean;
+    }): Promise<ToolSummary> => {
+      const targetSkus = Array.from(
+        new Set(skus.filter((sku) => sku.trim().length > 0)),
+      );
+
+      if (targetSkus.length === 0) {
+        throw new Error("No products matched the requested rejection scope.");
       }
 
       setRejecting(true);
 
       try {
-        const res = await fetch(
-          `/api/admin/pipeline/${encodeURIComponent(currentProduct.sku)}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pipeline_status: "scraped" }),
-          },
-        );
+        const res =
+          targetSkus.length === 1
+            ? await fetch(
+                `/api/admin/pipeline/${encodeURIComponent(targetSkus[0])}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ pipeline_status: "scraped" }),
+                },
+              )
+            : await fetch(`/api/admin/pipeline/bulk`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  skus: targetSkus,
+                  toStatus: "scraped",
+                }),
+              });
 
         if (!res.ok) {
           const data = await res.json().catch(() => null);
           throw new Error(data?.error || "Failed to reject product");
         }
 
+        const summary =
+          targetSkus.length === 1
+            ? "Moved the product back to the scraped stage for additional review."
+            : `Moved ${targetSkus.length} products back to the scraped stage for additional review.`;
+
         if (!silent) {
-          toast.success("Product rejected and sent back to scraped stage.");
+          toast.success(summary);
         }
 
         onRefresh(false);
 
-        return {
-          summary:
-            "Moved the product back to the scraped stage for additional review.",
-        };
+        return { summary };
       } catch (error) {
         if (!silent) {
           toast.error(
@@ -608,6 +893,21 @@ export function FinalizingResultsView({
       }
     },
     [onRefresh],
+  );
+
+  const rejectCurrentProduct = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}): Promise<ToolSummary> => {
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before rejecting it.");
+      }
+
+      return rejectProducts({
+        skus: [currentSku],
+        silent,
+      });
+    },
+    [rejectProducts],
   );
 
   const handleConfirmReject = async () => {
@@ -695,98 +995,222 @@ export function FinalizingResultsView({
   }, [activeImageSourceOption?.candidates, formData.selectedImages]);
   const isCustomImageSource = activeImageSourceOption?.id === "custom";
 
-  const getCopilotContext = useCallback((): FinalizationCopilotContext | null => {
-    const currentProduct = selectedProductRef.current;
-    if (!currentProduct) {
-      return null;
+  const resolveProductWorkspaceState = useCallback((sku?: string) => {
+    const resolvedSku = sku ?? selectedProductRef.current?.sku;
+    if (!resolvedSku) {
+      throw new Error("Select a product or provide a SKU first.");
     }
 
+    const product = productsBySkuRef.current[resolvedSku];
+    const draft = draftsRef.current[resolvedSku];
+    const savedDraft = savedDraftsRef.current[resolvedSku];
+
+    if (!product || !draft || !savedDraft) {
+      throw new Error(`Product ${resolvedSku} is not available in finalizing.`);
+    }
+
+    return {
+      sku: resolvedSku,
+      product,
+      draft,
+      savedDraft,
+    };
+  }, []);
+
+  const resolveScopeSkus = useCallback(
+    (scope: PreviewProductScopeInput["scope"]) => {
+      const matchedSkus = resolveFinalizationProductScope(
+        sortedProducts,
+        draftsRef.current,
+        savedDraftsRef.current,
+        selectedProductRef.current?.sku ?? null,
+        scope,
+      );
+
+      if (matchedSkus.length === 0) {
+        throw new Error("No products matched the requested scope.");
+      }
+
+      return matchedSkus;
+    },
+    [sortedProducts],
+  );
+
+  const buildScopeSummaries = useCallback((skus: string[]) => {
+    return skus
+      .map((sku) => {
+        const product = productsBySkuRef.current[sku];
+        const draft = draftsRef.current[sku];
+        const savedDraft = savedDraftsRef.current[sku];
+
+        if (!product || !draft || !savedDraft) {
+          return null;
+        }
+
+        return buildWorkspaceProductSummary(
+          product,
+          draft,
+          savedDraft,
+          selectedProductRef.current?.sku ?? null,
+        );
+      })
+      .filter(
+        (
+          summary,
+        ): summary is ReturnType<typeof buildWorkspaceProductSummary> =>
+          summary !== null,
+      );
+  }, []);
+
+  const getCopilotContext = useCallback((): FinalizationCopilotContext => {
+    const currentProduct = selectedProductRef.current;
+
     const input =
-      currentProduct.input
+      currentProduct?.input
       && typeof currentProduct.input === "object"
       && !Array.isArray(currentProduct.input)
         ? (currentProduct.input as Record<string, unknown>)
         : null;
 
     const consolidated =
-      currentProduct.consolidated
+      currentProduct?.consolidated
       && typeof currentProduct.consolidated === "object"
       && !Array.isArray(currentProduct.consolidated)
         ? (currentProduct.consolidated as Record<string, unknown>)
         : null;
 
     return {
-      product: {
-        sku: currentProduct.sku,
-        input,
-        consolidated,
-        sources: currentProduct.sources || {},
-        selected_images: currentProduct.selected_images,
-        confidence_score: currentProduct.confidence_score ?? null,
+      workspace: {
+        totalProducts: sortedProducts.length,
+        selectedSku,
+        dirtySkus,
       },
-      draft: formDataRef.current,
-      savedDraft: savedDraftRef.current,
+      selectedProduct: currentProduct
+        ? {
+            sku: currentProduct.sku,
+            input,
+            consolidated,
+            sources: currentProduct.sources || {},
+            selected_images: currentProduct.selected_images,
+            confidence_score: currentProduct.confidence_score ?? null,
+          }
+        : null,
+      selectedDraft: selectedSku ? draftsRef.current[selectedSku] ?? null : null,
+      selectedSavedDraft: selectedSku
+        ? savedDraftsRef.current[selectedSku] ?? null
+        : null,
     };
-  }, []);
+  }, [dirtySkus, selectedSku, sortedProducts.length]);
+
+  const handleCopilotListWorkspaceProducts = useCallback(
+    async (input: ListWorkspaceProductsInput) => {
+      const result = listWorkspaceProductSummaries(
+        sortedProducts,
+        draftsRef.current,
+        savedDraftsRef.current,
+        selectedProductRef.current?.sku ?? null,
+        input,
+      );
+
+      return {
+        ...result,
+        summary: input.query
+          ? `Found ${result.matched} matching products in finalizing (showing ${result.products.length}).`
+          : `Loaded ${result.total} products in finalizing (showing ${result.products.length}).`,
+      };
+    },
+    [sortedProducts],
+  );
+
+  const handleCopilotPreviewProductScope = useCallback(
+    async ({ scope }: PreviewProductScopeInput) => {
+      const matchedSkus = resolveScopeSkus(scope);
+      const products = buildScopeSummaries(matchedSkus);
+
+      return {
+        summary: `Scope matches ${products.length} product${products.length === 1 ? "" : "s"}.`,
+        matched: products.length,
+        products,
+      };
+    },
+    [buildScopeSummaries, resolveScopeSkus],
+  );
+
+  const handleCopilotGetProductSnapshot = useCallback(
+    async ({ sku }: ProductSnapshotInput) => {
+      const { product, draft, savedDraft } = resolveProductWorkspaceState(sku);
+      return buildFinalizationProductSnapshot(product, draft, savedDraft);
+    },
+    [resolveProductWorkspaceState],
+  );
+
+  const handleCopilotInspectSourceData = useCallback(
+    async ({ sku, sourceKey, focus }: InspectSourceDataInput) => {
+      const { product } = resolveProductWorkspaceState(sku);
+      return inspectFinalizationProductSource(product, sourceKey, focus);
+    },
+    [resolveProductWorkspaceState],
+  );
+
+  const handleCopilotListImageSources = useCallback(
+    async ({ sku }: ListImageSourcesInput) => {
+      const { product, draft } = resolveProductWorkspaceState(sku);
+      return listFinalizationProductImageSources(product, draft);
+    },
+    [resolveProductWorkspaceState],
+  );
 
   const handleCopilotSetProductFields = useCallback(
     async (input: SetProductFieldsInput): Promise<ToolSummary> => {
-      const updatedFields: string[] = [];
-
-      const next = { ...formDataRef.current };
-
-      if (input.name !== undefined) {
-        next.name = input.name.trim();
-        updatedFields.push("name");
-      }
-      if (input.description !== undefined) {
-        next.description = input.description.trim();
-        updatedFields.push("description");
-      }
-      if (input.longDescription !== undefined) {
-        next.longDescription = input.longDescription.trim();
-        updatedFields.push("long description");
-      }
-      if (input.price !== undefined) {
-        next.price = String(input.price);
-        updatedFields.push("price");
-      }
-      if (input.weight !== undefined) {
-        next.weight = input.weight.trim();
-        updatedFields.push("weight");
-      }
-      if (input.stockStatus !== undefined) {
-        next.stockStatus = input.stockStatus;
-        updatedFields.push("stock status");
-      }
-      if (input.availability !== undefined) {
-        next.availability = input.availability.trim();
-        updatedFields.push("availability");
-      }
-      if (input.minimumQuantity !== undefined) {
-        next.minimumQuantity = String(input.minimumQuantity);
-        updatedFields.push("minimum quantity");
-      }
-      if (input.searchKeywords !== undefined) {
-        next.searchKeywords = input.searchKeywords.trim();
-        updatedFields.push("search keywords");
-      }
-      if (input.gtin !== undefined) {
-        next.gtin = input.gtin.trim();
-        updatedFields.push("GTIN");
-      }
-      if (input.isSpecialOrder !== undefined) {
-        next.isSpecialOrder = input.isSpecialOrder;
-        updatedFields.push("special order");
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before updating fields.");
       }
 
-      setFormData(next);
+      const result = applySetProductFieldsToDraft(
+        draftsRef.current[currentSku] ?? EMPTY_FINALIZATION_DRAFT,
+        input,
+      );
+
+      updateDraftForSku(currentSku, result.draft);
 
       return {
-        summary: `Updated ${updatedFields.join(", ")}.`,
+        summary: `Updated ${result.updatedFields.join(", ")}.`,
       };
     },
-    [setFormData],
+    [updateDraftForSku],
+  );
+
+  const handleCopilotBulkSetProductFields = useCallback(
+    async ({
+      scope,
+      changes,
+    }: BulkSetProductFieldsInput): Promise<ToolSummary> => {
+      const matchedSkus = resolveScopeSkus(scope);
+      const updatedFields = new Set<string>();
+
+      setDrafts((prev) => {
+        const next = { ...prev };
+
+        matchedSkus.forEach((sku) => {
+          const result = applySetProductFieldsToDraft(
+            next[sku] ?? EMPTY_FINALIZATION_DRAFT,
+            changes,
+          );
+          next[sku] = result.draft;
+          result.updatedFields.forEach((field) => updatedFields.add(field));
+        });
+
+        return next;
+      });
+
+      return {
+        summary: `Updated ${matchedSkus.length} product${
+          matchedSkus.length === 1 ? "" : "s"
+        }: ${Array.from(updatedFields).join(", ")}.`,
+      };
+    },
+    [resolveScopeSkus, setDrafts],
   );
 
   const handleCopilotAssignBrand = useCallback(
@@ -824,6 +1248,47 @@ export function FinalizingResultsView({
     [createBrandRecord, handleInputChange],
   );
 
+  const handleCopilotBulkAssignBrand = useCallback(
+    async ({
+      scope,
+      brandId,
+      brandName,
+    }: BulkAssignBrandInput): Promise<ToolSummary> => {
+      if (
+        brandId !== "none"
+        && !brandsRef.current.some((brand) => brand.id === brandId)
+      ) {
+        throw new Error(
+          `Brand "${brandName}" is not available. Search for the brand first.`,
+        );
+      }
+
+      const matchedSkus = resolveScopeSkus(scope);
+      setDrafts((prev) => {
+        const next = { ...prev };
+        matchedSkus.forEach((sku) => {
+          next[sku] = {
+            ...(next[sku] ?? EMPTY_FINALIZATION_DRAFT),
+            brandId,
+          };
+        });
+        return next;
+      });
+
+      return {
+        summary:
+          brandId === "none"
+            ? `Cleared the brand assignment for ${matchedSkus.length} product${
+                matchedSkus.length === 1 ? "" : "s"
+              }.`
+            : `Assigned ${brandName} to ${matchedSkus.length} product${
+                matchedSkus.length === 1 ? "" : "s"
+              }.`,
+      };
+    },
+    [resolveScopeSkus, setDrafts],
+  );
+
   const handleCopilotSetStorePages = useCallback(
     async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
       const nextPages = normalizeStorePages(pages);
@@ -842,7 +1307,7 @@ export function FinalizingResultsView({
   const handleCopilotAddStorePages = useCallback(
     async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
       const nextPages = normalizeStorePages([
-        ...formDataRef.current.productOnPages,
+        ...(selectedSku ? draftsRef.current[selectedSku]?.productOnPages ?? [] : []),
         ...pages,
       ]);
       handleInputChange("productOnPages", nextPages);
@@ -851,7 +1316,7 @@ export function FinalizingResultsView({
         summary: `Added ShopSite pages: ${normalizeStorePages(pages).join(", ")}.`,
       };
     },
-    [normalizeStorePages, handleInputChange],
+    [normalizeStorePages, handleInputChange, selectedSku],
   );
 
   const handleCopilotRemoveStorePages = useCallback(
@@ -859,7 +1324,9 @@ export function FinalizingResultsView({
       const pagesToRemove = new Set(
         normalizeStorePages(pages).map((page) => page.trim()),
       );
-      const nextPages = formDataRef.current.productOnPages.filter(
+      const nextPages = (
+        selectedSku ? draftsRef.current[selectedSku]?.productOnPages ?? [] : []
+      ).filter(
         (page) => !pagesToRemove.has(page),
       );
       handleInputChange("productOnPages", nextPages);
@@ -868,7 +1335,44 @@ export function FinalizingResultsView({
         summary: `Removed ShopSite pages: ${Array.from(pagesToRemove).join(", ")}.`,
       };
     },
-    [normalizeStorePages, handleInputChange],
+    [normalizeStorePages, handleInputChange, selectedSku],
+  );
+
+  const handleCopilotBulkUpdateStorePages = useCallback(
+    async ({ scope, mode, pages }: BulkStorePagesInput): Promise<ToolSummary> => {
+      const normalizedPages = normalizeStorePages(pages);
+      const normalizedPageSet = new Set<string>(normalizedPages);
+      if (normalizedPages.length === 0) {
+        throw new Error("Provide at least one valid ShopSite page.");
+      }
+
+      const matchedSkus = resolveScopeSkus(scope);
+      setDrafts((prev) => {
+        const next = { ...prev };
+
+        matchedSkus.forEach((sku) => {
+          const currentPages = next[sku]?.productOnPages ?? [];
+          next[sku] = {
+            ...(next[sku] ?? EMPTY_FINALIZATION_DRAFT),
+            productOnPages:
+              mode === "replace"
+                ? normalizedPages
+                : mode === "add"
+                  ? normalizeStorePages([...currentPages, ...normalizedPages])
+                  : currentPages.filter((page) => !normalizedPageSet.has(page)),
+          };
+        });
+
+        return next;
+      });
+
+      return {
+        summary: `${mode === "replace" ? "Updated" : mode === "add" ? "Added" : "Removed"} ShopSite pages for ${matchedSkus.length} product${
+          matchedSkus.length === 1 ? "" : "s"
+        }.`,
+      };
+    },
+    [normalizeStorePages, resolveScopeSkus, setDrafts],
   );
 
   const handleCopilotReplaceSelectedImages = useCallback(
@@ -889,7 +1393,7 @@ export function FinalizingResultsView({
   const handleCopilotAddSelectedImages = useCallback(
     async ({ images }: AddSelectedImagesInput): Promise<ToolSummary> => {
       const nextImages = normalizeSelectedImages([
-        ...formDataRef.current.selectedImages,
+        ...(selectedSku ? draftsRef.current[selectedSku]?.selectedImages ?? [] : []),
         ...images,
       ]);
       handleInputChange("selectedImages", nextImages);
@@ -898,13 +1402,15 @@ export function FinalizingResultsView({
         summary: `Added ${normalizeSelectedImages(images).length} images to the selection.`,
       };
     },
-    [normalizeSelectedImages, handleInputChange],
+    [normalizeSelectedImages, handleInputChange, selectedSku],
   );
 
   const handleCopilotRemoveSelectedImages = useCallback(
     async ({ images }: RemoveSelectedImagesInput): Promise<ToolSummary> => {
       const toRemove = new Set(normalizeSelectedImages(images));
-      const nextImages = formDataRef.current.selectedImages.filter(
+      const nextImages = (
+        selectedSku ? draftsRef.current[selectedSku]?.selectedImages ?? [] : []
+      ).filter(
         (image) => !toRemove.has(image),
       );
       handleInputChange("selectedImages", nextImages);
@@ -913,17 +1419,25 @@ export function FinalizingResultsView({
         summary: `Removed ${toRemove.size} images from the selection.`,
       };
     },
-    [normalizeSelectedImages, handleInputChange],
+    [normalizeSelectedImages, handleInputChange, selectedSku],
   );
 
   const handleCopilotRestoreSavedDraft = useCallback(
     async (): Promise<ToolSummary> => {
-      setFormData(savedDraftRef.current);
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before restoring its draft.");
+      }
+
+      updateDraftForSku(
+        currentSku,
+        savedDraftsRef.current[currentSku] ?? EMPTY_FINALIZATION_DRAFT,
+      );
       return {
         summary: "Restored the draft to the last saved state.",
       };
     },
-    [setFormData],
+    [updateDraftForSku],
   );
 
   const handleCopilotSaveDraft = useCallback(
@@ -947,8 +1461,40 @@ export function FinalizingResultsView({
     [rejectCurrentProduct],
   );
 
+  const handleCopilotSaveProducts = useCallback(
+    async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
+      return persistProducts({
+        skus: resolveScopeSkus(scope),
+        silent: true,
+      });
+    },
+    [persistProducts, resolveScopeSkus],
+  );
+
+  const handleCopilotApproveProducts = useCallback(
+    async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
+      return persistProducts({
+        skus: resolveScopeSkus(scope),
+        andPublish: true,
+        silent: true,
+      });
+    },
+    [persistProducts, resolveScopeSkus],
+  );
+
+  const handleCopilotRejectProducts = useCallback(
+    async ({ scope }: ScopedRejectProductInput): Promise<ToolSummary> => {
+      return rejectProducts({
+        skus: resolveScopeSkus(scope),
+        silent: true,
+      });
+    },
+    [rejectProducts, resolveScopeSkus],
+  );
+
   return (
-    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <>
+      <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
       {/* Left Column: Product List */}
       <ProductListSidebar
         products={sortedProducts}
@@ -986,7 +1532,7 @@ export function FinalizingResultsView({
             />
 
             {/* Form Content */}
-            <div className="flex-1 min-h-0 grid xl:grid-cols-[minmax(0,1fr)_24rem]">
+            <div className="flex-1 min-h-0">
               <div className="overflow-y-auto p-6 space-y-8">
                 <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
                   <div className="space-y-6">
@@ -1460,26 +2006,6 @@ export function FinalizingResultsView({
                 </div>
               </div>
 
-              <div className="border-t xl:border-t-0 xl:border-l">
-                <FinalizationCopilotPanel
-                  key={selectedSku ?? "finalization-copilot-empty"}
-                  productSku={selectedSku}
-                  getContext={getCopilotContext}
-                  onSetProductFields={handleCopilotSetProductFields}
-                  onAssignBrand={handleCopilotAssignBrand}
-                  onCreateBrand={handleCopilotCreateBrand}
-                  onSetStorePages={handleCopilotSetStorePages}
-                  onAddStorePages={handleCopilotAddStorePages}
-                  onRemoveStorePages={handleCopilotRemoveStorePages}
-                  onReplaceSelectedImages={handleCopilotReplaceSelectedImages}
-                  onAddSelectedImages={handleCopilotAddSelectedImages}
-                  onRemoveSelectedImages={handleCopilotRemoveSelectedImages}
-                  onRestoreSavedDraft={handleCopilotRestoreSavedDraft}
-                  onSaveDraft={handleCopilotSaveDraft}
-                  onApproveProduct={handleCopilotApproveProduct}
-                  onRejectProduct={handleCopilotRejectProduct}
-                />
-              </div>
             </div>
           </>
         ) : (
@@ -1502,6 +2028,63 @@ export function FinalizingResultsView({
         description="Are you sure you want to reject this product and send it back to the scraped stage? This will not clear your edits, but the product will move back to the manual review pipeline."
         confirmLabel="Reject"
       />
-    </div>
+      </div>
+
+      <Sheet open={copilotOpen} onOpenChange={setCopilotOpen}>
+        <SheetTrigger asChild>
+          <Button
+            type="button"
+            size="lg"
+            className="fixed bottom-6 right-6 z-40 h-12 rounded-full px-5 shadow-lg"
+            disabled={sortedProducts.length === 0}
+          >
+            <Bot className="mr-2 h-4 w-4" />
+            Finalization Copilot
+            {dirtySkus.length > 0 ? ` (${dirtySkus.length})` : ""}
+          </Button>
+        </SheetTrigger>
+        <SheetContent
+          side="right"
+          className="w-full border-l p-0 sm:max-w-xl xl:max-w-2xl"
+        >
+          <div className="sr-only">
+            <SheetTitle>Finalization Copilot</SheetTitle>
+            <SheetDescription>
+              AI chat for reviewing, editing, and approving products in finalizing.
+            </SheetDescription>
+          </div>
+          <FinalizationCopilotPanel
+            selectedSku={selectedSku}
+            workspaceProductCount={sortedProducts.length}
+            dirtyProductCount={dirtySkus.length}
+            getContext={getCopilotContext}
+            onListWorkspaceProducts={handleCopilotListWorkspaceProducts}
+            onPreviewProductScope={handleCopilotPreviewProductScope}
+            onGetProductSnapshot={handleCopilotGetProductSnapshot}
+            onInspectSourceData={handleCopilotInspectSourceData}
+            onListImageSources={handleCopilotListImageSources}
+            onSetProductFields={handleCopilotSetProductFields}
+            onBulkSetProductFields={handleCopilotBulkSetProductFields}
+            onAssignBrand={handleCopilotAssignBrand}
+            onBulkAssignBrand={handleCopilotBulkAssignBrand}
+            onCreateBrand={handleCopilotCreateBrand}
+            onSetStorePages={handleCopilotSetStorePages}
+            onAddStorePages={handleCopilotAddStorePages}
+            onRemoveStorePages={handleCopilotRemoveStorePages}
+            onBulkUpdateStorePages={handleCopilotBulkUpdateStorePages}
+            onReplaceSelectedImages={handleCopilotReplaceSelectedImages}
+            onAddSelectedImages={handleCopilotAddSelectedImages}
+            onRemoveSelectedImages={handleCopilotRemoveSelectedImages}
+            onRestoreSavedDraft={handleCopilotRestoreSavedDraft}
+            onSaveDraft={handleCopilotSaveDraft}
+            onSaveProducts={handleCopilotSaveProducts}
+            onApproveProduct={handleCopilotApproveProduct}
+            onApproveProducts={handleCopilotApproveProducts}
+            onRejectProduct={handleCopilotRejectProduct}
+            onRejectProducts={handleCopilotRejectProducts}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

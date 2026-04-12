@@ -24,46 +24,76 @@ import type {
   AddSelectedImagesInput,
   ApproveProductInput,
   AssignBrandInput,
+  BulkAssignBrandInput,
+  BulkSetProductFieldsInput,
+  BulkStorePagesInput,
   CreateBrandInput,
+  InspectSourceDataInput,
+  InspectSourceDataOutput,
+  ListImageSourcesInput,
+  ListImageSourcesOutput,
+  ListWorkspaceProductsInput,
+  ListWorkspaceProductsOutput,
+  PreviewProductScopeInput,
+  PreviewProductScopeOutput,
+  ProductSnapshotInput,
+  ProductSnapshotOutput,
   RejectProductInput,
   RemoveSelectedImagesInput,
   RemoveStorePagesInput,
   ReplaceSelectedImagesInput,
   RestoreSavedDraftInput,
   SaveDraftInput,
+  ScopedProductActionInput,
+  ScopedRejectProductInput,
   SetProductFieldsInput,
   SetStorePagesInput,
   ToolSummary,
 } from "@/lib/tools/finalization-copilot";
-import type { FinalizationCopilotContext } from "@/lib/pipeline/finalization-draft";
+import type { FinalizationCopilotContext } from "@/lib/pipeline/finalization-copilot-workspace";
 
-const TERMINAL_TOOL_NAMES = new Set(["approveProduct", "rejectProduct"]);
+const TERMINAL_TOOL_NAMES = new Set([
+  "approveProduct",
+  "rejectProduct",
+  "approveProducts",
+  "rejectProducts",
+]);
 
 const TOOL_LABELS: Record<string, string> = {
+  listWorkspaceProducts: "Listing workspace",
+  previewProductScope: "Previewing scope",
   getProductSnapshot: "Reviewing draft",
   inspectSourceData: "Inspecting source",
   listImageSources: "Reviewing images",
   searchBrands: "Searching brands",
   setProductFields: "Updating fields",
+  bulkSetProductFields: "Updating products",
   assignBrand: "Assigning brand",
+  bulkAssignBrand: "Assigning brands",
   createBrand: "Creating brand",
   setStorePages: "Setting store pages",
   addStorePages: "Adding store pages",
   removeStorePages: "Removing store pages",
+  bulkUpdateStorePages: "Updating store pages",
   replaceSelectedImages: "Replacing images",
   addSelectedImages: "Adding images",
   removeSelectedImages: "Removing images",
   restoreSavedDraft: "Restoring saved draft",
   saveDraft: "Saving draft",
+  saveProducts: "Saving products",
   approveProduct: "Approving product",
+  approveProducts: "Approving products",
   rejectProduct: "Rejecting product",
+  rejectProducts: "Rejecting products",
 };
 
 const STARTER_PROMPTS = [
   "Tighten the product title, description, and long description for clarity.",
-  "Check the scraped sources, assign the best matching brand, and save the draft.",
+  "List the products in finalizing, then tell me which ones look risky or incomplete.",
+  "Preview a workspace-wide change that updates availability text across all finalizing products.",
+  "Check the scraped sources, assign the best matching brand, and save the selected draft.",
   "Review the image sources, pick the strongest set of images, and save them.",
-  "Audit the current draft for anything risky before approval.",
+  "Audit the selected draft for anything risky before approval.",
 ] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -114,17 +144,41 @@ function shouldAutoSendAfterTools({
 }
 
 interface FinalizationCopilotPanelProps {
-  productSku: string | null;
-  getContext: () => FinalizationCopilotContext | null;
+  selectedSku: string | null;
+  workspaceProductCount: number;
+  dirtyProductCount: number;
+  getContext: () => FinalizationCopilotContext;
+  onListWorkspaceProducts: (
+    input: ListWorkspaceProductsInput,
+  ) => Promise<ListWorkspaceProductsOutput>;
+  onPreviewProductScope: (
+    input: PreviewProductScopeInput,
+  ) => Promise<PreviewProductScopeOutput>;
+  onGetProductSnapshot: (
+    input: ProductSnapshotInput,
+  ) => Promise<ProductSnapshotOutput>;
+  onInspectSourceData: (
+    input: InspectSourceDataInput,
+  ) => Promise<InspectSourceDataOutput>;
+  onListImageSources: (
+    input: ListImageSourcesInput,
+  ) => Promise<ListImageSourcesOutput>;
   onSetProductFields: (
     input: SetProductFieldsInput,
   ) => Promise<ToolSummary>;
+  onBulkSetProductFields: (
+    input: BulkSetProductFieldsInput,
+  ) => Promise<ToolSummary>;
   onAssignBrand: (input: AssignBrandInput) => Promise<ToolSummary>;
+  onBulkAssignBrand: (input: BulkAssignBrandInput) => Promise<ToolSummary>;
   onCreateBrand: (input: CreateBrandInput) => Promise<ToolSummary>;
   onSetStorePages: (input: SetStorePagesInput) => Promise<ToolSummary>;
   onAddStorePages: (input: SetStorePagesInput) => Promise<ToolSummary>;
   onRemoveStorePages: (
     input: RemoveStorePagesInput,
+  ) => Promise<ToolSummary>;
+  onBulkUpdateStorePages: (
+    input: BulkStorePagesInput,
   ) => Promise<ToolSummary>;
   onReplaceSelectedImages: (
     input: ReplaceSelectedImagesInput,
@@ -139,43 +193,74 @@ interface FinalizationCopilotPanelProps {
     input: RestoreSavedDraftInput,
   ) => Promise<ToolSummary>;
   onSaveDraft: (input: SaveDraftInput) => Promise<ToolSummary>;
+  onSaveProducts: (input: ScopedProductActionInput) => Promise<ToolSummary>;
   onApproveProduct: (
     input: ApproveProductInput,
   ) => Promise<ToolSummary>;
+  onApproveProducts: (
+    input: ScopedProductActionInput,
+  ) => Promise<ToolSummary>;
   onRejectProduct: (input: RejectProductInput) => Promise<ToolSummary>;
+  onRejectProducts: (
+    input: ScopedRejectProductInput,
+  ) => Promise<ToolSummary>;
 }
 
 type ClientToolName =
+  | "listWorkspaceProducts"
+  | "previewProductScope"
+  | "getProductSnapshot"
+  | "inspectSourceData"
+  | "listImageSources"
   | "setProductFields"
+  | "bulkSetProductFields"
   | "assignBrand"
+  | "bulkAssignBrand"
   | "createBrand"
   | "setStorePages"
   | "addStorePages"
   | "removeStorePages"
+  | "bulkUpdateStorePages"
   | "replaceSelectedImages"
   | "addSelectedImages"
   | "removeSelectedImages"
   | "restoreSavedDraft"
   | "saveDraft"
+  | "saveProducts"
   | "approveProduct"
-  | "rejectProduct";
+  | "approveProducts"
+  | "rejectProduct"
+  | "rejectProducts";
 
 export function FinalizationCopilotPanel({
-  productSku,
+  selectedSku,
+  workspaceProductCount,
+  dirtyProductCount,
   getContext,
+  onListWorkspaceProducts,
+  onPreviewProductScope,
+  onGetProductSnapshot,
+  onInspectSourceData,
+  onListImageSources,
   onSetProductFields,
+  onBulkSetProductFields,
   onAssignBrand,
+  onBulkAssignBrand,
   onCreateBrand,
   onSetStorePages,
   onAddStorePages,
   onRemoveStorePages,
+  onBulkUpdateStorePages,
   onReplaceSelectedImages,
   onAddSelectedImages,
   onRemoveSelectedImages,
   onRestoreSavedDraft,
   onSaveDraft,
+  onSaveProducts,
   onApproveProduct,
+  onApproveProducts,
   onRejectProduct,
+  onRejectProducts,
 }: FinalizationCopilotPanelProps) {
   const [input, setInput] = useState("");
 
@@ -190,10 +275,7 @@ export function FinalizationCopilotPanel({
   } = useChat<FinalizationCopilotUIMessage>({
     transport: new DefaultChatTransport({
       api: "/api/admin/pipeline/finalization-copilot",
-      body: () => {
-        const context = getContext();
-        return context ? { context } : {};
-      },
+      body: () => ({ context: getContext() }),
     }),
     sendAutomaticallyWhen: shouldAutoSendAfterTools,
     async onToolCall({ toolCall }) {
@@ -212,11 +294,32 @@ export function FinalizationCopilotPanel({
 
       const fail = (errorText: string) => {
         switch (toolCall.toolName) {
+          case "listWorkspaceProducts":
+            addToolError("listWorkspaceProducts", errorText);
+            break;
+          case "previewProductScope":
+            addToolError("previewProductScope", errorText);
+            break;
+          case "getProductSnapshot":
+            addToolError("getProductSnapshot", errorText);
+            break;
+          case "inspectSourceData":
+            addToolError("inspectSourceData", errorText);
+            break;
+          case "listImageSources":
+            addToolError("listImageSources", errorText);
+            break;
           case "setProductFields":
             addToolError("setProductFields", errorText);
             break;
+          case "bulkSetProductFields":
+            addToolError("bulkSetProductFields", errorText);
+            break;
           case "assignBrand":
             addToolError("assignBrand", errorText);
+            break;
+          case "bulkAssignBrand":
+            addToolError("bulkAssignBrand", errorText);
             break;
           case "createBrand":
             addToolError("createBrand", errorText);
@@ -229,6 +332,9 @@ export function FinalizationCopilotPanel({
             break;
           case "removeStorePages":
             addToolError("removeStorePages", errorText);
+            break;
+          case "bulkUpdateStorePages":
+            addToolError("bulkUpdateStorePages", errorText);
             break;
           case "replaceSelectedImages":
             addToolError("replaceSelectedImages", errorText);
@@ -245,11 +351,20 @@ export function FinalizationCopilotPanel({
           case "saveDraft":
             addToolError("saveDraft", errorText);
             break;
+          case "saveProducts":
+            addToolError("saveProducts", errorText);
+            break;
           case "approveProduct":
             addToolError("approveProduct", errorText);
             break;
+          case "approveProducts":
+            addToolError("approveProducts", errorText);
+            break;
           case "rejectProduct":
             addToolError("rejectProduct", errorText);
+            break;
+          case "rejectProducts":
+            addToolError("rejectProducts", errorText);
             break;
           default:
             break;
@@ -258,6 +373,56 @@ export function FinalizationCopilotPanel({
 
       try {
         switch (toolCall.toolName) {
+          case "listWorkspaceProducts": {
+            const output = await onListWorkspaceProducts(toolCall.input);
+            void addToolOutput({
+              tool: "listWorkspaceProducts",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "previewProductScope": {
+            const output = await onPreviewProductScope(toolCall.input);
+            void addToolOutput({
+              tool: "previewProductScope",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "getProductSnapshot": {
+            const output = await onGetProductSnapshot(toolCall.input);
+            void addToolOutput({
+              tool: "getProductSnapshot",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "inspectSourceData": {
+            const output = await onInspectSourceData(toolCall.input);
+            void addToolOutput({
+              tool: "inspectSourceData",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "listImageSources": {
+            const output = await onListImageSources(toolCall.input);
+            void addToolOutput({
+              tool: "listImageSources",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
           case "setProductFields": {
             const output = await onSetProductFields(toolCall.input);
             void addToolOutput({
@@ -268,10 +433,30 @@ export function FinalizationCopilotPanel({
             return;
           }
 
+          case "bulkSetProductFields": {
+            const output = await onBulkSetProductFields(toolCall.input);
+            void addToolOutput({
+              tool: "bulkSetProductFields",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
           case "assignBrand": {
             const output = await onAssignBrand(toolCall.input);
             void addToolOutput({
               tool: "assignBrand",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "bulkAssignBrand": {
+            const output = await onBulkAssignBrand(toolCall.input);
+            void addToolOutput({
+              tool: "bulkAssignBrand",
               toolCallId: toolCall.toolCallId,
               output,
             });
@@ -312,6 +497,16 @@ export function FinalizationCopilotPanel({
             const output = await onRemoveStorePages(toolCall.input);
             void addToolOutput({
               tool: "removeStorePages",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "bulkUpdateStorePages": {
+            const output = await onBulkUpdateStorePages(toolCall.input);
+            void addToolOutput({
+              tool: "bulkUpdateStorePages",
               toolCallId: toolCall.toolCallId,
               output,
             });
@@ -368,6 +563,16 @@ export function FinalizationCopilotPanel({
             return;
           }
 
+          case "saveProducts": {
+            const output = await onSaveProducts(toolCall.input);
+            void addToolOutput({
+              tool: "saveProducts",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
           case "approveProduct": {
             const output = await onApproveProduct(toolCall.input);
             void addToolOutput({
@@ -378,10 +583,30 @@ export function FinalizationCopilotPanel({
             return;
           }
 
+          case "approveProducts": {
+            const output = await onApproveProducts(toolCall.input);
+            void addToolOutput({
+              tool: "approveProducts",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
           case "rejectProduct": {
             const output = await onRejectProduct(toolCall.input);
             void addToolOutput({
               tool: "rejectProduct",
+              toolCallId: toolCall.toolCallId,
+              output,
+            });
+            return;
+          }
+
+          case "rejectProducts": {
+            const output = await onRejectProducts(toolCall.input);
+            void addToolOutput({
+              tool: "rejectProducts",
               toolCallId: toolCall.toolCallId,
               output,
             });
@@ -402,7 +627,7 @@ export function FinalizationCopilotPanel({
   });
 
   const handleSubmit = () => {
-    if (!productSku || !input.trim() || status !== "ready") {
+    if (workspaceProductCount === 0 || !input.trim() || status !== "ready") {
       return;
     }
 
@@ -441,6 +666,74 @@ export function FinalizationCopilotPanel({
         >
           <div className="font-medium">{label}</div>
           <div>{part.errorText}</div>
+        </div>
+      );
+    }
+
+    if (
+      (toolName === "listWorkspaceProducts" || toolName === "previewProductScope")
+      && isRecord(part.output)
+      && Array.isArray(part.output.products)
+    ) {
+      const summary = extractSummary(part.output);
+
+      return (
+        <div
+          key={key}
+          className="rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm text-foreground"
+        >
+          <div className="mb-2 font-medium">{label}</div>
+          {summary && (
+            <div className="mb-2 whitespace-pre-wrap text-muted-foreground">
+              {summary}
+            </div>
+          )}
+          <div className="space-y-2">
+            {part.output.products.length === 0 ? (
+              <span className="text-muted-foreground">No matching products.</span>
+            ) : (
+              part.output.products.map((product) =>
+                isRecord(product) && typeof product.sku === "string" ? (
+                  <div
+                    key={product.sku}
+                    className="rounded-md border border-border/60 bg-background px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {product.sku}
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {product.selected === true && (
+                          <Badge variant="secondary">Selected</Badge>
+                        )}
+                        {product.dirty === true && (
+                          <Badge variant="outline">Unsaved</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-1 text-sm font-medium">
+                      {typeof product.name === "string" && product.name
+                        ? product.name
+                        : "Untitled Product"}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {typeof product.price === "string" && product.price
+                        ? `$${product.price}`
+                        : "No price"}
+                      {" • "}
+                      {typeof product.confidenceScore === "number"
+                        ? `Confidence ${Math.round(product.confidenceScore * 100)}%`
+                        : "No confidence score"}
+                      {" • "}
+                      {typeof product.storePageCount === "number"
+                        ? `${product.storePageCount} pages`
+                        : "No pages"}
+                    </div>
+                  </div>
+                ) : null,
+              )
+            )}
+          </div>
         </div>
       );
     }
@@ -559,14 +852,20 @@ export function FinalizationCopilotPanel({
             <div>
               <div className="text-sm font-semibold">Finalization Copilot</div>
               <div className="text-xs text-muted-foreground">
-                Product-aware edits, source inspection, and approval actions.
+                Selected-product fixes plus scoped workspace changes across finalizing.
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <Badge variant="outline" className="text-[10px] uppercase">
-              {productSku ?? "No Product"}
+              {workspaceProductCount} in finalizing
+            </Badge>
+            <Badge variant="outline" className="text-[10px] uppercase">
+              {dirtyProductCount} unsaved
+            </Badge>
+            <Badge variant="outline" className="text-[10px] uppercase">
+              {selectedSku ?? "No Product Selected"}
             </Badge>
             <Button
               type="button"
@@ -590,8 +889,9 @@ export function FinalizationCopilotPanel({
         {messages.length === 0 ? (
           <div className="space-y-4">
             <div className="rounded-xl border border-dashed border-border bg-background px-4 py-5 text-sm text-muted-foreground">
-              Ask the copilot to clean up fields, inspect scraped sources, curate
-              images, save the draft, or handle approval-time changes.
+              Ask the copilot to inspect the selected product, preview a scope
+              across finalizing, apply bulk changes, then save or approve only
+              the exact products you intend.
             </div>
 
             <div className="grid gap-2">
@@ -601,9 +901,9 @@ export function FinalizationCopilotPanel({
                   type="button"
                   variant="outline"
                   className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm"
-                  disabled={!productSku || status !== "ready"}
+                  disabled={workspaceProductCount === 0 || status !== "ready"}
                   onClick={() => {
-                    if (!productSku || status !== "ready") return;
+                    if (workspaceProductCount === 0 || status !== "ready") return;
                     sendMessage({ text: prompt });
                   }}
                 >
@@ -684,24 +984,26 @@ export function FinalizationCopilotPanel({
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder={
-              productSku
-                ? "Ask the copilot to adjust this product..."
-                : "Select a product to use the copilot."
+              workspaceProductCount > 0
+                ? "Ask the copilot about the selected product or a scope across finalizing..."
+                : "No products are loaded in finalizing."
             }
-            disabled={!productSku || status !== "ready"}
+            disabled={workspaceProductCount === 0 || status !== "ready"}
             className="min-h-28 resize-none"
           />
 
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              The copilot can inspect source data, edit the draft, save, approve,
-              or reject.
+              The copilot can inspect workspace scope, edit drafts, save,
+              approve, or reject selected or explicitly scoped products.
             </div>
 
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={!productSku || !input.trim() || status !== "ready"}
+              disabled={
+                workspaceProductCount === 0 || !input.trim() || status !== "ready"
+              }
             >
               <SendHorizonal className="mr-2 h-4 w-4" />
               Send

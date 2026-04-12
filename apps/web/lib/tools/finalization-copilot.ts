@@ -1,16 +1,21 @@
 import { tool } from "ai";
 import { z } from "zod";
 import {
-  extractImageCandidatesFromSourcePayload,
-  normalizeProductSources,
-} from "@/lib/product-sources";
-import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
-import {
   FINALIZATION_STOCK_STATUS_VALUES,
-  finalizationCopilotContextSchema,
   finalizationDraftSchema,
-  type FinalizationCopilotContext,
 } from "@/lib/pipeline/finalization-draft";
+import {
+  finalizationProductScopeSchema,
+  finalizationWorkspaceProductSummarySchema,
+  listWorkspaceProductsInputSchema,
+  previewProductScopeInputSchema,
+} from "@/lib/pipeline/finalization-copilot-workspace";
+
+export type {
+  FinalizationProductScope,
+  ListWorkspaceProductsInput,
+  PreviewProductScopeInput,
+} from "@/lib/pipeline/finalization-copilot-workspace";
 
 const toolSummarySchema = z.object({
   summary: z.string(),
@@ -39,12 +44,28 @@ const productSnapshotSchema = z.object({
   savedDraft: finalizationDraftSchema,
 });
 
+export const productSnapshotInputSchema = z.object({
+  sku: z.string().optional(),
+});
+
+export type ProductSnapshotInput = z.infer<typeof productSnapshotInputSchema>;
+export type ProductSnapshotOutput = z.infer<typeof productSnapshotSchema>;
+
 const inspectSourceDataOutputSchema = z.object({
   sourceKey: z.string(),
   focus: z.enum(["all", "pricing", "content", "images"]),
   imageCandidates: z.array(z.string()),
   data: z.record(z.string(), z.unknown()),
 });
+
+export const inspectSourceDataInputSchema = z.object({
+  sku: z.string().optional(),
+  sourceKey: z.string(),
+  focus: z.enum(["all", "pricing", "content", "images"]).default("all"),
+});
+
+export type InspectSourceDataInput = z.infer<typeof inspectSourceDataInputSchema>;
+export type InspectSourceDataOutput = z.infer<typeof inspectSourceDataOutputSchema>;
 
 const listImageSourcesOutputSchema = z.object({
   selectedImages: z.array(z.string()),
@@ -57,6 +78,33 @@ const listImageSourcesOutputSchema = z.object({
     }),
   ),
 });
+
+export const listImageSourcesInputSchema = z.object({
+  sku: z.string().optional(),
+});
+
+export type ListImageSourcesInput = z.infer<typeof listImageSourcesInputSchema>;
+export type ListImageSourcesOutput = z.infer<typeof listImageSourcesOutputSchema>;
+
+const listWorkspaceProductsOutputSchema = z.object({
+  summary: z.string(),
+  total: z.number().int().min(0),
+  matched: z.number().int().min(0),
+  products: z.array(finalizationWorkspaceProductSummarySchema),
+});
+
+const previewProductScopeOutputSchema = z.object({
+  summary: z.string(),
+  matched: z.number().int().min(0),
+  products: z.array(finalizationWorkspaceProductSummarySchema),
+});
+
+export type ListWorkspaceProductsOutput = z.infer<
+  typeof listWorkspaceProductsOutputSchema
+>;
+export type PreviewProductScopeOutput = z.infer<
+  typeof previewProductScopeOutputSchema
+>;
 
 const noteInputSchema = z.object({
   note: z.string().optional(),
@@ -85,12 +133,29 @@ export const setProductFieldsInputSchema = z
 
 export type SetProductFieldsInput = z.infer<typeof setProductFieldsInputSchema>;
 
+export const bulkSetProductFieldsInputSchema = z.object({
+  scope: finalizationProductScopeSchema,
+  changes: setProductFieldsInputSchema,
+});
+
+export type BulkSetProductFieldsInput = z.infer<
+  typeof bulkSetProductFieldsInputSchema
+>;
+
 export const assignBrandInputSchema = z.object({
   brandId: z.string().min(1),
   brandName: z.string().min(1),
 });
 
 export type AssignBrandInput = z.infer<typeof assignBrandInputSchema>;
+
+export const bulkAssignBrandInputSchema = z.object({
+  scope: finalizationProductScopeSchema,
+  brandId: z.string().min(1),
+  brandName: z.string().min(1),
+});
+
+export type BulkAssignBrandInput = z.infer<typeof bulkAssignBrandInputSchema>;
 
 export const createBrandInputSchema = z.object({
   name: z.string().min(1),
@@ -103,6 +168,14 @@ export const setStorePagesInputSchema = z.object({
 });
 
 export type SetStorePagesInput = z.infer<typeof setStorePagesInputSchema>;
+
+export const bulkStorePagesInputSchema = z.object({
+  scope: finalizationProductScopeSchema,
+  mode: z.enum(["replace", "add", "remove"]),
+  pages: z.array(z.string()).min(1),
+});
+
+export type BulkStorePagesInput = z.infer<typeof bulkStorePagesInputSchema>;
 
 export const addStorePagesInputSchema = z.object({
   pages: z.array(z.string()).min(1),
@@ -151,11 +224,29 @@ export type SaveDraftInput = z.infer<typeof saveDraftInputSchema>;
 export const approveProductInputSchema = noteInputSchema;
 export type ApproveProductInput = z.infer<typeof approveProductInputSchema>;
 
+export const scopedProductActionInputSchema = z.object({
+  scope: finalizationProductScopeSchema,
+  note: z.string().optional(),
+});
+
+export type ScopedProductActionInput = z.infer<
+  typeof scopedProductActionInputSchema
+>;
+
 export const rejectProductInputSchema = z.object({
   reason: z.string().optional(),
 });
 
 export type RejectProductInput = z.infer<typeof rejectProductInputSchema>;
+
+export const scopedRejectProductInputSchema = z.object({
+  scope: finalizationProductScopeSchema,
+  reason: z.string().optional(),
+});
+
+export type ScopedRejectProductInput = z.infer<
+  typeof scopedRejectProductInputSchema
+>;
 
 interface BrandSearchMatch {
   id: string;
@@ -166,172 +257,43 @@ interface BrandSearchMatch {
 export interface FinalizationCopilotToolServices {
   searchBrands: (query: string) => Promise<BrandSearchMatch[]>;
 }
-
-function toDisplayString(value: unknown): string | null {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return String(value);
-  }
-
-  return null;
-}
-
-function toRecord(value: unknown): Record<string, unknown> {
-  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-
-  return {};
-}
-
-function formatSourceLabel(sourceKey: string): string {
-  return sourceKey
-    .replace(/^source:/i, "")
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function buildSourceInspectionData(
-  sourcePayload: Record<string, unknown>,
-  focus: "all" | "pricing" | "content" | "images",
-): Record<string, unknown> {
-  if (focus === "images") {
-    return {
-      title: sourcePayload.title ?? null,
-      url: sourcePayload.url ?? null,
-      images: Array.isArray(sourcePayload.images) ? sourcePayload.images : [],
-    };
-  }
-
-  if (focus === "pricing") {
-    return {
-      title: sourcePayload.title ?? null,
-      brand: sourcePayload.brand ?? null,
-      price: sourcePayload.price ?? null,
-      weight: sourcePayload.weight ?? null,
-      size: sourcePayload.size ?? null,
-      availability: sourcePayload.availability ?? null,
-      unit_of_measure: sourcePayload.unit_of_measure ?? null,
-      case_pack: sourcePayload.case_pack ?? null,
-      upc: sourcePayload.upc ?? null,
-      item_number: sourcePayload.item_number ?? null,
-      manufacturer_part_number: sourcePayload.manufacturer_part_number ?? null,
-      url: sourcePayload.url ?? null,
-    };
-  }
-
-  if (focus === "content") {
-    return {
-      title: sourcePayload.title ?? null,
-      description: sourcePayload.description ?? null,
-      features: sourcePayload.features ?? null,
-      ingredients: sourcePayload.ingredients ?? null,
-      specifications: sourcePayload.specifications ?? null,
-      categories: sourcePayload.categories ?? null,
-      category: sourcePayload.category ?? null,
-      url: sourcePayload.url ?? null,
-    };
-  }
-
-  return sourcePayload;
-}
-
 export function createFinalizationCopilotTools(
-  context: FinalizationCopilotContext,
   services: FinalizationCopilotToolServices,
 ) {
-  const parsedContext = finalizationCopilotContextSchema.parse(context);
-  const normalizedSources = normalizeProductSources(parsedContext.product.sources);
-  const sourceKeys = Object.keys(normalizedSources);
-
-  const imageSources = sourceKeys
-    .map((sourceKey) => {
-      const sourcePayload = normalizedSources[sourceKey];
-      const candidates = extractImageCandidatesFromSourcePayload(sourcePayload, 12);
-      if (candidates.length === 0) {
-        return null;
-      }
-
-      return {
-        sourceKey,
-        label: formatSourceLabel(sourceKey),
-        candidateCount: candidates.length,
-        candidates,
-      };
-    })
-    .filter(
-      (
-        source,
-      ): source is {
-        sourceKey: string;
-        label: string;
-        candidateCount: number;
-        candidates: string[];
-      } => source !== null,
-    );
-
   return {
+    listWorkspaceProducts: tool({
+      description:
+        "List products currently loaded in the finalizing workspace. Use this before any multi-product action to inspect candidates or narrow scope.",
+      inputSchema: listWorkspaceProductsInputSchema,
+      outputSchema: listWorkspaceProductsOutputSchema,
+    }),
+
+    previewProductScope: tool({
+      description:
+        "Preview which products a bulk operation would target. Always use this before bulk editing, bulk saving, bulk approval, or bulk rejection.",
+      inputSchema: previewProductScopeInputSchema,
+      outputSchema: previewProductScopeOutputSchema,
+    }),
+
     getProductSnapshot: tool({
       description:
-        "Read the current draft, last saved draft, available store pages, and source keys for the selected product.",
-      inputSchema: z.object({}),
+        "Read the current draft, last saved draft, available store pages, and source keys for a specific product. If sku is omitted, use the currently selected product.",
+      inputSchema: productSnapshotInputSchema,
       outputSchema: productSnapshotSchema,
-      execute: async (input: Record<string, never>) => {
-        void input;
-
-        return {
-          sku: parsedContext.product.sku,
-          originalName: toDisplayString(toRecord(parsedContext.product.input).name),
-          confidenceScore: parsedContext.product.confidence_score ?? null,
-          sourceKeys,
-          availableStorePages: [...SHOPSITE_PAGES],
-          draft: parsedContext.draft,
-          savedDraft: parsedContext.savedDraft,
-        };
-      },
     }),
 
     inspectSourceData: tool({
       description:
-        "Inspect a specific scraped source record when you need product facts instead of guessing.",
-      inputSchema: z.object({
-        sourceKey: z.string(),
-        focus: z.enum(["all", "pricing", "content", "images"]).default("all"),
-      }),
+        "Inspect a specific scraped source record for a product when you need facts instead of guessing. If sku is omitted, inspect the currently selected product.",
+      inputSchema: inspectSourceDataInputSchema,
       outputSchema: inspectSourceDataOutputSchema,
-      execute: async ({ sourceKey, focus }) => {
-        const sourcePayload = normalizedSources[sourceKey];
-        if (!sourcePayload) {
-          throw new Error(`Unknown source key: ${sourceKey}`);
-        }
-
-        return {
-          sourceKey,
-          focus,
-          imageCandidates: extractImageCandidatesFromSourcePayload(
-            sourcePayload,
-            12,
-          ),
-          data: buildSourceInspectionData(sourcePayload, focus),
-        };
-      },
     }),
 
     listImageSources: tool({
       description:
-        "List grouped image candidates from each scraped source and show which images are currently selected.",
-      inputSchema: z.object({}),
+        "List grouped image candidates from each scraped source and show which images are selected for a product. If sku is omitted, use the currently selected product.",
+      inputSchema: listImageSourcesInputSchema,
       outputSchema: listImageSourcesOutputSchema,
-      execute: async () => ({
-        selectedImages: parsedContext.draft.selectedImages,
-        sources: imageSources,
-      }),
     }),
 
     searchBrands: tool({
@@ -354,10 +316,24 @@ export function createFinalizationCopilotTools(
       outputSchema: toolSummarySchema,
     }),
 
+    bulkSetProductFields: tool({
+      description:
+        "Apply the same field changes to multiple products in the finalizing workspace. Use previewProductScope first, and only use scope.type='all' when the user explicitly wants every loaded finalizing product changed.",
+      inputSchema: bulkSetProductFieldsInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
     assignBrand: tool({
       description:
         "Assign an existing brand id to the current draft. Use searchBrands first unless you already know the exact brand id.",
       inputSchema: assignBrandInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
+    bulkAssignBrand: tool({
+      description:
+        "Assign the same existing brand id to multiple products in the finalizing workspace. Use previewProductScope first and searchBrands unless you already know the exact brand id.",
+      inputSchema: bulkAssignBrandInputSchema,
       outputSchema: toolSummarySchema,
     }),
 
@@ -372,6 +348,13 @@ export function createFinalizationCopilotTools(
       description:
         "Replace the current ShopSite page assignment with an exact page list.",
       inputSchema: setStorePagesInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
+    bulkUpdateStorePages: tool({
+      description:
+        "Replace, add, or remove ShopSite page assignments across multiple products. Use previewProductScope first and prefer exact sku_list scope for narrow edits.",
+      inputSchema: bulkStorePagesInputSchema,
       outputSchema: toolSummarySchema,
     }),
 
@@ -424,6 +407,13 @@ export function createFinalizationCopilotTools(
       outputSchema: toolSummarySchema,
     }),
 
+    saveProducts: tool({
+      description:
+        "Persist draft changes for multiple products without moving workflow stages. Use previewProductScope first for bulk scopes.",
+      inputSchema: scopedProductActionInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
     approveProduct: tool({
       description:
         "Save the current draft and move the product into exporting. Only use this when the user explicitly wants approval.",
@@ -431,10 +421,24 @@ export function createFinalizationCopilotTools(
       outputSchema: toolSummarySchema,
     }),
 
+    approveProducts: tool({
+      description:
+        "Save drafts and approve multiple products. Only use this for bulk scopes when the user explicitly wants those products approved.",
+      inputSchema: scopedProductActionInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
     rejectProduct: tool({
       description:
         "Send the product back to the scraped stage. Only use this when the user explicitly wants to reject or send the product back.",
       inputSchema: rejectProductInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
+    rejectProducts: tool({
+      description:
+        "Send multiple products back to the scraped stage. Only use this for bulk scopes when the user explicitly wants those products rejected or sent back.",
+      inputSchema: scopedRejectProductInputSchema,
       outputSchema: toolSummarySchema,
     }),
   };

@@ -45,7 +45,12 @@ describe('finalizationCopilotAgent', () => {
   };
 
   const context = {
-    product: {
+    workspace: {
+      totalProducts: 3,
+      selectedSku: 'SKU-123',
+      dirtySkus: ['SKU-123'],
+    },
+    selectedProduct: {
       sku: 'SKU-123',
       input: { name: 'Test Product' },
       consolidated: null,
@@ -53,8 +58,8 @@ describe('finalizationCopilotAgent', () => {
       selected_images: [],
       confidence_score: 0.9,
     },
-    draft: EMPTY_FINALIZATION_DRAFT,
-    savedDraft: EMPTY_FINALIZATION_DRAFT,
+    selectedDraft: EMPTY_FINALIZATION_DRAFT,
+    selectedSavedDraft: EMPTY_FINALIZATION_DRAFT,
   };
 
   beforeEach(() => {
