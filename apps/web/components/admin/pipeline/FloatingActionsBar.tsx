@@ -31,7 +31,12 @@ const BULK_ACTIONS: Record<
     previousStage: "imported",
     secondaryAction: "Scrape Additional Sources",
   },
-  exporting: { label: "", nextStage: null },
+  exporting: {
+    label: "",
+    nextStage: null,
+    resetLabel: "Return to Finalizing",
+    previousStage: "finalizing",
+  },
   scraping: { label: "", nextStage: null },
   consolidating: { label: "", nextStage: null },
   failed: {
@@ -41,8 +46,8 @@ const BULK_ACTIONS: Record<
     previousStage: "imported",
   },
   finalizing: {
-    label: "",
-    nextStage: null,
+    label: "Approve Selected",
+    nextStage: "exporting",
     resetLabel: "Return to Scraped",
     previousStage: "scraped",
   },
@@ -141,7 +146,7 @@ export function FloatingActionsBar({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {selectedCount < totalCount && currentStage !== "finalizing" && (
+          {selectedCount < totalCount && (
             <Button
               variant="ghost"
               size="sm"

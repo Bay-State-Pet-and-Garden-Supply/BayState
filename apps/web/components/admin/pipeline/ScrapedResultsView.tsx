@@ -7,8 +7,6 @@ import {
   Trash2,
   Image as ImageIcon,
   AlertCircle,
-  Search,
-  X,
   ChevronRight,
   ChevronLeft,
   Edit2,
@@ -28,6 +26,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { PipelineSearchField } from "./PipelineSearchField";
+import { formatPipelineBatchLabel } from "./view-utils";
 
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
@@ -110,25 +110,6 @@ export function ScrapedResultsView({
   cohortBrands = {},
   onEditCohort,
 }: ScrapedResultsViewProps) {
-  const [localSearch, setLocalSearch] = useState(search || "");
-
-  useEffect(() => {
-    if (search !== undefined) setLocalSearch(search); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [search]);
-
-  const handleCommitSearch = useCallback(() => {
-    if (onSearchChange) {
-      onSearchChange(localSearch);
-    }
-  }, [localSearch, onSearchChange]);
-
-  const handleClearSearch = useCallback(() => {
-    setLocalSearch("");
-    if (onSearchChange) {
-      onSearchChange("");
-    }
-  }, [onSearchChange]);
-
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
   }, [products]);
@@ -462,34 +443,17 @@ export function ScrapedResultsView({
       {/* Left Column: Product List */}
       <div className="w-56 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
         <div className="p-3 border-b bg-card flex items-center gap-2">
-          <div className="relative flex-1 group">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
-            <input
-              type="text"
-              placeholder="Search SKUs or names..."
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleCommitSearch();
-                }
-              }}
-              className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-8 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-forest-green/50 focus-visible:border-brand-forest-green disabled:cursor-not-allowed disabled:opacity-50"
-            />
-            {localSearch && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          <PipelineSearchField
+            value={search || ""}
+            onChange={(value) => onSearchChange?.(value)}
+            className="flex-1"
+          />
           {filters && onFilterChange && (
             <PipelineFilters
               filters={filters}
               onFilterChange={onFilterChange}
               availableSources={availableSources}
+              showSourceFilter
               className="h-9 w-9 shrink-0 p-0 flex items-center justify-center"
             />
           )}
@@ -508,7 +472,7 @@ export function ScrapedResultsView({
                   <AccordionItem 
                     key={cohortId} 
                     value={cohortId}
-                    className="border-b border-border/80 border-l-4 border-l-brand-forest-green/30"
+                    className="border-b border-border/80"
                   >
                     <div className="flex items-center hover:bg-muted/40 bg-muted/20 pr-1 group">
                       <div className="pl-3 py-1.5 flex items-center">
@@ -531,10 +495,10 @@ export function ScrapedResultsView({
                           <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
                           <div className="flex items-center gap-1.5 overflow-hidden">
                             <span className="font-bold text-xs uppercase tracking-wider text-foreground/80 truncate">
-                              {cohortId === "ungrouped" 
-                                ? "Ungrouped" 
-                                : groupedProducts?.names?.[cohortId] || `Cohort: ${cohortId}`
-                              }
+                              {formatPipelineBatchLabel(
+                                cohortId,
+                                groupedProducts?.names?.[cohortId] || null,
+                              )}
                             </span>
                           </div>
                         </div>
@@ -648,7 +612,7 @@ export function ScrapedResultsView({
                     onClick={() => handleDeleteSourceClick(activeSource)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete {activeSource}
+                    Remove source
                   </Button>
                 </div>
               ) : (

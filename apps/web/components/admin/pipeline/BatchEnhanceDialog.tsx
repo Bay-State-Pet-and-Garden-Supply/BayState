@@ -65,7 +65,7 @@ export function BatchEnhanceDialog({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/55">
             <div className="mx-4 w-full max-w-md overflow-hidden rounded-xl bg-card shadow-xl">
                 <div className="flex items-center justify-between border-b border-border px-6 py-4">
                     <div>

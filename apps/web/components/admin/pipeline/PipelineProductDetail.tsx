@@ -238,7 +238,7 @@ export function PipelineProductDetail({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/55">
         <div className="rounded-lg bg-card p-8">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
         </div>
@@ -248,7 +248,7 @@ export function PipelineProductDetail({
 
   if (!product) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/55">
         <div className="rounded-lg bg-card p-8">
           <p className="text-red-600">Product not found</p>
           <Button onClick={onClose} className="mt-4">
@@ -273,7 +273,7 @@ export function PipelineProductDetail({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/55 p-4"
     >
       <div className="max-h-[95vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-card shadow-xl">
         {/* Header */}

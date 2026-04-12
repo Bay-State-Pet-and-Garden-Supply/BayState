@@ -117,7 +117,7 @@ export function ImageCarousel({
                               alt={`Product image ${index + 1}`}
                               className="w-full h-full object-contain"
                             />
-                            <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100">
+                            <div className="absolute inset-0 bg-zinc-950/0 group-hover/image:bg-zinc-950/5 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100">
                               <div className="bg-white/90 p-2 rounded-full shadow-lg">
                                 <Maximize2 className="h-5 w-5 text-primary" />
                               </div>

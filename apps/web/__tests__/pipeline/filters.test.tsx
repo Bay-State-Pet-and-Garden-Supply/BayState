@@ -65,14 +65,18 @@ describe('PipelineFilters', () => {
             <PipelineFilters
                 filters={{}}
                 onFilterChange={jest.fn()}
+                availableSources={['scraper-1']}
+                showSourceFilter
             />
         );
 
         fireEvent.click(screen.getByRole('button'));
 
-        expect(screen.getByText('Date Range (Updated)')).toBeInTheDocument();
         expect(screen.getByLabelText('Source')).toBeInTheDocument();
-        expect(screen.getByText('Confidence Score')).toBeInTheDocument();
+        expect(screen.getByLabelText('Product line')).toBeInTheDocument();
+        expect(screen.getByLabelText('Batch ID')).toBeInTheDocument();
+        expect(screen.queryByText('Date Range (Updated)')).not.toBeInTheDocument();
+        expect(screen.queryByText('Confidence Score')).not.toBeInTheDocument();
     });
 
     it('calls onFilterChange when applying filters', async () => {
@@ -82,6 +86,7 @@ describe('PipelineFilters', () => {
                 filters={{}}
                 onFilterChange={onFilterChange}
                 availableSources={['scraper-1']}
+                showSourceFilter
             />
         );
 
@@ -91,7 +96,7 @@ describe('PipelineFilters', () => {
         fireEvent.click(screen.getByText('scraper-1'));
 
         // Click Apply
-        fireEvent.click(screen.getByText('Apply Filters'));
+        fireEvent.click(screen.getByText('Apply filters'));
 
         expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({
             source: 'scraper-1'
@@ -114,18 +119,33 @@ describe('PipelineClient Integration', () => {
     const mockCounts = [{ status: 'imported', count: 1 }];
 
     it('updates the stage in the URL when the active stage changes', async () => {
+        mockSearchParamsToString.mockReturnValue('stage=scraped&search=seed&source=scraper-1&product_line=Seeds&cohort_id=batch-123');
+        mockSearchParamGet.mockImplementation((key: string) => {
+            const values: Record<string, string | null> = {
+                stage: 'scraped',
+                search: 'seed',
+                source: 'scraper-1',
+                product_line: 'Seeds',
+                cohort_id: 'batch-123',
+            };
+
+            return values[key] ?? null;
+        });
+
         render(
             <PipelineClient
                 initialProducts={mockProducts as any}
                 initialCounts={mockCounts as any}
                 initialTotal={1}
+                initialStage="scraped"
+                initialSources={['scraper-1']}
             />
         );
 
-        await userEvent.click(screen.getByRole('tab', { name: /Scraped/i }));
+        await userEvent.click(screen.getByRole('tab', { name: /Finalizing/i }));
 
         await waitFor(() => {
-            expect(mockReplace).toHaveBeenCalledWith('/admin/pipeline?stage=scraped');
+            expect(mockReplace).toHaveBeenCalledWith('/admin/pipeline?stage=finalizing');
         });
     });
 });

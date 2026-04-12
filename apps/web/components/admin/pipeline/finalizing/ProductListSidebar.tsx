@@ -1,8 +1,6 @@
 "use client";
 
-import { Search, X, ChevronRight, Layers, Tag, Edit2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
+import { ChevronRight, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,8 +9,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { RefObject } from "react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
+import {
+  PipelineFilters,
+  type PipelineFiltersState,
+} from "@/components/admin/pipeline/PipelineFilters";
+import { PipelineSearchField } from "@/components/admin/pipeline/PipelineSearchField";
+import { formatPipelineBatchLabel } from "@/components/admin/pipeline/view-utils";
 
 export interface ProductListSidebarProps {
   products: PipelineProduct[];
@@ -21,6 +26,10 @@ export interface ProductListSidebarProps {
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   search?: string;
   onSearchChange?: (value: string) => void;
+  filters?: PipelineFiltersState;
+  onFilterChange?: (filters: PipelineFiltersState) => void;
+  availableSources?: string[];
+  showSourceFilter?: boolean;
   groupedProducts?: {
     groups: Record<string, PipelineProduct[]>;
     cohortIds: string[];
@@ -28,6 +37,8 @@ export interface ProductListSidebarProps {
   };
   cohortBrands?: Record<string, string>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
+  selectedSkus?: Set<string>;
+  onSelectSku?: (sku: string, selected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
 }
 
 export function ProductListSidebar({
@@ -37,62 +48,67 @@ export function ProductListSidebar({
   scrollContainerRef,
   search,
   onSearchChange,
+  filters,
+  onFilterChange,
+  availableSources = [],
+  showSourceFilter = false,
   groupedProducts,
   cohortBrands = {},
   onEditCohort,
+  selectedSkus = new Set(),
+  onSelectSku,
 }: ProductListSidebarProps) {
-  const [localSearch, setLocalSearch] = useState(search || "");
-
-  useEffect(() => {
-    if (search !== undefined) setLocalSearch(search);
-  }, [search]);
-
-  const handleCommitSearch = () => {
-    if (onSearchChange) {
-      onSearchChange(localSearch);
-    }
-  };
-
-  const handleClearSearch = () => {
-    setLocalSearch("");
-    if (onSearchChange) {
-      onSearchChange("");
-    }
-  };
-
-  const renderProductItem = (product: PipelineProduct) => {
+  const renderProductItem = (product: PipelineProduct, index?: number) => {
     const name = product.consolidated?.name || product.input?.name || "Unknown";
     const price = product.consolidated?.price ?? product.input?.price;
-    const isSelected = selectedSku === product.sku;
+    const isFocused = selectedSku === product.sku;
+    const isSelected = selectedSkus.has(product.sku);
 
     return (
       <div
         key={product.sku}
         data-sku={product.sku}
-        className={`group p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
-          isSelected
+        className={`group flex items-start p-3 cursor-pointer hover:bg-muted/50 transition-colors relative ${
+          isFocused
             ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
             : ""
         }`}
         onClick={() => onSelectProduct(product.sku)}
       >
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-start gap-2">
-              <div className="font-mono text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-tight">
-                {product.sku}
+        <div 
+          className="mr-3 mt-0.5 pt-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Checkbox 
+            checked={isSelected}
+            onCheckedChange={(checked) => {
+              if (onSelectSku) {
+                onSelectSku(
+                  product.sku, 
+                  checked === true, 
+                  index, 
+                  (window.event as MouseEvent)?.shiftKey
+                );
+              }
+            }}
+            className="h-4 w-4 border-muted-foreground/30 data-[state=checked]:bg-brand-forest-green data-[state=checked]:border-brand-forest-green"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="font-mono text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-tight">
+              {product.sku}
+            </div>
+            {price !== undefined && (
+              <div className="text-sm font-bold text-primary">
+                ${Number(price).toFixed(2)}
               </div>
-              {price !== undefined && (
-                <div className="text-sm font-bold text-primary">
-                  ${Number(price).toFixed(2)}
-                </div>
-              )}
-            </div>
-            <div
-              className={`text-sm font-medium line-clamp-2 mt-0.5 ${isSelected ? "text-primary" : ""}`}
-            >
-              {name}
-            </div>
+            )}
+          </div>
+          <div
+            className={`text-sm font-medium line-clamp-2 mt-0.5 ${isFocused ? "text-primary" : ""}`}
+          >
+            {name}
           </div>
         </div>
       </div>
@@ -101,29 +117,21 @@ export function ProductListSidebar({
 
   return (
     <div className="w-56 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
-      <div className="p-3 border-b bg-card">
-        <div className="relative group">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
-          <Input
-            placeholder="Search SKUs or names..."
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleCommitSearch();
-              }
-            }}
-            className="h-9 pl-9 pr-8 bg-background border-muted-foreground/20 focus-visible:ring-brand-forest-green/30"
+      <div className="flex items-center gap-2 border-b bg-card p-3">
+        <PipelineSearchField
+          value={search || ""}
+          onChange={(value) => onSearchChange?.(value)}
+          className="flex-1"
+        />
+        {filters && onFilterChange ? (
+          <PipelineFilters
+            filters={filters}
+            onFilterChange={onFilterChange}
+            availableSources={availableSources}
+            showSourceFilter={showSourceFilter}
+            className="h-9 w-9 shrink-0 p-0"
           />
-          {localSearch && (
-            <button
-              onClick={handleClearSearch}
-              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+        ) : null}
       </div>
       <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
         {groupedProducts && groupedProducts.cohortIds.length > 1 ? (
@@ -136,7 +144,7 @@ export function ProductListSidebar({
                 <AccordionItem 
                   key={cohortId} 
                   value={cohortId}
-                  className="border-b border-border/80 border-l-4 border-l-brand-forest-green/30"
+                  className="border-b border-border/80"
                 >
                   <div className="flex items-center hover:bg-muted/40 bg-muted/20 pr-1 group">
                     <AccordionTrigger className="flex-1 px-3 py-1.5 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
@@ -144,16 +152,31 @@ export function ProductListSidebar({
                         <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
                         <div className="flex items-center gap-1.5 overflow-hidden">
                           <span className="font-bold text-xs uppercase tracking-wider text-foreground/80 truncate">
-                            {cohortId === "ungrouped" 
-                              ? "Ungrouped" 
-                              : groupedProducts?.names?.[cohortId] || `Cohort: ${cohortId}`
-                            }
+                            {formatPipelineBatchLabel(
+                              cohortId,
+                              groupedProducts?.names?.[cohortId] || null,
+                            )}
                           </span>
                         </div>
                       </div>
                     </AccordionTrigger>
                     
                     <div className="flex items-center gap-1.5 shrink-0 ml-auto pr-2">
+                      <div 
+                        className="flex items-center gap-1 mr-1" 
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox 
+                          checked={groupProducts.length > 0 && groupProducts.every(p => selectedSkus.has(p.sku))}
+                          onCheckedChange={(checked) => {
+                            if (!onSelectSku) return;
+                            groupProducts.forEach(p => {
+                              onSelectSku(p.sku, checked === true);
+                            });
+                          }}
+                          className="h-3.5 w-3.5 border-muted-foreground/30 data-[state=checked]:bg-brand-forest-green data-[state=checked]:border-brand-forest-green"
+                        />
+                      </div>
                       {cohortBrands[cohortId] && (
                         <Badge variant="outline" className="h-4 text-[9px] px-1 font-bold border-brand-forest-green/30 text-brand-forest-green bg-brand-forest-green/5">
                           {cohortBrands[cohortId]}
@@ -181,11 +204,15 @@ export function ProductListSidebar({
                         </Button>
                       )}
                     </div>
+
                   </div>
 
                   <AccordionContent className="pb-0">
                     <div className="divide-y divide-border/30 bg-muted/5">
-                      {groupProducts.map((product) => renderProductItem(product))}
+                      {groupProducts.map((product) => {
+                        const globalIndex = products.findIndex((p) => p.sku === product.sku);
+                        return renderProductItem(product, globalIndex);
+                      })}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -194,7 +221,7 @@ export function ProductListSidebar({
           </Accordion>
         ) : (
           <div className="divide-y">
-            {products.map((product) => renderProductItem(product))}
+            {products.map((product, idx) => renderProductItem(product, idx))}
           </div>
         )}
       </div>

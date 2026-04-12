@@ -82,6 +82,14 @@ describe('export tab actions', () => {
                 });
             }
 
+            if (url.includes('/api/admin/pipeline/export-xml')) {
+                return Promise.resolve({
+                    ok: true,
+                    blob: async () => new Blob(['xml']),
+                    headers: { get: () => 'attachment; filename="shopsite-products.xml"' },
+                });
+            }
+
             if (url.includes('/api/admin/pipeline/export-zip')) {
                 return Promise.resolve({
                     ok: true,
@@ -101,7 +109,7 @@ describe('export tab actions', () => {
         HTMLAnchorElement.prototype.click = jest.fn();
     });
 
-    it('renders exporting-stage inline actions when nothing is selected', async () => {
+    it('renders exporting-stage workspace actions when nothing is selected', async () => {
         render(
             <PipelineClient
                 initialCounts={counts}
@@ -112,17 +120,22 @@ describe('export tab actions', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Images ZIP' }));
+        await waitFor(() => {
+            expect(
+                screen.getByRole('button', { name: 'Export ShopSite XML' }),
+            ).toBeEnabled();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Export ShopSite XML' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Export ZIP Package' }));
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(
-                '/api/admin/pipeline/upload-shopsite',
-                expect.objectContaining({ method: 'POST' }),
+                '/api/admin/pipeline/export-xml',
             );
         });
         await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith('/api/admin/pipeline/export-zip');
+            expect(mockFetch).toHaveBeenCalledWith('/api/admin/pipeline/export-zip?status=exporting');
         });
     });
 
