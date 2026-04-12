@@ -42,9 +42,10 @@ describe('AI settings cards', () => {
     render(<AIScrapingSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
+      expect(screen.getByLabelText('Gemini API Key (Finalization Copilot)')).toBeInTheDocument();
     });
 
+    expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
     expect(screen.queryByLabelText('Brave Search API Key')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('SerpAPI Key')).not.toBeInTheDocument();
     expect(
@@ -54,6 +55,7 @@ describe('AI settings cards', () => {
     expect(scrapingModelCombobox).toHaveTextContent('GPT-4o mini');
     fireEvent.click(scrapingModelCombobox);
     expect(screen.getByText('GPT-4o')).toBeInTheDocument();
+    expect(screen.getByText('Gemini Copilot Ready')).toBeInTheDocument();
     expect(screen.getByText('OpenAI Ready')).toBeInTheDocument();
   });
 
