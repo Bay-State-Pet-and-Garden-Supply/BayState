@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { FileSpreadsheet, FileText, ImageIcon, Loader2, Package, Archive } from 'lucide-react';
+import { useState, useEffect, useCallback, useId } from 'react';
+import { FileSpreadsheet, FileText, ImageIcon, Loader2, Package, Archive, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,10 +41,12 @@ const STATUS_LABELS: Record<ExportStatus, string> = {
 };
 
 export function ExportWorkspace() {
+  const statusSelectId = useId();
   const [selectedStatus, setSelectedStatus] = useState<ExportStatus>('exporting');
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploadingShopSite, setIsUploadingShopSite] = useState(false);
   const [isGeneratingXml, setIsGeneratingXml] = useState(false);
   const [isGeneratingZip, setIsGeneratingZip] = useState(false);
   const [isGeneratingImageManifest, setIsGeneratingImageManifest] = useState(false);
@@ -132,7 +134,45 @@ export function ExportWorkspace() {
   };
 
   const currentCount = getProductCount(selectedStatus);
+  const exportQueueCount = getProductCount('exporting');
   const hasProducts = currentCount > 0;
+  const canUploadToShopSite = !isLoadingCounts && selectedStatus === 'exporting' && exportQueueCount > 0;
+
+  const handleUploadToShopSite = async () => {
+    if (!canUploadToShopSite) {
+      return;
+    }
+
+    setIsUploadingShopSite(true);
+    setExportResult(null);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/admin/pipeline/upload-shopsite', {
+        method: 'POST',
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to upload products to ShopSite');
+      }
+
+      const marker = typeof data.marker === 'string' && data.marker.length > 0 ? data.marker : null;
+      const uploadedCount = typeof data.uploadedCount === 'number' ? data.uploadedCount : exportQueueCount;
+
+      await fetchCounts();
+
+      toast.success('Uploaded to ShopSite', {
+        description: `${uploadedCount} storefront product${uploadedCount === 1 ? '' : 's'}${marker ? ` tagged ${marker}` : ''}`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to upload products to ShopSite';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsUploadingShopSite(false);
+    }
+  };
 
   const handleGenerateXml = async () => {
     setIsGeneratingXml(true);
@@ -243,7 +283,7 @@ export function ExportWorkspace() {
       <CardContent className="space-y-6">
         {/* Status Filter */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-muted-foreground">
+          <label htmlFor={statusSelectId} className="text-sm font-medium text-muted-foreground">
              Filter by Workflow Stage
           </label>
           <Select
@@ -253,7 +293,7 @@ export function ExportWorkspace() {
               setExportResult(null);
             }}
           >
-            <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectTrigger id={statusSelectId} className="w-full sm:w-[200px]">
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
@@ -299,6 +339,24 @@ export function ExportWorkspace() {
 
         {/* Generate Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            onClick={handleUploadToShopSite}
+            disabled={isUploadingShopSite || !canUploadToShopSite}
+            variant="outline"
+            className="border-primary/20 text-primary hover:bg-primary/5 hover:text-primary"
+          >
+            {isUploadingShopSite ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Uploading…
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4" />
+                Upload to ShopSite
+              </>
+            )}
+          </Button>
           <Button
             onClick={handleGenerateExport}
             disabled={isGenerating || isLoadingCounts || !hasProducts}
@@ -368,6 +426,12 @@ export function ExportWorkspace() {
             )}
           </Button>
         </div>
+
+        {selectedStatus !== 'exporting' ? (
+          <p className="text-xs text-muted-foreground">
+            Switch the workflow filter back to Exporting to upload the active export queue directly to ShopSite.
+          </p>
+        ) : null}
 
         {/* Export Result */}
         {exportResult && (

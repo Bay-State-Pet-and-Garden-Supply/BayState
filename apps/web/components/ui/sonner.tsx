@@ -7,11 +7,16 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react"
+import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
-const Toaster = ({ ...props }: ToasterProps) => {
+const Toaster = ({ offset: offsetProp, mobileOffset: mobileOffsetProp, ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
+  const pathname = usePathname()
+  const isPipelineRoute = pathname?.startsWith("/admin/pipeline") ?? false
+  const offset = offsetProp ?? (isPipelineRoute ? { bottom: 120, right: 32 } : undefined)
+  const mobileOffset = mobileOffsetProp ?? (isPipelineRoute ? { bottom: 144, right: 16 } : undefined)
 
   return (
     <Sonner
@@ -35,6 +40,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }
+      offset={offset}
+      mobileOffset={mobileOffset}
       {...props}
     />
   )
