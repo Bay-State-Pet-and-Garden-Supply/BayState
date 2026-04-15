@@ -1,28 +1,60 @@
 import { Metadata } from 'next';
-import { Suspense } from 'react';
-import { ExportWorkspace } from '@/components/admin/pipeline/ExportWorkspace';
-import { Spinner } from '@/components/ui/spinner';
+import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
+import { getProductsByStage, getStatusCounts, getAvailableSourcesByStage } from '@/lib/pipeline';
+import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
 
 export const metadata: Metadata = {
     title: 'Export Products | Bay State',
     description: 'Generate Excel exports of pipeline products',
 };
 
-function ExportLoadingState() {
-    return (
-        <div className="flex items-center justify-center p-8">
-            <Spinner size="lg" className="text-[#008850]" />
-            <span className="ml-3 text-muted-foreground">Loading export workspace...</span>
-        </div>
-    );
+interface PageProps {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default function PipelineExportPage() {
+export default async function PipelineExportPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+    const search = typeof params.search === 'string' ? params.search : undefined;
+    const source = typeof params.source === 'string' ? params.source : undefined;
+    const product_line = typeof params.product_line === 'string' ? params.product_line : undefined;
+
+    const initialStage: PipelineStage = 'exporting';
+
+    let initialCounts: StatusCount[] = [];
+    let initialProducts: PipelineProduct[] = [];
+    let initialTotal = 0;
+    let initialSources: string[] = [];
+
+    try {
+        const [pResult, countsResult, sourcesResult] = await Promise.all([
+            getProductsByStage(initialStage, {
+                limit: 500,
+                search,
+                source,
+                product_line
+            }),
+            getStatusCounts(),
+            getAvailableSourcesByStage(initialStage),
+        ]);
+        
+        initialProducts = pResult.products;
+        initialTotal = pResult.count;
+        initialCounts = countsResult;
+        initialSources = sourcesResult;
+    } catch (error) {
+        console.error('Error loading export page:', error);
+    }
+
     return (
         <div className="space-y-6">
-            <Suspense fallback={<ExportLoadingState />}>
-                <ExportWorkspace />
-            </Suspense>
+            <PipelineClient
+                initialProducts={initialProducts}
+                initialCounts={initialCounts}
+                initialTotal={initialTotal}
+                initialStage={initialStage}
+                initialSources={initialSources}
+                hideTabs={true}
+            />
         </div>
     );
 }
