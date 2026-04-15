@@ -122,12 +122,26 @@ describe('export tab actions', () => {
 
         await waitFor(() => {
             expect(
-                screen.getByRole('button', { name: 'Export ShopSite XML' }),
+                screen.getByRole('button', { name: 'Upload to ShopSite' }),
             ).toBeEnabled();
         });
 
+        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
         fireEvent.click(screen.getByRole('button', { name: 'Export ShopSite XML' }));
         fireEvent.click(screen.getByRole('button', { name: 'Export ZIP Package' }));
+
+        await waitFor(() => {
+            expect(mockFetch).toHaveBeenCalledWith(
+                '/api/admin/pipeline/upload-shopsite',
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+
+        await waitFor(() => {
+            expect(
+                screen.getByRole('button', { name: 'Export ShopSite XML' }),
+            ).toBeEnabled();
+        });
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(
