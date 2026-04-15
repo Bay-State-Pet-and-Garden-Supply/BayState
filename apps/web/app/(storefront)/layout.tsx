@@ -2,6 +2,7 @@ import { StorefrontHeader } from '@/components/storefront/header';
 import { StorefrontFooter } from '@/components/storefront/footer';
 import { MobileNav } from '@/components/storefront/mobile-nav';
 import { CampaignBanner } from '@/components/storefront/campaign-banner';
+import { UnderConstructionBanner } from '@/components/storefront/under-construction-banner';
 import { SearchProvider } from '@/components/storefront/search-provider';
 import { StickyCart } from '@/components/storefront/sticky-cart';
 import { getProducts, getActiveServices, getBrands, getNavCategories, getPetTypesNav } from '@/lib/data';
@@ -92,6 +93,7 @@ export default async function StorefrontLayout({
       />
       <div className="flex min-h-screen flex-col w-full">
         <SkipLink />
+        <UnderConstructionBanner />
         {campaignBanner.enabled && campaignBanner.messages.length > 0 && (
           <CampaignBanner
             messages={campaignBanner.messages}
