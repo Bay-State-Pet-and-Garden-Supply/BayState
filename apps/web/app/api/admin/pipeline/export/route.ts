@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminAuth();
   if (!auth.authorized) return auth.response;
 
-  const statusParam = request.nextUrl.searchParams.get('status') ?? 'finalizing';
+  const statusParam = request.nextUrl.searchParams.get('status') ?? 'exporting';
   const normalizedStatus = normalizePipelineRouteStatus(statusParam, '/api/admin/pipeline/export');
 
   if (!normalizedStatus) {

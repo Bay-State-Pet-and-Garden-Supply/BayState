@@ -41,8 +41,6 @@ const STATUS_LABELS: Record<ExportStatus, string> = {
 };
 
 export function ExportWorkspace() {
-  const statusSelectId = useId();
-  const [selectedStatus, setSelectedStatus] = useState<ExportStatus>('exporting');
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -52,6 +50,8 @@ export function ExportWorkspace() {
   const [isGeneratingImageManifest, setIsGeneratingImageManifest] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedStatus: ExportStatus = 'exporting';
 
   const fetchCounts = useCallback(async () => {
     setIsLoadingCounts(true);
@@ -134,9 +134,8 @@ export function ExportWorkspace() {
   };
 
   const currentCount = getProductCount(selectedStatus);
-  const exportQueueCount = getProductCount('exporting');
   const hasProducts = currentCount > 0;
-  const canUploadToShopSite = !isLoadingCounts && selectedStatus === 'exporting' && exportQueueCount > 0;
+  const canUploadToShopSite = !isLoadingCounts && currentCount > 0;
 
   const handleUploadToShopSite = async () => {
     if (!canUploadToShopSite) {
@@ -158,7 +157,7 @@ export function ExportWorkspace() {
       }
 
       const marker = typeof data.marker === 'string' && data.marker.length > 0 ? data.marker : null;
-      const uploadedCount = typeof data.uploadedCount === 'number' ? data.uploadedCount : exportQueueCount;
+      const uploadedCount = typeof data.uploadedCount === 'number' ? data.uploadedCount : currentCount;
 
       await fetchCounts();
 
@@ -281,29 +280,6 @@ export function ExportWorkspace() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Status Filter */}
-        <div className="space-y-2">
-          <label htmlFor={statusSelectId} className="text-sm font-medium text-muted-foreground">
-             Filter by Workflow Stage
-          </label>
-          <Select
-            value={selectedStatus}
-            onValueChange={(value) => {
-              setSelectedStatus(value as ExportStatus);
-              setExportResult(null);
-            }}
-          >
-            <SelectTrigger id={statusSelectId} className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="exporting">Exporting</SelectItem>
-              <SelectItem value="finalizing">Finalizing</SelectItem>
-              <SelectItem value="all">All Products</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Product Count */}
         {isLoadingCounts ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -319,9 +295,8 @@ export function ExportWorkspace() {
             <Package className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">
               <span className="font-semibold text-foreground">{currentCount.toLocaleString()}</span>
-              {' active products in '}
-              <span className="font-medium">{STATUS_LABELS[selectedStatus].toLowerCase()}</span>
-              {' stage'}
+              {' products currently in '}
+              <span className="font-medium">export queue</span>
             </span>
           </div>
         )}
@@ -330,8 +305,8 @@ export function ExportWorkspace() {
         {!isLoadingCounts && !hasProducts && !error && (
           <EmptyState
             icon={Package}
-            title="No Products Found"
-            description={`No products found in ${STATUS_LABELS[selectedStatus].toLowerCase()} stage. Try selecting a different filter.`}
+            title="No Products in Export Queue"
+            description="There are currently no products ready for export. Products must be marked as 'exporting' to appear here."
             actionLabel="Refresh Counts"
             onAction={fetchCounts}
           />
@@ -426,12 +401,6 @@ export function ExportWorkspace() {
             )}
           </Button>
         </div>
-
-        {selectedStatus !== 'exporting' ? (
-          <p className="text-xs text-muted-foreground">
-            Switch the workflow filter back to Exporting to upload the active export queue directly to ShopSite.
-          </p>
-        ) : null}
 
         {/* Export Result */}
         {exportResult && (

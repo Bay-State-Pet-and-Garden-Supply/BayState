@@ -14,6 +14,8 @@ import {
   Activity,
   Brain,
   ChevronRight,
+  ChevronLeft,
+  ArrowLeft,
   Layers,
   Tag,
   Plus,
@@ -94,6 +96,7 @@ interface PipelineClientProps {
   initialTotal: number;
   initialStage?: PipelineStage;
   initialSources?: string[];
+  hideTabs?: boolean;
 }
 
 export function PipelineClient({
@@ -102,6 +105,7 @@ export function PipelineClient({
   initialTotal,
   initialStage = "imported",
   initialSources = EMPTY_SOURCES,
+  hideTabs = false,
 }: PipelineClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -401,6 +405,11 @@ export function PipelineClient({
   // Handle stage tab change
   const handleStageChange = useCallback(
     (stage: PipelineStage) => {
+      if (stage === "exporting") {
+        router.push("/admin/pipeline/export");
+        return;
+      }
+
       // Clear local filters before navigating
       // This allows the server to fetch clean data for the new stage
       setSearch("");
@@ -929,60 +938,92 @@ export function PipelineClient({
     clear: () => void;
   }>;
 
+  const headerActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      {shellControlsBelongToRoute ? (
+        <PipelineSearchField
+          value={search}
+          onChange={setSearch}
+          className="w-48 md:w-64"
+        />
+      ) : null}
+
+      {shellControlsBelongToRoute ? (
+        <PipelineFilters
+          filters={filterState}
+          onFilterChange={applyFilterState}
+          availableSources={sources}
+          showSourceFilter={false}
+          className="h-8"
+        />
+      ) : null}
+
+      {currentStage === "imported" && (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsIntegraImportOpen(true)}
+            disabled={isLoading}
+            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
+          >
+            <Database className="mr-1.5 h-3.5 w-3.5" />
+            Import CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsManualAddOpen(true)}
+            disabled={isLoading}
+            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add Product
+          </Button>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex h-full flex-col gap-2">
       {/* Stage Tabs & Inline Actions */}
-      <StageTabs
-        currentStage={currentStage}
-        counts={counts}
-        onStageChange={handleStageChange}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {shellControlsBelongToRoute ? (
-              <PipelineSearchField
-                value={search}
-                onChange={setSearch}
-                className="w-48 md:w-64"
+      {hideTabs ? (
+        <div className="flex flex-col gap-4 border-b border-border/50 pb-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/admin/pipeline")}
+              className="h-9 w-9 p-0 border-border/50 hover:bg-muted text-muted-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-3">
+              <div
+                className="h-8 w-1 rounded-full"
+                style={{ backgroundColor: stageConfig.color }}
               />
-            ) : null}
-
-            {shellControlsBelongToRoute ? (
-              <PipelineFilters
-                filters={filterState}
-                onFilterChange={applyFilterState}
-                availableSources={sources}
-                showSourceFilter={false}
-                className="h-8"
-              />
-            ) : null}
-
-            {currentStage === "imported" && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsIntegraImportOpen(true)}
-                  disabled={isLoading}
-                  className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
-                >
-                  <Database className="mr-1.5 h-3.5 w-3.5" />
-                  Import CSV
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsManualAddOpen(true)}
-                  disabled={isLoading}
-                  className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add Product
-                </Button>
-              </>
-            )}
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-foreground">
+                  {stageConfig.label}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {stageConfig.description}
+                </p>
+              </div>
+            </div>
           </div>
-        }
-      />
+          {headerActions}
+        </div>
+      ) : (
+        <StageTabs
+          currentStage={currentStage}
+          counts={counts}
+          onStageChange={handleStageChange}
+          actions={headerActions}
+        />
+      )}
 
       {/* Content Area */}
       <div className="flex-1 min-h-0">
@@ -1095,7 +1136,7 @@ export function PipelineClient({
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
           />
-        ) : currentStage === "exporting" ? (
+        ) : currentStage === "exporting" || hideTabs ? (
           <div className="space-y-4">
             <ExportWorkspace />
             {(groupedProducts.cohortIds.length <= 1 && (groupedProducts.cohortIds.length === 0 || groupedProducts.cohortIds[0] === "ungrouped")) ? (
