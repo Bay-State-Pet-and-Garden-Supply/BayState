@@ -125,6 +125,9 @@ export interface ConsolidationResult {
     sku: string;
     name?: string;
     brand?: string;
+    description?: string;
+    long_description?: string;
+    search_keywords?: string;
     weight?: string;
     price?: string;
     category?: string;
