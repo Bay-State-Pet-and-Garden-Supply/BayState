@@ -135,9 +135,6 @@ export function validateCategory(value: string | undefined | null, validCategori
 const REQUIRED_STRING_FIELDS = [
     'name',
     'brand',
-    'description',
-    'long_description',
-    'search_keywords',
 ] as const;
 
 export function validateRequiredConsolidationFields(result: Record<string, unknown>): Record<string, unknown> {
@@ -192,18 +189,6 @@ export function buildResponseSchema(
                 type: ['string', 'null'],
                 description: 'Primary package size/weight/count as a numeric string with up to 2 decimal places and no units. Use null when no trustworthy weight is available.',
             },
-            description: {
-                type: 'string',
-                description: 'Short product description (1-2 sentences) for category/listing pages',
-            },
-            long_description: {
-                type: 'string',
-                description: 'Detailed product description (3-5 sentences) for the product detail page',
-            },
-            search_keywords: {
-                type: 'string',
-                description: 'Comma-separated site-search phrases, source-supported and concise',
-            },
             product_on_pages: {
                 type: 'array',
                 items: {
@@ -217,7 +202,7 @@ export function buildResponseSchema(
                 description: 'Confidence score between 0.0 and 1.0',
             },
         },
-        required: ['name', 'brand', 'weight', 'description', 'long_description', 'search_keywords', 'product_on_pages', 'confidence_score'],
+        required: ['name', 'brand', 'weight', 'product_on_pages', 'confidence_score'],
         additionalProperties: false,
     };
 }

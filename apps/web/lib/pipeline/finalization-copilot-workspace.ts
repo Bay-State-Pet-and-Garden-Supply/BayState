@@ -282,15 +282,9 @@ export function applySetProductFieldsToDraft(
   draft: FinalizationDraft,
   input: {
     name?: string;
-    description?: string;
-    longDescription?: string;
     price?: number;
     weight?: string;
-    stockStatus?: (typeof FINALIZATION_STOCK_STATUS_VALUES)[number];
     availability?: string;
-    minimumQuantity?: number;
-    searchKeywords?: string;
-    gtin?: string;
     isSpecialOrder?: boolean;
   },
 ): { draft: FinalizationDraft; updatedFields: string[] } {
@@ -301,14 +295,6 @@ export function applySetProductFieldsToDraft(
     next.name = input.name.trim();
     updatedFields.push("name");
   }
-  if (input.description !== undefined) {
-    next.description = input.description.trim();
-    updatedFields.push("description");
-  }
-  if (input.longDescription !== undefined) {
-    next.longDescription = input.longDescription.trim();
-    updatedFields.push("long description");
-  }
   if (input.price !== undefined) {
     next.price = String(input.price);
     updatedFields.push("price");
@@ -317,25 +303,9 @@ export function applySetProductFieldsToDraft(
     next.weight = input.weight.trim();
     updatedFields.push("weight");
   }
-  if (input.stockStatus !== undefined) {
-    next.stockStatus = input.stockStatus;
-    updatedFields.push("stock status");
-  }
   if (input.availability !== undefined) {
     next.availability = input.availability.trim();
     updatedFields.push("availability");
-  }
-  if (input.minimumQuantity !== undefined) {
-    next.minimumQuantity = String(input.minimumQuantity);
-    updatedFields.push("minimum quantity");
-  }
-  if (input.searchKeywords !== undefined) {
-    next.searchKeywords = input.searchKeywords.trim();
-    updatedFields.push("search keywords");
-  }
-  if (input.gtin !== undefined) {
-    next.gtin = input.gtin.trim();
-    updatedFields.push("GTIN");
   }
   if (input.isSpecialOrder !== undefined) {
     next.isSpecialOrder = input.isSpecialOrder;
