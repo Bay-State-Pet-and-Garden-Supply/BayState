@@ -74,7 +74,6 @@ import {
   buildInitialFinalizationDraft,
   createPersistedFinalizationDraftSnapshot,
   EMPTY_FINALIZATION_DRAFT,
-  FINALIZATION_STOCK_STATUS_VALUES,
   toFinalizationImageArray,
   type FinalizationDraft,
 } from "@/lib/pipeline/finalization-draft";
@@ -1921,34 +1920,6 @@ export function FinalizingResultsView({
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="product-description">Description</Label>
-                      <Textarea
-                        id="product-description"
-                        value={formData.description}
-                        onChange={(e) =>
-                          handleInputChange("description", e.target.value)
-                        }
-                        placeholder="Short storefront description"
-                        className="min-h-28"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="product-long-description">
-                        Long Description
-                      </Label>
-                      <Textarea
-                        id="product-long-description"
-                        value={formData.longDescription}
-                        onChange={(e) =>
-                          handleInputChange("longDescription", e.target.value)
-                        }
-                        placeholder="Extended product copy, feeding notes, ingredients, or selling points"
-                        className="min-h-40"
-                      />
-                    </div>
-
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="product-price">Price</Label>
@@ -2104,30 +2075,6 @@ export function FinalizingResultsView({
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="product-stock-status">Stock Status</Label>
-                        <Select
-                          value={formData.stockStatus}
-                          onValueChange={(value) =>
-                            handleInputChange(
-                              "stockStatus",
-                              value as (typeof FINALIZATION_STOCK_STATUS_VALUES)[number],
-                            )
-                          }
-                        >
-                          <SelectTrigger id="product-stock-status" className="w-full">
-                            <SelectValue placeholder="Select stock status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="in_stock">In Stock</SelectItem>
-                            <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                            <SelectItem value="pre_order">Pre-Order</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
                         <Label htmlFor="product-availability">Availability Text</Label>
                         <Input
                           id="product-availability"
@@ -2136,50 +2083,6 @@ export function FinalizingResultsView({
                             handleInputChange("availability", e.target.value)
                           }
                           placeholder="e.g. usually ships in 24 hours"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="product-minimum-quantity">
-                          Minimum Quantity
-                        </Label>
-                        <Input
-                          id="product-minimum-quantity"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={formData.minimumQuantity}
-                          onChange={(e) =>
-                            handleInputChange("minimumQuantity", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="product-gtin">GTIN / UPC</Label>
-                        <Input
-                          id="product-gtin"
-                          value={formData.gtin}
-                          onChange={(e) =>
-                            handleInputChange("gtin", e.target.value)
-                          }
-                          placeholder="Barcode"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="product-search-keywords">
-                          Search Keywords
-                        </Label>
-                        <Input
-                          id="product-search-keywords"
-                          value={formData.searchKeywords}
-                          onChange={(e) =>
-                            handleInputChange("searchKeywords", e.target.value)
-                          }
-                          placeholder="comma-separated terms"
                         />
                       </div>
                     </div>

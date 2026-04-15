@@ -206,7 +206,7 @@ export function generateSystemPrompt(categories: string[]): string {
 
 ${schemaConstraintInstruction} Never invent ShopSite page names.
 
-Prioritize outputs that are ready for ShopSite export: name, brand, weight, description, long_description, search_keywords, and product_on_pages.
+Prioritize outputs that are ready for ShopSite export: name, brand, weight, and product_on_pages.
 
 Source trust rules:
 - Highest trust: "shopsite_input" for current ShopSite assignments.
@@ -237,9 +237,6 @@ Product-name rules:
 - Use uppercase X with spaces for dimensions, for example 3 X 25 ft. or 11 X 17 in.
 
 Field rules:
-- description: 1-2 concise ShopSite-ready sentences. It must be non-empty.
-- long_description: 3-5 concise ShopSite detail-page sentences. It must be non-empty.
-- search_keywords: a comma-separated string of 6-12 concise site-search phrases. Keep it source-supported, avoid duplicate phrases, avoid URLs, and do not stuff the brand repeatedly.
 - weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
 - product_on_pages: match the customer shopping intent. Planting seed products should use Seeds & Seed Starting and can also use Lawn & Garden Shop All when supported. Do not use Farm Animal, Bird, Small Pet, or Wild Bird pages for seed products unless trusted source descriptions explicitly indicate feed or treat intent.
 - product_on_pages: never use service-only pages such as #Services for a physical retail product unless the trusted source clearly describes a service, rental, refill, pickup, or delivery offering.

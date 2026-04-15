@@ -95,7 +95,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 const STARTER_PROMPTS = [
-  "Tighten the product title, description, and long description for clarity.",
+  "Tighten the product title for clarity.",
   "List the products in finalizing, then tell me which ones look risky or incomplete.",
   "Preview a workspace-wide change that updates availability text across all finalizing products.",
   "Check the scraped sources and assign the best matching brand for the selected draft.",

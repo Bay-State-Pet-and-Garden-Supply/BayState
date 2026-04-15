@@ -129,9 +129,6 @@ export interface ConsolidationResult {
     price?: string;
     category?: string;
     product_on_pages?: string;
-    description?: string;
-    long_description?: string;
-    search_keywords?: string;
     confidence_score?: number;
     error?: string;
 }
@@ -142,19 +139,14 @@ export interface ConsolidationResult {
 export interface ConsolidatedData {
     name?: string;
     description?: string;
-    long_description?: string;
     price?: number;
     images?: string[];
     brand_id?: string;
-    stock_status?: string;
     is_special_order?: boolean;
     category?: string;
     product_on_pages?: string[];
     weight?: string;
-    search_keywords?: string;
-    gtin?: string;
     availability?: string;
-    minimum_quantity?: number;
     is_taxable?: boolean;
     confidence_score?: number;
 }
