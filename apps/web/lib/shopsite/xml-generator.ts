@@ -155,6 +155,10 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('ProductField24', product.category));
     }
 
+    if (product.product_type) {
+        lines.push(xmlElement('ProductField25', product.product_type));
+    }
+
 
 
     if (product.is_special_order) {
@@ -237,7 +241,7 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
     if (product.shopsite_pages && product.shopsite_pages.length > 0) {
         lines.push('    <ProductOnPages>');
         for (const pageName of product.shopsite_pages) {
-            lines.push(`      <PageName>${escapeXml(pageName)}</PageName>`);
+            lines.push(`      <Name>${escapeXml(pageName)}</Name>`);
         }
         lines.push('    </ProductOnPages>');
     }
