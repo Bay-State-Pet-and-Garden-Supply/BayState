@@ -63,7 +63,7 @@ jest.mock('@/lib/supabase/server', () => ({
   createAdminClient: jest.fn(),
 }));
 
-const { GET } = require('@/app/api/admin/pipeline/export/route');
+const { GET, POST } = require('@/app/api/admin/pipeline/export/route');
 const { NextRequest } = require('next/server');
 const { createAdminClient } = require('@/lib/supabase/server');
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
@@ -74,6 +74,7 @@ function createSupabaseMock() {
     order: jest.fn().mockReturnThis(),
     is: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
     range: jest.fn().mockResolvedValue({ data: [], error: null }),
   };
 
@@ -130,5 +131,25 @@ describe('pipeline export route compatibility boundary', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Invalid status. Expected one of: imported, scraping, scraped, consolidating, finalizing, exporting, failed, all',
     });
+  });
+
+  it('exports a selected SKU subset from the exporting queue via POST', async () => {
+    const { from, queryBuilder } = createSupabaseMock();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    (createAdminClient as jest.Mock).mockResolvedValue({ from });
+
+    const response = await POST({
+      json: async () => ({ skus: ['SKU-1', 'SKU-2'] }),
+    } as never);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(response.status).toBe(200);
+    expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'exporting');
+    expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
+    expect(queryBuilder.in).toHaveBeenCalledWith('sku', ['SKU-1', 'SKU-2']);
+
+    errorSpy.mockRestore();
   });
 });

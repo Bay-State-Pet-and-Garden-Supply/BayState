@@ -161,4 +161,62 @@ describe('loadPublishedShopSiteExport', () => {
             brand_folder: 'test-brand',
         });
     });
+
+    it('can load specifically requested exporting SKUs even after they have been marked exported', async () => {
+        const publishedRange = jest.fn().mockResolvedValue({
+            data: [
+                {
+                    sku: 'SKU-ARCHIVED',
+                    input: { name: 'Archived Export', price: 12.99 },
+                    consolidated: { name: 'Archived Export', brand_id: 'brand-1' },
+                    selected_images: [],
+                },
+            ],
+            error: null,
+        });
+        const ingestionQuery = {
+            eq: jest.fn().mockReturnThis(),
+            is: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            range: publishedRange,
+        };
+        const brandsIn = jest.fn().mockResolvedValue({
+            data: [{ id: 'brand-1', name: 'Test Brand', slug: 'test-brand' }],
+            error: null,
+        });
+
+        const supabase = {
+            from: jest.fn((table: string) => {
+                if (table === 'products_ingestion') {
+                    return {
+                        select: jest.fn().mockReturnValue(ingestionQuery),
+                    };
+                }
+
+                if (table === 'brands') {
+                    return {
+                        select: jest.fn().mockReturnValue({
+                            in: brandsIn,
+                        }),
+                    };
+                }
+
+                throw new Error(`Unexpected table ${table}`);
+            }),
+        };
+
+        (createAdminClient as jest.Mock).mockResolvedValue(supabase);
+
+        const result = await loadPublishedShopSiteExport({
+            skus: ['SKU-ARCHIVED'],
+            includeExportedRequestedSkus: true,
+        });
+
+        expect(ingestionQuery.eq).toHaveBeenCalledWith('pipeline_status', 'exporting');
+        expect(ingestionQuery.in).toHaveBeenCalledWith('sku', ['SKU-ARCHIVED']);
+        expect(ingestionQuery.is).not.toHaveBeenCalledWith('exported_at', null);
+        expect(result.products).toHaveLength(1);
+        expect(result.products[0].sku).toBe('SKU-ARCHIVED');
+    });
 });

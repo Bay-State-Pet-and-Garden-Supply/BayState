@@ -78,7 +78,7 @@ describe('export tab actions', () => {
             if (url.includes('/api/admin/pipeline/upload-shopsite')) {
                 return Promise.resolve({
                     ok: true,
-                    json: async () => ({ uploadedCount: 2 }),
+                    json: async () => ({ uploadedCount: 2, uploadedSkus: ['SKU001', 'SKU002'] }),
                 });
             }
 
@@ -98,9 +98,17 @@ describe('export tab actions', () => {
                 });
             }
 
+            if (url.includes('/api/admin/pipeline/export?status=exporting') || url.endsWith('/api/admin/pipeline/export')) {
+                return Promise.resolve({
+                    ok: true,
+                    blob: async () => new Blob(['xlsx']),
+                    headers: { get: () => 'attachment; filename="products-export.xlsx"' },
+                });
+            }
+
             return Promise.resolve({
                 ok: true,
-                json: async () => ({ counts, products: [], count: 0, availableSources: [] }),
+                json: async () => ({ counts, products: [], count: 2, availableSources: [] }),
             });
         });
 
@@ -127,13 +135,14 @@ describe('export tab actions', () => {
         });
 
         fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Export ShopSite XML' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Export ZIP Package' }));
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(
                 '/api/admin/pipeline/upload-shopsite',
-                expect.objectContaining({ method: 'POST' }),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                }),
             );
         });
 
@@ -145,11 +154,42 @@ describe('export tab actions', () => {
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(
+                '/api/admin/pipeline/export-zip',
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify({
+                        skus: ['SKU001', 'SKU002'],
+                        includeExportedSelection: true,
+                    }),
+                }),
+            );
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Export ShopSite XML' }));
+        await waitFor(() => {
+            expect(mockFetch).toHaveBeenCalledWith(
                 '/api/admin/pipeline/export-xml',
             );
         });
+
         await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith('/api/admin/pipeline/export-zip?status=exporting');
+            expect(
+                screen.getByRole('button', { name: 'Export Excel' }),
+            ).toBeEnabled();
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Export Excel' }));
+        await waitFor(() => {
+            expect(mockFetch).toHaveBeenCalledWith('/api/admin/pipeline/export?status=exporting');
+        });
+
+        await waitFor(() => {
+            expect(
+                screen.getByRole('button', { name: 'Download Images ZIP' }),
+            ).toBeEnabled();
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Download Images ZIP' }));
+        await waitFor(() => {
+            expect(mockFetch).toHaveBeenCalledWith('/api/admin/pipeline/export-zip');
         });
     });
 
