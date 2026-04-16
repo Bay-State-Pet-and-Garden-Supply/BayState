@@ -1213,10 +1213,11 @@ export function PipelineClient({
   );
 
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex h-full flex-col min-h-0">
       {/* Stage Tabs & Inline Actions */}
-      {hideTabs ? (
-        <div className="flex flex-col gap-4 border-b border-border/50 pb-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="shrink-0 mb-6">
+        {hideTabs ? (
+          <div className="flex flex-col gap-4 border-b border-border/50 pb-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
@@ -1251,22 +1252,23 @@ export function PipelineClient({
           actions={headerActions}
         />
       )}
+      </div>
 
       {/* Content Area */}
       <div className="flex-1 min-h-0 relative">
         <div className={cn("h-full transition-opacity", (isLoading || isNavigating) && "opacity-50 pointer-events-none")}>
           {currentStage === "scraping" ? (
           <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+            <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
               <div className="flex items-start gap-3 mb-4">
-                <div className="rounded-lg bg-brand-forest-green/10 p-2">
+                <div className="rounded-none border-2 border-zinc-950 bg-brand-forest-green/10 p-2">
                   <Activity className="h-5 w-5 text-brand-forest-green" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
                     Active Runs
                   </h2>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">
                     Live scraper jobs currently running or queued.
                   </p>
                 </div>
@@ -1276,16 +1278,16 @@ export function PipelineClient({
           </div>
         ) : currentStage === "consolidating" ? (
           <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+            <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
               <div className="flex items-start gap-3 mb-4">
-                <div className="rounded-lg bg-brand-burgundy/10 p-2">
+                <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-2">
                   <Brain className="h-5 w-5 text-brand-burgundy" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
                     AI Consolidations
                   </h2>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">
                     Active consolidation batches and history.
                   </p>
                 </div>
@@ -1388,15 +1390,15 @@ export function PipelineClient({
                     <AccordionItem
                       key={cohortId}
                       value={cohortId}
-                      className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+                      className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
                     >
-                      <div className="group flex items-center bg-muted/10 pr-2 hover:bg-muted/30">
-                        <AccordionTrigger className="flex-1 px-3 py-2 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                      <div className="group flex items-center bg-zinc-50 pr-2 hover:bg-zinc-100 border-b border-zinc-950">
+                        <AccordionTrigger hideIcon className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
                           <div className="flex items-center gap-3 overflow-hidden">
-                            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+                            <ChevronRight className="h-4 w-4 shrink-0 text-zinc-950 transition-transform duration-200" />
                             <div className="flex items-center gap-2 overflow-hidden">
-                              <Layers className="h-3.5 w-3.5 shrink-0 text-brand-forest-green/70" />
-                              <span className="truncate text-sm font-bold uppercase tracking-tight text-foreground/90">
+                              <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
+                              <span className="truncate text-base font-black uppercase tracking-tighter text-zinc-950">
                                 {formatPipelineBatchLabel(
                                   cohortId,
                                   groupedProducts.names[cohortId] || null,
@@ -1410,7 +1412,7 @@ export function PipelineClient({
                           {groupedProducts.brands[cohortId] ? (
                             <Badge
                               variant="outline"
-                              className="gap-1 border-brand-forest-green/30 text-xs text-brand-forest-green"
+                              className="gap-1 rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px]"
                             >
                               <Tag className="h-3 w-3" />
                               {groupedProducts.brands[cohortId]}
@@ -1418,14 +1420,14 @@ export function PipelineClient({
                           ) : null}
                           <Badge
                             variant="secondary"
-                            className="bg-muted font-normal text-muted-foreground"
+                            className="bg-zinc-950 text-white rounded-none font-black uppercase text-[10px]"
                           >
                             {groupProducts.length} items
                           </Badge>
                         </div>
                       </div>
 
-                      <AccordionContent className="border-t border-border pt-0">
+                      <AccordionContent className="pt-0">
                         <ProductTable
                           products={groupProducts}
                           selectedSkus={selectedSkus}
@@ -1494,15 +1496,15 @@ export function PipelineClient({
                     <AccordionItem
                       key={cohortId}
                       value={cohortId}
-                      className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+                      className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
                     >
-                      <div className="flex items-center hover:bg-muted/30 bg-muted/10 pr-2 group">
-                        <AccordionTrigger className="flex-1 px-3 py-2 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                      <div className="flex items-center hover:bg-zinc-100 bg-zinc-50 pr-2 group border-b border-zinc-950">
+                        <AccordionTrigger hideIcon className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
                           <div className="flex items-center gap-3 overflow-hidden">
-                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
+                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-zinc-950" />
                             <div className="flex items-center gap-2 overflow-hidden">
-                              <Layers className="h-3.5 w-3.5 shrink-0 text-brand-forest-green/70" />
-                              <span className="font-bold text-sm uppercase tracking-tight text-foreground/90 truncate">
+                              <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
+                              <span className="font-black text-base uppercase tracking-tighter text-zinc-950 truncate">
                                 {formatPipelineBatchLabel(
                                   cohortId,
                                   groupedProducts.names[cohortId] || null,
@@ -1516,7 +1518,7 @@ export function PipelineClient({
                           {groupedProducts.brands[cohortId] && (
                             <Badge
                               variant="outline"
-                              className="text-xs gap-1 border-brand-forest-green/30 text-brand-forest-green"
+                              className="rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px] gap-1"
                             >
                               <Tag className="h-3 w-3" />
                               {groupedProducts.brands[cohortId]}
@@ -1524,7 +1526,7 @@ export function PipelineClient({
                           )}
                           <Badge
                             variant="secondary"
-                            className="bg-muted text-muted-foreground font-normal"
+                            className="bg-zinc-950 text-white rounded-none font-black uppercase text-[10px]"
                           >
                             {groupProducts.length} items
                           </Badge>
@@ -1533,7 +1535,7 @@ export function PipelineClient({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-brand-forest-green"
+                                className="h-6 w-6 p-0 text-zinc-500 hover:text-brand-forest-green hover:bg-transparent"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1553,7 +1555,7 @@ export function PipelineClient({
                         </div>
                       </div>
 
-                      <AccordionContent className="pt-0 border-t border-border">
+                      <AccordionContent className="pt-0">
                         <ProductTable
                           products={groupProducts}
                           selectedSkus={selectedSkus}
@@ -1603,9 +1605,9 @@ export function PipelineClient({
 
         {(isLoading || isNavigating || isSearching) && (
           <div className="absolute inset-0 z-50 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 rounded-lg bg-background/80 px-8 py-6 shadow-xl border backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-2 rounded-none bg-background/80 px-8 py-6 shadow-[4px_4px_0px_rgba(0,0,0,1)] border-2 border-zinc-950 backdrop-blur-sm">
               <Activity className="h-8 w-8 animate-spin text-brand-forest-green" />
-              <p className="text-sm font-bold uppercase tracking-tighter">Updating Results...</p>
+              <p className="text-sm font-black uppercase tracking-tighter">Updating Results...</p>
             </div>
           </div>
         )}

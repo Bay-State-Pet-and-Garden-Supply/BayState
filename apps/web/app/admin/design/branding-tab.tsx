@@ -84,10 +84,10 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
     return (
         <form action={handleSubmit} className="space-y-6">
             {/* Site Identity */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-violet-100">
                             <Paintbrush className="h-5 w-5 text-violet-600" />
                         </div>
                         <div>
@@ -130,7 +130,7 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
                                 className="flex-1"
                             />
                             {logoUrl && (
-                                <div className="h-10 w-10 rounded border bg-card p-1 flex items-center justify-center">
+                                <div className="h-10 w-10 rounded-none border bg-card p-1 flex items-center justify-center">
                                     <Image
                                         src={logoUrl}
                                         alt="Logo preview"
@@ -146,10 +146,10 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
             </Card>
 
             {/* Colors */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-pink-100">
                             <Palette className="h-5 w-5 text-pink-600" />
                         </div>
                         <div>
@@ -170,7 +170,7 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
                                     id="primaryColor"
                                     value={primaryColor}
                                     onChange={(e) => setPrimaryColor(e.target.value)}
-                                    className="h-10 w-14 cursor-pointer rounded border"
+                                    className="h-10 w-14 cursor-pointer rounded-none border"
                                 />
                                 <Input
                                     value={primaryColor}
@@ -191,7 +191,7 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
                                     id="accentColor"
                                     value={accentColor}
                                     onChange={(e) => setAccentColor(e.target.value)}
-                                    className="h-10 w-14 cursor-pointer rounded border"
+                                    className="h-10 w-14 cursor-pointer rounded-none border"
                                 />
                                 <Input
                                     value={accentColor}
@@ -209,10 +209,10 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
             </Card>
 
             {/* Contact Information */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-cyan-100">
                             <Building className="h-5 w-5 text-cyan-600" />
                         </div>
                         <div>
@@ -260,10 +260,10 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
             </Card>
 
             {/* Social Links */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-orange-100">
                             <Share2 className="h-5 w-5 text-orange-600" />
                         </div>
                         <div>
@@ -283,18 +283,18 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
                     </div>
 
                     {socialLinks.length === 0 && (
-                        <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                        <div className="rounded-none border border-dashed p-6 text-center text-muted-foreground">
                             No social links configured. Add your first social profile!
                         </div>
                     )}
 
                     <div className="space-y-2">
                         {socialLinks.map((link, index) => (
-                            <div key={index} className="flex items-center gap-2 rounded-lg border p-3">
+                            <div key={index} className="flex items-center gap-2 rounded-none border p-3">
                                 <select
                                     value={link.platform}
                                     onChange={(e) => updateSocialLink(index, 'platform', e.target.value)}
-                                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    className="h-10 rounded-none border border-input bg-background px-3 py-2 text-sm"
                                 >
                                     {SOCIAL_PLATFORMS.map((platform) => (
                                         <option key={platform.value} value={platform.value}>
@@ -325,7 +325,7 @@ export function BrandingTab({ initialSettings }: BrandingTabProps) {
             </Card>
 
             <div className="sticky bottom-4 flex justify-end">
-                <Button type="submit" size="lg" disabled={isSaving} className="shadow-lg">
+                <Button type="submit" size="lg" disabled={isSaving} className="shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                     <Save className="mr-2 h-4 w-4" />
                     {isSaving ? 'Saving...' : 'Save Branding Settings'}
                 </Button>

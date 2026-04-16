@@ -240,7 +240,7 @@ export function PipelineProductDetail({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/55">
         <div className="rounded-lg bg-card p-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
         </div>
       </div>
     );

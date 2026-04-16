@@ -252,7 +252,7 @@ export function ImageSelectionWorkspace({
                       aria-pressed={isSelected}
                       aria-label={`Select image ${index + 1}`}
                       className={`
-                        relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all
+                        relative cursor-pointer rounded-lg overflow-hidden border transition-all
                         focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
                         ${isSelected
                           ? 'border-primary ring-2 ring-primary/20'

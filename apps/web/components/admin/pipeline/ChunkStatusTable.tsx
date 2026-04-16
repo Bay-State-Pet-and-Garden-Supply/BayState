@@ -41,26 +41,26 @@ const STATUS_CONFIG = {
   pending: {
     label: "Pending",
     icon: Clock,
-    badgeClass: "bg-muted text-muted-foreground",
-    rowClass: "opacity-60",
+    badgeClass: "bg-brand-gold text-zinc-950",
+    rowClass: "opacity-75",
   },
   running: {
     label: "Running",
     icon: Loader2,
-    badgeClass: "bg-primary/10 text-primary",
-    rowClass: "",
+    badgeClass: "bg-blue-100 text-blue-950",
+    rowClass: "bg-blue-50/30",
   },
   completed: {
     label: "Done",
     icon: CheckCircle,
-    badgeClass: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    badgeClass: "bg-brand-forest-green text-white",
     rowClass: "",
   },
   failed: {
     label: "Failed",
     icon: XCircle,
-    badgeClass: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    rowClass: "",
+    badgeClass: "bg-brand-burgundy text-white",
+    rowClass: "bg-red-50/30",
   },
 } as const;
 
@@ -103,7 +103,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
   if (sortedChunks.length === 0) {
     return (
-      <div className="px-4 py-3 text-xs text-muted-foreground italic text-center border-t border-dashed">
+      <div className="px-4 py-6 text-[10px] font-black uppercase tracking-tighter text-zinc-500 text-center border-t-2 border-zinc-950 bg-zinc-50">
         No chunks created for this job yet.
       </div>
     );
@@ -111,9 +111,9 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="border-t border-border">
+      <div className="border-t-2 border-zinc-950">
         {/* Header */}
-        <div className="grid grid-cols-[3rem_3.5rem_6rem_1fr_5rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50 border-b border-border">
+        <div className="grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-tighter text-zinc-950 bg-zinc-100 border-b-2 border-zinc-950">
           <span>Chunk</span>
           <span>SKUs</span>
           <span>Status</span>
@@ -124,7 +124,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
         </div>
 
         {/* Rows */}
-        <div className="divide-y divide-border/50">
+        <div className="divide-y-2 divide-zinc-950/5">
           {sortedChunks.map((chunk) => {
             const config = STATUS_CONFIG[chunk.status];
             const StatusIcon = config.icon;
@@ -134,22 +134,22 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
             return (
               <div key={chunk.id}>
                 <div
-                  className={`grid grid-cols-[3rem_3.5rem_6rem_1fr_5rem_5rem_6rem] gap-2 px-4 py-2 text-xs items-center transition-colors hover:bg-muted/30 ${config.rowClass} ${isFailed ? "border-l-2 border-l-red-500" : ""}`}
+                  className={`grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-xs items-center transition-colors hover:bg-zinc-50 ${config.rowClass} ${isFailed ? "border-l-4 border-l-brand-burgundy" : ""}`}
                 >
                   {/* Chunk Index */}
-                  <span className="font-mono font-medium text-foreground">
+                  <span className="font-mono font-bold text-zinc-950">
                     #{chunk.chunkIndex}
                   </span>
 
                   {/* SKU Count */}
-                  <span className="tabular-nums text-muted-foreground">
+                  <span className="tabular-nums font-black uppercase tracking-tighter text-zinc-500">
                     {chunk.skuCount}
                   </span>
 
                   {/* Status Badge */}
                   <Badge
                     variant="secondary"
-                    className={`inline-flex w-fit items-center gap-1 text-[10px] px-1.5 py-0.5 font-medium ${config.badgeClass}`}
+                    className={`inline-flex w-fit items-center gap-1.5 text-[9px] px-1.5 py-0.5 font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.badgeClass}`}
                   >
                     <StatusIcon
                       className={`h-3 w-3 ${isRunning ? "animate-spin" : ""}`}
@@ -158,16 +158,16 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   </Badge>
 
                   {/* Runner */}
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     {chunk.claimedBy ? (
                       <>
-                        <Server className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span className="truncate font-medium text-foreground">
+                        <Server className="h-3 w-3 text-zinc-400 shrink-0" />
+                        <span className="truncate font-bold text-zinc-900">
                           {chunk.claimedBy}
                         </span>
                       </>
                     ) : (
-                      <span className="text-muted-foreground italic">
+                      <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 italic">
                         Unclaimed
                       </span>
                     )}
@@ -176,39 +176,39 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   {/* Claimed Time */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="tabular-nums text-muted-foreground cursor-default">
+                      <span className="tabular-nums text-[10px] font-black uppercase tracking-tighter text-zinc-500 cursor-default">
                         {formatRelativeTime(chunk.claimedAt)}
                       </span>
                     </TooltipTrigger>
                     {chunk.claimedAt && (
-                      <TooltipContent side="top" className="text-xs">
+                      <TooltipContent side="top" className="rounded-none border-2 border-zinc-950 bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-tighter">
                         {new Date(chunk.claimedAt).toLocaleString()}
                       </TooltipContent>
                     )}
                   </Tooltip>
 
                   {/* Duration */}
-                  <span className="tabular-nums text-muted-foreground">
+                  <span className="tabular-nums text-[10px] font-black uppercase tracking-tighter text-zinc-500">
                     {formatDuration(chunk.startedAt, chunk.completedAt)}
                   </span>
 
                   {/* Result */}
-                  <div className="text-right tabular-nums">
+                  <div className="text-right tabular-nums font-black uppercase tracking-tighter text-[10px]">
                     {chunk.status === "pending" ? (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-zinc-400">—</span>
                     ) : (
                       <span
                         className={
                           chunk.skusFailed > 0
-                            ? "text-red-600 dark:text-red-400 font-medium"
+                            ? "text-brand-burgundy font-black"
                             : chunk.status === "completed"
-                              ? "text-green-600 dark:text-green-400 font-medium"
-                              : "text-foreground"
+                              ? "text-brand-forest-green font-black"
+                              : "text-zinc-950"
                         }
                       >
                         {chunk.skusSuccessful}/{chunk.skuCount}
                         {chunk.skusFailed > 0 && (
-                          <span className="text-red-500 ml-1">
+                          <span className="text-brand-burgundy ml-1">
                             ({chunk.skusFailed} err)
                           </span>
                         )}
@@ -219,8 +219,8 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
                 {/* Error Message Row */}
                 {isFailed && chunk.errorMessage && (
-                  <div className="flex items-start gap-2 px-4 py-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border-l-2 border-l-red-500">
-                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                  <div className="flex items-start gap-2 px-4 py-2 text-[11px] font-medium text-brand-burgundy bg-brand-burgundy/5 border-l-4 border-l-brand-burgundy border-t border-zinc-950/5">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                     <span className="break-all">{chunk.errorMessage}</span>
                   </div>
                 )}
@@ -273,7 +273,7 @@ export function ChunkSummaryLine({
   }
 
   return (
-    <span className="text-xs text-muted-foreground">
+    <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
       {parts.join(" · ")}
     </span>
   );

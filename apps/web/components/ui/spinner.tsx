@@ -5,8 +5,8 @@ interface SpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const sizeClasses = {
-  sm: "h-4 w-4 border-2",
-  md: "h-6 w-6 border-2",
+  sm: "h-4 w-4 border",
+  md: "h-6 w-6 border",
   lg: "h-8 w-8 border-3",
 }
 

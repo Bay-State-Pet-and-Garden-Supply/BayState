@@ -11,16 +11,16 @@ export default async function AdminMigrationPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Data Migration</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-black uppercase tracking-tight">Data Migration</h1>
                 <p className="text-muted-foreground">
                     This page is deprecated. ShopSite sync now runs through GitHub Actions on your local runner.
                 </p>
             </div>
 
-            <Card className="border-amber-200 bg-amber-50/50">
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-amber-100">
                             <AlertTriangle className="h-5 w-5 text-amber-700" />
                         </div>
                         <div>
@@ -55,7 +55,7 @@ export default async function AdminMigrationPage() {
                             </Link>
                         </Button>
                     </div>
-                    <div className="rounded-md border bg-background p-3 font-mono text-xs text-foreground">
+                    <div className="rounded-none border bg-background p-3 font-mono text-xs text-foreground">
                         bun --cwd apps/web run sync:shopsite --limit=100
                     </div>
                 </CardContent>

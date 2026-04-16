@@ -137,7 +137,7 @@ export function BatchJobsPanel({ onApplyBatch, activeBatchId }: BatchJobsPanelPr
                         return (
                             <div 
                                 key={job.id} 
-                                className={`px-4 py-3 hover:bg-muted transition-colors ${isActive ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
+                                className={`px-4 py-3 hover:bg-muted transition-colors ${isActive ? 'bg-primary/10 border-l border-primary' : ''}`}
                             >
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-3">

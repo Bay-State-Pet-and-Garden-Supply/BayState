@@ -35,7 +35,7 @@ export default async function ProductGroupsPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Product Groups</h1>
+        <h1 className="text-3xl font-bold font-black uppercase tracking-tight">Product Groups</h1>
         <Button asChild>
           <Link href="/admin/product-groups/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -45,7 +45,7 @@ export default async function ProductGroupsPage() {
       </div>
 
       {!groups || groups.length === 0 ? (
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardContent className="py-12 text-center">
             <Box className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">No product groups yet.</p>
@@ -60,7 +60,7 @@ export default async function ProductGroupsPage() {
       ) : (
         <div className="grid gap-4">
           {groups.map((group) => (
-            <Card key={group.id}>
+            <Card className="border border-zinc-950 rounded-none" key={group.id}>
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -76,7 +76,7 @@ export default async function ProductGroupsPage() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Slug: <code className="bg-muted px-1 rounded">{group.slug}</code>
+                      Slug: <code className="bg-muted px-1 rounded-none">{group.slug}</code>
                     </p>
                     {group.description && (
                       <p className="text-sm mt-2 text-muted-foreground line-clamp-2">

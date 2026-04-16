@@ -35,10 +35,10 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
     };
 
     return (
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-gold border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                         <Megaphone className="h-5 w-5 text-brand-burgundy" />
                     </div>
                     <div>
@@ -56,7 +56,7 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
                     <input type="hidden" name="cycleInterval" value={cycleInterval * 1000} />
 
                     {/* Enable Toggle */}
-                    <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="flex items-center justify-between rounded-none border p-4">
                         <div>
                             <p className="font-medium">Banner Enabled</p>
                             <p className="text-sm text-muted-foreground">
@@ -74,7 +74,7 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
                                     name="enabled"
                                     checked={enabled}
                                     onChange={(e) => setEnabled(e.target.checked)}
-                                    className="h-5 w-5 rounded border-border"
+                                    className="h-5 w-5 rounded-none border-border"
                                 />
                                 <span className="sr-only">Enable banner</span>
                             </label>
@@ -92,13 +92,13 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
                         </div>
 
                         {messages.length === 0 && (
-                            <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                            <div className="rounded-none border border-dashed p-8 text-center text-muted-foreground">
                                 No messages yet. Add your first promotional message!
                             </div>
                         )}
 
                         {messages.map((message, index) => (
-                            <div key={index} className="rounded-lg border p-4 space-y-3">
+                            <div key={index} className="rounded-none border p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -174,7 +174,7 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
                             name="variant"
                             value={variant}
                             onChange={(e) => setVariant(e.target.value as 'info' | 'promo' | 'seasonal')}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="flex h-10 w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             <option value="info">Info (Dark)</option>
                             <option value="promo">Promo (Amber)</option>
@@ -186,14 +186,7 @@ export function CampaignBannerForm({ initialSettings }: CampaignBannerFormProps)
                     {enabled && messages.length > 0 && (
                         <div className="space-y-2">
                             <Label>Preview (First Message)</Label>
-                            <div
-                                className={`rounded-lg py-2.5 px-4 text-center text-sm font-medium ${variant === 'info'
-                                        ? 'bg-primary text-white'
-                                        : variant === 'promo'
-                                            ? 'bg-amber-500 text-foreground'
-                                            : 'bg-green-600 text-white'
-                                    }`}
-                            >
+                            <div className={`rounded-none py-2.5 px-4 text-center text-sm font-medium ${variant === 'info' ? 'bg-primary text-white' : variant === 'promo' ? 'bg-amber-500 text-foreground' : 'bg-green-600 text-white' }`}>
                                 {messages[0].text}
                                 {messages[0].linkText && (
                                     <span className="ml-2 underline">{messages[0].linkText}</span>

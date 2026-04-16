@@ -92,7 +92,10 @@ export function FloatingActionsBar({
 
   const bulkAction = BULK_ACTIONS[currentStage];
   const isTerminalStage = currentStage === "exporting";
-  const hasBulkAction = !isTerminalStage && (bulkAction.nextStage !== null || (currentStage === "scraped" && !!onConsolidate));
+  const hasBulkAction =
+    !isTerminalStage &&
+    (bulkAction.nextStage !== null ||
+      (currentStage === "scraped" && !!onConsolidate));
   const hasResetAction =
     !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
   const isImported = currentStage === "imported";

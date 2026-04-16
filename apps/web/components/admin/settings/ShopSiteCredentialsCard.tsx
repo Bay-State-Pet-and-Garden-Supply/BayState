@@ -92,7 +92,7 @@ export function ShopSiteCredentialsCard() {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-forest-green border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-forest-green border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
             <Database className="h-5 w-5 text-white" />
           </div>
           <div>

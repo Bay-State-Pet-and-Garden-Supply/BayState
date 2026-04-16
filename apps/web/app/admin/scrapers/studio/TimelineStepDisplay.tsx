@@ -67,18 +67,13 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
           return (
             <div key={step.id} className="relative flex gap-4">
               <div className="relative z-10 flex-shrink-0">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 bg-card ${
-                  step.status === 'completed' ? 'border-green-500 bg-green-50' :
-                  step.status === 'failed' ? 'border-red-500 bg-red-50' :
-                  step.status === 'running' ? 'border-blue-500 bg-blue-50' :
-                  'border-border bg-card'
-                }`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-none border bg-card ${ step.status === 'completed' ? 'border-green-500 bg-green-50' : step.status === 'failed' ? 'border-red-500 bg-red-50' : step.status === 'running' ? 'border-blue-500 bg-blue-50' : 'border-border bg-card' }`}>
                   {getStepStatusIcon(step.status)}
                 </div>
               </div>
 
               <div className="flex-1 pb-4">
-                <Card className={isExpanded ? 'border-blue-300 shadow-md' : ''}>
+                <Card className="border border-zinc-950 rounded-none">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -95,12 +90,7 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`text-sm ${
-                          step.status === 'completed' ? 'text-green-600' :
-                          step.status === 'failed' ? 'text-red-600' :
-                          step.status === 'running' ? 'text-blue-600' :
-                          'text-muted-foreground'
-                        }`}>
+                        <span className={`text-sm ${ step.status === 'completed' ? 'text-green-600' : step.status === 'failed' ? 'text-red-600' : step.status === 'running' ? 'text-blue-600' : 'text-muted-foreground' }`}>
                           {step.status}
                         </span>
                         {step.duration_ms !== null && (
@@ -147,7 +137,7 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
                         </div>
 
                         {step.error_message && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                          <div className="bg-red-50 border border-red-200 rounded-none p-3">
                             <div className="flex items-start gap-2">
                               <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                               <div>
@@ -165,7 +155,7 @@ export function TimelineStepDisplay({ steps }: TimelineStepDisplayProps) {
                             <p className="text-sm font-medium text-muted-foreground mb-2">
                               Extracted Data
                             </p>
-                            <pre className="bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto max-h-48">
+                            <pre className="bg-gray-900 text-gray-100 rounded-none p-3 text-xs overflow-x-auto max-h-48">
                               {JSON.stringify(step.extracted_data, null, 2)}
                             </pre>
                           </div>

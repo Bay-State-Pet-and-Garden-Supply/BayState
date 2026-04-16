@@ -115,7 +115,7 @@ function StatusBadge({ status }: { status: CohortBatch["status"] }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${config.bgColor} ${config.color}`}
+      className={`inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-[10px] font-black uppercase tracking-tight border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.bgColor} ${config.color}`}
     >
       <Icon className={`h-3 w-3 ${status === "processing" ? "animate-spin" : ""}`} />
       {config.label}
@@ -137,14 +137,14 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Card>
+    <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold text-foreground">{value}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">{title}</p>
+            <p className="text-3xl font-black tracking-tighter text-zinc-950">{value}</p>
           </div>
-          <div className={`rounded-lg p-3 ${color}`}>
+          <div className={`rounded-none border border-zinc-950 p-3 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${color}`}>
             <Icon className="h-5 w-5 text-white" />
           </div>
         </div>
@@ -250,24 +250,24 @@ export function CohortDashboardClient() {
   if (loading && cohorts.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand-forest-green" />
       </div>
     );
   }
 
   if (error && cohorts.length === 0) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+      <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
         <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+          <AlertCircle className="h-5 w-5 text-brand-burgundy shrink-0" />
           <div>
-            <h3 className="font-semibold text-red-900">Error Loading Cohorts</h3>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <h3 className="font-black uppercase tracking-tight text-brand-burgundy">Error Loading Cohorts</h3>
+            <p className="text-sm font-bold text-brand-burgundy/80 mt-1">{error}</p>
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-              className="mt-3"
+              className="mt-3 border-brand-burgundy text-brand-burgundy hover:bg-brand-burgundy hover:text-white"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry
@@ -279,15 +279,14 @@ export function CohortDashboardClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="space-y-6 h-full flex flex-col">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Cohort Batch Monitoring
+          <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-950">
+            Cohort Monitoring
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Real-time monitoring of product line scraping cohorts. Assign brands to
-            enable automatic scraper recommendations.
+          <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600">
+            Real-time monitoring of product line scraping cohorts.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -297,6 +296,7 @@ export function CohortDashboardClient() {
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
+            className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
@@ -304,49 +304,50 @@ export function CohortDashboardClient() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 shrink-0">
         <StatCard
           title="Total Cohorts"
           value={stats.total}
           icon={Package}
-          color="bg-gray-500"
+          color="bg-zinc-950"
         />
         <StatCard
           title="Pending"
           value={stats.pending}
           icon={Clock}
-          color="bg-gray-400"
+          color="bg-zinc-500"
         />
         <StatCard
           title="Processing"
           value={stats.processing}
           icon={Activity}
-          color="bg-blue-500"
+          color="bg-brand-forest-green"
         />
         <StatCard
           title="Completed"
           value={stats.completed}
           icon={CheckCircle}
-          color="bg-green-500"
+          color="bg-brand-forest-green"
         />
         <StatCard
           title="Failed"
           value={stats.failed}
           icon={XCircle}
-          color="bg-red-500"
+          color="bg-brand-burgundy"
         />
       </div>
 
-      <div className="flex items-center gap-3">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 p-2 bg-zinc-100 border border-zinc-950 rounded-none w-fit shrink-0">
+        <Filter className="h-4 w-4 text-zinc-950" />
+        <div className="flex items-center gap-1">
           {(["all", "pending", "processing", "completed", "failed"] as const).map(
             (filter) => (
               <Button
                 key={filter}
-                variant={statusFilter === filter ? "default" : "outline"}
+                variant={statusFilter === filter ? "default" : "ghost"}
                 size="sm"
                 onClick={() => handleStatusFilterChange(filter)}
+                className={statusFilter === filter ? "" : "hover:bg-zinc-200"}
               >
                 {filter === "all" ? "All" : STATUS_CONFIG[filter].label}
               </Button>
@@ -356,22 +357,17 @@ export function CohortDashboardClient() {
       </div>
 
       {cohorts.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Package className="h-12 w-12 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-foreground">
+        <Card className="rounded-none border-2 border-dashed border-zinc-300 flex-1">
+          <CardContent className="flex flex-col items-center justify-center h-full text-center">
+            <Package className="h-12 w-12 text-zinc-300 mb-4" />
+            <h3 className="text-lg font-black uppercase text-zinc-400">
               No cohorts found
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {statusFilter === "all"
-                ? "Cohort batches will appear here when created"
-                : `No ${statusFilter} cohorts`}
-            </p>
           </CardContent>
         </Card>
       ) : (
-        <ScrollArea className="h-[600px]">
-          <div className="space-y-3">
+        <ScrollArea className="flex-1 border border-zinc-950 p-1 min-h-0">
+          <div className="space-y-3 pr-4">
             {cohorts.map((cohort) => {
               const config = STATUS_CONFIG[cohort.status];
               const timeSinceUpdate = getTimeSince(cohort.updated_at);
@@ -390,13 +386,13 @@ export function CohortDashboardClient() {
               return (
                 <Card
                   key={cohort.id}
-                  className={`border-l-4 ${config.borderColor} hover:shadow-md transition-shadow`}
+                  className={`rounded-none border border-zinc-950 hover:bg-zinc-50 transition-colors`}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-medium text-foreground">
+                          <h3 className="font-black uppercase tracking-tight text-zinc-950">
                             {cohort.name || cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
                           </h3>
                           <StatusBadge status={cohort.status} />
@@ -407,9 +403,9 @@ export function CohortDashboardClient() {
                           />
                         </div>
 
-                        <div className="space-y-1 text-sm text-muted-foreground">
+                        <div className="space-y-1 text-xs font-bold uppercase tracking-wide text-zinc-600">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs">
+                            <span className="font-mono bg-zinc-950 text-white px-1 py-0.5">
                               UPC: {cohort.upc_prefix}
                             </span>
                           </div>
@@ -424,7 +420,7 @@ export function CohortDashboardClient() {
 
                           {cohort.scraper_config && (
                             <div className="mt-2">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="rounded-none border border-zinc-950 font-black uppercase text-[10px]">
                                 Config: {cohort.scraper_config}
                               </Badge>
                             </div>
@@ -432,7 +428,7 @@ export function CohortDashboardClient() {
 
                           {hasBrand && (
                             <div className="mt-1">
-                              <Badge variant="outline" className="text-xs gap-1">
+                              <Badge variant="outline" className="rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px] gap-1">
                                 <Sparkles className="h-3 w-3" />
                                 Recommendations available
                               </Badge>
@@ -440,7 +436,7 @@ export function CohortDashboardClient() {
                           )}
 
                           {cohort.status === "failed" && metadataErrorText && (
-                              <div className="mt-2 rounded bg-red-50 p-2 text-xs text-red-700">
+                              <div className="mt-2 rounded-none border border-brand-burgundy bg-brand-burgundy/10 p-2 text-[10px] text-brand-burgundy font-black uppercase">
                                 <strong>Error:</strong>{" "}
                                 {metadataErrorText}
                               </div>
@@ -450,9 +446,10 @@ export function CohortDashboardClient() {
 
                       <div className="flex items-center gap-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           asChild
+                          className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                         >
                           <Link href={`/admin/cohorts/${cohort.id}`}>
                             View Details

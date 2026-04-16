@@ -161,7 +161,7 @@ export function ImageCarousel({
               )}
             </Carousel>
           ) : (
-            <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-muted/10 border-2 border-dashed rounded-xl m-2">
+            <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-muted/10 border border-dashed rounded-xl m-2">
               <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
               <p className="text-sm font-medium">
                 No images selected
@@ -181,7 +181,7 @@ export function ImageCarousel({
                 key={`thumb-${url}`}
                 onClick={() => carouselApi?.scrollTo(index)}
                 className={cn(
-                  "relative flex-shrink-0 w-16 h-16 rounded-md border-2 overflow-hidden cursor-pointer transition-all",
+                  "relative flex-shrink-0 w-16 h-16 rounded-md border overflow-hidden cursor-pointer transition-all",
                   currentImageIndex === index
                     ? "border-primary ring-2 ring-primary/20 scale-105"
                     : "border-transparent opacity-60 hover:opacity-100",

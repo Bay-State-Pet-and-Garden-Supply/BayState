@@ -230,7 +230,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                     type="checkbox" 
                     id="firstOrderOnly" 
                     name="firstOrderOnly" 
-                    className="rounded" 
+                    className="rounded-none" 
                   />
                   <span className="text-sm">First order only</span>
                 </label>
@@ -239,7 +239,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                     type="checkbox" 
                     id="requiresAccount" 
                     name="requiresAccount" 
-                    className="rounded" 
+                    className="rounded-none" 
                   />
                   <span className="text-sm">Requires account</span>
                 </label>
@@ -256,7 +256,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
         </Dialog>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-none border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -281,7 +281,7 @@ export function PromotionsClient({ initialPromoCodes }: PromotionsClientProps) {
                 <TableRow key={promo.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <code className="rounded bg-muted px-2 py-1 text-sm font-mono">
+                      <code className="rounded-none bg-muted px-2 py-1 text-sm font-mono">
                         {promo.code}
                       </code>
                       <button

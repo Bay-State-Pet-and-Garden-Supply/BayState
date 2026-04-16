@@ -21,10 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  ChevronsUpDown, 
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
   AlertCircle,
   CheckSquare,
 } from "lucide-react";
@@ -76,8 +76,10 @@ function getSourceCount(
   return Object.keys(sources).length;
 }
 
-interface DataTableColumnHeaderProps<TData, TValue>
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface DataTableColumnHeaderProps<
+  TData,
+  TValue,
+> extends React.HTMLAttributes<HTMLDivElement> {
   column: Column<TData, TValue>;
   title: string;
 }
@@ -127,7 +129,9 @@ export function ProductTable({
   availableSources,
   totalCount,
 }: ProductTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([{ id: "sku", desc: false }]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "sku", desc: false },
+  ]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -154,163 +158,245 @@ export function ProductTable({
   const showSources = currentStage === "scraped";
   const showConfidence = currentStage === "finalizing";
 
-  const columns = useMemo<ColumnDef<PipelineProduct>[]>(() => [
-    {
-      id: "select",
-      header: ({ table }) => {
-        const productsCount = table.getRowModel().rows.length;
-        const selectedCount = productsCount > 0 && table.getRowModel().rows.every(r => selectedSkus.has(r.original.sku));
-        const someSelected = productsCount > 0 && table.getRowModel().rows.some(r => selectedSkus.has(r.original.sku)) && !selectedCount;
+  const columns = useMemo<ColumnDef<PipelineProduct>[]>(
+    () => [
+      {
+        id: "select",
+        header: ({ table }) => {
+          const productsCount = table.getRowModel().rows.length;
+          const selectedCount =
+            productsCount > 0 &&
+            table
+              .getRowModel()
+              .rows.every((r) => selectedSkus.has(r.original.sku));
+          const someSelected =
+            productsCount > 0 &&
+            table
+              .getRowModel()
+              .rows.some((r) => selectedSkus.has(r.original.sku)) &&
+            !selectedCount;
 
-        return (
-          <Checkbox
-            checked={selectedCount ? true : someSelected ? "indeterminate" : false}
-            onCheckedChange={() => {
-              if (selectedCount || someSelected) {
-                onDeselectAll();
-              } else {
-                onSelectAll();
+          return (
+            <Checkbox
+              checked={
+                selectedCount ? true : someSelected ? "indeterminate" : false
               }
-            }}
-            aria-label="Select all"
-            className="translate-y-[2px]"
-          />
-        );
-      },
-      cell: ({ row, table }) => {
-        const isChecked = selectedSkus.has(row.original.sku);
-        const visibleRows = table.getRowModel().rows;
-        const visibleIndex = visibleRows.findIndex(r => r.id === row.id);
-        
-        return (
-          <Checkbox
-            checked={isChecked}
-            onCheckedChange={() => {
-              // Handle keyboard selection
-              if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
+              onCheckedChange={() => {
+                if (selectedCount || someSelected) {
+                  onDeselectAll();
+                } else {
+                  onSelectAll();
+                }
+              }}
+              aria-label="Select all"
+              className="translate-y-[2px]"
+            />
+          );
+        },
+        cell: ({ row, table }) => {
+          const isChecked = selectedSkus.has(row.original.sku);
+          const visibleRows = table.getRowModel().rows;
+          const visibleIndex = visibleRows.findIndex((r) => r.id === row.id);
+
+          return (
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={() => {
+                // Handle keyboard selection
+                if (
+                  typeof window !== "undefined" &&
+                  !(window.event instanceof MouseEvent)
+                ) {
+                  onSelectSku(
+                    row.original.sku,
+                    !isChecked,
+                    visibleIndex,
+                    false,
+                    visibleRows.map((r) => r.original),
+                  );
+                }
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
                 onSelectSku(
                   row.original.sku,
                   !isChecked,
                   visibleIndex,
-                  false,
-                  visibleRows.map(r => r.original)
+                  e.shiftKey,
+                  visibleRows.map((r) => r.original),
                 );
-              }
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectSku(
-                row.original.sku,
-                !isChecked,
-                visibleIndex,
-                e.shiftKey,
-                visibleRows.map(r => r.original)
-              );
-            }}
-            aria-label="Select row"
-            className="translate-y-[2px]"
-          />
-        );
+              }}
+              aria-label="Select row"
+              className="translate-y-[2px]"
+            />
+          );
+        },
+        enableSorting: false,
+        enableHiding: false,
       },
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: "sku",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="SKU" />,
-      cell: ({ row }) => <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-tight">{row.getValue("sku")}</div>,
-    },
-    {
-      id: "name",
-      accessorFn: (p) => p.consolidated?.name ?? p.input?.name ?? "",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
-      cell: ({ row }) => {
-        const product = row.original;
-        const name = product.consolidated?.name || product.input?.name || "—";
-        return (
-          <div className="flex items-center gap-2 max-w-[300px]">
-            <span className="truncate font-medium text-sm" title={name}>
-              {name}
-            </span>
-            {product.error_message && (
-              <span title={product.error_message} className="shrink-0 flex items-center justify-center">
-                <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+      {
+        accessorKey: "sku",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="SKU" />
+        ),
+        cell: ({ row }) => (
+          <div className="font-mono text-[10px] text-zinc-950 font-black uppercase tracking-tight">
+            {row.getValue("sku")}
+          </div>
+        ),
+      },
+      {
+        id: "name",
+        accessorFn: (p) => p.consolidated?.name ?? p.input?.name ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Name" />
+        ),
+        cell: ({ row }) => {
+          const product = row.original;
+          const name = product.consolidated?.name || product.input?.name || "—";
+          return (
+            <div className="flex items-center gap-2 max-w-[300px]">
+              <span
+                className="truncate font-black uppercase tracking-tight text-xs text-zinc-950"
+                title={name}
+              >
+                {name}
               </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      id: "price",
-      accessorFn: (p) => p.consolidated?.price ?? p.input?.price ?? 0,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Price" className="justify-end text-right" />
-      ),
-      cell: ({ row }) => {
-        const price = row.getValue("price") as number;
-        return (
-          <div className="text-right font-medium">
-            {price > 0 ? `$${price.toFixed(2)}` : "—"}
-          </div>
-        );
-      },
-    },
-    ...(showSources ? [{
-      id: "sources",
-      accessorFn: (p: PipelineProduct) => getSourceCount(p.sources),
-      header: ({ column }: { column: Column<PipelineProduct, unknown> }) => (
-        <DataTableColumnHeader column={column} title="Sources" className="justify-center text-center" />
-      ),
-      cell: ({ row }: { row: Row<PipelineProduct> }) => {
-        const count = row.getValue("sources") as number;
-        return (
-          <div className="flex justify-center">
-            {count > 0 ? (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                {count} source{count !== 1 ? "s" : ""}
-              </Badge>
-            ) : (
-              <span className="text-xs text-muted-foreground">—</span>
-            )}
-          </div>
-        );
-      },
-    }] : []),
-    ...(showConfidence ? [{
-      accessorKey: "confidence_score",
-      header: ({ column }: { column: Column<PipelineProduct, unknown> }) => (
-        <DataTableColumnHeader column={column} title="Confidence" className="justify-center text-center" />
-      ),
-      cell: ({ row }: { row: Row<PipelineProduct> }) => {
-        const confidence = row.getValue("confidence_score") as number;
-        if (confidence === undefined || confidence === null) return <div className="text-center text-xs text-muted-foreground">—</div>;
-        
-        return (
-          <div className="flex justify-center">
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] px-1.5 py-0",
-                confidence >= 0.8
-                  ? "border-green-300 text-green-700 bg-green-50"
-                  : confidence >= 0.5
-                    ? "border-yellow-300 text-yellow-700 bg-yellow-50"
-                    : "border-red-300 text-red-700 bg-red-50"
+              {product.error_message && (
+                <span
+                  title={product.error_message}
+                  className="shrink-0 flex items-center justify-center"
+                >
+                  <AlertCircle className="h-3.5 w-3.5 text-brand-burgundy" />
+                </span>
               )}
-            >
-              {Math.round(confidence * 100)}%
-            </Badge>
-          </div>
-        );
+            </div>
+          );
+        },
       },
-    }] : []),
-    {
-      accessorKey: "updated_at",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Updated" />,
-      cell: ({ row }) => <div className="text-[10px] text-muted-foreground">{formatDate(row.getValue("updated_at"))}</div>,
-    },
-  ], [showSources, showConfidence, selectedSkus, onSelectSku, onSelectAll, onDeselectAll]);
+      {
+        id: "price",
+        accessorFn: (p) => p.consolidated?.price ?? p.input?.price ?? 0,
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title="Price"
+            className="justify-end text-right"
+          />
+        ),
+        cell: ({ row }) => {
+          const price = row.getValue("price") as number;
+          return (
+            <div className="text-right font-black text-zinc-950 text-xs">
+              {price > 0 ? `$${price.toFixed(2)}` : "—"}
+            </div>
+          );
+        },
+      },
+      ...(showSources
+        ? [
+            {
+              id: "sources",
+              accessorFn: (p: PipelineProduct) => getSourceCount(p.sources),
+              header: ({
+                column,
+              }: {
+                column: Column<PipelineProduct, unknown>;
+              }) => (
+                <DataTableColumnHeader
+                  column={column}
+                  title="Sources"
+                  className="justify-center text-center"
+                />
+              ),
+              cell: ({ row }: { row: Row<PipelineProduct> }) => {
+                const count = row.getValue("sources") as number;
+                return (
+                  <div className="flex justify-center">
+                    {count > 0 ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] px-1.5 py-0 rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950 font-black uppercase"
+                      >
+                        {count} source{count !== 1 ? "s" : ""}
+                      </Badge>
+                    ) : (
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                        —
+                      </span>
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]
+        : []),
+      ...(showConfidence
+        ? [
+            {
+              accessorKey: "confidence_score",
+              header: ({
+                column,
+              }: {
+                column: Column<PipelineProduct, unknown>;
+              }) => (
+                <DataTableColumnHeader
+                  column={column}
+                  title="Confidence"
+                  className="justify-center text-center"
+                />
+              ),
+              cell: ({ row }: { row: Row<PipelineProduct> }) => {
+                const confidence = row.getValue("confidence_score") as number;
+                if (confidence === undefined || confidence === null)
+                  return (
+                    <div className="text-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                      —
+                    </div>
+                  );
+
+                return (
+                  <div className="flex justify-center">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] px-1.5 py-0 rounded-none border font-black uppercase",
+                        confidence >= 0.8
+                          ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
+                          : confidence >= 0.5
+                            ? "border-brand-gold text-brand-burgundy bg-brand-gold/10"
+                            : "border-brand-burgundy text-brand-burgundy bg-brand-burgundy/10",
+                      )}
+                    >
+                      {Math.round(confidence * 100)}%
+                    </Badge>
+                  </div>
+                );
+              },
+            },
+          ]
+        : []),
+      {
+        accessorKey: "updated_at",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Updated" />
+        ),
+        cell: ({ row }) => (
+          <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">
+            {formatDate(row.getValue("updated_at"))}
+          </div>
+        ),
+      },
+    ],
+    [
+      showSources,
+      showConfidence,
+      selectedSkus,
+      onSelectSku,
+      onSelectAll,
+      onDeselectAll,
+    ],
+  );
 
   const table = useReactTable({
     data: products,
@@ -360,7 +446,7 @@ export function ProductTable({
               !selectedSkus.has(row.original.sku),
               focusedIndex,
               e.shiftKey,
-              rows.map(r => r.original)
+              rows.map((r) => r.original),
             );
           }
         }
@@ -379,7 +465,9 @@ export function ProductTable({
   // Scroll focused row into view
   useEffect(() => {
     if (focusedIndex !== null && containerRef.current) {
-      const rowElement = containerRef.current.querySelector(`[data-index="${focusedIndex}"]`);
+      const rowElement = containerRef.current.querySelector(
+        `[data-index="${focusedIndex}"]`,
+      );
       if (rowElement) {
         rowElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
@@ -387,60 +475,49 @@ export function ProductTable({
   }, [focusedIndex]);
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto rounded-md border bg-card shadow-sm" ref={containerRef}>
+    <div
+      className="h-full min-h-0 overflow-y-auto rounded-none border border-zinc-950 bg-card"
+      ref={containerRef}
+    >
       <Table className="table-fixed">
-        <TableHeader className="sticky top-0 bg-card z-10 shadow-sm border-b">
+        <TableHeader className="sticky top-0 bg-card z-10 border-b border-zinc-950">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-0">
+            <TableRow
+              key={headerGroup.id}
+              className="hover:bg-transparent border-b-0"
+            >
               {headerGroup.headers.map((header) => {
                 // Define fixed widths for columns to ensure alignment across multiple tables
                 let widthClass = "";
                 if (header.id === "select") widthClass = "w-[40px]";
                 else if (header.id === "sku") widthClass = "w-[120px]";
                 else if (header.id === "price") widthClass = "w-[100px]";
-                else if (header.id === "sources" || header.id === "confidence_score") widthClass = "w-[120px]";
+                else if (
+                  header.id === "sources" ||
+                  header.id === "confidence_score"
+                )
+                  widthClass = "w-[120px]";
                 else if (header.id === "updated_at") widthClass = "w-[150px]";
 
                 return (
-                  <TableHead key={header.id} className={cn("bg-muted/30 h-8 py-0", widthClass)}>
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      "bg-zinc-50 h-10 py-0 font-black uppercase tracking-tighter text-zinc-950",
+                      widthClass,
+                    )}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext()
+                          header.getContext(),
                         )}
                   </TableHead>
                 );
               })}
             </TableRow>
           ))}
-          
-          {/* Selection info row */}
-          {selectedSkus.size > 0 && (
-            <TableRow className="hover:bg-transparent border-b">
-              <TableCell className="bg-muted/5 py-1 px-3" colSpan={columns.length}>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1" />
-
-                  {totalCount !== undefined && totalCount > selectedSkus.size && (
-                     <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={onSelectAllTotal}
-                      className="h-7 text-[10px] text-brand-forest-green hover:bg-brand-forest-green/10 gap-1"
-                     >
-                       <CheckSquare className="h-3 w-3" />
-                       Select all {totalCount} products in stage
-                     </Button>
-                  )}
-
-                  <div className="flex items-center gap-2 px-1.5 py-0.5 rounded bg-brand-forest-green/10 text-brand-forest-green text-[9px] font-bold uppercase tracking-wider">
-                    {selectedSkus.size} Selected
-                  </div>
-                </div>
-              </TableCell>
-            </TableRow>
-          )}
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length ? (
@@ -454,9 +531,11 @@ export function ProductTable({
                   data-index={index}
                   data-state={isSelected && "selected"}
                   className={cn(
-                    "cursor-pointer transition-colors border-l-2 border-l-transparent",
-                    isSelected ? "bg-primary/5 border-l-primary" : "hover:bg-muted/30",
-                    isFocused && "ring-1 ring-inset ring-primary/30 bg-muted/20"
+                    "cursor-pointer transition-colors border-b border-zinc-200",
+                    isSelected
+                      ? "bg-brand-forest-green/10"
+                      : "hover:bg-zinc-50",
+                    isFocused && "ring-2 ring-inset ring-zinc-950 bg-zinc-100",
                   )}
                   onClick={(e) => {
                     setFocusedIndex(index);
@@ -465,15 +544,15 @@ export function ProductTable({
                       !isSelected,
                       index,
                       e.shiftKey,
-                      table.getRowModel().rows.map(r => r.original)
+                      table.getRowModel().rows.map((r) => r.original),
                     );
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-2.5">
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -484,7 +563,7 @@ export function ProductTable({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-32 text-center text-muted-foreground"
+                className="h-32 text-center font-bold uppercase tracking-widest text-zinc-400"
               >
                 No products in this stage.
               </TableCell>

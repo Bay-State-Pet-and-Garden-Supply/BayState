@@ -158,7 +158,7 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
       sortable: true,
       searchable: true,
       render: (value) => (
-        <code className="rounded bg-muted px-2 py-0.5 text-xs">{String(value)}</code>
+        <code className="rounded-none bg-muted px-2 py-0.5 text-xs">{String(value)}</code>
       ),
     },
     {
@@ -232,7 +232,7 @@ export function ServicesDataTable({ services }: ServicesDataTableProps) {
   return (
     <div className="space-y-4">
       {selected.length > 0 && (
-        <div className="flex items-center justify-between rounded-lg bg-purple-50 px-4 py-2">
+        <div className="flex items-center justify-between rounded-none bg-purple-50 px-4 py-2">
           <span className="text-sm text-purple-700">
             {selected.length} service(s) selected
           </span>

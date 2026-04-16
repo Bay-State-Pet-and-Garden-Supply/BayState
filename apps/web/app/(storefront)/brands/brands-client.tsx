@@ -119,7 +119,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                             sizes="(max-width: 768px) 50vw, 25vw"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border-2 border-primary/10">
+                          <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border border-primary/10">
                             {brand.name.charAt(0)}
                           </div>
                         )}

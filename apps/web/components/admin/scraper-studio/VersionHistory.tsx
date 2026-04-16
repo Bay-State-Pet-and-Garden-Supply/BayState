@@ -339,7 +339,7 @@ export function VersionHistory({
                 key={version.id} 
                 className={cn(
                   "transition-colors",
-                  isCurrent && "border-primary border-2"
+                  isCurrent && "border-primary border"
                 )}
               >
                 <Collapsible open={isExpanded} onOpenChange={() => toggleVersionExpanded(version.id)}>

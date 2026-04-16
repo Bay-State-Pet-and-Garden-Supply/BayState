@@ -118,8 +118,8 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
     return (
       <div key={node.id}>
         <div
-          className={`flex items-center gap-2 rounded-lg border bg-card p-3 hover:bg-muted ${
-            depth > 0 ? 'ml-6 border-l-4 border-l-gray-200' : ''
+          className={`flex items-center gap-2 rounded-none border border-zinc-950 bg-card p-3 hover:bg-muted shadow-[2px_2px_0px_rgba(0,0,0,1)] ${
+            depth > 0 ? 'ml-6' : ''
           }`}
           style={{ marginLeft: depth > 0 ? `${depth * 24}px` : 0 }}
         >
@@ -129,7 +129,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
           {/* Expand/collapse */}
           <button
             onClick={() => toggleExpand(node.id)}
-            className="flex h-6 w-6 items-center justify-center rounded hover:bg-muted"
+            className="flex h-6 w-6 items-center justify-center rounded-none border border-transparent hover:border-zinc-950 hover:bg-muted"
             disabled={!hasChildren}
           >
             {hasChildren ? (
@@ -144,7 +144,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
           </button>
 
           {/* Image */}
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-none border border-zinc-950 bg-muted">
             {node.image_url ? (
               <Image
                 src={node.image_url}
@@ -154,7 +154,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
                 className="h-10 w-10 object-cover"
               />
             ) : (
-              <span className="text-lg font-bold text-muted-foreground">
+              <span className="text-lg font-black uppercase text-muted-foreground">
                 {node.name.charAt(0).toUpperCase()}
               </span>
             )}
@@ -163,32 +163,32 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
           {/* Name and info */}
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-foreground">{node.name}</span>
+              <span className="font-black uppercase text-foreground">{node.name}</span>
               {node.is_featured && (
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
               )}
               {hasChildren && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="rounded-none border border-zinc-950 bg-muted px-2 py-0.5 text-[10px] font-black uppercase text-muted-foreground">
                   {node.children.length} subcategories
                 </span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">/{node.slug}</p>
+            <p className="text-sm font-bold text-muted-foreground">/{node.slug}</p>
           </div>
 
           {/* Order */}
-          <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          <span className="rounded-none border border-zinc-950 bg-muted px-2 py-0.5 text-[10px] font-black uppercase text-muted-foreground">
             Order: {node.display_order}
           </span>
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" className="rounded-none border border-transparent hover:border-zinc-950" asChild>
               <Link href={`/admin/categories/new?parent=${node.id}`}>
                 <Plus className="h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" className="rounded-none border border-transparent hover:border-zinc-950" asChild>
               <Link href={`/admin/categories/${node.id}/edit`}>
                 <Pencil className="h-4 w-4" />
               </Link>
@@ -198,12 +198,13 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
               size="sm"
               onClick={() => handleDelete(node)}
               disabled={deleting === node.id}
-              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="text-red-600 hover:bg-red-50 hover:text-red-700 rounded-none border border-transparent hover:border-red-600"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
+
 
         {/* Children */}
         {hasChildren && isExpanded && (
@@ -217,12 +218,12 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
 
   if (categories.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted py-16">
-        <p className="text-lg font-medium text-muted-foreground">No categories yet</p>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <div className="flex flex-col items-center justify-center rounded-none border-2 border-dashed border-zinc-950 bg-muted py-16">
+        <p className="text-lg font-black uppercase text-zinc-950">No categories yet</p>
+        <p className="mt-1 text-sm font-bold text-zinc-600 uppercase">
           Create your first category to organize products
         </p>
-        <Button asChild className="mt-4">
+        <Button asChild className="mt-4 rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase">
           <Link href="/admin/categories/new">
             <Plus className="mr-2 h-4 w-4" />
             Add Category

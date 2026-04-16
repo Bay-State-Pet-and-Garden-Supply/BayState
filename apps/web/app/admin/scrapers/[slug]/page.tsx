@@ -20,7 +20,7 @@ export default async function ScraperOverviewPage({ params }: ScraperOverviewPro
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="tab-content-overview">
       {/* Quick Actions */}
-      <Card className="col-span-full md:col-span-2 lg:col-span-3">
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Common tasks for this scraper</CardDescription>
@@ -36,7 +36,7 @@ export default async function ScraperOverviewPage({ params }: ScraperOverviewPro
       </Card>
 
       {/* Health Overview */}
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
             Health Score
@@ -56,7 +56,7 @@ export default async function ScraperOverviewPage({ params }: ScraperOverviewPro
       </Card>
 
       {/* Config Details */}
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
             Config File

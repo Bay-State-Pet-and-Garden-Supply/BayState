@@ -49,7 +49,7 @@ export function ImageSelector({ images, onSave }: ImageSelectorProps) {
             aria-pressed={selected.includes(imageUrl)}
             aria-label={`Select image ${index + 1}`}
             className={`
-              relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all
+              relative cursor-pointer rounded-lg overflow-hidden border transition-all
               focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
               ${
                 selected.includes(imageUrl)

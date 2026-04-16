@@ -325,7 +325,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           )}
 
           {/* Pricing & Stock Action Box */}
-          <div className="rounded-lg border-2 border-zinc-100 bg-white p-6 shadow-sm">
+          <div className="rounded-lg border border-zinc-100 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-zinc-900">{formattedPrice}</h3>
               {(product.stock_status !== 'out_of_stock' || !product.is_special_order) && (

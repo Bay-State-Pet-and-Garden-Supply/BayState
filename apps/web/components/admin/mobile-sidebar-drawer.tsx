@@ -30,10 +30,10 @@ export function MobileSidebarDrawer({ children }: MobileSidebarDrawerProps) {
   return (
     <>
       <Button
-        variant="ghost"
+        variant="default"
         size="icon"
         onClick={() => setOpen(true)}
-        className="fixed top-4 left-4 z-50 md:hidden bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent"
+        className="fixed top-4 left-4 z-50 md:hidden bg-zinc-950 text-white border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] rounded-none"
         aria-label="Open navigation menu"
       >
         <Menu className="h-5 w-5" />
@@ -42,7 +42,7 @@ export function MobileSidebarDrawer({ children }: MobileSidebarDrawerProps) {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="left"
-          className="w-[200px] p-0 bg-sidebar border-sidebar-border/20"
+          className="w-[240px] p-0 bg-white border-r-2 border-zinc-950 rounded-none"
           showCloseButton={false}
         >
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>

@@ -64,10 +64,10 @@ export function HomepageTab({ initialSettings }: HomepageTabProps) {
     return (
         <form action={handleSubmit} className="space-y-6">
             {/* Hero Section */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-green-100">
                             <Image className="h-5 w-5 text-green-600" />
                         </div>
                         <div>
@@ -135,10 +135,10 @@ export function HomepageTab({ initialSettings }: HomepageTabProps) {
             </Card>
 
             {/* Hero Carousel Slides */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-rose-100">
                             <Megaphone className="h-5 w-5 text-rose-600" />
                         </div>
                         <div>
@@ -169,14 +169,14 @@ export function HomepageTab({ initialSettings }: HomepageTabProps) {
                     </div>
 
                     {heroSlides.length === 0 && (
-                        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                        <div className="rounded-none border border-dashed p-8 text-center text-muted-foreground">
                             No promotional slides configured. Add your first slide to create a hero carousel!
                         </div>
                     )}
 
                     <div className="space-y-4">
                         {heroSlides.map((slide, index) => (
-                            <div key={slide.id} className="rounded-lg border p-4 space-y-3">
+                            <div key={slide.id} className="rounded-none border p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
@@ -245,10 +245,10 @@ export function HomepageTab({ initialSettings }: HomepageTabProps) {
             </Card>
 
             {/* Featured Products */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-amber-100">
                             <Star className="h-5 w-5 text-amber-600" />
                         </div>
                         <div>
@@ -277,10 +277,10 @@ export function HomepageTab({ initialSettings }: HomepageTabProps) {
             </Card>
 
             {/* Store Hours */}
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-purple-100">
                             <Clock className="h-5 w-5 text-purple-600" />
                         </div>
                         <div>
@@ -307,7 +307,7 @@ export function HomepageTab({ initialSettings }: HomepageTabProps) {
             </Card>
 
             <div className="sticky bottom-4 flex justify-end">
-                <Button type="submit" size="lg" disabled={isSaving} className="shadow-lg">
+                <Button type="submit" size="lg" disabled={isSaving} className="shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                     <Save className="mr-2 h-4 w-4" />
                     {isSaving ? 'Saving...' : 'Save Homepage Settings'}
                 </Button>

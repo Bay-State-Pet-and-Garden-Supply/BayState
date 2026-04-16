@@ -34,7 +34,7 @@ export default async function PreorderGroupsPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Pre-Order Groups</h1>
+        <h1 className="text-3xl font-bold font-black uppercase tracking-tight">Pre-Order Groups</h1>
         <Button asChild>
           <Link href="/admin/preorder-groups/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -44,7 +44,7 @@ export default async function PreorderGroupsPage() {
       </div>
 
       {!groups || groups.length === 0 ? (
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground mb-4">No pre-order groups yet.</p>
             <Button asChild variant="outline">
@@ -55,7 +55,7 @@ export default async function PreorderGroupsPage() {
       ) : (
         <div className="grid gap-4">
           {groups.map((group) => (
-            <Card key={group.id}>
+            <Card className="border border-zinc-950 rounded-none" key={group.id}>
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">

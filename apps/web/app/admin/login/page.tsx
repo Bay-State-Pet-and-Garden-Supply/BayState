@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 export default function AdminLoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted">
-      <Card className="w-full max-w-md">
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Admin Login</CardTitle>
           <CardDescription>Sign in to the manager portal.</CardDescription>

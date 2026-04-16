@@ -115,28 +115,28 @@ export function SettingsForm({ version, scraperType, isReadOnly = false }: Setti
               <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
                 <TabsTrigger 
                   value="general" 
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shadow-none"
+                  className="data-[state=active]:border-b data-[state=active]:border-primary rounded-none shadow-none"
                 >
                   <Settings2 className="mr-2 h-4 w-4" />
                   General
                 </TabsTrigger>
                 <TabsTrigger 
                   value="anti-detect"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shadow-none"
+                  className="data-[state=active]:border-b data-[state=active]:border-primary rounded-none shadow-none"
                 >
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   Anti-Detect
                 </TabsTrigger>
                 <TabsTrigger 
                   value="validation"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shadow-none"
+                  className="data-[state=active]:border-b data-[state=active]:border-primary rounded-none shadow-none"
                 >
                   <BoxSelect className="mr-2 h-4 w-4" />
                   Validation
                 </TabsTrigger>
                 <TabsTrigger 
                   value="login"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shadow-none"
+                  className="data-[state=active]:border-b data-[state=active]:border-primary rounded-none shadow-none"
                 >
                   <KeyRound className="mr-2 h-4 w-4" />
                   Auth
@@ -144,7 +144,7 @@ export function SettingsForm({ version, scraperType, isReadOnly = false }: Setti
                 {scraperType === 'agentic' && (
                   <TabsTrigger 
                     value="ai"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shadow-none"
+                    className="data-[state=active]:border-b data-[state=active]:border-primary rounded-none shadow-none"
                   >
                     <Bot className="mr-2 h-4 w-4" />
                     AI Prompts

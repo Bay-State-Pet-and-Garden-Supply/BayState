@@ -13,8 +13,6 @@ import {
   History,
   ChevronDown,
   ChevronUp,
-  Wifi,
-  WifiOff,
   AlertTriangle,
   Info,
   AlertCircle,
@@ -28,6 +26,7 @@ import { toast } from "sonner";
 import { TimelineView } from "./TimelineView";
 import { ChunkStatusTable, ChunkSummaryLine } from "./ChunkStatusTable";
 import type { ChunkDetail } from "./ChunkStatusTable";
+import { ProgressBar } from "./ProgressBar";
 import { useJobSubscription } from "@/lib/realtime/useJobSubscription";
 import { useLogSubscription } from "@/lib/realtime/useLogSubscription";
 import type { LogEntry } from "@/lib/realtime/useLogSubscription";
@@ -75,15 +74,15 @@ const LOG_LEVEL_CONFIG: Record<
   string,
   { icon: typeof Info; color: string; bgColor: string }
 > = {
-  debug: { icon: Bug, color: "text-muted-foreground", bgColor: "bg-muted" },
-  info: { icon: Info, color: "text-blue-600", bgColor: "bg-blue-50" },
+  debug: { icon: Bug, color: "text-zinc-500", bgColor: "bg-zinc-100" },
+  info: { icon: Info, color: "text-blue-950", bgColor: "bg-blue-100" },
   warning: {
     icon: AlertTriangle,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
+    color: "text-zinc-950",
+    bgColor: "bg-brand-gold",
   },
-  error: { icon: AlertCircle, color: "text-red-600", bgColor: "bg-red-50" },
-  critical: { icon: AlertCircle, color: "text-red-700", bgColor: "bg-red-100" },
+  error: { icon: AlertCircle, color: "text-white", bgColor: "bg-brand-burgundy" },
+  critical: { icon: AlertCircle, color: "text-white", bgColor: "bg-brand-burgundy" },
 };
 
 function LogLevelBadge({ level }: { level: string }) {
@@ -91,9 +90,9 @@ function LogLevelBadge({ level }: { level: string }) {
   const Icon = config.icon;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${config.bgColor} ${config.color}`}
+      className={`inline-flex items-center gap-1 rounded-none border-2 border-zinc-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.bgColor} ${config.color}`}
     >
-      <Icon className="h-3 w-3" />
+      <Icon className="h-2.5 w-2.5" />
       {level}
     </span>
   );
@@ -101,16 +100,16 @@ function LogLevelBadge({ level }: { level: string }) {
 
 function ConnectionIndicator({ isConnected }: { isConnected: boolean }) {
   return (
-    <div className="flex items-center gap-1.5 text-xs">
+    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
       {isConnected ? (
         <>
-          <Wifi className="h-3.5 w-3.5 text-primary" />
-          <span className="text-primary font-medium">Live</span>
+          <div className="h-3 w-3 bg-brand-forest-green border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-pulse" />
+          <span className="text-brand-forest-green">Connected</span>
         </>
       ) : (
         <>
-          <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Disconnected</span>
+          <div className="h-3 w-3 bg-zinc-400 border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" />
+          <span className="text-zinc-500">Offline</span>
         </>
       )}
     </div>
@@ -125,26 +124,26 @@ function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
 
   if (jobLogs.length === 0) {
     return (
-      <div className="px-4 py-3 text-xs text-muted-foreground italic text-center border-t border-dashed">
-        No log entries yet — logs will stream in real time as the job runs.
+      <div className="px-4 py-6 text-xs text-zinc-500 font-black uppercase tracking-tighter text-center border-t-2 border-zinc-950 bg-zinc-50">
+        No log entries yet — logs will stream in real time.
       </div>
     );
   }
 
   return (
-    <div className="border-t border-dashed">
-      <ScrollArea className="max-h-48">
-        <div className="divide-y divide-gray-50">
+    <div className="border-t-2 border-zinc-950 bg-zinc-50">
+      <ScrollArea className="max-h-64">
+        <div className="divide-y-2 divide-zinc-950/10">
           {jobLogs.map((log) => (
             <div
               key={log.id}
-              className="flex items-start gap-2 px-4 py-2 text-xs hover:bg-muted/50 transition-colors"
+              className="flex items-start gap-3 px-4 py-2.5 text-xs hover:bg-white transition-colors"
             >
               <LogLevelBadge level={log.level} />
-              <span className="flex-1 text-muted-foreground font-mono break-all leading-relaxed">
+              <span className="flex-1 text-zinc-900 font-mono break-all leading-relaxed">
                 {log.message}
               </span>
-              <span className="text-muted-foreground tabular-nums shrink-0">
+              <span className="text-zinc-500 font-black uppercase tracking-tighter tabular-nums shrink-0">
                 {new Date(log.created_at ?? log.timestamp).toLocaleTimeString()}
               </span>
             </div>
@@ -196,28 +195,28 @@ type ExpandPanel = "chunks" | "logs";
 function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
   const statusMap = {
     running: {
-      className: "bg-primary/10 text-primary",
-      icon: <Loader2 className="mr-1 h-3 w-3 animate-spin" />,
+      className: "bg-blue-100 text-blue-950",
+      icon: <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />,
       label: "Running",
     },
     completed: {
-      className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      icon: <CheckCircle className="mr-1 h-3 w-3" />,
+      className: "bg-brand-forest-green text-white",
+      icon: <CheckCircle className="mr-1.5 h-3 w-3" />,
       label: "Completed",
     },
     failed: {
-      className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      icon: <AlertCircle className="mr-1 h-3 w-3" />,
+      className: "bg-brand-burgundy text-white",
+      icon: <AlertCircle className="mr-1.5 h-3 w-3" />,
       label: "Failed",
     },
     cancelled: {
-      className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      icon: <XCircle className="mr-1 h-3 w-3" />,
+      className: "bg-zinc-500 text-white",
+      icon: <XCircle className="mr-1.5 h-3 w-3" />,
       label: "Cancelled",
     },
     pending: {
-      className: "bg-muted text-muted-foreground",
-      icon: <Clock className="mr-1 h-3 w-3" />,
+      className: "bg-brand-gold text-zinc-950",
+      icon: <Clock className="mr-1.5 h-3 w-3" />,
       label: "Pending",
     },
   };
@@ -226,7 +225,7 @@ function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${config.className}`}
+      className={`inline-flex items-center rounded-none border-2 border-zinc-950 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.className}`}
     >
       {config.icon}
       {config.label}
@@ -255,45 +254,45 @@ function JobCard({
   const isActive = job.status === "pending" || job.status === "running";
 
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-none border-2 border-zinc-950 bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)] overflow-hidden">
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium text-foreground">
+            <div className="flex items-center gap-3">
+              <h3 className="font-black uppercase tracking-tighter text-zinc-950">
                 Job {job.id.slice(0, 8)}
               </h3>
               <JobStatusBadge status={job.status} />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs font-black uppercase tracking-tighter text-zinc-500 mt-1.5">
               {job.scrapers.join(", ")}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 mt-1">
               {job.skuCount} SKUs • Started{" "}
               {new Date(job.createdAt).toLocaleString()}
               {job.completedAt && (
                 <> • Finished {new Date(job.completedAt).toLocaleString()}</>
               )}
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               {job.runnerName ? (
-                <span className="rounded-full bg-muted px-2 py-0.5">
+                <span className="rounded-none border-2 border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                   Runner: {job.runnerName}
                 </span>
               ) : null}
               {job.progressPhase ? (
-                <span className="rounded-full bg-muted px-2 py-0.5 uppercase">
+                <span className="rounded-none border-2 border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                   {job.progressPhase}
                 </span>
               ) : null}
               {job.currentSku ? (
-                <span className="font-mono text-foreground">
+                <span className="font-mono text-[10px] font-bold text-zinc-950 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5">
                   {job.currentSku}
                 </span>
               ) : null}
               {typeof job.itemsProcessed === "number" &&
               typeof job.itemsTotal === "number" ? (
-                <span>
+                <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
                   {job.itemsProcessed}/{job.itemsTotal}
                 </span>
               ) : null}
@@ -302,39 +301,36 @@ function JobCard({
         </div>
 
         {/* Progress Section */}
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground">Progress</span>
-              {hasChunks && <ChunkSummaryLine summary={job.chunkSummary} />}
+        <div className="mt-4">
+          <ProgressBar 
+            progress={job.progress} 
+            status={job.status} 
+            className="mb-2"
+          />
+          
+          {hasChunks && (
+            <div className="flex items-center gap-2 mb-2">
+              <ChunkSummaryLine summary={job.chunkSummary} />
             </div>
-            <span className="font-medium text-foreground tabular-nums">
-              {job.progress}%
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${job.progress}%` }}
-            />
-          </div>
+          )}
+
           {(job.progressMessage || job.lastLogMessage) && (
-            <div className="mt-2 space-y-1 text-xs">
+            <div className="mt-3 space-y-1.5">
               {job.progressMessage ? (
-                <p className="text-foreground">
+                <p className="text-xs font-bold text-zinc-900">
                   {job.progressMessage}
                 </p>
               ) : null}
               {job.lastLogMessage ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-zinc-500">
                   {job.lastLogLevel ? (
                     <LogLevelBadge level={job.lastLogLevel} />
                   ) : null}
-                  <span className="line-clamp-1">
+                  <span className="line-clamp-1 text-[11px] font-medium">
                     {job.lastLogMessage}
                   </span>
                   {job.lastLogAt ? (
-                    <span className="shrink-0 tabular-nums">
+                    <span className="shrink-0 tabular-nums text-[10px] font-black uppercase tracking-tighter">
                       {new Date(job.lastLogAt).toLocaleTimeString()}
                     </span>
                   ) : null}
@@ -345,15 +341,15 @@ function JobCard({
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-1">
+        <div className="mt-4 flex items-center justify-between pt-4 border-t-2 border-zinc-950/5">
+          <div className="flex items-center gap-2">
             {/* Chunks Toggle */}
             {hasChunks && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => onTogglePanel("chunks")}
-                className={`text-xs gap-1.5 ${expandedPanel === "chunks" ? "bg-muted" : ""}`}
+                className={`text-[10px] h-7 gap-1.5 ${expandedPanel === "chunks" ? "bg-zinc-100" : ""}`}
               >
                 <Layers className="h-3.5 w-3.5" />
                 {job.chunkSummary.total} Chunks
@@ -367,16 +363,16 @@ function JobCard({
 
             {/* Logs Toggle */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => onTogglePanel("logs")}
-              className={`text-xs gap-1.5 ${expandedPanel === "logs" ? "bg-muted" : ""}`}
+              className={`text-[10px] h-7 gap-1.5 ${expandedPanel === "logs" ? "bg-zinc-100" : ""}`}
             >
               Logs
               {logCount > 0 && (
                 <Badge
                   variant="secondary"
-                  className="ml-0.5 text-[10px] px-1.5 py-0"
+                  className="ml-0.5 text-[9px] px-1.5 py-0 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                 >
                   {logCount}
                 </Badge>
@@ -392,22 +388,22 @@ function JobCard({
           <div className="flex items-center gap-2">
             {isActive && (
               <Button
-                variant="ghost"
+                variant="destructive"
                 size="sm"
                 onClick={() => onCancelClick(job.id)}
                 disabled={cancellingId === job.id}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="h-7 w-7 p-0"
               >
                 {cancellingId === job.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <XCircle className="h-4 w-4" />
+                  <XCircle className="h-3.5 w-3.5" />
                 )}
               </Button>
             )}
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild className="h-7 w-7 p-0">
               <Link href={`/admin/scrapers/runs/${job.id}`}>
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
@@ -630,9 +626,9 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   if (error) {
     return (
       <div
-        className={`rounded-lg border border-red-200 bg-red-50 p-4 ${className}`}
+        className={`rounded-none border-2 border-zinc-950 bg-red-50 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] ${className}`}
       >
-        <p className="text-sm text-red-600">Error: {error}</p>
+        <p className="text-sm font-black uppercase text-red-600">Error: {error}</p>
       </div>
     );
   }
@@ -645,7 +641,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
         className={`flex flex-col items-center justify-center py-12 text-center ${className}`}
       >
         <Play className="h-12 w-12 text-gray-300 mb-4" />
-        <h3 className="text-lg font-medium text-foreground">
+        <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">
           No active scraper jobs
         </h3>
         <p className="text-sm text-muted-foreground mt-1">

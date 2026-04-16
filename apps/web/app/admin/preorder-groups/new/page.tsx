@@ -20,7 +20,7 @@ export default function NewPreorderGroupPage() {
         Back to Groups
       </Link>
 
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Create Pre-Order Group</CardTitle>
         </CardHeader>
@@ -60,7 +60,7 @@ export default function NewPreorderGroupPage() {
                 id="description"
                 name="description"
                 placeholder="Optional description for internal reference..."
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex min-h-[80px] w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
 
@@ -85,7 +85,7 @@ export default function NewPreorderGroupPage() {
                 id="display_copy"
                 name="display_copy"
                 placeholder="e.g., Minimum 6 chicks per arrival date"
-                className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex min-h-[60px] w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
               <p className="text-xs text-muted-foreground">
                 Shown to customers on product pages

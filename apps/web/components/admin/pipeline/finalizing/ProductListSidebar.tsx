@@ -150,7 +150,7 @@ export function ProductListSidebar({
                   className="border-b border-border/80"
                 >
                   <div className="flex items-center hover:bg-muted/40 bg-muted/20 pr-1 group">
-                    <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                    <AccordionTrigger hideIcon className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
                         <div className="flex items-center gap-1.5 overflow-hidden">

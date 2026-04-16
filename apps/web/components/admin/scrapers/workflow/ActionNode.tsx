@@ -103,7 +103,7 @@ function ActionNodeComponent({ data, selected }: ActionNodeProps) {
   return (
     <div
       className={cn(
-        'rounded-lg border-2 shadow-sm min-w-[200px] max-w-[280px]',
+        'rounded-lg border shadow-sm min-w-[200px] max-w-[280px]',
         colorClass,
         selected && 'ring-2 ring-offset-2 ring-blue-500'
       )}

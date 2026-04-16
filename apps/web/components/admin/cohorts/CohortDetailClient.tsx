@@ -83,35 +83,35 @@ interface ScraperRecommendation {
 }
 
 const STATUS_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
-  pending: { label: "Pending", className: "bg-muted text-muted-foreground" },
-  processing: { label: "Processing", className: "bg-blue-100 text-blue-800" },
-  completed: { label: "Completed", className: "bg-green-100 text-green-800" },
-  failed: { label: "Failed", className: "bg-red-100 text-red-800" },
-  imported: { label: "Imported", className: "bg-gray-100 text-gray-800" },
-  scraped: { label: "Scraped", className: "bg-blue-100 text-blue-800" },
-  finalized: { label: "Finalized", className: "bg-amber-100 text-amber-800" },
+  pending: { label: "Pending", className: "bg-zinc-100 text-zinc-950 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" },
+  processing: { label: "Processing", className: "bg-blue-100 text-blue-950 border-blue-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" },
+  completed: { label: "Completed", className: "bg-brand-forest-green text-white border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" },
+  failed: { label: "Failed", className: "bg-brand-burgundy text-white border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" },
+  imported: { label: "Imported", className: "bg-zinc-100 text-zinc-950 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" },
+  scraped: { label: "Scraped", className: "bg-blue-100 text-blue-950 border-blue-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" },
+  finalized: { label: "Finalized", className: "bg-brand-gold text-brand-burgundy border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" },
 };
 
 const CONFIDENCE_CONFIG: Record<string, { label: string; className: string; barColor: string }> = {
-  high: { label: "High", className: "bg-green-100 text-green-800", barColor: "bg-green-500" },
-  medium: { label: "Medium", className: "bg-amber-100 text-amber-800", barColor: "bg-amber-500" },
-  low: { label: "Low", className: "bg-red-100 text-red-800", barColor: "bg-red-400" },
-  untested: { label: "Untested", className: "bg-gray-100 text-gray-600", barColor: "bg-gray-300" },
+  high: { label: "High", className: "bg-brand-forest-green text-white border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", barColor: "bg-brand-forest-green" },
+  medium: { label: "Medium", className: "bg-brand-gold text-brand-burgundy border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", barColor: "bg-brand-gold" },
+  low: { label: "Low", className: "bg-brand-burgundy text-white border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", barColor: "bg-brand-burgundy" },
+  untested: { label: "Untested", className: "bg-zinc-100 text-zinc-500 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", barColor: "bg-zinc-300" },
 };
 
 function HitRateBar({ rate }: { rate: number; }) {
   const pct = Math.round(rate * 100);
-  const color = rate >= 0.6 ? "bg-green-500" : rate >= 0.4 ? "bg-amber-500" : "bg-red-400";
+  const color = rate >= 0.6 ? "bg-brand-forest-green" : rate >= 0.4 ? "bg-brand-gold" : "bg-brand-burgundy";
 
   return (
     <div className="flex items-center gap-2">
-      <div className="h-2 w-20 rounded-full bg-muted overflow-hidden">
+      <div className="h-3 w-20 rounded-none bg-zinc-100 border border-zinc-950 overflow-hidden shadow-[1px_1px_0px_rgba(0,0,0,1)]">
         <div
-          className={`h-full rounded-full transition-all ${color}`}
+          className={`h-full rounded-none transition-all ${color}`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-xs font-mono text-muted-foreground">{pct}%</span>
+      <span className="text-[10px] font-black text-zinc-950">{pct}%</span>
     </div>
   );
 }
@@ -198,19 +198,19 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand-forest-green" />
       </div>
     );
   }
 
   if (error || !cohort) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+      <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
         <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+          <AlertCircle className="h-5 w-5 text-brand-burgundy shrink-0" />
           <div>
-            <h3 className="font-semibold text-red-900">Error Loading Cohort</h3>
-            <p className="text-sm text-red-700 mt-1">{error || "Cohort not found"}</p>
+            <h3 className="font-black uppercase tracking-tight text-brand-burgundy">Error Loading Cohort</h3>
+            <p className="text-sm font-bold text-brand-burgundy/80 mt-1">{error || "Cohort not found"}</p>
           </div>
         </div>
       </div>
@@ -227,11 +227,11 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" asChild className="rounded-none border border-zinc-950 hover:bg-zinc-100 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <Link href="/admin/cohorts/dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
@@ -239,21 +239,22 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              <h1 className="text-3xl font-black uppercase tracking-tighter text-zinc-950">
                 {cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
               </h1>
-              <Badge className={statusBadge.className}>
+              <Badge className={`rounded-none border border-zinc-950 font-black uppercase text-[10px] ${statusBadge.className}`}>
                 {statusBadge.label}
               </Badge>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              UPC Prefix: <code className="font-mono">{cohort.upc_prefix}</code> · {members.length} products
+            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600">
+              UPC Prefix: <code className="font-mono bg-zinc-950 text-white px-1 py-0.5">{cohort.upc_prefix}</code> · {members.length} products
             </p>
           </div>
         </div>
         <Button
           variant="outline"
           size="sm"
+          className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
           onClick={() => {
             void fetchCohort();
             void fetchRecommendations();
@@ -264,25 +265,25 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
         {/* Left column: Brand + Members */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="flex-1 flex flex-col space-y-6 min-h-0">
           {/* Brand Assignment Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+            <CardHeader className="bg-zinc-50 border-b border-zinc-950">
+              <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <Tag className="h-5 w-5" />
                 Brand Assignment
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {isEditingBrand ? (
                 <div className="flex items-center gap-2">
                   <Input
                     value={brandInput}
                     onChange={(e) => setBrandInput(e.target.value)}
                     placeholder="Enter brand name (e.g., KONG, Blue Buffalo)"
-                    className="flex-1"
+                    className="flex-1 rounded-none border border-zinc-950"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === "Enter") void handleAssignBrand();
@@ -293,19 +294,19 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                     <Check className="mr-1 h-4 w-4" />
                     Save
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingBrand(false)}>
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditingBrand(false)} className="rounded-none border border-transparent hover:border-zinc-950">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               ) : brandName ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-brand-forest-green/10 p-2.5">
-                      <Tag className="h-5 w-5 text-brand-forest-green" />
+                    <div className="rounded-none border border-zinc-950 p-2.5 bg-brand-forest-green shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                      <Tag className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">{brandName}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="font-black uppercase text-zinc-950 tracking-tight">{brandName}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-600">
                         Scraper recommendations are active for this brand
                       </p>
                     </div>
@@ -313,6 +314,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase"
                     onClick={() => {
                       setBrandInput(brandName);
                       setIsEditingBrand(true);
@@ -324,12 +326,13 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <Tag className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground mb-3">
+                  <Tag className="h-8 w-8 text-zinc-300 mx-auto mb-3" />
+                  <p className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-4">
                     Assign a brand to enable automatic scraper recommendations
                   </p>
                   <Button
                     variant="outline"
+                    className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase"
                     onClick={() => setIsEditingBrand(true)}
                   >
                     <Tag className="mr-2 h-4 w-4" />
@@ -341,120 +344,122 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
           </Card>
 
           {/* Pipeline Status Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+            <CardHeader className="bg-zinc-50 border-b border-zinc-950">
+              <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <BarChart3 className="h-5 w-5" />
                 Pipeline Status
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {Object.keys(statusCounts).length > 0 ? (
                 <div className="flex items-center gap-4 flex-wrap">
                   {Object.entries(statusCounts).map(([status, count]) => {
                     const badge = STATUS_BADGE_CONFIG[status] || STATUS_BADGE_CONFIG.pending;
                     return (
-                      <div key={status} className="flex items-center gap-2">
-                        <Badge className={badge.className}>{badge.label}</Badge>
-                        <span className="text-sm font-medium">{count}</span>
+                      <div key={status} className="flex items-center gap-2 bg-zinc-100 border border-zinc-950 px-2 py-1 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                        <Badge className={`rounded-none border border-zinc-950 font-black uppercase text-[10px] ${badge.className}`}>{badge.label}</Badge>
+                        <span className="text-sm font-black text-zinc-950">{count}</span>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No member products tracked yet</p>
+                <p className="text-xs font-bold uppercase text-zinc-500">No member products tracked yet</p>
               )}
             </CardContent>
           </Card>
 
           {/* Member Products Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+          <Card className="rounded-none border border-zinc-950 flex-1 flex flex-col min-h-0 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+            <CardHeader className="bg-zinc-50 border-b border-zinc-950 shrink-0">
+              <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <Package className="h-5 w-5" />
                 Products ({members.length})
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
               {members.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
+                <p className="text-xs font-bold uppercase tracking-wide text-zinc-500 text-center py-12">
                   No products in this cohort
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Product Name</TableHead>
-                      <TableHead>Pipeline Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {members.map((member) => {
-                      const product = memberProducts.find(
-                        (p) => p.sku === member.product_sku
-                      );
-                      const inputData = product?.input as { name?: string } | null;
-                      const badge = product
-                        ? STATUS_BADGE_CONFIG[product.pipeline_status] || STATUS_BADGE_CONFIG.pending
-                        : null;
+                <div className="h-full overflow-auto">
+                  <Table>
+                    <TableHeader className="bg-zinc-100 sticky top-0 z-10">
+                      <TableRow className="border-b border-zinc-950">
+                        <TableHead className="font-black uppercase text-zinc-950 text-xs">SKU</TableHead>
+                        <TableHead className="font-black uppercase text-zinc-950 text-xs">Product Name</TableHead>
+                        <TableHead className="font-black uppercase text-zinc-950 text-xs">Pipeline Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {members.map((member) => {
+                        const product = memberProducts.find(
+                          (p) => p.sku === member.product_sku
+                        );
+                        const inputData = product?.input as { name?: string } | null;
+                        const badge = product
+                          ? STATUS_BADGE_CONFIG[product.pipeline_status] || STATUS_BADGE_CONFIG.pending
+                          : null;
 
-                      return (
-                        <TableRow key={member.product_sku}>
-                          <TableCell className="font-mono text-sm">
-                            {member.product_sku}
-                          </TableCell>
-                          <TableCell>
-                            {inputData?.name || (
-                              <span className="text-muted-foreground italic">
-                                No name
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {badge ? (
-                              <Badge className={`text-xs ${badge.className}`}>
-                                {badge.label}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">
-                                Not tracked
-                              </span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                        return (
+                          <TableRow key={member.product_sku} className="border-b border-zinc-200">
+                            <TableCell className="font-mono text-sm bg-zinc-50">
+                              {member.product_sku}
+                            </TableCell>
+                            <TableCell className="font-bold text-zinc-950">
+                              {inputData?.name || (
+                                <span className="text-zinc-400 italic font-medium">
+                                  No name
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {badge ? (
+                                <Badge className={`text-[10px] font-black uppercase rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${badge.className}`}>
+                                  {badge.label}
+                                </Badge>
+                              ) : (
+                                <span className="text-zinc-400 text-[10px] font-black uppercase">
+                                  Not tracked
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
 
         {/* Right column: Recommendations */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+        <div className="w-full lg:w-80 space-y-6 shrink-0">
+          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+            <CardHeader className="bg-zinc-50 border-b border-zinc-950">
+              <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <Sparkles className="h-5 w-5" />
-                Scraper Recommendations
+                Scrapers
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {!brandName ? (
                 <div className="text-center py-6">
-                  <Sparkles className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">
+                  <Sparkles className="h-8 w-8 text-zinc-300 mx-auto mb-3" />
+                  <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
                     Assign a brand to see scraper recommendations
                   </p>
                 </div>
               ) : loadingRecs ? (
                 <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <Loader2 className="h-6 w-6 animate-spin text-brand-forest-green" />
                 </div>
               ) : recommendations.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
+                <p className="text-xs font-bold uppercase tracking-wide text-zinc-500 text-center py-6">
                   No scraper data available yet
                 </p>
               ) : (
@@ -465,36 +470,38 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                     return (
                       <div
                         key={rec.scraper_slug}
-                        className={`rounded-lg border p-3 transition-colors ${
+                        className={`rounded-none border p-3 transition-colors shadow-[1px_1px_0px_rgba(0,0,0,1)] ${
                           rec.preselected
-                            ? "border-brand-forest-green/30 bg-brand-forest-green/5"
-                            : "border-border"
+                            ? "border-brand-forest-green bg-brand-forest-green/5"
+                            : "border-zinc-950"
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-1.5">
+                        <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             {rec.preselected && (
-                              <Zap className="h-3.5 w-3.5 text-brand-forest-green" />
+                              <Zap className="h-3.5 w-3.5 text-brand-forest-green fill-brand-forest-green" />
                             )}
-                            <span className="font-medium text-sm">
+                            <span className="font-black uppercase tracking-tight text-sm text-zinc-950">
                               {rec.scraper_name}
                             </span>
                           </div>
-                          <Badge className={`text-xs ${conf.className}`}>
+                          <Badge className={`text-[9px] font-black uppercase rounded-none border border-zinc-950 ${conf.className}`}>
                             {conf.label}
                           </Badge>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <HitRateBar rate={rec.hit_rate} />
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[10px] font-bold uppercase text-zinc-600 leading-tight">
                             {rec.reason}
                           </p>
                           {rec.total_attempts > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              {rec.successful_extractions}/{rec.total_attempts} successful ·{" "}
-                              {rec.avg_fields_extracted.toFixed(1)} avg fields ·{" "}
-                              {rec.avg_images_found.toFixed(1)} avg images
-                            </p>
+                            <div className="pt-1 border-t border-zinc-200">
+                              <p className="text-[9px] font-black uppercase text-zinc-500">
+                                {rec.successful_extractions}/{rec.total_attempts} hits ·{" "}
+                                {rec.avg_fields_extracted.toFixed(1)} fields ·{" "}
+                                {rec.avg_images_found.toFixed(1)} imgs
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -506,31 +513,31 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
           </Card>
 
           {/* Cohort Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Details</CardTitle>
+          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+            <CardHeader className="bg-zinc-50 border-b border-zinc-950">
+              <CardTitle className="text-lg font-black uppercase tracking-tight text-zinc-950">Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">ID</span>
-                <code className="font-mono text-xs">{cohort.id.slice(0, 12)}...</code>
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
+                <span className="text-[10px] font-black uppercase text-zinc-500">ID</span>
+                <code className="font-mono text-[10px] bg-zinc-100 px-1">{cohort.id.slice(0, 12)}...</code>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">UPC Prefix</span>
-                <code className="font-mono">{cohort.upc_prefix}</code>
+              <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
+                <span className="text-[10px] font-black uppercase text-zinc-500">UPC Prefix</span>
+                <code className="font-mono text-xs font-black bg-zinc-950 text-white px-1">{cohort.upc_prefix}</code>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created</span>
-                <span>{new Date(cohort.created_at).toLocaleDateString()}</span>
+              <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
+                <span className="text-[10px] font-black uppercase text-zinc-500">Created</span>
+                <span className="text-xs font-bold uppercase text-zinc-950">{new Date(cohort.created_at).toLocaleDateString()}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Updated</span>
-                <span>{new Date(cohort.updated_at).toLocaleDateString()}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase text-zinc-500">Updated</span>
+                <span className="text-xs font-bold uppercase text-zinc-950">{new Date(cohort.updated_at).toLocaleDateString()}</span>
               </div>
               {cohort.scraper_config && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Config</span>
-                  <span>{cohort.scraper_config}</span>
+                <div className="flex justify-between items-center pt-2 border-t border-zinc-100">
+                  <span className="text-[10px] font-black uppercase text-zinc-500">Config</span>
+                  <Badge variant="outline" className="rounded-none border border-zinc-950 text-[9px] font-black uppercase">{cohort.scraper_config}</Badge>
                 </div>
               )}
             </CardContent>

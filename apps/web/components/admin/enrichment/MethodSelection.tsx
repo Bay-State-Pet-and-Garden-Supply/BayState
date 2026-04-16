@@ -135,7 +135,7 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                     />
                     <Label
                         htmlFor="method-scrapers"
-                        className="flex flex-col items-start gap-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        className="flex flex-col items-start gap-2 rounded-md border border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
                         <span className="font-semibold">Static Scrapers</span>
                         <span className="text-sm text-muted-foreground font-normal">
@@ -153,7 +153,7 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                     />
                     <Label
                         htmlFor="method-ai-search"
-                        className="flex flex-col items-start gap-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        className="flex flex-col items-start gap-2 rounded-md border border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
                         <span className="font-semibold">AI Search</span>
                         <span className="text-sm text-muted-foreground font-normal">
@@ -171,7 +171,7 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                     />
                     <Label
                         htmlFor="method-consolidation"
-                        className="flex flex-col items-start gap-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        className="flex flex-col items-start gap-2 rounded-md border border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
                         <span className="font-semibold text-purple-600">AI Consolidation</span>
                         <span className="text-sm text-muted-foreground font-normal">

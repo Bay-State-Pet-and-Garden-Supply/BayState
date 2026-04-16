@@ -493,7 +493,7 @@ export function ScrapedResultsView({
                           className="data-[state=checked]:bg-brand-forest-green data-[state=checked]:border-brand-forest-green"
                         />
                       </div>
-                      <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
+                      <AccordionTrigger hideIcon className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
                         <div className="flex items-center gap-2 overflow-hidden">
                           <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
                           <div className="flex items-center gap-1.5 overflow-hidden">
@@ -718,7 +718,7 @@ export function ScrapedResultsView({
                             <div
                               key={i}
                               onClick={() => setCurrentImageIndex(i)}
-                              className={`aspect-square w-14 rounded-md border-2 overflow-hidden bg-muted/20 cursor-pointer transition-all flex-shrink-0 ${
+                              className={`aspect-square w-14 rounded-md border overflow-hidden bg-muted/20 cursor-pointer transition-all flex-shrink-0 ${
                                 currentImageIndex === i ? "border-primary ring-2 ring-primary/10" : "border-transparent opacity-60 hover:opacity-100"
                               }`}
                             >

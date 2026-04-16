@@ -63,7 +63,7 @@ export function WorkflowTab() {
         </CardHeader>
         <CardContent>
           {fields.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+            <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
               No workflow steps defined. Click &quot;Add Step&quot; to start.
             </div>
           ) : (
