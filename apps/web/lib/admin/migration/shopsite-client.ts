@@ -453,6 +453,8 @@ export class ShopSiteClient {
         const formData = new FormData();
         formData.append('clientApp', '1');
         formData.append('dbname', 'products');
+        formData.append('xml', '1');
+        formData.append('upload_type', '2');
         formData.append('uniqueName', options.uniqueName ?? 'SKU');
         formData.append('batchsize', String(options.batchSize ?? 500));
         formData.append('newRecords', options.newRecords === false ? 'no' : 'yes');

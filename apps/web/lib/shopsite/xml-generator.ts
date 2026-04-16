@@ -119,23 +119,22 @@ export function buildShopSiteNewProductTag(date: Date = new Date()): string {
 function generateProductXml(product: ShopSiteExportProduct, newProductTag: string): string {
     const lines: string[] = [];
     lines.push('  <Product>');
+    
+    // Core Identity (Strict Order)
     lines.push(xmlElement('Name', product.name));
-    lines.push(xmlElement('SKU', product.sku));
     lines.push(xmlElement('Price', formatPrice(product.price)));
-    lines.push(xmlElement('ProductField1', newProductTag));
-
-    const description = product.description ?? product.long_description ?? null;
-    if (description) {
-        lines.push(xmlCdataElement('ProductDescription', description));
+    lines.push('    <SaleAmount/>');
+    lines.push('    <ProductDisabled>uncheck</ProductDisabled>');
+    
+    if (product.is_taxable !== undefined) {
+        lines.push(xmlElement('Taxable', product.is_taxable ? 'checked' : 'uncheck'));
+    }
+    
+    if (product.minimum_quantity != null) {
+        lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity)));
     }
 
-    if (product.weight != null && product.weight !== '') {
-        lines.push(xmlElement('Weight', String(product.weight)));
-    }
-
-    if (product.short_name) {
-        lines.push(xmlElement('ProductField7', product.short_name));
-    }
+    lines.push(xmlElement('SKU', product.sku));
 
     const primaryImage = product.images[0] ?? null;
     if (primaryImage) {
@@ -148,29 +147,54 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement(`MoreInfoImage${index + 1}`, additionalImages[index]));
     }
 
-    if (product.brand_name) {
-        lines.push(xmlElement('ProductField16', product.brand_name));
+    const description = product.description ?? product.long_description ?? null;
+    if (description) {
+        lines.push(xmlCdataElement('ProductDescription', description));
     }
 
-    if (product.category) {
-        lines.push(xmlElement('ProductField24', product.category));
+    if (product.weight != null && product.weight !== '') {
+        lines.push(xmlElement('Weight', String(product.weight)));
     }
 
-    if (product.product_type) {
-        lines.push(xmlElement('ProductField25', product.product_type));
+    if (product.search_keywords) {
+        lines.push(xmlCdataElement('SearchKeywords', product.search_keywords));
     }
 
+    if (product.availability) {
+        lines.push(xmlElement('Availability', product.availability));
+    }
 
+    // Product Fields in numerical order
+    lines.push(xmlElement('ProductField1', newProductTag));
+
+    if (product.short_name) {
+        lines.push(xmlElement('ProductField7', product.short_name));
+    }
+
+    if (product.size) {
+        lines.push(xmlElement('ProductField10', product.size));
+    }
 
     if (product.is_special_order) {
         lines.push(xmlElement('ProductField11', 'yes'));
+    }
+
+    if (product.color) {
+        lines.push(xmlElement('ProductField12', product.color));
+    }
+
+    if (product.packaging_type) {
+        lines.push(xmlElement('ProductField13', product.packaging_type));
     }
 
     if (product.in_store_pickup) {
         lines.push(xmlElement('ProductField15', 'checked'));
     }
 
-    // Canonical facet fields (corrected contract)
+    if (product.brand_name) {
+        lines.push(xmlElement('ProductField16', product.brand_name));
+    }
+
     if (product.pet_type) {
         lines.push(xmlElement('ProductField17', product.pet_type));
     }
@@ -199,20 +223,16 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('ProductField23', product.flavor));
     }
 
+    if (product.category) {
+        lines.push(xmlElement('ProductField24', product.category));
+    }
+
+    if (product.product_type) {
+        lines.push(xmlElement('ProductField25', product.product_type));
+    }
+
     if (product.product_feature) {
         lines.push(xmlElement('ProductField26', product.product_feature));
-    }
-
-    if (product.size) {
-        lines.push(xmlElement('ProductField27', product.size));
-    }
-
-    if (product.color) {
-        lines.push(xmlElement('ProductField29', product.color));
-    }
-
-    if (product.packaging_type) {
-        lines.push(xmlElement('ProductField30', product.packaging_type));
     }
 
     if (product.cross_sell_skus && product.cross_sell_skus.length > 0) {
@@ -221,22 +241,6 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
 
     if (product.gtin) {
         lines.push(xmlElement('Google_GTIN', product.gtin));
-    }
-
-    if (product.is_taxable !== undefined) {
-        lines.push(xmlElement('Taxable', product.is_taxable ? 'yes' : 'no'));
-    }
-
-    if (product.availability) {
-        lines.push(xmlElement('Availability', product.availability));
-    }
-
-    if (product.minimum_quantity != null) {
-        lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity)));
-    }
-
-    if (product.search_keywords) {
-        lines.push(xmlCdataElement('SearchKeywords', product.search_keywords));
     }
 
     if (product.shopsite_pages && product.shopsite_pages.length > 0) {
@@ -259,7 +263,7 @@ export function generateShopSiteXml(
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
     lines.push('<?xml version="1.0" encoding="ISO-8859-1"?>');
-    lines.push(`<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">`);
+    lines.push(`<!DOCTYPE ShopSiteProducts SYSTEM "${SHOPSITE_DOCTYPE}">`);
     lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
     lines.push('<Products>');
 
@@ -280,7 +284,7 @@ export function* generateShopSiteXmlStream(
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
     yield '<?xml version="1.0" encoding="ISO-8859-1"?>\n';
-    yield `<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">\n`;
+    yield `<!DOCTYPE ShopSiteProducts SYSTEM "${SHOPSITE_DOCTYPE}">\n`;
     yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
     yield '<Products>\n';
 
