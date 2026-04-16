@@ -28,11 +28,11 @@ export function ScraperStatusWidget() {
 
   if (error) {
     return (
-      <Card className="h-full border-red-200 bg-red-50 dark:bg-red-900/10">
+      <Card className="h-full border-brand-burgundy/20 bg-brand-burgundy/5 dark:bg-brand-burgundy/10">
         <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
-          <p className="text-sm font-medium text-red-800 dark:text-red-400">Failed to load scraper stats</p>
-          <p className="text-xs text-red-600 dark:text-red-500 mt-1">{error}</p>
+          <AlertCircle className="h-8 w-8 text-brand-burgundy mb-2" />
+          <p className="text-sm font-medium text-brand-burgundy">Failed to load scraper stats</p>
+          <p className="text-xs text-brand-burgundy/70 mt-1">{error}</p>
         </CardContent>
       </Card>
     );
@@ -44,7 +44,7 @@ export function ScraperStatusWidget() {
         <CardTitle className="text-base font-semibold">Scraper Status</CardTitle>
         <Badge 
           variant={stats.activeJobs > 0 ? "default" : "secondary"}
-          className={cn(stats.activeJobs > 0 && "bg-green-500 hover:bg-green-600")}
+          className={cn(stats.activeJobs > 0 && "bg-brand-forest-green hover:bg-brand-forest-green/90")}
         >
           {stats.activeJobs} Active
         </Badge>
@@ -56,7 +56,7 @@ export function ScraperStatusWidget() {
               <p className="text-3xl font-bold">{stats.successRate}%</p>
               <p className="text-xs text-muted-foreground">Success rate (last 100 jobs)</p>
             </div>
-            <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+            <div className="flex items-center gap-1 text-brand-forest-green">
               <CheckCircle2 className="h-4 w-4" />
               <span className="text-xs font-medium">Healthy</span>
             </div>
@@ -65,7 +65,7 @@ export function ScraperStatusWidget() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border bg-muted/30 p-3">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Zap className="h-3.5 w-3.5 text-amber-500" />
+                <Zap className="h-3.5 w-3.5 text-brand-gold" />
                 <span className="text-[10px] uppercase font-bold tracking-wider">Velocity</span>
               </div>
               <p className="text-lg font-semibold">{stats.itemsPerMin}</p>
@@ -73,7 +73,7 @@ export function ScraperStatusWidget() {
             </div>
             <div className="rounded-lg border bg-muted/30 p-3">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Activity className="h-3.5 w-3.5 text-blue-500" />
+                <Activity className="h-3.5 w-3.5 text-brand-forest-green" />
                 <span className="text-[10px] uppercase font-bold tracking-wider">Volume</span>
               </div>
               <p className="text-lg font-semibold">{stats.totalJobs}</p>

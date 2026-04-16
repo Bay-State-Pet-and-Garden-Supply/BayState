@@ -37,31 +37,31 @@ const batchStatusConfig: Record<
 > = {
   pending: {
     label: 'Pending',
-    className: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700',
+    className: 'bg-brand-gold/10 text-brand-gold border-brand-gold/20 dark:bg-brand-gold/20 dark:text-brand-gold dark:border-brand-gold/30',
     icon: Clock,
     description: 'Batch is queued and waiting to start',
   },
   processing: {
     label: 'Processing',
-    className: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700',
+    className: 'bg-brand-gold/10 text-brand-gold border-brand-gold/20 dark:bg-brand-gold/20 dark:text-brand-gold dark:border-brand-gold/30',
     icon: Loader2,
     description: 'Batch is currently being processed',
   },
   completed: {
     label: 'Completed',
-    className: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700',
+    className: 'bg-brand-forest-green/10 text-brand-forest-green border-brand-forest-green/20 dark:bg-brand-forest-green/20 dark:text-brand-forest-green dark:border-brand-forest-green/30',
     icon: CheckCircle2,
     description: 'Batch processing completed successfully',
   },
   failed: {
     label: 'Failed',
-    className: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700',
+    className: 'bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/20 dark:bg-brand-burgundy/20 dark:text-brand-burgundy dark:border-brand-burgundy/30',
     icon: XCircle,
     description: 'Batch processing failed',
   },
   cancelled: {
     label: 'Cancelled',
-    className: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-900/30 dark:text-slate-200 dark:border-slate-700',
+    className: 'bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/20 dark:bg-brand-burgundy/20 dark:text-brand-burgundy dark:border-brand-burgundy/30',
     icon: XCircle,
     description: 'Batch processing was cancelled',
   },
@@ -82,19 +82,19 @@ const warningConfig: Record<
     icon: Info,
   },
   low: {
-    className: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-800',
+    className: 'bg-brand-gold/5 text-brand-gold border-brand-gold/10 dark:bg-brand-gold/10 dark:text-brand-gold dark:border-brand-gold/20',
     icon: AlertTriangle,
   },
   medium: {
-    className: 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-200 dark:border-orange-800',
+    className: 'bg-brand-gold/10 text-brand-gold border-brand-gold/20 dark:bg-brand-gold/20 dark:text-brand-gold dark:border-brand-gold/30',
     icon: AlertTriangle,
   },
   high: {
-    className: 'bg-red-50 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-200 dark:border-red-800',
+    className: 'bg-brand-burgundy/5 text-brand-burgundy border-brand-burgundy/10 dark:bg-brand-burgundy/10 dark:text-brand-burgundy dark:border-brand-burgundy/20',
     icon: AlertTriangle,
   },
   critical: {
-    className: 'bg-red-100 text-red-900 border-red-300 dark:bg-red-900/30 dark:text-red-100 dark:border-red-700',
+    className: 'bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/20 dark:bg-brand-burgundy/20 dark:text-brand-burgundy dark:border-brand-burgundy/30',
     icon: AlertTriangle,
   },
 };
@@ -219,10 +219,10 @@ export function BatchProgressIndicator({
   };
 
   const getProgressColor = () => {
-    if (status === 'completed') return 'bg-emerald-500';
-    if (status === 'failed') return 'bg-red-500';
-    if (status === 'cancelled') return 'bg-slate-400';
-    return 'bg-blue-500';
+    if (status === 'completed') return 'bg-brand-forest-green';
+    if (status === 'failed') return 'bg-brand-burgundy';
+    if (status === 'cancelled') return 'bg-brand-burgundy';
+    return 'bg-brand-gold';
   };
 
   return (
@@ -284,10 +284,9 @@ export function BatchConsistencyScore({
   const clampedScore = Math.min(100, Math.max(0, score));
 
   const getScoreColor = () => {
-    if (clampedScore >= 90) return 'text-emerald-600 dark:text-emerald-400';
-    if (clampedScore >= 70) return 'text-blue-600 dark:text-blue-400';
-    if (clampedScore >= 50) return 'text-amber-600 dark:text-amber-400';
-    return 'text-red-600 dark:text-red-400';
+    if (clampedScore >= 70) return 'text-brand-forest-green dark:text-brand-forest-green';
+    if (clampedScore >= 50) return 'text-brand-gold dark:text-brand-gold';
+    return 'text-brand-burgundy dark:text-brand-burgundy';
   };
 
   const getScoreLabel = () => {

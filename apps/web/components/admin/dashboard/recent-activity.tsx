@@ -34,10 +34,10 @@ const activityIcons: Record<ActivityType, LucideIcon> = {
 };
 
 const statusStyles = {
-  success: 'bg-green-100 text-green-700',
-  warning: 'bg-orange-100 text-orange-700',
-  info: 'bg-blue-100 text-blue-700',
-  pending: 'bg-yellow-100 text-yellow-700',
+  success: 'bg-brand-forest-green/10 text-brand-forest-green',
+  warning: 'bg-brand-gold/10 text-brand-gold',
+  info: 'bg-brand-forest-green/10 text-brand-forest-green',
+  pending: 'bg-brand-gold/10 text-brand-gold',
 };
 
 export function RecentActivity({ activities, maxItems = 5 }: RecentActivityProps) {

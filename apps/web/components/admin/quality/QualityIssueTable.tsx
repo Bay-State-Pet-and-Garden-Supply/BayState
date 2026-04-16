@@ -113,10 +113,10 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
   };
 
   const getCompletenessColor = (completeness: number) => {
-    if (completeness >= 100) return 'text-green-600 bg-green-100';
-    if (completeness >= 75) return 'text-blue-600 bg-blue-100';
-    if (completeness >= 50) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+    if (completeness >= 100) return 'text-white bg-brand-forest-green border-zinc-950';
+    if (completeness >= 75) return 'text-brand-forest-green bg-brand-forest-green/20 border-brand-forest-green/50';
+    if (completeness >= 50) return 'text-brand-burgundy bg-brand-gold/20 border-brand-gold/50';
+    return 'text-white bg-brand-burgundy border-zinc-950';
   };
 
   if (loading) {

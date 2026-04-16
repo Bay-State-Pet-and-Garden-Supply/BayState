@@ -20,41 +20,41 @@ interface HealthBadgeProps {
 const statusConfig: Record<ScraperStatus, { label: string; className: string }> = {
   draft: {
     label: 'Draft',
-    className: 'bg-muted text-muted-foreground border-border',
+    className: 'bg-zinc-100 text-zinc-600 border-zinc-950',
   },
   active: {
     label: 'Active',
-    className: 'bg-green-100 text-green-700 border-green-300',
+    className: 'bg-brand-forest-green text-white border-zinc-950',
   },
   disabled: {
     label: 'Disabled',
-    className: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+    className: 'bg-brand-gold text-brand-burgundy border-zinc-950',
   },
   archived: {
     label: 'Archived',
-    className: 'bg-muted text-muted-foreground border-border',
+    className: 'bg-zinc-100 text-zinc-600 border-zinc-950',
   },
 };
 
 const healthConfig: Record<HealthStatus, { label: string; className: string; emoji: string }> = {
   healthy: {
     label: 'Healthy',
-    className: 'bg-green-100 text-green-700 border-green-300',
+    className: 'bg-brand-forest-green/20 text-brand-forest-green border-brand-forest-green/50',
     emoji: '',
   },
   degraded: {
     label: 'Degraded',
-    className: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+    className: 'bg-brand-gold/20 text-brand-burgundy border-brand-gold/50',
     emoji: '',
   },
   broken: {
     label: 'Broken',
-    className: 'bg-red-100 text-red-700 border-red-300',
+    className: 'bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/30',
     emoji: '',
   },
   unknown: {
     label: 'Unknown',
-    className: 'bg-muted text-muted-foreground border-border',
+    className: 'bg-zinc-100 text-zinc-600 border-zinc-950',
     emoji: '',
   },
 };
