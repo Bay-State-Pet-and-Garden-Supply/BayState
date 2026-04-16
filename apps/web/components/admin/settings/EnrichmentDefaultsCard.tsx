@@ -23,9 +23,9 @@ interface EnrichmentDefaults {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  healthy: 'bg-green-500',
-  degraded: 'bg-yellow-500',
-  offline: 'bg-red-500',
+  healthy: 'bg-brand-forest-green',
+  degraded: 'bg-brand-gold',
+  offline: 'bg-brand-burgundy',
   unknown: 'bg-muted',
 };
 
@@ -124,8 +124,8 @@ export function EnrichmentDefaultsCard() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-              <Globe className="h-5 w-5 text-purple-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-burgundy border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+              <Globe className="h-5 w-5 text-white" />
             </div>
             <div>
               <CardTitle>Enrichment Defaults</CardTitle>

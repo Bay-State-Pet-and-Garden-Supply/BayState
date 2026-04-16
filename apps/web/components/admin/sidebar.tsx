@@ -386,7 +386,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           <Link
             href="/"
             className={cn(
-              "flex items-center rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400",
+              "flex items-center rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-brand-burgundy/10 hover:text-brand-burgundy",
               collapsed ? "justify-center" : "gap-2.5",
             )}
           >

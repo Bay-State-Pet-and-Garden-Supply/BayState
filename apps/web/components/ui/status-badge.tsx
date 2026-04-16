@@ -24,39 +24,39 @@ export function StatusBadge({ status, className, showIcon = true }: StatusBadgeP
     const config: Record<string, { label: string, classes: string, icon: React.ElementType }> = {
         pending: {
             label: 'Pending',
-            classes: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 border-transparent',
+            classes: 'bg-brand-gold/20 text-brand-burgundy border-brand-gold/50',
             icon: Clock
         },
         processing: {
             label: 'Processing',
-            classes: 'bg-blue-100 text-blue-800 hover:bg-blue-100/80 border-transparent',
+            classes: 'bg-brand-forest-green/10 text-brand-forest-green border-brand-forest-green/30',
             icon: Package
         },
         ready: {
             label: 'Ready',
-            classes: 'bg-green-100 text-green-800 hover:bg-green-100/80 border-transparent',
+            classes: 'bg-brand-forest-green/20 text-brand-forest-green border-brand-forest-green/50',
             icon: ShoppingBag
         },
         completed: {
             label: 'Completed',
-            classes: 'bg-gray-100 text-gray-800 hover:bg-gray-100/80 border-transparent',
+            classes: 'bg-brand-forest-green text-white border-zinc-950',
             icon: CheckCircle
         },
         cancelled: {
             label: 'Cancelled',
-            classes: 'bg-red-100 text-red-800 hover:bg-red-100/80 border-transparent',
+            classes: 'bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/30',
             icon: XCircle
         },
         refunded: {
             label: 'Refunded',
-            classes: 'bg-purple-100 text-purple-800 hover:bg-purple-100/80 border-transparent',
+            classes: 'bg-brand-burgundy/20 text-brand-burgundy border-brand-burgundy/50',
             icon: RefreshCcw
         }
     }
 
     const statusConfig = config[normalizedStatus] || {
         label: status,
-        classes: 'bg-gray-100 text-gray-800 border-transparent',
+        classes: 'bg-zinc-100 text-zinc-800 border-zinc-900',
         icon: Clock
     }
 
