@@ -418,11 +418,6 @@ export function PipelineClient({
   // Handle stage tab change
   const handleStageChange = useCallback(
     (stage: PipelineStage) => {
-      if (stage === "exporting") {
-        router.push("/admin/pipeline/export");
-        return;
-      }
-
       // Clear local filters before navigating
       // This allows the server to fetch clean data for the new stage
       setSearch("");
@@ -439,7 +434,11 @@ export function PipelineClient({
       params.delete("cohort_id");
 
       startNavigation(() => {
-        router.replace(`${pathname}?${params.toString()}`);
+        // If we're on the /export subpage, go back to the main pipeline route for other stages
+        const targetPath = pathname.endsWith("/export") && stage !== "exporting" 
+          ? "/admin/pipeline" 
+          : pathname;
+        router.replace(`${targetPath}?${params.toString()}`);
       });
     },
     [pathname, router, searchParams],

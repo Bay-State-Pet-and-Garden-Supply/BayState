@@ -351,6 +351,39 @@ export async function POST(request: NextRequest) {
                     }
                 }
 
+                // Revert any stuck SKUs to imported for production jobs that finished (completed or failed)
+                if (!isTestJob && (jobStatus === 'completed' || jobStatus === 'failed')) {
+                    const jobSkus = Array.from(
+                        new Set(
+                            (allChunksForJob || []).flatMap((chunkRow) =>
+                                Array.isArray(chunkRow.skus)
+                                    ? chunkRow.skus.filter(
+                                          (sku): sku is string =>
+                                              typeof sku === 'string' && sku.trim().length > 0
+                                      )
+                                    : []
+                            )
+                        )
+                    );
+
+                    if (jobSkus.length > 0) {
+                        const { error: resetStatusError } = await supabase
+                            .from('products_ingestion')
+                            .update({
+                                pipeline_status: 'imported',
+                                updated_at: new Date().toISOString(),
+                            })
+                            .in('sku', jobSkus)
+                            .eq('pipeline_status', 'scraping');
+
+                        if (resetStatusError) {
+                            console.error('[Chunk Callback] Failed to reset stuck SKUs to imported:', resetStatusError);
+                        } else {
+                            console.log(`[Chunk Callback] Job ${jobId}: Reverted any remaining 'scraping' SKUs to 'imported'`);
+                        }
+                    }
+                }
+
                 if (jobStatus === 'completed' && !isTestJob) {
                     console.log(
                         `[Chunk Callback] Job ${jobId} completed. Consolidation remains manual and must be user-triggered.`
