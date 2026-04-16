@@ -15,6 +15,7 @@ describe('generateShopSiteXml', () => {
                     short_name: 'Favorite 20 lb.',
                     brand_name: 'Feathered Friend',
                     category: 'Wild Bird Food',
+                    product_type: 'Seeds & Seed Mixes',
                     images: [
                         'feathered-friend/feathered-friend-favorite-20-lb.jpg',
                         'feathered-friend/feathered-friend-favorite-20-lb-2.jpg',

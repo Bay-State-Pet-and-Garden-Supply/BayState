@@ -56,6 +56,8 @@ export interface ShopSiteUploadResult {
 
 const PRODUCT_XML_VERSION = '15.0';
 
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+
 const PRODUCT_DOWNLOAD_FIELDS = [
     'ProductDisabled',
     'SKU',
@@ -150,7 +152,8 @@ export class ShopSiteClient {
 
     private buildRequestHeaders(cookieHeader?: string): HeadersInit {
         const headers: Record<string, string> = {
-            Authorization: this.authHeader,
+            'Authorization': this.authHeader,
+            'User-Agent': USER_AGENT,
         };
 
         if (cookieHeader) {
@@ -252,9 +255,7 @@ export class ShopSiteClient {
                 this.buildUrl('action=list', 'db_xml.cgi'),
                 {
                     method: 'GET',
-                    headers: {
-                        'Authorization': this.authHeader,
-                    },
+                    headers: this.buildRequestHeaders(),
                 }
             );
 
@@ -290,9 +291,7 @@ export class ShopSiteClient {
                 this.buildUrl(params.toString(), 'db_xml.cgi'),
                 {
                     method: 'GET',
-                    headers: {
-                        'Authorization': this.authHeader,
-                    },
+                    headers: this.buildRequestHeaders(),
                     cache: 'no-store',
                 }
             );
@@ -382,9 +381,7 @@ export class ShopSiteClient {
                 this.buildUrl(params.toString(), 'db_xml.cgi'),
                 {
                     method: 'GET',
-                    headers: {
-                        'Authorization': this.authHeader,
-                    },
+                    headers: this.buildRequestHeaders(),
                     cache: 'no-store',
                 }
             );
@@ -427,9 +424,7 @@ export class ShopSiteClient {
                 this.buildUrl('clientApp=1&dbname=registration', 'db_xml.cgi'),
                 {
                     method: 'GET',
-                    headers: {
-                        'Authorization': this.authHeader,
-                    },
+                    headers: this.buildRequestHeaders(),
                     cache: 'no-store',
                 }
             );
@@ -478,6 +473,7 @@ export class ShopSiteClient {
         }
 
         const dbmakeQuery = this.extractDbmakeQuery(uploadResponse);
+        console.log(`[ShopSite] Proceeding to dbmake.cgi with query: ${dbmakeQuery}`);
         const uploadCookieHeader = this.extractCookieHeader(uploadHttpResponse);
 
         const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeQuery, 'dbmake.cgi'), {
