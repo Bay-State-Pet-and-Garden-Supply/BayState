@@ -66,7 +66,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     <div className="max-w-4xl mx-auto space-y-6">
       <ProductEditForm product={formProduct} />
 
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Fulfillment Settings</CardTitle>
         </CardHeader>
@@ -88,7 +88,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
               <input type="hidden" name="product_id" value={id} />
               <select
                 name="preorder_group_id"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex h-10 w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 defaultValue={assignment?.preorder_group_id || ''}
               >
                 <option value="">None (not a pre-order product)</option>

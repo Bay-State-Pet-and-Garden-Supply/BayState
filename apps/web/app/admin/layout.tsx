@@ -1,8 +1,5 @@
 import { AdminSidebar } from '@/components/admin/sidebar'
 import { MobileSidebarDrawer } from '@/components/admin/mobile-sidebar-drawer'
-import { createClient } from '@/lib/supabase/server'
-import { getUserRole } from '@/lib/auth/roles'
-import { redirect } from 'next/navigation'
 import { SkipLink } from '@/components/ui/skip-link'
 import { AdminLayoutStyles } from '@/components/admin/AdminLayoutStyles'
 
@@ -11,26 +8,11 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  /*
-  if (!user) {
-    redirect('/login?next=/admin')
-  }
-
-  const role = await getUserRole(user.id)
-
-  // Only admin and staff can access admin panel
-  if (role !== 'admin' && role !== 'staff') {
-    redirect('/login?error=unauthorized')
-  }
-  */
-
+  // Auth is currently bypassed for development
   const role = 'admin';
 
   return (
-    <div className="dark fixed inset-0 flex overflow-hidden bg-background text-foreground selection:bg-primary/30">
+    <div className="fixed inset-0 flex overflow-hidden bg-zinc-50 text-zinc-950 selection:bg-zinc-950 selection:text-white min-h-screen">
       <AdminLayoutStyles />
       <SkipLink />
       {/* Desktop sidebar */}
@@ -41,8 +23,8 @@ export default async function AdminLayout({
       <MobileSidebarDrawer>
         <AdminSidebar userRole={role as 'admin' | 'staff'} />
       </MobileSidebarDrawer>
-      <main id="main-content" className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden p-2 md:p-4">
-        <div className="max-w-[1600px] mx-auto h-full">
+      <main id="main-content" className="flex-1 min-w-0 h-full flex flex-col overflow-hidden p-4 pb-0 md:p-8 md:pb-0">
+        <div className="max-w-[1600px] w-full mx-auto h-full flex flex-col min-h-0">
           {children}
         </div>
       </main>

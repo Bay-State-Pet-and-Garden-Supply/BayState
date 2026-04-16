@@ -24,8 +24,6 @@ export function StageTabs({
     return counts.find((count) => count.status === stage)?.count ?? 0;
   };
 
-  const currentConfig = STAGE_CONFIG[currentStage];
-
   return (
     <div className="space-y-1.5">
       <Tabs
@@ -38,7 +36,7 @@ export function StageTabs({
         }}
         className="space-y-1.5"
       >
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0 border-b border-border/50">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0 border-b-2 border-zinc-950">
           {PIPELINE_TABS.map((stage, index) => {
             const config = STAGE_CONFIG[stage];
             const count = getCount(stage);
@@ -48,24 +46,24 @@ export function StageTabs({
               <Fragment key={stage}>
                 <TabsTrigger
                   value={stage}
-                  className="flex items-center gap-2 data-[state=active]:shadow-none data-[state=active]:bg-muted/50 data-[state=active]:text-brand-forest-green px-4 py-1.5 h-10 transition-all rounded-t-md relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-transparent data-[state=active]:after:bg-brand-forest-green"
+                  className="flex items-center gap-2 data-[state=active]:shadow-[2px_2px_0px_rgba(0,0,0,1)] data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:border-2 data-[state=active]:border-zinc-950 px-4 py-1.5 h-10 transition-all rounded-none relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-transparent data-[state=active]:after:bg-zinc-950 border-2 border-transparent"
                   style={
                     {
                       "--stage-color": config.color,
                     } as CSSProperties
                   }
                 >
-                  <span className="text-sm font-bold uppercase tracking-tight">{config.label}</span>
+                  <span className="text-xs font-black uppercase tracking-tighter">{config.label}</span>
                   <Badge
                     variant={isActive ? "default" : "secondary"}
-                    className="ml-1 px-1.5 py-0 min-w-[20px] h-5 text-[11px] justify-center font-bold"
+                    className="ml-1 px-1.5 py-0 min-w-[20px] h-5 text-[10px] justify-center font-black uppercase tracking-tighter rounded-none border border-zinc-950"
                   >
                     {count}
                   </Badge>
                 </TabsTrigger>
                 {index < PIPELINE_TABS.length - 1 && (
                   <div className="flex items-center px-1">
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
+                    <ChevronRight className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
                   </div>
                 )}
               </Fragment>

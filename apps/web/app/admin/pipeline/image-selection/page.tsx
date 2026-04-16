@@ -13,7 +13,7 @@ function LoadingState() {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-forest-green/20 border-t-brand-forest-green mx-auto mb-4" />
+                <div className="animate-spin rounded-none h-8 w-8 border border-brand-forest-green/20 border-t-brand-forest-green mx-auto mb-4" />
                 <p className="text-muted-foreground">Loading...</p>
             </div>
         </div>
@@ -24,7 +24,7 @@ function ErrorState() {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <div className="text-center max-w-md p-6">
-                <div className="bg-red-50 rounded-full h-12 w-12 flex items-center justify-center mx-auto mb-4">
+                <div className="bg-red-50 rounded-none h-12 w-12 flex items-center justify-center mx-auto mb-4">
                     <svg
                         className="h-6 w-6 text-red-600"
                         fill="none"

@@ -51,20 +51,20 @@ export default async function OrderDetailsPage({ params }: Props) {
                 </div>
                 <div className="flex items-center gap-4 bg-zinc-900 text-white p-4 shadow-[8px_8px_0px_rgba(220,38,38,1)]">
                     <span className="text-xs font-black uppercase tracking-widest text-zinc-400">STATUS:</span>
-                    <StatusBadge status={order.status} className="border-2 border-white/20 bg-white/10 text-white font-black uppercase text-xs" />
+                    <StatusBadge status={order.status} className="border border-white/20 bg-white/10 text-white font-black uppercase text-xs" />
                 </div>
             </div>
 
             <div className="grid gap-8 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-8">
-                    <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,0.1)]">
-                        <div className="bg-zinc-900 p-4 border-b-4 border-zinc-900 text-white">
+                    <div className="border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">
+                        <div className="bg-zinc-900 p-4 border-b-2 border-zinc-900 text-white">
                             <h2 className="text-xl font-black uppercase tracking-tight font-display text-accent">Order Items</h2>
                         </div>
                         <div className="p-6">
                             <div className="space-y-6">
                                 {order.items?.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between border-b-2 border-zinc-100 last:border-0 pb-6 last:pb-0">
+                                    <div key={item.id} className="flex items-center justify-between border-b border-zinc-100 last:border-0 pb-6 last:pb-0">
                                         <div className="space-y-1">
                                             <p className="font-black uppercase text-lg leading-none">{item.item_name}</p>
                                             <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">QTY: {item.quantity}</p>
@@ -78,8 +78,8 @@ export default async function OrderDetailsPage({ params }: Props) {
                 </div>
 
                 <div className="space-y-8">
-                    <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(220,38,38,1)]">
-                        <div className="bg-red-600 p-4 border-b-4 border-zinc-900 text-white">
+                    <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(220,38,38,1)]">
+                        <div className="bg-red-600 p-4 border-b-2 border-zinc-900 text-white">
                             <h2 className="text-xl font-black uppercase tracking-tight font-display">Summary</h2>
                         </div>
                         <div className="p-6 space-y-4">
@@ -91,15 +91,15 @@ export default async function OrderDetailsPage({ params }: Props) {
                                 <span>Tax</span>
                                 <span className="text-zinc-900">{formatCurrency(Number(order.tax))}</span>
                             </div>
-                            <div className="border-t-4 border-zinc-900 pt-4 mt-4 flex justify-between">
+                            <div className="border-t-2 border-zinc-900 pt-4 mt-4 flex justify-between">
                                 <span className="text-lg font-black uppercase tracking-tighter font-display">Total</span>
                                 <span className="text-3xl font-black tracking-tighter">{formatCurrency(Number(order.total))}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,0.1)]">
-                        <div className="bg-zinc-900 p-4 border-b-4 border-zinc-900 text-white">
+                    <div className="border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">
+                        <div className="bg-zinc-900 p-4 border-b-2 border-zinc-900 text-white">
                             <h2 className="text-xl font-black uppercase tracking-tight font-display text-accent">Customer</h2>
                         </div>
                         <div className="p-6 space-y-4">

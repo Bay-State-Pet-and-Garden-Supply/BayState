@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 export default function AddProductPage() {
   return (
     <div className="max-w-2xl mx-auto">
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Add New Product</CardTitle>
         </CardHeader>

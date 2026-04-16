@@ -187,7 +187,7 @@ export function ScraperNetworkDashboard() {
 
       {/* Network Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Runners</CardTitle>
             <Server className="h-4 w-4 text-muted-foreground" />
@@ -196,7 +196,7 @@ export function ScraperNetworkDashboard() {
             <div className="text-2xl font-bold">{stats.totalRunners}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Online</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
@@ -205,7 +205,7 @@ export function ScraperNetworkDashboard() {
             <div className="text-2xl font-bold text-green-600">{stats.online}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Busy</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -214,7 +214,7 @@ export function ScraperNetworkDashboard() {
             <div className="text-2xl font-bold text-yellow-600">{stats.busy}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Disabled</CardTitle>
             <ShieldAlert className="h-4 w-4 text-orange-500" />
@@ -223,7 +223,7 @@ export function ScraperNetworkDashboard() {
             <div className="text-2xl font-bold text-orange-600">{stats.disabled}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Offline</CardTitle>
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
@@ -237,7 +237,7 @@ export function ScraperNetworkDashboard() {
       <SetupGuide />
 
       {/* Runner Status Distribution */}
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Network Status</CardTitle>
           <CardDescription>
@@ -250,7 +250,7 @@ export function ScraperNetworkDashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="h-2 w-2 rounded-none bg-green-500" />
                     Online
                   </span>
                   <span>
@@ -265,7 +265,7 @@ export function ScraperNetworkDashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                    <span className="h-2 w-2 rounded-none bg-yellow-500" />
                     Busy
                   </span>
                   <span>
@@ -280,7 +280,7 @@ export function ScraperNetworkDashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-orange-400" />
+                    <span className="h-2 w-2 rounded-none bg-orange-400" />
                     Disabled
                   </span>
                   <span>
@@ -295,7 +295,7 @@ export function ScraperNetworkDashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-muted" />
+                    <span className="h-2 w-2 rounded-none bg-muted" />
                     Idle
                   </span>
                   <span>
@@ -310,7 +310,7 @@ export function ScraperNetworkDashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-red-400" />
+                    <span className="h-2 w-2 rounded-none bg-red-400" />
                     Offline
                   </span>
                   <span>
@@ -333,7 +333,7 @@ export function ScraperNetworkDashboard() {
       </Card>
 
       {/* Runner List */}
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Active Runners</CardTitle>
           <CardDescription>
@@ -344,25 +344,9 @@ export function ScraperNetworkDashboard() {
           {runnersArray.length > 0 ? (
             <div className="space-y-4">
               {runnersArray.map((runner) => (
-                <Link
-                  key={runner.runner_id}
-                  href={`/admin/scrapers/network/${runner.runner_id}`}
-                  className={`flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
-                    runner.enabled === false ? "opacity-60 bg-muted/30" : ""
-                  }`}
-                >
+                <Link className={`flex items-center justify-between rounded-none border p-4 hover:bg-muted/50 transition-colors cursor-pointer ${ runner.enabled === false ? "opacity-60 bg-muted/30" : "" }`} key={runner.runner_id} href={`/admin/scrapers/network/${runner.runner_id}`}>
                   <div className="flex items-center gap-4">
-                    <div
-                      className={`h-3 w-3 rounded-full ${
-                        runner.status === "online"
-                          ? "bg-green-500"
-                          : runner.status === "busy"
-                            ? "bg-yellow-500"
-                            : runner.status === "idle"
-                              ? "bg-muted"
-                              : "bg-red-400"
-                      }`}
-                    />
+                    <div className={`h-3 w-3 rounded-none ${ runner.status === "online" ? "bg-green-500" : runner.status === "busy" ? "bg-yellow-500" : runner.status === "idle" ? "bg-muted" : "bg-red-400" }`} />
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{runner.runner_name}</p>
@@ -435,7 +419,7 @@ export function ScraperNetworkDashboard() {
 
           {createdApiKey ? (
             <div className="space-y-4">
-              <div className="rounded-lg bg-muted p-4 space-y-3">
+              <div className="rounded-none bg-muted p-4 space-y-3">
                 <div>
                   <Label className="text-xs text-muted-foreground">Runner Name</Label>
                   <p className="font-medium">{createdRunnerName}</p>
@@ -443,7 +427,7 @@ export function ScraperNetworkDashboard() {
                 <div>
                   <Label className="text-xs text-muted-foreground">API Key</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="flex-1 rounded bg-background px-2 py-1 text-xs font-mono break-all">
+                    <code className="flex-1 rounded-none bg-background px-2 py-1 text-xs font-mono break-all">
                       {createdApiKey}
                     </code>
                     <Button size="sm" variant="outline" onClick={copyApiKey}>
@@ -455,10 +439,10 @@ export function ScraperNetworkDashboard() {
               <p className="text-sm text-muted-foreground">
                 Use this API key to authenticate your runner. Store it securely.
               </p>
-              <div className="rounded-lg bg-muted p-4 space-y-2">
+              <div className="rounded-none bg-muted p-4 space-y-2">
                 <Label className="text-xs text-muted-foreground">One-line installer</Label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 rounded bg-background px-2 py-1 text-xs font-mono break-all">
+                  <code className="flex-1 rounded-none bg-background px-2 py-1 text-xs font-mono break-all">
                     {installCommand}
                   </code>
                   <Button size="sm" variant="outline" onClick={copyInstallCommand}>

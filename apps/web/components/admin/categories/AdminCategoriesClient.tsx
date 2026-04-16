@@ -147,7 +147,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
         return (
             <div key={node.id}>
                 <div
-                    className={`flex items-center gap-2 rounded-lg border bg-card p-3 hover:bg-muted ${depth > 0 ? 'ml-6 border-l-4 border-l-gray-200' : ''
+                    className={`flex items-center gap-2 rounded-lg border bg-card p-3 hover:bg-muted ${depth > 0 ? 'ml-6 border-l-2 border-l-gray-200' : ''
                         }`}
                     style={{ marginLeft: depth > 0 ? `${depth * 24}px` : 0 }}
                 >

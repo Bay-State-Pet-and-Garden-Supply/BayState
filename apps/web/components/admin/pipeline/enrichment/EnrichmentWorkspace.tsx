@@ -369,7 +369,7 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                 />
               ) : (
                 <div className="space-y-6">
-                  <div className="rounded-lg border-2 border-dashed border-border bg-muted p-8 text-center">
+                  <div className="rounded-lg border border-dashed border-border bg-muted p-8 text-center">
                     {isBatchMode ? (
                       <>
                         <Package className="mx-auto h-12 w-12 text-muted-foreground" />

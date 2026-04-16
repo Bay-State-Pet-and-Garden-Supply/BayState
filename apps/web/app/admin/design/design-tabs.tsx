@@ -35,10 +35,10 @@ function ComingSoonTab({ tabId }: { tabId: TabId }) {
     const tabLabel = tabs.find(t => t.id === tabId)?.label || 'This section';
     
     return (
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-none bg-muted">
                         <Clock className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
@@ -51,7 +51,7 @@ function ComingSoonTab({ tabId }: { tabId: TabId }) {
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="rounded-full bg-muted p-4 mb-4">
+                    <div className="rounded-none bg-muted p-4 mb-4">
                         <Clock className="h-8 w-8 text-muted-foreground" />
                     </div>
                     <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
@@ -82,7 +82,7 @@ export function DesignTabs({
                             onClick={() => tab.available && setActiveTab(tab.id)}
                             disabled={!tab.available}
                             className={`
-                                flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors
+                                flex items-center gap-2 border-b px-1 py-3 text-sm font-medium transition-colors
                                 ${activeTab === tab.id
                                     ? 'border-primary text-primary'
                                     : tab.available
@@ -94,7 +94,7 @@ export function DesignTabs({
                             {tab.icon}
                             {tab.label}
                             {!tab.available && (
-                                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded">Soon</span>
+                                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-none">Soon</span>
                             )}
                         </button>
                     ))}

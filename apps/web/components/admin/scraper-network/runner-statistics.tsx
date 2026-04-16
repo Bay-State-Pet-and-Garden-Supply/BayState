@@ -121,7 +121,7 @@ export function RunnerStatistics({ runnerId, runnerName, stats }: RunnerStatisti
           <CardTitle>Performance Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[200px] flex items-center justify-center border-2 border-dashed border-muted-foreground/20 rounded-lg">
+          <div className="h-[200px] flex items-center justify-center border border-dashed border-muted-foreground/20 rounded-lg">
             <div className="text-center text-muted-foreground">
               <p className="font-medium">Performance Chart</p>
               <p className="text-sm">Runs per day, success rate over time</p>

@@ -50,14 +50,14 @@ function LinkList({ title, description, links, onUpdate }: LinkListProps) {
             </div>
 
             {links.length === 0 && (
-                <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                <div className="rounded-none border border-dashed p-6 text-center text-muted-foreground">
                     No links configured. Add your first link!
                 </div>
             )}
 
             <div className="space-y-2">
                 {links.map((link, index) => (
-                    <div key={index} className="flex items-center gap-2 rounded-lg border p-3">
+                    <div key={index} className="flex items-center gap-2 rounded-none border p-3">
                         <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
                         <Input
                             value={link.label}
@@ -124,10 +124,10 @@ export function NavigationTab({ initialSettings }: NavigationTabProps) {
 
     return (
         <form action={handleSubmit} className="space-y-6">
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-indigo-100">
                             <Navigation className="h-5 w-5 text-indigo-600" />
                         </div>
                         <div>
@@ -176,7 +176,7 @@ export function NavigationTab({ initialSettings }: NavigationTabProps) {
             </Card>
 
             <div className="sticky bottom-4 flex justify-end">
-                <Button type="submit" size="lg" disabled={isSaving} className="shadow-lg">
+                <Button type="submit" size="lg" disabled={isSaving} className="shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                     <Save className="mr-2 h-4 w-4" />
                     {isSaving ? 'Saving...' : 'Save Navigation Settings'}
                 </Button>

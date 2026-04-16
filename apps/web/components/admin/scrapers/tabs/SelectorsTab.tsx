@@ -64,7 +64,7 @@ export function SelectorsTab() {
         </CardHeader>
         <CardContent>
           {fields.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+            <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
               No selectors defined. Click &quot;Add Selector&quot; to create one.
             </div>
           ) : (

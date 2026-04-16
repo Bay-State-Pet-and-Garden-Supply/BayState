@@ -146,7 +146,7 @@ export function StepTrace({ steps, testRunId, configId, onRetryStep, isRetrying 
             return (
               <div key={step.id} className="relative flex gap-4">
                 <div className="relative z-10 flex-shrink-0">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 bg-card ${
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border bg-card ${
                     step.status === 'completed' ? 'border-green-500 bg-green-50' :
                     step.status === 'failed' ? 'border-red-500 bg-red-50' :
                     step.status === 'running' ? 'border-blue-500 bg-blue-50' :

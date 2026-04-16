@@ -80,7 +80,7 @@ export function ConflictResolutionCard({
           <label
             key={option.sourceId}
             className={`
-              relative flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all
+              relative flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all
               ${selectedSourceId === option.sourceId
                 ? 'border-primary bg-green-50/30'
                 : 'border-border hover:border-border hover:bg-muted'

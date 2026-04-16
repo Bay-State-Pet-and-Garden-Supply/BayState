@@ -36,8 +36,8 @@ export default async function ProfilePage() {
                 <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
             </div>
 
-            <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(59,130,246,1)]">
-                <div className="bg-blue-600 p-4 border-b-4 border-zinc-900 text-white flex items-center justify-between">
+            <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(59,130,246,1)]">
+                <div className="bg-blue-600 p-4 border-b-2 border-zinc-900 text-white flex items-center justify-between">
                     <div className="flex flex-col">
                         <h2 className="text-2xl font-black uppercase tracking-tight font-display">Personal Information</h2>
                         <p className="text-xs font-bold uppercase tracking-widest text-blue-100">Update your name and contact details.</p>

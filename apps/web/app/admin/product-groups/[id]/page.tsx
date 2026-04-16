@@ -54,13 +54,13 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Group Info */}
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>{group.name}</CardTitle>
                   <CardDescription className="mt-1">
-                    <code className="bg-muted px-1 rounded text-sm">/products/{group.slug}</code>
+                    <code className="bg-muted px-1 rounded-none text-sm">/products/{group.slug}</code>
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
                     id="description"
                     name="description"
                     defaultValue={group.description || ''}
-                    className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="min-h-[80px] w-full rounded-none border border-input bg-background px-3 py-2 text-sm"
                   />
                 </div>
 
@@ -123,7 +123,7 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
                     id="is_active"
                     name="is_active"
                     defaultChecked={group.is_active}
-                    className="h-4 w-4 rounded border-border"
+                    className="h-4 w-4 rounded-none border-border"
                   />
                   <Label htmlFor="is_active" className="text-sm font-normal">
                     Active
@@ -141,7 +141,7 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
         {/* Members Management */}
         <div className="space-y-6">
           {/* Current Members */}
-          <Card>
+          <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
               <CardTitle className="text-lg">Products in Group</CardTitle>
               <CardDescription>
@@ -160,7 +160,7 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
                     if (!product) return null
 
                     return (
-                      <li key={product.id as string} className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded">
+                      <li key={product.id as string} className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded-none">
                         <div className="flex items-center gap-2">
                           {(member.is_default as boolean) && (
                             <Star className="h-4 w-4 text-amber-500" />
@@ -199,7 +199,7 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
           </Card>
 
           {/* Add Products */}
-          <Card>
+          <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
               <CardTitle className="text-lg">Add Products</CardTitle>
               <CardDescription>
@@ -229,7 +229,7 @@ export default async function ProductGroupDetailPage({ params }: ProductGroupDet
                               formData.append('product_id', product.id)
                               await addProductToGroup(formData)
                             }}
-                            className="flex items-center justify-between p-2 hover:bg-muted/50 rounded group"
+                            className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-none group"
                           >
                             <span className="text-sm truncate flex-1">{product.name}</span>
                             <Button

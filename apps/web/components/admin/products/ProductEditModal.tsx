@@ -632,7 +632,7 @@ export function ProductEditModal({
                                                         </Alert>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-border/50 rounded-xl bg-muted/10">
+                                                    <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-border/50 rounded-xl bg-muted/10">
                                                         <div className="flex size-16 items-center justify-center rounded-full bg-muted/50 mb-4">
                                                             <ImageIcon className="size-8 text-muted-foreground/50" />
                                                         </div>

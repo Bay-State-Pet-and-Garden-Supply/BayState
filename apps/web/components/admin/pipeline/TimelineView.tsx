@@ -24,11 +24,11 @@ interface TimelineViewProps {
 }
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  pending: 'bg-muted',
-  running: 'bg-blue-500',
-  completed: 'bg-green-500',
-  failed: 'bg-red-500',
-  cancelled: 'bg-gray-500',
+  pending: 'bg-brand-gold',
+  running: 'bg-blue-600',
+  completed: 'bg-brand-forest-green',
+  failed: 'bg-brand-burgundy',
+  cancelled: 'bg-zinc-500',
 };
 
 const TIME_RANGE_MS: Record<TimeRange, number> = {
@@ -87,26 +87,29 @@ export function TimelineView({
                 variant={timeRange === range ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onTimeRangeChange?.(range)}
+                className="h-8 text-[10px]"
               >
                 {range}
               </Button>
             ))}
           </div>
           {jobs.length > 50 && (
-            <Badge variant="secondary">Showing 50 of {jobs.length} jobs</Badge>
+            <Badge variant="secondary" className="rounded-none border border-zinc-950 font-black uppercase tracking-tighter">
+              Showing 50 of {jobs.length} jobs
+            </Badge>
           )}
         </div>
 
-        <div className="relative overflow-x-auto rounded-lg border">
+        <div className="relative overflow-x-auto rounded-none border-2 border-zinc-950 bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]">
           <div className="min-w-[600px]">
-            <div className="border-b bg-muted/50 px-4 py-2">
+            <div className="border-b-2 border-zinc-950 bg-zinc-50 px-4 py-2">
               <div className="grid grid-cols-[200px_1fr] gap-4">
-                <span className="text-sm font-medium">Job</span>
+                <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Job</span>
                 <div className="relative h-6">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <div
                       key={i}
-                      className="absolute top-0 text-xs text-muted-foreground"
+                      className="absolute top-0 text-[10px] font-black uppercase tracking-tighter text-zinc-400"
                       style={{ left: `${i * 25}%` }}
                     >
                       {formatDuration(timeRangeMs - (i * timeRangeMs) / 4)}
@@ -116,7 +119,7 @@ export function TimelineView({
               </div>
             </div>
 
-            <div className="divide-y">
+            <div className="divide-y-2 divide-zinc-950/5">
               {filteredJobs.map((job) => {
                 const pos = getJobPosition(job);
                 const isHovered = hoveredJob === job.id;
@@ -125,20 +128,20 @@ export function TimelineView({
                   <Tooltip key={job.id}>
                     <TooltipTrigger asChild>
                       <div
-                        className="grid cursor-pointer grid-cols-[200px_1fr] gap-4 px-4 py-3 hover:bg-muted/50"
+                        className="grid cursor-pointer grid-cols-[200px_1fr] gap-4 px-4 py-3 hover:bg-zinc-50 transition-colors"
                         onClick={() => onJobClick?.(job)}
                         onMouseEnter={() => setHoveredJob(job.id)}
                         onMouseLeave={() => setHoveredJob(null)}
                       >
-                        <div className="truncate text-sm font-medium">
+                        <div className="truncate text-xs font-bold text-zinc-900">
                           {job.name}
                         </div>
                         <div className="relative h-6">
                           <div
                             className={cn(
-                              'absolute h-5 rounded transition-all',
+                              'absolute h-5 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-all',
                               STATUS_COLORS[job.status],
-                              isHovered && 'ring-2 ring-primary ring-offset-2'
+                              isHovered && 'ring-2 ring-zinc-950 ring-offset-2'
                             )}
                             style={{
                               left: `${pos.left}%`,
@@ -148,23 +151,27 @@ export function TimelineView({
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <div className="space-y-1">
-                        <p className="font-medium">{job.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Status: {job.status}
-                        </p>
-                        {job.runner && (
-                          <p className="text-xs text-muted-foreground">
-                            Runner: {job.runner}
+                    <TooltipContent side="right" className="rounded-none border-2 border-zinc-950 bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                      <div className="space-y-1.5">
+                        <p className="font-black uppercase tracking-tighter text-zinc-950">{job.name}</p>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+                            Status: <span className="text-zinc-950">{job.status}</span>
                           </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Duration:{' '}
-                          {formatDuration(
-                            (job.endTime?.getTime() || now) - job.startTime.getTime()
+                          {job.runner && (
+                            <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+                              Runner: <span className="text-zinc-950">{job.runner}</span>
+                            </p>
                           )}
-                        </p>
+                          <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+                            Duration:{' '}
+                            <span className="text-zinc-950">
+                              {formatDuration(
+                                (job.endTime?.getTime() || now) - job.startTime.getTime()
+                              )}
+                            </span>
+                          </p>
+                        </div>
                       </div>
                     </TooltipContent>
                   </Tooltip>

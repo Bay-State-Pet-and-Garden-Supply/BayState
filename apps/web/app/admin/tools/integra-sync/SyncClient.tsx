@@ -57,7 +57,7 @@ export function SyncClient() {
 
     return (
         <div className="space-y-6">
-            <Card>
+            <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
                     <CardTitle>Integra Export Analysis</CardTitle>
                     <CardDescription>
@@ -105,7 +105,7 @@ export function SyncClient() {
 
             {analysis && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="border-blue-100 bg-blue-50/30">
+                    <Card className="border border-zinc-950 rounded-none">
                         <CardHeader className="pb-2">
                             <CardDescription>Total in File</CardDescription>
                             <CardTitle className="text-3xl">{analysis.totalInFile}</CardTitle>
@@ -115,7 +115,7 @@ export function SyncClient() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-green-100 bg-green-50/30">
+                    <Card className="border border-zinc-950 rounded-none">
                         <CardHeader className="pb-2">
                             <CardDescription>Existing on Website</CardDescription>
                             <CardTitle className="text-3xl text-green-700">{analysis.existingOnWebsite}</CardTitle>
@@ -125,7 +125,7 @@ export function SyncClient() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-orange-100 bg-orange-50/30">
+                    <Card className="border border-zinc-950 rounded-none">
                         <CardHeader className="pb-2">
                             <CardDescription>New Products</CardDescription>
                             <CardTitle className="text-3xl text-orange-700">{analysis.newProducts.length}</CardTitle>
@@ -136,7 +136,7 @@ export function SyncClient() {
                     </Card>
 
                     {analysis.newProducts.length > 0 && (
-                        <Card className="md:col-span-3 border-orange-200">
+                        <Card className="border border-zinc-950 rounded-none">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
                                     <CardTitle>Ready for Onboarding</CardTitle>
@@ -161,7 +161,7 @@ export function SyncClient() {
                                 </Button>
                             </CardHeader>
                             <CardContent>
-                                <div className="max-h-96 overflow-auto rounded-md border border-border">
+                                <div className="max-h-96 overflow-auto rounded-none border border-border">
                                     <table className="w-full text-sm">
                                         <thead className="bg-muted sticky top-0">
                                             <tr>
@@ -193,7 +193,7 @@ export function SyncClient() {
                     )}
 
                     {analysis.newProducts.length === 0 && (
-                        <Card className="md:col-span-3 border-green-200 bg-green-50/20">
+                        <Card className="border border-zinc-950 rounded-none">
                             <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
                                 <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
                                 <h3 className="text-xl font-semibold text-green-900">All products are up to date!</h3>

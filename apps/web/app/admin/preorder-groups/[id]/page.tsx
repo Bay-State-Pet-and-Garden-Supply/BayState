@@ -48,7 +48,7 @@ export default async function PreorderGroupDetailPage({
       </Link>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader>
             <CardTitle>Group Settings</CardTitle>
           </CardHeader>
@@ -81,7 +81,7 @@ export default async function PreorderGroupDetailPage({
                   id="description"
                   name="description"
                   defaultValue={group.description || ''}
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                  className="flex min-h-[80px] w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                 />
               </div>
 
@@ -103,7 +103,7 @@ export default async function PreorderGroupDetailPage({
                   id="display_copy"
                   name="display_copy"
                   defaultValue={group.display_copy || ''}
-                  className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                  className="flex min-h-[60px] w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                 />
               </div>
 
@@ -131,7 +131,7 @@ export default async function PreorderGroupDetailPage({
         </Card>
 
         <div className="space-y-6">
-          <Card>
+          <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
               <CardTitle>Arrival Batches</CardTitle>
             </CardHeader>
@@ -191,7 +191,7 @@ export default async function PreorderGroupDetailPage({
                   {batches.map((batch) => (
                     <div
                       key={batch.id}
-                      className="flex items-center justify-between p-3 rounded-lg border"
+                      className="flex items-center justify-between p-3 rounded-none border"
                     >
                       <div>
                         <p className="font-medium">
@@ -216,7 +216,7 @@ export default async function PreorderGroupDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
               <CardTitle>Summary</CardTitle>
             </CardHeader>

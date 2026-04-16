@@ -12,6 +12,7 @@ import {
   Save,
   CheckCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -143,15 +144,21 @@ function AISettingsDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="font-semibold">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-none border-2 border-zinc-950 font-black uppercase text-[10px] h-8 shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+        >
           <Settings className="mr-2 h-4 w-4" />
           AI Config
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] rounded-lg shadow-lg border-border">
+      <DialogContent className="sm:max-w-[425px] rounded-none border-2 border-zinc-950 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)]">
         <DialogHeader>
-          <DialogTitle className="font-bold text-xl text-foreground">Consolidation Engine</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogTitle className="font-black uppercase tracking-tighter text-xl text-foreground">
+            Consolidation Engine
+          </DialogTitle>
+          <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground">
             Configure OpenAI credentials and model parameters.
           </DialogDescription>
         </DialogHeader>
@@ -159,24 +166,33 @@ function AISettingsDialog() {
         <div className="grid gap-6 py-4">
           {/* API Key Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-border pb-1.5">
+            <div className="flex items-center gap-2 border-b-2 border-zinc-950 pb-1.5">
               <Key className="h-4 w-4 text-brand-burgundy" />
-              <h4 className="text-xs font-bold">OpenAI API Key</h4>
+              <h4 className="text-xs font-black uppercase tracking-tighter">
+                OpenAI API Key
+              </h4>
             </div>
 
-            <div className="rounded-md border border-border bg-muted/30 p-4">
+            <div className="rounded-none border-2 border-zinc-950 bg-muted/30 p-4">
               {settings?.statuses.openai.configured ? (
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-green-600">
+                  <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-green-600">
                     <CheckCircle className="h-3.5 w-3.5" />
-                    <span>Active (Ends in {settings.statuses.openai.last4})</span>
+                    <span>
+                      Active (Ends in {settings.statuses.openai.last4})
+                    </span>
                   </div>
-                  <span className="text-[9px] font-medium text-muted-foreground">
-                    Refreshed {settings.statuses.openai.updated_at ? new Date(settings.statuses.openai.updated_at).toLocaleDateString() : 'N/A'}
+                  <span className="text-[9px] font-black uppercase text-muted-foreground">
+                    Refreshed{" "}
+                    {settings.statuses.openai.updated_at
+                      ? new Date(
+                          settings.statuses.openai.updated_at,
+                        ).toLocaleDateString()
+                      : "N/A"}
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-destructive mb-4">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-destructive mb-4">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   <span>Not Configured</span>
                 </div>
@@ -188,12 +204,12 @@ function AISettingsDialog() {
                   placeholder="sk-..."
                   value={openaiKey}
                   onChange={(e) => setOpenaiKey(e.target.value)}
-                  className="h-9 text-xs"
+                  className="h-9 text-xs rounded-none border-2 border-zinc-950"
                 />
                 <Button
                   size="sm"
                   variant="default"
-                  className="h-9 px-4 text-xs font-bold"
+                  className="h-9 px-4 text-xs font-black uppercase rounded-none border-2 border-zinc-950 bg-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
                   onClick={handleSaveKey}
                   disabled={saving || !openaiKey}
                 >
@@ -205,17 +221,24 @@ function AISettingsDialog() {
 
           {/* Model Selection Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-border pb-1.5">
+            <div className="flex items-center gap-2 border-b-2 border-zinc-950 pb-1.5">
               <LayoutGrid className="h-4 w-4 text-brand-burgundy" />
-              <h4 className="text-xs font-bold">Model Parameters</h4>
+              <h4 className="text-xs font-black uppercase tracking-tighter">
+                Model Parameters
+              </h4>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="model" className="text-[10px] font-bold text-muted-foreground">LLM Model</Label>
+                <Label
+                  htmlFor="model"
+                  className="text-[10px] font-black uppercase text-muted-foreground"
+                >
+                  LLM Model
+                </Label>
                 <select
                   id="model"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs font-medium shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex h-9 w-full rounded-none border-2 border-zinc-950 bg-transparent px-3 py-1 text-xs font-black uppercase focus-visible:outline-none focus-visible:ring-0"
                   value={settings?.defaults.llm_model || DEFAULT_AI_MODEL}
                   onChange={(e) =>
                     setSettings((prev) =>
@@ -223,11 +246,13 @@ function AISettingsDialog() {
                         ? {
                             ...prev,
                             defaults: {
-                            ...prev.defaults,
-                              llm_model: e.target.value as "gpt-4o-mini" | "gpt-4o",
+                              ...prev.defaults,
+                              llm_model: e.target.value as
+                                | "gpt-4o-mini"
+                                | "gpt-4o",
                             },
                           }
-                        : null
+                        : null,
                     )
                   }
                 >
@@ -237,14 +262,19 @@ function AISettingsDialog() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="confidence" className="text-[10px] font-bold text-muted-foreground">Min Confidence</Label>
+                <Label
+                  htmlFor="confidence"
+                  className="text-[10px] font-black uppercase text-muted-foreground"
+                >
+                  Min Confidence
+                </Label>
                 <Input
                   id="confidence"
                   type="number"
                   step="0.05"
                   min="0"
                   max="1"
-                  className="h-9 text-xs font-medium"
+                  className="h-9 text-xs font-black uppercase rounded-none border-2 border-zinc-950"
                   value={settings?.defaults.confidence_threshold || 0.7}
                   onChange={(e) =>
                     setSettings((prev) =>
@@ -256,7 +286,7 @@ function AISettingsDialog() {
                               confidence_threshold: parseFloat(e.target.value),
                             },
                           }
-                        : null
+                        : null,
                     )
                   }
                 />
@@ -264,7 +294,7 @@ function AISettingsDialog() {
             </div>
 
             <Button
-              className="w-full h-10 bg-brand-gold hover:bg-brand-gold/90 text-zinc-900 font-bold"
+              className="w-full h-12 bg-brand-gold hover:bg-brand-gold/90 text-zinc-900 font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
               onClick={handleSaveDefaults}
               disabled={saving || !settings}
             >
@@ -292,7 +322,9 @@ export function ActiveConsolidationsTab({
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
-  const [pendingCancelBatchId, setPendingCancelBatchId] = useState<string | null>(null);
+  const [pendingCancelBatchId, setPendingCancelBatchId] = useState<
+    string | null
+  >(null);
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
@@ -306,12 +338,12 @@ export function ActiveConsolidationsTab({
       const data = await response.json();
       const activeJobs = data.jobs || [];
       setJobs(activeJobs);
-      
+
       // If no active jobs, show history automatically
       if (activeJobs.length === 0) {
         setShowHistory(true);
       }
-      
+
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -462,68 +494,56 @@ export function ActiveConsolidationsTab({
   if (error) {
     return (
       <div
-        className={`rounded-lg border border-destructive/20 bg-destructive/5 p-6 ${className}`}
+        className={`rounded-none border-2 border-destructive bg-destructive/5 p-6 ${className}`}
       >
-        <p className="text-sm font-semibold text-destructive tracking-tight">Sync Failure: {error}</p>
+        <p className="text-sm font-black uppercase text-destructive tracking-tight">
+          Sync Failure: {error}
+        </p>
       </div>
     );
   }
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-muted rounded-md p-2 text-foreground">
-            <LayoutGrid className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-bold text-xl text-foreground leading-tight">Consolidation Queue</h2>
-            {jobs.length > 0 && (
-              <span className="text-[10px] font-bold text-muted-foreground">
-                {jobs.length} Active Process{jobs.length !== 1 ? "es" : ""}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <AISettingsDialog />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSyncAll}
-            disabled={syncingAll}
-            className="font-semibold h-8"
-          >
-            <RefreshCw
-              className={`mr-2 h-3.5 w-3.5 ${syncingAll ? "animate-spin" : ""}`}
-            />
-            Status Sync
-          </Button>
-          <Button
-            variant={showHistory ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => {
-              setShowHistory(!showHistory);
-              if (!showHistory) fetchHistory();
-            }}
-            className="font-semibold h-8"
-          >
-            <History className="mr-2 h-3.5 w-3.5" />
-            Archive
-          </Button>
-        </div>
+      <div className="flex justify-end gap-2 border-b-2 border-zinc-950 pb-4">
+        <AISettingsDialog />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSyncAll}
+          disabled={syncingAll}
+          className="rounded-none border-2 border-zinc-950 font-black uppercase text-[10px] h-8 shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+        >
+          <RefreshCw
+            className={`mr-2 h-3.5 w-3.5 ${syncingAll ? "animate-spin" : ""}`}
+          />
+          Status Sync
+        </Button>
+        <Button
+          variant={showHistory ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => {
+            setShowHistory(!showHistory);
+            if (!showHistory) fetchHistory();
+          }}
+          className={cn(
+            "rounded-none border-2 border-zinc-950 font-black uppercase text-[10px] h-8 shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all",
+            showHistory ? "bg-zinc-950 text-white" : "bg-white text-zinc-950",
+          )}
+        >
+          <History className="mr-2 h-3.5 w-3.5" />
+          Archive
+        </Button>
       </div>
 
       {/* Active Jobs */}
       {jobs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-muted rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-zinc-950 rounded-none">
           <LayoutGrid className="h-12 w-12 text-muted-foreground/30 mb-4" />
-          <h3 className="text-lg font-bold text-muted-foreground">
+          <h3 className="text-lg font-black uppercase tracking-tighter text-muted-foreground">
             Queue Empty
           </h3>
-          <p className="text-xs font-medium text-muted-foreground/60 tracking-tight mt-1">
+          <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-tight mt-1">
             No active consolidation jobs detected
           </p>
         </div>
@@ -554,7 +574,6 @@ export function ActiveConsolidationsTab({
           />
         </div>
       )}
-
 
       <ConfirmationDialog
         open={confirmCancelOpen}

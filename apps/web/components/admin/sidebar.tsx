@@ -193,12 +193,12 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
   return (
     <aside
       className={cn(
-        "relative flex h-full flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out border-r border-sidebar-border/20 shadow-xl z-50",
-        collapsed ? "w-[80px]" : "w-[200px]",
+        "relative flex h-full flex-col bg-brand-forest-green text-white transition-all duration-300 ease-in-out border-r-2 border-zinc-950 z-50",
+        collapsed ? "w-[80px]" : "w-[240px]",
       )}
     >
       {/* Header */}
-      <div className="flex h-20 items-center px-4 mb-2">
+      <div className="flex h-20 items-center px-4 mb-2 border-b-2 border-zinc-950 bg-brand-forest-green">
         <div
           className={cn(
             "flex items-center gap-2.5 transition-opacity duration-300",
@@ -207,7 +207,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
               : "opacity-100 visible w-full",
           )}
         >
-          <div className="bg-card/10 p-1.5 rounded-lg shadow-inner border border-white/20 shrink-0">
+          <div className="bg-brand-gold p-1.5 rounded-none border border-zinc-950 shrink-0 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <Image
               src="/icon.png"
               alt="Bay State app icon"
@@ -217,10 +217,10 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
             />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold tracking-tight text-white leading-tight truncate">
+            <h1 className="text-sm font-black uppercase tracking-tighter text-white leading-tight truncate">
               Bay State
             </h1>
-            <p className="text-[9px] font-medium uppercase tracking-wider text-white/50 truncate">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-brand-gold truncate">
               Admin Control
             </p>
           </div>
@@ -242,15 +242,15 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           type="button"
           onClick={toggleCollapsed}
           className={cn(
-            "absolute -right-3 top-1/2 -translate-y-1/2 z-50 flex h-6 w-6 items-center justify-center rounded-full bg-sidebar border border-sidebar-border/30 text-sidebar-foreground shadow-lg hover:scale-110 transition-transform active:scale-95 cursor-pointer",
-            collapsed && "right-[-12px]",
+            "absolute -right-4 top-1/2 -translate-y-1/2 z-50 flex h-8 w-8 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 text-brand-burgundy shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-brand-gold/90 transition-colors duration-150 active:scale-95 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-forest-green",
+            collapsed && "right-[-16px]",
           )}
           aria-label={collapsed ? "Expand" : "Collapse"}
         >
           {collapsed ? (
-            <ChevronRight className="h-3 w-3" />
+            <ChevronRight className="h-4 w-4" />
           ) : (
-            <ChevronLeft className="h-3 w-3" />
+            <ChevronLeft className="h-4 w-4" />
           )}
         </button>
       </div>
@@ -258,23 +258,26 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
       {/* Navigation */}
       <nav
         className={cn(
-          "flex-1 space-y-6 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-4",
+          "flex-1 space-y-6 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-brand-gold/20 scrollbar-track-transparent py-4",
           collapsed ? "px-4" : "px-4",
         )}
       >
         <TooltipProvider delayDuration={0}>
           {visibleSections.map((section) => (
-            <div key={section.title ?? section.items[0]?.href ?? "section"} className="space-y-1.5">
+            <div
+              key={section.title ?? section.items[0]?.href ?? "section"}
+              className="space-y-2"
+            >
               {section.title && !collapsed && (
-                <h2 className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white/40 truncate">
+                <h2 className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white/60 truncate">
                   {section.title}
                 </h2>
               )}
               {section.title && collapsed && (
-                <div className="h-px bg-card/10 mx-2 my-4" />
+                <div className="h-0.5 bg-white/10 mx-2 my-4" />
               )}
 
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive =
@@ -286,28 +289,25 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                       href={item.href}
                       aria-label={item.label}
                       className={cn(
-                        "group relative flex items-center rounded-lg px-3 py-2 transition-all duration-200",
+                        "group relative flex items-center rounded-none px-3 py-2.5 transition-all duration-200 border",
                         collapsed ? "justify-center" : "gap-2.5",
                         isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-1 ring-white/20 font-bold"
-                          : "text-white/70 hover:bg-white/10 hover:text-white",
+                          ? "bg-brand-gold text-brand-burgundy border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase"
+                          : "text-white/80 border-transparent hover:bg-white/10 hover:text-white font-bold uppercase",
                       )}
                     >
                       <Icon
                         className={cn(
                           "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
                           isActive
-                            ? "text-accent"
+                            ? "text-brand-burgundy"
                             : "text-white/60 group-hover:text-white",
                         )}
                       />
                       {!collapsed && (
-                        <span className="text-xs font-medium tracking-wide truncate">
+                        <span className="text-xs tracking-tight truncate">
                           {item.label}
                         </span>
-                      )}
-                      {isActive && !collapsed && (
-                        <div className="absolute right-2 h-1 w-1 rounded-full bg-accent shadow-[0_0_8px_var(--sidebar-accent-foreground)]" />
                       )}
                     </Link>
                   );
@@ -319,7 +319,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                         <TooltipContent
                           side="right"
                           sideOffset={20}
-                          className="bg-sidebar-accent border-sidebar-border/30 text-sidebar-accent-foreground font-medium px-4 py-2 text-xs shadow-xl"
+                          className="bg-brand-gold border border-zinc-950 text-brand-burgundy font-black uppercase px-4 py-2 text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] rounded-none"
                         >
                           {item.label}
                         </TooltipContent>
@@ -336,7 +336,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
       </nav>
 
       {/* Footer / User Profile */}
-      <div className="mt-auto p-3 border-t border-white/10 bg-black/5">
+      <div className="mt-auto p-3 border-t-2 border-zinc-950 bg-brand-forest-green/80">
         <div
           className={cn(
             "flex items-center",
@@ -344,30 +344,27 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           )}
         >
           <div className="relative shrink-0">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center border border-white/20 shadow-lg">
-              <User className="h-4 w-4 text-white" />
-            </div>
-            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-brand-forest-green border-2 border-sidebar flex items-center justify-center">
-              <div className="h-1 w-1 rounded-full bg-card animate-pulse" />
+            <div className="h-10 w-10 rounded-none bg-brand-gold flex items-center justify-center border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+              <User className="h-5 w-5 text-brand-burgundy" />
             </div>
           </div>
 
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate leading-tight">
+              <p className="text-xs font-black uppercase text-white truncate leading-tight">
                 Staff Account
               </p>
               <div className="flex items-center gap-1 mt-0.5">
                 <ShieldCheck
                   className={cn(
                     "h-2.5 w-2.5",
-                    isAdmin ? "text-accent" : "text-white/40",
+                    isAdmin ? "text-brand-gold" : "text-white/60",
                   )}
                 />
                 <span
                   className={cn(
-                    "text-[9px] font-bold uppercase tracking-wider truncate",
-                    isAdmin ? "text-accent" : "text-white/40",
+                    "text-[9px] font-black uppercase tracking-widest truncate",
+                    isAdmin ? "text-brand-gold" : "text-white/60",
                   )}
                 >
                   {userRole}
@@ -379,18 +376,18 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
 
         <div
           className={cn(
-            "mt-3 flex flex-col gap-0.5",
+            "mt-3 flex flex-col gap-1",
             collapsed ? "items-center" : "",
           )}
         >
           <Link
             href="/"
             className={cn(
-              "flex items-center rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-brand-burgundy/10 hover:text-brand-burgundy",
+              "flex items-center rounded-none px-2.5 py-2 text-[10px] font-black uppercase text-white/60 transition-all border border-transparent hover:border-zinc-950 hover:bg-brand-burgundy hover:text-white hover:shadow-[1px_1px_0px_rgba(0,0,0,1)]",
               collapsed ? "justify-center" : "gap-2.5",
             )}
           >
-            <LogOut className="h-3.5 w-3.5 rotate-180" />
+            <LogOut className="h-4 w-4 rotate-180" />
             {!collapsed && <span className="truncate">Exit Portal</span>}
           </Link>
         </div>

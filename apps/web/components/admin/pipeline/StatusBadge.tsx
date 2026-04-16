@@ -21,9 +21,9 @@ interface StatusBadgeProps {
 }
 
 const sizeConfig = {
-  sm: { badge: "text-[10px] px-1.5 py-0", icon: "size-3" },
-  md: { badge: "text-xs px-2 py-0.5", icon: "size-3.5" },
-  lg: { badge: "text-sm px-2.5 py-1", icon: "size-4" },
+  sm: { badge: "text-[10px] px-1.5 py-0 font-black uppercase tracking-tighter", icon: "size-3" },
+  md: { badge: "text-xs px-2 py-0.5 font-black uppercase tracking-tighter", icon: "size-3.5" },
+  lg: { badge: "text-sm px-2.5 py-1 font-black uppercase tracking-tighter", icon: "size-4" },
 };
 
 const statusConfig: Record<
@@ -48,8 +48,8 @@ const defaultStatusConfig = {
 function PulseDot({ className }: { className?: string }) {
   return (
     <span className={cn("relative flex size-2", className)} aria-hidden="true">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
-      <span className="relative inline-flex size-2 rounded-full bg-current" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-none bg-current opacity-75" />
+      <span className="relative inline-flex size-2 rounded-none bg-current" />
     </span>
   );
 }
@@ -68,14 +68,21 @@ export function StatusBadge({
 
   if (isLoading) {
     return (
-      <span className={cn("animate-pulse rounded-full bg-muted", sizeSettings.badge, className)} aria-hidden="true">
+      <span className={cn("animate-pulse rounded-none bg-muted border-2 border-zinc-950", sizeSettings.badge, className)} aria-hidden="true">
         <span className="invisible">Loading</span>
       </span>
     );
   }
 
   return (
-    <Badge variant={config.variant} className={cn(sizeSettings.badge, "gap-1.5", className)}>
+    <Badge 
+      variant={config.variant} 
+      className={cn(
+        sizeSettings.badge, 
+        "gap-1.5 rounded-none border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", 
+        className
+      )}
+    >
       {(status === "scraping" || status === "consolidating") && (
         <PulseDot className={sizeSettings.icon} />
       )}

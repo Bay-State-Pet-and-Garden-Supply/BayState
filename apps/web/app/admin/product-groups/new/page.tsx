@@ -43,7 +43,7 @@ export default async function NewProductGroupPage() {
         </Link>
       </Button>
 
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle>Create Product Group</CardTitle>
           <CardDescription>
@@ -86,7 +86,7 @@ export default async function NewProductGroupPage() {
                 id="description"
                 name="description"
                 placeholder="Optional description for this product group..."
-                className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="min-h-[100px] w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
 
@@ -108,7 +108,7 @@ export default async function NewProductGroupPage() {
               <select
                 id="brand_id"
                 name="brand_id"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="w-full rounded-none border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">No brand selected</option>
                 {brands?.map((brand) => (
@@ -125,7 +125,7 @@ export default async function NewProductGroupPage() {
                 id="is_active"
                 name="is_active"
                 defaultChecked
-                className="h-4 w-4 rounded border-border"
+                className="h-4 w-4 rounded-none border-border"
               />
               <Label htmlFor="is_active" className="text-sm font-normal">
                 Active (visible on storefront)

@@ -62,7 +62,7 @@ export default async function ServicesPage() {
 
               return (
                 <Link key={service.id} href={`/services/${service.slug}`}>
-                  <Card className="group h-full cursor-pointer border-2 border-dashed border-zinc-200 bg-zinc-50 transition-all hover:border-blue-300 hover:bg-white hover:shadow-lg">
+                  <Card className="group h-full cursor-pointer border border-dashed border-zinc-200 bg-zinc-50 transition-all hover:border-blue-300 hover:bg-white hover:shadow-lg">
                     <CardContent className="flex h-full min-h-[240px] flex-col p-6">
                       {/* Service Badge */}
                       <div className="mb-4">

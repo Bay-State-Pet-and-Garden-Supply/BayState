@@ -81,7 +81,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
             <span>/</span>
             <span className="font-mono">{run.id.slice(0, 8)}...</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#66161D]">Run Details</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[#66161D] font-black uppercase tracking-tight">Run Details</h1>
           <p className="text-sm text-muted-foreground">
             Inspect status, metadata, and live logs for this scrape job.
           </p>
@@ -94,7 +94,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
         </Button>
       </div>
 
-      <Card>
+      <Card className="border border-zinc-950 rounded-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             Job Status
@@ -136,7 +136,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Total SKUs</CardTitle>
           </CardHeader>
@@ -148,7 +148,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Items Found</CardTitle>
           </CardHeader>
@@ -160,7 +160,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Completed At</CardTitle>
           </CardHeader>
@@ -173,7 +173,7 @@ export default async function RunDetailsPage({ params }: RunDetailPageProps) {
       </div>
 
       {run.error_message ? (
-        <Card className="border-destructive/30">
+        <Card className="border border-zinc-950 rounded-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-destructive text-base">Error</CardTitle>
           </CardHeader>

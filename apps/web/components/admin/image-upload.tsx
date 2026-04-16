@@ -120,7 +120,7 @@ export function ImageUpload({
   return (
     <div className="space-y-2">
       <div
-        className={`relative overflow-hidden rounded-lg border-2 border-dashed transition-colors ${
+        className={`relative overflow-hidden rounded-lg border border-dashed transition-colors ${
           dragOver
             ? 'border-purple-500 bg-purple-50'
             : 'border-border bg-muted hover:bg-muted'

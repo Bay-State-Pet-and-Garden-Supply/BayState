@@ -71,7 +71,7 @@ export function FileUpload({
         <div className={cn("space-y-2", className)}>
             <div
                 className={cn(
-                    "relative flex flex-col items-center justify-center w-full border-2 border-dashed rounded-lg transition-colors duration-200 ease-in-out",
+                    "relative flex flex-col items-center justify-center w-full border border-dashed rounded-lg transition-colors duration-200 ease-in-out",
                     dragOver 
                         ? "border-purple-500 bg-purple-50" 
                         : "border-gray-300 bg-gray-50 hover:bg-gray-100",

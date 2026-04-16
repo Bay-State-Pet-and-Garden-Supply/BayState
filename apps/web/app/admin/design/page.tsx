@@ -18,7 +18,7 @@ export default async function DesignPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Site Design</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-black uppercase tracking-tight">Site Design</h1>
                 <p className="text-muted-foreground">
                     Customize banners, homepage sections, and site appearance
                 </p>

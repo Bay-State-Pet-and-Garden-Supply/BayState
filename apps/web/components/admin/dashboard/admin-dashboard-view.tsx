@@ -37,8 +37,8 @@ export function AdminDashboardView() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-950">Dashboard</h1>
+        <p className="text-zinc-600 text-xs font-bold uppercase tracking-widest">
           Real-time overview of Bay State Pet & Garden Supply operations.
         </p>
       </div>

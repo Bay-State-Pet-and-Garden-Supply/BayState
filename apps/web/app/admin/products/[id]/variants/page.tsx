@@ -37,7 +37,7 @@ export default async function ProductVariantsPage({ params }: { params: Promise<
       </div>
       
       <div>
-        <h1 className="text-2xl font-bold">{product.name}</h1>
+        <h1 className="text-2xl font-bold font-black uppercase tracking-tight">{product.name}</h1>
         <p className="text-muted-foreground">Manage product options and variants</p>
       </div>
       

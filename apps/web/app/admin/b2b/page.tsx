@@ -44,11 +44,11 @@ export default async function B2BPage() {
   return (
     <div className="space-y-8 p-8 pt-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#008850]/10">
+        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-[#008850]/10">
           <Database className="h-5 w-5 text-[#008850]" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">B2B Data Feeds</h1>
+          <h1 className="text-2xl font-bold text-foreground font-black uppercase tracking-tight">B2B Data Feeds</h1>
           <p className="text-sm text-muted-foreground">Monitor and manage distributor product data streams</p>
         </div>
       </div>

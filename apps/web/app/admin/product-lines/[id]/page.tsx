@@ -108,7 +108,7 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -137,7 +137,7 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
                 <div className="flex items-center gap-4 mb-3">
                   <div className="flex-1">
                     <h3 className="text-sm font-medium">UPC Prefix</h3>
-                    <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{productLine.upc_prefix}</code>
+                    <code className="text-xs bg-muted px-2 py-1 rounded-none font-mono">{productLine.upc_prefix}</code>
                   </div>
                   <div className="flex-1">
                     <h3 className="text-sm font-medium">Status</h3>
@@ -163,7 +163,7 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
                     {violationsBySeverity.error && violationsBySeverity.error.length > 0 && (
                       <div className="space-y-2">
                         {violationsBySeverity.error.map((violation) => (
-                          <div key={`${violation.rule}-${violation.field || 'general'}`} className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                          <div key={`${violation.rule}-${violation.field || 'general'}`} className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-none">
                             <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
                               <p className="text-sm font-medium text-red-900">{violation.message}</p>
@@ -178,7 +178,7 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
                     {violationsBySeverity.warning && violationsBySeverity.warning.length > 0 && (
                       <div className="space-y-2">
                         {violationsBySeverity.warning.map((violation) => (
-                          <div key={`${violation.rule}-${violation.field || 'general'}`} className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <div key={`${violation.rule}-${violation.field || 'general'}`} className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-none">
                             <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
                               <p className="text-sm font-medium text-yellow-900">{violation.message}</p>
@@ -198,7 +198,7 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
         </div>
 
         <div className="space-y-6">
-          <Card>
+          <Card className="border border-zinc-950 rounded-none">
             <CardHeader>
               <CardTitle className="text-lg">Products in Line</CardTitle>
               <CardDescription>
@@ -216,7 +216,7 @@ export default async function ProductLineDetailPage({ params }: ProductLineDetai
                     <Link
                       key={product.id}
                       href={`/admin/products/${product.id}`}
-                      className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-md group"
+                      className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-none group"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">

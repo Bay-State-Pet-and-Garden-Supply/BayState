@@ -84,7 +84,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       key: 'logo_url',
       header: 'Logo',
       render: (value, row) => (
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+        <div className="flex h-10 w-10 items-center justify-center rounded-none border border-zinc-950 bg-muted">
           {value ? (
             <Image
               src={String(value)}
@@ -94,7 +94,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
               className="h-10 w-10 object-contain"
             />
           ) : (
-            <span className="text-lg font-bold text-muted-foreground">
+            <span className="text-lg font-black uppercase text-muted-foreground">
               {row.name.charAt(0).toUpperCase()}
             </span>
           )}
@@ -108,9 +108,9 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       searchable: true,
       render: (_, row) => (
         <div>
-          <p className="font-medium text-foreground">{row.name}</p>
+          <p className="font-black uppercase text-foreground">{row.name}</p>
           {row.description && (
-            <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
+            <p className="text-xs font-bold text-muted-foreground line-clamp-1 uppercase">{row.description}</p>
           )}
         </div>
       ),
@@ -121,7 +121,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       sortable: true,
       searchable: true,
       render: (value) => (
-        <code className="rounded bg-muted px-2 py-0.5 text-xs">{String(value)}</code>
+        <code className="rounded-none border border-zinc-950 bg-muted px-2 py-0.5 text-xs font-bold">{String(value)}</code>
       ),
     },
     {
@@ -129,7 +129,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
       header: 'Created',
       sortable: true,
       render: (value) => (
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm font-bold text-muted-foreground uppercase">
           {new Date(String(value)).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -142,12 +142,12 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
 
   const renderActions = (brand: Brand) => (
     <div className="flex items-center gap-1">
-      <Button variant="ghost" size="sm" asChild>
+      <Button variant="ghost" size="sm" className="rounded-none border border-transparent hover:border-zinc-950" asChild>
         <Link href={`/admin/brands/${brand.id}/edit`}>
           <Pencil className="h-4 w-4" />
         </Link>
       </Button>
-      <Button variant="ghost" size="sm" asChild>
+      <Button variant="ghost" size="sm" className="rounded-none border border-transparent hover:border-zinc-950" asChild>
         <Link href={`/products?brand=${brand.slug}`} target="_blank">
           <ExternalLink className="h-4 w-4" />
         </Link>
@@ -158,23 +158,23 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
             variant="ghost"
             size="sm"
             disabled={deleting === brand.id}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-none border border-transparent hover:border-red-600"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Brand</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="font-black uppercase">Delete Brand</AlertDialogTitle>
+            <AlertDialogDescription className="font-bold">
               Are you sure you want to delete &quot;{brand.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-none border border-zinc-950 font-black uppercase">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleDelete(brand)}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 rounded-none border border-zinc-950 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
             >
               Delete
             </AlertDialogAction>
@@ -187,8 +187,8 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
   return (
     <div className="space-y-4">
       {selected.length > 0 && (
-        <div className="flex items-center justify-between rounded-lg bg-purple-50 px-4 py-2">
-          <span className="text-sm text-purple-700">
+        <div className="flex items-center justify-between rounded-none border-2 border-zinc-950 bg-zinc-100 px-4 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <span className="text-sm font-black uppercase text-zinc-950">
             {selected.length} brand(s) selected
           </span>
           <AlertDialog>
@@ -196,23 +196,24 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
               <Button
                 variant="destructive"
                 size="sm"
+                className="rounded-none border border-zinc-950 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
               >
                 <Trash2 className="mr-1 h-4 w-4" />
                 Delete Selected
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Selected Brands</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogTitle className="font-black uppercase">Delete Selected Brands</AlertDialogTitle>
+                <AlertDialogDescription className="font-bold">
                   Are you sure you want to delete {selected.length} brand(s)? This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="rounded-none border border-zinc-950 font-black uppercase">Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleBulkDelete}
-                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600 rounded-none border border-zinc-950 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
                 >
                   Delete All
                 </AlertDialogAction>
@@ -221,6 +222,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
           </AlertDialog>
         </div>
       )}
+
       <DataTable
         data={brands}
         columns={columns}

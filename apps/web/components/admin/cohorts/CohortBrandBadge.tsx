@@ -85,7 +85,7 @@ export function CohortBrandBadge({
     return (
       <button
         type="button"
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-brand-forest-green/10 text-brand-forest-green border border-brand-forest-green/20 hover:bg-brand-forest-green/20 transition-all cursor-pointer ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-none px-2.5 py-1 text-xs font-black uppercase tracking-tight bg-brand-forest-green/10 text-brand-forest-green border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-brand-forest-green/20 transition-all cursor-pointer ${className}`}
         onClick={(e) => {
           e.stopPropagation();
           setEditValue(brandName);
@@ -102,7 +102,7 @@ export function CohortBrandBadge({
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border border-dashed border-muted-foreground/40 text-muted-foreground hover:border-brand-forest-green/60 hover:text-brand-forest-green hover:bg-brand-forest-green/5 transition-all cursor-pointer bg-transparent ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-none px-2.5 py-1 text-xs font-bold uppercase tracking-tight border border-dashed border-zinc-950 text-muted-foreground hover:border-brand-forest-green hover:text-brand-forest-green hover:bg-brand-forest-green/5 transition-all cursor-pointer bg-transparent ${className}`}
       onClick={(e) => {
         e.stopPropagation();
         setEditValue("");

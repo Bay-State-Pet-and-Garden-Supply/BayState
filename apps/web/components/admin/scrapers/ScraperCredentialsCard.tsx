@@ -128,7 +128,7 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
     <Card className="border-brand-gold/20 shadow-sm">
       <CardHeader className="bg-brand-gold/5 border-b">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-gold border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
             <Shield className="h-5 w-5 text-brand-burgundy" />
           </div>
           <div>
@@ -146,7 +146,7 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
           </div>
         ) : (
           <>
-            {error && <div className="rounded-none border-2 border-brand-burgundy bg-brand-burgundy/5 p-3 text-sm text-brand-burgundy font-medium">{error}</div>}
+            {error && <div className="rounded-none border border-brand-burgundy bg-brand-burgundy/5 p-3 text-sm text-brand-burgundy font-medium">{error}</div>}
 
             <div className="grid gap-8">
               {(['login', 'password', 'api_key'] as ScraperCredentialType[]).map((type) => {
@@ -155,7 +155,7 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
                 const isDeleting = deleting === type;
 
                 return (
-                  <div key={type} className="space-y-3 p-4 rounded-none border-2 border-zinc-950 bg-muted/5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                  <div key={type} className="space-y-3 p-4 rounded-none border border-zinc-950 bg-muted/5 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                     <div className="flex items-center justify-between">
                       <Label htmlFor={type} className="text-sm font-bold uppercase tracking-tight flex items-center gap-2">
                         {type.replace('_', ' ')}
