@@ -34,6 +34,7 @@ export interface ShopSiteExportProduct {
     long_description?: string | null;
     images: string[];
     category?: string | null;
+    product_type?: string | null;
 
     shopsite_pages?: string[] | null;
     search_keywords?: string | null;

@@ -449,6 +449,8 @@ export class ShopSiteClient {
         const formData = new FormData();
         formData.append('clientApp', '1');
         formData.append('dbname', 'products');
+        formData.append('xml', '1');
+        formData.append('upload_type', '2');
         formData.append('uniqueName', options.uniqueName ?? 'SKU');
         formData.append('batchsize', String(options.batchSize ?? 500));
         formData.append('newRecords', options.newRecords === false ? 'no' : 'yes');
@@ -457,7 +459,7 @@ export class ShopSiteClient {
         formData.append(
             'Desktop',
             new Blob([xml], { type: 'text/xml' }),
-            'shopsite-products.xml',
+            'upload.dat',
         );
 
         const uploadHttpResponse = await fetch(this.buildScriptUrl('dbupload.cgi'), {
@@ -474,9 +476,15 @@ export class ShopSiteClient {
 
         const dbmakeQuery = this.extractDbmakeQuery(uploadResponse);
         console.log(`[ShopSite] Proceeding to dbmake.cgi with query: ${dbmakeQuery}`);
+        
+        // Ensure xml=1 and clientApp=1 are in the dbmake URL as per docs
+        const dbmakeParams = new URLSearchParams(dbmakeQuery);
+        if (!dbmakeParams.has('xml')) dbmakeParams.set('xml', '1');
+        if (!dbmakeParams.has('clientApp')) dbmakeParams.set('clientApp', '1');
+        
         const uploadCookieHeader = this.extractCookieHeader(uploadHttpResponse);
 
-        const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeQuery, 'dbmake.cgi'), {
+        const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeParams.toString(), 'dbmake.cgi'), {
             method: 'GET',
             headers: this.buildRequestHeaders(uploadCookieHeader),
             cache: 'no-store',

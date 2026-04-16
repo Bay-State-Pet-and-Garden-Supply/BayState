@@ -299,7 +299,7 @@ describe('ShopSiteClient', () => {
             );
             expect(mockFetch).toHaveBeenNthCalledWith(
                 2,
-                'https://example.shopsite.com/dbmake.cgi?clientApp=1&token=abc123',
+                'https://example.shopsite.com/dbmake.cgi?clientApp=1&token=abc123&xml=1',
                 expect.objectContaining({
                     method: 'GET',
                     headers: expect.objectContaining({
