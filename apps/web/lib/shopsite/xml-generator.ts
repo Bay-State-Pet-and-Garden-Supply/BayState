@@ -20,7 +20,8 @@ import {
     MAX_MORE_INFO_IMAGES,
 } from './constants';
 
-const SHOPSITE_DOCTYPE = 'http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd';
+const SHOPSITE_DOCTYPE_PUBLIC = '-//shopsite.com//ShopSiteProduct DTD//EN';
+const SHOPSITE_DOCTYPE_URL = 'http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd';
 const BAY_STATE_TIMEZONE = 'America/New_York';
 
 export interface ShopSiteExportProduct {
@@ -263,8 +264,12 @@ export function generateShopSiteXml(
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
     lines.push('<?xml version="1.0" encoding="ISO-8859-1"?>');
-    lines.push(`<!DOCTYPE ShopSiteProducts SYSTEM "${SHOPSITE_DOCTYPE}">`);
+    lines.push(`<!DOCTYPE ShopSiteProducts PUBLIC "${SHOPSITE_DOCTYPE_PUBLIC}" "${SHOPSITE_DOCTYPE_URL}">`);
     lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
+    lines.push('<Response>');
+    lines.push('  <ResponseCode>1</ResponseCode>');
+    lines.push('  <ResponseDescription>success</ResponseDescription>');
+    lines.push('</Response>');
     lines.push('<Products>');
 
     for (const product of products) {
@@ -284,8 +289,12 @@ export function* generateShopSiteXmlStream(
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
     yield '<?xml version="1.0" encoding="ISO-8859-1"?>\n';
-    yield `<!DOCTYPE ShopSiteProducts SYSTEM "${SHOPSITE_DOCTYPE}">\n`;
+    yield `<!DOCTYPE ShopSiteProducts PUBLIC "${SHOPSITE_DOCTYPE_PUBLIC}" "${SHOPSITE_DOCTYPE_URL}">\n`;
     yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
+    yield '<Response>\n';
+    yield '  <ResponseCode>1</ResponseCode>\n';
+    yield '  <ResponseDescription>success</ResponseDescription>\n';
+    yield '</Response>\n';
     yield '<Products>\n';
 
     for (const product of products) {

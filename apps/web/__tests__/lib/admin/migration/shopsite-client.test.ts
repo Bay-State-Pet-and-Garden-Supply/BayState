@@ -287,19 +287,28 @@ describe('ShopSiteClient', () => {
             const result = await client.uploadProductsXml('<ShopSiteProducts />');
 
             expect(result.dbmakeQuery).toBe('clientApp=1&token=abc123');
-            expect(mockFetch).toHaveBeenNthCalledWith(
-                1,
-                expect.stringContaining('dbupload.cgi?clientApp=1&dbname=products&xml=1&uniqueName=SKU&newRecords=yes'),
+            const [uploadUrl, uploadOptions] = mockFetch.mock.calls[0] as [string, { body: FormData; headers: Record<string, string>; method: string }];
+            expect(uploadUrl).toBe('https://example.shopsite.com/dbupload.cgi');
+            expect(uploadOptions.method).toBe('POST');
+            expect(uploadOptions.headers).toEqual(
                 expect.objectContaining({
-                    method: 'POST',
-                    headers: expect.objectContaining({
-                        'Authorization': expect.stringContaining('Basic'),
-                        'Referer': 'https://example.shopsite.com',
-                        'Content-Type': 'text/xml; charset=ISO-8859-1',
-                    }),
-                    body: '<ShopSiteProducts />',
+                    'Authorization': expect.stringContaining('Basic'),
+                    'Referer': 'https://example.shopsite.com',
                 }),
             );
+            expect(uploadOptions.headers).not.toHaveProperty('Content-Type');
+            expect(uploadOptions.body).toBeInstanceOf(FormData);
+            expect(uploadOptions.body.get('clientApp')).toBe('1');
+            expect(uploadOptions.body.get('dbname')).toBe('products');
+            expect(uploadOptions.body.get('uniqueName')).toBe('SKU');
+            expect(uploadOptions.body.get('newRecords')).toBe('yes');
+
+            const uploadFile = uploadOptions.body.get('Desktop');
+            expect(uploadFile).toBeInstanceOf(Blob);
+            expect((uploadFile as File).name).toBe('shopsite-products.xml');
+            expect((uploadFile as Blob).type).toBe('text/xml');
+            await expect((uploadFile as Blob).text()).resolves.toBe('<ShopSiteProducts />');
+
             expect(mockFetch).toHaveBeenNthCalledWith(
                 2,
                 'https://example.shopsite.com/dbmake.cgi?clientApp=1&token=abc123&xml=1',

@@ -28,7 +28,13 @@ describe('generateShopSiteXml', () => {
             { markerDate: new Date('2026-03-26T15:13:29.698Z') },
         );
 
+        expect(xml).toContain('<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">');
         expect(xml).toContain('<ShopSiteProducts version="15.0">');
+        expect(xml).toContain('<Response>');
+        expect(xml).toContain('<ResponseCode>1</ResponseCode>');
+        expect(xml).toContain('<ResponseDescription>success</ResponseDescription>');
+        expect(xml).toContain('</Response>');
+        expect(xml).toContain('<Products>');
         expect(xml).toContain('<Name>Feathered Friend Favorite 20 lb.</Name>');
         expect(xml).toContain('<Price>24.99</Price>');
         expect(xml).toContain('<SaleAmount/>');
@@ -67,6 +73,7 @@ describe('generateShopSiteXml', () => {
         );
 
         expect(xml).toContain('<ProductField1>new032626</ProductField1>');
+        expect(xml).toContain('<Products>');
         expect(xml).not.toContain('<Graphic>');
         expect(xml).not.toContain('<MoreInformationGraphic>');
         expect(xml).not.toContain('<MoreInfoImage1>');
@@ -76,6 +83,7 @@ describe('generateShopSiteXml', () => {
         expect(xml).not.toContain('<ProductField25>');
         expect(xml).not.toContain('<ProductField11>');
         expect(xml).not.toContain('<ProductField15>');
+        expect(xml).toContain('</Products>');
     });
 });
 

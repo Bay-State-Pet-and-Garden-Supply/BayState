@@ -207,6 +207,29 @@ export class ShopSiteClient {
         throw new Error('ShopSite upload did not return a dbmake query string');
     }
 
+    private buildUploadFormData(xml: string, options: ShopSiteUploadOptions): FormData {
+        const formData = new FormData();
+        formData.append('clientApp', '1');
+        formData.append('dbname', 'products');
+        formData.append('uniqueName', options.uniqueName ?? 'SKU');
+        formData.append('newRecords', options.newRecords === false ? 'no' : 'yes');
+
+        if (options.batchSize) {
+            formData.append('batchsize', String(options.batchSize));
+        }
+        if (options.useOptimizer) {
+            formData.append('use_optimizer', 'yes');
+        }
+        if (options.deferLinking) {
+            formData.append('defer_linking', 'yes');
+        }
+
+        const uploadFile = new Blob([Buffer.from(xml, 'latin1')], { type: 'text/xml' });
+        formData.append('Desktop', uploadFile, 'shopsite-products.xml');
+
+        return formData;
+    }
+
     /**
      * Sanitizes raw ShopSite XML to make it compatible with XML parsers.
      * 1. Fixes unencoded ampersands.
@@ -450,30 +473,10 @@ export class ShopSiteClient {
         xml: string,
         options: ShopSiteUploadOptions = {},
     ): Promise<ShopSiteUploadResult> {
-        const params = new URLSearchParams();
-        params.append('clientApp', '1');
-        params.append('dbname', 'products');
-        params.append('xml', '1');
-        params.append('uniqueName', options.uniqueName ?? 'SKU');
-        params.append('newRecords', options.newRecords === false ? 'no' : 'yes');
-        
-        if (options.batchSize) {
-            params.append('batchsize', String(options.batchSize));
-        }
-        if (options.useOptimizer) {
-            params.append('use_optimizer', 'yes');
-        }
-        if (options.deferLinking) {
-            params.append('defer_linking', 'yes');
-        }
-
-        const uploadHttpResponse = await fetch(this.buildUrl(params.toString(), 'dbupload.cgi'), {
+        const uploadHttpResponse = await fetch(this.buildScriptUrl('dbupload.cgi'), {
             method: 'POST',
-            headers: {
-                ...this.buildRequestHeaders(undefined, this.config.storeUrl) as Record<string, string>,
-                'Content-Type': 'text/xml; charset=ISO-8859-1',
-            },
-            body: xml,
+            headers: this.buildRequestHeaders(undefined, this.config.storeUrl),
+            body: this.buildUploadFormData(xml, options),
             cache: 'no-store',
         });
 
@@ -506,7 +509,7 @@ export class ShopSiteClient {
         const mappingParams = dbmakeQuery.match(/\d+=\d+/g);
         if (mappingParams && mappingParams.length > 5) {
             console.error(`[ShopSite] Manual mapping mode detected. Query too long: ${dbmakeQuery}`);
-            throw new Error('ShopSite failed to recognize the XML format and triggered manual mapping mode. Please check the XML structure and DTD.');
+            throw new Error('ShopSite failed to recognize the automated XML upload and triggered manual mapping mode. Please verify the MIME upload wrapper and XML document shape.');
         }
 
         console.log(`[ShopSite] Proceeding to dbmake.cgi with query: ${dbmakeQuery}`);
