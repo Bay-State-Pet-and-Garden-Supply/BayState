@@ -450,26 +450,30 @@ export class ShopSiteClient {
         xml: string,
         options: ShopSiteUploadOptions = {},
     ): Promise<ShopSiteUploadResult> {
-        const formData = new FormData();
-        formData.append('clientApp', '1');
-        formData.append('dbname', 'products');
-        formData.append('xml', '1');
-        formData.append('upload_type', '2');
-        formData.append('uniqueName', options.uniqueName ?? 'SKU');
-        formData.append('batchsize', String(options.batchSize ?? 500));
-        formData.append('newRecords', options.newRecords === false ? 'no' : 'yes');
-        formData.append('use_optimizer', options.useOptimizer === true ? 'yes' : 'no');
-        formData.append('defer_linking', options.deferLinking === true ? 'yes' : 'no');
-        formData.append(
-            'Desktop',
-            new Blob([xml], { type: 'text/xml; charset=ISO-8859-1' }),
-            'upload.dat',
-        );
+        const params = new URLSearchParams();
+        params.append('clientApp', '1');
+        params.append('dbname', 'products');
+        params.append('xml', '1');
+        params.append('uniqueName', options.uniqueName ?? 'SKU');
+        params.append('newRecords', options.newRecords === false ? 'no' : 'yes');
+        
+        if (options.batchSize) {
+            params.append('batchsize', String(options.batchSize));
+        }
+        if (options.useOptimizer) {
+            params.append('use_optimizer', 'yes');
+        }
+        if (options.deferLinking) {
+            params.append('defer_linking', 'yes');
+        }
 
-        const uploadHttpResponse = await fetch(this.buildScriptUrl('dbupload.cgi'), {
+        const uploadHttpResponse = await fetch(this.buildUrl(params.toString(), 'dbupload.cgi'), {
             method: 'POST',
-            headers: this.buildRequestHeaders(undefined, this.config.storeUrl),
-            body: formData,
+            headers: {
+                ...this.buildRequestHeaders(undefined, this.config.storeUrl) as Record<string, string>,
+                'Content-Type': 'text/xml; charset=ISO-8859-1',
+            },
+            body: xml,
             cache: 'no-store',
         });
 
@@ -478,8 +482,24 @@ export class ShopSiteClient {
             throw new Error(`ShopSite upload failed (${uploadHttpResponse.status}): ${uploadResponse || uploadHttpResponse.statusText}`);
         }
 
+        // ShopSite Automated XML interface often returns XML or a query string.
+        // We look for dbmake parameters.
         const dbmakeQuery = this.extractDbmakeQuery(uploadResponse);
         
+        if (!dbmakeQuery) {
+            // If no dbmake query returned, it might have processed immediately (less common for large files)
+            // or returned a success indicator.
+            if (uploadResponse.toLowerCase().includes('success') || uploadResponse.toLowerCase().includes('complete')) {
+                console.log('[ShopSite] Upload reported success immediately.');
+                return {
+                    dbmakeQuery: '',
+                    uploadResponse,
+                    dbmakeResponse: 'Skipped (Reported success immediately)',
+                };
+            }
+            throw new Error('ShopSite upload did not return a dbmake query string or success indicator');
+        }
+
         // Detection: If dbmakeQuery contains many mapping params (e.g. 0=0&1=1), it means
         // ShopSite failed to recognize the XML and triggered manual mapping mode.
         // This causes long URLs that trigger Cloudflare 403.
