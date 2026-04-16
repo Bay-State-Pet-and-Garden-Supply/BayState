@@ -1,18 +1,9 @@
 /**
  * ShopSite XML Generator
  *
- * Generates a minimal ShopSite upload payload aligned to the current Bay State
- * upload flow (DTD 2.9 / version 15.0).
- *
- * CORRECTED CONTRACT COMPLIANCE:
- * This generator implements the user-approved ProductField mapping contract:
- * - All 18 canonical ProductFields are supported (PF7, PF11, PF15, PF16-27, PF29, PF30, PF32)
- * - ProductField24 is the only canonical category source (PF31 excluded from normalization)
- * - ProductField17 provides canonical pet type values
- * - ProductField32 cross-sells are pipe-delimited
- *
- * @see docs/field-mapping-matrix.md for full contract documentation
- * @see lib/shopsite/constants.ts for field mapping constants
+ * Restores the original export-compatible payload shape used when the ShopSite
+ * ZIP/XML workflow was first introduced, while preserving the current
+ * new-product marker tag.
  */
 
 import {
@@ -46,7 +37,6 @@ export interface ShopSiteExportProduct {
     gtin?: string | null;
     availability?: string | null;
     minimum_quantity?: number | null;
-    // Canonical facet fields (corrected contract)
     pet_type?: string | null;
     life_stage?: string | null;
     pet_size?: string | null;
@@ -81,11 +71,27 @@ function cdataWrap(text: string): string {
 }
 
 function xmlElement(tag: string, value: string | null | undefined): string {
-    return `    <${tag}>${escapeXml(value ?? '')}</${tag}>`;
+    if (value === null || value === undefined || value === '') {
+        return `    <${tag} />`;
+    }
+
+    return `    <${tag}>${escapeXml(value)}</${tag}>`;
 }
 
-function xmlCdataElement(tag: string, value: string): string {
+function xmlCdataElement(tag: string, value: string | null | undefined): string {
+    if (value === null || value === undefined || value === '') {
+        return `    <${tag} />`;
+    }
+
     return `    <${tag}>${cdataWrap(value)}</${tag}>`;
+}
+
+function xmlLiteralElement(tag: string, value: string | null | undefined, emptyValue: string): string {
+    if (value === null || value === undefined || value === '') {
+        return `    <${tag}>${escapeXml(emptyValue)}</${tag}>`;
+    }
+
+    return `    <${tag}>${escapeXml(value)}</${tag}>`;
 }
 
 function formatPrice(value: string | number): string {
@@ -119,36 +125,22 @@ export function buildShopSiteNewProductTag(date: Date = new Date()): string {
 
 function generateProductXml(product: ShopSiteExportProduct, newProductTag: string): string {
     const lines: string[] = [];
+    const primaryImage = product.images[0] ?? null;
+    const additionalImages = product.images.slice(1, 1 + MAX_MORE_INFO_IMAGES);
+    const description = product.description ?? product.long_description ?? null;
+    const productOnPages = product.shopsite_pages ?? [];
+
     lines.push('  <Product>');
-    
-    // Core Identity (Strict Order)
     lines.push(xmlElement('Name', product.name));
     lines.push(xmlElement('Price', formatPrice(product.price)));
     lines.push('    <SaleAmount/>');
-    lines.push('    <ProductDisabled>uncheck</ProductDisabled>');
-    
-    if (product.is_taxable !== undefined) {
-        lines.push(xmlElement('Taxable', product.is_taxable ? 'checked' : 'uncheck'));
-    }
-    
-    if (product.minimum_quantity != null) {
-        lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity)));
-    }
-
+    lines.push(xmlElement('ProductDisabled', 'uncheck'));
+    lines.push(xmlElement('Taxable', product.is_taxable !== false ? 'checked' : 'uncheck'));
+    lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity ?? 0)));
     lines.push(xmlElement('SKU', product.sku));
+    lines.push(xmlLiteralElement('Graphic', primaryImage, 'none'));
+    lines.push(xmlLiteralElement('MoreInformationGraphic', primaryImage, 'none'));
 
-    const primaryImage = product.images[0] ?? null;
-    if (primaryImage) {
-        lines.push(xmlElement('Graphic', primaryImage));
-        lines.push(xmlElement('MoreInformationGraphic', primaryImage));
-    }
-
-    const additionalImages = product.images.slice(1, 1 + MAX_MORE_INFO_IMAGES);
-    for (let index = 0; index < additionalImages.length; index += 1) {
-        lines.push(xmlElement(`MoreInfoImage${index + 1}`, additionalImages[index]));
-    }
-
-    const description = product.description ?? product.long_description ?? null;
     if (description) {
         lines.push(xmlCdataElement('ProductDescription', description));
     }
@@ -165,27 +157,10 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('Availability', product.availability));
     }
 
-    // Product Fields in numerical order
     lines.push(xmlElement('ProductField1', newProductTag));
-
-    if (product.short_name) {
-        lines.push(xmlElement('ProductField7', product.short_name));
-    }
-
-    if (product.size) {
-        lines.push(xmlElement('ProductField10', product.size));
-    }
 
     if (product.is_special_order) {
         lines.push(xmlElement('ProductField11', 'yes'));
-    }
-
-    if (product.color) {
-        lines.push(xmlElement('ProductField12', product.color));
-    }
-
-    if (product.packaging_type) {
-        lines.push(xmlElement('ProductField13', product.packaging_type));
     }
 
     if (product.in_store_pickup) {
@@ -196,34 +171,6 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('ProductField16', product.brand_name));
     }
 
-    if (product.pet_type) {
-        lines.push(xmlElement('ProductField17', product.pet_type));
-    }
-
-    if (product.life_stage) {
-        lines.push(xmlElement('ProductField18', product.life_stage));
-    }
-
-    if (product.pet_size) {
-        lines.push(xmlElement('ProductField19', product.pet_size));
-    }
-
-    if (product.special_diet) {
-        lines.push(xmlElement('ProductField20', product.special_diet));
-    }
-
-    if (product.health_feature) {
-        lines.push(xmlElement('ProductField21', product.health_feature));
-    }
-
-    if (product.food_form) {
-        lines.push(xmlElement('ProductField22', product.food_form));
-    }
-
-    if (product.flavor) {
-        lines.push(xmlElement('ProductField23', product.flavor));
-    }
-
     if (product.category) {
         lines.push(xmlElement('ProductField24', product.category));
     }
@@ -232,24 +179,22 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('ProductField25', product.product_type));
     }
 
-    if (product.product_feature) {
-        lines.push(xmlElement('ProductField26', product.product_feature));
-    }
-
-    if (product.cross_sell_skus && product.cross_sell_skus.length > 0) {
-        lines.push(xmlElement('ProductField32', product.cross_sell_skus.join('|')));
-    }
-
     if (product.gtin) {
         lines.push(xmlElement('Google_GTIN', product.gtin));
     }
 
-    if (product.shopsite_pages && product.shopsite_pages.length > 0) {
+    if (productOnPages.length > 0) {
         lines.push('    <ProductOnPages>');
-        for (const pageName of product.shopsite_pages) {
+        for (const pageName of productOnPages) {
             lines.push(`      <Name>${escapeXml(pageName)}</Name>`);
         }
         lines.push('    </ProductOnPages>');
+    } else {
+        lines.push('    <ProductOnPages/>');
+    }
+
+    for (let index = 0; index < additionalImages.length; index += 1) {
+        lines.push(xmlElement(`MoreInfoImage${index + 1}`, additionalImages[index]));
     }
 
     lines.push('  </Product>');

@@ -128,6 +128,7 @@ interface FinalizingResultsViewProps {
     index?: number,
     isShift?: boolean,
   ) => void;
+  isSearching?: boolean;
 }
 
 interface Brand {
@@ -199,6 +200,7 @@ export function FinalizingResultsView({
   onEditCohort,
   selectedSkus = new Set(),
   onSelectSku,
+  isSearching = false,
 }: FinalizingResultsViewProps) {
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
@@ -1850,6 +1852,7 @@ export function FinalizingResultsView({
           onEditCohort={onEditCohort}
           selectedSkus={selectedSkus}
           onSelectSku={onSelectSku}
+          isLoading={isSearching}
         />
 
         {/* Right Column: Editing Form */}

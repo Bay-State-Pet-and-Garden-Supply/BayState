@@ -30,6 +30,7 @@ export interface ProductListSidebarProps {
   onFilterChange?: (filters: PipelineFiltersState) => void;
   availableSources?: string[];
   showSourceFilter?: boolean;
+  isLoading?: boolean;
   groupedProducts?: {
     groups: Record<string, PipelineProduct[]>;
     cohortIds: string[];
@@ -52,6 +53,7 @@ export function ProductListSidebar({
   onFilterChange,
   availableSources = [],
   showSourceFilter = false,
+  isLoading = false,
   groupedProducts,
   cohortBrands = {},
   onEditCohort,
@@ -122,6 +124,7 @@ export function ProductListSidebar({
           value={search || ""}
           onChange={(value) => onSearchChange?.(value)}
           className="flex-1"
+          isLoading={isLoading}
         />
         {filters && onFilterChange ? (
           <PipelineFilters

@@ -207,27 +207,43 @@ export class ShopSiteClient {
         throw new Error('ShopSite upload did not return a dbmake query string');
     }
 
-    private buildUploadFormData(xml: string, options: ShopSiteUploadOptions): FormData {
-        const formData = new FormData();
-        formData.append('clientApp', '1');
-        formData.append('dbname', 'products');
-        formData.append('uniqueName', options.uniqueName ?? 'SKU');
-        formData.append('newRecords', options.newRecords === false ? 'no' : 'yes');
+    private buildUploadMultipartBody(xml: string, options: ShopSiteUploadOptions): {
+        body: Buffer;
+        contentLength: string;
+        contentType: string;
+    } {
+        const boundary = `---------------------------ShopSiteUpload_${Date.now().toString(36)}`;
+        const parts: Buffer[] = [];
+        const append = (value: string | Buffer) => {
+            parts.push(typeof value === 'string' ? Buffer.from(value, 'latin1') : value);
+        };
+        const appendField = (name: string, value: string) => {
+            append(`--${boundary}\r\n`);
+            append(`Content-Disposition: form-data; name="${name}"\r\n\r\n`);
+            append(`${value}\r\n`);
+        };
 
-        if (options.batchSize) {
-            formData.append('batchsize', String(options.batchSize));
-        }
-        if (options.useOptimizer) {
-            formData.append('use_optimizer', 'yes');
-        }
-        if (options.deferLinking) {
-            formData.append('defer_linking', 'yes');
-        }
+        appendField('clientApp', '1');
+        appendField('dbname', 'products');
+        appendField('uniqueName', options.uniqueName ?? 'SKU');
+        appendField('batchsize', String(options.batchSize ?? 500));
+        appendField('newRecords', options.newRecords === false ? 'no' : 'yes');
+        appendField('use_optimizer', options.useOptimizer === true ? 'yes' : 'no');
+        appendField('defer_linking', options.deferLinking === true ? 'yes' : 'no');
 
-        const uploadFile = new Blob([Buffer.from(xml, 'latin1')], { type: 'text/xml' });
-        formData.append('Desktop', uploadFile, 'shopsite-products.xml');
+        append(`--${boundary}\r\n`);
+        append('Content-Disposition: form-data; name="Desktop"; filename="shopsite-products.xml"\r\n');
+        append('Content-Type: text/xml\r\n\r\n');
+        append(Buffer.from(xml, 'latin1'));
+        append(`\r\n--${boundary}--\r\n`);
 
-        return formData;
+        const body = Buffer.concat(parts);
+
+        return {
+            body,
+            contentLength: String(body.length),
+            contentType: `multipart/form-data; boundary=${boundary}`,
+        };
     }
 
     /**
@@ -473,10 +489,15 @@ export class ShopSiteClient {
         xml: string,
         options: ShopSiteUploadOptions = {},
     ): Promise<ShopSiteUploadResult> {
+        const uploadRequest = this.buildUploadMultipartBody(xml, options);
         const uploadHttpResponse = await fetch(this.buildScriptUrl('dbupload.cgi'), {
             method: 'POST',
-            headers: this.buildRequestHeaders(undefined, this.config.storeUrl),
-            body: this.buildUploadFormData(xml, options),
+            headers: {
+                ...this.buildRequestHeaders(undefined, this.config.storeUrl),
+                'Content-Length': uploadRequest.contentLength,
+                'Content-Type': uploadRequest.contentType,
+            },
+            body: uploadRequest.body,
             cache: 'no-store',
         });
 
