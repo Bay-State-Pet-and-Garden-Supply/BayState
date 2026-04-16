@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { ExternalLink, AlertTriangle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ExternalLink, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 /**
  * UnderConstructionBanner - A persistent banner to notify users that the site
@@ -23,15 +23,16 @@ export function UnderConstructionBanner() {
           <AlertTriangle className="h-5 w-5 animate-pulse" />
           <span>Under Construction / Beta Preview</span>
         </div>
-        
+
         <p className="text-xs md:text-sm font-medium max-w-2xl">
-          This is a development preview of our new website. Some features may be incomplete. 
-          For official orders and information, please visit our current site.
+          This is a development preview of our new website. Some features may be
+          incomplete. For official orders and information, please visit our
+          current site.
         </p>
-        
-        <a 
-          href="https://baystatepetgarden.com" 
-          target="_blank" 
+
+        <a
+          href="https://www.baystatepet.com/"
+          target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 bg-secondary text-secondary-foreground px-4 py-1.5 text-xs font-black uppercase tracking-tighter border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all shrink-0"
         >
