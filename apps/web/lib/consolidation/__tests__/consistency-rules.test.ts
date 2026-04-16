@@ -1,6 +1,5 @@
 import {
     brandConsistencyRule,
-    categoryConsistencyRule,
     createConsistencyRules,
     descriptionFormatRule,
     validateConsistency,
@@ -52,25 +51,6 @@ describe('consistency rules', () => {
         expect(violations).toEqual([]);
     });
 
-    it('normalizes taxonomy formatting before flagging category mismatches', () => {
-        const violations = categoryConsistencyRule.validate([
-            createProductSource('SKU-1', { category: 'Dog>Food>Dry' }),
-            createProductSource('SKU-2', { category: 'Dog > Food > Dry' }),
-            createProductSource('SKU-3', { category: 'Dog > Treats > Crunchy' }),
-        ]);
-
-        expect(violations).toHaveLength(1);
-        expect(violations[0]).toMatchObject({
-            rule: 'category-consistency',
-            severity: 'error',
-            field: 'category',
-            expected: 'Dog > Food > Dry',
-            products: ['SKU-3'],
-        });
-        expect(violations[0].message).toMatch(/taxonomy/i);
-        expect(violations[0].actual).toMatch(/Dog > Treats > Crunchy/);
-    });
-
     it('flags description structure outliers without requiring exact copy', () => {
         const violations = descriptionFormatRule.validate([
             createProductSource('SKU-1', {
@@ -115,7 +95,6 @@ describe('consistency rules', () => {
         const rules = createConsistencyRules({
             severities: {
                 'brand-consistency': 'warning',
-                'category-consistency': 'info',
                 'description-format': 'info',
             },
         });

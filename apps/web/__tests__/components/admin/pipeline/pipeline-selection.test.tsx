@@ -59,8 +59,8 @@ const counts: StatusCount[] = [
   { status: "scraping", count: 0 },
   { status: "scraped", count: 0 },
   { status: "consolidating", count: 0 },
-  { status: "finalized", count: 0 },
-  { status: "export", count: 0 },
+  { status: "finalizing", count: 0 },
+  { status: "exporting", count: 0 },
   { status: "failed", count: 0 },
 ];
 

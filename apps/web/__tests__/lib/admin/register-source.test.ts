@@ -15,7 +15,7 @@ describe("register source resolution", () => {
 
   it("falls back to workbook when no ODBC configuration exists", () => {
     expect(resolveRegisterSyncSource(undefined, { NODE_ENV: 'test' })).toBe("workbook");
-    expect(hasRegisterOdbcConfiguration({})).toBe(false);
+    expect(hasRegisterOdbcConfiguration({ NODE_ENV: 'test' })).toBe(false);
   });
 
   it("accepts explicit workbook mode even when ODBC is configured", () => {

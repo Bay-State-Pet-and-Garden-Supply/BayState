@@ -198,7 +198,6 @@ describe('Data Fetching Functions', () => {
         pickup_only: false,
         weight: null,
         search_keywords: null,
-        category: null,
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
         quantity: 0,
@@ -208,7 +207,6 @@ describe('Data Fetching Functions', () => {
         gtin: null,
         availability: null,
         minimum_quantity: 0,
-        product_type: null,
         shopsite_pages: [],
       }];
 

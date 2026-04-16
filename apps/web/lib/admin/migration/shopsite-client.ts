@@ -55,6 +55,7 @@ export interface ShopSiteUploadResult {
 }
 
 const PRODUCT_XML_VERSION = '15.0';
+const DEFAULT_UPLOAD_UNIQUE_NAME = 'SKU (Products)';
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
@@ -225,14 +226,14 @@ export class ShopSiteClient {
 
         appendField('clientApp', '1');
         appendField('dbname', 'products');
-        appendField('uniqueName', options.uniqueName ?? 'SKU');
+        appendField('uniqueName', options.uniqueName ?? DEFAULT_UPLOAD_UNIQUE_NAME);
         appendField('batchsize', String(options.batchSize ?? 500));
         appendField('newRecords', options.newRecords === false ? 'no' : 'yes');
         appendField('use_optimizer', options.useOptimizer === true ? 'yes' : 'no');
         appendField('defer_linking', options.deferLinking === true ? 'yes' : 'no');
 
         append(`--${boundary}\r\n`);
-        append('Content-Disposition: form-data; name="Desktop"; filename="shopsite-products.xml"\r\n');
+        append('Content-Disposition: form-data; name="Desktop" filename="drive:\\dirpath\\shopsite-products.xml"\r\n');
         append('Content-Type: text/xml\r\n\r\n');
         append(Buffer.from(xml, 'latin1'));
         append(`\r\n--${boundary}--\r\n`);
@@ -497,7 +498,7 @@ export class ShopSiteClient {
                 'Content-Length': uploadRequest.contentLength,
                 'Content-Type': uploadRequest.contentType,
             },
-            body: uploadRequest.body,
+            body: uploadRequest.body as any,
             cache: 'no-store',
         });
 
@@ -535,14 +536,9 @@ export class ShopSiteClient {
 
         console.log(`[ShopSite] Proceeding to dbmake.cgi with query: ${dbmakeQuery}`);
         
-        // Ensure xml=1 and clientApp=1 are in the dbmake URL as per docs
-        const dbmakeParams = new URLSearchParams(dbmakeQuery);
-        if (!dbmakeParams.has('xml')) dbmakeParams.set('xml', '1');
-        if (!dbmakeParams.has('clientApp')) dbmakeParams.set('clientApp', '1');
-        
         const uploadCookieHeader = this.extractCookieHeader(uploadHttpResponse);
 
-        const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeParams.toString(), 'dbmake.cgi'), {
+        const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeQuery, 'dbmake.cgi'), {
             method: 'GET',
             headers: this.buildRequestHeaders(uploadCookieHeader, this.config.storeUrl),
             cache: 'no-store',

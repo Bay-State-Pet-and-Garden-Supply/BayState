@@ -306,7 +306,7 @@ describe('ShopSiteClient', () => {
             expect(uploadBody).toContain('Content-Disposition: form-data; name="dbname"');
             expect(uploadBody).toContain('\r\nproducts\r\n');
             expect(uploadBody).toContain('Content-Disposition: form-data; name="uniqueName"');
-            expect(uploadBody).toContain('\r\nSKU\r\n');
+            expect(uploadBody).toContain('\r\nSKU (Products)\r\n');
             expect(uploadBody).toContain('Content-Disposition: form-data; name="batchsize"');
             expect(uploadBody).toContain('\r\n500\r\n');
             expect(uploadBody).toContain('Content-Disposition: form-data; name="newRecords"');
@@ -314,13 +314,13 @@ describe('ShopSiteClient', () => {
             expect(uploadBody).toContain('Content-Disposition: form-data; name="use_optimizer"');
             expect(uploadBody).toContain('\r\nno\r\n');
             expect(uploadBody).toContain('Content-Disposition: form-data; name="defer_linking"');
-            expect(uploadBody).toContain('Content-Disposition: form-data; name="Desktop"; filename="shopsite-products.xml"');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="Desktop" filename="drive:\\dirpath\\shopsite-products.xml"');
             expect(uploadBody).toContain('Content-Type: text/xml');
             expect(uploadBody).toContain('<ShopSiteProducts />');
 
             expect(mockFetch).toHaveBeenNthCalledWith(
                 2,
-                'https://example.shopsite.com/dbmake.cgi?clientApp=1&token=abc123&xml=1',
+                'https://example.shopsite.com/dbmake.cgi?clientApp=1&token=abc123',
                 expect.objectContaining({
                     method: 'GET',
                     headers: expect.objectContaining({

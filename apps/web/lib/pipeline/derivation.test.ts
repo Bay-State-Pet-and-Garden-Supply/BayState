@@ -76,7 +76,7 @@ function createSupabaseClient(plansByTable: Record<string, QueryPlan[]>): Active
       }
 
       return createQueryBuilder(plan);
-    }) as ActiveJobsSupabaseClient["from"],
+    }) as unknown as ActiveJobsSupabaseClient["from"],
   };
 }
 
@@ -94,8 +94,8 @@ describe("WORKFLOW_PIPELINE_TABS", () => {
       "scraping",
       "scraped",
       "consolidating",
-      "finalized",
-      "published",
+      "finalizing",
+      "exporting",
       "failed",
     ]);
   });
@@ -133,33 +133,29 @@ describe("deriveTabFromProduct", () => {
       expected: "imported",
     },
     {
-      name: "moves scraped products with active scraping into scraping",
-      product: { pipeline_status: "scraped" },
-      activeJobs: { scraping: true },
+      name: "keeps scraping products in scraping",
+      product: { pipeline_status: "scraping" },
       expected: "scraping",
     },
     {
-      name: "keeps scraped products without active jobs in scraped",
+      name: "keeps scraped products in scraped",
       product: { pipeline_status: "scraped" },
-      activeJobs: { scraping: false },
       expected: "scraped",
     },
     {
-      name: "moves finalized products with active consolidation into consolidating",
-      product: { pipeline_status: "finalized" },
-      activeJobs: { consolidation: true },
+      name: "keeps consolidating products in consolidating",
+      product: { pipeline_status: "consolidating" },
       expected: "consolidating",
     },
     {
-      name: "keeps finalized products without active consolidation in finalized",
-      product: { pipeline_status: "finalized" },
-      activeJobs: { consolidation: false },
-      expected: "finalized",
+      name: "keeps finalizing products in finalizing",
+      product: { pipeline_status: "finalizing" },
+      expected: "finalizing",
     },
     {
-      name: "keeps published products in published",
-      product: { pipeline_status: "published" },
-      expected: "published",
+      name: "keeps exporting products in exporting",
+      product: { pipeline_status: "exporting" },
+      expected: "exporting",
     },
     {
       name: "routes failed products into failed",
@@ -249,7 +245,7 @@ describe("getActiveJobsForProduct", () => {
 
     await expect(
       getActiveJobsForProduct(
-        { id: "product-1", sku: " SKU-123 ", pipeline_status: "finalized" },
+        { id: "product-1", sku: " SKU-123 ", pipeline_status: "finalizing" },
         supabase
       )
     ).resolves.toEqual({

@@ -282,18 +282,29 @@ export function applySetProductFieldsToDraft(
   draft: FinalizationDraft,
   input: {
     name?: string;
+    description?: string;
+    longDescription?: string;
     price?: number;
     weight?: string;
     availability?: string;
     isSpecialOrder?: boolean;
-  },
-): { draft: FinalizationDraft; updatedFields: string[] } {
+    minimumQuantity?: number | string;
+    gtin?: string;
+  },): { draft: FinalizationDraft; updatedFields: string[] } {
   const updatedFields: string[] = [];
   const next = { ...draft };
 
   if (input.name !== undefined) {
     next.name = input.name.trim();
     updatedFields.push("name");
+  }
+  if (input.description !== undefined) {
+    next.description = input.description.trim();
+    updatedFields.push("description");
+  }
+  if (input.longDescription !== undefined) {
+    next.longDescription = input.longDescription.trim();
+    updatedFields.push("long description");
   }
   if (input.price !== undefined) {
     next.price = String(input.price);
@@ -310,6 +321,14 @@ export function applySetProductFieldsToDraft(
   if (input.isSpecialOrder !== undefined) {
     next.isSpecialOrder = input.isSpecialOrder;
     updatedFields.push("special order");
+  }
+  if (input.minimumQuantity !== undefined) {
+    next.minimumQuantity = String(input.minimumQuantity);
+    updatedFields.push("minimum quantity");
+  }
+  if (input.gtin !== undefined) {
+    next.gtin = input.gtin.trim();
+    updatedFields.push("GTIN");
   }
 
   return { draft: next, updatedFields };
