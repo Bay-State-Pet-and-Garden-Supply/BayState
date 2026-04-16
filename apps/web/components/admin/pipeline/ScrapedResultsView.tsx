@@ -56,6 +56,7 @@ interface ScrapedResultsViewProps {
     cohort_id?: string;
   }) => void;
   availableSources?: string[];
+  isSearching?: boolean;
   // Cohort grouping props
   groupedProducts?: {
     groups: Record<string, PipelineProduct[]>;
@@ -106,6 +107,7 @@ export function ScrapedResultsView({
   filters,
   onFilterChange,
   availableSources = [],
+  isSearching = false,
   groupedProducts,
   cohortBrands = {},
   onEditCohort,
@@ -447,6 +449,7 @@ export function ScrapedResultsView({
             value={search || ""}
             onChange={(value) => onSearchChange?.(value)}
             className="flex-1"
+            isLoading={isSearching}
           />
           {filters && onFilterChange && (
             <PipelineFilters

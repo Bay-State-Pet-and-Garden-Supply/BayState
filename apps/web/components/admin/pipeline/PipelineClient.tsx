@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import type {
   PipelineProduct,
@@ -121,6 +122,7 @@ export function PipelineClient({
   const [sources, setSources] = useState<string[]>(initialSources);
   const [totalCount, setTotalCount] = useState(initialTotal);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
@@ -308,7 +310,8 @@ export function PipelineClient({
 
     let isMounted = true;
 
-    const performFetch = async () => {
+    // Debounce search fetch to prevent focus loss and excessive API calls
+    const timer = setTimeout(async () => {
       if (!isMounted) return;
 
       if (isLiveOperationalTab(currentStage)) {
@@ -318,17 +321,23 @@ export function PipelineClient({
         return;
       }
 
-      await fetchProducts(currentStage, search);
+      // Use silent fetch for search to avoid triggering global isLoading (which unmounts UI)
+      setIsSearching(true);
+      try {
+        await fetchProducts(currentStage, search, true);
+      } finally {
+        if (isMounted) setIsSearching(false);
+      }
+      
       if (isMounted) {
         setSelectedSkus(new Set());
         lastFetchedSearch.current = search;
       }
-    };
-
-    performFetch();
+    }, 300);
 
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, [search, fetchProducts, currentStage]);
 
@@ -386,8 +395,10 @@ export function PipelineClient({
       if (cohortIdFilter) currentParams.set("cohort_id", cohortIdFilter);
       else currentParams.delete("cohort_id");
 
-      router.replace(`${pathname}?${currentParams.toString()}`, {
-        scroll: false,
+      startNavigation(() => {
+        router.replace(`${pathname}?${currentParams.toString()}`, {
+          scroll: false,
+        });
       });
     }, 400);
 
@@ -1026,12 +1037,9 @@ export function PipelineClient({
       )}
 
       {/* Content Area */}
-      <div className="flex-1 min-h-0">
-        {isLoading || isNavigating ? (
-          <div className="flex h-48 items-center justify-center">
-            <div className="text-muted-foreground">Loading...</div>
-          </div>
-        ) : currentStage === "scraping" ? (
+      <div className="flex-1 min-h-0 relative">
+        <div className={cn("h-full transition-opacity", (isLoading || isNavigating) && "opacity-50 pointer-events-none")}>
+          {currentStage === "scraping" ? (
           <div className="grid gap-6 xl:grid-cols-1">
             <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
               <div className="flex items-start gap-3 mb-4">
@@ -1114,6 +1122,7 @@ export function PipelineClient({
                   }
                 : undefined
             }
+            isSearching={isSearching}
           />
         ) : currentStage === "finalizing" ? (
           <FinalizingResultsView
@@ -1135,6 +1144,7 @@ export function PipelineClient({
             }
             selectedSkus={selectedSkus}
             onSelectSku={handleSelectSku}
+            isSearching={isSearching}
           />
         ) : currentStage === "exporting" || hideTabs ? (
           <div className="space-y-4">
@@ -1372,6 +1382,16 @@ export function PipelineClient({
                 })}
               </Accordion>
             )}
+          </div>
+        )}
+        </div>
+
+        {(isLoading || isNavigating || isSearching) && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2 rounded-lg bg-background/80 px-8 py-6 shadow-xl border backdrop-blur-sm">
+              <Activity className="h-8 w-8 animate-spin text-brand-forest-green" />
+              <p className="text-sm font-bold uppercase tracking-tighter">Updating Results...</p>
+            </div>
           </div>
         )}
       </div>

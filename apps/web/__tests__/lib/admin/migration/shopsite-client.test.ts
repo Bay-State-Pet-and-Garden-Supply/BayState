@@ -287,27 +287,36 @@ describe('ShopSiteClient', () => {
             const result = await client.uploadProductsXml('<ShopSiteProducts />');
 
             expect(result.dbmakeQuery).toBe('clientApp=1&token=abc123');
-            const [uploadUrl, uploadOptions] = mockFetch.mock.calls[0] as [string, { body: FormData; headers: Record<string, string>; method: string }];
+            const [uploadUrl, uploadOptions] = mockFetch.mock.calls[0] as [string, { body: Buffer; headers: Record<string, string>; method: string }];
             expect(uploadUrl).toBe('https://example.shopsite.com/dbupload.cgi');
             expect(uploadOptions.method).toBe('POST');
             expect(uploadOptions.headers).toEqual(
                 expect.objectContaining({
                     'Authorization': expect.stringContaining('Basic'),
+                    'Content-Length': expect.any(String),
+                    'Content-Type': expect.stringContaining('multipart/form-data; boundary='),
                     'Referer': 'https://example.shopsite.com',
                 }),
             );
-            expect(uploadOptions.headers).not.toHaveProperty('Content-Type');
-            expect(uploadOptions.body).toBeInstanceOf(FormData);
-            expect(uploadOptions.body.get('clientApp')).toBe('1');
-            expect(uploadOptions.body.get('dbname')).toBe('products');
-            expect(uploadOptions.body.get('uniqueName')).toBe('SKU');
-            expect(uploadOptions.body.get('newRecords')).toBe('yes');
+            expect(Buffer.isBuffer(uploadOptions.body)).toBe(true);
 
-            const uploadFile = uploadOptions.body.get('Desktop');
-            expect(uploadFile).toBeInstanceOf(Blob);
-            expect((uploadFile as File).name).toBe('shopsite-products.xml');
-            expect((uploadFile as Blob).type).toBe('text/xml');
-            await expect((uploadFile as Blob).text()).resolves.toBe('<ShopSiteProducts />');
+            const uploadBody = uploadOptions.body.toString('latin1');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="clientApp"');
+            expect(uploadBody).toContain('\r\n1\r\n');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="dbname"');
+            expect(uploadBody).toContain('\r\nproducts\r\n');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="uniqueName"');
+            expect(uploadBody).toContain('\r\nSKU\r\n');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="batchsize"');
+            expect(uploadBody).toContain('\r\n500\r\n');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="newRecords"');
+            expect(uploadBody).toContain('\r\nyes\r\n');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="use_optimizer"');
+            expect(uploadBody).toContain('\r\nno\r\n');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="defer_linking"');
+            expect(uploadBody).toContain('Content-Disposition: form-data; name="Desktop"; filename="shopsite-products.xml"');
+            expect(uploadBody).toContain('Content-Type: text/xml');
+            expect(uploadBody).toContain('<ShopSiteProducts />');
 
             expect(mockFetch).toHaveBeenNthCalledWith(
                 2,

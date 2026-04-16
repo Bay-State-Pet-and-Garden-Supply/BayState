@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { Search, X, Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ interface PipelineSearchFieldProps {
   placeholder?: string;
   className?: string;
   inputClassName?: string;
+  isLoading?: boolean;
 }
 
 export function PipelineSearchField({
@@ -19,10 +20,15 @@ export function PipelineSearchField({
   placeholder = "Search SKUs or names...",
   className,
   inputClassName,
+  isLoading = false,
 }: PipelineSearchFieldProps) {
   return (
     <div className={cn("relative group", className)}>
-      <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
+      {isLoading ? (
+        <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 animate-spin text-brand-forest-green" />
+      ) : (
+        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-brand-forest-green" />
+      )}
       <Input
         type="search"
         value={value}
