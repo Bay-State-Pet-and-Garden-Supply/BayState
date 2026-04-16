@@ -716,8 +716,8 @@ export function PipelineClient({
             ? payload.uploadedCount
             : uploadCount;
         const uploadedSkus = Array.isArray(payload.uploadedSkus)
-          ? payload.uploadedSkus.filter(
-              (sku): sku is string =>
+          ? (payload.uploadedSkus as unknown[]).filter(
+              (sku: unknown): sku is string =>
                 typeof sku === "string" && sku.length > 0,
             )
           : skus ?? [];
