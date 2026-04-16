@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "DatasetEntry": {
+      "additionalProperties": false,
+      "description": "A single golden dataset annotation.",
+      "properties": {
+        "query": {
+          "minLength": 1,
+          "title": "Query",
+          "type": "string"
+        },
+        "expected_source_url": {
+          "format": "uri",
+          "minLength": 1,
+          "title": "Expected Source Url",
+          "type": "string"
+        },
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "difficulty": {
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ],
+          "title": "Difficulty",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query",
+        "expected_source_url",
+        "category",
+        "difficulty",
+        "rationale"
+      ],
+      "title": "DatasetEntry",
+      "type": "object"
+    },
+    "DatasetProvenance": {
+      "additionalProperties": false,
+      "description": "Metadata describing how the dataset was generated.",
+      "properties": {
+        "annotator": {
+          "minLength": 1,
+          "title": "Annotator",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "batch",
+            "interactive"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "product_count": {
+          "minimum": 0,
+          "title": "Product Count",
+          "type": "integer"
+        },
+        "max_calls": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Max Calls",
+          "type": "integer"
+        },
+        "serper_calls_used": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Serper Calls Used",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "annotator",
+        "source",
+        "mode",
+        "product_count",
+        "max_calls",
+        "serper_calls_used"
+      ],
+      "title": "DatasetProvenance",
+      "type": "object"
+    }
+  },
+  "$id": "https://baystate.internal/schemas/golden_dataset_schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Validated golden dataset payload.",
+  "properties": {
+    "version": {
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/DatasetProvenance"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/DatasetEntry"
+      },
+      "title": "Entries",
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "created_at",
+    "provenance",
+    "entries"
+  ],
+  "title": "GoldenDataset",
+  "type": "object"
+}
