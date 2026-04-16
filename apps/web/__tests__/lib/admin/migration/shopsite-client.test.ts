@@ -289,13 +289,15 @@ describe('ShopSiteClient', () => {
             expect(result.dbmakeQuery).toBe('clientApp=1&token=abc123');
             expect(mockFetch).toHaveBeenNthCalledWith(
                 1,
-                'https://example.shopsite.com/dbupload.cgi',
+                expect.stringContaining('dbupload.cgi?clientApp=1&dbname=products&xml=1&uniqueName=SKU&newRecords=yes'),
                 expect.objectContaining({
                     method: 'POST',
                     headers: expect.objectContaining({
                         'Authorization': expect.stringContaining('Basic'),
                         'Referer': 'https://example.shopsite.com',
+                        'Content-Type': 'text/xml; charset=ISO-8859-1',
                     }),
+                    body: '<ShopSiteProducts />',
                 }),
             );
             expect(mockFetch).toHaveBeenNthCalledWith(
