@@ -453,8 +453,6 @@ export class ShopSiteClient {
         const formData = new FormData();
         formData.append('clientApp', '1');
         formData.append('dbname', 'products');
-        formData.append('xml', '1');
-        formData.append('upload_type', '2');
         formData.append('uniqueName', options.uniqueName ?? 'SKU');
         formData.append('batchsize', String(options.batchSize ?? 500));
         formData.append('newRecords', options.newRecords === false ? 'no' : 'yes');
@@ -462,7 +460,7 @@ export class ShopSiteClient {
         formData.append('defer_linking', options.deferLinking === true ? 'yes' : 'no');
         formData.append(
             'Desktop',
-            new Blob([xml], { type: 'text/xml' }),
+            new Blob([xml], { type: 'text/xml; charset=ISO-8859-1' }),
             'upload.dat',
         );
 
@@ -479,6 +477,16 @@ export class ShopSiteClient {
         }
 
         const dbmakeQuery = this.extractDbmakeQuery(uploadResponse);
+        
+        // Detection: If dbmakeQuery contains many mapping params (e.g. 0=0&1=1), it means
+        // ShopSite failed to recognize the XML and triggered manual mapping mode.
+        // This causes long URLs that trigger Cloudflare 403.
+        const mappingParams = dbmakeQuery.match(/\d+=\d+/g);
+        if (mappingParams && mappingParams.length > 5) {
+            console.error(`[ShopSite] Manual mapping mode detected. Query too long: ${dbmakeQuery}`);
+            throw new Error('ShopSite failed to recognize the XML format and triggered manual mapping mode. Please check the XML structure and DTD.');
+        }
+
         console.log(`[ShopSite] Proceeding to dbmake.cgi with query: ${dbmakeQuery}`);
         
         // Ensure xml=1 and clientApp=1 are in the dbmake URL as per docs

@@ -258,7 +258,7 @@ export function generateShopSiteXml(
     const lines: string[] = [];
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
-    lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+    lines.push('<?xml version="1.0" encoding="ISO-8859-1"?>');
     lines.push(`<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">`);
     lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
     lines.push('<Products>');
@@ -279,7 +279,7 @@ export function* generateShopSiteXmlStream(
 ): Generator<string> {
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
-    yield '<?xml version="1.0" encoding="UTF-8"?>\n';
+    yield '<?xml version="1.0" encoding="ISO-8859-1"?>\n';
     yield `<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">\n`;
     yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
     yield '<Products>\n';
