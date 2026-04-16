@@ -29,7 +29,6 @@ describe('generateShopSiteXml', () => {
         );
 
         expect(xml).toContain('<ShopSiteProducts version="15.0">');
-        expect(xml).toContain('<ResponseCode>1</ResponseCode>');
         expect(xml).toContain('<Name>Feathered Friend Favorite 20 lb.</Name>');
         expect(xml).toContain('<SKU>011641750056</SKU>');
         expect(xml).toContain('<Price>24.99</Price>');

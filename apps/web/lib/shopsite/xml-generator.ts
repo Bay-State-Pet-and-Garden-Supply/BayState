@@ -261,10 +261,6 @@ export function generateShopSiteXml(
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
     lines.push(`<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">`);
     lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
-    lines.push('<Response>');
-    lines.push('<ResponseCode>1</ResponseCode>');
-    lines.push('<ResponseDescription>success</ResponseDescription>');
-    lines.push('</Response>');
     lines.push('<Products>');
 
     for (const product of products) {
@@ -286,10 +282,6 @@ export function* generateShopSiteXmlStream(
     yield '<?xml version="1.0" encoding="UTF-8"?>\n';
     yield `<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "${SHOPSITE_DOCTYPE}">\n`;
     yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
-    yield '<Response>\n';
-    yield '<ResponseCode>1</ResponseCode>\n';
-    yield '<ResponseDescription>success</ResponseDescription>\n';
-    yield '</Response>\n';
     yield '<Products>\n';
 
     for (const product of products) {

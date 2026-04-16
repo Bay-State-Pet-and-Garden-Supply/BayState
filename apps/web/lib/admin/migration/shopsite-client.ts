@@ -150,7 +150,7 @@ export class ShopSiteClient {
         return this.buildUrl('', scriptName).replace(/\?$/, '');
     }
 
-    private buildRequestHeaders(cookieHeader?: string): HeadersInit {
+    private buildRequestHeaders(cookieHeader?: string, referer?: string): HeadersInit {
         const headers: Record<string, string> = {
             'Authorization': this.authHeader,
             'User-Agent': USER_AGENT,
@@ -158,6 +158,10 @@ export class ShopSiteClient {
 
         if (cookieHeader) {
             headers.Cookie = cookieHeader;
+        }
+
+        if (referer) {
+            headers.Referer = referer;
         }
 
         return headers;
@@ -464,7 +468,7 @@ export class ShopSiteClient {
 
         const uploadHttpResponse = await fetch(this.buildScriptUrl('dbupload.cgi'), {
             method: 'POST',
-            headers: this.buildRequestHeaders(),
+            headers: this.buildRequestHeaders(undefined, this.config.storeUrl),
             body: formData,
             cache: 'no-store',
         });
@@ -486,7 +490,7 @@ export class ShopSiteClient {
 
         const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeParams.toString(), 'dbmake.cgi'), {
             method: 'GET',
-            headers: this.buildRequestHeaders(uploadCookieHeader),
+            headers: this.buildRequestHeaders(uploadCookieHeader, this.config.storeUrl),
             cache: 'no-store',
         });
 
