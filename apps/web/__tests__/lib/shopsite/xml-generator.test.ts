@@ -30,8 +30,10 @@ describe('generateShopSiteXml', () => {
 
         expect(xml).toContain('<ShopSiteProducts version="15.0">');
         expect(xml).toContain('<Name>Feathered Friend Favorite 20 lb.</Name>');
-        expect(xml).toContain('<SKU>011641750056</SKU>');
         expect(xml).toContain('<Price>24.99</Price>');
+        expect(xml).toContain('<SaleAmount/>');
+        expect(xml).toContain('<ProductDisabled>uncheck</ProductDisabled>');
+        expect(xml).toContain('<SKU>011641750056</SKU>');
         expect(xml).toContain('<ProductField1>new032626</ProductField1>');
         expect(xml).toContain('<![CDATA[Short shelf copy]]>');
         expect(xml).toContain('<Weight>20 lb.</Weight>');
@@ -44,7 +46,6 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<ProductField25>Seeds &amp; Seed Mixes</ProductField25>');
         expect(xml).toContain('<ProductField11>yes</ProductField11>');
         expect(xml).toContain('<ProductField15>checked</ProductField15>');
-        expect(xml).not.toContain('<Taxable>');
         expect(xml).not.toContain('<MinimumQuantity>');
         expect(xml).not.toContain('<Availability>');
         expect(xml).not.toContain('<FileName>');

@@ -293,7 +293,8 @@ describe('ShopSiteClient', () => {
                 expect.objectContaining({
                     method: 'POST',
                     headers: expect.objectContaining({
-                        Authorization: expect.stringContaining('Basic'),
+                        'Authorization': expect.stringContaining('Basic'),
+                        'Referer': 'https://example.shopsite.com',
                     }),
                 }),
             );
@@ -303,8 +304,9 @@ describe('ShopSiteClient', () => {
                 expect.objectContaining({
                     method: 'GET',
                     headers: expect.objectContaining({
-                        Authorization: expect.stringContaining('Basic'),
-                        Cookie: 'session=shopsite123',
+                        'Authorization': expect.stringContaining('Basic'),
+                        'Cookie': 'session=shopsite123',
+                        'Referer': 'https://example.shopsite.com',
                     }),
                 }),
             );
