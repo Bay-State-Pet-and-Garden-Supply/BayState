@@ -18,6 +18,8 @@
 .archive/
 .legacy/
 .data/
+docs/maestro/
+conductor/fix-scraping-status.md
 
 # AI Agent Output Files
 task.md

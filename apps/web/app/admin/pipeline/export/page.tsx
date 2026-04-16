@@ -46,15 +46,13 @@ export default async function PipelineExportPage({ searchParams }: PageProps) {
     }
 
     return (
-        <div className="space-y-6">
-            <PipelineClient
-                initialProducts={initialProducts}
-                initialCounts={initialCounts}
-                initialTotal={initialTotal}
-                initialStage={initialStage}
-                initialSources={initialSources}
-                hideTabs={true}
-            />
-        </div>
+        <PipelineClient
+            initialProducts={initialProducts}
+            initialCounts={initialCounts}
+            initialTotal={initialTotal}
+            initialStage={initialStage}
+            initialSources={initialSources}
+            hideTabs={false}
+        />
     );
 }

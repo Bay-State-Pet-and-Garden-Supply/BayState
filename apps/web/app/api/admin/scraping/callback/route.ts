@@ -446,6 +446,32 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Revert any stuck SKUs to imported for production jobs that finished (completed or failed)
+        if (!isTestJob && (payload.status === 'completed' || payload.status === 'failed')) {
+            const jobSkus = Array.isArray(existingJob.skus)
+                ? existingJob.skus.filter((sku): sku is string => typeof sku === 'string' && sku.trim().length > 0)
+                : [];
+
+            if (jobSkus.length > 0) {
+                console.log(`[Callback] Job ${payload.job_id}: Attempting to revert ${jobSkus.length} SKUs to imported. SKUs: ${jobSkus.join(', ')}`);
+                const { data: affected, error: resetStatusError } = await supabase
+                    .from('products_ingestion')
+                    .update({
+                        pipeline_status: 'imported',
+                        updated_at: new Date().toISOString(),
+                    })
+                    .in('sku', jobSkus)
+                    .eq('pipeline_status', 'scraping')
+                    .select('sku');
+
+                if (resetStatusError) {
+                    console.error('[Callback] Failed to reset stuck SKUs to imported:', resetStatusError);
+                } else {
+                    console.log(`[Callback] Job ${payload.job_id}: Reverted ${affected?.length || 0} SKUs to 'imported'`);
+                }
+            }
+        }
+
         if (isTestJob) {
             console.log(`[Callback] Test job detected: ${payload.job_id} (test_run_id: ${testRunId}) - Will NOT update products_ingestion or trigger consolidation`);
         } else {
