@@ -17,6 +17,9 @@ const PAGE_SIZE = 200;
 const ALLOWED_STATUSES = PIPELINE_ROUTE_STATUS_VALUES;
 
 type ExportStatus = PipelineRouteStatus;
+interface ExportRequestBody {
+  skus?: unknown;
+}
 
 type JsonRecord = Record<string, unknown>;
 type SelectedImageRecord = {
@@ -183,6 +186,84 @@ export async function streamWorkbook(status: ExportStatus | 'all', output: PassT
   await streamWorkbookRows(loadProducts(), output);
 }
 
+export async function streamWorkbookForSkus(skus: string[], output: PassThrough) {
+  const supabase = await createAdminClient();
+  const normalizedSkus = Array.from(
+    new Set(
+      skus
+        .map((sku) => (typeof sku === 'string' ? sku.trim() : ''))
+        .filter((sku) => sku.length > 0),
+    ),
+  );
+
+  if (normalizedSkus.length === 0) {
+    throw new Error('Expected "skus" to be a non-empty array of SKU strings');
+  }
+
+  async function* loadProducts(): AsyncGenerator<ExportProduct> {
+    let page = 0;
+
+    while (true) {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await supabase
+        .from('products_ingestion')
+        .select('sku, input, consolidated, selected_images, pipeline_status, updated_at')
+        .eq('pipeline_status', 'exporting')
+        .is('exported_at', null)
+        .in('sku', normalizedSkus)
+        .order('updated_at', { ascending: false })
+        .order('sku', { ascending: true })
+        .range(from, to);
+
+      if (error) {
+        throw new Error(`Failed to export products: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      for (const product of data) {
+        yield product;
+      }
+
+      if (data.length < PAGE_SIZE) {
+        break;
+      }
+
+      page += 1;
+    }
+  }
+
+  await streamWorkbookRows(loadProducts(), output);
+}
+
+function parseSkuSelection(body: ExportRequestBody): string[] {
+  if (body.skus === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(body.skus)) {
+    throw new Error('Expected "skus" to be an array of SKU strings');
+  }
+
+  return body.skus
+    .map((sku) => (typeof sku === 'string' ? sku.trim() : ''))
+    .filter((sku) => sku.length > 0);
+}
+
+function buildWorkbookResponse(output: PassThrough) {
+  return new NextResponse(Readable.toWeb(output) as ReadableStream<Uint8Array>, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${EXPORT_FILENAME}"`,
+      'Cache-Control': 'no-store',
+    },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdminAuth();
   if (!auth.authorized) return auth.response;
@@ -206,11 +287,33 @@ export async function GET(request: NextRequest) {
     output.destroy(error instanceof Error ? error : new Error('Pipeline export failed'));
   });
 
-  return new NextResponse(Readable.toWeb(output) as ReadableStream<Uint8Array>, {
-    headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${EXPORT_FILENAME}"`,
-      'Cache-Control': 'no-store',
-    },
-  });
+  return buildWorkbookResponse(output);
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminAuth();
+  if (!auth.authorized) return auth.response;
+
+  try {
+    const body = (await request.json()) as ExportRequestBody;
+    const skus = parseSkuSelection(body);
+    if (skus.length === 0) {
+      return NextResponse.json(
+        { error: 'Expected "skus" to be a non-empty array of SKU strings' },
+        { status: 400 },
+      );
+    }
+
+    const output = new PassThrough();
+    void streamWorkbookForSkus(skus, output).catch((error: unknown) => {
+      console.error('Pipeline export stream failed:', error);
+      output.destroy(error instanceof Error ? error : new Error('Pipeline export failed'));
+    });
+
+    return buildWorkbookResponse(output);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to export products';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

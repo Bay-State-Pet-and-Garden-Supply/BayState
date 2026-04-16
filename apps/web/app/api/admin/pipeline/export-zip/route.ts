@@ -14,6 +14,7 @@ export const maxDuration = 300; // 5 minutes (max for Vercel Pro)
 
 interface ExportRequestBody {
     skus?: unknown;
+    includeExportedSelection?: unknown;
 }
 
 function parseSkuSelection(body: ExportRequestBody): string[] {
@@ -30,8 +31,11 @@ function parseSkuSelection(body: ExportRequestBody): string[] {
         .filter((sku) => sku.length > 0);
 }
 
-async function buildZipResponse(skus?: string[]) {
-    const { products } = await loadStorefrontShopSiteExport({ skus });
+async function buildZipResponse(skus?: string[], includeExportedSelection = false) {
+    const { products } = await loadStorefrontShopSiteExport({
+        skus,
+        includeExportedRequestedSkus: includeExportedSelection,
+    });
     if (products.length === 0) {
         return NextResponse.json(
             { error: 'No export-ready storefront products available for ShopSite export' },
@@ -131,7 +135,10 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json() as ExportRequestBody;
         const skus = parseSkuSelection(body);
-        return await buildZipResponse(skus.length > 0 ? skus : undefined);
+        return await buildZipResponse(
+            skus.length > 0 ? skus : undefined,
+            body.includeExportedSelection === true,
+        );
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to generate ZIP export';
         const status = message.includes('Expected "skus"') || message.includes('export queue') ? 400 : 500;

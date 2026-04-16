@@ -277,10 +277,12 @@ export function prepareStorefrontShopSiteExport(
 }
 
 export async function loadStorefrontShopSiteExport(
-    options: { skus?: string[] } = {},
+    options: { skus?: string[]; includeExportedRequestedSkus?: boolean } = {},
 ): Promise<PreparedShopSiteExport> {
     const supabase = await createAdminClient();
     const requestedSkus = uniqueStrings(options.skus ?? []);
+    const includeExportedRequestedSkus =
+        options.includeExportedRequestedSkus === true && requestedSkus.length > 0;
     const rows: ShopSiteExportSourceRow[] = [];
     let page = 0;
 
@@ -292,8 +294,11 @@ export async function loadStorefrontShopSiteExport(
             .from('products_ingestion')
             .select('sku, input, consolidated, selected_images')
             .eq('pipeline_status', 'exporting')
-            .is('exported_at', null)
             .order('sku', { ascending: true });
+
+        if (!includeExportedRequestedSkus) {
+            exportQueueQuery = exportQueueQuery.is('exported_at', null);
+        }
 
         if (requestedSkus.length > 0) {
             exportQueueQuery = exportQueueQuery.in('sku', requestedSkus);

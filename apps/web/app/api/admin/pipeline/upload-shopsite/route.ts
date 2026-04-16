@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             uploadedCount: products.length,
+            uploadedSkus,
             marker,
         });
     } catch (err) {

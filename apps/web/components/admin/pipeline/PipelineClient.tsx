@@ -35,7 +35,6 @@ import {
   type PipelineFiltersState,
 } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
-import { ExportWorkspace } from "./ExportWorkspace";
 import { formatPipelineBatchLabel } from "./view-utils";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import {
@@ -128,6 +127,9 @@ export function PipelineClient({
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
   const [exportActionState, setExportActionState] = useState<
     "upload" | "zip" | null
+  >(null);
+  const [exportDownloadState, setExportDownloadState] = useState<
+    "excel" | "xml" | null
   >(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editingCohort, setEditingCohort] = useState<{
@@ -623,6 +625,66 @@ export function PipelineClient({
     }
   }, [selectedSkus, refreshAll]);
 
+  const downloadResponseToFile = useCallback(
+    async (response: Response, fallbackFilename: string) => {
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch =
+        contentDisposition?.match(/filename="?([^"]+)"?/i);
+      const filename = filenameMatch?.[1] ?? fallbackFilename;
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      return filename;
+    },
+    [],
+  );
+
+  const fetchPublishedImageZipResponse = useCallback(
+    async (
+      skus?: string[],
+      options: { includeExportedSelection?: boolean } = {},
+    ) => {
+      const hasScopedSelection = !!skus && skus.length > 0;
+      const response = hasScopedSelection
+        ? await fetch("/api/admin/pipeline/export-zip", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              skus,
+              ...(options.includeExportedSelection
+                ? { includeExportedSelection: true }
+                : {}),
+            }),
+          })
+        : await fetch("/api/admin/pipeline/export-zip");
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || "Failed to download image ZIP");
+      }
+
+      return response;
+    },
+    [],
+  );
+
+  const selectedExportSkus = useMemo(
+    () => Array.from(selectedSkus),
+    [selectedSkus],
+  );
+  const selectedExportCount = selectedExportSkus.length;
+  const scopedExportCount =
+    selectedExportCount > 0 ? selectedExportCount : totalCount;
+  const hasExportableProducts = scopedExportCount > 0;
+
   const uploadPublishedProducts = useCallback(
     async (skus?: string[]) => {
       const uploadCount = skus?.length ?? totalCount;
@@ -653,9 +715,34 @@ export function PipelineClient({
           typeof payload.uploadedCount === "number"
             ? payload.uploadedCount
             : uploadCount;
+        const uploadedSkus = Array.isArray(payload.uploadedSkus)
+          ? payload.uploadedSkus.filter(
+              (sku): sku is string =>
+                typeof sku === "string" && sku.length > 0,
+            )
+          : skus ?? [];
+        let zipDownloaded = false;
+
+        try {
+          setExportActionState("zip");
+          const zipResponse = await fetchPublishedImageZipResponse(uploadedSkus, {
+            includeExportedSelection: true,
+          });
+          await downloadResponseToFile(zipResponse, "shopsite-images.zip");
+          zipDownloaded = true;
+        } catch (zipError) {
+          toast.error(
+            zipError instanceof Error
+              ? zipError.message
+              : "Uploaded to ShopSite, but failed to download image ZIP",
+          );
+        }
+
+        setSelectedSkus(new Set());
+        await refreshAll();
 
         toast.success("Uploaded to ShopSite", {
-          description: `${uploadedCount} storefront product${uploadedCount === 1 ? "" : "s"}${marker ? ` tagged ${marker}` : ""}`,
+          description: `${uploadedCount} storefront product${uploadedCount === 1 ? "" : "s"} archived${marker ? ` and tagged ${marker}` : ""}${zipDownloaded ? "; image ZIP downloaded" : ""}`,
         });
       } catch (error) {
         toast.error(
@@ -667,7 +754,12 @@ export function PipelineClient({
         setExportActionState(null);
       }
     },
-    [totalCount],
+    [
+      downloadResponseToFile,
+      fetchPublishedImageZipResponse,
+      refreshAll,
+      totalCount,
+    ],
   );
 
   const downloadPublishedImageZip = useCallback(
@@ -679,34 +771,8 @@ export function PipelineClient({
 
       setExportActionState("zip");
       try {
-        const response =
-          skus && skus.length > 0
-            ? await fetch("/api/admin/pipeline/export-zip", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ skus }),
-              })
-            : await fetch("/api/admin/pipeline/export-zip");
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || "Failed to download image ZIP");
-        }
-
-        const blob = await response.blob();
-        const contentDisposition = response.headers.get("Content-Disposition");
-        const filenameMatch =
-          contentDisposition?.match(/filename="?([^"]+)"?/i);
-        const filename = filenameMatch?.[1] ?? "shopsite-images.zip";
-
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        const response = await fetchPublishedImageZipResponse(skus);
+        await downloadResponseToFile(response, "shopsite-images.zip");
 
         toast.success("Image ZIP downloaded", {
           description: `${exportCount} storefront product${exportCount === 1 ? "" : "s"}`,
@@ -721,7 +787,85 @@ export function PipelineClient({
         setExportActionState(null);
       }
     },
-    [totalCount],
+    [downloadResponseToFile, fetchPublishedImageZipResponse, totalCount],
+  );
+
+  const downloadPublishedXml = useCallback(
+    async (skus?: string[]) => {
+      const exportCount = skus?.length ?? totalCount;
+      if (exportCount === 0) {
+        return;
+      }
+
+      setExportDownloadState("xml");
+      try {
+        const response =
+          skus && skus.length > 0
+            ? await fetch("/api/admin/pipeline/export-xml", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skus }),
+              })
+            : await fetch("/api/admin/pipeline/export-xml");
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "Failed to generate XML export");
+        }
+
+        await downloadResponseToFile(response, "shopsite-products.xml");
+
+        toast.success("ShopSite XML downloaded", {
+          description: `${exportCount} storefront product${exportCount === 1 ? "" : "s"}`,
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to generate XML export",
+        );
+      } finally {
+        setExportDownloadState(null);
+      }
+    },
+    [downloadResponseToFile, totalCount],
+  );
+
+  const downloadPublishedWorkbook = useCallback(
+    async (skus?: string[]) => {
+      const exportCount = skus?.length ?? totalCount;
+      if (exportCount === 0) {
+        return;
+      }
+
+      setExportDownloadState("excel");
+      try {
+        const response =
+          skus && skus.length > 0
+            ? await fetch("/api/admin/pipeline/export", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skus }),
+              })
+            : await fetch("/api/admin/pipeline/export?status=exporting");
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "Failed to export products");
+        }
+
+        await downloadResponseToFile(response, "products-export.xlsx");
+
+        toast.success("Spreadsheet export downloaded", {
+          description: `${exportCount} storefront product${exportCount === 1 ? "" : "s"}`,
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to export products",
+        );
+      } finally {
+        setExportDownloadState(null);
+      }
+    },
+    [downloadResponseToFile, totalCount],
   );
 
   const handleUploadSelectedShopSite = useCallback(() => {
@@ -969,6 +1113,79 @@ export function PipelineClient({
         />
       ) : null}
 
+      {currentStage === "exporting" ? (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              void uploadPublishedProducts(
+                selectedExportCount > 0 ? selectedExportSkus : undefined,
+              )
+            }
+            disabled={!hasExportableProducts || exportActionState !== null}
+            className="h-8 border-primary/20 text-primary hover:bg-primary/5 text-xs font-semibold"
+          >
+            {exportActionState === "upload"
+              ? "Uploading..."
+              : selectedExportCount > 0
+                ? `Upload ${selectedExportCount} Selected`
+                : "Upload to ShopSite"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              void downloadPublishedXml(
+                selectedExportCount > 0 ? selectedExportSkus : undefined,
+              )
+            }
+            disabled={!hasExportableProducts || exportDownloadState !== null}
+            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
+          >
+            {exportDownloadState === "xml"
+              ? "Exporting XML..."
+              : selectedExportCount > 0
+                ? `XML ${selectedExportCount} Selected`
+                : "Export ShopSite XML"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              void downloadPublishedWorkbook(
+                selectedExportCount > 0 ? selectedExportSkus : undefined,
+              )
+            }
+            disabled={!hasExportableProducts || exportDownloadState !== null}
+            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
+          >
+            {exportDownloadState === "excel"
+              ? "Exporting..."
+              : selectedExportCount > 0
+                ? `Export ${selectedExportCount} Selected`
+                : "Export Excel"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              void downloadPublishedImageZip(
+                selectedExportCount > 0 ? selectedExportSkus : undefined,
+              )
+            }
+            disabled={!hasExportableProducts || exportActionState !== null}
+            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
+          >
+            {exportActionState === "zip"
+              ? "Downloading ZIP..."
+              : selectedExportCount > 0
+                ? `ZIP ${selectedExportCount} Selected`
+                : "Download Images ZIP"}
+          </Button>
+        </>
+      ) : null}
+
       {currentStage === "imported" && (
         <>
           <Button
@@ -1148,7 +1365,6 @@ export function PipelineClient({
           />
         ) : currentStage === "exporting" || hideTabs ? (
           <div className="space-y-4">
-            <ExportWorkspace />
             {(groupedProducts.cohortIds.length <= 1 && (groupedProducts.cohortIds.length === 0 || groupedProducts.cohortIds[0] === "ungrouped")) ? (
               <ProductTable
                 products={filteredProducts}
