@@ -3,22 +3,16 @@
  */
 
 import {
-  queryConsolidatingTabProducts,
-  queryFinalizedTabProducts,
   queryImportedTabProducts,
   queryProductsForWorkflowTab,
-  queryScrapedTabProducts,
-  queryScrapingTabProducts,
   queryWorkflowTabCounts,
   type PipelineQuerySupabaseClient,
 } from "./queries";
+import { PERSISTED_PIPELINE_STATUSES, type PersistedPipelineStatus } from "./types";
 
 type QueryCall =
   | ["select", string, { count?: "exact" | "planned" | "estimated" } | undefined]
   | ["eq", string, string]
-  | ["in", string, readonly string[]]
-  | ["not", string, string, string]
-  | ["or", string]
   | ["order", string, { ascending?: boolean } | undefined]
   | ["range", number, number];
 
@@ -44,9 +38,6 @@ function createQueryBuilder(plan: QueryPlan) {
   const builder = Promise.resolve(plan.result) as Promise<typeof plan.result> & {
     select: (columns: string, options?: { count?: "exact" | "planned" | "estimated" }) => typeof builder;
     eq: (column: string, value: string) => typeof builder;
-    in: (column: string, values: readonly string[]) => typeof builder;
-    not: (column: string, operator: string, value: string) => typeof builder;
-    or: (filters: string) => typeof builder;
     order: (column: string, options?: { ascending?: boolean }) => typeof builder;
     range: (from: number, to: number) => typeof builder;
   };
@@ -57,18 +48,6 @@ function createQueryBuilder(plan: QueryPlan) {
   });
   builder.eq = jest.fn((column: string, value: string) => {
     plan.calls.push(["eq", column, value]);
-    return builder;
-  });
-  builder.in = jest.fn((column: string, values: readonly string[]) => {
-    plan.calls.push(["in", column, values]);
-    return builder;
-  });
-  builder.not = jest.fn((column: string, operator: string, value: string) => {
-    plan.calls.push(["not", column, operator, value]);
-    return builder;
-  });
-  builder.or = jest.fn((filters: string) => {
-    plan.calls.push(["or", filters]);
     return builder;
   });
   builder.order = jest.fn((column: string, options?: { ascending?: boolean }) => {
@@ -94,18 +73,18 @@ function createSupabaseClient(plansByTable: Record<string, QueryPlan[]>): Pipeli
       }
 
       return createQueryBuilder(plan);
-    }) as PipelineQuerySupabaseClient["from"],
+    }) as unknown as PipelineQuerySupabaseClient["from"],
   };
 }
 
 function createProduct(
   id: string,
   sku: string,
-  status: "imported" | "scraped" | "finalized" | "published" | "failed"
+  status: PersistedPipelineStatus
 ): {
   id: string;
   sku: string;
-  pipeline_status: "imported" | "scraped" | "finalized" | "published" | "failed";
+  pipeline_status: PersistedPipelineStatus;
   input: { name: string; price: number };
   sources: Record<string, never>;
   consolidated: { name: string; price: number };
@@ -148,182 +127,23 @@ describe("pipeline queries", () => {
     ]);
   });
 
-  it("queries scraping products by including active scrape identifiers", async () => {
-    const activeScrapesPlan = createQueryPlan({
-      data: [
-        { product_id: "prod-1", skus: ["SKU-1", " "] },
-        { product_id: null, skus: ["SKU-2"] },
-      ],
-      error: null,
-    });
+  it("queries products for a specific workflow tab", async () => {
     const productsPlan = createQueryPlan({
-      data: [createProduct("prod-1", "SKU-1", "scraped")],
+      data: [createProduct("p-2", "SKU-2", "finalizing")],
       error: null,
       count: 1,
     });
     const supabase = createSupabaseClient({
-      scrape_jobs: [activeScrapesPlan],
       products_ingestion: [productsPlan],
     });
 
-    const result = await queryScrapingTabProducts(supabase);
+    const result = await queryProductsForWorkflowTab("finalizing", supabase);
 
-    expect(result.tab).toBe("scraping");
-    expect(result.count).toBe(1);
-    expect(activeScrapesPlan.calls).toEqual([
-      ["select", "product_id, skus", undefined],
-      ["in", "status", ["pending", "claimed", "running"]],
-    ]);
-    expect(productsPlan.calls).toEqual([
-      ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "scraped"],
-      ["order", "updated_at", { ascending: false }],
-      ["or", 'id.in.("prod-1"),sku.in.("SKU-1","SKU-2")'],
-      ["range", 0, 99],
-    ]);
-  });
-
-  it("queries scraped products by excluding active scrape identifiers", async () => {
-    const activeScrapesPlan = createQueryPlan({
-      data: [{ product_id: "prod-1", skus: ["SKU-1"] }],
-      error: null,
-    });
-    const productsPlan = createQueryPlan({
-      data: [createProduct("prod-2", "SKU-2", "scraped")],
-      error: null,
-      count: 1,
-    });
-    const supabase = createSupabaseClient({
-      scrape_jobs: [activeScrapesPlan],
-      products_ingestion: [productsPlan],
-    });
-
-    const result = await queryScrapedTabProducts(supabase, { limit: 50, offset: 5 });
-
-    expect(result.tab).toBe("scraped");
+    expect(result.tab).toBe("finalizing");
     expect(result.count).toBe(1);
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "scraped"],
-      ["order", "updated_at", { ascending: false }],
-      ["not", "id", "in", '("prod-1")'],
-      ["not", "sku", "in", '("SKU-1")'],
-      ["range", 5, 54],
-    ]);
-  });
-
-  it("queries consolidating products by including active consolidation identifiers", async () => {
-    const activeConsolidationsPlan = createQueryPlan({
-      data: [
-        {
-          product_ids: [
-            "123e4567-e89b-12d3-a456-426614174000",
-            "SKU-9",
-          ],
-        },
-      ],
-      error: null,
-    });
-    const productsPlan = createQueryPlan({
-      data: [createProduct("123e4567-e89b-12d3-a456-426614174000", "SKU-9", "finalized")],
-      error: null,
-      count: 1,
-    });
-    const supabase = createSupabaseClient({
-      consolidation_batches: [activeConsolidationsPlan],
-      products_ingestion: [productsPlan],
-    });
-
-    const result = await queryConsolidatingTabProducts(supabase);
-
-    expect(result.tab).toBe("consolidating");
-    expect(result.count).toBe(1);
-    expect(productsPlan.calls).toEqual([
-      ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "finalized"],
-      ["order", "updated_at", { ascending: false }],
-      ["or", 'id.in.("123e4567-e89b-12d3-a456-426614174000"),sku.in.("SKU-9")'],
-      ["range", 0, 99],
-    ]);
-  });
-
-  it("queries finalized products by excluding active consolidation identifiers", async () => {
-    const activeConsolidationsPlan = createQueryPlan({
-      data: [
-        {
-          product_ids: [
-            "123e4567-e89b-12d3-a456-426614174000",
-            "SKU-9",
-          ],
-        },
-      ],
-      error: null,
-    });
-    const productsPlan = createQueryPlan({
-      data: [createProduct("prod-10", "SKU-10", "finalized")],
-      error: null,
-      count: 1,
-    });
-    const supabase = createSupabaseClient({
-      consolidation_batches: [activeConsolidationsPlan],
-      products_ingestion: [productsPlan],
-    });
-
-    const result = await queryFinalizedTabProducts(supabase);
-
-    expect(result.tab).toBe("finalized");
-    expect(result.count).toBe(1);
-    expect(productsPlan.calls).toEqual([
-      ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "finalized"],
-      ["order", "updated_at", { ascending: false }],
-      ["not", "id", "in", '("123e4567-e89b-12d3-a456-426614174000")'],
-      ["not", "sku", "in", '("SKU-9")'],
-      ["range", 0, 99],
-    ]);
-  });
-
-  it("returns an empty scraping result when active scrape lookup fails non-fatally", async () => {
-    const activeScrapesPlan = createQueryPlan({
-      data: null,
-      error: { code: "42P01", message: "relation scrape_jobs does not exist" },
-    });
-    const supabase = createSupabaseClient({
-      scrape_jobs: [activeScrapesPlan],
-    });
-
-    const result = await queryScrapingTabProducts(supabase);
-
-    expect(result).toMatchObject({
-      tab: "scraping",
-      products: [],
-      count: 0,
-    });
-    expect((supabase.from as jest.Mock).mock.calls).toEqual([["scrape_jobs"]]);
-  });
-
-  it("still queries finalized products when active consolidation lookup fails non-fatally", async () => {
-    const activeConsolidationsPlan = createQueryPlan({
-      data: null,
-      error: { code: "42703", message: "column product_ids does not exist" },
-    });
-    const productsPlan = createQueryPlan({
-      data: [createProduct("prod-10", "SKU-10", "finalized")],
-      error: null,
-      count: 1,
-    });
-    const supabase = createSupabaseClient({
-      consolidation_batches: [activeConsolidationsPlan],
-      products_ingestion: [productsPlan],
-    });
-
-    const result = await queryProductsForWorkflowTab("finalized", supabase);
-
-    expect(result.tab).toBe("finalized");
-    expect(result.count).toBe(1);
-    expect(productsPlan.calls).toEqual([
-      ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "finalized"],
+      ["eq", "pipeline_status", "finalizing"],
       ["order", "updated_at", { ascending: false }],
       ["range", 0, 99],
     ]);
@@ -345,36 +165,24 @@ describe("pipeline queries", () => {
   });
 
   it("aggregates counts for all workflow tabs", async () => {
+    const plans: QueryPlan[] = PERSISTED_PIPELINE_STATUSES.map(status => 
+      createQueryPlan({ data: [], error: null, count: status.length })
+    );
+
     const supabase = createSupabaseClient({
-      products_ingestion: [
-        createQueryPlan({ data: [createProduct("p-1", "SKU-1", "imported")], error: null, count: 11 }),
-        createQueryPlan({ data: [createProduct("p-2", "SKU-2", "scraped")], error: null, count: 2 }),
-        createQueryPlan({ data: [createProduct("p-3", "SKU-3", "scraped")], error: null, count: 3 }),
-        createQueryPlan({ data: [createProduct("p-4", "SKU-4", "finalized")], error: null, count: 4 }),
-        createQueryPlan({ data: [createProduct("p-5", "SKU-5", "finalized")], error: null, count: 5 }),
-        createQueryPlan({ data: [createProduct("p-6", "SKU-6", "published")], error: null, count: 6 }),
-        createQueryPlan({ data: [createProduct("p-7", "SKU-7", "failed")], error: null, count: 7 }),
-      ],
-      scrape_jobs: [
-        createQueryPlan({ data: [{ product_id: "p-2", skus: [] }], error: null }),
-      ],
-      consolidation_batches: [
-        createQueryPlan({ data: [{ product_ids: ["SKU-4"] }], error: null }),
-      ],
+      products_ingestion: plans,
     });
 
-    await expect(queryWorkflowTabCounts(supabase)).resolves.toEqual({
-      imported: 11,
-      scraping: 2,
-      scraped: 3,
-      consolidating: 4,
-      finalized: 5,
-      published: 6,
-      failed: 7,
+    const counts = await queryWorkflowTabCounts(supabase);
+    
+    expect(counts).toEqual({
+      imported: "imported".length,
+      scraping: "scraping".length,
+      scraped: "scraped".length,
+      consolidating: "consolidating".length,
+      finalizing: "finalizing".length,
+      exporting: "exporting".length,
+      failed: "failed".length,
     });
-
-    const fromCalls = (supabase.from as jest.Mock).mock.calls.map(([table]) => table);
-    expect(fromCalls.filter((table) => table === "scrape_jobs")).toHaveLength(1);
-    expect(fromCalls.filter((table) => table === "consolidation_batches")).toHaveLength(1);
   });
 });

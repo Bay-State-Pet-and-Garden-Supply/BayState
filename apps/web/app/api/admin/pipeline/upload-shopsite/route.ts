@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         const client = new ShopSiteClient(config);
 
         await client.uploadProductsXml(xml, {
-            uniqueName: 'SKU',
+            uniqueName: 'SKU (Products)',
             publish: {
                 htmlpages: true,
                 index: true,

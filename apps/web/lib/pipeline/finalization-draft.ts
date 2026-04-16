@@ -13,10 +13,16 @@ export type FinalizationStockStatus =
 
 export interface FinalizationDraft {
   name: string;
+  description: string;
+  longDescription: string;
   price: string;
   weight: string;
   brandId: string;
+  stockStatus: FinalizationStockStatus;
   availability: string;
+  minimumQuantity: string;
+  searchKeywords: string;
+  gtin: string;
   productOnPages: string[];
   isSpecialOrder: boolean;
   customImageUrl: string;
@@ -25,10 +31,16 @@ export interface FinalizationDraft {
 
 export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
   name: "",
+  description: "",
+  longDescription: "",
   price: "",
   weight: "",
   brandId: "none",
+  stockStatus: "in_stock",
   availability: "in stock",
+  minimumQuantity: "0",
+  searchKeywords: "",
+  gtin: "",
   productOnPages: [],
   isSpecialOrder: false,
   customImageUrl: "",
@@ -37,10 +49,16 @@ export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
 
 export const finalizationDraftSchema = z.object({
   name: z.string(),
+  description: z.string(),
+  longDescription: z.string(),
   price: z.string(),
   weight: z.string(),
   brandId: z.string(),
+  stockStatus: z.enum(["in_stock", "out_of_stock", "pre_order"]),
   availability: z.string(),
+  minimumQuantity: z.string(),
+  searchKeywords: z.string(),
+  gtin: z.string(),
   productOnPages: z.array(z.string()),
   isSpecialOrder: z.boolean(),
   customImageUrl: z.string(),
@@ -102,10 +120,8 @@ function parseProductOnPages(value: unknown): string[] {
 
 function toFinalizationStockStatus(value: unknown): FinalizationStockStatus {
   if (
-    typeof value === "string"
-    && FINALIZATION_STOCK_STATUS_VALUES.includes(
-      value as FinalizationStockStatus,
-    )
+    typeof value === "string" &&
+    FINALIZATION_STOCK_STATUS_VALUES.includes(value as FinalizationStockStatus)
   ) {
     return value as FinalizationStockStatus;
   }
@@ -168,12 +184,20 @@ export function buildInitialFinalizationDraft(
 
   return {
     name: toTrimmedString(consolidated.name ?? input.name),
+    description: toTrimmedString(consolidated.description ?? input.description),
+    longDescription: toTrimmedString(
+      consolidated.long_description ?? input.long_description,
+    ),
     price: toTrimmedString(consolidated.price ?? input.price),
     weight: toTrimmedString(consolidated.weight ?? input.weight),
     brandId: toTrimmedString(consolidated.brand_id) || "none",
+    stockStatus: toFinalizationStockStatus(consolidated.stock_status ?? input.stock_status),
     availability:
-      toTrimmedString(consolidated.availability ?? input.availability)
-      || "in stock",
+      toTrimmedString(consolidated.availability ?? input.availability) ||
+      "in stock",
+    minimumQuantity: toTrimmedString(consolidated.minimum_quantity ?? input.minimum_quantity) || "0",
+    searchKeywords: toTrimmedString(consolidated.search_keywords ?? input.search_keywords),
+    gtin: toTrimmedString(consolidated.gtin ?? input.gtin),
     productOnPages: parseProductOnPages(
       consolidated.product_on_pages ?? input.product_on_pages,
     ),
@@ -207,10 +231,16 @@ export function createPersistedFinalizationDraftSnapshot(
   return {
     ...draft,
     name: draft.name.trim(),
+    description: draft.description.trim(),
+    longDescription: draft.longDescription.trim(),
     price: draft.price.trim(),
     weight: draft.weight.trim(),
     brandId: draft.brandId || "none",
+    stockStatus: draft.stockStatus,
     availability: draft.availability.trim() || "in stock",
+    minimumQuantity: String(parseNonNegativeInt(draft.minimumQuantity)),
+    searchKeywords: draft.searchKeywords.trim(),
+    gtin: draft.gtin.trim(),
     productOnPages: parseProductOnPages(draft.productOnPages),
     customImageUrl: "",
     selectedImages: toFinalizationImageArray(draft.selectedImages),
@@ -224,13 +254,18 @@ export function buildConsolidatedPayloadFromDraft(
 
   return {
     name: snapshot.name,
-    description: snapshot.name,
+    description: normalizeOptionalText(snapshot.description),
+    long_description: normalizeOptionalText(snapshot.longDescription),
     price: parseNonNegativeFloat(snapshot.price),
     brand_id: snapshot.brandId === "none" ? null : snapshot.brandId,
+    stock_status: snapshot.stockStatus,
     is_special_order: snapshot.isSpecialOrder,
     weight: normalizeOptionalText(snapshot.weight),
     product_on_pages: snapshot.productOnPages,
     images: snapshot.selectedImages,
+    search_keywords: normalizeOptionalText(snapshot.searchKeywords),
+    gtin: normalizeOptionalText(snapshot.gtin),
     availability: normalizeOptionalText(snapshot.availability) ?? "in stock",
+    minimum_quantity: parseNonNegativeInt(snapshot.minimumQuantity),
   };
 }

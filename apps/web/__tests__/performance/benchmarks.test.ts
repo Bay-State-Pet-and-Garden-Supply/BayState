@@ -43,7 +43,7 @@ describe('Performance Benchmarks', () => {
             });
 
             const startTime = Date.now();
-            const result = await bulkUpdateStatus(skus, 'finalized', 'test-user');
+            const result = await bulkUpdateStatus(skus, 'finalizing', 'test-user');
             const endTime = Date.now();
             
             const duration = (endTime - startTime) / 1000;
@@ -63,7 +63,7 @@ describe('Performance Benchmarks', () => {
             });
 
             const startTime = Date.now();
-            const result = await bulkUpdateStatus(skus, 'finalized', 'test-user');
+            const result = await bulkUpdateStatus(skus, 'finalizing', 'test-user');
             const endTime = Date.now();
             
             const duration = (endTime - startTime) / 1000;

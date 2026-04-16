@@ -181,7 +181,7 @@ export async function getProductsByStatus(
   if (options?.source) {
     // Check if the source key exists in the sources JSONB column
     // Use Supabase's JSON key-existence helper instead of raw PostgREST syntax.
-    query = query.has("sources", options.source);
+    query = query.not(`sources->${options.source}`, "is", null);
   }
 
   if (options?.minConfidence !== undefined) {
@@ -341,7 +341,7 @@ export async function getProductsByStage(
   }
 
   if (options?.source) {
-    query = query.has("sources", options.source);
+    query = query.not(`sources->${options.source}`, "is", null);
   }
 
   if (options?.minConfidence !== undefined) {
@@ -430,7 +430,7 @@ export async function getSkusByStatus(
   }
 
   if (options?.source) {
-    query = query.has("sources", options.source);
+    query = query.not(`sources->${options.source}`, "is", null);
   }
 
   if (options?.minConfidence !== undefined) {
@@ -505,7 +505,7 @@ export async function getSkusByStage(
   }
 
   if (options?.source) {
-    query = query.has("sources", options.source);
+    query = query.not(`sources->${options.source}`, "is", null);
   }
 
   if (options?.minConfidence !== undefined) {
