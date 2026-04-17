@@ -13,6 +13,7 @@ from scripts.benchmark_ai_search import (
     BenchmarkReport,
     BenchmarkResultRow,
     BenchmarkRunner,
+    CategoryAnalyzer,
     MetricsCalculator,
     generate_markdown_report,
     main,
@@ -193,6 +194,90 @@ def test_metrics_calculator_computes_core_metrics_and_breakdowns() -> None:
     assert difficulty_breakdown["hard"]["error_count"] == 1
 
 
+def test_category_analyzer_flags_underperformers_and_generates_recommendations() -> None:
+    analyzer = CategoryAnalyzer()
+    results = [
+        _result_row(
+            index=0,
+            query="12345 Acme Widget",
+            expected_source_url="https://acme.com/widget",
+            predicted_source_url="https://acme.com/widget",
+            exact_match=True,
+            score=8.4,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=12.0,
+            category="Garden",
+            difficulty="easy",
+        ),
+        _result_row(
+            index=1,
+            query="54321 Beta Mixer",
+            expected_source_url="https://beta.com/mixer",
+            predicted_source_url="https://beta.com/mixer",
+            exact_match=True,
+            score=7.1,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=18.0,
+            category="Tools",
+            difficulty="medium",
+        ),
+        _result_row(
+            index=2,
+            query="99999 Gamma Feeder",
+            expected_source_url="https://gamma.com/feeder",
+            predicted_source_url=None,
+            exact_match=False,
+            score=0.0,
+            correct_rank=None,
+            reciprocal_rank=0.0,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=30.0,
+            category="Tools",
+            difficulty="hard",
+            error="cache miss",
+        ),
+    ]
+    baseline_report = {
+        "category_breakdown": {
+            "Tools": {
+                "sample_size": 2,
+                "matched_examples": 2,
+                "accuracy_exact_match_pct": 100.0,
+                "mean_reciprocal_rank": 1.0,
+                "precision_at_1": 1.0,
+                "recall_at_1": 1.0,
+                "average_duration_ms": 10.0,
+                "error_count": 0,
+            }
+        }
+    }
+
+    analysis = analyzer.analyze_categories(results, baseline_report=baseline_report)
+
+    tools = analysis["categories"]["Tools"]
+    garden = analysis["categories"]["Garden"]
+
+    assert analysis["underperforming_categories"] == ["Tools"]
+    assert tools["underperforming"] is True
+    assert tools["trend"] is not None
+    assert tools["trend"]["direction"] == "declining"
+    assert tools["trend"]["delta_accuracy_exact_match_pct"] == -50.0
+    assert "Prioritize category-specific source-selection tuning" in tools["recommendation"]
+    assert "Accuracy dropped 50.0 points versus baseline" in tools["recommendation"]
+    assert garden["trend"] is not None
+    assert garden["trend"]["direction"] == "new"
+    assert "This category is new in the current report" in garden["recommendation"]
+    assert "⚠️ Tools" in analysis["comparison_visualization"]
+    assert "↓ -50.0 pts" in analysis["comparison_visualization"]
+
+
 @pytest.mark.asyncio
 async def test_benchmark_runner_calculates_accuracy_and_timing(tmp_path: Path) -> None:
     entries = [
@@ -241,6 +326,10 @@ async def test_benchmark_runner_calculates_accuracy_and_timing(tmp_path: Path) -
     assert report["summary"]["selection_breakdown"] == {"heuristic": 2}
     assert report["summary"]["accuracy_confidence_interval_95"]["sample_size"] == 2
     assert report["category_breakdown"]["Kitchen"]["sample_size"] == 1
+    assert report["category_analysis"]["underperforming_categories"] == ["Kitchen"]
+    assert report["category_analysis"]["categories"]["Kitchen"]["underperforming"] is True
+    assert report["category_analysis"]["categories"]["Kitchen"]["trend"] is None
+    assert "No baseline history exists yet" in report["category_analysis"]["categories"]["Kitchen"]["recommendation"]
     assert report["difficulty_breakdown"]["medium"]["sample_size"] == 1
     assert report["results"][0]["exact_match"] is True
     assert report["results"][1]["exact_match"] is False
@@ -401,6 +490,36 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
                 "error_count": 0,
             }
         },
+        category_analysis={
+            "underperforming_threshold_pct": 70.0,
+            "underperforming_categories": [],
+            "comparison_visualization": "Status Category          Accuracy Bar            Accuracy Trend\n------ ---------------- -------------------- -------- ----------------\n✅ Tools            ████████████████████  100.0% (1/1) ↑ +50.0 pts",
+            "categories": {
+                "Tools": {
+                    "metrics": {
+                        "sample_size": 1,
+                        "matched_examples": 1,
+                        "accuracy_exact_match_pct": 100.0,
+                        "mean_reciprocal_rank": 1.0,
+                        "precision_at_1": 1.0,
+                        "recall_at_1": 1.0,
+                        "average_duration_ms": 10.0,
+                        "error_count": 0,
+                    },
+                    "underperforming": False,
+                    "recommendation": "Maintain the current ranking strategy for Tools and reuse its strongest source signals in adjacent categories.",
+                    "trend": {
+                        "baseline_accuracy_exact_match_pct": 50.0,
+                        "current_accuracy_exact_match_pct": 100.0,
+                        "delta_accuracy_exact_match_pct": 50.0,
+                        "baseline_sample_size": 2,
+                        "current_sample_size": 1,
+                        "direction": "improving",
+                    },
+                    "visualization": "✅ Tools            ████████████████████  100.0% (1/1) ↑ +50.0 pts",
+                }
+            },
+        },
         difficulty_breakdown={
             "easy": {
                 "sample_size": 1,
@@ -442,7 +561,10 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
     assert "# AI Search Benchmark Report" in markdown
     assert "## Summary Metrics" in markdown
     assert "## Baseline Comparison" in markdown
+    assert "## Category Analysis" in markdown
+    assert "## Category Comparison Visualization" in markdown
     assert "## Per-Example Results" in markdown
+    assert "Maintain the current ranking strategy for Tools" in markdown
     assert "| Tools | 1 | 100.000 |" in markdown
 
 
@@ -492,7 +614,19 @@ def test_main_writes_reports_and_returns_zero(
                     "mean_reciprocal_rank": 0.5,
                     "precision_at_1": 0.5,
                     "recall_at_1": 0.5,
-                }
+                },
+                "category_breakdown": {
+                    "Tools": {
+                        "sample_size": 2,
+                        "matched_examples": 1,
+                        "accuracy_exact_match_pct": 50.0,
+                        "mean_reciprocal_rank": 0.5,
+                        "precision_at_1": 0.5,
+                        "recall_at_1": 0.5,
+                        "average_duration_ms": 12.0,
+                        "error_count": 0,
+                    }
+                },
             },
             indent=2,
         ),
@@ -515,11 +649,15 @@ def test_main_writes_reports_and_returns_zero(
     assert saved["summary"]["matched_examples"] == 1
     assert saved["baseline_comparison"] is not None
     assert saved["category_breakdown"]["Tools"]["sample_size"] == 1
+    tools_trend = saved["category_analysis"]["categories"]["Tools"]["trend"]
+    assert tools_trend is not None
+    assert tools_trend["direction"] == "improving"
     assert saved["difficulty_breakdown"]["easy"]["sample_size"] == 1
     assert saved["metadata"]["config"]["mode"] == "heuristic"
     assert "# AI Search Benchmark Report" in stdout
     assert "JSON report:" in stdout
     assert "## Baseline Comparison" in markdown
+    assert "## Category Analysis" in markdown
     assert "## Per-Example Results" in markdown
 
 
