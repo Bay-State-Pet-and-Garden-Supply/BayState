@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import {
   Column,
   ColumnDef,
@@ -11,6 +11,7 @@ import {
   useReactTable,
   SortingState,
 } from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,12 +27,10 @@ import {
   ChevronUp,
   ChevronsUpDown,
   AlertCircle,
-  CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PipelineProduct, PipelineStage } from "@/lib/pipeline/types";
-import type { PipelineFiltersState } from "./PipelineFilters";
 
 interface ProductTableProps {
   products: PipelineProduct[];
@@ -46,21 +45,10 @@ interface ProductTableProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   currentStage: PipelineStage;
-  // Filter props
-  search?: string;
-  onSearchChange?: (value: string) => void;
-  filters?: {
-    source?: string;
-    product_line?: string;
-    cohort_id?: string;
-  };
-  onFilterChange?: (filters: PipelineFiltersState) => void;
-  availableSources?: string[];
-  totalCount?: number;
-  onSelectAllTotal?: () => void;
 }
 
 function formatDate(iso: string): string {
+  if (!iso) return "—";
   const d = new Date(iso);
   return (
     d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
@@ -120,40 +108,13 @@ export function ProductTable({
   onSelectSku,
   onSelectAll,
   onDeselectAll,
-  onSelectAllTotal,
   currentStage,
-  search,
-  onSearchChange,
-  filters,
-  onFilterChange,
-  availableSources,
-  totalCount,
 }: ProductTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "sku", desc: false },
   ]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const [localSearch, setLocalSearch] = useState(search || "");
-
-  // Sync local search with prop
-  useEffect(() => {
-    if (search !== undefined) setLocalSearch(search);
-  }, [search]);
-
-  const handleCommitSearch = useCallback(() => {
-    if (onSearchChange) {
-      onSearchChange(localSearch);
-    }
-  }, [localSearch, onSearchChange]);
-
-  const handleClearSearch = useCallback(() => {
-    setLocalSearch("");
-    if (onSearchChange) {
-      onSearchChange("");
-    }
-  }, [onSearchChange]);
 
   const showSources = currentStage === "scraped";
   const showConfidence = currentStage === "finalizing";
@@ -196,25 +157,14 @@ export function ProductTable({
         cell: ({ row, table }) => {
           const isChecked = selectedSkus.has(row.original.sku);
           const visibleRows = table.getRowModel().rows;
-          const visibleIndex = visibleRows.findIndex((r) => r.id === row.id);
+          const visibleIndex = row.index;
 
           return (
             <Checkbox
               checked={isChecked}
               onCheckedChange={() => {
-                // Handle keyboard selection
-                if (
-                  typeof window !== "undefined" &&
-                  !(window.event instanceof MouseEvent)
-                ) {
-                  onSelectSku(
-                    row.original.sku,
-                    !isChecked,
-                    visibleIndex,
-                    false,
-                    visibleRows.map((r) => r.original),
-                  );
-                }
+                // For direct checkbox interaction, we still want to support the same logic
+                // Keyboard focus will trigger separate events
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -382,7 +332,7 @@ export function ProductTable({
           <DataTableColumnHeader column={column} title="Updated" />
         ),
         cell: ({ row }) => (
-          <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">
+          <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight text-right">
             {formatDate(row.getValue("updated_at"))}
           </div>
         ),
@@ -409,31 +359,41 @@ export function ProductTable({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      if (
-        activeElement?.tagName === "INPUT" ||
-        activeElement?.tagName === "TEXTAREA" ||
-        activeElement?.getAttribute("contenteditable") === "true"
-      ) {
-        return;
-      }
+  const { rows } = table.getRowModel();
 
-      const rows = table.getRowModel().rows;
+  // Virtualization setup
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 45, // approx height of a row
+    overscan: 10,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
+  const paddingTop = virtualRows.length > 0 ? virtualRows?.[0]?.start || 0 : 0;
+  const paddingBottom = virtualRows.length > 0
+    ? totalSize - (virtualRows?.[virtualRows.length - 1]?.end || 0)
+    : 0;
+
+  // Keyboard navigation handler (attached to container)
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
       if (rows.length === 0) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setFocusedIndex((prev) => {
           const next = prev === null ? 0 : Math.min(prev + 1, rows.length - 1);
+          rowVirtualizer.scrollToIndex(next, { align: "center" });
           return next;
         });
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setFocusedIndex((prev) => {
           const next = prev === null ? 0 : Math.max(prev - 1, 0);
+          rowVirtualizer.scrollToIndex(next, { align: "center" });
           return next;
         });
       } else if (e.key === " ") {
@@ -441,9 +401,10 @@ export function ProductTable({
           e.preventDefault();
           const row = rows[focusedIndex];
           if (row) {
+            const isChecked = selectedSkus.has(row.original.sku);
             onSelectSku(
               row.original.sku,
-              !selectedSkus.has(row.original.sku),
+              !isChecked,
               focusedIndex,
               e.shiftKey,
               rows.map((r) => r.original),
@@ -455,32 +416,23 @@ export function ProductTable({
         onSelectAll();
       } else if (e.key === "Escape") {
         setFocusedIndex(null);
+        containerRef.current?.blur();
       }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focusedIndex, table, onSelectSku, onSelectAll, selectedSkus]);
-
-  // Scroll focused row into view
-  useEffect(() => {
-    if (focusedIndex !== null && containerRef.current) {
-      const rowElement = containerRef.current.querySelector(
-        `[data-index="${focusedIndex}"]`,
-      );
-      if (rowElement) {
-        rowElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      }
-    }
-  }, [focusedIndex]);
+    },
+    [rows, focusedIndex, rowVirtualizer, selectedSkus, onSelectSku, onSelectAll],
+  );
 
   return (
     <div
-      className="h-full min-h-0 overflow-y-auto rounded-none border border-zinc-950 bg-card"
+      className="h-[600px] min-h-0 overflow-y-auto rounded-none border border-zinc-950 bg-card outline-none focus-within:ring-1 focus-within:ring-zinc-950"
       ref={containerRef}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="grid"
+      aria-multiselectable="true"
     >
-      <Table className="table-fixed">
-        <TableHeader className="sticky top-0 bg-card z-10 border-b border-zinc-950">
+      <Table className="table-fixed border-separate border-spacing-0">
+        <TableHeader className="sticky top-0 bg-zinc-50 z-20 shadow-[0_1px_0_0_rgba(0,0,0,1)]">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow
               key={headerGroup.id}
@@ -503,7 +455,7 @@ export function ProductTable({
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "bg-zinc-50 h-10 py-0 font-black uppercase tracking-tighter text-zinc-950",
+                      "h-10 py-0 font-black uppercase tracking-tighter text-zinc-950 bg-inherit",
                       widthClass,
                     )}
                   >
@@ -520,8 +472,15 @@ export function ProductTable({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row, index) => {
+          {paddingTop > 0 && (
+            <TableRow className="hover:bg-transparent border-0">
+              <TableCell style={{ height: `${paddingTop}px` }} colSpan={columns.length} className="p-0 border-0" />
+            </TableRow>
+          )}
+          {virtualRows.length > 0 ? (
+            virtualRows.map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              const index = virtualRow.index;
               const isSelected = selectedSkus.has(row.original.sku);
               const isFocused = focusedIndex === index;
 
@@ -531,7 +490,7 @@ export function ProductTable({
                   data-index={index}
                   data-state={isSelected && "selected"}
                   className={cn(
-                    "cursor-pointer transition-colors border-b border-zinc-200",
+                    "cursor-pointer transition-colors border-b border-zinc-200 h-[45px]",
                     isSelected
                       ? "bg-brand-forest-green/10"
                       : "hover:bg-zinc-50",
@@ -544,12 +503,12 @@ export function ProductTable({
                       !isSelected,
                       index,
                       e.shiftKey,
-                      table.getRowModel().rows.map((r) => r.original),
+                      rows.map((r) => r.original),
                     );
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-2.5">
+                    <TableCell key={cell.id} className="py-2">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),
@@ -559,7 +518,7 @@ export function ProductTable({
                 </TableRow>
               );
             })
-          ) : (
+          ) : rows.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={columns.length}
@@ -567,6 +526,11 @@ export function ProductTable({
               >
                 No products in this stage.
               </TableCell>
+            </TableRow>
+          ) : null}
+          {paddingBottom > 0 && (
+            <TableRow className="hover:bg-transparent border-0">
+              <TableCell style={{ height: `${paddingBottom}px` }} colSpan={columns.length} className="p-0 border-0" />
             </TableRow>
           )}
         </TableBody>

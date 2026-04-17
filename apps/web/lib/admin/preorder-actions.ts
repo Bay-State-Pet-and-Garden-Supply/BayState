@@ -1,3 +1,5 @@
+'use server'
+
 import { createClient } from '@/lib/supabase/server'
 import { updateProductPickupOnlySetting } from '@/lib/product-storefront-settings'
 import { revalidatePath } from 'next/cache'
