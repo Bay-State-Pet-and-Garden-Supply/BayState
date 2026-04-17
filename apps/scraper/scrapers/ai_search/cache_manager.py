@@ -5,7 +5,7 @@ including population, validation, cleanup, and statistics.
 
 Cache Format:
     JSON files stored in `.cache/ai_search/{hash}.json` where hash is the
-    MD5 hash of the normalized cache key.
+    SHA256 hash of the normalized cache key.
 
     {
         "schema_version": 1,
@@ -155,15 +155,15 @@ class CacheManager:
 
     @staticmethod
     def _compute_cache_hash(cache_key: str) -> str:
-        """Compute the MD5 hash for a cache key.
+        """Compute the SHA256 hash for a cache key.
 
         Args:
             cache_key: The normalized cache key.
 
         Returns:
-            The MD5 hex digest of the cache key.
+            The SHA256 hex digest of the cache key.
         """
-        return hashlib.md5(cache_key.encode()).hexdigest()
+        return hashlib.sha256(cache_key.encode()).hexdigest()
 
     def _get_cache_path(self, cache_key: str) -> Path:
         """Get the cache file path for a normalized cache key.

@@ -126,36 +126,36 @@ export function FloatingActionsBar({
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-2xl ring-1 ring-black/5">
+    <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="flex items-center gap-3 rounded-xl border border-zinc-900 bg-card p-2 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
         {/* Selection Count */}
-        <div className="flex items-center gap-3 border-r border-border pr-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white tabular-nums">
+        <div className="flex items-center gap-2 border-r border-zinc-200 pr-3">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-black text-white tabular-nums">
             {selectedCount}
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-foreground leading-none">
-              {selectedCount === 1 ? "Product" : "Products"} Selected
+            <span className="text-[10px] font-black uppercase tracking-tighter text-foreground leading-none">
+              {selectedCount === 1 ? "Product" : "Products"}
             </span>
             <button
               type="button"
               onClick={onClearSelection}
-              className="text-[10px] font-bold text-muted-foreground hover:text-red-600 text-left transition-colors uppercase tracking-wider mt-1"
+              className="text-[9px] font-bold text-muted-foreground hover:text-red-600 text-left transition-colors uppercase tracking-wider"
             >
-              Clear Selection
+              Clear
             </button>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {selectedCount < totalCount && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onSelectAll}
               disabled={isLoading}
-              className="h-10 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="h-8 text-[10px] font-black uppercase tracking-tight text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               Select All {totalCount}
             </Button>
@@ -167,7 +167,7 @@ export function FloatingActionsBar({
               size="sm"
               onClick={handleResetAction}
               disabled={isLoading}
-              className="h-10 border-border text-xs font-bold text-muted-foreground hover:bg-muted"
+              className="h-8 border-zinc-900 text-[10px] font-black uppercase tracking-tight text-muted-foreground hover:bg-muted"
             >
               {bulkAction.resetLabel}
             </Button>
@@ -179,9 +179,9 @@ export function FloatingActionsBar({
               size="sm"
               onClick={() => onOpenScrapeDialog?.()}
               disabled={isLoading}
-              className="h-10 border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
+              className="h-8 border-zinc-900 text-[10px] font-black uppercase tracking-tight text-brand-forest-green hover:bg-brand-forest-green/5"
             >
-              <Plus className="mr-1.5 h-4 w-4" />
+              <Plus className="mr-1 h-3.5 w-3.5" />
               {bulkAction.secondaryAction}
             </Button>
           )}
@@ -192,9 +192,9 @@ export function FloatingActionsBar({
               size="sm"
               onClick={onDelete}
               disabled={isLoading}
-              className="h-10 border-red-100 text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="h-8 border-red-600 text-[10px] font-black uppercase tracking-tight text-red-600 hover:bg-red-50 hover:text-red-700"
             >
-              <Trash2 className="mr-1.5 h-4 w-4" />
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
               Delete
             </Button>
           )}
@@ -206,17 +206,17 @@ export function FloatingActionsBar({
                 size="sm"
                 onClick={onUploadShopSite}
                 disabled={isLoading || actionState !== null}
-                className="h-10 border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
+                className="h-8 border-zinc-900 text-[10px] font-black uppercase tracking-tight text-zinc-900 hover:bg-zinc-100"
               >
                 {actionState === "upload" ? (
                   <>
-                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                     Uploading…
                   </>
                 ) : (
                   <>
-                    <Upload className="mr-1.5 h-4 w-4" />
-                    Upload to ShopSite
+                    <Upload className="mr-1 h-3.5 w-3.5" />
+                    Upload
                   </>
                 )}
               </Button>
@@ -224,16 +224,16 @@ export function FloatingActionsBar({
                 size="sm"
                 onClick={onDownloadZip}
                 disabled={isLoading || actionState !== null}
-                className="h-10 bg-primary px-5 text-xs font-bold text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+                className="h-8 bg-zinc-900 px-4 text-[10px] font-black uppercase tracking-tight text-white hover:bg-zinc-800"
               >
                 {actionState === "zip" ? (
                   <>
-                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    Downloading ZIP…
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    Zipping…
                   </>
                 ) : (
                   <>
-                    <Archive className="mr-1.5 h-4 w-4" />
+                    <Archive className="mr-1 h-3.5 w-3.5" />
                     Download ZIP
                   </>
                 )}
@@ -245,16 +245,16 @@ export function FloatingActionsBar({
             <Button
               onClick={handlePrimaryAction}
               disabled={isLoading}
-              className="h-10 bg-primary px-6 text-xs font-bold text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+              className="h-8 bg-brand-forest-green px-5 text-[10px] font-black uppercase tracking-tight text-white hover:bg-brand-forest-green/90"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   Processing...
                 </>
               ) : (
                 <>
-                  {isImported && <Search className="mr-1.5 h-4 w-4" />}
+                  {isImported && <Search className="mr-1 h-3.5 w-3.5" />}
                   {bulkAction.label}
                 </>
               )}

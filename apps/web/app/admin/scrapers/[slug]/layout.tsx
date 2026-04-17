@@ -32,7 +32,7 @@ export default async function ScraperWorkbenchLayout({
   return (
     <div className="flex flex-col h-full space-y-6" data-testid="scraper-workbench">
       {/* Redesigned Header with Back Arrow */}
-      <div className="bg-white border-2 border-zinc-950 -mx-8 -mt-8 px-8 py-6 mb-2 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+      <div className="bg-white border border-zinc-950 -mx-8 -mt-8 px-8 py-6 mb-2 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild className="-ml-2 h-8 w-8 p-0 rounded-none border border-transparent hover:border-zinc-950">

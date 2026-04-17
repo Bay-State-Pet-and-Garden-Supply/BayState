@@ -90,7 +90,7 @@ function LogLevelBadge({ level }: { level: string }) {
   const Icon = config.icon;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-none border-2 border-zinc-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.bgColor} ${config.color}`}
+      className={`inline-flex items-center gap-1 rounded-none border border-zinc-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.bgColor} ${config.color}`}
     >
       <Icon className="h-2.5 w-2.5" />
       {level}
@@ -103,12 +103,12 @@ function ConnectionIndicator({ isConnected }: { isConnected: boolean }) {
     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
       {isConnected ? (
         <>
-          <div className="h-3 w-3 bg-brand-forest-green border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-pulse" />
+          <div className="h-3 w-3 bg-brand-forest-green border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-pulse" />
           <span className="text-brand-forest-green">Connected</span>
         </>
       ) : (
         <>
-          <div className="h-3 w-3 bg-zinc-400 border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" />
+          <div className="h-3 w-3 bg-zinc-400 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" />
           <span className="text-zinc-500">Offline</span>
         </>
       )}
@@ -119,25 +119,25 @@ function ConnectionIndicator({ isConnected }: { isConnected: boolean }) {
 function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
   const jobLogs = useMemo(
     () => logs.filter((l) => l.job_id === jobId),
-    [logs, jobId],
+    [jobId, logs]
   );
 
   if (jobLogs.length === 0) {
     return (
-      <div className="px-4 py-6 text-xs text-zinc-500 font-black uppercase tracking-tighter text-center border-t-2 border-zinc-950 bg-zinc-50">
+      <div className="px-2 py-4 text-xs text-zinc-500 font-black uppercase tracking-tighter text-center border-t border-zinc-950 bg-zinc-50">
         No log entries yet — logs will stream in real time.
       </div>
     );
   }
 
   return (
-    <div className="border-t-2 border-zinc-950 bg-zinc-50">
+    <div className="border-t border-zinc-950 bg-zinc-50">
       <ScrollArea className="max-h-64">
         <div className="divide-y-2 divide-zinc-950/10">
           {jobLogs.map((log) => (
             <div
               key={log.id}
-              className="flex items-start gap-3 px-4 py-2.5 text-xs hover:bg-white transition-colors"
+              className="flex items-start gap-2 px-2 py-1.5 text-xs hover:bg-white transition-colors"
             >
               <LogLevelBadge level={log.level} />
               <span className="flex-1 text-zinc-900 font-mono break-all leading-relaxed">
@@ -225,7 +225,7 @@ function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-none border-2 border-zinc-950 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.className}`}
+      className={`inline-flex items-center rounded-none border border-zinc-950 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.className}`}
     >
       {config.icon}
       {config.label}
@@ -254,34 +254,34 @@ function JobCard({
   const isActive = job.status === "pending" || job.status === "running";
 
   return (
-    <div className="rounded-none border-2 border-zinc-950 bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)] overflow-hidden">
-      <div className="p-4">
+    <div className="rounded-none border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] overflow-hidden">
+      <div className="p-2 sm:p-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <h3 className="font-black uppercase tracking-tighter text-zinc-950">
                 Job {job.id.slice(0, 8)}
               </h3>
               <JobStatusBadge status={job.status} />
             </div>
-            <p className="text-xs font-black uppercase tracking-tighter text-zinc-500 mt-1.5">
+            <p className="text-xs font-black uppercase tracking-tighter text-zinc-500 mt-1">
               {job.scrapers.join(", ")}
             </p>
-            <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 mt-1">
+            <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 mt-0.5">
               {job.skuCount} SKUs • Started{" "}
               {new Date(job.createdAt).toLocaleString()}
               {job.completedAt && (
                 <> • Finished {new Date(job.completedAt).toLocaleString()}</>
               )}
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               {job.runnerName ? (
-                <span className="rounded-none border-2 border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                <span className="rounded-none border border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                   Runner: {job.runnerName}
                 </span>
               ) : null}
               {job.progressPhase ? (
-                <span className="rounded-none border-2 border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                <span className="rounded-none border border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                   {job.progressPhase}
                 </span>
               ) : null}
@@ -301,21 +301,21 @@ function JobCard({
         </div>
 
         {/* Progress Section */}
-        <div className="mt-4">
+        <div className="mt-2">
           <ProgressBar 
             progress={job.progress} 
             status={job.status} 
-            className="mb-2"
+            className="mb-1"
           />
           
           {hasChunks && (
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <ChunkSummaryLine summary={job.chunkSummary} />
             </div>
           )}
 
           {(job.progressMessage || job.lastLogMessage) && (
-            <div className="mt-3 space-y-1.5">
+            <div className="mt-2 space-y-1">
               {job.progressMessage ? (
                 <p className="text-xs font-bold text-zinc-900">
                   {job.progressMessage}
@@ -341,7 +341,7 @@ function JobCard({
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-4 flex items-center justify-between pt-4 border-t-2 border-zinc-950/5">
+        <div className="mt-2 flex items-center justify-between pt-2 border-t border-zinc-950/5">
           <div className="flex items-center gap-2">
             {/* Chunks Toggle */}
             {hasChunks && (
@@ -626,7 +626,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   if (error) {
     return (
       <div
-        className={`rounded-none border-2 border-zinc-950 bg-red-50 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] ${className}`}
+        className={`rounded-none border border-zinc-950 bg-red-50 p-4 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${className}`}
       >
         <p className="text-sm font-black uppercase text-red-600">Error: {error}</p>
       </div>
@@ -655,7 +655,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   }
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">
@@ -712,7 +712,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
 
           {/* Recent Completed/Failed Jobs */}
           {recentJobs.length > 0 && (
-            <div className="space-y-3 pt-2">
+            <div className="space-y-2 pt-2">
               <div className="flex items-center gap-2">
                 <div className="h-px flex-1 bg-border" />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">

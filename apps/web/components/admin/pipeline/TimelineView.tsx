@@ -100,9 +100,9 @@ export function TimelineView({
           )}
         </div>
 
-        <div className="relative overflow-x-auto rounded-none border-2 border-zinc-950 bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+        <div className="relative overflow-x-auto rounded-none border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)]">
           <div className="min-w-[600px]">
-            <div className="border-b-2 border-zinc-950 bg-zinc-50 px-4 py-2">
+            <div className="border-b border-zinc-950 bg-zinc-50 px-4 py-2">
               <div className="grid grid-cols-[200px_1fr] gap-4">
                 <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Job</span>
                 <div className="relative h-6">
@@ -151,7 +151,7 @@ export function TimelineView({
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="rounded-none border-2 border-zinc-950 bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                    <TooltipContent side="right" className="rounded-none border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                       <div className="space-y-1.5">
                         <p className="font-black uppercase tracking-tighter text-zinc-950">{job.name}</p>
                         <div className="flex flex-col gap-1">

@@ -193,12 +193,12 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
   return (
     <aside
       className={cn(
-        "relative flex h-full flex-col bg-brand-forest-green text-white transition-all duration-300 ease-in-out border-r-2 border-zinc-950 z-50",
+        "relative flex h-full flex-col bg-brand-forest-green text-white transition-all duration-300 ease-in-out border-r border-zinc-950 z-50",
         collapsed ? "w-[80px]" : "w-[240px]",
       )}
     >
       {/* Header */}
-      <div className="flex h-20 items-center px-4 mb-2 border-b-2 border-zinc-950 bg-brand-forest-green">
+      <div className="flex h-20 items-center px-4 mb-2 border-b border-zinc-950 bg-brand-forest-green">
         <div
           className={cn(
             "flex items-center gap-2.5 transition-opacity duration-300",
@@ -242,7 +242,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           type="button"
           onClick={toggleCollapsed}
           className={cn(
-            "absolute -right-4 top-1/2 -translate-y-1/2 z-50 flex h-8 w-8 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 text-brand-burgundy shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-brand-gold/90 transition-colors duration-150 active:scale-95 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-forest-green",
+            "absolute -right-4 top-1/2 -translate-y-1/2 z-50 flex h-8 w-8 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 text-brand-burgundy shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-brand-gold/90 transition-colors duration-150 active:scale-95 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-forest-green",
             collapsed && "right-[-16px]",
           )}
           aria-label={collapsed ? "Expand" : "Collapse"}
@@ -292,7 +292,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                         "group relative flex items-center rounded-none px-3 py-2.5 transition-all duration-200 border",
                         collapsed ? "justify-center" : "gap-2.5",
                         isActive
-                          ? "bg-brand-gold text-brand-burgundy border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase"
+                          ? "bg-brand-gold text-brand-burgundy border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase"
                           : "text-white/80 border-transparent hover:bg-white/10 hover:text-white font-bold uppercase",
                       )}
                     >
@@ -319,7 +319,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                         <TooltipContent
                           side="right"
                           sideOffset={20}
-                          className="bg-brand-gold border border-zinc-950 text-brand-burgundy font-black uppercase px-4 py-2 text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] rounded-none"
+                          className="bg-brand-gold border border-zinc-950 text-brand-burgundy font-black uppercase px-4 py-2 text-xs shadow-[1px_1px_0px_rgba(0,0,0,1)] rounded-none"
                         >
                           {item.label}
                         </TooltipContent>
@@ -336,7 +336,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
       </nav>
 
       {/* Footer / User Profile */}
-      <div className="mt-auto p-3 border-t-2 border-zinc-950 bg-brand-forest-green/80">
+      <div className="mt-auto p-3 border-t border-zinc-950 bg-brand-forest-green/80">
         <div
           className={cn(
             "flex items-center",

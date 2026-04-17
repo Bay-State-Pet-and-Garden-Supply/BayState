@@ -1179,28 +1179,28 @@ export function PipelineClient({
   return (
     <div className="flex h-full flex-col min-h-0">
       {/* Stage Tabs & Inline Actions */}
-      <div className="shrink-0 mb-6">
+      <div className="shrink-0 mb-2">
         {hideTabs ? (
-          <div className="flex flex-col gap-4 border-b border-border/50 pb-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-2 border-b border-border/50 pb-2 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/admin/pipeline")}
-                className="h-9 w-9 p-0 border-border/50 hover:bg-muted text-muted-foreground"
+                className="h-8 w-8 p-0 border-border/50 hover:bg-muted text-muted-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div
-                  className="h-8 w-1 rounded-full"
+                  className="h-6 w-1 rounded-full"
                   style={{ backgroundColor: stageConfig.color }}
                 />
                 <div>
-                  <h1 className="text-xl font-bold tracking-tight text-foreground">
+                  <h1 className="text-lg font-black uppercase tracking-tighter text-foreground">
                     {stageConfig.label}
                   </h1>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">
                     {stageConfig.description}
                   </p>
                 </div>
@@ -1227,14 +1227,14 @@ export function PipelineClient({
           )}
         >
           {currentStage === "scraping" ? (
-            <div className="grid gap-6 xl:grid-cols-1">
-              <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="rounded-none border-2 border-zinc-950 bg-brand-forest-green/10 p-2">
-                    <Activity className="h-5 w-5 text-brand-forest-green" />
+            <div className="grid gap-2 xl:grid-cols-1">
+              <section className="rounded-none border border-zinc-950 bg-card p-2 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:p-3">
+                <div className="flex items-start gap-2 mb-2">
+                  <div className="rounded-none border border-zinc-950 bg-brand-forest-green/10 p-1.5">
+                    <Activity className="h-4 w-4 text-brand-forest-green" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
+                    <h2 className="text-base font-black uppercase tracking-tighter text-foreground">
                       Active Runs
                     </h2>
                     <p className="text-[10px] font-black uppercase text-muted-foreground">
@@ -1246,14 +1246,14 @@ export function PipelineClient({
               </section>
             </div>
           ) : currentStage === "consolidating" ? (
-            <div className="grid gap-6 xl:grid-cols-1">
-              <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-2">
-                    <Brain className="h-5 w-5 text-brand-burgundy" />
+            <div className="grid gap-2 xl:grid-cols-1">
+              <section className="rounded-none border border-zinc-950 bg-card p-2 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:p-3">
+                <div className="flex items-start gap-2 mb-2">
+                  <div className="rounded-none border border-zinc-950 bg-brand-burgundy/10 p-1.5">
+                    <Brain className="h-4 w-4 text-brand-burgundy" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
+                    <h2 className="text-base font-black uppercase tracking-tighter text-foreground">
                       AI Consolidations
                     </h2>
                     <p className="text-[10px] font-black uppercase text-muted-foreground">
@@ -1362,7 +1362,7 @@ export function PipelineClient({
                       <AccordionItem
                         key={cohortId}
                         value={cohortId}
-                        className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                        className="overflow-hidden rounded-none border border-zinc-950 bg-card shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                       >
                         <div className="group flex items-center bg-zinc-50 pr-2 hover:bg-zinc-100 border-b border-zinc-950">
                           <AccordionTrigger
@@ -1480,7 +1480,7 @@ export function PipelineClient({
                       <AccordionItem
                         key={cohortId}
                         value={cohortId}
-                        className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                        className="overflow-hidden rounded-none border border-zinc-950 bg-card shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                       >
                         <div className="flex items-center hover:bg-zinc-100 bg-zinc-50 pr-2 group border-b border-zinc-950">
                           <AccordionTrigger
@@ -1601,7 +1601,7 @@ export function PipelineClient({
             aria-live="polite"
             aria-busy={isLoading || isNavigating || isSearching}
           >
-            <div className="flex flex-col items-center gap-2 rounded-none bg-background/80 px-8 py-6 shadow-[4px_4px_0px_rgba(0,0,0,1)] border-2 border-zinc-950 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-2 rounded-none bg-background/80 px-8 py-6 shadow-[1px_1px_0px_rgba(0,0,0,1)] border border-zinc-950 backdrop-blur-sm">
               <Activity className="h-8 w-8 animate-spin text-brand-forest-green" aria-hidden="true" />
               <p className="text-sm font-black uppercase tracking-tighter">
                 Updating Results...

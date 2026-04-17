@@ -176,7 +176,7 @@ export function NavigationTab({ initialSettings }: NavigationTabProps) {
             </Card>
 
             <div className="sticky bottom-4 flex justify-end">
-                <Button type="submit" size="lg" disabled={isSaving} className="shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                <Button type="submit" size="lg" disabled={isSaving} className="shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                     <Save className="mr-2 h-4 w-4" />
                     {isSaving ? 'Saving...' : 'Save Navigation Settings'}
                 </Button>

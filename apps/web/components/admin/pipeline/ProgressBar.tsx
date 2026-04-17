@@ -65,7 +65,7 @@ export function ProgressBar({
       </div>
       
       <div 
-        className="h-3 w-full overflow-hidden rounded-none bg-zinc-100 border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+        className="h-3 w-full overflow-hidden rounded-none bg-zinc-100 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         role="progressbar"
         aria-valuenow={clampedProgress}
         aria-valuemin={0}
@@ -74,7 +74,7 @@ export function ProgressBar({
       >
         <div
           className={cn(
-            'h-full rounded-none border-r-2 border-zinc-950',
+            'h-full rounded-none border-r border-zinc-950',
             progressColor,
             animated && 'transition-all duration-500 ease-out',
             isIndeterminate && 'animate-pulse',

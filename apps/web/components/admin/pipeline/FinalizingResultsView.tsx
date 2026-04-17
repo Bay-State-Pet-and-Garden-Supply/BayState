@@ -44,14 +44,9 @@ import {
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
 import {
-  extractImageCandidatesFromSources,
-  normalizeProductSources,
-} from "@/lib/product-sources";
-import {
   formatSourceLabel,
   isValidCustomImageUrl,
 } from "./finalizing/finalizing-utils";
-import type { ImageSourceOption } from "./finalizing/finalizing-utils";
 import { ProductListSidebar } from "./finalizing/ProductListSidebar";
 import { ImageCarousel } from "./finalizing/ImageCarousel";
 import { ProductSaveActions } from "./finalizing/ProductSaveActions";
@@ -1099,81 +1094,6 @@ export function FinalizingResultsView({
     }
   };
 
-  const imageSourceOptions = useMemo<ImageSourceOption[]>(() => {
-    if (!selectedProduct) return [];
-
-    const sourceOptions: ImageSourceOption[] = [];
-
-    const normalizedSources = normalizeProductSources(
-      selectedProduct.sources || {},
-    );
-    Object.entries(normalizedSources).forEach(([sourceKey, sourcePayload]) => {
-      const sourceCandidates = extractImageCandidatesFromSources(
-        { [sourceKey]: sourcePayload },
-        48,
-      );
-      if (sourceCandidates.length === 0) return;
-
-      sourceOptions.push({
-        id: `source:${sourceKey}`,
-        label: formatSourceLabel(sourceKey),
-        candidates: sourceCandidates,
-      });
-    });
-
-    sourceOptions.sort((a, b) => a.label.localeCompare(b.label));
-
-    return [
-      ...sourceOptions,
-      {
-        id: "custom",
-        label: "Custom Images",
-        candidates: [],
-      },
-    ];
-  }, [selectedProduct]);
-
-  useEffect(() => {
-    if (imageSourceOptions.length === 0) {
-      setSelectedImageSourceId("");
-      return;
-    }
-
-    const foundOption = imageSourceOptions.find(
-      (option) => option.id === selectedImageSourceId,
-    );
-    if (!foundOption) {
-      const preferredOption = imageSourceOptions
-        .filter((option) => option.id !== "custom")
-        .reduce((best, option) => {
-          if (!best || option.candidates.length > best.candidates.length) {
-            return option;
-          }
-          return best;
-        }, imageSourceOptions[0]);
-
-      setSelectedImageSourceId(preferredOption.id);
-    }
-  }, [imageSourceOptions, selectedImageSourceId]);
-
-  const activeImageSourceOption = useMemo(
-    () =>
-      imageSourceOptions.find(
-        (option) => option.id === selectedImageSourceId,
-      ) ??
-      imageSourceOptions[0] ??
-      null,
-    [imageSourceOptions, selectedImageSourceId],
-  );
-
-  // Filter out already-selected images from candidates to prevent duplication
-  const imageCandidates = useMemo(() => {
-    const candidates = activeImageSourceOption?.candidates ?? [];
-    const selectedSet = new Set(formData.selectedImages);
-    return candidates.filter((url) => !selectedSet.has(url));
-  }, [activeImageSourceOption?.candidates, formData.selectedImages]);
-  const isCustomImageSource = activeImageSourceOption?.id === "custom";
-
   const resolveProductWorkspaceState = useCallback((sku?: string) => {
     const resolvedSku = sku ?? selectedProductRef.current?.sku;
     if (!resolvedSku) {
@@ -1825,7 +1745,7 @@ export function FinalizingResultsView({
 
   return (
     <>
-      <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] overflow-hidden max-w-full">
+      <div className="flex h-full min-h-0 border border-zinc-950 rounded-none bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] overflow-hidden max-w-full">
         {/* Left Column: Product List */}
         <ProductListSidebar
           products={sortedProducts}
@@ -1882,7 +1802,7 @@ export function FinalizingResultsView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+                        className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
                       >
                         <Sparkles className="mr-2 h-4 w-4 text-violet-500" />
                         Copilot
@@ -1907,29 +1827,34 @@ export function FinalizingResultsView({
 
             {/* Form Content */}
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-8">
-                <div className="grid grid-cols-1 gap-8">
-                  <div className="space-y-6 min-w-0">
+              <div className="flex-1 overflow-y-auto min-h-0 p-2 sm:p-3 space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
+                  <ImageCarousel
+                    selectedImages={formData.selectedImages}
+                    onToggleImage={toggleImage}
+                  />
+
+                  <div className="space-y-2 min-w-0">
                     <div className="space-y-1">
-                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
+                      <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">
                         Product Info
                       </h3>
                       <Separator className="h-1 bg-zinc-950" />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Label htmlFor="product-name" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Product Name</Label>
                       <Input
                         id="product-name"
                         value={formData.name}
                         onChange={(e) => handleNameChange(e.target.value)}
                         placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
-                        className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
+                        className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div className="space-y-1.5">
                         <Label htmlFor="product-price" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Price</Label>
                         <Input
                           id="product-price"
@@ -1941,11 +1866,11 @@ export function FinalizingResultsView({
                             handleInputChange("price", e.target.value)
                           }
                           placeholder="e.g. 24.99"
-                          className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
+                          className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <Label htmlFor="product-weight" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Weight (lbs)</Label>
                         <Input
                           id="product-weight"
@@ -1954,20 +1879,20 @@ export function FinalizingResultsView({
                             handleInputChange("weight", e.target.value)
                           }
                           placeholder="e.g. 30"
-                          className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
+                          className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-1 pt-4">
-                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
+                    <div className="space-y-1 pt-2">
+                      <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">
                         Merchandising
                       </h3>
                       <Separator className="h-1 bg-zinc-950" />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div className="space-y-1.5">
                         <Label htmlFor="product-brand" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Brand</Label>
                         <Popover
                           open={brandPopoverOpen}
@@ -1979,7 +1904,7 @@ export function FinalizingResultsView({
                               variant="outline"
                               role="combobox"
                               aria-expanded={brandPopoverOpen}
-                              className="w-full justify-between font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+                              className="h-8 w-full justify-between font-black uppercase tracking-tighter rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] text-[10px]"
                             >
                               {formData.brandId === "none"
                                 ? "No Brand"
@@ -1989,11 +1914,11 @@ export function FinalizingResultsView({
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent
-                            className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                            className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                             align="start"
                           >
                             <div className="flex flex-col">
-                              <div className="flex items-center border-b-2 border-zinc-950 px-3 py-2">
+                              <div className="flex items-center border-b border-zinc-950 px-3 py-2">
                                 <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                                 <input
                                   className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-zinc-500 font-black uppercase tracking-tighter disabled:cursor-not-allowed disabled:opacity-50"
@@ -2064,7 +1989,7 @@ export function FinalizingResultsView({
                                     brand.name.toLowerCase()
                                     === brandSearch.toLowerCase().trim(),
                                 ) && (
-                                  <div className="border-t-2 border-zinc-950 p-1">
+                                  <div className="border-t border-zinc-950 p-1">
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -2093,7 +2018,7 @@ export function FinalizingResultsView({
                             handleInputChange("availability", e.target.value)
                           }
                           placeholder="e.g. usually ships in 24 hours"
-                          className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
+                          className="border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
                         />
                       </div>
                     </div>
@@ -2116,14 +2041,14 @@ export function FinalizingResultsView({
                             variant="outline"
                             role="combobox"
                             aria-expanded={pagePopoverOpen}
-                            className="h-auto min-h-[44px] w-full justify-between font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+                            className="h-auto min-h-[44px] w-full justify-between font-black uppercase tracking-tighter rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                           >
                             <div className="flex flex-wrap gap-1">
                               {formData.productOnPages.length > 0 ? (
                                 formData.productOnPages.map((page) => (
                                   <div
                                     key={page}
-                                    className="flex items-center gap-1 rounded-none border-2 border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter text-zinc-950"
+                                    className="flex items-center gap-1 rounded-none border border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter text-zinc-950"
                                   >
                                     {page}
                                     <X
@@ -2160,11 +2085,11 @@ export function FinalizingResultsView({
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                          className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                           align="start"
                         >
                           <div className="flex flex-col">
-                            <div className="flex items-center border-b-2 border-zinc-950 px-3 py-2">
+                            <div className="flex items-center border-b border-zinc-950 px-3 py-2">
                               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                               <input
                                 className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-zinc-500 font-black uppercase tracking-tighter disabled:cursor-not-allowed disabled:opacity-50"
@@ -2233,7 +2158,7 @@ export function FinalizingResultsView({
                         onCheckedChange={(checked) =>
                           handleInputChange("isSpecialOrder", checked === true)
                         }
-                        className="h-5 w-5 rounded-none border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] data-[state=checked]:bg-zinc-950"
+                        className="h-5 w-5 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] data-[state=checked]:bg-zinc-950"
                       />
                       <Label
                         htmlFor="is-special-order"
@@ -2243,27 +2168,11 @@ export function FinalizingResultsView({
                       </Label>
                     </div>
                   </div>
-
-                  <ImageCarousel
-                    selectedImages={formData.selectedImages}
-                    onToggleImage={toggleImage}
-                    imageSourceOptions={imageSourceOptions}
-                    selectedImageSourceId={selectedImageSourceId}
-                    onSelectImageSource={setSelectedImageSourceId}
-                    isCustomImageSource={isCustomImageSource}
-                    customImageUrl={formData.customImageUrl}
-                    onCustomImageUrlChange={(value) =>
-                      handleInputChange("customImageUrl", value)
-                    }
-                    onAddCustomImage={addCustomImage}
-                    imageCandidates={imageCandidates}
-                    activeSourceLabel={activeImageSourceOption?.label ?? "Image"}
-                  />
                 </div>
 
-                <div className="pt-8">
-                  <Separator className="mb-8" />
-                  <details className="group overflow-hidden rounded-none border-4 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                <div className="pt-4">
+                  <Separator className="mb-4" />
+                  <details className="group overflow-hidden rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                     <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-tighter text-zinc-500 hover:bg-zinc-50 list-none">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
@@ -2271,14 +2180,14 @@ export function FinalizingResultsView({
                       </div>
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
-                    <div className="space-y-4 border-t-4 border-zinc-950 bg-zinc-50 p-4">
+                    <div className="space-y-4 border-t border-zinc-950 bg-zinc-50 p-4">
                       {Object.entries(selectedProduct.sources || {}).map(
                         ([source, data]) => (
                           <div key={source} className="space-y-2">
                             <div className="text-xs font-black uppercase tracking-tighter text-zinc-950">
                               {source}
                             </div>
-                            <pre className="overflow-x-auto rounded-none border-2 border-zinc-950 bg-white p-3 text-[10px] font-bold">
+                            <pre className="overflow-x-auto rounded-none border border-zinc-950 bg-white p-3 text-[10px] font-bold">
                               {JSON.stringify(data, null, 2)}
                             </pre>
                           </div>
@@ -2292,8 +2201,8 @@ export function FinalizingResultsView({
             </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-zinc-500">
-              <Package className="mb-4 h-16 w-16 opacity-20" />
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-zinc-500">
+              <Package className="mb-2 h-12 w-12 opacity-20" />
               <h3 className="text-xl font-black uppercase tracking-tighter text-zinc-950">Select a product to review</h3>
               <p className="text-sm font-black uppercase tracking-tighter mt-2">
                 Products here have been consolidated by AI and are ready for
@@ -2306,7 +2215,7 @@ export function FinalizingResultsView({
           </div>
           <SheetContent
             side="right"
-            className="w-[450px] sm:w-[600px] p-0 border-l-4 border-zinc-950 shadow-[-8px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-y-auto"
+            className="w-[450px] sm:w-[600px] p-0 border-l border-zinc-950 shadow-[-2px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-y-auto"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Copilot</SheetTitle>

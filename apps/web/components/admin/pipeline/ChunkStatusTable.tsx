@@ -103,7 +103,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
   if (sortedChunks.length === 0) {
     return (
-      <div className="px-4 py-6 text-[10px] font-black uppercase tracking-tighter text-zinc-500 text-center border-t-2 border-zinc-950 bg-zinc-50">
+      <div className="px-4 py-6 text-[10px] font-black uppercase tracking-tighter text-zinc-500 text-center border-t border-zinc-950 bg-zinc-50">
         No chunks created for this job yet.
       </div>
     );
@@ -111,9 +111,9 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="border-t-2 border-zinc-950">
+      <div className="border-t border-zinc-950">
         {/* Header */}
-        <div className="grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-tighter text-zinc-950 bg-zinc-100 border-b-2 border-zinc-950">
+        <div className="grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-tighter text-zinc-950 bg-zinc-100 border-b border-zinc-950">
           <span>Chunk</span>
           <span>SKUs</span>
           <span>Status</span>
@@ -134,7 +134,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
             return (
               <div key={chunk.id}>
                 <div
-                  className={`grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-xs items-center transition-colors hover:bg-zinc-50 ${config.rowClass} ${isFailed ? "border-l-4 border-l-brand-burgundy" : ""}`}
+                  className={`grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-xs items-center transition-colors hover:bg-zinc-50 ${config.rowClass} ${isFailed ? "border-l border-l-brand-burgundy" : ""}`}
                 >
                   {/* Chunk Index */}
                   <span className="font-mono font-bold text-zinc-950">
@@ -149,7 +149,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   {/* Status Badge */}
                   <Badge
                     variant="secondary"
-                    className={`inline-flex w-fit items-center gap-1.5 text-[9px] px-1.5 py-0.5 font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.badgeClass}`}
+                    className={`inline-flex w-fit items-center gap-1.5 text-[9px] px-1.5 py-0.5 font-black uppercase tracking-tighter rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.badgeClass}`}
                   >
                     <StatusIcon
                       className={`h-3 w-3 ${isRunning ? "animate-spin" : ""}`}
@@ -181,7 +181,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                       </span>
                     </TooltipTrigger>
                     {chunk.claimedAt && (
-                      <TooltipContent side="top" className="rounded-none border-2 border-zinc-950 bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-tighter">
+                      <TooltipContent side="top" className="rounded-none border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-tighter">
                         {new Date(chunk.claimedAt).toLocaleString()}
                       </TooltipContent>
                     )}
@@ -219,7 +219,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
                 {/* Error Message Row */}
                 {isFailed && chunk.errorMessage && (
-                  <div className="flex items-start gap-2 px-4 py-2 text-[11px] font-medium text-brand-burgundy bg-brand-burgundy/5 border-l-4 border-l-brand-burgundy border-t border-zinc-950/5">
+                  <div className="flex items-start gap-2 px-4 py-2 text-[11px] font-medium text-brand-burgundy bg-brand-burgundy/5 border-l border-l-brand-burgundy border-t border-zinc-950/5">
                     <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                     <span className="break-all">{chunk.errorMessage}</span>
                   </div>

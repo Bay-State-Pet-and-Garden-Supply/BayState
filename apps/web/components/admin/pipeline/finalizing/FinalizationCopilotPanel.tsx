@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { FinalizationCopilotUIMessage } from "@/lib/agents/finalization-copilot-agent";
 import type {
   AddSelectedImagesInput,
@@ -694,7 +695,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border-2 border-zinc-950 bg-zinc-100 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-zinc-500 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-zinc-950 bg-zinc-100 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-zinc-500 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         >
           {label}...
         </div>
@@ -705,7 +706,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border-2 border-red-600 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-red-600 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-red-600 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-red-600 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         >
           <div className="font-black">{label}</div>
           <div className="mt-1">{part.errorText}</div>
@@ -723,7 +724,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border-2 border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         >
           <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
           {summary && (
@@ -739,7 +740,7 @@ export function FinalizationCopilotPanel({
                 isRecord(product) && typeof product.sku === "string" ? (
                   <div
                     key={product.sku}
-                    className="rounded-none border-2 border-zinc-950 bg-zinc-50 px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+                    className="rounded-none border border-zinc-950 bg-zinc-50 px-3 py-2 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-black text-[10px] text-zinc-500 uppercase tracking-tighter">
@@ -787,7 +788,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border-2 border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         >
           <div className="mb-1 font-black uppercase tracking-tighter">{label}</div>
           <div className="whitespace-pre-wrap text-[10px] font-black uppercase tracking-tighter text-zinc-500">
@@ -805,7 +806,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border-2 border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         >
           <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
           <div className="flex flex-wrap gap-2">
@@ -833,7 +834,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border-2 border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         >
           <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
           <div className="space-y-2">
@@ -861,10 +862,10 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border-2 border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
         >
           <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
-          <pre className="overflow-x-auto rounded-none border-2 border-zinc-950 bg-zinc-50 px-3 py-2 text-[10px] font-bold text-zinc-700">
+          <pre className="overflow-x-auto rounded-none border border-zinc-950 bg-zinc-50 px-3 py-2 text-[10px] font-bold text-zinc-700">
             {JSON.stringify(part.output, null, 2)}
           </pre>
         </div>
@@ -874,10 +875,10 @@ export function FinalizationCopilotPanel({
     return (
       <div
         key={key}
-        className="rounded-none border-2 border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+        className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
       >
         <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
-        <pre className="overflow-x-auto rounded-none border-2 border-zinc-950 bg-zinc-50 px-3 py-2 text-[10px] font-bold text-zinc-700">
+        <pre className="overflow-x-auto rounded-none border border-zinc-950 bg-zinc-50 px-3 py-2 text-[10px] font-bold text-zinc-700">
           {JSON.stringify(part.output, null, 2)}
         </pre>
       </div>
@@ -886,10 +887,10 @@ export function FinalizationCopilotPanel({
 
   return (
     <div className="flex h-full min-h-[420px] flex-col bg-white">
-      <div className="border-b-4 border-zinc-950 px-4 py-3 bg-white">
+      <div className="border-b border-zinc-950 px-4 py-3 bg-white">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-none border-2 border-zinc-950 bg-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)]">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
@@ -901,13 +902,13 @@ export function FinalizationCopilotPanel({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 bg-zinc-100 text-zinc-950">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950">
               {workspaceProductCount} in finalizing
             </Badge>
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 bg-zinc-100 text-zinc-950">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950">
               {dirtyProductCount} unsaved
             </Badge>
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 bg-zinc-950 text-white">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-zinc-950 text-white">
               {selectedSku ?? "No Product Selected"}
             </Badge>
             <Button
@@ -930,7 +931,7 @@ export function FinalizationCopilotPanel({
 
       <div className="flex-1 overflow-y-auto px-4 py-4 bg-zinc-50/50">
         {hasPendingCopilotReview && (
-          <Alert className="mb-4 border-4 border-zinc-950 bg-violet-50 text-zinc-950 rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <Alert className="mb-4 border border-zinc-950 bg-violet-50 text-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <AlertTitle className="font-black uppercase tracking-tighter text-xs">Copilot changes are ready for review</AlertTitle>
             <AlertDescription className="space-y-3">
               <p className="text-xs font-black uppercase tracking-tighter">
@@ -950,7 +951,7 @@ export function FinalizationCopilotPanel({
                 <Button
                   type="button"
                   size="sm"
-                  className="rounded-none border-2 border-zinc-950 bg-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-[10px] hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                  className="rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-[10px] hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
                   onClick={() => {
                     void onAcceptPendingCopilotReview();
                   }}
@@ -962,7 +963,7 @@ export function FinalizationCopilotPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="rounded-none border-2 border-zinc-950 bg-white text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-[10px] hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                  className="rounded-none border border-zinc-950 bg-white text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-[10px] hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
                   onClick={onRejectPendingCopilotReview}
                   disabled={reviewActionPending || status !== "ready"}
                 >
@@ -975,7 +976,7 @@ export function FinalizationCopilotPanel({
 
         {messages.length === 0 ? (
           <div className="space-y-4">
-            <div className="rounded-none border-4 border-dashed border-zinc-300 bg-white px-4 py-5 text-sm font-black uppercase tracking-tighter text-zinc-400 text-center">
+            <div className="rounded-none border border-dashed border-zinc-300 bg-white px-4 py-5 text-sm font-black uppercase tracking-tighter text-zinc-400 text-center">
               Ask the copilot to inspect the selected product, preview a scope
               across finalizing, and stage changes for review.
             </div>
@@ -986,7 +987,7 @@ export function FinalizationCopilotPanel({
                   key={prompt}
                   type="button"
                   variant="outline"
-                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-xs font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-xs font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
                   disabled={
                     workspaceProductCount === 0
                     || hasPendingCopilotReview
@@ -1018,14 +1019,14 @@ export function FinalizationCopilotPanel({
                   }`}
                 >
                   {message.role !== "user" && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-none border-2 border-zinc-950 bg-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)] shrink-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)] shrink-0">
                       <Bot className="h-4 w-4" />
                     </div>
                   )}
 
                   <div
                     className={cn(
-                      "max-w-[92%] rounded-none px-4 py-3 text-sm border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]",
+                      "max-w-[92%] rounded-none px-4 py-3 text-sm border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]",
                       message.role === "user"
                         ? "bg-zinc-950 text-white"
                         : "bg-white text-zinc-950"
@@ -1053,7 +1054,7 @@ export function FinalizationCopilotPanel({
             ))}
 
             {error && (
-              <div className="rounded-none border-2 border-red-600 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-tighter text-red-600 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+              <div className="rounded-none border border-red-600 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-tighter text-red-600 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                 Something went wrong while talking to the copilot.
               </div>
             )}
@@ -1061,9 +1062,9 @@ export function FinalizationCopilotPanel({
         )}
       </div>
 
-      <div className="border-t-4 border-zinc-950 px-4 py-4 bg-white">
+      <div className="border-t border-zinc-950 px-4 py-4 bg-white">
         {(status === "submitted" || status === "streaming") && (
-          <div className="mb-3 flex items-center justify-between rounded-none border-2 border-zinc-950 bg-zinc-100 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <div className="mb-3 flex items-center justify-between rounded-none border border-zinc-950 bg-zinc-100 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <div className="flex items-center gap-2">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {status === "submitted" ? "Submitting..." : "Working..."}
@@ -1098,7 +1099,7 @@ export function FinalizationCopilotPanel({
               || hasPendingCopilotReview
               || status !== "ready"
             }
-            className="min-h-28 resize-none rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
+            className="min-h-28 resize-none rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
           />
 
           <div className="flex items-center justify-between gap-3">
@@ -1116,7 +1117,7 @@ export function FinalizationCopilotPanel({
                 || !input.trim()
                 || status !== "ready"
               }
-              className="rounded-none border-2 border-zinc-950 bg-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              className="rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
             >
               <SendHorizonal className="mr-2 h-4 w-4" />
               Send

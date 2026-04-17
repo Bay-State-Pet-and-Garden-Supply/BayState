@@ -205,7 +205,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
   if (error || !cohort) {
     return (
-      <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+      <div className="rounded-none border border-zinc-950 bg-brand-burgundy/10 p-4 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-brand-burgundy shrink-0" />
           <div>
@@ -254,7 +254,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
         <Button
           variant="outline"
           size="sm"
-          className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
           onClick={() => {
             void fetchCohort();
             void fetchRecommendations();
@@ -269,7 +269,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
         {/* Left column: Brand + Members */}
         <div className="flex-1 flex flex-col space-y-6 min-h-0">
           {/* Brand Assignment Card */}
-          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <Card className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <CardHeader className="bg-zinc-50 border-b border-zinc-950">
               <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <Tag className="h-5 w-5" />
@@ -332,7 +332,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                   </p>
                   <Button
                     variant="outline"
-                    className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase"
+                    className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase"
                     onClick={() => setIsEditingBrand(true)}
                   >
                     <Tag className="mr-2 h-4 w-4" />
@@ -344,7 +344,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
           </Card>
 
           {/* Pipeline Status Breakdown */}
-          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <Card className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <CardHeader className="bg-zinc-50 border-b border-zinc-950">
               <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <BarChart3 className="h-5 w-5" />
@@ -371,7 +371,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
           </Card>
 
           {/* Member Products Table */}
-          <Card className="rounded-none border border-zinc-950 flex-1 flex flex-col min-h-0 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <Card className="rounded-none border border-zinc-950 flex-1 flex flex-col min-h-0 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <CardHeader className="bg-zinc-50 border-b border-zinc-950 shrink-0">
               <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <Package className="h-5 w-5" />
@@ -441,7 +441,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
         {/* Right column: Recommendations */}
         <div className="w-full lg:w-80 space-y-6 shrink-0">
-          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <Card className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <CardHeader className="bg-zinc-50 border-b border-zinc-950">
               <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-zinc-950">
                 <Sparkles className="h-5 w-5" />
@@ -515,7 +515,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
           </Card>
 
           {/* Cohort Info */}
-          <Card className="rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <Card className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <CardHeader className="bg-zinc-50 border-b border-zinc-950">
               <CardTitle className="text-lg font-black uppercase tracking-tight text-zinc-950">Details</CardTitle>
             </CardHeader>

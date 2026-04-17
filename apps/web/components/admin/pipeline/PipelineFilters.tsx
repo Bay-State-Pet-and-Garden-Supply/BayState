@@ -78,30 +78,30 @@ export function PipelineFilters({
           type="button"
           variant="outline"
           className={cn(
-            "border-dashed",
+            "h-8 border-dashed",
             activeFilterCount > 0 &&
               "gap-1.5 border-brand-forest-green/20 bg-brand-forest-green/10 text-brand-forest-green",
             className,
           )}
           aria-label="Open product filters"
         >
-          <Filter className="h-4 w-4" />
+          <Filter className="h-3.5 w-3.5" />
           {activeFilterCount > 0 ? (
             <Badge
               variant="secondary"
-              className="h-5 bg-brand-forest-green/15 px-1.5 text-brand-forest-green hover:bg-brand-forest-green/20"
+              className="h-4 bg-brand-forest-green/15 px-1 text-[10px] text-brand-forest-green hover:bg-brand-forest-green/20"
             >
               {activeFilterCount}
             </Badge>
           ) : null}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-4" align="start">
-        <div className="space-y-4">
+      <PopoverContent className="w-72 p-3 border border-zinc-900 shadow-[1px_1px_0px_rgba(0,0,0,1)]" align="start">
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <h4 className="font-medium leading-none">Filter products</h4>
-              <p className="text-xs text-muted-foreground">
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold uppercase tracking-tight leading-none">Filter products</h4>
+              <p className="text-[10px] text-muted-foreground">
                 Only filters that the pipeline actually applies are shown here.
               </p>
             </div>
@@ -110,7 +110,7 @@ export function PipelineFilters({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
+                className="h-auto p-0 text-[10px] font-bold uppercase text-muted-foreground hover:text-foreground"
                 onClick={handleClear}
               >
                 Clear all
@@ -119,8 +119,8 @@ export function PipelineFilters({
           </div>
 
           {showSourceFilter ? (
-            <div className="space-y-2">
-              <Label htmlFor="source">Source</Label>
+            <div className="space-y-1">
+              <Label htmlFor="source" className="text-[10px] font-bold uppercase text-muted-foreground">Source</Label>
               <Select
                 value={localFilters.source || "all"}
                 onValueChange={(value) =>
@@ -130,13 +130,13 @@ export function PipelineFilters({
                   }))
                 }
               >
-                <SelectTrigger id="source">
+                <SelectTrigger id="source" className="h-8 text-xs">
                   <SelectValue placeholder="All sources" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All sources</SelectItem>
+                  <SelectItem value="all" className="text-xs">All sources</SelectItem>
                   {availableSources.map((source) => (
-                    <SelectItem key={source} value={source}>
+                    <SelectItem key={source} value={source} className="text-xs">
                       {source}
                     </SelectItem>
                   ))}
@@ -145,13 +145,14 @@ export function PipelineFilters({
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="product_line">Product line</Label>
+          <div className="space-y-1">
+            <Label htmlFor="product_line" className="text-[10px] font-bold uppercase text-muted-foreground">Product line</Label>
             <Input
               id="product_line"
               type="search"
               autoComplete="off"
               placeholder="e.g. Bentley Seeds"
+              className="h-8 text-xs"
               value={localFilters.product_line || ""}
               onChange={(event) =>
                 setLocalFilters((prev) => ({
@@ -162,13 +163,14 @@ export function PipelineFilters({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="cohort_id">Batch ID</Label>
+          <div className="space-y-1">
+            <Label htmlFor="cohort_id" className="text-[10px] font-bold uppercase text-muted-foreground">Batch ID</Label>
             <Input
               id="cohort_id"
               type="search"
               autoComplete="off"
               placeholder="e.g. 3389440f"
+              className="h-8 text-xs"
               value={localFilters.cohort_id || ""}
               onChange={(event) =>
                 setLocalFilters((prev) => ({
@@ -179,8 +181,8 @@ export function PipelineFilters({
             />
           </div>
 
-          <div className="pt-2">
-            <Button className="w-full" onClick={handleApply}>
+          <div className="pt-1">
+            <Button className="h-8 w-full text-xs font-bold uppercase" onClick={handleApply}>
               Apply filters
             </Button>
           </div>

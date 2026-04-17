@@ -365,7 +365,7 @@ export function ProductTable({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => containerRef.current,
-    estimateSize: () => 45, // approx height of a row
+    estimateSize: () => 32, // approx height of a row
     overscan: 10,
   });
 
@@ -465,7 +465,7 @@ export function ProductTable({
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "h-10 py-0 font-black uppercase tracking-tighter text-zinc-950 bg-inherit",
+                      "h-8 py-0 font-black uppercase tracking-tighter text-zinc-950 bg-inherit",
                       widthClass,
                     )}
                   >
@@ -504,7 +504,7 @@ export function ProductTable({
                   data-index={index}
                   data-state={isSelected && "selected"}
                   className={cn(
-                    "cursor-pointer transition-colors border-b border-zinc-200 h-[45px]",
+                    "cursor-pointer transition-colors border-b border-zinc-200 h-8",
                     isSelected
                       ? "bg-brand-forest-green/10"
                       : "hover:bg-zinc-50",
@@ -525,7 +525,7 @@ export function ProductTable({
                     <TableCell
                       key={cell.id}
                       className={cn(
-                        "py-2",
+                        "py-1",
                         cell.column.id === "name" ? "max-w-0" : "",
                       )}
                     >
@@ -542,7 +542,7 @@ export function ProductTable({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-32 text-center font-bold uppercase tracking-widest text-zinc-400"
+                className="h-16 text-center font-bold uppercase tracking-widest text-zinc-400"
               >
                 No products in this stage.
               </TableCell>

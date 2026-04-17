@@ -25,7 +25,7 @@ export function StageTabs({
   };
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <Tabs
         value={currentStage}
         onValueChange={(value) => {
@@ -34,9 +34,9 @@ export function StageTabs({
             onStageChange(nextStage);
           }
         }}
-        className="space-y-1.5"
+        className="space-y-1"
       >
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0 border-b-2 border-zinc-950">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-zinc-950">
           {PIPELINE_TABS.map((stage, index) => {
             const config = STAGE_CONFIG[stage];
             const count = getCount(stage);
@@ -47,24 +47,24 @@ export function StageTabs({
                 <TabsTrigger
                   value={stage}
                   aria-describedby={`desc-${stage}`}
-                  className="flex items-center gap-2 data-[state=active]:shadow-[2px_2px_0px_rgba(0,0,0,1)] data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:border-2 data-[state=active]:border-zinc-950 px-4 py-1.5 h-10 transition-all rounded-none relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-transparent data-[state=active]:after:bg-zinc-950 border-2 border-transparent"
+                  className="flex items-center gap-1.5 data-[state=active]:shadow-[1px_1px_0px_rgba(0,0,0,1)] data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:border data-[state=active]:border-zinc-950 px-2 py-1 h-8 transition-all rounded-none relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-transparent data-[state=active]:after:bg-zinc-950 border border-transparent"
                   style={
                     {
                       "--stage-color": config.color,
                     } as CSSProperties
                   }
                 >
-                  <span className="text-xs font-black uppercase tracking-tighter">{config.label}</span>
+                  <span className="text-[10px] font-black uppercase tracking-tighter">{config.label}</span>
                   <Badge
                     variant={isActive ? "default" : "secondary"}
-                    className="ml-1 px-1.5 py-0 min-w-[20px] h-5 text-[10px] justify-center font-black uppercase tracking-tighter rounded-none border border-zinc-950"
+                    className="ml-0.5 px-1 py-0 min-w-[16px] h-4 text-[9px] justify-center font-black uppercase tracking-tighter rounded-none border border-zinc-950"
                   >
                     {count}
                   </Badge>
                 </TabsTrigger>
                 {index < PIPELINE_TABS.length - 1 && (
-                  <div className="flex items-center px-1">
-                    <ChevronRight className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                  <div className="flex items-center px-0.5">
+                    <ChevronRight className="h-3 w-3 text-zinc-400 shrink-0" />
                   </div>
                 )}
               </Fragment>
@@ -84,9 +84,9 @@ export function StageTabs({
         ))}
       </Tabs>
 
-      <div className="flex flex-col gap-1.5 xl:flex-row xl:items-center xl:justify-end">
+      <div className="flex flex-col gap-1 xl:flex-row xl:items-center xl:justify-end">
         {actions ? (
-          <div className="flex flex-wrap items-center gap-2 xl:shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 xl:shrink-0">
             {actions}
           </div>
         ) : null}

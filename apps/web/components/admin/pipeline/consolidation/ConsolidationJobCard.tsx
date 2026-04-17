@@ -49,7 +49,7 @@ export function ConsolidationJobCard({
   const llmProvider = job.metadata?.llm_provider as string | undefined;
 
   return (
-    <div className="rounded-none border-2 border-zinc-950 bg-card p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
+    <div className="rounded-none border border-zinc-950 bg-card p-5 shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -96,7 +96,7 @@ export function ConsolidationJobCard({
               size="sm"
               onClick={() => onCancel(job.id)}
               disabled={cancellingId === job.id}
-              className="h-8 rounded-none border-2 border-destructive text-[10px] font-black uppercase text-destructive hover:bg-destructive/5"
+              className="h-8 rounded-none border border-destructive text-[10px] font-black uppercase text-destructive hover:bg-destructive/5"
             >
               {cancellingId === job.id ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -113,25 +113,25 @@ export function ConsolidationJobCard({
 
       {/* Stats Grid */}
       <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-none border-2 border-zinc-950 p-3 bg-muted/20">
+        <div className="rounded-none border border-zinc-950 p-3 bg-muted/20">
           <p className="text-2xl font-black text-foreground">
             {job.totalProducts}
           </p>
           <p className="text-[10px] font-black uppercase text-muted-foreground">Total</p>
         </div>
-        <div className="rounded-none border-2 border-zinc-950 p-3 bg-blue-50/20">
+        <div className="rounded-none border border-zinc-950 p-3 bg-blue-50/20">
           <p className="text-2xl font-black text-blue-600">
             {job.processedCount}
           </p>
           <p className="text-[10px] font-black uppercase text-muted-foreground">Processed</p>
         </div>
-        <div className="rounded-none border-2 border-zinc-950 p-3 bg-green-50/20">
+        <div className="rounded-none border border-zinc-950 p-3 bg-green-50/20">
           <p className="text-2xl font-black text-green-600">
             {job.successCount}
           </p>
           <p className="text-[10px] font-black uppercase text-muted-foreground">Success</p>
         </div>
-        <div className="rounded-none border-2 border-zinc-950 p-3 bg-red-50/20">
+        <div className="rounded-none border border-zinc-950 p-3 bg-red-50/20">
           <p
             className={`text-2xl font-black ${job.errorCount > 0 ? "text-red-600" : "text-muted-foreground"}`}
           >
@@ -143,7 +143,7 @@ export function ConsolidationJobCard({
 
       {/* Error Warning */}
       {job.errorCount > 0 && (
-        <div className="mt-3 flex items-center gap-2 rounded-none border-2 border-destructive bg-destructive/5 px-3 py-2 text-[10px] font-black uppercase text-destructive">
+        <div className="mt-3 flex items-center gap-2 rounded-none border border-destructive bg-destructive/5 px-3 py-2 text-[10px] font-black uppercase text-destructive">
           <AlertTriangle className="h-3.5 w-3.5" />
           {job.errorCount} product{job.errorCount !== 1 ? "s" : ""} failed consolidation
         </div>
@@ -155,7 +155,7 @@ export function ConsolidationJobCard({
           <span>Pipeline Progress</span>
           <span className="text-foreground">{job.progress}%</span>
         </div>
-        <div className="h-3 w-full rounded-none border-2 border-zinc-950 bg-muted overflow-hidden">
+        <div className="h-3 w-full rounded-none border border-zinc-950 bg-muted overflow-hidden">
           <div
             className="h-full bg-brand-burgundy transition-all duration-500"
             style={{ width: `${job.progress}%` }}
@@ -170,7 +170,7 @@ export function ConsolidationJobCard({
             size="sm"
             onClick={() => onApply(job.id)}
             disabled={applyingId === job.id}
-            className="h-10 px-6 rounded-none border-2 border-zinc-950 bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
+            className="h-10 px-6 rounded-none border border-zinc-950 bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
           >
             {applyingId === job.id ? (
               <>

@@ -163,7 +163,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
             <Trash2 className="h-4 w-4" />
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent className="rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+        <AlertDialogContent className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-black uppercase">Delete Brand</AlertDialogTitle>
             <AlertDialogDescription className="font-bold">
@@ -174,7 +174,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
             <AlertDialogCancel className="rounded-none border border-zinc-950 font-black uppercase">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleDelete(brand)}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 rounded-none border border-zinc-950 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 rounded-none border border-zinc-950 font-black uppercase shadow-[1px_1px_0px_rgba(0,0,0,1)]"
             >
               Delete
             </AlertDialogAction>
@@ -187,7 +187,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
   return (
     <div className="space-y-4">
       {selected.length > 0 && (
-        <div className="flex items-center justify-between rounded-none border-2 border-zinc-950 bg-zinc-100 px-4 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+        <div className="flex items-center justify-between rounded-none border border-zinc-950 bg-zinc-100 px-4 py-2 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
           <span className="text-sm font-black uppercase text-zinc-950">
             {selected.length} brand(s) selected
           </span>
@@ -196,13 +196,13 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
               <Button
                 variant="destructive"
                 size="sm"
-                className="rounded-none border border-zinc-950 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+                className="rounded-none border border-zinc-950 font-black uppercase shadow-[1px_1px_0px_rgba(0,0,0,1)]"
               >
                 <Trash2 className="mr-1 h-4 w-4" />
                 Delete Selected
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+            <AlertDialogContent className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
               <AlertDialogHeader>
                 <AlertDialogTitle className="font-black uppercase">Delete Selected Brands</AlertDialogTitle>
                 <AlertDialogDescription className="font-bold">
@@ -213,7 +213,7 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
                 <AlertDialogCancel className="rounded-none border border-zinc-950 font-black uppercase">Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleBulkDelete}
-                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600 rounded-none border border-zinc-950 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600 rounded-none border border-zinc-950 font-black uppercase shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                 >
                   Delete All
                 </AlertDialogAction>

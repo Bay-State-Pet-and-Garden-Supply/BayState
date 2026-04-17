@@ -198,7 +198,7 @@ export function AIScrapingSettingsCard() {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <Bot className="h-5 w-5 text-brand-burgundy" />
           </div>
           <div>

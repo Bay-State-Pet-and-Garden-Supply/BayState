@@ -106,7 +106,7 @@ export function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-none border-2 border-current px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${config.bgColor} ${config.color}`}
+      className={`inline-flex items-center gap-1.5 rounded-none border border-current px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${config.bgColor} ${config.color}`}
     >
       <Icon className={`h-3 w-3 ${isAnimated ? "animate-spin" : ""}`} />
       {config.label}

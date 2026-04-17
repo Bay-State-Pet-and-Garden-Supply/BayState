@@ -49,8 +49,8 @@ export function PipelineSidebarProductRow({
       )}
       onClick={() => onPreferredSkuChange(product.sku)}
     >
-      <TableCell className="p-4 whitespace-normal">
-        <div className="flex items-start gap-3 min-w-0">
+      <TableCell className="p-4 whitespace-normal max-w-0 w-full overflow-hidden">
+        <div className="flex items-start gap-3 w-full">
           <div
             className="mt-0.5 shrink-0"
             onClick={(e) => {
@@ -104,7 +104,7 @@ export function PipelineSidebarProductRow({
             </div>
             <div
               className={cn(
-                "text-sm font-black uppercase tracking-tighter line-clamp-2 mt-0.5 break-words",
+                "text-sm font-black uppercase tracking-tighter line-clamp-2 mt-0.5 break-all",
                 isFocused ? "text-zinc-950" : "text-zinc-700"
               )}
             >
@@ -117,7 +117,7 @@ export function PipelineSidebarProductRow({
                   <Badge
                     key={key}
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-black uppercase tracking-tighter bg-zinc-100 text-zinc-950 border-2 border-zinc-950 truncate max-w-full"
+                    className="text-[10px] px-1.5 py-0 font-black uppercase tracking-tighter bg-zinc-100 text-zinc-950 border border-zinc-950 truncate max-w-full"
                   >
                     {key}
                   </Badge>
