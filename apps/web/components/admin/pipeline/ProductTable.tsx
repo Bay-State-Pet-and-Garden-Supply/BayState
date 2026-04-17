@@ -438,6 +438,7 @@ export function ProductTable({
       tabIndex={0}
       role="grid"
       aria-multiselectable="true"
+      aria-rowcount={rows.length}
     >
       <Table className="table-fixed border-separate border-spacing-0">
         <TableHeader className="sticky top-0 bg-zinc-50 z-20 shadow-[0_1px_0_0_rgba(0,0,0,1)]">
