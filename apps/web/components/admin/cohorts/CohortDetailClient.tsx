@@ -388,9 +388,9 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                   <Table>
                     <TableHeader className="bg-zinc-100 sticky top-0 z-10">
                       <TableRow className="border-b border-zinc-950">
-                        <TableHead className="font-black uppercase text-zinc-950 text-xs">SKU</TableHead>
+                        <TableHead className="font-black uppercase text-zinc-950 text-xs w-[120px]">SKU</TableHead>
                         <TableHead className="font-black uppercase text-zinc-950 text-xs">Product Name</TableHead>
-                        <TableHead className="font-black uppercase text-zinc-950 text-xs">Pipeline Status</TableHead>
+                        <TableHead className="font-black uppercase text-zinc-950 text-xs w-[150px]">Pipeline Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -405,17 +405,19 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
                         return (
                           <TableRow key={member.product_sku} className="border-b border-zinc-200">
-                            <TableCell className="font-mono text-sm bg-zinc-50">
+                            <TableCell className="font-mono text-sm bg-zinc-50 w-[120px]">
                               {member.product_sku}
                             </TableCell>
-                            <TableCell className="font-bold text-zinc-950">
-                              {inputData?.name || (
-                                <span className="text-zinc-400 italic font-medium">
-                                  No name
-                                </span>
-                              )}
+                            <TableCell className="font-bold text-zinc-950 max-w-md">
+                              <div className="truncate" title={inputData?.name || ""}>
+                                {inputData?.name || (
+                                  <span className="text-zinc-400 italic font-medium">
+                                    No name
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-[150px]">
                               {badge ? (
                                 <Badge className={`text-[10px] font-black uppercase rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${badge.className}`}>
                                   {badge.label}

@@ -36,11 +36,11 @@ export function ProductSaveActions({
 }: ProductSaveActionsProps) {
   return (
     <div className="border-b bg-card p-4 flex-shrink-0 z-10">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <Package className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <h2 className="text-lg font-bold tracking-tight line-clamp-1">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold tracking-tight line-clamp-1" title={originalName || productName || ""}>
               {originalName || productName || "Untitled Product"}
             </h2>
             <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">

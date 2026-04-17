@@ -354,14 +354,14 @@ export function ScrapedResultsView({
       <div
         key={product.sku}
         data-sku={product.sku}
-        className={`group p-4 cursor-pointer hover:bg-muted/50 transition-colors relative ${
+        className={`group p-4 cursor-pointer hover:bg-muted/50 transition-colors relative min-w-0 ${
           isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]" : ""
         }`}
         onClick={() => setPreferredSku(product.sku)}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 min-w-0">
           <div
-            className="pt-1"
+            className="pt-1 shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               onSelectSku(
@@ -400,36 +400,36 @@ export function ScrapedResultsView({
               className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-start gap-2">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex justify-between items-start gap-2 min-w-0">
               <div className="font-mono text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-tight">
                 {product.sku}
               </div>
               {price !== undefined && (
-                <div className="text-sm font-bold text-primary">
+                <div className="text-sm font-bold text-primary shrink-0">
                   ${price.toFixed(2)}
                 </div>
               )}
             </div>
             <div
-              className={`text-sm font-medium line-clamp-2 mt-0.5 ${isSelected ? "text-primary" : ""}`}
+              className={`text-sm font-medium line-clamp-2 mt-0.5 break-words ${isSelected ? "text-primary" : ""}`}
             >
               {name}
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            <div className="flex flex-wrap items-center gap-2 mt-2 min-w-0">
               {Object.keys(product.sources || {})
                 .filter((key) => !key.startsWith("_"))
                 .map((key) => (
                   <Badge
                     key={key}
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none"
+                    className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none truncate max-w-full"
                   >
                     {key}
                   </Badge>
                 ))}
               {sourceCount === 0 && (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground shrink-0">
                   —
                 </span>
               )}
@@ -441,14 +441,14 @@ export function ScrapedResultsView({
   };
 
   return (
-    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm">
+    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm max-w-full">
       {/* Left Column: Product List */}
-      <div className="w-80 border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
-        <div className="p-3 border-b bg-card flex items-center gap-2">
+      <div className="w-80 min-w-[320px] max-w-[320px] border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
+        <div className="p-3 border-b bg-card flex items-center gap-2 min-w-0">
           <PipelineSearchField
             value={search || ""}
             onChange={(value) => onSearchChange?.(value)}
-            className="flex-1"
+            className="flex-1 min-w-0"
             isLoading={isSearching}
           />
           {filters && onFilterChange && (
@@ -566,10 +566,10 @@ export function ScrapedResultsView({
             {/* Header & Source Switcher */}
             <div className="bg-card border-b flex-shrink-0 z-10">
               <div className="p-4 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Package className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <h2 className="text-lg font-bold tracking-tight line-clamp-1">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold tracking-tight line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
                       {selectedProduct.consolidated?.name ||
                         selectedProduct.input?.name}
                     </h2>
