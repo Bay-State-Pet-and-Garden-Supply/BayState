@@ -661,9 +661,10 @@ export function ScrapedResultsView({
                                       prev === 0 ? currentSourceData.images!.length - 1 : prev - 1
                                     );
                                   }}
+                                  aria-label="Previous image"
                                   className="absolute left-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity border"
                                 >
-                                  <ChevronLeft className="h-5 w-5 text-primary" />
+                                  <ChevronLeft className="h-5 w-5 text-primary" aria-hidden="true" />
                                 </button>
                                 <button
                                   onClick={(e) => {
@@ -672,9 +673,10 @@ export function ScrapedResultsView({
                                       prev === currentSourceData.images!.length - 1 ? 0 : prev + 1
                                     );
                                   }}
+                                  aria-label="Next image"
                                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity border"
                                 >
-                                  <ChevronRight className="h-5 w-5 text-primary" />
+                                  <ChevronRight className="h-5 w-5 text-primary" aria-hidden="true" />
                                 </button>
                                 
                                 {/* Image Counter Overlay */}

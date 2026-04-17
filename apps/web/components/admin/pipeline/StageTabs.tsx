@@ -46,6 +46,7 @@ export function StageTabs({
               <Fragment key={stage}>
                 <TabsTrigger
                   value={stage}
+                  aria-describedby={`desc-${stage}`}
                   className="flex items-center gap-2 data-[state=active]:shadow-[2px_2px_0px_rgba(0,0,0,1)] data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:border-2 data-[state=active]:border-zinc-950 px-4 py-1.5 h-10 transition-all rounded-none relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-transparent data-[state=active]:after:bg-zinc-950 border-2 border-transparent"
                   style={
                     {
@@ -73,6 +74,7 @@ export function StageTabs({
         {PIPELINE_TABS.map((stage) => (
           <TabsContent
             key={stage}
+            id={`desc-${stage}`}
             value={stage}
             forceMount
             className="sr-only"

@@ -28,10 +28,7 @@ import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
-import {
-  PipelineFilters,
-  type PipelineFiltersState,
-} from "./PipelineFilters";
+import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { formatPipelineBatchLabel } from "./view-utils";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
@@ -173,7 +170,7 @@ export function PipelineClient({
     for (let i = 0; i < filteredProducts.length; i++) {
       const product = filteredProducts[i];
       const cohortId = product.cohort_id || "ungrouped";
-      
+
       if (!groups[cohortId]) {
         groups[cohortId] = [];
         cohortIds.push(cohortId);
@@ -190,7 +187,7 @@ export function PipelineClient({
       }
     }
 
-    // Sort IDs: ungrouped first, then alphabetical. 
+    // Sort IDs: ungrouped first, then alphabetical.
     // This is faster than sorting the entire result set multiple times.
     cohortIds.sort((a, b) => {
       if (a === "ungrouped") return -1;
@@ -251,18 +248,18 @@ export function PipelineClient({
 
   // Fetch counts for all stages
   const fetchCounts = useCallback(async () => {
-      try {
-        const res = await fetch("/api/admin/pipeline/counts", {
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setCounts(data.counts || []);
-        }
-      } catch {
-        // Silently fail for counts
+    try {
+      const res = await fetch("/api/admin/pipeline/counts", {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCounts(data.counts || []);
       }
-    }, []);
+    } catch {
+      // Silently fail for counts
+    }
+  }, []);
 
   // Refresh everything
   const refreshAll = useCallback(
@@ -329,7 +326,7 @@ export function PipelineClient({
       } finally {
         if (isMounted) setIsSearching(false);
       }
-      
+
       if (isMounted) {
         setSelectedSkus(new Set());
         lastFetchedSearch.current = search;
@@ -434,9 +431,10 @@ export function PipelineClient({
 
       startNavigation(() => {
         // If we're on the /export subpage, go back to the main pipeline route for other stages
-        const targetPath = pathname.endsWith("/export") && stage !== "exporting" 
-          ? "/admin/pipeline" 
-          : pathname;
+        const targetPath =
+          pathname.endsWith("/export") && stage !== "exporting"
+            ? "/admin/pipeline"
+            : pathname;
         router.replace(`${targetPath}?${params.toString()}`);
       });
     },
@@ -627,8 +625,7 @@ export function PipelineClient({
     async (response: Response, fallbackFilename: string) => {
       const blob = await response.blob();
       const contentDisposition = response.headers.get("Content-Disposition");
-      const filenameMatch =
-        contentDisposition?.match(/filename="?([^"]+)"?/i);
+      const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
       const filename = filenameMatch?.[1] ?? fallbackFilename;
 
       const url = window.URL.createObjectURL(blob);
@@ -718,14 +715,17 @@ export function PipelineClient({
               (sku: unknown): sku is string =>
                 typeof sku === "string" && sku.length > 0,
             )
-          : skus ?? [];
+          : (skus ?? []);
         let zipDownloaded = false;
 
         try {
           setExportActionState("zip");
-          const zipResponse = await fetchPublishedImageZipResponse(uploadedSkus, {
-            includeExportedSelection: true,
-          });
+          const zipResponse = await fetchPublishedImageZipResponse(
+            uploadedSkus,
+            {
+              includeExportedSelection: true,
+            },
+          );
           await downloadResponseToFile(zipResponse, "shopsite-images.zip");
           zipDownloaded = true;
         } catch (zipError) {
@@ -818,7 +818,9 @@ export function PipelineClient({
         });
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Failed to generate XML export",
+          error instanceof Error
+            ? error.message
+            : "Failed to generate XML export",
         );
       } finally {
         setExportDownloadState(null);
@@ -1180,396 +1182,430 @@ export function PipelineClient({
       <div className="shrink-0 mb-6">
         {hideTabs ? (
           <div className="flex flex-col gap-4 border-b border-border/50 pb-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/admin/pipeline")}
-              className="h-9 w-9 p-0 border-border/50 hover:bg-muted text-muted-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <div
-                className="h-8 w-1 rounded-full"
-                style={{ backgroundColor: stageConfig.color }}
-              />
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">
-                  {stageConfig.label}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {stageConfig.description}
-                </p>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/admin/pipeline")}
+                className="h-9 w-9 p-0 border-border/50 hover:bg-muted text-muted-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-3">
+                <div
+                  className="h-8 w-1 rounded-full"
+                  style={{ backgroundColor: stageConfig.color }}
+                />
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight text-foreground">
+                    {stageConfig.label}
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    {stageConfig.description}
+                  </p>
+                </div>
               </div>
             </div>
+            {headerActions}
           </div>
-          {headerActions}
-        </div>
-      ) : (
-        <StageTabs
-          currentStage={currentStage}
-          counts={counts}
-          onStageChange={handleStageChange}
-          actions={headerActions}
-        />
-      )}
+        ) : (
+          <StageTabs
+            currentStage={currentStage}
+            counts={counts}
+            onStageChange={handleStageChange}
+            actions={headerActions}
+          />
+        )}
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 min-h-0 relative">
-        <div className={cn("h-full transition-opacity", (isLoading || isNavigating) && "opacity-50 pointer-events-none")}>
+      <div className="flex-1 min-h-0 relative overflow-y-auto">
+        <div
+          className={cn(
+            "h-full transition-opacity",
+            (isLoading || isNavigating) && "opacity-50 pointer-events-none",
+          )}
+        >
           {currentStage === "scraping" ? (
-          <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="rounded-none border-2 border-zinc-950 bg-brand-forest-green/10 p-2">
-                  <Activity className="h-5 w-5 text-brand-forest-green" />
+            <div className="grid gap-6 xl:grid-cols-1">
+              <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="rounded-none border-2 border-zinc-950 bg-brand-forest-green/10 p-2">
+                    <Activity className="h-5 w-5 text-brand-forest-green" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
+                      Active Runs
+                    </h2>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">
+                      Live scraper jobs currently running or queued.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
-                    Active Runs
-                  </h2>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Live scraper jobs currently running or queued.
-                  </p>
+                <ActiveRunsTab />
+              </section>
+            </div>
+          ) : currentStage === "consolidating" ? (
+            <div className="grid gap-6 xl:grid-cols-1">
+              <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-2">
+                    <Brain className="h-5 w-5 text-brand-burgundy" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
+                      AI Consolidations
+                    </h2>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">
+                      Active consolidation batches and history.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <ActiveRunsTab />
-            </section>
-          </div>
-        ) : currentStage === "consolidating" ? (
-          <div className="grid gap-6 xl:grid-cols-1">
-            <section className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-2">
-                  <Brain className="h-5 w-5 text-brand-burgundy" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
-                    AI Consolidations
-                  </h2>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Active consolidation batches and history.
-                  </p>
-                </div>
-              </div>
-              <ActiveConsolidationsTab />
-            </section>
-          </div>
-        ) : currentStage === "scraped" ? (
-          <ScrapedResultsView
-            products={filteredProducts}
-            selectedSkus={selectedSkus}
-            onSelectSku={handleSelectSku}
-            onSelectAll={(skus) => {
-              setSelectedSkus((prev) => {
-                const next = new Set(prev);
-                skus.forEach((sku) => next.add(sku));
-                return next;
-              });
-            }}
-            onDeselectAll={(skus) => {
-              setSelectedSkus((prev) => {
-                const next = new Set(prev);
-                skus.forEach((sku) => next.delete(sku));
-                return next;
-              });
-            }}
-            onRefresh={refreshAll}
-            search={search}
-            onSearchChange={(value) => setSearch(value)}
-            filters={{
-              source: sourceFilter,
-              product_line: productLineFilter,
-              cohort_id: cohortIdFilter,
-            }}
-            onFilterChange={(newFilters) => {
-              if (newFilters.source !== undefined)
-                setSourceFilter(newFilters.source || "");
-              if (newFilters.product_line !== undefined)
-                setProductLineFilter(newFilters.product_line || "");
-              if (newFilters.cohort_id !== undefined)
-                setCohortIdFilter(newFilters.cohort_id || "");
-            }}
-            availableSources={sources}
-            groupedProducts={groupedProducts}
-            cohortBrands={groupedProducts.brands}
-            onEditCohort={
-              canEditCohorts
-                ? (id, name, brandName) => {
-                    setEditingCohort({ id, name, brandName });
-                  }
-                : undefined
-            }
-            isSearching={isSearching}
-          />
-        ) : currentStage === "finalizing" ? (
-          <FinalizingResultsView
-            products={filteredProducts}
-            onRefresh={refreshAll}
-            search={search}
-            onSearchChange={(value) => setSearch(value)}
-            filters={filterState}
-            onFilterChange={applyFilterState}
-            availableSources={sources}
-            groupedProducts={groupedProducts}
-            cohortBrands={groupedProducts.brands}
-            onEditCohort={
-              canEditCohorts
-                ? (id, name, brandName) => {
-                    setEditingCohort({ id, name, brandName });
-                  }
-                : undefined
-            }
-            selectedSkus={selectedSkus}
-            onSelectSku={handleSelectSku}
-            isSearching={isSearching}
-          />
-        ) : currentStage === "exporting" || hideTabs ? (
-          <div className="space-y-4">
-            {(groupedProducts.cohortIds.length <= 1 && (groupedProducts.cohortIds.length === 0 || groupedProducts.cohortIds[0] === "ungrouped")) ? (
-              <ProductTable
-                products={filteredProducts}
-                selectedSkus={selectedSkus}
-                onSelectSku={handleSelectSku}
-                onSelectAll={handleSelectAllVisible}
-                onDeselectAll={handleClearSelection}
-                currentStage={currentStage}
-                search={search}
-                onSearchChange={(value) => setSearch(value)}
-                filters={filterState}
-                onFilterChange={applyFilterState}
-                availableSources={sources}
-                totalCount={totalCount}
-                onSelectAllTotal={handleSelectAll}
-              />
-            ) : (
-              <Accordion type="multiple" className="space-y-4">
-                {groupedProducts.cohortIds.map((cohortId) => {
-                  const groupProducts = groupedProducts.groups[cohortId] || [];
-                  return (
-                    <AccordionItem
-                      key={cohortId}
-                      value={cohortId}
-                      className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
-                    >
-                      <div className="group flex items-center bg-zinc-50 pr-2 hover:bg-zinc-100 border-b border-zinc-950">
-                        <AccordionTrigger hideIcon className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <ChevronRight className="h-4 w-4 shrink-0 text-zinc-950 transition-transform duration-200" />
-                            <div className="flex items-center gap-2 overflow-hidden">
-                              <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
-                              <span className="truncate text-base font-black uppercase tracking-tighter text-zinc-950">
-                                {formatPipelineBatchLabel(
-                                  cohortId,
-                                  groupedProducts.names[cohortId] || null,
-                                )}
-                              </span>
-                            </div>
-                          </div>
-                        </AccordionTrigger>
-
-                        <div className="ml-auto flex shrink-0 items-center gap-2 pr-2">
-                          {groupedProducts.brands[cohortId] ? (
-                            <Badge
-                              variant="outline"
-                              className="gap-1 rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px]"
-                            >
-                              <Tag className="h-3 w-3" />
-                              {groupedProducts.brands[cohortId]}
-                            </Badge>
-                          ) : null}
-                          <Badge
-                            variant="secondary"
-                            className="bg-zinc-950 text-white rounded-none font-black uppercase text-[10px]"
+                <ActiveConsolidationsTab />
+              </section>
+            </div>
+          ) : currentStage === "scraped" ? (
+            <ScrapedResultsView
+              products={filteredProducts}
+              selectedSkus={selectedSkus}
+              onSelectSku={handleSelectSku}
+              onSelectAll={(skus) => {
+                setSelectedSkus((prev) => {
+                  const next = new Set(prev);
+                  skus.forEach((sku) => next.add(sku));
+                  return next;
+                });
+              }}
+              onDeselectAll={(skus) => {
+                setSelectedSkus((prev) => {
+                  const next = new Set(prev);
+                  skus.forEach((sku) => next.delete(sku));
+                  return next;
+                });
+              }}
+              onRefresh={refreshAll}
+              search={search}
+              onSearchChange={(value) => setSearch(value)}
+              filters={{
+                source: sourceFilter,
+                product_line: productLineFilter,
+                cohort_id: cohortIdFilter,
+              }}
+              onFilterChange={(newFilters) => {
+                if (newFilters.source !== undefined)
+                  setSourceFilter(newFilters.source || "");
+                if (newFilters.product_line !== undefined)
+                  setProductLineFilter(newFilters.product_line || "");
+                if (newFilters.cohort_id !== undefined)
+                  setCohortIdFilter(newFilters.cohort_id || "");
+              }}
+              availableSources={sources}
+              groupedProducts={groupedProducts}
+              cohortBrands={groupedProducts.brands}
+              onEditCohort={
+                canEditCohorts
+                  ? (id, name, brandName) => {
+                      setEditingCohort({ id, name, brandName });
+                    }
+                  : undefined
+              }
+              isSearching={isSearching}
+            />
+          ) : currentStage === "finalizing" ? (
+            <FinalizingResultsView
+              products={filteredProducts}
+              onRefresh={refreshAll}
+              search={search}
+              onSearchChange={(value) => setSearch(value)}
+              filters={filterState}
+              onFilterChange={applyFilterState}
+              availableSources={sources}
+              groupedProducts={groupedProducts}
+              cohortBrands={groupedProducts.brands}
+              onEditCohort={
+                canEditCohorts
+                  ? (id, name, brandName) => {
+                      setEditingCohort({ id, name, brandName });
+                    }
+                  : undefined
+              }
+              selectedSkus={selectedSkus}
+              onSelectSku={handleSelectSku}
+              isSearching={isSearching}
+            />
+          ) : currentStage === "exporting" || hideTabs ? (
+            <div className="space-y-4">
+              {groupedProducts.cohortIds.length <= 1 &&
+              (groupedProducts.cohortIds.length === 0 ||
+                groupedProducts.cohortIds[0] === "ungrouped") ? (
+                <ProductTable
+                  products={filteredProducts}
+                  selectedSkus={selectedSkus}
+                  onSelectSku={handleSelectSku}
+                  onSelectAll={handleSelectAllVisible}
+                  onDeselectAll={handleClearSelection}
+                  currentStage={currentStage}
+                  search={search}
+                  onSearchChange={(value) => setSearch(value)}
+                  filters={filterState}
+                  onFilterChange={applyFilterState}
+                  availableSources={sources}
+                  totalCount={totalCount}
+                  onSelectAllTotal={handleSelectAll}
+                />
+              ) : (
+                <Accordion type="multiple" className="space-y-4">
+                  {groupedProducts.cohortIds.map((cohortId) => {
+                    const groupProducts =
+                      groupedProducts.groups[cohortId] || [];
+                    return (
+                      <AccordionItem
+                        key={cohortId}
+                        value={cohortId}
+                        className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                      >
+                        <div className="group flex items-center bg-zinc-50 pr-2 hover:bg-zinc-100 border-b border-zinc-950">
+                          <AccordionTrigger
+                            hideIcon
+                            className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90"
                           >
-                            {groupProducts.length} items
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <AccordionContent className="pt-0">
-                        <ProductTable
-                          products={groupProducts}
-                          selectedSkus={selectedSkus}
-                          onSelectSku={(sku, selected, index, isShift) =>
-                            handleSelectSku(
-                              sku,
-                              selected,
-                              index,
-                              isShift,
-                              groupProducts,
-                            )
-                          }
-                          onSelectAll={() => {
-                            const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach((p) => groupSkus.add(p.sku));
-                            setSelectedSkus(groupSkus);
-                          }}
-                          onDeselectAll={() => {
-                            const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach((p) => groupSkus.delete(p.sku));
-                            setSelectedSkus(groupSkus);
-                          }}
-                          currentStage={currentStage}
-                          search={search}
-                          onSearchChange={(value) => setSearch(value)}
-                          filters={filterState}
-                          onFilterChange={applyFilterState}
-                          availableSources={sources}
-                          totalCount={groupProducts.length}
-                          onSelectAllTotal={() => {
-                            const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach((p) => groupSkus.add(p.sku));
-                            setSelectedSkus(groupSkus);
-                          }}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {(groupedProducts.cohortIds.length <= 1 && (groupedProducts.cohortIds.length === 0 || groupedProducts.cohortIds[0] === "ungrouped")) ? (
-              <ProductTable
-                products={filteredProducts}
-                selectedSkus={selectedSkus}
-                onSelectSku={handleSelectSku}
-                onSelectAll={handleSelectAllVisible}
-                onDeselectAll={handleClearSelection}
-                currentStage={currentStage}
-                search={search}
-                onSearchChange={(value) => setSearch(value)}
-                filters={filterState}
-                onFilterChange={applyFilterState}
-                availableSources={sources}
-                totalCount={totalCount}
-                onSelectAllTotal={handleSelectAll}
-              />
-            ) : (
-              <Accordion type="multiple" className="space-y-4">
-                {groupedProducts.cohortIds.map((cohortId) => {
-                  const groupProducts = groupedProducts.groups[cohortId] || [];
-                  return (
-                    <AccordionItem
-                      key={cohortId}
-                      value={cohortId}
-                      className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
-                    >
-                      <div className="flex items-center hover:bg-zinc-100 bg-zinc-50 pr-2 group border-b border-zinc-950">
-                        <AccordionTrigger hideIcon className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-zinc-950" />
-                            <div className="flex items-center gap-2 overflow-hidden">
-                              <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
-                              <span className="font-black text-base uppercase tracking-tighter text-zinc-950 truncate">
-                                {formatPipelineBatchLabel(
-                                  cohortId,
-                                  groupedProducts.names[cohortId] || null,
-                                )}
-                              </span>
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <ChevronRight className="h-4 w-4 shrink-0 text-zinc-950 transition-transform duration-200" />
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
+                                <span className="truncate text-base font-black uppercase tracking-tighter text-zinc-950">
+                                  {formatPipelineBatchLabel(
+                                    cohortId,
+                                    groupedProducts.names[cohortId] || null,
+                                  )}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </AccordionTrigger>
+                          </AccordionTrigger>
 
-                        <div className="flex items-center gap-2 shrink-0 ml-auto pr-2">
-                          {groupedProducts.brands[cohortId] && (
-                            <Badge
-                              variant="outline"
-                              className="rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px] gap-1"
-                            >
-                              <Tag className="h-3 w-3" />
-                              {groupedProducts.brands[cohortId]}
-                            </Badge>
-                          )}
-                          <Badge
-                            variant="secondary"
-                            className="bg-zinc-950 text-white rounded-none font-black uppercase text-[10px]"
-                          >
-                            {groupProducts.length} items
-                          </Badge>
-                          {cohortId !== "ungrouped" &&
-                            currentStage === "imported" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 text-zinc-500 hover:text-brand-forest-green hover:bg-transparent"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setEditingCohort({
-                                    id: cohortId,
-                                    name:
-                                      groupedProducts.names[cohortId] || null,
-                                    brandName:
-                                      groupedProducts.brands[cohortId] ||
-                                      null,
-                                  });
-                                }}
+                          <div className="ml-auto flex shrink-0 items-center gap-2 pr-2">
+                            {groupedProducts.brands[cohortId] ? (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px]"
                               >
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                            )}
+                                <Tag className="h-3 w-3" />
+                                {groupedProducts.brands[cohortId]}
+                              </Badge>
+                            ) : null}
+                            <Badge
+                              variant="secondary"
+                              className="bg-zinc-950 text-white rounded-none font-black uppercase text-[10px]"
+                            >
+                              {groupProducts.length} items
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
 
-                      <AccordionContent className="pt-0">
-                        <ProductTable
-                          products={groupProducts}
-                          selectedSkus={selectedSkus}
-                          onSelectSku={(sku, selected, index, isShift) =>
-                            handleSelectSku(
-                              sku,
-                              selected,
-                              index,
-                              isShift,
-                              groupProducts,
-                            )
-                          }
-                          onSelectAll={() => {
-                            const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach((p) => groupSkus.add(p.sku));
-                            setSelectedSkus(groupSkus);
-                          }}
-                          onDeselectAll={() => {
-                            const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach((p) =>
-                              groupSkus.delete(p.sku),
-                            );
-                            setSelectedSkus(groupSkus);
-                          }}
-                          currentStage={currentStage}
-                          search={search}
-                          onSearchChange={(value) => setSearch(value)}
-                          filters={filterState}
-                          onFilterChange={applyFilterState}
-                          availableSources={sources}
-                          totalCount={groupProducts.length}
-                          onSelectAllTotal={() => {
-                            const groupSkus = new Set(selectedSkus);
-                            groupProducts.forEach((p) => groupSkus.add(p.sku));
-                            setSelectedSkus(groupSkus);
-                          }}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            )}
-          </div>
-        )}
+                        <AccordionContent className="pt-0">
+                          <ProductTable
+                            products={groupProducts}
+                            selectedSkus={selectedSkus}
+                            onSelectSku={(sku, selected, index, isShift) =>
+                              handleSelectSku(
+                                sku,
+                                selected,
+                                index,
+                                isShift,
+                                groupProducts,
+                              )
+                            }
+                            onSelectAll={() => {
+                              const groupSkus = new Set(selectedSkus);
+                              groupProducts.forEach((p) =>
+                                groupSkus.add(p.sku),
+                              );
+                              setSelectedSkus(groupSkus);
+                            }}
+                            onDeselectAll={() => {
+                              const groupSkus = new Set(selectedSkus);
+                              groupProducts.forEach((p) =>
+                                groupSkus.delete(p.sku),
+                              );
+                              setSelectedSkus(groupSkus);
+                            }}
+                            currentStage={currentStage}
+                            search={search}
+                            onSearchChange={(value) => setSearch(value)}
+                            filters={filterState}
+                            onFilterChange={applyFilterState}
+                            availableSources={sources}
+                            totalCount={groupProducts.length}
+                            onSelectAllTotal={() => {
+                              const groupSkus = new Set(selectedSkus);
+                              groupProducts.forEach((p) =>
+                                groupSkus.add(p.sku),
+                              );
+                              setSelectedSkus(groupSkus);
+                            }}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {groupedProducts.cohortIds.length <= 1 &&
+              (groupedProducts.cohortIds.length === 0 ||
+                groupedProducts.cohortIds[0] === "ungrouped") ? (
+                <ProductTable
+                  products={filteredProducts}
+                  selectedSkus={selectedSkus}
+                  onSelectSku={handleSelectSku}
+                  onSelectAll={handleSelectAllVisible}
+                  onDeselectAll={handleClearSelection}
+                  currentStage={currentStage}
+                  search={search}
+                  onSearchChange={(value) => setSearch(value)}
+                  filters={filterState}
+                  onFilterChange={applyFilterState}
+                  availableSources={sources}
+                  totalCount={totalCount}
+                  onSelectAllTotal={handleSelectAll}
+                />
+              ) : (
+                <Accordion type="multiple" className="space-y-4">
+                  {groupedProducts.cohortIds.map((cohortId) => {
+                    const groupProducts =
+                      groupedProducts.groups[cohortId] || [];
+                    return (
+                      <AccordionItem
+                        key={cohortId}
+                        value={cohortId}
+                        className="overflow-hidden rounded-none border-2 border-zinc-950 bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                      >
+                        <div className="flex items-center hover:bg-zinc-100 bg-zinc-50 pr-2 group border-b border-zinc-950">
+                          <AccordionTrigger
+                            hideIcon
+                            className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90"
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-zinc-950" />
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
+                                <span className="font-black text-base uppercase tracking-tighter text-zinc-950 truncate">
+                                  {formatPipelineBatchLabel(
+                                    cohortId,
+                                    groupedProducts.names[cohortId] || null,
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </AccordionTrigger>
+
+                          <div className="flex items-center gap-2 shrink-0 ml-auto pr-2">
+                            {groupedProducts.brands[cohortId] && (
+                              <Badge
+                                variant="outline"
+                                className="rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px] gap-1"
+                              >
+                                <Tag className="h-3 w-3" />
+                                {groupedProducts.brands[cohortId]}
+                              </Badge>
+                            )}
+                            <Badge
+                              variant="secondary"
+                              className="bg-zinc-950 text-white rounded-none font-black uppercase text-[10px]"
+                            >
+                              {groupProducts.length} items
+                            </Badge>
+                            {cohortId !== "ungrouped" &&
+                              currentStage === "imported" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-zinc-500 hover:text-brand-forest-green hover:bg-transparent"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setEditingCohort({
+                                      id: cohortId,
+                                      name:
+                                        groupedProducts.names[cohortId] || null,
+                                      brandName:
+                                        groupedProducts.brands[cohortId] ||
+                                        null,
+                                    });
+                                  }}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                          </div>
+                        </div>
+
+                        <AccordionContent className="pt-0">
+                          <ProductTable
+                            products={groupProducts}
+                            selectedSkus={selectedSkus}
+                            onSelectSku={(sku, selected, index, isShift) =>
+                              handleSelectSku(
+                                sku,
+                                selected,
+                                index,
+                                isShift,
+                                groupProducts,
+                              )
+                            }
+                            onSelectAll={() => {
+                              const groupSkus = new Set(selectedSkus);
+                              groupProducts.forEach((p) =>
+                                groupSkus.add(p.sku),
+                              );
+                              setSelectedSkus(groupSkus);
+                            }}
+                            onDeselectAll={() => {
+                              const groupSkus = new Set(selectedSkus);
+                              groupProducts.forEach((p) =>
+                                groupSkus.delete(p.sku),
+                              );
+                              setSelectedSkus(groupSkus);
+                            }}
+                            currentStage={currentStage}
+                            search={search}
+                            onSearchChange={(value) => setSearch(value)}
+                            filters={filterState}
+                            onFilterChange={applyFilterState}
+                            availableSources={sources}
+                            totalCount={groupProducts.length}
+                            onSelectAllTotal={() => {
+                              const groupSkus = new Set(selectedSkus);
+                              groupProducts.forEach((p) =>
+                                groupSkus.add(p.sku),
+                              );
+                              setSelectedSkus(groupSkus);
+                            }}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              )}
+            </div>
+          )}
         </div>
 
         {(isLoading || isNavigating || isSearching) && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center">
+          <div 
+            className="absolute inset-0 z-50 flex items-center justify-center"
+            role="status"
+            aria-live="polite"
+            aria-busy={isLoading || isNavigating || isSearching}
+          >
             <div className="flex flex-col items-center gap-2 rounded-none bg-background/80 px-8 py-6 shadow-[4px_4px_0px_rgba(0,0,0,1)] border-2 border-zinc-950 backdrop-blur-sm">
-              <Activity className="h-8 w-8 animate-spin text-brand-forest-green" />
-              <p className="text-sm font-black uppercase tracking-tighter">Updating Results...</p>
+              <Activity className="h-8 w-8 animate-spin text-brand-forest-green" aria-hidden="true" />
+              <p className="text-sm font-black uppercase tracking-tighter">
+                Updating Results...
+              </p>
             </div>
           </div>
         )}
@@ -1612,9 +1648,9 @@ export function PipelineClient({
 
       {/* Floating Bulk Actions Bar */}
       {!isLiveOperationalTab(currentStage) && (
-          <FloatingActionsBar
-            selectedCount={selectedSkus.size}
-            totalCount={totalCount}
+        <FloatingActionsBar
+          selectedCount={selectedSkus.size}
+          totalCount={totalCount}
           currentStage={currentStage}
           isLoading={isLoading}
           onClearSelection={handleClearSelection}
@@ -1624,9 +1660,7 @@ export function PipelineClient({
           onConsolidate={() => handleConsolidate(Array.from(selectedSkus))}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onDelete={handleDelete}
-          actionState={
-            currentStage === "exporting" ? exportActionState : null
-          }
+          actionState={currentStage === "exporting" ? exportActionState : null}
           onUploadShopSite={
             currentStage === "exporting"
               ? handleUploadSelectedShopSite
