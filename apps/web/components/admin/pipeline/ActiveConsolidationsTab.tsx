@@ -8,9 +8,8 @@ import {
   AlertTriangle,
   History,
   Settings,
-  Key,
-  Save,
   CheckCircle,
+  LifeBuoy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -483,6 +482,34 @@ export function ActiveConsolidationsTab({
     }
   };
 
+  const [resettingStranded, setResettingStranded] = useState(false);
+
+  // Recover stuck products
+  const handleRecoverStranded = async () => {
+    if (!window.confirm("This will reset all products stuck in 'consolidating' back to 'scraped'. Please ensure there are no active batches before proceeding. Continue?")) return;
+    
+    setResettingStranded(true);
+    try {
+      const res = await fetch("/api/admin/consolidation/reset", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.reset_count > 0) {
+          toast.success(`Recovered ${data.reset_count} stranded product${data.reset_count !== 1 ? "s" : ""} back to scraped stage`);
+        } else {
+          toast.info("No stranded products found");
+        }
+      } else {
+        toast.error(data.error || "Failed to recover stranded products");
+      }
+    } catch {
+      toast.error("Failed to recover stranded products");
+    } finally {
+      setResettingStranded(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className={`flex items-center justify-center py-12 ${className}`}>
@@ -518,6 +545,20 @@ export function ActiveConsolidationsTab({
             className={`mr-2 h-3.5 w-3.5 ${syncingAll ? "animate-spin" : ""}`}
           />
           Status Sync
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRecoverStranded}
+          disabled={resettingStranded}
+          className="rounded-none border-2 border-red-600 font-black uppercase text-[10px] h-8 shadow-[2px_2px_0px_rgba(220,38,38,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all text-red-600 hover:bg-red-50"
+        >
+          {resettingStranded ? (
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <LifeBuoy className="mr-2 h-3.5 w-3.5" />
+          )}
+          Recover Stranded
         </Button>
         <Button
           variant={showHistory ? "secondary" : "outline"}
