@@ -49,7 +49,7 @@ function BatchHistoryCard({
   const canApply = job.status === "completed" && !isApplied;
 
   return (
-    <div className="rounded-none border-2 border-zinc-950 bg-card p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
+    <div className="rounded-none border border-zinc-950 bg-card p-4 shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -108,7 +108,7 @@ function BatchHistoryCard({
               size="sm"
               onClick={() => onApply(job.openai_batch_id || job.id)}
               disabled={applyingId === (job.openai_batch_id || job.id)}
-              className="rounded-none border-2 border-zinc-950 bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-black uppercase text-[10px] h-7 px-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+              className="rounded-none border border-zinc-950 bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-black uppercase text-[10px] h-7 px-3 shadow-[1px_1px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
             >
               {applyingId === (job.openai_batch_id || job.id) ? (
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />
@@ -135,7 +135,7 @@ function BatchHistoryCard({
 
       {/* Expanded Detail */}
       {expanded && (
-        <div className="mt-3 space-y-3 border-t-2 border-dashed border-zinc-950 pt-3">
+        <div className="mt-3 space-y-3 border-t border-dashed border-zinc-950 pt-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px] font-black uppercase text-muted-foreground">
             <div className="flex flex-col gap-1">
               <span>Batch ID</span>
@@ -155,7 +155,7 @@ function BatchHistoryCard({
 
           {/* Quality Metrics */}
           {qualityMetrics && (
-            <div className="rounded-none border-2 border-zinc-950 bg-muted/30 p-3">
+            <div className="rounded-none border border-zinc-950 bg-muted/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-tighter text-foreground mb-2">
                 Quality & Taxonomy Metrics
               </p>
@@ -182,7 +182,7 @@ function BatchHistoryCard({
 
           {/* Apply Summary */}
           {applySummary && (
-            <div className="rounded-none border-2 border-green-600 bg-green-50/50 p-3">
+            <div className="rounded-none border border-green-600 bg-green-50/50 p-3">
               <p className="text-[10px] font-black uppercase tracking-tighter text-green-700 mb-2">
                 Finalization Summary
               </p>
@@ -219,7 +219,7 @@ export function BatchHistorySection({
 }: BatchHistorySectionProps) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 border-t-2 border-zinc-950 pt-4">
+      <div className="flex items-center gap-2 border-t border-zinc-950 pt-4">
         <History className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-black uppercase tracking-tighter text-muted-foreground">
           Recent Batches

@@ -54,7 +54,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
 
   return (
     <div className="space-y-6" data-testid="scraper-list">
-      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] border border-zinc-950" data-testid="scraper-filters">
+      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] border border-zinc-950" data-testid="scraper-filters">
         <div className="flex-1">
           <label className="text-sm font-black uppercase mb-1.5 block text-zinc-950">Status</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -101,7 +101,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
       </div>
 
       {filteredScrapers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-muted rounded-none border-2 border-dashed border-zinc-950" data-testid="scraper-list-empty">
+        <div className="flex flex-col items-center justify-center p-12 bg-muted rounded-none border border-dashed border-zinc-950" data-testid="scraper-list-empty">
           <SearchX className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-black uppercase text-zinc-950">No scrapers found</h3>
 
@@ -166,7 +166,7 @@ export function ScraperListClient({ initialScrapers }: { initialScrapers: Scrape
                 </div>
               </CardContent>
               <CardFooter className="pt-2 pb-4 bg-white border-t border-zinc-950 flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 bg-white hover:bg-zinc-100 text-zinc-950 rounded-none border border-zinc-950 font-black uppercase shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all" asChild>
+                <Button variant="outline" size="sm" className="flex-1 bg-white hover:bg-zinc-100 text-zinc-950 rounded-none border border-zinc-950 font-black uppercase shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-all" asChild>
                   <Link href={`/admin/scrapers/${scraper.slug}`} data-testid="scraper-card-view-link">
                     <ExternalLink className="mr-2 h-3.5 w-3.5" />
                     View

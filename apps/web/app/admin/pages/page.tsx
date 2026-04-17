@@ -11,14 +11,14 @@ export default async function AdminPagesList() {
         <h1 className="text-3xl font-black uppercase text-zinc-950">Content Pages</h1>
         <Link 
           href="/admin/pages/new" 
-          className="bg-primary text-white px-4 py-2 rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-primary/90 flex items-center gap-2 font-black uppercase text-sm"
+          className="bg-primary text-white px-4 py-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-primary/90 flex items-center gap-2 font-black uppercase text-sm"
         >
           <Plus size={16} />
           Create New Page
         </Link>
       </div>
 
-      <div className="bg-card rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)] overflow-hidden border-2 border-zinc-950">
+      <div className="bg-card rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] overflow-hidden border border-zinc-950">
         <table className="w-full">
           <thead className="bg-zinc-950 text-white">
             <tr>

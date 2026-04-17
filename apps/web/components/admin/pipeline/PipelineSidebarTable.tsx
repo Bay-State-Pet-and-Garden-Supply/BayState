@@ -56,6 +56,19 @@ export function PipelineSidebarTable({
 }: PipelineSidebarTableProps) {
   const internalRef = React.useRef<VirtualizedPipelineTableHandle>(null);
   const scrollContainerRef = externalRef || internalRef;
+  const [expandedCohortIds, setExpandedCohortIds] = React.useState<Set<string>>(new Set());
+
+  const toggleCohortExpansion = React.useCallback((cohortId: string) => {
+    setExpandedCohortIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cohortId)) {
+        next.delete(cohortId);
+      } else {
+        next.add(cohortId);
+      }
+      return next;
+    });
+  }, []);
 
   // Data flattening logic: handles cohort grouping and "ungrouped" fallback
   const flatItems = React.useMemo(() => {
@@ -78,19 +91,23 @@ export function PipelineSidebarTable({
       if (groupProducts.length === 0) return;
 
       items.push({ type: 'header', cohortId, groupProducts });
-      groupProducts.forEach((product) => {
-        const globalIndex = products.findIndex(p => p.sku === product.sku);
-        items.push({ 
-          type: 'product', 
-          product, 
-          index: globalIndex === -1 ? 0 : globalIndex, 
-          visibleProducts: groupProducts 
+      
+      // Only add products if expanded
+      if (expandedCohortIds.has(cohortId)) {
+        groupProducts.forEach((product) => {
+          const globalIndex = products.findIndex(p => p.sku === product.sku);
+          items.push({ 
+            type: 'product', 
+            product, 
+            index: globalIndex === -1 ? 0 : globalIndex, 
+            visibleProducts: groupProducts 
+          });
         });
-      });
+      }
     });
 
     return items;
-  }, [groupedProducts, products]);
+  }, [groupedProducts, products, expandedCohortIds]);
 
   // Virtualization size estimation: 48px for headers, 110px for products
   const estimateSize = React.useCallback((index: number) => {
@@ -178,6 +195,8 @@ export function PipelineSidebarTable({
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
           onEditCohort={onEditCohort}
+          isCollapsed={!expandedCohortIds.has(item.cohortId)}
+          onToggleCollapse={toggleCohortExpansion}
         />
       );
     }

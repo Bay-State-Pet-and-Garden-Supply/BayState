@@ -19,7 +19,7 @@ export default function PageForm({ page }: { page?: Page }) {
   }
 
   return (
-    <form action={handleSubmit} className="space-y-6 max-w-4xl bg-card p-6 rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)] border-2 border-zinc-950">
+    <form action={handleSubmit} className="space-y-6 max-w-4xl bg-card p-6 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] border border-zinc-950">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label className="text-sm font-black uppercase">Page Title</label>
@@ -104,7 +104,7 @@ export default function PageForm({ page }: { page?: Page }) {
         <button
           type="submit"
           disabled={loading}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 py-2 rounded-none inline-flex items-center justify-center whitespace-nowrap text-sm font-black uppercase ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 shadow-[2px_2px_0px_rgba(0,0,0,1)] border border-zinc-950"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 py-2 rounded-none inline-flex items-center justify-center whitespace-nowrap text-sm font-black uppercase ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 shadow-[1px_1px_0px_rgba(0,0,0,1)] border border-zinc-950"
         >
           {loading ? 'Saving...' : (isEditing ? 'Update Page' : 'Create Page')}
         </button>

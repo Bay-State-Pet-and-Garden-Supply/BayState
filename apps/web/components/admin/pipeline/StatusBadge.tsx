@@ -68,7 +68,7 @@ export function StatusBadge({
 
   if (isLoading) {
     return (
-      <span className={cn("animate-pulse rounded-none bg-muted border-2 border-zinc-950", sizeSettings.badge, className)} aria-hidden="true">
+      <span className={cn("animate-pulse rounded-none bg-muted border border-zinc-950", sizeSettings.badge, className)} aria-hidden="true">
         <span className="invisible">Loading</span>
       </span>
     );
@@ -79,7 +79,7 @@ export function StatusBadge({
       variant={config.variant} 
       className={cn(
         sizeSettings.badge, 
-        "gap-1.5 rounded-none border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", 
+        "gap-1.5 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", 
         className
       )}
     >

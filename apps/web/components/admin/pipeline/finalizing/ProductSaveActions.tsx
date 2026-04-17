@@ -37,7 +37,7 @@ export function ProductSaveActions({
   copilotTrigger,
 }: ProductSaveActionsProps) {
   return (
-    <div className="border-b-4 border-zinc-950 bg-white p-4 flex-shrink-0 z-10">
+    <div className="border-b border-zinc-950 bg-white p-4 flex-shrink-0 z-10">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
         <div className="flex items-center gap-3 min-w-0">
           <Package className="h-5 w-5 text-zinc-400 shrink-0" />
@@ -61,7 +61,7 @@ export function ProductSaveActions({
           {isDirty ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border-2 border-zinc-950 bg-amber-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] animate-pulse"
+              className="ml-2 h-5 border border-zinc-950 bg-amber-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-pulse"
             >
               Unsaved Changes
             </Badge>
@@ -69,7 +69,7 @@ export function ProductSaveActions({
           {saving ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border-2 border-zinc-950 bg-zinc-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+              className="ml-2 h-5 border border-zinc-950 bg-zinc-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]"
             >
               Saving...
             </Badge>
@@ -77,7 +77,7 @@ export function ProductSaveActions({
           {hasPendingCopilotReview ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border-2 border-zinc-950 bg-violet-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+              className="ml-2 h-5 border border-zinc-950 bg-violet-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]"
             >
               Copilot Review Pending
             </Badge>
@@ -94,7 +94,7 @@ export function ProductSaveActions({
               disabled={
                 saving || publishing || rejecting || hasPendingCopilotReview
               }
-              className="rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-500 hover:text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-500 hover:text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
             >
               {rejecting ? (
                 "Returning..."
@@ -110,7 +110,7 @@ export function ProductSaveActions({
               size="sm"
               onClick={onSave}
               disabled={saving || publishing || hasPendingCopilotReview}
-              className="rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
             >
               {saving ? (
                 "Saving..."
@@ -123,7 +123,7 @@ export function ProductSaveActions({
             </Button>
             <Button
               size="sm"
-              className="rounded-none border-2 border-zinc-950 bg-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              className="rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
               onClick={onPublish}
               disabled={saving || publishing || hasPendingCopilotReview}
             >

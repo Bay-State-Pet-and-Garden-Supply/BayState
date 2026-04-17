@@ -5,17 +5,17 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-black uppercase tracking-tight transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive active:scale-[0.98] shadow-[2px_2px_0px_rgba(0,0,0,1)] border border-zinc-950",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-black uppercase tracking-tight transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive active:scale-[0.98] shadow-[1px_1px_0px_rgba(0,0,0,1)] border border-zinc-950",
   {
     variants: {
       variant: {
-        default: "bg-primary text-white hover:bg-primary/90 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none",
+        default: "bg-primary text-white hover:bg-primary/90 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none",
         destructive:
-          "bg-brand-burgundy text-white hover:bg-brand-burgundy/90 focus-visible:ring-brand-burgundy/20 dark:focus-visible:ring-brand-burgundy/40 dark:bg-brand-burgundy/60 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none",
+          "bg-brand-burgundy text-white hover:bg-brand-burgundy/90 focus-visible:ring-brand-burgundy/20 dark:focus-visible:ring-brand-burgundy/40 dark:bg-brand-burgundy/60 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none",
         outline:
-          "bg-background hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none",
+          "bg-background hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none",
         secondary:
-          "bg-brand-gold text-brand-burgundy hover:bg-brand-gold/80 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none border-brand-gold",
+          "bg-brand-gold text-brand-burgundy hover:bg-brand-gold/80 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none border-brand-gold",
         ghost:
           "border-transparent shadow-none hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 active:scale-100 hover:translate-x-0 hover:translate-y-0",
         link: "border-transparent shadow-none text-brand-forest-green underline-offset-4 hover:underline active:scale-100 hover:translate-x-0 hover:translate-y-0",

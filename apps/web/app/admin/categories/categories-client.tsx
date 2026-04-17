@@ -118,7 +118,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
     return (
       <div key={node.id}>
         <div
-          className={`flex items-center gap-2 rounded-none border border-zinc-950 bg-card p-3 hover:bg-muted shadow-[2px_2px_0px_rgba(0,0,0,1)] ${
+          className={`flex items-center gap-2 rounded-none border border-zinc-950 bg-card p-3 hover:bg-muted shadow-[1px_1px_0px_rgba(0,0,0,1)] ${
             depth > 0 ? 'ml-6' : ''
           }`}
           style={{ marginLeft: depth > 0 ? `${depth * 24}px` : 0 }}
@@ -218,12 +218,12 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
 
   if (categories.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-none border-2 border-dashed border-zinc-950 bg-muted py-16">
+      <div className="flex flex-col items-center justify-center rounded-none border border-dashed border-zinc-950 bg-muted py-16">
         <p className="text-lg font-black uppercase text-zinc-950">No categories yet</p>
         <p className="mt-1 text-sm font-bold text-zinc-600 uppercase">
           Create your first category to organize products
         </p>
-        <Button asChild className="mt-4 rounded-none border border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase">
+        <Button asChild className="mt-4 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase">
           <Link href="/admin/categories/new">
             <Plus className="mr-2 h-4 w-4" />
             Add Category

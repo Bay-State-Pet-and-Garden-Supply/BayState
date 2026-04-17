@@ -100,7 +100,7 @@ export const VirtualizedPipelineTable = React.forwardRef(
         ref={containerRef}
         className={cn(
           "relative overflow-auto min-h-0 flex-1",
-          // CRITICAL: Padding ensures the heavy border-4 and shadow-8px 
+          // CRITICAL: Padding ensures the heavy border and shadow-8px 
           // from the Table primitive are not clipped by this scroll container.
           "p-1 pr-4 pb-4 [&_[data-slot=table-container]]:overflow-visible", 
           containerClassName

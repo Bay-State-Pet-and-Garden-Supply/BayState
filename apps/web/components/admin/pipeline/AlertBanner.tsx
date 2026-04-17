@@ -115,34 +115,35 @@ export function AlertBanner({
       aria-live="polite"
       aria-atomic="true"
       className={cn(
-        "relative flex w-full items-start gap-3 rounded-lg border bg-background p-4 shadow-sm",
+        "relative flex w-full items-start gap-2.5 rounded-lg border border-zinc-900 bg-background p-3 shadow-sm",
         config.containerClass,
         className
       )}
     >
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-full p-1.5",
+          "flex shrink-0 items-center justify-center rounded-full p-1",
           config.iconBgClass
         )}
       >
-        <IconComponent className={cn("size-5", config.iconClass)} aria-hidden="true" />
+        <IconComponent className={cn("size-4", config.iconClass)} aria-hidden="true" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-foreground">{title}</p>
+        <p className="text-sm font-black uppercase tracking-tight text-foreground">{title}</p>
         {message && (
-          <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground leading-tight">{message}</p>
         )}
 
         {actions && actions.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             {actions.map((action, index) => (
               <Button
                 key={index}
                 size="sm"
                 variant={action.variant || "outline"}
                 onClick={action.onClick}
+                className="h-7 text-[10px] font-black uppercase tracking-tight border-zinc-900"
               >
                 {action.label}
               </Button>
@@ -155,10 +156,10 @@ export function AlertBanner({
         <button
           type="button"
           onClick={handleDismiss}
-          className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="absolute right-1.5 top-1.5 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           aria-label="Dismiss alert"
         >
-          <X className="size-4" aria-hidden="true" />
+          <X className="size-3.5" aria-hidden="true" />
         </button>
       )}
     </div>

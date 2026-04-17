@@ -84,7 +84,8 @@ def generate_golden_dataset():
     cache_dir.mkdir(parents=True, exist_ok=True)
     
     for entry in entries:
-        query_key = " ".join(entry["query"].split()).casefold()
+        # Match core normalization: collapse whitespace, lowercase
+        query_key = " ".join(str(entry["query"] or "").split()).lower()
         hash_val = hashlib.sha256(query_key.encode("utf-8")).hexdigest()
         cache_path = cache_dir / f"{hash_val}.json"
         

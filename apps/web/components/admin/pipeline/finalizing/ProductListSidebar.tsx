@@ -64,8 +64,8 @@ export function ProductListSidebar({
   }, [onSelectSku]);
 
   return (
-    <div className="w-80 min-w-[320px] max-w-[320px] border-r-4 border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-hidden">
-      <div className="flex items-center gap-2 border-b-4 border-zinc-950 bg-white p-3">
+    <div className="w-80 min-w-[320px] max-w-[320px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-zinc-950 bg-white p-3">
         <PipelineSearchField
           value={search || ""}
           onChange={(value) => onSearchChange?.(value)}
@@ -78,7 +78,7 @@ export function ProductListSidebar({
             onFilterChange={onFilterChange}
             availableSources={availableSources}
             showSourceFilter={showSourceFilter}
-            className="h-9 w-9 shrink-0 p-0 border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+            className="h-9 w-9 shrink-0 p-0 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
           />
         ) : null}
       </div>
