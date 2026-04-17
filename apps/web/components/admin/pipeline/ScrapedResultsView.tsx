@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useCallback, useState, useEffect, useRef } from "react";
 import {
   Package,
   ExternalLink,
@@ -9,25 +9,18 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronLeft,
-  Edit2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { PipelineFilters } from "./PipelineFilters";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { PipelineSearchField } from "./PipelineSearchField";
-import { formatPipelineBatchLabel } from "./view-utils";
+import { PipelineSidebarTable } from "./PipelineSidebarTable";
 
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
@@ -112,203 +105,57 @@ export function ScrapedResultsView({
   cohortBrands = {},
   onEditCohort,
 }: ScrapedResultsViewProps) {
+  // 1. Data Transformation & Memoized State
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
   }, [products]);
 
+  // 2. Primary Selection State
   const [preferredSku, setPreferredSku] = useState<string | null>(
     sortedProducts.length > 0 ? sortedProducts[0].sku : null,
   );
 
-  // track previous products to detect when a product is removed
-  const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
+  const selectedProduct = useMemo(() => {
+    return sortedProducts.find((p) => p.sku === preferredSku) || null;
+  }, [sortedProducts, preferredSku]);
+
+  const sources = selectedProduct?.sources || EMPTY_SOURCES;
+  const sourceKeys = Object.keys(sources).filter((k) => !k.startsWith("_"));
 
   const [preferredSource, setPreferredSource] = useState<string>("");
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDeleteSource, setPendingDeleteSource] = useState<string | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-
-  const selectedProduct =
-    sortedProducts.find((product) => product.sku === preferredSku) ??
-    sortedProducts[0] ??
-    null;
-  const selectedSku = selectedProduct?.sku ?? null;
-  const sources = selectedProduct?.sources ?? EMPTY_SOURCES;
-  const sourceKeys = useMemo(
-    () => Object.keys(sources).filter((key) => !key.startsWith("_")),
-    [sources],
-  );
 
   const activeSource = useMemo(() => {
     if (preferredSource && sourceKeys.includes(preferredSource)) {
       return preferredSource;
     }
-
-    return sourceKeys[0] ?? "";
+    return sourceKeys.length > 0 ? sourceKeys[0] : "";
   }, [preferredSource, sourceKeys]);
 
-  // Intelligent selection: When products change, if the current selection is gone,
-  // select the next product that was after it.
-  useEffect(() => {
-    const prevProducts = prevProductsRef.current;
-    if (prevProducts !== sortedProducts) {
-      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
-      if (!currentExists && preferredSku) {
-        // Current SKU was removed.
-        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
-        if (prevIndex !== -1) {
-          const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
-          if (nextIndex >= 0) {
-            setPreferredSku(sortedProducts[nextIndex].sku);
-          } else {
-            setPreferredSku(null);
-          }
-        }
-      } else if (!preferredSku && sortedProducts.length > 0) {
-        setPreferredSku(sortedProducts[0].sku);
-      }
-      prevProductsRef.current = sortedProducts;
-    }
-  }, [sortedProducts, preferredSku]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      if (
-        activeElement?.tagName === "INPUT" ||
-        activeElement?.tagName === "TEXTAREA" ||
-        activeElement?.getAttribute("contenteditable") === "true"
-      ) {
-        return;
-      }
-
-      if (sortedProducts.length === 0) return;
-
-      const currentIndex = sortedProducts.findIndex((p) => p.sku === preferredSku);
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const nextIndex = Math.min(currentIndex + 1, sortedProducts.length - 1);
-        const nextSku = sortedProducts[nextIndex].sku;
-        setPreferredSku(nextSku);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const nextIndex = Math.max(currentIndex - 1, 0);
-        const nextSku = sortedProducts[nextIndex].sku;
-        setPreferredSku(nextSku);
-      } else if (e.key === " ") {
-        if (preferredSku) {
-          e.preventDefault();
-          const isChecked = selectedSkus.has(preferredSku);
-          onSelectSku(
-            preferredSku,
-            !isChecked,
-            currentIndex,
-            e.shiftKey,
-            sortedProducts
-          );
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [preferredSku, sortedProducts, selectedSkus, onSelectSku]);
-
-  // Scroll active item into view
-  useEffect(() => {
-    if (preferredSku && scrollContainerRef.current) {
-      const activeElement = scrollContainerRef.current.querySelector(`[data-sku="${preferredSku}"]`);
-      if (activeElement) {
-        activeElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      }
-    }
-  }, [preferredSku]);
-
-  const handleDeleteSourceClick = (sourceKey: string) => {
-    if (!selectedProduct) return;
-    setPendingDeleteSource(sourceKey);
-    setConfirmOpen(true);
-  };
-
-  const handleConfirmDeleteSource = async () => {
-    if (!selectedProduct || !pendingDeleteSource) return;
-    setConfirmOpen(false);
-
-    const sourceKey = pendingDeleteSource;
-
-    try {
-      const newSources = { ...selectedProduct.sources };
-      delete newSources[sourceKey];
-
-      const cleanedSources = Object.fromEntries(
-        Object.entries(newSources).filter(([key]) => !key.startsWith("_")),
-      );
-
-      const nextStatus =
-        Object.keys(cleanedSources).length === 0 ? "imported" : undefined;
-
-      const res = await fetch(
-        `/api/admin/pipeline/${encodeURIComponent(selectedProduct.sku)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sources: newSources,
-            ...(nextStatus ? { pipeline_status: nextStatus } : {}),
-          }),
-        },
-      );
-
-      if (res.ok) {
-        toast.success(`Source "${sourceKey}" deleted`);
-        onRefresh(true);
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Failed to delete source");
-      }
-    } catch {
-      toast.error("An error occurred while deleting the source");
-    }
-
-    setPendingDeleteSource(null);
-  };
-
   const currentSourceData = useMemo(() => {
-    if (!activeSource) {
-      return null;
-    }
-
+    if (!activeSource) return null;
     const sourceValue = sources[activeSource];
     return isSourceDetails(sourceValue) ? sourceValue : null;
   }, [activeSource, sources]);
 
+  // 3. UI State & Refs
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteSource, setPendingDeleteSource] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // 4. Callbacks
   const handleImageError = useCallback(
     (imageUrl: string | undefined) => {
       const productId = selectedProduct?.sku;
       const normalizedImageUrl = imageUrl?.trim();
 
-      if (!productId || !normalizedImageUrl) {
-        return;
-      }
+      if (!productId || !normalizedImageUrl) return;
 
       const retryKey = `${productId}:${normalizedImageUrl}`;
       const now = Date.now();
       const lastAttemptAt = imageRetryAttemptTimestamps.get(retryKey);
 
-      if (
-        typeof lastAttemptAt === "number" &&
-        now - lastAttemptAt < IMAGE_RETRY_DEBOUNCE_MS
-      ) {
-        console.info(
-          `[ScrapedResultsView] Debounced retry trigger for ${normalizedImageUrl}`,
-        );
-        return;
-      }
+      if (typeof lastAttemptAt === "number" && now - lastAttemptAt < IMAGE_RETRY_DEBOUNCE_MS) return;
 
       imageRetryAttemptTimestamps.set(retryKey, now);
 
@@ -319,289 +166,136 @@ export function ScrapedResultsView({
           sku: productId,
           image_url: normalizedImageUrl,
         }),
-      })
-        .then(async (response) => {
-          if (response.ok || response.status === 202) {
-            return;
-          }
-
-          const payload = await response.json().catch(() => null);
-          console.warn(
-            `[ScrapedResultsView] Failed to enqueue retry for ${normalizedImageUrl}`,
-            payload,
-          );
-        })
-        .catch((error) => {
-          console.warn(
-            `[ScrapedResultsView] Error enqueuing retry for ${normalizedImageUrl}`,
-            error,
-          );
-        });
+      }).catch(err => console.warn("[ScrapedResultsView] Image retry error:", err));
     },
     [selectedProduct?.sku],
   );
 
-  const renderProductItem = (product: PipelineProduct, index: number, visibleProducts: PipelineProduct[]) => {
-    const name = product.consolidated?.name || product.input?.name || "Unknown";
-    const price = product.consolidated?.price ?? product.input?.price;
-    const sourceCount = Object.keys(product.sources || {}).filter(
-      (key) => !key.startsWith("_"),
-    ).length;
-    const isSelected = selectedSku === product.sku;
-    const isChecked = selectedSkus.has(product.sku);
-
-    return (
-      <div
-        key={product.sku}
-        data-sku={product.sku}
-        className={`group p-4 cursor-pointer hover:bg-muted/50 transition-colors relative min-w-0 ${
-          isSelected ? "bg-primary/5 shadow-[inset_3px_0_0_0_hsl(var(--primary))]" : ""
-        }`}
-        onClick={() => setPreferredSku(product.sku)}
-      >
-        <div className="flex items-start gap-3 min-w-0">
-          <div
-            className="pt-1 shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectSku(
-                product.sku,
-                !isChecked,
-                index,
-                e.shiftKey,
-                visibleProducts,
-              );
-            }}
-          >
-            <Checkbox
-              checked={isChecked}
-              onCheckedChange={() => {
-                // Handle keyboard selection
-                if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
-                  onSelectSku(
-                    product.sku,
-                    !isChecked,
-                    index,
-                    false,
-                    visibleProducts,
-                  )
-                }
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectSku(
-                  product.sku,
-                  !isChecked,
-                  index,
-                  e.shiftKey,
-                  visibleProducts,
-                );
-              }}
-              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-            />
-          </div>
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="flex justify-between items-start gap-2 min-w-0">
-              <div className="font-mono text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-tight">
-                {product.sku}
-              </div>
-              {price !== undefined && (
-                <div className="text-sm font-bold text-primary shrink-0">
-                  ${price.toFixed(2)}
-                </div>
-              )}
-            </div>
-            <div
-              className={`text-sm font-medium line-clamp-2 mt-0.5 break-words ${isSelected ? "text-primary" : ""}`}
-            >
-              {name}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-2 min-w-0">
-              {Object.keys(product.sources || {})
-                .filter((key) => !key.startsWith("_"))
-                .map((key) => (
-                  <Badge
-                    key={key}
-                    variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-normal bg-muted text-muted-foreground border-none truncate max-w-full"
-                  >
-                    {key}
-                  </Badge>
-                ))}
-              {sourceCount === 0 && (
-                <span className="text-[10px] text-muted-foreground shrink-0">
-                  —
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  const handleDeleteSourceClick = (sourceKey: string) => {
+    if (!selectedProduct) return;
+    setPendingDeleteSource(sourceKey);
+    setConfirmOpen(true);
   };
 
+  const handleConfirmDeleteSource = async () => {
+    if (!selectedProduct || !pendingDeleteSource) return;
+    setConfirmOpen(false);
+    const sourceKey = pendingDeleteSource;
+    try {
+      const newSources = { ...selectedProduct.sources };
+      delete newSources[sourceKey];
+      const cleanedSources = Object.fromEntries(
+        Object.entries(newSources).filter(([key]) => !key.startsWith("_")),
+      );
+      const nextStatus = Object.keys(cleanedSources).length === 0 ? "imported" : undefined;
+      const res = await fetch(`/api/admin/pipeline/${encodeURIComponent(selectedProduct.sku)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sources: newSources,
+          ...(nextStatus ? { pipeline_status: nextStatus } : {}),
+        }),
+      });
+      if (res.ok) {
+        toast.success(`Source "${sourceKey}" deleted`);
+        onRefresh(true);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete source");
+      }
+    } catch {
+      toast.error("An error occurred while deleting the source");
+    }
+    setPendingDeleteSource(null);
+  };
+
+  // 5. Effects
   return (
-    <div className="flex h-full min-h-0 border rounded-lg overflow-hidden bg-background shadow-sm max-w-full">
+    <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none overflow-hidden bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] max-w-full">
       {/* Left Column: Product List */}
-      <div className="w-80 min-w-[320px] max-w-[320px] border-r flex flex-col shrink-0 bg-muted/5 overflow-hidden">
-        <div className="p-3 border-b bg-card flex items-center gap-2 min-w-0">
+      <div className="w-80 min-w-[320px] max-w-[320px] border-r-4 border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-hidden">
+        <div className="flex items-center gap-2 border-b-4 border-zinc-950 bg-white p-3">
           <PipelineSearchField
             value={search || ""}
             onChange={(value) => onSearchChange?.(value)}
-            className="flex-1 min-w-0"
+            className="flex-1"
             isLoading={isSearching}
           />
-          {filters && onFilterChange && (
+          {filters && onFilterChange ? (
             <PipelineFilters
               filters={filters}
               onFilterChange={onFilterChange}
               availableSources={availableSources}
-              showSourceFilter
-              className="h-9 w-9 shrink-0 p-0 flex items-center justify-center"
+              showSourceFilter={true}
+              className="h-9 w-9 shrink-0 p-0 border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
             />
-          )}
+          ) : null}
         </div>
-        <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
-          {groupedProducts && groupedProducts.cohortIds.length > 1 ? (
-            <Accordion type="multiple" className="divide-y divide-border/50">
-              {groupedProducts.cohortIds.map((cohortId) => {
-                const groupProducts = groupedProducts.groups[cohortId] || [];
-                if (groupProducts.length === 0) return null;
-                
-                const allSelected = groupProducts.every(p => selectedSkus.has(p.sku));
-                const someSelected = groupProducts.some(p => selectedSkus.has(p.sku)) && !allSelected;
-
-                return (
-                  <AccordionItem 
-                    key={cohortId} 
-                    value={cohortId}
-                    className="border-b border-border/80"
-                  >
-                    <div className="flex items-center hover:bg-muted/40 bg-muted/20 pr-1 group">
-                      <div className="pl-4 py-3 flex items-center">
-                        <Checkbox
-                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                          onCheckedChange={(checked) => {
-                            const cohortSkus = groupProducts.map(p => p.sku);
-                            if (checked) {
-                              onSelectAll?.(cohortSkus);
-                            } else {
-                              onDeselectAll?.(cohortSkus);
-                            }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="data-[state=checked]:bg-brand-forest-green data-[state=checked]:border-brand-forest-green"
-                        />
-                      </div>
-                      <AccordionTrigger hideIcon className="flex-1 px-4 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 text-muted-foreground" />
-                          <div className="flex items-center gap-1.5 overflow-hidden">
-                            <span className="font-bold text-xs uppercase tracking-wider text-foreground/80 truncate">
-                              {formatPipelineBatchLabel(
-                                cohortId,
-                                groupedProducts?.names?.[cohortId] || null,
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-
-                      <div className="flex items-center gap-1.5 shrink-0 ml-auto pr-2">
-                        {cohortBrands[cohortId] && (
-                          <Badge variant="outline" className="h-4 text-[9px] px-1 font-bold border-brand-forest-green/30 text-brand-forest-green bg-brand-forest-green/5">
-                            {cohortBrands[cohortId]}
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-muted text-muted-foreground font-normal">
-                          {groupProducts.length}
-                        </Badge>
-                        {cohortId !== "ungrouped" && onEditCohort && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 w-5 p-0 text-muted-foreground hover:text-brand-forest-green"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onEditCohort(
-                                cohortId,
-                                groupedProducts?.names?.[cohortId] || null,
-                                cohortBrands[cohortId] || null
-                              );
-                            }}
-                          >
-                            <Edit2 className="h-2.5 w-2.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pb-0">
-                      <div className="divide-y divide-border/30 bg-muted/5">
-                        {groupProducts.map((product, index) => renderProductItem(product, index, groupProducts))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          ) : (
-            <div className="divide-y">
-              {sortedProducts.map((product, index) => renderProductItem(product, index, sortedProducts))}
-              {sortedProducts.length === 0 && (
-                <div className="p-12 text-center text-muted-foreground text-sm">
-                  <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                  No products found matching your search.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        
+        <PipelineSidebarTable
+          products={sortedProducts}
+          groupedProducts={groupedProducts}
+          cohortBrands={cohortBrands}
+          selectedSkus={selectedSkus}
+          preferredSku={preferredSku}
+          onSelectSku={onSelectSku}
+          onSelectAll={onSelectAll}
+          onDeselectAll={onDeselectAll}
+          onPreferredSkuChange={setPreferredSku}
+          variant="scraped"
+          onEditCohort={onEditCohort}
+        />
       </div>
 
       {/* Right Column: Scraped Details */}
-      <div className="flex-1 flex flex-col bg-background overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white overflow-hidden">
         {selectedProduct ? (
           <>
             {/* Header & Source Switcher */}
-            <div className="bg-card border-b flex-shrink-0 z-10">
+            <div className="bg-white border-b-4 border-zinc-950 flex-shrink-0 z-10">
               <div className="p-4 flex justify-between items-center">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <Package className="h-5 w-5 text-zinc-500 shrink-0" />
                   <div className="min-w-0">
-                    <h2 className="text-lg font-bold tracking-tight line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
+                    <h2 className="text-xl font-black uppercase tracking-tighter text-zinc-950 line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
                       {selectedProduct.consolidated?.name ||
                         selectedProduct.input?.name}
                     </h2>
-                    <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
-                      <span className="bg-muted px-1 rounded">{selectedProduct.sku}</span>
+                    <div className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 flex items-center gap-2">
+                      <span className="bg-zinc-100 border border-zinc-950 px-1.5 py-0.5 rounded-none">{selectedProduct.sku}</span>
                       <span>•</span>
-                      <span className="font-bold text-primary">
+                      <span className="font-black text-zinc-950">
                         ${Number(currentSourceData?.price || selectedProduct.input?.price || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onRefresh(true)}>
-                    Refresh Data
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onRefresh(true)} 
+                    className="h-8 w-8 p-0 rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] flex items-center justify-center"
+                    title="Refresh Data"
+                  >
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
               {sourceKeys.length > 0 ? (
-                <div className="px-4 pb-2 flex items-center justify-between gap-4">
+                <div className="px-4 pb-4 flex items-center justify-between gap-4">
                   <Tabs
                     value={activeSource}
                     onValueChange={setPreferredSource}
                     className="flex-1"
                   >
-                    <TabsList className="h-8 justify-start bg-muted/50 p-1 w-fit">
+                    <TabsList className="h-9 justify-start bg-zinc-100 rounded-none border-2 border-zinc-950 p-1 w-fit">
                       {sourceKeys.map((key) => (
                         <TabsTrigger
                           key={key}
                           value={key}
-                          className="text-[10px] px-3 h-6 uppercase font-bold tracking-wider"
+                          className="text-[10px] px-4 h-7 uppercase font-black tracking-tighter rounded-none data-[state=active]:bg-zinc-950 data-[state=active]:text-white data-[state=active]:shadow-none"
                         >
                           {key}
                         </TabsTrigger>
@@ -611,7 +305,7 @@ export function ScrapedResultsView({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive h-8 px-3 hover:bg-destructive/10"
+                    className="text-red-600 h-8 px-3 hover:bg-red-50 font-black uppercase tracking-tighter text-[10px] rounded-none border-2 border-transparent hover:border-red-600"
                     onClick={() => handleDeleteSourceClick(activeSource)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -619,20 +313,19 @@ export function ScrapedResultsView({
                   </Button>
                 </div>
               ) : (
-                <div className="px-4 pb-3">
-                  <div className="flex items-center gap-2 text-amber-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100/50">
+                <div className="px-4 pb-4">
+                  <div className="flex items-center gap-2 text-amber-950 bg-amber-50 p-3 rounded-none border-2 border-amber-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                     <AlertCircle className="h-4 w-4" />
-                    <span className="text-xs font-medium">
+                    <span className="text-[10px] font-black uppercase tracking-tighter">
                       No results for this SKU yet.
                     </span>
                   </div>
-                </div>
-              )}
+                </div>              )}
             </div>
 
             {/* Product Result Display */}
             <div
-              key={`${selectedSku}-${activeSource}`}
+              key={`${preferredSku}-${activeSource}`}
               className="flex-1 overflow-y-auto p-6"
             >
               {currentSourceData ? (
@@ -640,7 +333,7 @@ export function ScrapedResultsView({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Left side: Image Carousel */}
                     <div className="space-y-4">
-                      <div className="aspect-square rounded-xl border bg-muted/30 flex items-center justify-center overflow-hidden relative group">
+                      <div className="aspect-square rounded-none border-4 border-zinc-950 bg-zinc-50 flex items-center justify-center overflow-hidden relative group shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                         {currentSourceData.images && currentSourceData.images.length > 0 ? (
                           <>
                             <img
@@ -662,9 +355,9 @@ export function ScrapedResultsView({
                                     );
                                   }}
                                   aria-label="Previous image"
-                                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity border"
+                                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white hover:bg-zinc-100 p-1.5 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] opacity-0 group-hover:opacity-100 transition-opacity border-2 border-zinc-950"
                                 >
-                                  <ChevronLeft className="h-5 w-5 text-primary" aria-hidden="true" />
+                                  <ChevronLeft className="h-5 w-5 text-zinc-950" aria-hidden="true" />
                                 </button>
                                 <button
                                   onClick={(e) => {
@@ -674,13 +367,13 @@ export function ScrapedResultsView({
                                     );
                                   }}
                                   aria-label="Next image"
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity border"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white hover:bg-zinc-100 p-1.5 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] opacity-0 group-hover:opacity-100 transition-opacity border-2 border-zinc-950"
                                 >
-                                  <ChevronRight className="h-5 w-5 text-primary" aria-hidden="true" />
+                                  <ChevronRight className="h-5 w-5 text-zinc-950" aria-hidden="true" />
                                 </button>
                                 
                                 {/* Image Counter Overlay */}
-                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card/60 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-primary border shadow-sm">
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white px-2 py-0.5 rounded-none text-[10px] font-black uppercase tracking-tighter text-zinc-950 border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                                   {currentImageIndex + 1} / {currentSourceData.images.length}
                                 </div>
                               </>
@@ -695,9 +388,9 @@ export function ScrapedResultsView({
                             onError={() => handleImageError(currentSourceData.image_url)}
                           />
                         ) : (
-                          <div className="flex flex-col items-center text-muted-foreground">
+                          <div className="flex flex-col items-center text-zinc-400">
                             <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
-                            <span className="text-xs">No image available</span>
+                            <span className="text-xs font-black uppercase tracking-tighter">No image available</span>
                           </div>
                         )}
                         
@@ -706,9 +399,9 @@ export function ScrapedResultsView({
                             href={currentSourceData.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute top-2 right-2 bg-card/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border"
+                            className="absolute top-2 right-2 bg-white p-2 rounded-none opacity-0 group-hover:opacity-100 transition-opacity shadow-[2px_2px_0px_rgba(0,0,0,1)] border-2 border-zinc-950"
                           >
-                            <ExternalLink className="h-4 w-4 text-primary" />
+                            <ExternalLink className="h-4 w-4 text-zinc-950" />
                           </a>
                         )}
                       </div>
@@ -720,8 +413,8 @@ export function ScrapedResultsView({
                             <div
                               key={i}
                               onClick={() => setCurrentImageIndex(i)}
-                              className={`aspect-square w-14 rounded-md border overflow-hidden bg-muted/20 cursor-pointer transition-all flex-shrink-0 ${
-                                currentImageIndex === i ? "border-primary ring-2 ring-primary/10" : "border-transparent opacity-60 hover:opacity-100"
+                              className={`aspect-square w-14 rounded-none border-2 overflow-hidden bg-zinc-50 cursor-pointer transition-all flex-shrink-0 ${
+                                currentImageIndex === i ? "border-zinc-950 ring-2 ring-zinc-950/10" : "border-zinc-200 opacity-60 hover:opacity-100 hover:border-zinc-950"
                               }`}
                             >
                               <img
@@ -743,12 +436,12 @@ export function ScrapedResultsView({
                         <div className="flex justify-between items-baseline">
                           <Badge
                             variant="outline"
-                            className="text-primary border-primary/20 bg-primary/5"
+                            className="bg-zinc-950 text-white border-2 border-zinc-950 rounded-none font-black uppercase tracking-tighter text-[9px]"
                           >
                             {activeSource.toUpperCase()} RESULT
                           </Badge>
                           {currentSourceData.price && (
-                            <span className="text-3xl font-black text-primary">
+                            <span className="text-3xl font-black text-zinc-950">
                               $
                               {typeof currentSourceData.price === "number"
                                 ? currentSourceData.price.toFixed(2)
@@ -756,16 +449,16 @@ export function ScrapedResultsView({
                             </span>
                           )}
                         </div>
-                        <h1 className="text-2xl font-bold leading-tight">
+                        <h1 className="text-2xl font-black uppercase tracking-tighter text-zinc-950 leading-tight">
                           {currentSourceData.title ||
                             currentSourceData.name ||
                             "Untitled Product"}
                         </h1>
                         <div className="flex flex-wrap items-center gap-y-2 gap-x-4">
                           {currentSourceData.brand && (
-                            <p className="text-sm font-medium text-muted-foreground">
+                            <p className="text-xs font-black uppercase tracking-tighter text-zinc-500">
                               Brand:{" "}
-                              <span className="text-foreground">
+                              <span className="text-zinc-950">
                                 {currentSourceData.brand}
                               </span>
                             </p>
@@ -775,7 +468,7 @@ export function ScrapedResultsView({
                               href={currentSourceData.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-100 hover:bg-sky-100 transition-colors uppercase tracking-widest"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-none text-[11px] font-black bg-zinc-100 text-zinc-950 border-2 border-zinc-950 hover:bg-zinc-200 transition-colors uppercase tracking-tighter shadow-[2px_2px_0px_rgba(0,0,0,1)]"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
                               View Source
@@ -784,26 +477,26 @@ export function ScrapedResultsView({
                         </div>
                       </div>
 
-                      <Separator />
+                      <Separator className="h-1 bg-zinc-950" />
 
                       {/* Technical Specs Grid */}
-                      <div className="grid grid-cols-2 gap-4 text-sm bg-muted/20 p-4 rounded-xl border">
+                      <div className="grid grid-cols-2 gap-4 text-sm bg-white p-4 rounded-none border-4 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                         <div className="space-y-3">
                           <div className="flex flex-col gap-1">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                            <span className="text-[10px] uppercase font-black text-zinc-500 tracking-tighter">
                               Manufacturer Product #
                             </span>
-                            <span className="font-mono text-foreground truncate">
+                            <span className="font-bold text-zinc-950 truncate uppercase tracking-tighter text-xs">
                               {currentSourceData.manufacturer_part_number ||
                                 currentSourceData.item_number ||
                                 "N/A"}
                             </span>
                           </div>
                           <div className="flex flex-col gap-1">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                            <span className="text-[10px] uppercase font-black text-zinc-500 tracking-tighter">
                               Weight / Size
                             </span>
-                            <span className="text-foreground">
+                            <span className="text-zinc-950 font-bold uppercase tracking-tighter text-xs">
                               {currentSourceData.weight ||
                                 currentSourceData.size ||
                                 currentSourceData.unit_of_measure ||
@@ -813,20 +506,20 @@ export function ScrapedResultsView({
                         </div>
                         <div className="space-y-3">
                           <div className="flex flex-col gap-1">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                            <span className="text-[10px] uppercase font-black text-zinc-500 tracking-tighter">
                               UPC / Barcode
                             </span>
-                            <span className="font-mono text-foreground">
+                            <span className="text-zinc-950 font-bold uppercase tracking-tighter text-xs">
                               {currentSourceData.upc || "N/A"}
                             </span>
                           </div>
                         </div>
                         <div className="space-y-3">
                           <div className="flex flex-col gap-1">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                            <span className="text-[10px] uppercase font-black text-zinc-500 tracking-tighter">
                               Status
                             </span>
-                            <span className="text-foreground truncate uppercase font-bold text-[10px] tracking-tighter">
+                            <span className="text-zinc-950 truncate uppercase font-black text-[10px] tracking-tighter">
                               {currentSourceData.availability || "Unknown"}
                             </span>
                           </div>
@@ -834,12 +527,12 @@ export function ScrapedResultsView({
                       </div>
 
                       <div className="space-y-2">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                        <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
                           Description
                         </h3>
                         <div className="relative">
                           <div
-                            className={`text-sm leading-relaxed text-muted-foreground prose prose-sm max-w-none transition-all duration-300 ${
+                            className={`text-sm leading-relaxed text-zinc-700 prose prose-sm max-w-none transition-all duration-300 ${
                               isDescriptionExpanded ? "" : "line-clamp-6"
                             }`}
                           >
@@ -850,7 +543,7 @@ export function ScrapedResultsView({
                                 }}
                               />
                             ) : (
-                              <p className="italic">
+                              <p className="italic text-xs font-black uppercase tracking-tighter text-zinc-500">
                                 No description provided by source.
                               </p>
                             )}
@@ -859,7 +552,7 @@ export function ScrapedResultsView({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="mt-2 text-xs h-7 text-primary hover:text-primary hover:bg-primary/5"
+                              className="mt-2 text-[10px] h-7 text-zinc-950 hover:bg-zinc-100 font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950"
                               onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                             >
                               {isDescriptionExpanded ? "Show Less" : "Show More"}
@@ -870,7 +563,7 @@ export function ScrapedResultsView({
 
                       {currentSourceData.url && (
                         <Button
-                          className="w-full bg-primary hover:bg-primary/90"
+                          className="w-full bg-zinc-950 hover:bg-zinc-800 text-white rounded-none border-b-4 border-r-4 border-zinc-700 active:border-0 transition-all font-black uppercase tracking-tighter"
                           asChild
                         >
                           <a
@@ -890,12 +583,12 @@ export function ScrapedResultsView({
                   <div className="pt-8">
                     <Separator className="mb-8" />
                     <div className="space-y-4">
-                      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-500 flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         Technical Details (Raw Data)
                       </h3>
-                      <div className="bg-muted/30 rounded-lg p-4 font-mono text-xs overflow-x-auto border">
-                        <pre>
+                      <div className="bg-zinc-50 rounded-none p-4 font-mono text-[10px] overflow-x-auto border-4 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                        <pre className="font-bold">
                           {JSON.stringify(
                             currentSourceData,
                             (_, value) => {
@@ -912,12 +605,12 @@ export function ScrapedResultsView({
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
-                  <Package className="h-16 w-16 mb-4 opacity-10" />
-                  <h3 className="text-xl font-medium">
+                <div className="flex flex-col items-center justify-center py-24 text-center text-zinc-500">
+                  <Package className="h-16 w-16 mb-4 opacity-20" />
+                  <h3 className="text-xl font-black uppercase tracking-tighter text-zinc-950">
                     No results for {activeSource}
                   </h3>
-                  <p>
+                  <p className="text-sm font-black uppercase tracking-tighter mt-2">
                     Try selecting a different source or re-scraping this
                     product.
                   </p>
@@ -926,10 +619,10 @@ export function ScrapedResultsView({
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-            <Package className="h-16 w-16 mb-4 opacity-10" />
-            <h3 className="text-xl font-medium">Select a product</h3>
-            <p>Choose a product from the list to view its scraped results.</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-zinc-500">
+            <Package className="h-16 w-16 mb-4 opacity-20" />
+            <h3 className="text-xl font-black uppercase tracking-tighter text-zinc-950">Select a product</h3>
+            <p className="text-sm font-black uppercase tracking-tighter mt-2">Choose a product from the list to view its scraped results.</p>
           </div>
         )}
       </div>

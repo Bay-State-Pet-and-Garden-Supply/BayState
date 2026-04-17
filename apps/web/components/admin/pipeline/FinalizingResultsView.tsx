@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Search,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -27,20 +28,19 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
 import {
@@ -57,6 +57,7 @@ import { ImageCarousel } from "./finalizing/ImageCarousel";
 import { ProductSaveActions } from "./finalizing/ProductSaveActions";
 import { FinalizationCopilotPanel } from "./finalizing/FinalizationCopilotPanel";
 import type { PipelineFiltersState } from "./PipelineFilters";
+import type { VirtualizedPipelineTableHandle } from "./VirtualizedPipelineTable";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import {
   applyProductNameTransform,
@@ -202,6 +203,8 @@ export function FinalizingResultsView({
   onSelectSku,
   isSearching = false,
 }: FinalizingResultsViewProps) {
+  const [copilotOpen, setCopilotOpen] = useState(false);
+
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
   }, [products]);
@@ -239,7 +242,7 @@ export function FinalizingResultsView({
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<VirtualizedPipelineTableHandle>(null);
   const [draftsState, setDraftsState] = useState<Record<string, FinalizationDraft>>(
     {},
   );
@@ -594,18 +597,6 @@ export function FinalizingResultsView({
 
     updateDraftForSku(selectedSku, (prev) => ({ ...prev, name: newName }));
   };
-
-  // Scroll active item into view
-  useEffect(() => {
-    if (preferredSku && scrollContainerRef.current) {
-      const activeElement = scrollContainerRef.current.querySelector(
-        `[data-sku="${preferredSku}"]`,
-      );
-      if (activeElement) {
-        activeElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      }
-    }
-  }, [preferredSku]);
 
   const toggleImage = (url: string) => {
     if (!selectedSku) {
@@ -1834,7 +1825,7 @@ export function FinalizingResultsView({
 
   return (
     <>
-      <div className="flex h-full min-h-0 rounded-lg border bg-background shadow-sm overflow-hidden">
+      <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] overflow-hidden max-w-full">
         {/* Left Column: Product List */}
         <ProductListSidebar
           products={sortedProducts}
@@ -1856,36 +1847,49 @@ export function FinalizingResultsView({
         />
 
         {/* Right Column: Editing Form */}
-        <div className="flex-1 flex flex-col bg-background overflow-hidden">
-          {selectedProduct ? (
-            <>
-              {/* Header */}
-              <ProductSaveActions
-                productName={formData.name}
-                originalName={selectedProduct.input?.name || ""}
-                productPrice={formData.price}
-                selectedSku={selectedSku}
-                isDirty={isDirty}
-                hasPendingCopilotReview={hasPendingCopilotReview}
-                saving={saving}
-                publishing={publishing}
-                rejecting={rejecting}
-                onSave={() => {
-                  if (pendingCopilotReviewRef.current) {
-                    notifyPendingCopilotReview("saving");
-                    return;
+        <Sheet open={copilotOpen} onOpenChange={setCopilotOpen}>
+          <div className="flex-1 flex flex-col bg-white overflow-hidden">
+            {selectedProduct ? (
+              <>
+                {/* Header */}
+                <ProductSaveActions
+                  productName={formData.name}
+                  originalName={selectedProduct.input?.name || ""}
+                  productPrice={formData.price}
+                  selectedSku={selectedSku}
+                  isDirty={isDirty}
+                  hasPendingCopilotReview={hasPendingCopilotReview}
+                  saving={saving}
+                  publishing={publishing}
+                  rejecting={rejecting}
+                  onSave={() => {
+                    if (pendingCopilotReviewRef.current) {
+                      notifyPendingCopilotReview("saving");
+                      return;
+                    }
+                    void persistCurrentDraft();
+                  }}
+                  onPublish={() => {
+                    if (pendingCopilotReviewRef.current) {
+                      notifyPendingCopilotReview("approving");
+                      return;
+                    }
+                    void persistCurrentDraft({ andPublish: true });
+                  }}
+                  onReject={handleReject}
+                  copilotTrigger={
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+                      >
+                        <Sparkles className="mr-2 h-4 w-4 text-violet-500" />
+                        Copilot
+                      </Button>
+                    </SheetTrigger>
                   }
-                  void persistCurrentDraft();
-                }}
-                onPublish={() => {
-                  if (pendingCopilotReviewRef.current) {
-                    notifyPendingCopilotReview("approving");
-                    return;
-                  }
-                  void persistCurrentDraft({ andPublish: true });
-                }}
-                onReject={handleReject}
-              />
+                />
 
               {hasPendingCopilotReview ? (
                 <div className="border-b bg-violet-50/60 px-4 py-3">
@@ -1904,28 +1908,29 @@ export function FinalizingResultsView({
             {/* Form Content */}
             <div className="flex-1 min-h-0 flex flex-col">
               <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-8">
-                <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid grid-cols-1 gap-8">
                   <div className="space-y-6 min-w-0">
                     <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
                         Product Info
                       </h3>
-                      <Separator />
+                      <Separator className="h-1 bg-zinc-950" />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="product-name">Product Name</Label>
+                      <Label htmlFor="product-name" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Product Name</Label>
                       <Input
                         id="product-name"
                         value={formData.name}
                         onChange={(e) => handleNameChange(e.target.value)}
                         placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
+                        className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="product-price">Price</Label>
+                        <Label htmlFor="product-price" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Price</Label>
                         <Input
                           id="product-price"
                           type="number"
@@ -1936,11 +1941,12 @@ export function FinalizingResultsView({
                             handleInputChange("price", e.target.value)
                           }
                           placeholder="e.g. 24.99"
+                          className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="product-weight">Weight (lbs)</Label>
+                        <Label htmlFor="product-weight" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Weight (lbs)</Label>
                         <Input
                           id="product-weight"
                           value={formData.weight}
@@ -1948,20 +1954,21 @@ export function FinalizingResultsView({
                             handleInputChange("weight", e.target.value)
                           }
                           placeholder="e.g. 30"
+                          className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1 pt-4">
-                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
                         Merchandising
                       </h3>
-                      <Separator />
+                      <Separator className="h-1 bg-zinc-950" />
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="product-brand">Brand</Label>
+                        <Label htmlFor="product-brand" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Brand</Label>
                         <Popover
                           open={brandPopoverOpen}
                           onOpenChange={setBrandPopoverOpen}
@@ -1972,7 +1979,7 @@ export function FinalizingResultsView({
                               variant="outline"
                               role="combobox"
                               aria-expanded={brandPopoverOpen}
-                              className="w-full justify-between font-normal"
+                              className="w-full justify-between font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
                             >
                               {formData.brandId === "none"
                                 ? "No Brand"
@@ -1982,14 +1989,14 @@ export function FinalizingResultsView({
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent
-                            className="w-[var(--radix-popover-trigger-width)] p-0"
+                            className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
                             align="start"
                           >
                             <div className="flex flex-col">
-                              <div className="flex items-center border-b px-3 py-2">
+                              <div className="flex items-center border-b-2 border-zinc-950 px-3 py-2">
                                 <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                                 <input
-                                  className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-zinc-500 font-black uppercase tracking-tighter disabled:cursor-not-allowed disabled:opacity-50"
                                   placeholder="Search brands..."
                                   value={brandSearch}
                                   onChange={(e) => setBrandSearch(e.target.value)}
@@ -1999,9 +2006,9 @@ export function FinalizingResultsView({
                                 <button
                                   type="button"
                                   className={cn(
-                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                                    "relative flex cursor-pointer select-none items-center rounded-none px-2 py-1.5 text-sm font-black uppercase tracking-tighter outline-none hover:bg-zinc-950 hover:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                                     formData.brandId === "none"
-                                      && "bg-accent text-accent-foreground",
+                                      && "bg-zinc-950 text-white",
                                   )}
                                   onClick={() => {
                                     handleInputChange("brandId", "none");
@@ -2024,9 +2031,9 @@ export function FinalizingResultsView({
                                     type="button"
                                     key={brand.id}
                                     className={cn(
-                                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                      "relative flex cursor-pointer select-none items-center rounded-none px-2 py-1.5 text-sm font-black uppercase tracking-tighter outline-none hover:bg-zinc-950 hover:text-white",
                                       formData.brandId === brand.id
-                                        && "bg-accent text-accent-foreground",
+                                        && "bg-zinc-950 text-white",
                                     )}
                                     onClick={() => {
                                       handleInputChange("brandId", brand.id);
@@ -2046,7 +2053,7 @@ export function FinalizingResultsView({
                                   </button>
                                 ))}
                                 {filteredBrands.length === 0 && brandSearch && (
-                                  <div className="p-2 text-xs text-muted-foreground italic">
+                                  <div className="p-2 text-xs font-black uppercase tracking-tighter text-zinc-500 italic text-center">
                                     No brands found.
                                   </div>
                                 )}
@@ -2057,11 +2064,11 @@ export function FinalizingResultsView({
                                     brand.name.toLowerCase()
                                     === brandSearch.toLowerCase().trim(),
                                 ) && (
-                                  <div className="border-t p-1">
+                                  <div className="border-t-2 border-zinc-950 p-1">
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="w-full justify-start text-xs font-normal"
+                                      className="w-full justify-start text-xs font-black uppercase tracking-tighter rounded-none hover:bg-zinc-950 hover:text-white"
                                       onClick={handleCreateBrand}
                                       disabled={creatingBrand}
                                     >
@@ -2078,7 +2085,7 @@ export function FinalizingResultsView({
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="product-availability">Availability Text</Label>
+                        <Label htmlFor="product-availability" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Availability Text</Label>
                         <Input
                           id="product-availability"
                           value={formData.availability}
@@ -2086,19 +2093,20 @@ export function FinalizingResultsView({
                             handleInputChange("availability", e.target.value)
                           }
                           placeholder="e.g. usually ships in 24 hours"
+                          className="border-2 border-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1 pt-4">
-                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
                         Classification
                       </h3>
-                      <Separator />
+                      <Separator className="h-1 bg-zinc-950" />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Store Pages</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Store Pages</Label>
                       <Popover
                         open={pagePopoverOpen}
                         onOpenChange={setPagePopoverOpen}
@@ -2108,18 +2116,18 @@ export function FinalizingResultsView({
                             variant="outline"
                             role="combobox"
                             aria-expanded={pagePopoverOpen}
-                            className="h-auto min-h-[40px] w-full justify-between font-normal"
+                            className="h-auto min-h-[44px] w-full justify-between font-black uppercase tracking-tighter rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
                           >
                             <div className="flex flex-wrap gap-1">
                               {formData.productOnPages.length > 0 ? (
                                 formData.productOnPages.map((page) => (
                                   <div
                                     key={page}
-                                    className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
+                                    className="flex items-center gap-1 rounded-none border-2 border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter text-zinc-950"
                                   >
                                     {page}
                                     <X
-                                      className="h-2 w-2 cursor-pointer hover:text-destructive"
+                                      className="h-2 w-2 cursor-pointer hover:text-zinc-500"
                                       onPointerDown={(e) => {
                                         e.stopPropagation();
                                         e.preventDefault();
@@ -2143,7 +2151,7 @@ export function FinalizingResultsView({
                                   </div>
                                 ))
                               ) : (
-                                <span className="text-muted-foreground">
+                                <span className="text-zinc-400">
                                   Select Store Pages
                                 </span>
                               )}
@@ -2152,14 +2160,14 @@ export function FinalizingResultsView({
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border-2 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
                           align="start"
                         >
                           <div className="flex flex-col">
-                            <div className="flex items-center border-b px-3 py-2">
+                            <div className="flex items-center border-b-2 border-zinc-950 px-3 py-2">
                               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                               <input
-                                className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-zinc-500 font-black uppercase tracking-tighter disabled:cursor-not-allowed disabled:opacity-50"
                                 placeholder="Search pages..."
                                 value={pageSearch}
                                 onChange={(e) => setPageSearch(e.target.value)}
@@ -2174,9 +2182,9 @@ export function FinalizingResultsView({
                                     type="button"
                                     key={page}
                                     className={cn(
-                                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                      "relative flex cursor-pointer select-none items-center rounded-none px-2 py-1.5 text-sm font-black uppercase tracking-tighter outline-none hover:bg-zinc-950 hover:text-white",
                                       isSelected
-                                        && "bg-accent text-accent-foreground",
+                                        && "bg-zinc-950 text-white",
                                     )}
                                     onClick={() => {
                                       const pages = isSelected
@@ -2201,7 +2209,7 @@ export function FinalizingResultsView({
                                 );
                               })}
                               {filteredPages.length === 0 && (
-                                <div className="p-2 text-center text-xs italic text-muted-foreground">
+                                <div className="p-2 text-center text-xs font-black uppercase tracking-tighter italic text-zinc-500">
                                   No pages found.
                                 </div>
                               )}
@@ -2212,10 +2220,10 @@ export function FinalizingResultsView({
                     </div>
 
                     <div className="space-y-1 pt-4">
-                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
                         Settings
                       </h3>
-                      <Separator />
+                      <Separator className="h-1 bg-zinc-950" />
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -2223,12 +2231,13 @@ export function FinalizingResultsView({
                         id="is-special-order"
                         checked={formData.isSpecialOrder}
                         onCheckedChange={(checked) =>
-                          handleInputChange("isSpecialOrder", !!checked)
+                          handleInputChange("isSpecialOrder", checked === true)
                         }
+                        className="h-5 w-5 rounded-none border-2 border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] data-[state=checked]:bg-zinc-950"
                       />
                       <Label
                         htmlFor="is-special-order"
-                        className="cursor-pointer"
+                        className="text-sm font-black uppercase tracking-tighter text-zinc-950 cursor-pointer"
                       >
                         Special Order
                       </Label>
@@ -2254,22 +2263,22 @@ export function FinalizingResultsView({
 
                 <div className="pt-8">
                   <Separator className="mb-8" />
-                  <details className="group overflow-hidden rounded-xl border">
-                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/30 list-none">
+                  <details className="group overflow-hidden rounded-none border-4 border-zinc-950 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-tighter text-zinc-500 hover:bg-zinc-50 list-none">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         View Raw Scraped Data
                       </div>
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
-                    <div className="space-y-4 border-t bg-muted/20 p-4">
+                    <div className="space-y-4 border-t-4 border-zinc-950 bg-zinc-50 p-4">
                       {Object.entries(selectedProduct.sources || {}).map(
                         ([source, data]) => (
                           <div key={source} className="space-y-2">
-                            <div className="text-xs font-bold uppercase text-primary">
+                            <div className="text-xs font-black uppercase tracking-tighter text-zinc-950">
                               {source}
                             </div>
-                            <pre className="overflow-x-auto rounded border bg-card p-3 text-[10px]">
+                            <pre className="overflow-x-auto rounded-none border-2 border-zinc-950 bg-white p-3 text-[10px] font-bold">
                               {JSON.stringify(data, null, 2)}
                             </pre>
                           </div>
@@ -2283,24 +2292,31 @@ export function FinalizingResultsView({
             </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-              <Package className="mb-4 h-16 w-16 opacity-10" />
-              <h3 className="text-xl font-medium">Select a product to review</h3>
-              <p>
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-zinc-500">
+              <Package className="mb-4 h-16 w-16 opacity-20" />
+              <h3 className="text-xl font-black uppercase tracking-tighter text-zinc-950">Select a product to review</h3>
+              <p className="text-sm font-black uppercase tracking-tighter mt-2">
                 Products here have been consolidated by AI and are ready for
                 your final check.
               </p>
             </div>
           )}
 
-          <div className="border-t bg-card/40 xl:hidden">{renderCopilotPanel()}</div>
-        </div>
+          {/* Mobile Copilot Panel removed in favor of Sheet */}
+          </div>
+          <SheetContent
+            side="right"
+            className="w-[450px] sm:w-[600px] p-0 border-l-4 border-zinc-950 shadow-[-8px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-y-auto"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Copilot</SheetTitle>
+            </SheetHeader>
+            {renderCopilotPanel()}
+          </SheetContent>
+        </Sheet>
+      </div>
 
-        <aside className="hidden min-h-0 w-[26rem] shrink-0 border-l bg-card/40 xl:flex xl:flex-col">
-          {renderCopilotPanel()}
-        </aside>
-
-        <ConfirmationDialog
+      <ConfirmationDialog
           open={confirmRejectOpen}
           onOpenChange={setConfirmRejectOpen}
           onConfirm={handleConfirmReject}
@@ -2308,7 +2324,6 @@ export function FinalizingResultsView({
           description="Are you sure you want to reject this product and send it back to the scraped stage? This will not clear your edits, but the product will move back to the manual review pipeline."
           confirmLabel="Reject"
         />
-      </div>
     </>
   );
 }

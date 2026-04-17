@@ -18,6 +18,7 @@ export interface ProductSaveActionsProps {
   onSave: () => void;
   onPublish: () => void;
   onReject: () => void;
+  copilotTrigger?: React.ReactNode;
 }
 
 export function ProductSaveActions({
@@ -33,20 +34,26 @@ export function ProductSaveActions({
   onSave,
   onPublish,
   onReject,
+  copilotTrigger,
 }: ProductSaveActionsProps) {
   return (
-    <div className="border-b bg-card p-4 flex-shrink-0 z-10">
+    <div className="border-b-4 border-zinc-950 bg-white p-4 flex-shrink-0 z-10">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
         <div className="flex items-center gap-3 min-w-0">
-          <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+          <Package className="h-5 w-5 text-zinc-400 shrink-0" />
           <div className="min-w-0">
-            <h2 className="text-lg font-bold tracking-tight line-clamp-1" title={originalName || productName || ""}>
+            <h2
+              className="text-lg font-black uppercase tracking-tighter text-zinc-950 line-clamp-1"
+              title={originalName || productName || ""}
+            >
               {originalName || productName || "Untitled Product"}
             </h2>
-            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-              <span className="rounded bg-muted px-1">{selectedSku}</span>
+            <div className="flex items-center gap-2 font-mono text-xs text-zinc-500">
+              <span className="rounded-none bg-zinc-100 border border-zinc-950 px-1 font-black uppercase tracking-tighter text-zinc-950">
+                {selectedSku}
+              </span>
               <span>•</span>
-              <span className="font-bold text-primary">
+              <span className="font-black text-zinc-950 uppercase tracking-tighter">
                 ${Number(productPrice || 0).toFixed(2)}
               </span>
             </div>
@@ -54,7 +61,7 @@ export function ProductSaveActions({
           {isDirty ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border-amber-200 bg-amber-50 text-[10px] font-normal text-amber-700 animate-pulse"
+              className="ml-2 h-5 border-2 border-zinc-950 bg-amber-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)] animate-pulse"
             >
               Unsaved Changes
             </Badge>
@@ -62,7 +69,7 @@ export function ProductSaveActions({
           {saving ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border-primary/20 bg-primary/5 text-[10px] font-normal text-primary"
+              className="ml-2 h-5 border-2 border-zinc-950 bg-zinc-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)]"
             >
               Saving...
             </Badge>
@@ -70,7 +77,7 @@ export function ProductSaveActions({
           {hasPendingCopilotReview ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border-violet-200 bg-violet-50 text-[10px] font-normal text-violet-700"
+              className="ml-2 h-5 border-2 border-zinc-950 bg-violet-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[2px_2px_0px_rgba(0,0,0,1)]"
             >
               Copilot Review Pending
             </Badge>
@@ -79,6 +86,7 @@ export function ProductSaveActions({
 
         <div className="flex flex-col items-start gap-2 lg:items-end">
           <div className="flex flex-wrap items-center gap-2">
+            {copilotTrigger}
             <Button
               variant="outline"
               size="sm"
@@ -86,7 +94,7 @@ export function ProductSaveActions({
               disabled={
                 saving || publishing || rejecting || hasPendingCopilotReview
               }
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+              className="rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-500 hover:text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
             >
               {rejecting ? (
                 "Returning..."
@@ -102,6 +110,7 @@ export function ProductSaveActions({
               size="sm"
               onClick={onSave}
               disabled={saving || publishing || hasPendingCopilotReview}
+              className="rounded-none border-2 border-zinc-950 shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
             >
               {saving ? (
                 "Saving..."
@@ -114,7 +123,7 @@ export function ProductSaveActions({
             </Button>
             <Button
               size="sm"
-              className="bg-primary hover:bg-primary/90"
+              className="rounded-none border-2 border-zinc-950 bg-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
               onClick={onPublish}
               disabled={saving || publishing || hasPendingCopilotReview}
             >
@@ -123,12 +132,12 @@ export function ProductSaveActions({
               ) : (
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve & Queue for Export
+                  Approve
                 </>
               )}
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-400">
             Shortcuts: Save with Cmd/Ctrl+S. Approve with Cmd/Ctrl+Enter.
           </p>
         </div>
