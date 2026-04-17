@@ -373,9 +373,10 @@ export function ProductTable({
   const totalSize = rowVirtualizer.getTotalSize();
 
   const paddingTop = virtualRows.length > 0 ? virtualRows?.[0]?.start || 0 : 0;
-  const paddingBottom = virtualRows.length > 0
-    ? totalSize - (virtualRows?.[virtualRows.length - 1]?.end || 0)
-    : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - (virtualRows?.[virtualRows.length - 1]?.end || 0)
+      : 0;
 
   // Keyboard navigation handler (attached to container)
   const handleKeyDown = useCallback(
@@ -419,12 +420,19 @@ export function ProductTable({
         containerRef.current?.blur();
       }
     },
-    [rows, focusedIndex, rowVirtualizer, selectedSkus, onSelectSku, onSelectAll],
+    [
+      rows,
+      focusedIndex,
+      rowVirtualizer,
+      selectedSkus,
+      onSelectSku,
+      onSelectAll,
+    ],
   );
 
   return (
     <div
-      className="h-[600px] min-h-0 overflow-y-auto rounded-none border border-zinc-950 bg-card outline-none focus-within:ring-1 focus-within:ring-zinc-950"
+      className="max-h-[600px] min-h-0 overflow-x-hidden overflow-y-auto rounded-none border border-zinc-950 bg-card outline-none focus-within:ring-1 focus-within:ring-zinc-950"
       ref={containerRef}
       onKeyDown={handleKeyDown}
       tabIndex={0}
@@ -443,6 +451,7 @@ export function ProductTable({
                 let widthClass = "";
                 if (header.id === "select") widthClass = "w-[40px]";
                 else if (header.id === "sku") widthClass = "w-[120px]";
+                else if (header.id === "name") widthClass = "min-w-0 flex-1";
                 else if (header.id === "price") widthClass = "w-[100px]";
                 else if (
                   header.id === "sources" ||
@@ -474,7 +483,11 @@ export function ProductTable({
         <TableBody>
           {paddingTop > 0 && (
             <TableRow className="hover:bg-transparent border-0">
-              <TableCell style={{ height: `${paddingTop}px` }} colSpan={columns.length} className="p-0 border-0" />
+              <TableCell
+                style={{ height: `${paddingTop}px` }}
+                colSpan={columns.length}
+                className="p-0 border-0"
+              />
             </TableRow>
           )}
           {virtualRows.length > 0 ? (
@@ -508,7 +521,13 @@ export function ProductTable({
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-2">
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        "py-2",
+                        cell.column.id === "name" ? "max-w-0" : "",
+                      )}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),
@@ -530,7 +549,11 @@ export function ProductTable({
           ) : null}
           {paddingBottom > 0 && (
             <TableRow className="hover:bg-transparent border-0">
-              <TableCell style={{ height: `${paddingBottom}px` }} colSpan={columns.length} className="p-0 border-0" />
+              <TableCell
+                style={{ height: `${paddingBottom}px` }}
+                colSpan={columns.length}
+                className="p-0 border-0"
+              />
             </TableRow>
           )}
         </TableBody>
