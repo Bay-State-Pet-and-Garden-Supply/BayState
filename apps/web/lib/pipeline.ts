@@ -99,9 +99,16 @@ function withMergedImageCandidates(product: PipelineProduct): PipelineProduct {
   try {
     const consolidatedImages = toImageUrlArray(product.consolidated?.images);
     const storedCandidates = toImageUrlArray(product.image_candidates);
+    
+    // Performance optimization: skip source extraction if we already have plenty of candidates
+    // or if the product is already finalized/published (where image extraction is less relevant).
+    if (storedCandidates.length >= 10 || consolidatedImages.length >= 5) {
+      return product;
+    }
+
     const sourceCandidates = extractImageCandidatesFromSources(
       product.sources || {},
-      48,
+      24, // Reduced from 48 for performance
     );
 
     const mergedCandidates = Array.from(
@@ -112,7 +119,7 @@ function withMergedImageCandidates(product: PipelineProduct): PipelineProduct {
       ]),
     );
 
-    if (mergedCandidates.length === 0) {
+    if (mergedCandidates.length === storedCandidates.length) {
       return product;
     }
 
@@ -529,16 +536,33 @@ export async function getSkusByStage(
 }
 
 /**
- * Fetches all unique source keys from the sources JSONB column for a given status.
+ * Fetches unique source keys from the sources JSONB column for a given status.
  */
 export async function getAvailableSources(
   status: PersistedPipelineStatus,
 ): Promise<string[]> {
   const supabase = await createClient();
 
-  // Use a raw SQL query via rpc if available, or fetch and process
-  // For simplicity and since we don't have a specific RPC, we'll use a trick with select
-  // filtering for products that actually have sources.
+  try {
+    const { data, error } = await supabase.rpc("get_pipeline_stage_sources", {
+      p_stage_status: status,
+    });
+
+    if (!error && data) {
+      return (data as { source_key: string }[])
+        .map((row) => row.source_key)
+        .filter((key) => !key.startsWith("_"))
+        .sort();
+    }
+    
+    if (error) {
+      console.warn("RPC get_pipeline_stage_sources failed, falling back:", error.message);
+    }
+  } catch (err) {
+    console.warn("RPC get_pipeline_stage_sources error, falling back:", err);
+  }
+
+  // Fallback to original fetching logic
   const { data, error } = await supabase
     .from("products_ingestion")
     .select("sources")
@@ -569,6 +593,28 @@ export async function getAvailableSourcesByStage(
   const supabase = await createClient();
   const querySource = getStageQuerySource(stage);
 
+  if (querySource.status) {
+    try {
+      const { data, error } = await supabase.rpc("get_pipeline_stage_sources", {
+        p_stage_status: querySource.status,
+      });
+
+      if (!error && data) {
+        return (data as { source_key: string }[])
+          .map((row) => row.source_key)
+          .filter((key) => !key.startsWith("_"))
+          .sort();
+      }
+      
+      if (error) {
+        console.warn("RPC get_pipeline_stage_sources failed, falling back:", error.message);
+      }
+    } catch (err) {
+      console.warn("RPC get_pipeline_stage_sources error, falling back:", err);
+    }
+  }
+
+  // Fallback to original fetching logic
   let query = supabase
     .from(querySource.table)
     .select("sources")
@@ -610,6 +656,30 @@ export async function getAvailableSourcesByStage(
 export async function getStatusCounts(): Promise<StatusCount[]> {
   const supabase = await createClient();
 
+  try {
+    const { data, error } = await supabase.rpc("get_pipeline_status_counts");
+
+    if (!error && data) {
+      const rpcCounts = data as { status: string; count: number }[];
+      const countMap: Record<string, number> = {};
+      rpcCounts.forEach((row) => {
+        countMap[row.status] = Number(row.count);
+      });
+
+      return PERSISTED_PIPELINE_STATUSES.map((status) => ({
+        status,
+        count: countMap[status] || 0,
+      }));
+    }
+    
+    if (error) {
+      console.warn("RPC get_pipeline_status_counts failed, falling back:", error.message);
+    }
+  } catch (err) {
+    console.warn("RPC get_pipeline_status_counts error, falling back:", err);
+  }
+
+  // Fallback to original fetching logic
   const { data, error } = await supabase
     .from("products_ingestion")
     .select("pipeline_status")

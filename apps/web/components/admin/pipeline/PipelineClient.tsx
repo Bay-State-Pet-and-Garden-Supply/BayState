@@ -14,7 +14,6 @@ import {
   Activity,
   Brain,
   ChevronRight,
-  ChevronLeft,
   ArrowLeft,
   Layers,
   Tag,
@@ -23,7 +22,6 @@ import {
   Edit2,
 } from "lucide-react";
 import { StageTabs } from "./StageTabs";
-import { PipelineHeader } from "./PipelineHeader";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
 import { FloatingActionsBar } from "./FloatingActionsBar";
@@ -171,28 +169,29 @@ export function PipelineClient({
     const brands: Record<string, string> = {};
     const names: Record<string, string> = {};
 
-    filteredProducts.forEach((product) => {
+    // Grouping in a single pass
+    for (let i = 0; i < filteredProducts.length; i++) {
+      const product = filteredProducts[i];
       const cohortId = product.cohort_id || "ungrouped";
+      
       if (!groups[cohortId]) {
         groups[cohortId] = [];
         cohortIds.push(cohortId);
       }
       groups[cohortId].push(product);
 
-      if (
-        cohortId !== "ungrouped" &&
-        product.cohort_brand_name &&
-        !brands[cohortId]
-      ) {
-        brands[cohortId] = product.cohort_brand_name;
+      if (cohortId !== "ungrouped") {
+        if (product.cohort_brand_name && !brands[cohortId]) {
+          brands[cohortId] = product.cohort_brand_name;
+        }
+        if (product.cohort_name && !names[cohortId]) {
+          names[cohortId] = product.cohort_name;
+        }
       }
+    }
 
-      if (cohortId !== "ungrouped" && product.cohort_name && !names[cohortId]) {
-        names[cohortId] = product.cohort_name;
-      }
-    });
-
-    // Sort IDs: ungrouped first, then alphabetical
+    // Sort IDs: ungrouped first, then alphabetical. 
+    // This is faster than sorting the entire result set multiple times.
     cohortIds.sort((a, b) => {
       if (a === "ungrouped") return -1;
       if (b === "ungrouped") return 1;
@@ -1042,9 +1041,6 @@ export function PipelineClient({
   };
 
   const stageConfig = STAGE_CONFIG[currentStage];
-  const currentStageCount =
-    counts.find((count) => normalizePipelineStage(count.status) === currentStage)
-      ?.count ?? totalCount;
   const shellControlsBelongToRoute =
     !isLiveOperationalTab(currentStage) && !isWorkspaceTab(currentStage);
   const filterState: PipelineFiltersState = {
@@ -1057,40 +1053,6 @@ export function PipelineClient({
     setProductLineFilter(newFilters.product_line || "");
     setCohortIdFilter(newFilters.cohort_id || "");
   };
-  const activeConstraints = [
-    search
-      ? {
-          key: "search",
-          label: `Search: ${search}`,
-          clear: () => setSearch(""),
-        }
-      : null,
-    sourceFilter
-      ? {
-          key: "source",
-          label: `Source: ${sourceFilter}`,
-          clear: () => setSourceFilter(""),
-        }
-      : null,
-    productLineFilter
-      ? {
-          key: "product_line",
-          label: `Product line: ${productLineFilter}`,
-          clear: () => setProductLineFilter(""),
-        }
-      : null,
-    cohortIdFilter
-      ? {
-          key: "cohort_id",
-          label: `Batch ID: ${cohortIdFilter}`,
-          clear: () => setCohortIdFilter(""),
-        }
-      : null,
-  ].filter(Boolean) as Array<{
-    key: string;
-    label: string;
-    clear: () => void;
-  }>;
 
   const headerActions = (
     <div className="flex flex-wrap items-center gap-2">

@@ -38,7 +38,24 @@ class ABTestArgs:
     dataset: Path
     strategy_a: str
     strategy_b: str
+    prompt_a: Path | None
+    prompt_b: Path | None
     output: Path | None
+    strategy_a: str
+    strategy_b: str
+    output: Path | None
+
+
+@dataclass(frozen=True)
+class PromptConfig:
+    """Configuration for a prompt version."""
+
+    label: str
+    name: str
+    content: str
+    source: str
+    version: str = "1.0"
+    metadata: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -54,6 +71,62 @@ class StrategyConfig:
     llm_provider: str = "openai"
     llm_base_url: str | None = None
     llm_api_key: str | None = None
+    llm_api_key: str | None = None
+    prompt: PromptConfig | None = None
+
+
+@dataclass(frozen=True)
+class PromptComparisonResult:
+    """Result of comparing two prompt versions."""
+
+    prompt_a_accuracy: float
+    prompt_b_accuracy: float
+    accuracy_delta: float
+    improved_count: int
+    regressed_count: int
+    unchanged_count: int
+    total_examples: int
+    improved_examples: list[dict[str, object]]
+    regressed_examples: list[dict[str, object]]
+
+
+class PromptReport(TypedDict):
+    """Serialized prompt metadata for the A/B report."""
+
+    label: str
+    name: str
+    version: str
+    source: str
+    content_hash: str
+    content_preview: str
+    metadata: dict[str, str] | None
+
+
+class PromptMetrics(TypedDict):
+    """Metrics specific to a prompt version."""
+
+    prompt_label: str
+    prompt_name: str
+    prompt_version: str
+    accuracy: float
+    exact_matches: int
+    total_examples: int
+    avg_selection_cost_usd: float
+
+
+class PromptComparisonReport(TypedDict):
+    """Comparison between two prompt versions."""
+
+    accuracy_delta: float
+    accuracy_delta_pct: float
+    improved_count: int
+    regressed_count: int
+    unchanged_count: int
+    total_examples: int
+    improved_examples: list[dict[str, object]]
+    regressed_examples: list[dict[str, object]]
+    prompt_a_metrics: PromptMetrics
+    prompt_b_metrics: PromptMetrics
 
 
 class StrategyReport(TypedDict):
@@ -68,6 +141,29 @@ class StrategyReport(TypedDict):
     llm_provider: str
     llm_base_url: str | None
     llm_api_key_configured: bool
+    benchmark_summary: BenchmarkSummary
+    prompt: PromptReport | None
+    prompt: PromptConfig | None = None
+    llm_api_key: str | None = None
+
+
+class StrategyReport(TypedDict):
+    """Serialized strategy metadata for the A/B report."""
+
+    label: str
+    name: str
+    mode: str
+    source: str
+    cache_dir: str | None
+    llm_model: str
+    llm_provider: str
+    llm_base_url: str | None
+    llm_api_key_configured: bool
+    benchmark_summary: BenchmarkSummary
+    prompt: PromptReport | None
+
+
+class DifferingExample(TypedDict):
     benchmark_summary: BenchmarkSummary
 
 
@@ -111,6 +207,8 @@ class ABTestReport(TypedDict):
     recommendation: RecommendationPayload
     differing_examples_count: int
     differing_examples: list[DifferingExample]
+    prompt_comparison: PromptComparisonReport | None
+    differing_examples: list[DifferingExample]
 
 
 class BenchmarkRunnerLike(Protocol):
@@ -150,6 +248,18 @@ def parse_args(argv: list[str] | None = None) -> ABTestArgs:
         help="Strategy B spec: heuristic, llm, env[:PREFIX], or a JSON/YAML config path",
     )
     _ = parser.add_argument("--output", type=Path, default=None, help="Optional path to write the JSON A/B report")
+    _ = parser.add_argument("--prompt-a", type=Path, default=None, help="Optional path to prompt A text file")
+    _ = parser.add_argument("--prompt-b", type=Path, default=None, help="Optional path to prompt B text file")
+
+    args = parser.parse_args(argv)
+    return ABTestArgs(
+        dataset=cast(Path, args.dataset),
+        strategy_a=cast(str, args.strategy_a),
+        strategy_b=cast(str, args.strategy_b),
+        prompt_a=cast(Path | None, args.prompt_a),
+        prompt_b=cast(Path | None, args.prompt_b),
+        output=cast(Path | None, args.output),
+    )
 
     args = parser.parse_args(argv)
     return ABTestArgs(
@@ -161,7 +271,6 @@ def parse_args(argv: list[str] | None = None) -> ABTestArgs:
 
 
 class ABTestRunner:
-    """Run two benchmark strategies on the same dataset and compare them."""
 
     def __init__(
         self,
@@ -169,12 +278,16 @@ class ABTestRunner:
         *,
         strategy_a_spec: str,
         strategy_b_spec: str,
+        prompt_a_path: Path | None = None,
+        prompt_b_path: Path | None = None,
         runner_cls: BenchmarkRunnerFactory = BenchmarkRunner,
         comparator_cls: type[BenchmarkComparator] = BenchmarkComparator,
     ) -> None:
         self.dataset_path: Path = dataset_path
         self.strategy_a_spec: str = strategy_a_spec
         self.strategy_b_spec: str = strategy_b_spec
+        self.prompt_a_path: Path | None = prompt_a_path
+        self.prompt_b_path: Path | None = prompt_b_path
         self._runner_cls: BenchmarkRunnerFactory = runner_cls
         self._comparator_cls: type[BenchmarkComparator] = comparator_cls
 
@@ -182,6 +295,12 @@ class ABTestRunner:
         """Execute both strategies, compare them, and build a recommendation."""
         strategy_a = load_strategy_config(self.strategy_a_spec, label="A")
         strategy_b = load_strategy_config(self.strategy_b_spec, label="B")
+
+        # Load prompts if provided
+        if self.prompt_a_path:
+            strategy_a = self._attach_prompt(strategy_a, self.prompt_a_path)
+        if self.prompt_b_path:
+            strategy_b = self._attach_prompt(strategy_b, self.prompt_b_path)
 
         report_a = await self._run_strategy(strategy_a)
         report_b = await self._run_strategy(strategy_b)
@@ -196,6 +315,11 @@ class ABTestRunner:
             differing_examples=differing_examples,
         )
 
+        # Generate prompt comparison if prompts were provided
+        prompt_comparison = None
+        if strategy_a.prompt or strategy_b.prompt:
+            prompt_comparison = self._compare_prompts(report_a, report_b, strategy_a, strategy_b)
+
         generated_at = datetime.now(timezone.utc).isoformat()
         return ABTestReport(
             report_version=REPORT_VERSION,
@@ -208,19 +332,115 @@ class ABTestRunner:
             recommendation=recommendation,
             differing_examples_count=len(differing_examples),
             differing_examples=differing_examples,
+            prompt_comparison=prompt_comparison,
         )
 
-    async def _run_strategy(self, strategy: StrategyConfig) -> BenchmarkReport:
-        runner = self._runner_cls(
-            dataset_path=self.dataset_path,
+    def _attach_prompt(self, strategy: StrategyConfig, prompt_path: Path) -> StrategyConfig:
+        """Attach a prompt configuration to a strategy."""
+        prompt_config = load_prompt_from_file(prompt_path, label=strategy.label)
+        return StrategyConfig(
+            label=strategy.label,
+            name=strategy.name,
             mode=strategy.mode,
+            source=strategy.source,
             cache_dir=strategy.cache_dir,
             llm_model=strategy.llm_model,
             llm_provider=strategy.llm_provider,
             llm_base_url=strategy.llm_base_url,
             llm_api_key=strategy.llm_api_key,
+            prompt=prompt_config,
         )
-        return await runner.run()
+
+    def _compare_prompts(
+        self,
+        report_a: BenchmarkReport,
+        report_b: BenchmarkReport,
+        strategy_a: StrategyConfig,
+        strategy_b: StrategyConfig,
+    ) -> PromptComparisonReport:
+        """Compare metrics between two prompt versions."""
+        results_a = report_a["results"]
+        results_b = report_b["results"]
+
+        # Calculate accuracy for each prompt
+        exact_matches_a = sum(1 for row in results_a if row["exact_match"])
+        exact_matches_b = sum(1 for row in results_b if row["exact_match"])
+        total = len(results_a)
+
+        accuracy_a = exact_matches_a / total if total > 0 else 0.0
+        accuracy_b = exact_matches_b / total if total > 0 else 0.0
+        accuracy_delta = accuracy_b - accuracy_a
+        accuracy_delta_pct = (accuracy_delta / accuracy_a * 100) if accuracy_a > 0 else 0.0
+
+        # Identify improved and regressed examples
+        improved_examples: list[dict[str, object]] = []
+        regressed_examples: list[dict[str, object]] = []
+        unchanged_count = 0
+
+        indexed_a = {_result_key(row): row for row in results_a}
+        indexed_b = {_result_key(row): row for row in results_b}
+
+        for key in indexed_a:
+            row_a = indexed_a[key]
+            row_b = indexed_b[key]
+
+            a_correct = bool(row_a["exact_match"])
+            b_correct = bool(row_b["exact_match"])
+
+            example_data = {
+                "index": int(row_a["index"]),
+                "query": str(row_a["query"]),
+                "expected_source_url": str(row_a["expected_source_url"]),
+                "strategy_a_predicted": _predicted_url(row_a),
+                "strategy_b_predicted": _predicted_url(row_b),
+            }
+
+            if not a_correct and b_correct:
+                improved_examples.append(example_data)
+            elif a_correct and not b_correct:
+                regressed_examples.append(example_data)
+            else:
+                unchanged_count += 1
+
+        # Calculate average selection cost
+        total_cost_a = sum(float(row.get("selection_cost_usd", 0)) for row in results_a)
+        total_cost_b = sum(float(row.get("selection_cost_usd", 0)) for row in results_b)
+        avg_cost_a = total_cost_a / total if total > 0 else 0.0
+        avg_cost_b = total_cost_b / total if total > 0 else 0.0
+
+        prompt_a_name = strategy_a.prompt.name if strategy_a.prompt else strategy_a.name
+        prompt_b_name = strategy_b.prompt.name if strategy_b.prompt else strategy_b.name
+        prompt_a_version = strategy_a.prompt.version if strategy_a.prompt else "1.0"
+        prompt_b_version = strategy_b.prompt.version if strategy_b.prompt else "1.0"
+
+        return PromptComparisonReport(
+            accuracy_delta=accuracy_delta,
+            accuracy_delta_pct=accuracy_delta_pct,
+            improved_count=len(improved_examples),
+            regressed_count=len(regressed_examples),
+            unchanged_count=unchanged_count,
+            total_examples=total,
+            improved_examples=improved_examples,
+            regressed_examples=regressed_examples,
+            prompt_a_metrics=PromptMetrics(
+                prompt_label="A",
+                prompt_name=prompt_a_name,
+                prompt_version=prompt_a_version,
+                accuracy=accuracy_a,
+                exact_matches=exact_matches_a,
+                total_examples=total,
+                avg_selection_cost_usd=avg_cost_a,
+            ),
+            prompt_b_metrics=PromptMetrics(
+                prompt_label="B",
+                prompt_name=prompt_b_name,
+                prompt_version=prompt_b_version,
+                accuracy=accuracy_b,
+                exact_matches=exact_matches_b,
+                total_examples=total,
+                avg_selection_cost_usd=avg_cost_b,
+            ),
+        )
 
     def _compare_reports(self, report_a: BenchmarkReport, report_b: BenchmarkReport) -> ComparisonReport:
         with TemporaryDirectory(prefix="ai_search_ab_test_") as tmp_dir:
@@ -264,7 +484,6 @@ class ABTestRunner:
                     strategy_b_error=_error_value(row_b),
                     outcome=_classify_difference(row_a, row_b),
                 )
-            )
 
         return differing_examples
 
@@ -350,6 +569,60 @@ def load_strategy_config(spec: str, *, label: str) -> StrategyConfig:
     raise ValueError(f"unsupported strategy spec for {label}: {spec}. Expected heuristic, llm, env[:PREFIX], or an existing JSON/YAML config path")
 
 
+def load_prompt_from_file(path: Path, *, label: str, version: str = "1.0") -> PromptConfig:
+    """Load a prompt from a text file.
+
+    Args:
+        path: Path to the prompt text file
+        label: Label for this prompt (A or B)
+        version: Version identifier for the prompt
+
+    Returns:
+        PromptConfig with loaded content and metadata
+
+    Raises:
+        FileNotFoundError: If the prompt file doesn't exist
+        ValueError: If the prompt file is empty
+    """
+    resolved_path = path.expanduser().resolve()
+
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"prompt file not found: {resolved_path}")
+
+    content = resolved_path.read_text(encoding="utf-8")
+
+    if not content.strip():
+        raise ValueError(f"prompt file is empty: {resolved_path}")
+
+    # Extract metadata from frontmatter if present (--- yaml frontmatter ---)
+    metadata: dict[str, str] | None = None
+    clean_content = content
+
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                frontmatter = yaml.safe_load(parts[1])
+                if isinstance(frontmatter, dict):
+                    metadata = {str(k): str(v) for k, v in frontmatter.items()}
+                    # Override version if specified in frontmatter
+                    if "version" in metadata:
+                        version = metadata["version"]
+                clean_content = parts[2].strip()
+            except yaml.YAMLError:
+                # If frontmatter parsing fails, treat as regular content
+                pass
+
+    return PromptConfig(
+        label=label,
+        name=resolved_path.stem,
+        content=clean_content,
+        source=f"file:{resolved_path}",
+        version=version,
+        metadata=metadata,
+    )
+
+
 def write_report(report: ABTestReport, output_path: Path) -> None:
     """Persist the JSON report to disk."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -366,6 +639,78 @@ def resolve_report_path(output_path: Path | None = None) -> Path:
 
 
 def render_console_report(report: ABTestReport) -> str:
+    """Render a concise text summary for terminal output."""
+    recommendation = report["recommendation"]
+    strategy_a = report["strategy_a"]
+    strategy_b = report["strategy_b"]
+    comparison_summary = report["comparison_summary"]
+    differing_examples = report["differing_examples"]
+    prompt_comparison = report.get("prompt_comparison")
+
+    lines = [
+        "# A/B Test Recommendation",
+        "",
+        f"- Strategy A: {strategy_a['name']} ({strategy_a['mode']})",
+        f"- Strategy B: {strategy_b['name']} ({strategy_b['mode']})",
+        f"- Recommendation: {recommendation['choice']}",
+        f"- Paired Examples: {comparison_summary['paired_examples']}",
+        f"- Differing Examples: {report['differing_examples_count']}",
+        "",
+        "## Reasons",
+        "",
+    ]
+    lines.extend(f"- {reason}" for reason in recommendation["reasons"])
+
+    # Add prompt comparison section if available
+    if prompt_comparison:
+        lines.extend([
+            "",
+            "## Prompt Comparison",
+            "",
+            f"- Prompt A Accuracy: {prompt_comparison['prompt_a_metrics']['accuracy']:.3f} ({prompt_comparison['prompt_a_metrics']['exact_matches']}/{prompt_comparison['prompt_a_metrics']['total_examples']})",
+            f"- Prompt B Accuracy: {prompt_comparison['prompt_b_metrics']['accuracy']:.3f} ({prompt_comparison['prompt_b_metrics']['exact_matches']}/{prompt_comparison['prompt_b_metrics']['total_examples']})",
+            f"- Accuracy Delta: {prompt_comparison['accuracy_delta']:.3f} ({prompt_comparison['accuracy_delta_pct']:+.1f}%)",
+            f"- Improved Examples: {prompt_comparison['improved_count']}",
+            f"- Regressed Examples: {prompt_comparison['regressed_count']}",
+        ])
+
+        # Show improved examples
+        if prompt_comparison["improved_examples"]:
+            lines.extend(["", "### Improved Examples (B better than A)", ""])
+            for example in prompt_comparison["improved_examples"][:3]:
+                lines.append(
+                    "- #{index} {query} | A={a_pred} | B={b_pred}".format(
+                        index=example["index"],
+                        query=_truncate(str(example["query"]), 60),
+                        a_pred=example.get("strategy_a_predicted") or "—",
+                        b_pred=example.get("strategy_b_predicted") or "—",
+                    )
+
+        # Show regressed examples
+        if prompt_comparison["regressed_examples"]:
+            lines.extend(["", "### Regressed Examples (A better than B)", ""])
+            for example in prompt_comparison["regressed_examples"][:3]:
+                lines.append(
+                    "- #{index} {query} | A={a_pred} | B={b_pred}".format(
+                        index=example["index"],
+                        query=_truncate(str(example["query"]), 60),
+                        a_pred=example.get("strategy_a_predicted") or "—",
+                        b_pred=example.get("strategy_b_predicted") or "—",
+                    )
+
+    if differing_examples:
+        lines.extend(["", "## Sample Differing Examples", ""])
+        for example in differing_examples[:5]:
+            lines.append(
+                "- #{index} {query} | A={a_url} | B={b_url} | outcome={outcome}".format(
+                    index=example["index"],
+                    query=_truncate(str(example["query"]), 72),
+                    a_url=example["strategy_a_predicted_source_url"] or "—",
+                    b_url=example["strategy_b_predicted_source_url"] or "—",
+                    outcome=example["outcome"],
+                )
+
+    return "\n".join(lines).rstrip() + "\n"
     """Render a concise text summary for terminal output."""
     recommendation = report["recommendation"]
     strategy_a = report["strategy_a"]
@@ -397,12 +742,32 @@ def render_console_report(report: ABTestReport) -> str:
                     b_url=example["strategy_b_predicted_source_url"] or "—",
                     outcome=example["outcome"],
                 )
-            )
 
     return "\n".join(lines).rstrip() + "\n"
 
 
 def run_cli(argv: list[str] | None = None) -> int:
+    """Run the A/B test CLI."""
+    try:
+        args = parse_args(argv)
+        report = asyncio.run(
+            ABTestRunner(
+                dataset_path=args.dataset,
+                strategy_a_spec=args.strategy_a,
+                strategy_b_spec=args.strategy_b,
+                prompt_a_path=args.prompt_a,
+                prompt_b_path=args.prompt_b,
+            ).run_ab_test()
+        )
+    except (FileNotFoundError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    output_path = resolve_report_path(args.output)
+    write_report(report, output_path)
+    print(render_console_report(report))
+    print(f"JSON report: {output_path}")
+    return 0
     """Run the A/B test CLI."""
     try:
         args = parse_args(argv)
@@ -430,6 +795,35 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _serialize_strategy(strategy: StrategyConfig, summary: BenchmarkSummary) -> StrategyReport:
+    prompt_report: PromptReport | None = None
+    if strategy.prompt:
+        import hashlib
+
+        content_hash = hashlib.md5(strategy.prompt.content.encode()).hexdigest()[:12]
+        preview = strategy.prompt.content[:200] + "..." if len(strategy.prompt.content) > 200 else strategy.prompt.content
+        prompt_report = PromptReport(
+            label=strategy.prompt.label,
+            name=strategy.prompt.name,
+            version=strategy.prompt.version,
+            source=strategy.prompt.source,
+            content_hash=content_hash,
+            content_preview=preview,
+            metadata=strategy.prompt.metadata,
+        )
+
+    return StrategyReport(
+        label=strategy.label,
+        name=strategy.name,
+        mode=strategy.mode,
+        source=strategy.source,
+        cache_dir=str(strategy.cache_dir) if strategy.cache_dir is not None else None,
+        llm_model=strategy.llm_model,
+        llm_provider=strategy.llm_provider,
+        llm_base_url=strategy.llm_base_url,
+        llm_api_key_configured=bool(strategy.llm_api_key),
+        benchmark_summary=summary,
+        prompt=prompt_report,
+    )
     return StrategyReport(
         label=strategy.label,
         name=strategy.name,
