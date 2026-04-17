@@ -31,6 +31,9 @@ DEFAULT_CACHE_DIR = ROOT / ".cache" / "ai_search"
 REPORTS_DIR = ROOT / "reports"
 BASELINE_REPORT_PATH = REPORTS_DIR / "baseline.json"
 REPORT_VERSION = "2.0"
+UNDERPERFORMING_CATEGORY_THRESHOLD_PCT = 70.0
+CATEGORY_VISUALIZATION_WIDTH = 20
+CATEGORY_TREND_DELTA_ALERT_PCT = 5.0
 
 
 @dataclass(frozen=True)
@@ -128,6 +131,36 @@ class BenchmarkBreakdown(TypedDict):
     error_count: int
 
 
+class CategoryPerformanceTrend(TypedDict):
+    """Accuracy trend for one category relative to a baseline benchmark."""
+
+    baseline_accuracy_exact_match_pct: float | None
+    current_accuracy_exact_match_pct: float
+    delta_accuracy_exact_match_pct: float | None
+    baseline_sample_size: int | None
+    current_sample_size: int
+    direction: str
+
+
+class CategoryAnalysisEntry(TypedDict):
+    """Detailed analysis for one category."""
+
+    metrics: BenchmarkBreakdown
+    underperforming: bool
+    recommendation: str
+    trend: CategoryPerformanceTrend | None
+    visualization: str
+
+
+class CategoryAnalysisSummary(TypedDict):
+    """Per-category analysis payload for the benchmark report."""
+
+    underperforming_threshold_pct: float
+    underperforming_categories: list[str]
+    comparison_visualization: str
+    categories: dict[str, CategoryAnalysisEntry]
+
+
 class BenchmarkSummary(TypedDict):
     """Summary metrics for the benchmark run."""
 
@@ -192,6 +225,7 @@ class BenchmarkReport(TypedDict):
     metadata: ExecutionMetadata
     summary: BenchmarkSummary
     category_breakdown: dict[str, BenchmarkBreakdown]
+    category_analysis: CategoryAnalysisSummary
     difficulty_breakdown: dict[str, BenchmarkBreakdown]
     baseline_comparison: BenchmarkBaselineComparison | None
     results: list[BenchmarkResultRow]
@@ -358,6 +392,179 @@ class MetricsCalculator:
         return true_positives / denominator if denominator else 0.0
 
 
+class CategoryAnalyzer:
+    """Analyze per-category benchmark performance and recommendations."""
+
+    def __init__(
+        self,
+        *,
+        underperforming_threshold_pct: float = UNDERPERFORMING_CATEGORY_THRESHOLD_PCT,
+        visualization_width: int = CATEGORY_VISUALIZATION_WIDTH,
+        trend_delta_alert_pct: float = CATEGORY_TREND_DELTA_ALERT_PCT,
+        metrics_calculator: MetricsCalculator | None = None,
+    ) -> None:
+        self._underperforming_threshold_pct: float = underperforming_threshold_pct
+        self._visualization_width: int = visualization_width
+        self._trend_delta_alert_pct: float = trend_delta_alert_pct
+        self._metrics_calculator: MetricsCalculator = metrics_calculator or MetricsCalculator()
+
+    def analyze_categories(
+        self,
+        results: Sequence[BenchmarkResultRow],
+        *,
+        category_breakdown: Mapping[str, BenchmarkBreakdown] | None = None,
+        baseline_report: Mapping[str, object] | None = None,
+    ) -> CategoryAnalysisSummary:
+        """Build category-specific metrics, trends, recommendations, and CLI visualizations."""
+        resolved_breakdown = category_breakdown or self._metrics_calculator.calculate_breakdown(results, field="category")
+        baseline_breakdown = self._extract_baseline_category_breakdown(baseline_report)
+        baseline_available = baseline_report is not None
+
+        category_analysis: dict[str, CategoryAnalysisEntry] = {}
+        underperforming_categories: list[str] = []
+        for category_name, metrics in resolved_breakdown.items():
+            underperforming = float(metrics["accuracy_exact_match_pct"]) < self._underperforming_threshold_pct
+            trend = self._build_trend(
+                metrics,
+                baseline_metrics=baseline_breakdown.get(category_name),
+                baseline_available=baseline_available,
+            )
+            recommendation = self._build_recommendation(category_name, metrics, underperforming=underperforming, trend=trend)
+            visualization = self._build_visualization_line(category_name, metrics, underperforming=underperforming, trend=trend)
+            category_analysis[category_name] = CategoryAnalysisEntry(
+                metrics=metrics,
+                underperforming=underperforming,
+                recommendation=recommendation,
+                trend=trend,
+                visualization=visualization,
+            )
+            if underperforming:
+                underperforming_categories.append(category_name)
+
+        return CategoryAnalysisSummary(
+            underperforming_threshold_pct=round(self._underperforming_threshold_pct, 3),
+            underperforming_categories=sorted(underperforming_categories),
+            comparison_visualization=self._render_comparison_visualization(category_analysis),
+            categories=category_analysis,
+        )
+
+    @staticmethod
+    def _extract_baseline_category_breakdown(baseline_report: Mapping[str, object] | None) -> dict[str, Mapping[str, object]]:
+        if baseline_report is None:
+            return {}
+
+        raw_breakdown = baseline_report.get("category_breakdown")
+        if not isinstance(raw_breakdown, Mapping):
+            return {}
+
+        extracted: dict[str, Mapping[str, object]] = {}
+        for raw_category_name, raw_metrics in cast(Mapping[object, object], raw_breakdown).items():
+            if isinstance(raw_category_name, str) and isinstance(raw_metrics, Mapping):
+                extracted[raw_category_name] = cast(Mapping[str, object], raw_metrics)
+        return extracted
+
+    def _build_trend(
+        self,
+        current_metrics: BenchmarkBreakdown,
+        *,
+        baseline_metrics: Mapping[str, object] | None,
+        baseline_available: bool,
+    ) -> CategoryPerformanceTrend | None:
+        if not baseline_available:
+            return None
+
+        current_accuracy = float(current_metrics["accuracy_exact_match_pct"])
+        current_sample_size = int(current_metrics["sample_size"])
+        if baseline_metrics is None:
+            return CategoryPerformanceTrend(
+                baseline_accuracy_exact_match_pct=None,
+                current_accuracy_exact_match_pct=round(current_accuracy, 3),
+                delta_accuracy_exact_match_pct=None,
+                baseline_sample_size=None,
+                current_sample_size=current_sample_size,
+                direction="new",
+            )
+
+        baseline_accuracy = _coerce_float(baseline_metrics.get("accuracy_exact_match_pct"))
+        baseline_sample_size = _coerce_int(baseline_metrics.get("sample_size"))
+        delta_accuracy = current_accuracy - baseline_accuracy
+        direction = "stable"
+        if delta_accuracy >= self._trend_delta_alert_pct:
+            direction = "improving"
+        elif delta_accuracy <= -self._trend_delta_alert_pct:
+            direction = "declining"
+
+        return CategoryPerformanceTrend(
+            baseline_accuracy_exact_match_pct=round(baseline_accuracy, 3),
+            current_accuracy_exact_match_pct=round(current_accuracy, 3),
+            delta_accuracy_exact_match_pct=round(delta_accuracy, 3),
+            baseline_sample_size=baseline_sample_size,
+            current_sample_size=current_sample_size,
+            direction=direction,
+        )
+
+    def _build_recommendation(
+        self,
+        category_name: str,
+        metrics: BenchmarkBreakdown,
+        *,
+        underperforming: bool,
+        trend: CategoryPerformanceTrend | None,
+    ) -> str:
+        sample_size = int(metrics["sample_size"])
+        if underperforming:
+            primary = f"Prioritize category-specific source-selection tuning for {category_name} and review the missed queries manually."
+        else:
+            primary = f"Maintain the current ranking strategy for {category_name} and reuse its strongest source signals in adjacent categories."
+
+        if trend is None:
+            secondary = "No baseline history exists yet; save this run so future benchmarks can track category drift."
+        elif trend["direction"] == "declining":
+            delta = abs(float(trend["delta_accuracy_exact_match_pct"] or 0.0))
+            secondary = f"Accuracy dropped {delta:.1f} points versus baseline, so compare recent prompt or heuristic changes before the next run."
+        elif trend["direction"] == "improving":
+            delta = float(trend["delta_accuracy_exact_match_pct"] or 0.0)
+            secondary = f"Accuracy improved {delta:.1f} points versus baseline, so keep the current approach and validate it with more examples."
+        elif trend["direction"] == "new":
+            secondary = "This category is new in the current report, so add a few more examples to establish a stable baseline."
+        else:
+            secondary = "Trend is stable versus baseline, so focus on monitoring rather than broad changes."
+
+        if sample_size < 3:
+            secondary = f"{secondary} Expand the dataset for {category_name} because fewer than 3 examples makes the signal noisy."
+        return f"{primary} {secondary}".strip()
+
+    def _build_visualization_line(
+        self,
+        category_name: str,
+        metrics: BenchmarkBreakdown,
+        *,
+        underperforming: bool,
+        trend: CategoryPerformanceTrend | None,
+    ) -> str:
+        accuracy = max(0.0, min(100.0, float(metrics["accuracy_exact_match_pct"])))
+        filled_width = int(round((accuracy / 100.0) * self._visualization_width))
+        filled_width = max(0, min(self._visualization_width, filled_width))
+        bar = ("█" * filled_width) + ("░" * (self._visualization_width - filled_width))
+        status = "⚠️" if underperforming else "✅"
+        trend_label = _format_category_trend_label(trend)
+        matched_examples = int(metrics["matched_examples"])
+        sample_size = int(metrics["sample_size"])
+        return f"{status} {category_name:<16} {bar} {accuracy:6.1f}% ({matched_examples}/{sample_size}) {trend_label}"
+
+    def _render_comparison_visualization(self, category_analysis: Mapping[str, CategoryAnalysisEntry]) -> str:
+        if not category_analysis:
+            return "No category data available."
+
+        lines = [
+            "Status Category          Accuracy Bar            Accuracy Trend",
+            "------ ---------------- -------------------- -------- ----------------",
+        ]
+        for entry in category_analysis.values():
+            lines.append(entry["visualization"])
+        return "\n".join(lines)
+
+
 def parse_args(argv: list[str] | None = None) -> BenchmarkArgs:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="Benchmark AI Search source selection against a golden dataset")
@@ -397,6 +604,7 @@ class BenchmarkRunner:
         search_client: FixtureSearchClient | None = None,
         selector: SourceSelector | None = None,
         metrics_calculator: MetricsCalculator | None = None,
+        category_analyzer: CategoryAnalyzer | None = None,
         llm_model: str = "gpt-4o-mini",
         llm_provider: str = "openai",
         llm_base_url: str | None = None,
@@ -410,6 +618,7 @@ class BenchmarkRunner:
         self._search_client: FixtureSearchClient | None = search_client
         self._selector: SourceSelector | None = selector
         self._metrics_calculator: MetricsCalculator = metrics_calculator or MetricsCalculator()
+        self._category_analyzer: CategoryAnalyzer = category_analyzer or CategoryAnalyzer(metrics_calculator=self._metrics_calculator)
         self._llm_model: str = llm_model
         self._llm_provider: str = llm_provider
         self._llm_base_url: str | None = llm_base_url
@@ -507,6 +716,12 @@ class BenchmarkRunner:
         completed_at = datetime.now(timezone.utc)
         summary = self._metrics_calculator.calculate_metrics(results, execution_duration_ms=total_duration_ms)
         category_breakdown = self._metrics_calculator.calculate_breakdown(results, field="category")
+        baseline_path, baseline_payload = load_baseline_payload()
+        category_analysis = self._category_analyzer.analyze_categories(
+            results,
+            category_breakdown=category_breakdown,
+            baseline_report=baseline_payload,
+        )
         difficulty_breakdown = self._metrics_calculator.calculate_breakdown(results, field="difficulty")
         metadata = ExecutionMetadata(
             started_at=started_at.isoformat(),
@@ -531,8 +746,13 @@ class BenchmarkRunner:
             metadata=metadata,
             summary=summary,
             category_breakdown=category_breakdown,
+            category_analysis=category_analysis,
             difficulty_breakdown=difficulty_breakdown,
-            baseline_comparison=load_baseline_comparison(summary),
+            baseline_comparison=load_baseline_comparison(
+                summary,
+                baseline_path=baseline_path,
+                baseline_payload=baseline_payload,
+            ),
             results=results,
         )
 
@@ -744,18 +964,17 @@ def resolve_report_paths(output_path: Path | None = None) -> tuple[Path, Path]:
 def load_baseline_comparison(
     summary: BenchmarkSummary,
     baseline_path: Path | None = None,
+    baseline_payload: Mapping[str, object] | None = None,
 ) -> BenchmarkBaselineComparison | None:
     """Compare the current summary against a saved baseline report when available."""
-    baseline_path = baseline_path or BASELINE_REPORT_PATH
-    if not baseline_path.exists():
+    resolved_baseline_path, resolved_baseline_payload = load_baseline_payload(
+        baseline_path=baseline_path,
+        baseline_payload=baseline_payload,
+    )
+    if resolved_baseline_payload is None:
         return None
 
-    try:
-        baseline_payload = cast(dict[str, object], json.loads(baseline_path.read_text(encoding="utf-8")))
-    except (OSError, json.JSONDecodeError):
-        return None
-
-    baseline_summary = baseline_payload.get("summary")
+    baseline_summary = resolved_baseline_payload.get("summary")
     if not isinstance(baseline_summary, dict):
         return None
     baseline_summary = cast(dict[str, object], baseline_summary)
@@ -777,10 +996,31 @@ def load_baseline_comparison(
         )
 
     return BenchmarkBaselineComparison(
-        baseline_path=str(baseline_path),
+        baseline_path=str(resolved_baseline_path),
         compared_at=datetime.now(timezone.utc).isoformat(),
         metrics=comparisons,
     )
+
+
+def load_baseline_payload(
+    baseline_path: Path | None = None,
+    baseline_payload: Mapping[str, object] | None = None,
+) -> tuple[Path, Mapping[str, object] | None]:
+    """Load the saved baseline report once for summary and category comparisons."""
+    resolved_baseline_path = baseline_path or BASELINE_REPORT_PATH
+    if baseline_payload is not None:
+        return resolved_baseline_path, baseline_payload
+    if not resolved_baseline_path.exists():
+        return resolved_baseline_path, None
+
+    try:
+        raw_payload = cast(object, json.loads(resolved_baseline_path.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError):
+        return resolved_baseline_path, None
+
+    if not isinstance(raw_payload, dict):
+        return resolved_baseline_path, None
+    return resolved_baseline_path, cast(dict[str, object], raw_payload)
 
 
 def generate_markdown_report(report: BenchmarkReport) -> str:
@@ -834,6 +1074,8 @@ def generate_markdown_report(report: BenchmarkReport) -> str:
         lines.append("")
 
     lines.extend(_render_breakdown_section("Category Breakdown", report["category_breakdown"]))
+    lines.extend(_render_category_analysis_section(report["category_analysis"]))
+    lines.extend(_render_category_visualization_section(report["category_analysis"]))
     lines.extend(_render_breakdown_section("Difficulty Breakdown", report["difficulty_breakdown"]))
     lines.extend(
         [
@@ -884,6 +1126,46 @@ def _render_breakdown_section(title: str, breakdown: Mapping[str, BenchmarkBreak
     return lines
 
 
+def _render_category_analysis_section(category_analysis: CategoryAnalysisSummary) -> list[str]:
+    threshold = float(category_analysis["underperforming_threshold_pct"])
+    underperforming_categories = category_analysis["underperforming_categories"]
+    underperforming_value = ", ".join(underperforming_categories) if underperforming_categories else "None"
+    lines = [
+        "## Category Analysis",
+        "",
+        f"- Underperforming threshold: < {threshold:.3f}% exact-match accuracy",
+        f"- Underperforming categories: {underperforming_value}",
+        "",
+        "| Category | Samples | Accuracy % | Status | Trend vs Baseline | Recommendation |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for category_name, details in category_analysis["categories"].items():
+        metrics = details["metrics"]
+        lines.append(
+            "| {category} | {samples} | {accuracy:.3f} | {status} | {trend} | {recommendation} |".format(
+                category=_truncate_markdown(category_name, 24),
+                samples=int(metrics["sample_size"]),
+                accuracy=float(metrics["accuracy_exact_match_pct"]),
+                status="⚠️ Underperforming" if details["underperforming"] else "✅ Healthy",
+                trend=_truncate_markdown(_format_category_trend_label(details["trend"]), 40),
+                recommendation=_truncate_markdown(details["recommendation"], 96),
+            )
+        )
+    lines.append("")
+    return lines
+
+
+def _render_category_visualization_section(category_analysis: CategoryAnalysisSummary) -> list[str]:
+    return [
+        "## Category Comparison Visualization",
+        "",
+        "```text",
+        category_analysis["comparison_visualization"],
+        "```",
+        "",
+    ]
+
+
 def _truncate_markdown(value: str, limit: int) -> str:
     """Trim Markdown cell content to keep generated tables readable."""
     normalized = " ".join(str(value or "").split()).replace("|", "\\|")
@@ -904,6 +1186,38 @@ def _coerce_float(value: object) -> float:
         except ValueError:
             return 0.0
     return 0.0
+
+
+def _coerce_int(value: object) -> int:
+    """Best-effort int coercion for cached baseline payloads."""
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(float(value.strip()))
+        except ValueError:
+            return 0
+    return 0
+
+
+def _format_category_trend_label(trend: CategoryPerformanceTrend | None) -> str:
+    """Format category trend data for tables and CLI visualizations."""
+    if trend is None:
+        return "No baseline"
+    direction = trend["direction"]
+    if direction == "new":
+        return "New category"
+
+    delta = float(trend["delta_accuracy_exact_match_pct"] or 0.0)
+    if direction == "improving":
+        return f"↑ +{delta:.1f} pts"
+    if direction == "declining":
+        return f"↓ {delta:.1f} pts"
+    return f"→ {delta:+.1f} pts"
 
 
 def run_cli(argv: list[str] | None = None) -> int:
