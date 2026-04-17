@@ -41,9 +41,6 @@ class ABTestArgs:
     prompt_a: Path | None
     prompt_b: Path | None
     output: Path | None
-    strategy_a: str
-    strategy_b: str
-    output: Path | None
 
 
 @dataclass(frozen=True)
@@ -70,7 +67,6 @@ class StrategyConfig:
     llm_model: str = "gpt-4o-mini"
     llm_provider: str = "openai"
     llm_base_url: str | None = None
-    llm_api_key: str | None = None
     llm_api_key: str | None = None
     prompt: PromptConfig | None = None
 
@@ -143,28 +139,9 @@ class StrategyReport(TypedDict):
     llm_api_key_configured: bool
     benchmark_summary: BenchmarkSummary
     prompt: PromptReport | None
-    prompt: PromptConfig | None = None
-    llm_api_key: str | None = None
 
 
-class StrategyReport(TypedDict):
-    """Serialized strategy metadata for the A/B report."""
-
-    label: str
-    name: str
-    mode: str
-    source: str
-    cache_dir: str | None
-    llm_model: str
-    llm_provider: str
-    llm_base_url: str | None
-    llm_api_key_configured: bool
-    benchmark_summary: BenchmarkSummary
-    prompt: PromptReport | None
-
-
-class DifferingExample(TypedDict):
-    benchmark_summary: BenchmarkSummary
+ 
 
 
 class DifferingExample(TypedDict):
@@ -208,7 +185,6 @@ class ABTestReport(TypedDict):
     differing_examples_count: int
     differing_examples: list[DifferingExample]
     prompt_comparison: PromptComparisonReport | None
-    differing_examples: list[DifferingExample]
 
 
 class BenchmarkRunnerLike(Protocol):
@@ -258,14 +234,6 @@ def parse_args(argv: list[str] | None = None) -> ABTestArgs:
         strategy_b=cast(str, args.strategy_b),
         prompt_a=cast(Path | None, args.prompt_a),
         prompt_b=cast(Path | None, args.prompt_b),
-        output=cast(Path | None, args.output),
-    )
-
-    args = parser.parse_args(argv)
-    return ABTestArgs(
-        dataset=cast(Path, args.dataset),
-        strategy_a=cast(str, args.strategy_a),
-        strategy_b=cast(str, args.strategy_b),
         output=cast(Path | None, args.output),
     )
 
@@ -484,7 +452,7 @@ class ABTestRunner:
                     strategy_b_error=_error_value(row_b),
                     outcome=_classify_difference(row_a, row_b),
                 )
-
+            )
         return differing_examples
 
     def _build_recommendation(
@@ -685,7 +653,7 @@ def render_console_report(report: ABTestReport) -> str:
                         a_pred=example.get("strategy_a_predicted") or "—",
                         b_pred=example.get("strategy_b_predicted") or "—",
                     )
-
+                )
         # Show regressed examples
         if prompt_comparison["regressed_examples"]:
             lines.extend(["", "### Regressed Examples (A better than B)", ""])
@@ -697,7 +665,7 @@ def render_console_report(report: ABTestReport) -> str:
                         a_pred=example.get("strategy_a_predicted") or "—",
                         b_pred=example.get("strategy_b_predicted") or "—",
                     )
-
+                )
     if differing_examples:
         lines.extend(["", "## Sample Differing Examples", ""])
         for example in differing_examples[:5]:
@@ -709,42 +677,9 @@ def render_console_report(report: ABTestReport) -> str:
                     b_url=example["strategy_b_predicted_source_url"] or "—",
                     outcome=example["outcome"],
                 )
+            )
 
     return "\n".join(lines).rstrip() + "\n"
-    """Render a concise text summary for terminal output."""
-    recommendation = report["recommendation"]
-    strategy_a = report["strategy_a"]
-    strategy_b = report["strategy_b"]
-    comparison_summary = report["comparison_summary"]
-    differing_examples = report["differing_examples"]
-    lines = [
-        "# A/B Test Recommendation",
-        "",
-        f"- Strategy A: {strategy_a['name']} ({strategy_a['mode']})",
-        f"- Strategy B: {strategy_b['name']} ({strategy_b['mode']})",
-        f"- Recommendation: {recommendation['choice']}",
-        f"- Paired Examples: {comparison_summary['paired_examples']}",
-        f"- Differing Examples: {report['differing_examples_count']}",
-        "",
-        "## Reasons",
-        "",
-    ]
-    lines.extend(f"- {reason}" for reason in recommendation["reasons"])
-
-    if differing_examples:
-        lines.extend(["", "## Sample Differing Examples", ""])
-        for example in differing_examples[:5]:
-            lines.append(
-                "- #{index} {query} | A={a_url} | B={b_url} | outcome={outcome}".format(
-                    index=example["index"],
-                    query=_truncate(str(example["query"]), 72),
-                    a_url=example["strategy_a_predicted_source_url"] or "—",
-                    b_url=example["strategy_b_predicted_source_url"] or "—",
-                    outcome=example["outcome"],
-                )
-
-    return "\n".join(lines).rstrip() + "\n"
-
 
 def run_cli(argv: list[str] | None = None) -> int:
     """Run the A/B test CLI."""
@@ -768,26 +703,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     print(render_console_report(report))
     print(f"JSON report: {output_path}")
     return 0
-    """Run the A/B test CLI."""
-    try:
-        args = parse_args(argv)
-        report = asyncio.run(
-            ABTestRunner(
-                dataset_path=args.dataset,
-                strategy_a_spec=args.strategy_a,
-                strategy_b_spec=args.strategy_b,
-            ).run_ab_test()
-        )
-    except (FileNotFoundError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    output_path = resolve_report_path(args.output)
-    write_report(report, output_path)
-    print(render_console_report(report))
-    print(f"JSON report: {output_path}")
-    return 0
-
+ 
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint."""
@@ -824,18 +740,7 @@ def _serialize_strategy(strategy: StrategyConfig, summary: BenchmarkSummary) -> 
         benchmark_summary=summary,
         prompt=prompt_report,
     )
-    return StrategyReport(
-        label=strategy.label,
-        name=strategy.name,
-        mode=strategy.mode,
-        source=strategy.source,
-        cache_dir=str(strategy.cache_dir) if strategy.cache_dir is not None else None,
-        llm_model=strategy.llm_model,
-        llm_provider=strategy.llm_provider,
-        llm_base_url=strategy.llm_base_url,
-        llm_api_key_configured=bool(strategy.llm_api_key),
-        benchmark_summary=summary,
-    )
+ 
 
 
 def _load_strategy_from_file(*, label: str, config_path: Path) -> StrategyConfig:

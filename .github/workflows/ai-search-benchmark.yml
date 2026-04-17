@@ -1,0 +1,122 @@
+name: AI Search Benchmark Comparison
+
+on:
+  pull_request:
+    paths:
+      - "apps/scraper/scrapers/ai_search/**"
+      - "apps/scraper/scripts/benchmark_ai_search.py"
+      - "apps/scraper/scripts/compare_benchmarks.py"
+      - "apps/scraper/data/golden_dataset_v1.json"
+      - ".github/workflows/ai-search-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  benchmark-comparison:
+    name: Benchmark Comparison
+    runs-on: [self-hosted, linux]
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./apps/scraper
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: apps/scraper/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run benchmark on PR head
+        id: current_benchmark
+        continue-on-error: true
+        env:
+          PYTHONPATH: .
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/current"
+          python scripts/benchmark_ai_search.py \
+            --dataset data/golden_dataset_v1.json \
+            --output "$GITHUB_WORKSPACE/artifacts/current/report.json" \
+            --mode heuristic
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR base
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          fetch-depth: 1
+
+      - name: Run benchmark on PR base
+        if: github.event_name == 'pull_request' && steps.current_benchmark.outputs.status == '0'
+        id: base_benchmark
+        continue-on-error: true
+        working-directory: ./base/apps/scraper
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install -r requirements.txt || true
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/base"
+          python scripts/benchmark_ai_search.py \
+            --dataset data/golden_dataset_v1.json \
+            --output "$GITHUB_WORKSPACE/artifacts/base/report.json" \
+            --mode heuristic
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Compare benchmarks
+        if: github.event_name == 'pull_request' && steps.current_benchmark.outputs.status == '0' && steps.base_benchmark.outputs.status == '0'
+        id: compare
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/compare_benchmarks.py \
+            "$GITHUB_WORKSPACE/artifacts/base/report.json" \
+            "$GITHUB_WORKSPACE/artifacts/current/report.json" \
+            --output "$GITHUB_WORKSPACE/artifacts/comparison.json"
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          
+          # compare_benchmarks.py returns:
+          # 0 = significant_improvement
+          # 1 = significant_regression
+          # 2 = no_significant_difference
+          # 3 = error
+          # We only want to fail the CI job on regression (exit code 1) or error (exit code 3)
+          exit_code=$?
+          if [ $exit_code -eq 1 ] || [ $exit_code -eq 3 ]; then
+            echo "CI Job Failed due to significant benchmark regression or error ($exit_code)"
+            exit $exit_code
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            artifacts/current
+            artifacts/base
+            artifacts/comparison.json
+            artifacts/comparison.md
+          if-no-files-found: warn
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          path: artifacts/comparison.md

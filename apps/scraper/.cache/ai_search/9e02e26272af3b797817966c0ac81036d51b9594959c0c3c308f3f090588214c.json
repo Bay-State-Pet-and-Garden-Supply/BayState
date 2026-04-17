@@ -1,0 +1,27 @@
+{
+  "$schema_version": "1.0",
+  "query": "mock product sku100028 sample brand name pet treats",
+  "results": [
+    {
+      "title": "Buy Mock Product SKU100028 Sample Brand Name Pet Treats at Petco",
+      "url": "https://www.petco.com/shop/mock/9e02e26272af3b797817966c0ac81036d51b9594959c0c3c308f3f090588214c",
+      "description": "Shop the latest."
+    },
+    {
+      "title": "Official Mock Product SKU100028 Sample Brand Name Pet Treats - Home",
+      "url": "https://www.sample-brand-100028.com/products/mock-product",
+      "description": "The official product page for this item."
+    },
+    {
+      "title": "Amazon.com: Mock Product SKU100028 Sample Brand Name Pet Treats",
+      "url": "https://www.amazon.com/dp/B0009e02e2",
+      "description": "Free shipping on orders over $25."
+    },
+    {
+      "title": "Chewy - Mock Product SKU100028 Sample Brand Name Pet Treats",
+      "url": "https://www.chewy.com/mock/9e02e2",
+      "description": "Auto-ship and save 5%."
+    }
+  ],
+  "timestamp": "2026-04-16T12:00:00Z"
+}

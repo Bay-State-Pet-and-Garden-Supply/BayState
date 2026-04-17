@@ -1,0 +1,27 @@
+{
+  "$schema_version": "1.0",
+  "query": "mock product sku100044 sample brand name bird supplies",
+  "results": [
+    {
+      "title": "Buy Mock Product SKU100044 Sample Brand Name Bird Supplies at Petco",
+      "url": "https://www.petco.com/shop/mock/9353f34cfeb6f1df0b57af92facd13e0b67686f2ceae8bdf0034598b22d1ddca",
+      "description": "Shop the latest."
+    },
+    {
+      "title": "Amazon.com: Mock Product SKU100044 Sample Brand Name Bird Supplies",
+      "url": "https://www.amazon.com/dp/B0009353f3",
+      "description": "Free shipping on orders over $25."
+    },
+    {
+      "title": "Chewy - Mock Product SKU100044 Sample Brand Name Bird Supplies",
+      "url": "https://www.chewy.com/mock/9353f3",
+      "description": "Auto-ship and save 5%."
+    },
+    {
+      "title": "Official Mock Product SKU100044 Sample Brand Name Bird Supplies - Home",
+      "url": "https://www.sample-brand-100044.com/products/mock-product",
+      "description": "The official product page for this item."
+    }
+  ],
+  "timestamp": "2026-04-16T12:00:00Z"
+}
