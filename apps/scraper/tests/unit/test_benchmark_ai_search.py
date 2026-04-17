@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import scripts.benchmark_ai_search as benchmark_ai_search
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -8,7 +9,16 @@ from typing import cast
 import pytest
 
 from scrapers.ai_search.fixture_search_client import FixtureSearchClient
-from scripts.benchmark_ai_search import BenchmarkReport, BenchmarkRunner, main, parse_args, write_report
+from scripts.benchmark_ai_search import (
+    BenchmarkReport,
+    BenchmarkResultRow,
+    BenchmarkRunner,
+    MetricsCalculator,
+    generate_markdown_report,
+    main,
+    parse_args,
+    write_report,
+)
 
 
 class _FakeSelector:
@@ -69,12 +79,118 @@ def _write_dataset(tmp_path: Path, entries: Sequence[Mapping[str, object]], file
     return dataset_path
 
 
+def _result_row(
+    *,
+    index: int,
+    query: str,
+    expected_source_url: str,
+    predicted_source_url: str | None,
+    exact_match: bool,
+    score: float,
+    correct_rank: int | None,
+    reciprocal_rank: float,
+    precision_at_1: float,
+    recall_at_1: float,
+    duration_ms: float,
+    category: str,
+    difficulty: str,
+    error: str | None = None,
+) -> BenchmarkResultRow:
+    return BenchmarkResultRow(
+        index=index,
+        query=query,
+        expected_source_url=expected_source_url,
+        predicted_source_url=predicted_source_url,
+        exact_match=exact_match,
+        score=score,
+        correct_rank=correct_rank,
+        reciprocal_rank=reciprocal_rank,
+        precision_at_1=precision_at_1,
+        recall_at_1=recall_at_1,
+        duration_ms=duration_ms,
+        result_count=3,
+        mode="heuristic",
+        selection_method="heuristic",
+        selection_cost_usd=0.0,
+        category=category,
+        difficulty=difficulty,
+        rationale="pytest",
+        error=error,
+    )
+
+
 def test_parse_args_supports_required_flags() -> None:
     args = parse_args(["--dataset", "data/golden_dataset_v1.json", "--output", "report.json", "--mode", "llm"])
 
     assert args.dataset == Path("data/golden_dataset_v1.json")
     assert args.output == Path("report.json")
     assert args.mode == "llm"
+
+
+def test_metrics_calculator_computes_core_metrics_and_breakdowns() -> None:
+    calculator = MetricsCalculator()
+    results = [
+        _result_row(
+            index=0,
+            query="12345 Acme Widget",
+            expected_source_url="https://acme.com/widget",
+            predicted_source_url="https://acme.com/widget",
+            exact_match=True,
+            score=8.4,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=12.0,
+            category="Tools",
+            difficulty="easy",
+        ),
+        _result_row(
+            index=1,
+            query="54321 Beta Mixer",
+            expected_source_url="https://beta.com/mixer",
+            predicted_source_url="https://amazon.com/beta-mixer",
+            exact_match=False,
+            score=6.1,
+            correct_rank=2,
+            reciprocal_rank=0.5,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=18.0,
+            category="Tools",
+            difficulty="medium",
+        ),
+        _result_row(
+            index=2,
+            query="99999 Gamma Feeder",
+            expected_source_url="https://gamma.com/feeder",
+            predicted_source_url=None,
+            exact_match=False,
+            score=0.0,
+            correct_rank=None,
+            reciprocal_rank=0.0,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=30.0,
+            category="Garden",
+            difficulty="hard",
+            error="cache miss",
+        ),
+    ]
+
+    summary = calculator.calculate_metrics(results, execution_duration_ms=60.0)
+    category_breakdown = calculator.calculate_breakdown(results, "category")
+    difficulty_breakdown = calculator.calculate_breakdown(results, "difficulty")
+
+    assert abs(summary["accuracy_exact_match_pct"] - 33.333) < 0.001
+    assert abs(summary["mean_reciprocal_rank"] - 0.5) < 1e-6
+    assert abs(summary["precision_at_1"] - (1 / 3)) < 1e-6
+    assert abs(summary["recall_at_1"] - (1 / 3)) < 1e-6
+    assert summary["accuracy_confidence_interval_95"]["sample_size"] == 3
+    assert category_breakdown["Tools"]["sample_size"] == 2
+    assert category_breakdown["Tools"]["accuracy_exact_match_pct"] == 50.0
+    assert category_breakdown["Tools"]["mean_reciprocal_rank"] == 0.75
+    assert difficulty_breakdown["hard"]["error_count"] == 1
 
 
 @pytest.mark.asyncio
@@ -119,9 +235,17 @@ async def test_benchmark_runner_calculates_accuracy_and_timing(tmp_path: Path) -
     assert report["summary"]["total_examples"] == 2
     assert report["summary"]["matched_examples"] == 1
     assert report["summary"]["accuracy_exact_match_pct"] == 50.0
+    assert report["summary"]["mean_reciprocal_rank"] == 0.5
+    assert report["summary"]["precision_at_1"] == 0.5
+    assert report["summary"]["recall_at_1"] == 0.5
     assert report["summary"]["selection_breakdown"] == {"heuristic": 2}
+    assert report["summary"]["accuracy_confidence_interval_95"]["sample_size"] == 2
+    assert report["category_breakdown"]["Kitchen"]["sample_size"] == 1
+    assert report["difficulty_breakdown"]["medium"]["sample_size"] == 1
     assert report["results"][0]["exact_match"] is True
     assert report["results"][1]["exact_match"] is False
+    assert report["results"][0]["score"] > 0.0
+    assert report["results"][0]["correct_rank"] == 1
     assert report["results"][0]["duration_ms"] >= 0.0
     assert report["results"][1]["duration_ms"] >= 0.0
 
@@ -163,7 +287,9 @@ async def test_benchmark_runner_uses_companion_search_fixtures(tmp_path: Path) -
 
     assert report["summary"]["total_examples"] == 1
     assert report["summary"]["matched_examples"] == 1
+    assert report["summary"]["precision_at_1"] == 1.0
     assert report["results"][0]["predicted_source_url"] == "https://acme.com/product/acme-widget"
+    assert report["results"][0]["correct_rank"] == 1
 
 
 @pytest.mark.asyncio
@@ -207,6 +333,7 @@ async def test_benchmark_runner_supports_llm_mode_with_selector_fallback(tmp_pat
     assert llm_report["summary"]["selection_breakdown"] == {"llm": 1}
     assert llm_report["summary"]["total_selection_cost_usd"] == 0.123
     assert llm_report["results"][0]["selection_method"] == "llm"
+    assert llm_report["results"][0]["correct_rank"] == 1
     assert fallback_report["summary"]["selection_breakdown"] == {"heuristic_fallback": 1}
     assert fallback_report["results"][0]["predicted_source_url"] == "https://acme.com/product/acme-widget"
 
@@ -221,7 +348,109 @@ def test_write_report_persists_json(tmp_path: Path) -> None:
     assert saved == report
 
 
-def test_main_writes_report_and_returns_zero(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_generate_markdown_report_renders_human_readable_tables() -> None:
+    report = BenchmarkReport(
+        report_version="2.0",
+        generated_at="2026-04-16T12:00:00+00:00",
+        dataset_path="/tmp/dataset.json",
+        mode="heuristic",
+        cache_dir="/tmp/cache",
+        dataset_validation={"valid": True},
+        metadata={
+            "started_at": "2026-04-16T12:00:00+00:00",
+            "completed_at": "2026-04-16T12:00:01+00:00",
+            "duration_ms": 10.0,
+            "config": {
+                "mode": "heuristic",
+                "cache_dir": "/tmp/cache",
+                "llm_model": "gpt-4o-mini",
+                "llm_provider": "openai",
+                "llm_base_url": None,
+            },
+        },
+        summary={
+            "total_examples": 1,
+            "matched_examples": 1,
+            "accuracy_exact_match_pct": 100.0,
+            "mean_reciprocal_rank": 1.0,
+            "precision_at_1": 1.0,
+            "recall_at_1": 1.0,
+            "accuracy_confidence_interval_95": {
+                "confidence_level": 0.95,
+                "lower_bound_pct": 100.0,
+                "upper_bound_pct": 100.0,
+                "margin_of_error_pct": 0.0,
+                "sample_size": 1,
+                "method": "normal_approximation_binary_mean",
+            },
+            "total_duration_ms": 10.0,
+            "average_duration_ms": 10.0,
+            "total_selection_cost_usd": 0.0,
+            "selection_breakdown": {"heuristic": 1},
+            "error_count": 0,
+        },
+        category_breakdown={
+            "Tools": {
+                "sample_size": 1,
+                "matched_examples": 1,
+                "accuracy_exact_match_pct": 100.0,
+                "mean_reciprocal_rank": 1.0,
+                "precision_at_1": 1.0,
+                "recall_at_1": 1.0,
+                "average_duration_ms": 10.0,
+                "error_count": 0,
+            }
+        },
+        difficulty_breakdown={
+            "easy": {
+                "sample_size": 1,
+                "matched_examples": 1,
+                "accuracy_exact_match_pct": 100.0,
+                "mean_reciprocal_rank": 1.0,
+                "precision_at_1": 1.0,
+                "recall_at_1": 1.0,
+                "average_duration_ms": 10.0,
+                "error_count": 0,
+            }
+        },
+        baseline_comparison={
+            "baseline_path": "/tmp/reports/baseline.json",
+            "compared_at": "2026-04-16T12:00:01+00:00",
+            "metrics": {"accuracy_exact_match_pct": {"baseline": 50.0, "current": 100.0, "delta": 50.0}},
+        },
+        results=[
+            _result_row(
+                index=0,
+                query="12345 Acme Widget",
+                expected_source_url="https://acme.com/widget",
+                predicted_source_url="https://acme.com/widget",
+                exact_match=True,
+                score=8.4,
+                correct_rank=1,
+                reciprocal_rank=1.0,
+                precision_at_1=1.0,
+                recall_at_1=1.0,
+                duration_ms=10.0,
+                category="Tools",
+                difficulty="easy",
+            )
+        ],
+    )
+
+    markdown = generate_markdown_report(report)
+
+    assert "# AI Search Benchmark Report" in markdown
+    assert "## Summary Metrics" in markdown
+    assert "## Baseline Comparison" in markdown
+    assert "## Per-Example Results" in markdown
+    assert "| Tools | 1 | 100.000 |" in markdown
+
+
+def test_main_writes_reports_and_returns_zero(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     entries = [
         {
             "query": "12345 Acme Widget Acme Tools",
@@ -251,15 +480,47 @@ def test_main_writes_report_and_returns_zero(tmp_path: Path, capsys: pytest.Capt
         ),
         encoding="utf-8",
     )
-    output_path = tmp_path / "benchmark-report.json"
 
-    exit_code = main(["--dataset", str(dataset_path), "--output", str(output_path)])
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    baseline_path = reports_dir / "baseline.json"
+    _ = baseline_path.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "accuracy_exact_match_pct": 50.0,
+                    "mean_reciprocal_rank": 0.5,
+                    "precision_at_1": 0.5,
+                    "recall_at_1": 0.5,
+                }
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(benchmark_ai_search, "REPORTS_DIR", reports_dir)
+    monkeypatch.setattr(benchmark_ai_search, "BASELINE_REPORT_PATH", baseline_path)
+
+    exit_code = main(["--dataset", str(dataset_path)])
     stdout = capsys.readouterr().out
-    saved = cast(BenchmarkReport, json.loads(output_path.read_text(encoding="utf-8")))
+    json_reports = sorted(reports_dir.glob("benchmark_*.json"))
+    markdown_reports = sorted(reports_dir.glob("benchmark_*.md"))
+    assert len(json_reports) == 1
+    assert len(markdown_reports) == 1
+
+    saved = cast(BenchmarkReport, json.loads(json_reports[0].read_text(encoding="utf-8")))
+    markdown = markdown_reports[0].read_text(encoding="utf-8")
 
     assert exit_code == 0
     assert saved["summary"]["matched_examples"] == 1
-    assert '"accuracy_exact_match_pct": 100.0' in stdout
+    assert saved["baseline_comparison"] is not None
+    assert saved["category_breakdown"]["Tools"]["sample_size"] == 1
+    assert saved["difficulty_breakdown"]["easy"]["sample_size"] == 1
+    assert saved["metadata"]["config"]["mode"] == "heuristic"
+    assert "# AI Search Benchmark Report" in stdout
+    assert "JSON report:" in stdout
+    assert "## Baseline Comparison" in markdown
+    assert "## Per-Example Results" in markdown
 
 
 def test_main_returns_nonzero_for_invalid_dataset(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
